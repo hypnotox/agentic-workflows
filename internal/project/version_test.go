@@ -7,7 +7,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// invariant: schema-min-version
+// invariant: config/migrations-and-locks:schema-min-version
 func TestVersionCoversCurrentSchema(t *testing.T) {
 	min, ok := minVersionBySchema[migrate.Current()]
 	if !ok {
@@ -22,8 +22,8 @@ func TestVersionCoversCurrentSchema(t *testing.T) {
 	if minVersionBySchema[14] != "0.18.0" {
 		t.Errorf("minVersionBySchema[14] = %q, want %q", minVersionBySchema[14], "0.18.0")
 	}
-	if Version != "0.18.0" {
-		t.Errorf("Version = %q, want %q", Version, "0.18.0")
+	if Version != "0.19.0" {
+		t.Errorf("Version = %q, want %q", Version, "0.19.0")
 	}
 	if !BridgeTrancheComplete {
 		t.Error("bridge tranche must be complete now that Plans 1 and 2 have both landed")

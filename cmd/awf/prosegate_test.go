@@ -219,7 +219,7 @@ func TestProseGateDispatch(t *testing.T) {
 	}
 }
 
-// invariant: prose-gate-refuses-without-git
+// invariant: tooling/quality-gates:prose-gate-refuses-without-git
 func TestProseGateRefusesOutsideAGitRepo(t *testing.T) {
 	// An adopted tree outside a git repository has no staged snapshot, so the
 	// command refuses rather than reporting a clean tree it could not see.

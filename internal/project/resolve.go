@@ -18,7 +18,6 @@ type PlanOp struct {
 // ResolveEnable plans enabling (kind, name): the node plus its missing forward
 // closure. An already-enabled dependency is skipped along with its subtree -
 // the open-time validation invariant guarantees enabled implies closed.
-// invariant: add-applies-closure-plan
 func (p *Project) ResolveEnable(kind, name string) []PlanOp {
 	type item struct {
 		n  catalog.Node
@@ -49,7 +48,6 @@ func (p *Project) ResolveEnable(kind, name string) []PlanOp {
 // non-local artifact that transitively requires it (reverse closure, fixed
 // point over direct edges). Local-sidecar artifacts have no catalog edges
 // demanded of them, mirroring the validator's skip.
-// invariant: remove-refuses-dependents
 func (p *Project) ResolveDisable(kind, name string) []PlanOp {
 	target := catalog.Node{Kind: kind, Name: name}
 	removed := map[catalog.Node]bool{target: true}

@@ -8,19 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
-
-// statusOrder defines the section order in ACTIVE.md.
-var statusOrder = []string{"Accepted", "Implemented", "Proposed", "Superseded"}
-
-// bucketKey is retained as the grouping seam; the rule itself is ADR.Bucket.
-func bucketKey(a ADR) string { return a.Bucket() }
 
 // ADR is a parsed ADR record.
 type ADR struct {
@@ -33,131 +26,36 @@ type ADR struct {
 	Domains       []string          // `domains:` frontmatter (ADR-0014)
 	Tags          []string          // `tags:` frontmatter (keyword labels)
 	Related       []int             // `related:` frontmatter (ADR numbers)
-	Refs          []SupersessionRef // inline partial-supersession tokens in the Decision section (ADR-0120)
 	Sections      map[string]string // `## ` heading -> non-fenced section body
 	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
 	DecisionEnd   int               // raw file byte offset immediately after the Decision section; 0 when absent
+
+	// Current-state-v1 fields, populated only for an ADR at or above the lock's
+	// format cutoff (ADR-0135). A legacy-format record leaves them zero.
+	Format     Format        // Legacy or CurrentStateV1
+	NoneState  bool          // State changes section is exactly "None."
+	Operations []Operation   // parsed `## State changes` operations
+	History    []StatusEntry // parsed `## Status history` entries
 }
 
-// SupersessionRef is one inline partial-supersession token (ADR-0120):
-// `supersedes: ADR-NNNN#<item>` or `supersedes-invariant: ADR-NNNN#<slug>`
-// as an inline code token inside a Decision section. Exactly one of
-// Item/Slug is set; the key names the kind, never the anchor's shape.
-type SupersessionRef struct {
-	Target string // 4-digit target ADR number, e.g. "0116"
-	Item   int    // Decision item number; 0 for an invariant ref
-	Slug   string // invariant slug; "" for an item ref
-	// Relation is whether the claim retires the anchor or adapts it.
-	Relation Relation
-	// CarrierItem is the carrying ADR's own Decision item number - the item
-	// whose prose justifies the claim. ADR-0129 item 2 makes the rationale site
-	// addressable, which is the whole reason the token sits inside a Decision
-	// item rather than in frontmatter. 0 when the token precedes the first item.
-	CarrierItem int
-}
-
-// Relation distinguishes the three claims an ADR can record on an anchor. A
-// retirement replaces the anchor and counts toward the target's coverage; a
-// refinement adapts it and counts toward nothing, so an ADR whose items have
-// only ever been refined is still live; a citation claims nothing at all and
-// exists only to mark the reference informational (ADR-0128 item 2 for the
-// first two, ADR-0131 item 4 for the third).
-//
-// The split is corpus-driven: of the 37 pre-existing item tokens, 22 were
-// refinements and only 13 genuine retirements. ADR-0034 item 1 is the live
-// precedent - refined by ADR-0057, and only actually retired by ADR-0121 years
-// later. Slug anchors have no refinement form: a slug is atomic, so
-// `supersedes-invariant:` is always a retirement.
-type Relation string
+// Format distinguishes a legacy-format ADR from a current-state-v1 ADR.
+type Format int
 
 const (
-	// Retires is `supersedes:` (items) and `supersedes-invariant:` (slugs).
-	Retires Relation = "retires"
-	// Refines is `refines:`, items only.
-	Refines Relation = "refines"
-	// Cites is `cites:`: an informational citation asserting no claim on the
-	// anchor. It contributes to nothing and exists only to suppress the
-	// citation check (ADR-0131 item 4).
-	Cites Relation = "cites"
+	// Legacy is a pre-cutover ADR: identity, status, and date only.
+	Legacy Format = iota
+	// CurrentStateV1 is a `format: current-state-v1` ADR with State changes and
+	// Status history.
+	CurrentStateV1
 )
 
-var (
-	// itemRefRe / invRefRe match the two token keys inside inline code. The
-	// superseded kind is named by the key, never inferred from the anchor
-	// (ADR-0120 item 1): items are [1-9][0-9]*, slugs the declRe grammar.
-	itemRefRe = regexp.MustCompile("`supersedes: ADR-([0-9]{4})#([1-9][0-9]*)`")
-	invRefRe  = regexp.MustCompile("`supersedes-invariant: ADR-([0-9]{4})#([a-z0-9-]+)`")
-	// refinesItemRe mirrors itemRefRe for the refinement relation (ADR-0128
-	// item 2). Items only: a slug anchor is atomic and cannot be adapted.
-	refinesItemRe = regexp.MustCompile("`refines: ADR-([0-9]{4})#([1-9][0-9]*)`")
-	// citesItemRe / citesInvRe mark a citation informational (ADR-0131 item 4).
-	// Inert: parsed so the citation check can see them, counted toward no
-	// anchor's coverage, rendered nowhere. Two keys, exactly as itemRefRe and
-	// invRefRe are two keys - the kind is named by the key, never inferred from
-	// the anchor (ADR-0120 item 1). One key with two anchor patterns would
-	// double-match, since [a-z0-9-]+ matches digits: an item-anchored citation
-	// would also emit a phantom slug anchor and fail the token-ref check.
-	citesItemRe = regexp.MustCompile("`cites: ADR-([0-9]{4})#([1-9][0-9]*)`")
-	citesInvRe  = regexp.MustCompile("`cites-invariant: ADR-([0-9]{4})#([a-z0-9-]+)`")
-	// decisionItemRe matches a column-0 numbered Decision item lead. Column-0
-	// anchoring is load-bearing: 0067 and 0115 carry indented numbered
-	// sub-lists that must not enumerate (ADR-0120 item 2).
-	decisionItemRe = regexp.MustCompile(`(?m)^([0-9]+)\. `)
-)
+// IsV1 reports whether the record was parsed as current-state-v1.
+func (a ADR) IsV1() bool { return a.Format == CurrentStateV1 }
 
-// parseRefs extracts every supersession token from a Decision section body.
-// Tokens anywhere else in the ADR are inert prose (ADR-0120 item 1), which
-// parse guarantees by passing only Sections["Decision"].
-func parseRefs(decision string) []SupersessionRef {
-	spans := decisionItemSpans(decision)
-	var refs []SupersessionRef
-	collect := func(re *regexp.Regexp, rel Relation, slug bool) {
-		for _, m := range re.FindAllStringSubmatchIndex(decision, -1) {
-			ref := SupersessionRef{
-				Target:      decision[m[2]:m[3]],
-				Relation:    rel,
-				CarrierItem: itemAt(spans, m[0]),
-			}
-			if slug {
-				ref.Slug = decision[m[4]:m[5]]
-			} else {
-				ref.Item, _ = strconv.Atoi(decision[m[4]:m[5]]) // the regex admits only digits
-			}
-			refs = append(refs, ref)
-		}
-	}
-	collect(itemRefRe, Retires, false)
-	collect(refinesItemRe, Refines, false)
-	collect(invRefRe, Retires, true)
-	collect(citesItemRe, Cites, false)
-	collect(citesInvRe, Cites, true)
-	return refs
-}
-
-// decisionItemSpans returns the byte offset at which each column-0 numbered
-// Decision item begins, paired with its number, in document order.
-func decisionItemSpans(decision string) [][2]int {
-	var spans [][2]int
-	for _, m := range decisionItemRe.FindAllStringSubmatchIndex(decision, -1) {
-		n, _ := strconv.Atoi(decision[m[2]:m[3]])
-		spans = append(spans, [2]int{m[0], n})
-	}
-	return spans
-}
-
-// itemAt reports which Decision item encloses the byte offset off - the
-// rationale site for a claim written there (ADR-0129 item 2). A token before
-// the first numbered item belongs to no item and reports 0.
-func itemAt(spans [][2]int, off int) int {
-	item := 0
-	for _, s := range spans {
-		if s[0] > off {
-			break
-		}
-		item = s[1]
-	}
-	return item
-}
+// decisionItemRe matches a column-0 numbered Decision item lead. Column-0
+// anchoring is load-bearing: 0067 and 0115 carry indented numbered
+// sub-lists that must not enumerate (ADR-0120 item 2).
+var decisionItemRe = regexp.MustCompile(`(?m)^([0-9]+)\. `)
 
 // DecisionItems returns the numbers of the column-0 numbered items of the
 // Decision section, in order of appearance.
@@ -231,7 +129,6 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
 	}
-	a.Refs = parseRefs(a.Sections["Decision"])
 	for _, line := range strings.Split(string(body), "\n") {
 		if strings.HasPrefix(line, "# ") {
 			a.Title = strings.TrimPrefix(line, "# ")
@@ -243,101 +140,6 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		a.Number = m[1]
 	}
 	return a, found, nil
-}
-
-// RenderActiveMD renders the ACTIVE.md index for corpus, grouped by status. It
-// returns a placeholder index when the corpus holds no ADRs (ADR-0020). The content
-// carries no generated-by banner - like RenderDomainIndex, that is the
-// caller's job (internal/project's generateActiveMD, via injectBanner) so
-// every rendered artifact's banner comes from the one canonical source.
-func RenderActiveMD(corpus Corpus) string {
-	adrs := corpus.All()
-	if len(adrs) == 0 {
-		return "## Decisions\n\n_No decisions recorded yet._\n"
-	}
-
-	groups, ordered := groupByStatus(adrs, func(ADR) bool { return true })
-
-	var sb strings.Builder
-	for i, status := range ordered {
-		if i > 0 {
-			sb.WriteString("\n")
-		}
-		sb.WriteString("## ")
-		sb.WriteString(status)
-		sb.WriteString("\n\n")
-		for _, a := range groups[status] {
-			fmt.Fprintf(&sb, "- [%s](%s) (%s)\n", a.Title, a.Filename, a.Status)
-		}
-	}
-	// Supersedence rendering (ADR-0120 item 10). Either subsection is omitted
-	// when empty: publication-safe degradation, and a supersession-free corpus
-	// renders byte-identically to the pre-ADR-0120 index.
-	chains := corpus.Chains()
-	annotated := corpus.AnnotatedAnchors()
-	if len(chains) > 0 || len(annotated) > 0 {
-		sb.WriteString("\n## Supersedence\n")
-		if len(chains) > 0 {
-			// One-to-many by construction (ADR-0129 item 6): coverage may split
-			// across successors, so a chain names every retirer, not one.
-			// touches-invariant: active-md-chains-one-to-many - the chain render; proof in adr_test.go
-			sb.WriteString("\n### Chains\n\n")
-			for _, c := range chains {
-				fmt.Fprintf(&sb, "- ADR-%s superseded by %s\n", c.Predecessor, joinADRs(c.Successors))
-			}
-		}
-		if len(annotated) > 0 {
-			sb.WriteString("\n### Superseded anchors on live ADRs\n\n")
-			var targets []string
-			byTarget := map[string][]string{}
-			for _, claim := range annotated {
-				num := claim.Anchor.ADR
-				if _, ok := byTarget[num]; !ok {
-					targets = append(targets, num)
-				}
-				byTarget[num] = append(byTarget[num],
-					claim.Anchor.Describe()+" "+claim.Verb()+" ADR-"+claim.Carrier)
-			}
-			sort.Strings(targets)
-			for _, num := range targets {
-				fmt.Fprintf(&sb, "- ADR-%s: %s\n", num, strings.Join(byTarget[num], "; "))
-			}
-		}
-	}
-	return sb.String()
-}
-
-// groupByStatus buckets the ADRs that pass include by bucketKey(Status), sorts each bucket
-// by Number, and returns the buckets together with their status keys ordered by
-// statusOrder, with any unknown statuses appended in alphabetical order. Shared
-// by RenderActiveMD and RenderDomainIndex.
-func groupByStatus(adrs []ADR, include func(ADR) bool) (map[string][]ADR, []string) {
-	groups := make(map[string][]ADR)
-	for _, a := range adrs {
-		if include(a) {
-			groups[bucketKey(a)] = append(groups[bucketKey(a)], a)
-		}
-	}
-	for k := range groups {
-		sort.Slice(groups[k], func(i, j int) bool { return groups[k][i].Number < groups[k][j].Number })
-	}
-	seen := make(map[string]bool)
-	var ordered []string
-	for _, s := range statusOrder {
-		if len(groups[s]) > 0 {
-			ordered = append(ordered, s)
-			seen[s] = true
-		}
-	}
-	var extra []string
-	for k := range groups {
-		if !seen[k] {
-			extra = append(extra, k)
-		}
-	}
-	sort.Strings(extra)
-	ordered = append(ordered, extra...)
-	return groups, ordered
 }
 
 type sectionRange struct{ start, end int }
@@ -443,7 +245,7 @@ var slugNonAlnumRe = regexp.MustCompile(`[^a-z0-9]+`)
 
 // NextNumber returns the next available 4-digit ADR number for dir: one more
 // than the highest number ParseDir finds, or "0001" for an ADR-less dir.
-// touches-invariant: adr-new-sequential-numbering - NextNumber returns highest-plus-one; proof in adr_test.go
+// touches-state: adr-system/adr-lifecycle:adr-new-sequential-numbering - NextNumber returns highest-plus-one; proof in adr_test.go
 func NextNumber(dir string) (string, error) {
 	adrs, err := ParseDir(dir)
 	if err != nil {
@@ -489,9 +291,9 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // rendered template.md with every marker comment stripped and its date and
 // title heading filled in, named NNNN-slug.md. Refuses to overwrite an
 // existing file at that path.
-// touches-invariant: adr-new-strips-markers - NewFile strips every marker comment from the copied template; proof in adr_test.go
-// touches-invariant: adr-new-heading-matches-file - NewFile fills the heading from the allocated file number; proof in adr_test.go
-// touches-invariant: adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
+// touches-state: adr-system/adr-lifecycle:adr-new-strips-markers - NewFile strips every marker comment from the copied template; proof in adr_test.go
+// touches-state: adr-system/adr-lifecycle:adr-new-heading-matches-file - NewFile fills the heading from the allocated file number; proof in adr_test.go
+// touches-state: adr-system/adr-lifecycle:adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
 func NewFile(dir, title string) (string, error) {
 	title = strings.TrimSpace(title)
 	number, err := NextNumber(dir)

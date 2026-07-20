@@ -9,7 +9,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func runCheck(root string, stdout io.Writer) error {
+func runCheck(root string, staged bool, stdout io.Writer) error {
 	lockV, binV, ok, err := lockVsBinary(root)
 	if err != nil { // coverage-ignore: the driver pre-gates check (Gated) so a corrupt lock hard-errors before runCheck (ADR-0076), and no direct caller passes one; the branch stays so the ahead-note never silently swallows a lock error
 		return err
@@ -22,13 +22,15 @@ func runCheck(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
+	if staged {
+		return runCheckStaged(p, stdout)
+	}
 	notes, err := p.AdvisoryNotes()
 	if err != nil {
 		return err
 	}
 	// Advisories are printed before drift and never feed the failure count -
 	// unauthored stub content cannot fail a gated command (ADR-0070).
-	// invariant: stub-advisory-nonfailing
 	for _, n := range notes {
 		fmt.Fprintf(stdout, "note: %s\n", n)
 	}
@@ -36,24 +38,47 @@ func runCheck(root string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	findings, invNotes, err := p.CheckInvariants()
+	report, err := p.CheckCurrentState()
 	if err != nil {
 		return err
 	}
-	// Invariant advisory notes (dangling marker, bare touches) ride the same
-	// non-failing note: channel (ADR-0105 item 5); only hard findings fail.
-	for _, n := range invNotes {
-		fmt.Fprintf(stdout, "note: %s\n", n.Line())
+	// Coverage/fan-out warnings ride the same non-failing note: channel; only
+	// error-severity coverage and the static handshake findings fail (ADR-0134).
+	for _, n := range report.Notes() {
+		fmt.Fprintf(stdout, "note: %s\n", n)
 	}
 	for _, d := range drift {
 		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
 	}
-	for _, f := range findings {
-		fmt.Fprintf(stdout, "  %-14s %s\n", "invariant", f.Line())
+	current := report.Findings()
+	for _, f := range current {
+		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
 	}
-	if len(drift) == 0 && len(findings) == 0 {
+	if len(drift) == 0 && len(current) == 0 {
 		fmt.Fprintln(stdout, "awf check: clean")
 		return nil
 	}
-	return fmt.Errorf("awf check: %d drift(s), %d invariant issue(s)", len(drift), len(findings))
+	return fmt.Errorf("awf check: %d drift(s), %d current-state issue(s)", len(drift), len(current))
+}
+
+// runCheckStaged validates the staged HEAD-to-index current-state transition and
+// the index coverage (ADR-0135). It skips the working-tree drift oracle: a
+// pre-commit hook validates the exact slice about to land, not the working tree.
+func runCheckStaged(p *project.Project, stdout io.Writer) error {
+	report, err := p.CheckStaged()
+	if err != nil {
+		return err
+	}
+	for _, n := range report.Notes() {
+		fmt.Fprintf(stdout, "note: %s\n", n)
+	}
+	current := report.Findings()
+	for _, f := range current {
+		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
+	}
+	if len(current) == 0 {
+		fmt.Fprintln(stdout, "awf check --staged: clean")
+		return nil
+	}
+	return fmt.Errorf("awf check --staged: %d current-state issue(s)", len(current))
 }

@@ -1,0 +1,5 @@
+title: Render engine
+summary: The template overlay render engine and its reference resolution.
+paths:
+  - internal/render/**
+  - internal/refs/**

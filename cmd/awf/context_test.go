@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -24,89 +25,92 @@ skills:
   - tdd
 agents:
   - code-reviewer
-docs:
-  - pitfalls
 domains:
   - alpha
-  - beta
-  - gamma
-invariants:
+  - core
+currentState:
   sources:
-    - globs:
-        - '**/*.go'
-      marker: '//'
+    - globs: ["internal/**"]
+      marker: "//"
+  testGlobs: ["internal/**/*_test.go"]
 `
 
-// ctxFixture builds an adopted tree with a current lock (so the gate passes),
-// three domains (alpha+beta both own cmd/**, gamma owns nothing), a source file
-// backing a marker under cmd/, and an ADR tagged alpha declaring an inv slug.
-func ctxFixture(t *testing.T) string {
+// acceptedV1 builds a valid Accepted current-state-v1 ADR whose Status history
+// records the content digest of its five canonical sections.
+func acceptedV1(t *testing.T, num, title, date, stateChanges string) string {
 	t.Helper()
-	root := t.TempDir()
+	doc := func(status, history string) string {
+		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: " + date + "\n---\n" +
+			"# ADR-" + num + ": " + title + "\n\n" +
+			"## Context\n\nBackground prose.\n\n" +
+			"## Decision\n\n1. The decision.\n\n" +
+			"## State changes\n\n" + stateChanges + "\n\n" +
+			"## Consequences\n\nConsequence prose.\n\n" +
+			"## Alternatives Considered\n\nNone considered.\n\n" +
+			"## Status history\n\n" + history + "\n"
+	}
+	scaffold, err := adr.ParseV1(num+"-x.md", []byte(doc("Proposed", "- "+date+": Proposed")))
+	if err != nil {
+		t.Fatalf("scaffold parse: %v", err)
+	}
+	return doc("Accepted", "- "+date+": Proposed\n- "+date+": Accepted; content-sha256: "+adr.ContentDigest(scaffold.Sections))
+}
+
+// ctxCmdFixture builds a git-backed adopted tree: a current lock (so the gate
+// passes) with a format-v1 cutoff of 2, domain alpha owning internal/foo/** plus
+// a global core topic, the scoped topic alpha/one (a rule and an unbacked
+// invariant), an Accepted v1 ADR with a pending add on alpha/one, and a state
+// marker under internal/foo/x.go.
+func ctxCmdFixture(t *testing.T) string {
+	t.Helper()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, ctxCmdYAML)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "alpha.yaml"), "paths:\n  - cmd/**\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "beta.yaml"), "paths:\n  - cmd/**\n  - lib/**\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "gamma.yaml"), "paths: []\n")
-	l := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+	lock := &manifest.Lock{
+		AWFVersion: awfVersion(), SchemaVersion: migrate.Current(),
+		Files:             map[string]manifest.Entry{},
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2},
+	}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n"+
-		"// invariant: gov-slug\n"+
-		"// touches-invariant: unbk-slug - the reasoned production site.\n"+
-		"// invariant: orphan-slug\n") // present but declared by no ADR → no class label
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
-			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` - a contract.\n"+
-				"- `unbacked-invariant: unbk-slug` - a reasoned contract. **Verify:** inspect by hand.\n## Consequences\nc\n")))
-	// 0002 shares the precise tag → Tier 2 (Related). 0003 is domain-owned only →
-	// Tier 3 background count. Both exercise their render blocks.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
-			testsupport.WithTitle("0002: Related decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0003-c.md"),
-		testsupport.ADR("Proposed", testsupport.WithDate("2026-06-25"), testsupport.WithTags("other"),
-			testsupport.WithTitle("0003: Background decision"), testsupport.WithDomains("beta"),
-			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// A plan linking the Tier-1 ADR 0001 → surfaced for cmd/ queries.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
-		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
-	// A pitfall sharing the precise tag → surfaced for cmd/ queries.
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "pitfalls.yaml"),
-		"data:\n  pitfalls:\n    - title: Worktree hazard\n      tags: [precise]\n      body: use a worktree\n")
+	files := map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
+		".awf/domains/core.yaml":                       "paths: []\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
+		".awf/topics/metadata/core/g.yaml":             "title: Global\nsummary: Global rules.\napplies: global\n",
+		".awf/topics/parts/core/g/current-state.md":    "Intro.\n\n## Claims\n\n### `rule: everywhere`\nApplies everywhere.\nOrigin: ADR-0001\n",
+		"docs/decisions/0001-first.md": testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
+			testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n")),
+		"docs/decisions/0002-later.md": acceptedV1(t, "0002", "Later", "2026-07-20", "- add `alpha/one:pending-rule`"),
+		"internal/foo/x.go":            "package foo\n// state: alpha/one:order\n",
+	}
+	for rel, body := range files {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(rel)), body)
+	}
 	return root
 }
 
-// The human render shows owning domains, path-backed invariants, the Tier-1
-// governing ADR, the linked plan, and the tag-matched pitfall; unowned paths get
-// their own section.
+// TestRunContextHuman shows owning domains, the applicable scoped and global
+// topics with their current claims (narrowed by the state marker), the Accepted
+// pending change, and the unowned path in its own section.
 func TestRunContextHuman(t *testing.T) {
-	root := ctxFixture(t)
+	root := ctxCmdFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go", "README.md"}, false, "", false, false, &out); err != nil {
+	if err := runContext(root, []string{"internal/foo/x.go", "README.md"}, false, "", false, false, &out); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
 	for _, want := range []string{
 		"live state for this project",
 		"alpha: docs/domains/alpha.md",
-		"beta: docs/domains/beta.md",
-		"gov-slug [backed]",
-		"unbk-slug [unbacked]",
-		"\n  orphan-slug\n", // present but undeclared → rendered without a class label
-		"Verify: inspect by hand.",
-		"touches: - the reasoned production site.",
-		"## Governing ADRs (invariants backed here)",
-		"ADR-0001 (Implemented) Alpha decision: docs/decisions/0001-a.md",
-		"## Related ADRs (shared tag)",
-		"ADR-0002 (Accepted) Related decision: docs/decisions/0002-b.md",
-		"## Domain background: 1 more ADR(s)",
-		"## Related plans",
-		"2026-07-12-linked.md (Proposed): docs/plans/2026-07-12-linked.md",
-		"## Related pitfalls (shared tag)",
-		"Worktree hazard [precise]: docs/pitfalls.md",
+		"alpha/one - One",
+		"[rule] alpha/one:order: Order is deterministic.",
+		"core/g (global) - Global",
+		"[rule] core/g:everywhere:",
+		"## Pending accepted changes",
+		"ADR-0002 (Later) add alpha/one:pending-rule",
 		"## Unowned paths",
 		"README.md",
 	} {
@@ -114,74 +118,101 @@ func TestRunContextHuman(t *testing.T) {
 			t.Errorf("human output missing %q\n%s", want, got)
 		}
 	}
+	// The state marker narrows alpha/one to the order claim; stable must not show.
+	if strings.Contains(got, "alpha/one:stable") {
+		t.Errorf("state marker should have narrowed away the stable claim:\n%s", got)
+	}
 }
 
-// The JSON render carries the same assembled set as the human render - one
-// assembler feeds both (inv: context-output-parity).
+// TestPrintContextTitlelessTopic covers the human render of a topic with no
+// title, which prints the bare id without a dangling separator.
+func TestPrintContextTitlelessTopic(t *testing.T) {
+	res := project.ContextResult{Topics: []project.TopicContext{{ID: "alpha/untitled"}}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if !strings.Contains(got, "  alpha/untitled\n") {
+		t.Errorf("title-less topic not rendered bare:\n%s", got)
+	}
+	if strings.Contains(got, "alpha/untitled -") {
+		t.Errorf("title-less topic rendered a dangling separator:\n%s", got)
+	}
+}
+
+// TestRunContextJSONParity proves the JSON render carries the same assembled set
+// as the human render - one assembler feeds both.
+// invariant: tooling/cli:context-output-parity
 func TestRunContextJSONParity(t *testing.T) {
-	root := ctxFixture(t)
+	root := ctxCmdFixture(t)
 	var jsonOut bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", true, false, &jsonOut); err != nil {
+	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", true, false, &jsonOut); err != nil {
 		t.Fatal(err)
 	}
 	var res project.ContextResult
 	if err := json.Unmarshal(jsonOut.Bytes(), &res); err != nil {
 		t.Fatalf("output is not valid JSON: %v", err)
 	}
-	if len(res.Domains) != 2 || res.Domains[0].Name != "alpha" || res.Domains[1].Name != "beta" {
+	if len(res.Domains) != 1 || res.Domains[0].Name != "alpha" {
 		t.Errorf("json domains: %+v", res.Domains)
 	}
-	// Three path-present invariants, slug-sorted: the backed gov-slug (proof
-	// marker), an orphan-slug present but declared by no ADR (no class), and the
-	// unbacked unbk-slug (touches marker) carrying its Verify note + site note.
-	if len(res.Invariants) != 3 || res.Invariants[0].Slug != "gov-slug" ||
-		res.Invariants[1].Slug != "orphan-slug" || res.Invariants[2].Slug != "unbk-slug" {
-		t.Fatalf("json invariants: %+v", res.Invariants)
+	if len(res.Topics) != 2 || res.Topics[0].ID != "alpha/one" || res.Topics[1].ID != "core/g" {
+		t.Fatalf("json topics: %+v", res.Topics)
 	}
-	if res.Invariants[0].Class != "backed" {
-		t.Errorf("gov-slug class: got %q want backed", res.Invariants[0].Class)
-	}
-	if res.Invariants[1].Class != "" {
-		t.Errorf("orphan-slug must carry no class, got %q", res.Invariants[1].Class)
-	}
-	unbk := res.Invariants[2]
-	if unbk.Class != "unbacked" || unbk.Verify != "inspect by hand." {
-		t.Errorf("unbk-slug label: %+v", unbk)
-	}
-	if len(unbk.Touches) != 1 || !strings.Contains(unbk.Touches[0], "reasoned production site") {
-		t.Errorf("unbk-slug touches: %+v", unbk.Touches)
-	}
-	if len(res.Governing) != 1 || res.Governing[0].Number != "0001" {
-		t.Errorf("json governing: %+v", res.Governing)
-	}
-	if len(res.Plans) != 1 || res.Plans[0].Filename != "2026-07-12-linked.md" || res.Plans[0].Status != "Proposed" {
-		t.Errorf("json plans: %+v", res.Plans)
-	}
-	if len(res.Pitfalls) != 1 || res.Pitfalls[0].Title != "Worktree hazard" || res.Pitfalls[0].Path != "docs/pitfalls.md" {
-		t.Errorf("json pitfalls: %+v", res.Pitfalls)
+	if len(res.Pending) != 1 || res.Pending[0].ADR != "0002" || res.Pending[0].Claim != "alpha/one:pending-rule" {
+		t.Errorf("json pending: %+v", res.Pending)
 	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, &humanOut); err != nil {
+	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	// invariant: context-output-parity
-	for _, want := range []string{"alpha", "beta", "gov-slug", "2026-07-12-linked.md", "Worktree hazard"} {
+	for _, want := range []string{"alpha/one", "core/g", "pending-rule"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}
 	}
 }
 
+// TestRunContextStaged reads the index universe under --staged.
+func TestRunContextStaged(t *testing.T) {
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	// The disk config satisfies the adoption check and gate; the staged index below
+	// carries the topic set the --staged query reads.
+	testsupport.WriteAwfConfig(t, root, ctxCmdYAML)
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Stage(t, repo, root, map[string]string{
+		".awf/config.yaml":                             ctxCmdYAML,
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
+		".awf/domains/core.yaml":                       "paths: []\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\n",
+		"docs/decisions/0001-first.md": testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
+			testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n")),
+		"internal/foo/x.go": "package foo\n",
+	})
+	var out bytes.Buffer
+	if err := runContext(root, []string{"internal/foo/x.go"}, true, "", false, false, &out); err != nil {
+		t.Fatalf("staged context: %v", err)
+	}
+	if !strings.Contains(out.String(), "alpha/one") {
+		t.Errorf("staged context missing the staged topic:\n%s", out.String())
+	}
+}
+
 // Outside an adopted tree the command prints the static pre-adoption notice and
-// succeeds - never refuses (inv: context-static-fallback). The JSON variant
-// emits the paths-only result.
+// succeeds - never refuses. The JSON variant emits the paths-only result.
+// invariant: tooling/cli:context-static-fallback
 func TestRunContextStaticFallback(t *testing.T) {
 	var human bytes.Buffer
 	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", false, false, &human); err != nil {
 		t.Fatalf("static human errored: %v", err)
 	}
-	// invariant: context-static-fallback
 	if !strings.Contains(human.String(), "not inside an awf project") {
 		t.Errorf("static human: %s", human.String())
 	}
@@ -193,8 +224,8 @@ func TestRunContextStaticFallback(t *testing.T) {
 	if err := json.Unmarshal(j.Bytes(), &res); err != nil || strings.Join(res.Paths, ",") != "cmd/x.go" {
 		t.Errorf("static json: %s (err %v)", j.String(), err)
 	}
-	if len(res.Plans) != 0 {
-		t.Errorf("static fallback must leave Plans empty, got %+v", res.Plans)
+	if len(res.Topics) != 0 {
+		t.Errorf("static fallback must leave Topics empty, got %+v", res.Topics)
 	}
 }
 
@@ -232,12 +263,12 @@ func TestRunContextOpenError(t *testing.T) {
 	}
 }
 
-// A fault assembling the context (here a malformed ADR) surfaces as the
-// command's error rather than a panic or silence.
+// A fault assembling the context (here a malformed ADR in the working tree)
+// surfaces as the command's error rather than a panic or silence.
 func TestRunContextAssembleFault(t *testing.T) {
-	root := ctxFixture(t)
+	root := ctxCmdFixture(t)
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0009-bad.md"), "---\nstatus: \"unterminated\n---\n# ADR-X: T\n")
-	if err := runContext(root, []string{"cmd/x.go"}, false, "", false, false, io.Discard); err == nil {
+	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, io.Discard); err == nil {
 		t.Error("expected the assemble fault to surface")
 	}
 }
@@ -266,25 +297,25 @@ func TestRunContextDispatch(t *testing.T) {
 	}
 }
 
-// inv: context-read-only - awf context writes nothing: file mtimes and the lock
-// bytes are byte-identical before and after runs across the command's branches.
+// awf context writes nothing: file mtimes and the lock bytes are byte-identical
+// before and after runs across the command's branches.
+// invariant: tooling/cli:context-read-only
 func TestRunContextReadOnly(t *testing.T) {
-	root := ctxFixture(t)
+	root := ctxCmdFixture(t)
 	before := snapshotTree(t, root)
 	lockBefore := readFile(t, filepath.Join(root, ".awf", "awf.lock"))
 	for _, tc := range []struct {
 		paths  []string
 		asJSON bool
 	}{
-		{[]string{"cmd/x.go"}, false},
-		{[]string{"cmd/x.go"}, true},
+		{[]string{"internal/foo/x.go"}, false},
+		{[]string{"internal/foo/x.go"}, true},
 		{[]string{"README.md"}, false},
 	} {
 		if err := runContext(root, tc.paths, false, "", tc.asJSON, false, io.Discard); err != nil {
 			t.Fatal(err)
 		}
 	}
-	// invariant: context-read-only
 	if after := snapshotTree(t, root); after != before {
 		t.Errorf("awf context mutated the tree:\nbefore %s\nafter  %s", before, after)
 	}
@@ -338,57 +369,61 @@ skills:
 agents:
   - code-reviewer
 domains:
-  - render
-invariants:
-  sources:
-    - globs:
-        - '**/*.go'
-      marker: '//'
+  - alpha
+contextIgnore:
+  - .awf/**
+  - docs/**
+currentState:
+  topicCoverage: error
+  topicFanout: off
 `
 
-// uncoveredCmdFixture builds an adopted tree that is ALSO a git repo (so
-// TrackedPaths resolves): a domain owning internal/render/**, a current lock, and
-// two committed files - one covered (internal/render/r.go), one not
-// (internal/plan/p.go).
+// uncoveredCmdFixture builds a git-backed adopted tree where alpha owns
+// internal/** while the topic covers only internal/foo/**, so internal/bar.go is
+// owned-but-uncovered and a top-level stray is unowned.
 func uncoveredCmdFixture(t *testing.T) string {
 	t.Helper()
 	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, uncoveredCmdYAML)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "render.yaml"), "paths:\n  - internal/render/**\n")
-	l := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
-	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	for _, d := range []string{"internal/render", "internal/plan"} {
-		if err := os.MkdirAll(filepath.Join(root, d), 0o755); err != nil {
-			t.Fatal(err)
-		}
+	files := map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\n",
+		"docs/decisions/0001-first.md": testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
+			testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n")),
+		"internal/foo/x.go": "package foo\n",
+		"internal/bar.go":   "package internalx\n",
+		"stray.txt":         "stray\n",
 	}
-	gitfixture.Commit(t, repo, root, "base", map[string]string{
-		"internal/render/r.go": "package r\n",
-		"internal/plan/p.go":   "package p\n",
-	})
+	for rel, body := range files {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(rel)), body)
+	}
 	return root
 }
 
-// --uncovered lists tracked paths owned by no domain, collapsing a fully-uncovered
-// subtree; a scan root renders the `scan roots:` line.
+// --uncovered lists domain-owned paths with no scoped topic and, separately, the
+// eligible unowned paths; a scan root renders the `scan roots:` line.
 func TestRunContextUncoveredHuman(t *testing.T) {
 	root := uncoveredCmdFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"internal/plan"}, false, "", false, true, &out); err != nil {
+	if err := runContext(root, []string{"internal"}, false, "", false, true, &out); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
-	for _, want := range []string{"## Uncovered", "internal/plan/", "scan roots:"} {
+	for _, want := range []string{"## Uncovered", "internal/bar.go (alpha)", "scan roots:"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("uncovered human missing %q\n%s", want, got)
 		}
 	}
 }
 
-// The --uncovered JSON render carries the same uncovered set as the human render -
-// one assembled UncoveredResult feeds both (inv: uncovered-output-parity).
+// The --uncovered JSON render carries the same set as the human render.
+// invariant: tooling/cli:uncovered-output-parity
 func TestRunContextUncoveredJSONParity(t *testing.T) {
 	root := uncoveredCmdFixture(t)
 	var j bytes.Buffer
@@ -399,16 +434,20 @@ func TestRunContextUncoveredJSONParity(t *testing.T) {
 	if err := json.Unmarshal(j.Bytes(), &res); err != nil {
 		t.Fatalf("output is not valid JSON: %v", err)
 	}
-	if strings.Join(res.Entries, ",") != "internal/plan/" {
-		t.Errorf("json entries: got %v want [internal/plan/]", res.Entries)
+	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" {
+		t.Errorf("json uncovered: %+v", res.Uncovered)
+	}
+	if strings.Join(res.Unowned, ",") != "README.md,stray.txt" {
+		t.Errorf("json unowned: %v want [README.md stray.txt]", res.Unowned)
 	}
 	var human bytes.Buffer
 	if err := runContext(root, nil, false, "", false, true, &human); err != nil {
 		t.Fatal(err)
 	}
-	// invariant: uncovered-output-parity
-	if !strings.Contains(human.String(), "internal/plan/") {
-		t.Errorf("human render diverges from JSON: %s", human.String())
+	for _, want := range []string{"internal/bar.go", "stray.txt"} {
+		if !strings.Contains(human.String(), want) {
+			t.Errorf("human render diverges from JSON: missing %q", want)
+		}
 	}
 }
 
@@ -419,9 +458,8 @@ func TestRunContextUncoveredRejectsSelectors(t *testing.T) {
 	}
 }
 
-// Outside an adopted tree --uncovered prints the static notice and succeeds (inv:
-// context-static-fallback); the empty result exercises printUncovered's no-entries
-// branch.
+// Outside an adopted tree --uncovered prints the static notice and succeeds; the
+// empty result exercises printUncovered's no-entries branch.
 func TestRunContextUncoveredStaticFallback(t *testing.T) {
 	var out bytes.Buffer
 	if err := runContext(t.TempDir(), nil, false, "", false, true, &out); err != nil {
@@ -464,12 +502,18 @@ func TestRunContextUncoveredOpenError(t *testing.T) {
 	}
 }
 
-// An adopted tree that is not a git repo makes TrackedPaths fault, surfacing as the
-// command's error.
-func TestRunContextUncoveredTrackedPathsFault(t *testing.T) {
-	root := ctxFixture(t) // adopted (config+lock+domains) but no git repo
+// An adopted tree that is not a git repo makes the working-Tree read fault,
+// surfacing as the command's error.
+func TestRunContextUncoveredWorkingTreeFault(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, uncoveredCmdYAML)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "alpha.yaml"), "paths:\n  - internal/**\n")
+	l := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
 	if err := runContext(root, nil, false, "", false, true, io.Discard); err == nil {
-		t.Error("expected a TrackedPaths open-repo error in a non-git adopted tree")
+		t.Error("expected a working-tree open error in a non-git adopted tree")
 	}
 }
 

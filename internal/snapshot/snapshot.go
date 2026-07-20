@@ -1,8 +1,10 @@
 // Package snapshot captures immutable file trees from a Git repository. A Tree
 // owns a private copy of every file's bytes, so a consumer can read the
 // captured content and mode without being able to mutate the snapshot or the
-// caller's original data. Phase 1 provides only the index Tree; working,
-// commit, and range universes arrive with the current-state runtime.
+// caller's original data. It captures four universes: the working tree, the
+// stage-0 index, an arbitrary commit, and a first-parent before/after range
+// pair. Each is the complete selected file set; consumers apply their own
+// eligibility filters.
 package snapshot
 
 import (

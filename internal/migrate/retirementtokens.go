@@ -34,12 +34,12 @@ var (
 // surgery, never a frontmatter re-serialization, so untouched lines survive
 // byte-identical and meaning-preservation is checkable by diff. Idempotent: a
 // corpus with no keys prints nothing.
-// touches-invariant: upgrade-migrates-retirements - the migration itself; proof in retirementtokens_test.go
+// touches-state: config/migrations-and-locks:upgrade-migrates-retirements - the migration itself; proof in retirementtokens_test.go
 func applyRetirementTokens(root string, out io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}
-	cfg, err := config.Load(config.RootDir(root))
+	cfg, err := loadForMigration(root)
 	if err != nil {
 		return err
 	}

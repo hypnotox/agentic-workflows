@@ -7,7 +7,7 @@ data:
         - name: claimed-enforcement-exists
           description: 'a plan step that justifies an instruction by naming a mechanism that will CATCH the mistake ("reds the gate", "the check refuses it", "drift surfaces it") asserts the mechanism exists: locate it in the source before accepting the step, exactly as the sibling item demands a quoted command be rerun. A phantom mechanism is worse than no claim, because it converts a step the executor must perform carefully into one they believe is backstopped, and it fails silently and only later. The 2026-07-19 retrofit-D plan told its executor twice that an out-of-order `related:` array "reds the gate" and a commit message repeated it; nothing enforced array order, and two ADRs had been out of order for months with `awf check` clean throughout. The three mid-array inserts that plan performed were correct only because a separate instruction told the executor to read each array first. When the claim is worth making, the honest resolutions are to build the mechanism (ADR-0131 Decision 10 did, so the claim is now true) or to restate the step as an instruction the executor must follow unaided'
         - name: phase-boundary-is-gateable
-          description: 'each phase must be able to pass the gate ALONE, which is stronger than dependency order. Two shapes break it silently: a phase that deletes a checked behaviour while the ADR retiring its invariant stays Proposed (retirements take effect only from an Implemented carrier, so the slug is owed-but-unbacked for exactly one commit), and a phase that introduces a function before the phase that first calls it (the dead-code gate refuses it). The ADR-0128 plan hit both - Phases 6 and 7 had to merge, and three model methods were written, deleted, and re-added a phase later. Place a status flip in the same phase as the deletion it authorises, and a model method in the phase that consumes it'
+          description: 'each phase must be able to pass the gate ALONE, which is stronger than dependency order. Two shapes break it silently: a phase that removes or changes an invariant claim while the ADR declaring the `remove`/`update` operation stays Proposed (the claim mutation is checked only in the ADR''s Implemented transaction, so a claim edited a phase early is owed-but-mismatched), and a phase that introduces a function before the phase that first calls it (the dead-code gate refuses it). The ADR-0128 plan hit both - Phases 6 and 7 had to merge, and three model methods were written, deleted, and re-added a phase later. Place the claim mutation and the ADR status flip in the same phase, and a model method in the phase that consumes it'
         - name: dependency-order
           description: tasks are ordered so each builds only on already-completed work
         - name: gate-clean-embedded
@@ -33,12 +33,12 @@ data:
               the plan's two-state `status:` lifecycle is honoured; mutable while `Proposed`, flipped
               to `Implemented` in the final commit that freezes it, with implementation findings
               recorded in the Notes section alongside the freeze
-        - name: invariant-retirement-phase-order
+        - name: invariant-claim-transition-phase-order
           description: >-
-              when an ADR carries `supersedes-invariant:` tokens, every pre-flip phase keeps the
-              predecessor proof markers valid; marker removal or replacement lands in the same commit
-              that flips the successor to `Implemented`, because retirement is inactive while the
-              successor remains `Proposed`
+              when a plan removes or replaces an invariant claim, the proof marker moves in the same
+              commit that flips the declaring ADR to `Implemented`; a pre-flip phase keeps the existing
+              claim and its marker valid, because the claim mutation is checked only in that Implemented
+              transaction, never while the ADR remains `Proposed`
     docCurrencyItems:
-        - check: docs/decisions/ACTIVE.md task included whenever an ADR status flip is planned
+        - check: docs/decisions/INDEX.md task included whenever an ADR status flip is planned
         - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain

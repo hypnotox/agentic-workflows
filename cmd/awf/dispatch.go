@@ -49,7 +49,7 @@ var handlers = map[string]handler{
 		return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
 	},
 	"sync":        func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
-	"check":       func(c *cmdCtx) error { return runCheck(c.root, c.stdout) },
+	"check":       func(c *cmdCtx) error { return runCheck(c.root, c.inv.bools["--staged"], c.stdout) },
 	"invariants":  func(c *cmdCtx) error { return runInvariants(c.root, c.stdout) },
 	"audit":       func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"commit-gate": func(c *cmdCtx) error { return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout) },
@@ -87,7 +87,7 @@ var handlers = map[string]handler{
 		return runDisable(c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout)
 	},
 	"upgrade": func(c *cmdCtx) error {
-		return runUpgradeFlags(c.root, c.inv.bools["--check"], c.inv.bools["--json"], c.inv.bools["--attest-current-state"], c.inv.bools["--recover"], c.stdout)
+		return runUpgradeFlags(c.root, c.inv.bools["--recover"], c.stdout)
 	},
 	"uninstall": func(c *cmdCtx) error { return runUninstall(c.root, c.stdout) },
 	"changelog": func(c *cmdCtx) error {

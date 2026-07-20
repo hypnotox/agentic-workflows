@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Pre-commit payload: drift check, then the project gate. Inert until wired
-# into a hook setup you own, e.g. a .git/hooks/pre-commit stub containing:
+# Pre-commit payload: drift check, the staged current-state check, then the
+# project gate. Inert until wired into a hook setup you own, e.g. a
+# .git/hooks/pre-commit stub containing:
 #   exec bash .awf/hooks/pre-commit.sh "$@"
 set -euo pipefail
 {{ if or (not .vars.checkCmd) (not .vars.proseGateCmd) }}
@@ -8,6 +9,11 @@ set -euo pipefail
 awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
 {{ end }}
 {{- with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}
+{{- with .vars.checkCmd }}
+{{ . }} --staged
+{{- else }}
+awf check --staged
+{{- end }}
 {{- with .vars.gateCmd }}
 {{ . }}
 {{- end }}

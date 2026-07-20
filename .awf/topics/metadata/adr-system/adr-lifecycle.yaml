@@ -1,0 +1,4 @@
+title: ADR lifecycle and parsing
+summary: How ADR records are parsed, identified, and moved through their lifecycle states.
+paths:
+  - internal/adr/**

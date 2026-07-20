@@ -54,11 +54,7 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 		return nil, err
 	}
 	notes = append(notes, pcs...)
-	sn, err := p.supersessionNotes()
-	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
-		return nil, err
-	}
-	return append(notes, sn...), nil
+	return notes, nil
 }
 
 // tagFrequencyThreshold is the share of tag-bearing artifacts above which a tag
@@ -72,8 +68,6 @@ const tagFrequencyThreshold = 0.25
 // express), and a coverage note for any ADR or pitfall carrying zero tags (the
 // under-tagging backstop). Inert under an empty/absent vocabulary, so an
 // un-curated adopter - and the example - stays note-free.
-// invariant: tag-frequency-note
-// invariant: tag-coverage-note
 func (p *Project) tagHealthNotes() ([]string, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
@@ -152,7 +146,6 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 	for _, f := range files {
 		var unset []string
 		for _, r := range render.ReferencedVars(f.assembled) {
-			// invariant: absent-var-acknowledged
 			if v, ok := p.Cfg.Vars[r]; ok && (v == nil || v == "") {
 				unset = append(unset, r)
 			}
@@ -181,7 +174,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 // per output path: artifacts sharing a template id (local artifacts, the domain
 // docs) each report independently, and a multi-target project prints one line
 // per target path by design (ADR-0070).
-// touches-invariant: stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
+// touches-state: rendering/project-output-plan:stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
 func stubNotes(files []RenderedFile) []string {
 	var notes []string
 	for _, f := range files {
@@ -231,7 +224,6 @@ func markerNotes(files []RenderedFile) []string {
 // note owns nudging (ADR-0087 - presence, not emptiness, is that note's
 // trigger; this exemption keeps the seed-all-vars scaffold legal). A bare
 // .vars reference conservatively consumes every key.
-// invariant: unused-var-drift
 func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
 	used := map[string]bool{}
 	for _, f := range files {
@@ -264,7 +256,6 @@ func (p *Project) unusedVarDrift(files []RenderedFile) []manifest.Drift {
 // as paths-only at open. A local: true sidecar renders nothing, so every
 // key reports. A key referenced only inside a dropped section counts as
 // unused: the drop makes it configuration that does nothing.
-// invariant: unused-data-drift
 func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error) {
 	type refset struct {
 		keys map[string]bool
@@ -457,21 +448,11 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	drift = append(drift, relDrift...)
-	supDrift, err := p.checkSupersessionAll()
-	if err != nil { // coverage-ignore: adr.ParseDir here is pre-empted by checkPlans
-		return nil, err
-	}
-	drift = append(drift, supDrift...)
-	citeDrift, err := p.checkCitations()
-	if err != nil { // coverage-ignore: adr.ParseDir here is pre-empted by checkPlans
-		return nil, err
-	}
-	drift = append(drift, citeDrift...)
 	return drift, nil
 }
 
 // checkLockedFiles compares each lock entry (except the separately-checked
-// regeneration-checked artifacts - the generated ACTIVE.md / domain docs / config
+// regeneration-checked artifacts - the generated INDEX.md / domain docs / config
 // reference) against the freshly-rendered output and the on-disk file: orphaned,
 // stale, missing, hand-edited, or invalid-frontmatter. The reverse direction is
 // checked too: a rendered path with no lock entry - an artifact enabled since the
@@ -502,7 +483,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 				if rf.TemplateID == "" {
 					drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf sync"})
 				} else {
-					// touches-invariant: in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
+					// touches-state: rendering/project-output-plan:in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
 					drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
 				}
 			}
@@ -545,8 +526,6 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 // dead-link scan. Matching is whole-token (ADR-0046 item 3): the token must not
 // start mid-word (no word-ish rune before the prefix) and the regex captures
 // the maximal word run after it.
-// invariant: skill-ref-dead-fails
-// invariant: skill-ref-unknown-ignored
 func (p *Project) checkDeadSkillRefs(files []RenderedFile, effective map[string]bool) []manifest.Drift {
 	scan := make([]RenderedFile, 0, len(files))
 	for _, f := range files {
@@ -609,10 +588,6 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // template.md and README.md). Frontmatter-less plans (the grandfathered corpus,
 // ADR-0098) are skipped. A ```commit subject's length/type/shape violation is
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
-// invariant: plan-frontmatter-validated
-// invariant: plan-adr-link-resolved
-// invariant: plan-commit-subject-length-checked
-// invariant: plan-commit-subject-shape-checked
 func (p *Project) checkPlans() ([]manifest.Drift, error) {
 	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
 	plans, err := plan.ParseDir(plansDir)
@@ -655,7 +630,6 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 // mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
 // may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
 // frontmatter-less plan is skipped.
-// invariant: plan-commit-subject-scope-advisory
 func (p *Project) planCommitScopeNotes() ([]string, error) {
 	plans, err := plan.ParseDir(filepath.Join(p.Root, p.Cfg.DocsDir, "plans"))
 	if err != nil {
@@ -684,8 +658,6 @@ func (p *Project) planCommitScopeNotes() ([]string, error) {
 // existing ADR. Structural validation (title/body) is the transform's job; this
 // resolves the links the transform cannot see. A disabled pitfalls doc, or a sidecar
 // with no data.pitfalls, yields no drift.
-// invariant: pitfall-domains-resolved
-// invariant: pitfall-adr-link-resolved
 func (p *Project) checkPitfalls() ([]manifest.Drift, error) {
 	if !slices.Contains(p.Cfg.Docs, "pitfalls") {
 		return nil, nil
@@ -728,7 +700,6 @@ func (p *Project) checkPitfalls() ([]manifest.Drift, error) {
 // non-empty meaning. An empty or absent vocabulary is inert (tags are then
 // free-form). A declared member no artifact uses is intentionally permitted,
 // mirroring an unused configured domain under pitfall-domains-resolved.
-// invariant: tag-vocabulary-governed
 func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 	if len(p.Cfg.Tags) == 0 {
 		return nil, nil
@@ -745,7 +716,6 @@ func (p *Project) checkTagVocabulary() ([]manifest.Drift, error) {
 		}
 		// A tag must be finer than a domain (ADR-0109): a vocabulary member that
 		// names a configured domain is the coarse-tag regression, gated exactly.
-		// invariant: tag-not-domain-name
 		if domainName[tag] {
 			drift = append(drift, manifest.Drift{Path: cfgPath, Kind: "tag-domain-collision", Detail: fmt.Sprintf("tag %q equals a configured domain name: tags must be finer than domains", tag)})
 		}
@@ -794,7 +764,6 @@ func (p *Project) pitfallTagEntries() ([]pitfallEntry, error) {
 // checkADRRelatedLinks fails an ADR whose related: names an ADR number with no
 // matching file under the decisions dir - structurally identical to the
 // pitfall/plan link checks. Unconditional (independent of the tag vocabulary).
-// invariant: adr-related-link-resolved
 func (p *Project) checkADRRelatedLinks() ([]manifest.Drift, error) {
 	corpus, err := p.Corpus()
 	if err != nil { // reachable via a direct checkADRRelatedLinks call over a malformed ADR; pre-empted only inside full Check()

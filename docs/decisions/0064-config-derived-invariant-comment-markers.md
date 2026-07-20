@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-05
 tags: [invariant-backing, placeholder-registry]
-related: [8, 29, 45, 51, 55, 57]
+related: [8, 29, 45, 51, 55, 57, 134]
 domains: [rendering, config, invariants]
 ---
 # ADR-0064: Config-derived invariant comment markers

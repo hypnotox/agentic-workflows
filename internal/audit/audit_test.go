@@ -29,7 +29,7 @@ func countRule(findings []Finding, rule string, sev Severity) int {
 	return n
 }
 
-// invariant: audit-conventional-commits
+// invariant: tooling/audit-and-snapshots:audit-conventional-commits
 func TestRuleConventionalCommits(t *testing.T) {
 	in := Inputs{Settings: Settings{AllowedTypes: []string{"feat", "fix"}, AllowedScopes: []config.ScopeSpec{{Name: "awf"}}, SubjectMaxLength: 20}}
 	cases := []struct {
@@ -108,7 +108,7 @@ func TestCheckPlannedSubject(t *testing.T) {
 var proposedADR = testsupport.ADR("Proposed")
 var acceptedADR = testsupport.ADR("Accepted")
 
-// invariant: audit-adr-status-cochange
+// invariant: tooling/audit-and-snapshots:audit-adr-status-cochange
 func TestRuleADRStatusCochange(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md"}
 	adr := "docs/decisions/0001-x.md"
@@ -163,7 +163,7 @@ func TestRuleADRFrontmatterUnparseable(t *testing.T) {
 	}
 }
 
-// invariant: audit-adr-domain-cochange
+// invariant: tooling/audit-and-snapshots:audit-adr-domain-cochange
 func TestRuleADRDomainCochange(t *testing.T) {
 	active := FileChange{Path: "docs/decisions/ACTIVE.md", Action: Modified}
 	toolingIdx := FileChange{Path: "docs/domains/tooling.md", Action: Modified}
@@ -195,7 +195,7 @@ func TestRuleADRDomainCochange(t *testing.T) {
 	}
 }
 
-// invariant: audit-dependency-warn
+// invariant: tooling/audit-and-snapshots:audit-dependency-warn
 func TestRuleDependencyADR(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: []string{"**/go.mod", "**/*.csproj"}}}
 	defaults := Inputs{ADRDir: "docs/decisions", Settings: Settings{DependencyManifests: defaultDependencyManifests()}}
@@ -226,7 +226,7 @@ func TestRuleDependencyADR(t *testing.T) {
 	}
 }
 
-// invariant: audit-plan-threshold-warn
+// invariant: tooling/audit-and-snapshots:audit-plan-threshold-warn
 func TestRulePlanForLargeChange(t *testing.T) {
 	gen := map[string]bool{"gen/out.txt": true}
 	big := FileChange{Path: "src/a.go", Action: Modified, Added: 300, Deleted: 200}
@@ -324,7 +324,7 @@ func TestRuleDomainDocStaleness(t *testing.T) {
 
 	// Implemented in a configured domain, narrative NOT refreshed -> 1 warning.
 	got := ruleDomainDocStaleness([]Commit{{Changes: []FileChange{adrChange(Added, "Implemented", "tooling")}}}, in)
-	// invariant: audit-domain-doc-staleness
+	// invariant: tooling/audit-and-snapshots:audit-domain-doc-staleness
 	if len(got) != 1 || got[0].Rule != "domain-doc-staleness" || got[0].Commit != "" {
 		t.Fatalf("want 1 branch-level warning, got %v", got)
 	}
@@ -385,7 +385,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	}
 	// ADR tags an unconfigured domain -> 1 warning.
 	got := ruleUndocumentedDomain([]Commit{{Changes: []FileChange{adrChange(Added, "Proposed", "ghost")}}}, in)
-	// invariant: audit-undocumented-domain
+	// invariant: tooling/audit-and-snapshots:audit-undocumented-domain
 	if len(got) != 1 || got[0].Rule != "undocumented-domain" {
 		t.Fatalf("want 1 warning, got %v", got)
 	}
@@ -408,7 +408,7 @@ func TestRuleUndocumentedDomain(t *testing.T) {
 	}
 }
 
-// invariant: audit-domain-code-staleness
+// invariant: tooling/audit-and-snapshots:audit-domain-code-staleness
 func TestRuleDomainCodeStaleness(t *testing.T) {
 	in := Inputs{
 		Settings:        Settings{DomainCodeStaleness: true},
@@ -475,7 +475,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 
 	// A rising count warns, naming the file, the codepoint, and the commit.
 	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
-	// invariant: audit-plain-punctuation
+	// invariant: tooling/audit-and-snapshots:audit-plain-punctuation
 	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != Warning ||
 		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") ||
 		!strings.Contains(got[0].Detail, "docs/decisions/0001-x.md") {

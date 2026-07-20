@@ -5,19 +5,16 @@ part without syncing. Replace the anchored path placeholder and generic prose, t
 claims manually. The command prints both repository-relative input paths and does not mutate config,
 the lock, or rendered docs. `awf topic <domain>/<topic>[:<claim>]` queries active state read-only;
 `--history`, `--references`, and `--coverage` independently add direct details, while `--json` changes
-presentation only. `awf upgrade --check` evaluates bridge readiness without writing the worktree,
-index, config, lock, or generated output; add `--json` for the stable exhaustive report. Readiness
-requires the authored `.awf/current-state-migration.yaml` approval inventory, including
-`version: 1` and `invariantApprovals: []` when no live legacy invariant maps. The check independently
-derives each exact Origin/backing-preserving mapping before matching approval evidence.
+presentation only. `awf context <paths>` answers which current-state claims apply to those paths;
+`awf context --uncovered` reports unowned paths and per-domain uncovered coverage, and `--staged`
+evaluates the Git index instead of the working tree. `awf check --staged` runs the same index-snapshot
+coverage and the HEAD-to-index claim-transition handshake; the rendered pre-commit hook runs it.
 
-`awf upgrade --attest-current-state` seals a ready, clean-HEAD prepared tree: it records the clean
-HEAD, a post-normalization digest, and the ADR cutoff and gaps in an optional `bridgeAttestation` lock
-block, journals every normalization, marker, status, and terminal legacy-index deletion at
-`.awf/current-state-upgrade.journal`, and commits the attested lock last. Obtain and verify the
-matching current-state binary before attesting. The four upgrade modes are mutually exclusive, and a
-committed journal or attestation makes ordinary commands non-operational: only `awf upgrade --recover`
-runs while a journal exists, only `awf upgrade --check` runs against an attested lock, a malformed
-journal refuses every mode with Git-restoration guidance, and `awf version`/`awf changelog`/`awf help`
-always bypass the transaction state. `awf upgrade --recover` replays the journal recovery table
-idempotently, rolling an interrupted attestation back or cleaning up a committed one.
+`awf upgrade` migrates the `.awf/` config tree to the current schema and syncs. When the lock carries
+a bridge attestation, plain `awf upgrade` instead performs the final current-state cutover: it verifies
+only the sealed facts (the prepared HEAD and tree digest), journals the deletion of the migration
+approval file and the permanent lock, and promotes the sealed format cutoff and gaps. Attestation and
+readiness reporting live only in the preceding bridge release; this binary consumes seals, it never
+produces them. `awf upgrade --recover` replays the current-state upgrade journal recovery table,
+rolling an interrupted cutover back or cleaning up a committed one, and is the only mode a committed
+journal permits.

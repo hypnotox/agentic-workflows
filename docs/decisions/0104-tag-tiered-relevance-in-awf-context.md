@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-13
 tags: [context-tiering]
-related: [8, 31, 92, 98, 99, 102, 103, 106, 109]
+related: [8, 31, 92, 98, 99, 102, 103, 106, 109, 134]
 domains: [tooling, invariants]
 ---
 # ADR-0104: Tag-Tiered Relevance in awf context

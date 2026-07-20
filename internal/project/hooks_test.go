@@ -29,7 +29,7 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 
 // With the singleton enabled, exactly the three payloads render under
 // .awf/hooks/; absent or disabled, none do.
-// invariant: hook-payloads-rendered
+// invariant: rendering/project-output-plan:hook-payloads-rendered
 func TestHookPayloadsRendered(t *testing.T) {
 	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
 	for _, name := range hookNames {
@@ -54,7 +54,7 @@ func TestHookPayloadsRendered(t *testing.T) {
 // With every command var unset, each payload degrades to runnable generic awf
 // forms - pin-aware shim plus `awf check` / `awf commit-gate "$1"` - with no
 // unresolved-value token (the ADR-0045 fallback contract).
-// invariant: hook-payloads-fallback-safe
+// invariant: rendering/templates:hook-payloads-fallback-safe
 func TestHookPayloadsFallbackSafe(t *testing.T) {
 	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
 	wantCmd := map[string]string{
@@ -96,7 +96,7 @@ hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit": {"./x check\n./x gate\n./x prose-gate\n"},
+		"pre-commit": {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n"},
 		"commit-msg": {"./x commit-gate \"$1\"\n"},
 		"pre-push":   {"./x gate full\n"},
 	}

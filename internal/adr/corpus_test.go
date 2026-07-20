@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -63,7 +62,7 @@ func codeLines(body string) []string {
 // enters through Corpus construction - and inside internal/adr only that seam
 // and NextNumber call it. NextNumber is the enumerated exception: it runs on
 // the awf new adr path, which holds no corpus.
-// invariant: corpus-parsed-once
+// invariant: adr-system/adr-lifecycle:corpus-parsed-once
 func TestCorpusParsedOnce(t *testing.T) {
 	var outside []string
 	goSources(t, func(path, body string) {
@@ -83,7 +82,7 @@ func TestCorpusParsedOnce(t *testing.T) {
 
 	// In-package: only the construction seam and the enumerated NextNumber.
 	callers := map[string]bool{}
-	for _, f := range []string{"corpus.go", "adr.go", "domain.go", "status.go", "declarations.go"} {
+	for _, f := range []string{"corpus.go", "adr.go", "status.go", "declarations.go"} {
 		data, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
@@ -102,50 +101,34 @@ func TestCorpusParsedOnce(t *testing.T) {
 	if !callers["corpus.go"] {
 		t.Error("corpus.go no longer calls ParseDir - has the construction seam moved?")
 	}
-
-	// The render entry points take a Corpus rather than parsing.
-	for _, f := range []string{"adr.go", "domain.go"} {
-		data, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, want := range []string{"func RenderActiveMD(corpus Corpus)", "func RenderDomainIndex(corpus Corpus,"} {
-			if strings.Contains(string(data), strings.Split(want, "(")[0]+"(") && !strings.Contains(string(data), want) {
-				t.Errorf("%s: %s must take a Corpus rather than parsing (ADR-0130 item 1)", f, strings.Split(want, "(")[0])
-			}
-		}
-	}
 }
 
 // TestCorpusOwnsFieldReads enforces ADR-0130's corpus-owns-field-reads: the
-// supersession and declared-invariant questions ADR.Refs and ADR.Sections
-// answer are asked of the view, not re-derived from the fields.
-// invariant: corpus-owns-field-reads
+// section questions ADR.Sections answers are asked of the view, not re-derived
+// from the field.
+// invariant: adr-system/adr-lifecycle:corpus-owns-field-reads
 func TestCorpusOwnsFieldReads(t *testing.T) {
-	// A field read, not a Corpus method call: RefsOf/DeclaredSlugs are the
-	// sanctioned way to ask, and they live on the view.
-	refsRead := regexp.MustCompile(`\.Refs\b`)
 	var bad []string
 	goSources(t, func(path, body string) {
 		if strings.HasPrefix(path, "../../internal/adr/") {
 			return
 		}
 		for i, line := range codeLines(body) {
-			if strings.Contains(line, ".Sections[") || refsRead.MatchString(line) {
+			if strings.Contains(line, ".Sections[") {
 				bad = append(bad, fromLine(path, i, line))
 			}
 		}
 	})
 	if len(bad) != 0 {
-		t.Errorf("ADR.Refs or ADR.Sections is read outside internal/adr; ask the view instead (ADR-0130 item 2):\n\t%s",
+		t.Errorf("ADR.Sections is read outside internal/adr; ask the view instead (ADR-0130 item 2):\n\t%s",
 			strings.Join(bad, "\n\t"))
 	}
 }
 
-// TestCorpusRawAccessEnumerated enforces the closed raw-byte seams: ordered
-// schema migration, the retired-key frontmatter scan, and bridge normalization.
-// Each goes through the view's named accessor rather than re-reading the file.
-// invariant: corpus-raw-access-enumerated
+// TestCorpusRawAccessEnumerated enforces the closed raw-byte seams: the ordered
+// schema migrations that perform offset surgery. Each goes through the view's
+// named accessor rather than re-reading the file.
+// invariant: adr-system/adr-lifecycle:corpus-raw-access-enumerated
 func TestCorpusRawAccessEnumerated(t *testing.T) {
 	raw := map[string]bool{}
 	var pathReads []string
@@ -166,13 +149,10 @@ func TestCorpusRawAccessEnumerated(t *testing.T) {
 		}
 	})
 	// internal/migrate appears twice because each ordered schema migration that
-	// performs offset surgery is its own file. The bridge adds one temporary
-	// migration-only raw seam for history and status normalization.
+	// performs offset surgery is its own file.
 	want := map[string]bool{
 		"../../internal/migrate/retirementtokens.go": true,
 		"../../internal/migrate/supersessionkeys.go": true,
-		"../../internal/project/supersession.go":     true,
-		"../../internal/bridge/normalize.go":         true,
 	}
 	for path := range raw {
 		if !want[path] {
@@ -215,26 +195,18 @@ func TestCorpusAbsentADR(t *testing.T) {
 	if c.Has("9999") {
 		t.Error("Has reported an absent ADR present")
 	}
-	if got := c.DecisionItems("9999"); got != nil {
-		t.Errorf("DecisionItems on an absent ADR = %v, want nil", got)
-	}
-	if got := c.DeclaredSlugs("9999"); got != nil {
-		t.Errorf("DeclaredSlugs on an absent ADR = %v, want nil", got)
-	}
-	if got := c.RefsOf("9999"); got != nil {
-		t.Errorf("RefsOf on an absent ADR = %v, want nil", got)
+	if got := c.Anchors("9999"); got != nil {
+		t.Errorf("Anchors on an absent ADR = %v, want nil", got)
 	}
 	if _, err := c.Raw("9999"); err == nil {
 		t.Error("Raw on an absent ADR returned no error")
 	}
 
 	// The present ADR answers for real, so the guards above are not passing
-	// vacuously over an empty corpus.
-	if got := c.DecisionItems("0001"); len(got) != 1 {
-		t.Errorf("DecisionItems(0001) = %v, want one item", got)
-	}
-	if got := c.DeclaredSlugs("0001"); len(got) != 1 || got[0] != "only-slug" {
-		t.Errorf("DeclaredSlugs(0001) = %v, want [only-slug]", got)
+	// vacuously over an empty corpus. Its one Decision item and one declared
+	// slug are both anchors.
+	if got := c.Anchors("0001"); len(got) != 2 || got[0].Item != 1 || got[1].Slug != "only-slug" {
+		t.Errorf("Anchors(0001) = %v, want [item 1, slug only-slug]", got)
 	}
 	if _, err := c.Raw("0001"); err != nil {
 		t.Errorf("Raw(0001): %v", err)
@@ -245,7 +217,7 @@ func TestCorpusAbsentADR(t *testing.T) {
 // blobs rather than the working tree, so it cannot take a Corpus - but it takes
 // the bytes seam, and declares no frontmatter struct of its own. The duplication
 // the ADR removed was the parser and the schema, not the loading strategy.
-// invariant: audit-shares-adr-parser
+// invariant: adr-system/adr-lifecycle:audit-shares-adr-parser
 func TestAuditSharesADRParser(t *testing.T) {
 	data, err := os.ReadFile(filepath.Join("..", "audit", "audit.go"))
 	if err != nil {
@@ -262,30 +234,6 @@ func TestAuditSharesADRParser(t *testing.T) {
 	}
 }
 
-// TestCorpusSingleIdentityKey enforces ADR-0130 item 4: the ADR number is the
-// sole identity. internal/invariants used to return filenames, which forced a
-// filename-to-number translation map on the context path.
-// invariant: corpus-single-identity-key
-func TestCorpusSingleIdentityKey(t *testing.T) {
-	corpus, err := adr.LoadCorpus(filepath.Join("..", "..", "docs", "decisions"))
-	if err != nil {
-		t.Fatalf("LoadCorpus: %v", err)
-	}
-	declaring, err := invariants.DeclaringADRs(corpus)
-	if err != nil {
-		t.Fatalf("DeclaringADRs: %v", err)
-	}
-	if len(declaring) == 0 {
-		t.Fatal("the real corpus declares no invariants; the scan would pass vacuously")
-	}
-	num := regexp.MustCompile(`^[0-9]{4}$`)
-	for slug, decl := range declaring {
-		if !num.MatchString(decl.ADR) {
-			t.Errorf("invariant %q is keyed by %q; Decl.ADR must be a four-digit ADR number (ADR-0130 item 4)", slug, decl.ADR)
-		}
-	}
-}
-
 // TestSupersessionModelSingleSource enforces ADR-0129's
 // supersession-model-single-source and ADR-0130's corpus-model-not-rebuilt: the
 // anchor-coverage model is constructed in exactly one place, inside
@@ -293,12 +241,12 @@ func TestCorpusSingleIdentityKey(t *testing.T) {
 // itself. Before this, the relation was derived twice differently - once in
 // the render index and once in the symmetry check - and read a third way off
 // the frontmatter scalar.
-// invariant: supersession-model-single-source
-// invariant: corpus-model-not-rebuilt
+// invariant: adr-system/adr-lifecycle:supersession-model-single-source
+// invariant: adr-system/adr-lifecycle:corpus-model-not-rebuilt
 func TestSupersessionModelSingleSource(t *testing.T) {
 	// The model is built by exactly one call, in Corpus construction.
 	var builders []string
-	for _, f := range []string{"corpus.go", "coverage.go", "adr.go", "domain.go", "status.go", "declarations.go"} {
+	for _, f := range []string{"corpus.go", "coverage.go", "adr.go", "status.go", "declarations.go"} {
 		data, err := os.ReadFile(f)
 		if err != nil {
 			t.Fatal(err)
@@ -317,7 +265,7 @@ func TestSupersessionModelSingleSource(t *testing.T) {
 	// The retired render index is really gone: ADR-0129 requires the
 	// identifiers SupersessionIndex, Override, and Label to appear nowhere as
 	// code. A new method reusing one of those names would defeat this grep
-	// while looking innocent, which is why Anchor.Describe is not Anchor.Label.
+	// while looking innocent.
 	var revived []string
 	goSources(t, func(path, body string) {
 		for i, line := range codeLines(body) {
@@ -341,15 +289,13 @@ func TestSupersessionModelSingleSource(t *testing.T) {
 			return
 		}
 		for i, line := range codeLines(body) {
-			for _, ident := range []string{"buildCoverage(", "deriveState(", "isRetired("} {
-				if strings.Contains(line, ident) {
-					outside = append(outside, fromLine(path, i, line))
-				}
+			if strings.Contains(line, "buildCoverage(") {
+				outside = append(outside, fromLine(path, i, line))
 			}
 		}
 	})
 	if len(outside) != 0 {
-		t.Errorf("the supersession model is derived outside internal/adr; ask the corpus instead (ADR-0129):\n\t%s",
+		t.Errorf("the anchor-coverage model is derived outside internal/adr; ask the corpus instead (ADR-0129):\n\t%s",
 			strings.Join(outside, "\n\t"))
 	}
 }

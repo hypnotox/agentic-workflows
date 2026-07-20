@@ -1,0 +1,4 @@
+title: Almanac model
+summary: The cosine day-length model and its latitude, longitude, accuracy, and dependency contracts.
+paths:
+  - internal/almanac/**

@@ -1,0 +1,5 @@
+title: Current-state authority
+summary: How current-state claims are loaded, checked, and transitioned as the sole active authority.
+paths:
+  - internal/currentstate/**
+  - internal/invariants/**

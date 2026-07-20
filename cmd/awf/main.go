@@ -8,11 +8,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/bridge"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
@@ -111,16 +111,17 @@ func run(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// guardProjectState enforces the bridge command-state matrix (Plan 2 Task 3.3).
+// guardProjectState enforces the current-state upgrade command-state matrix.
 // Help, version, and changelog bypass it outright; outside an adopted tree it is
 // a no-op so config/context/topic keep their static fallback. Inside a tree:
 //   - a valid journal permits only `awf upgrade --recover`; every other command
 //     refuses with a run-recover diagnostic;
 //   - a malformed journal refuses every mode, recovery included, with the
 //     Git-restoration guidance the journal loader carries;
-//   - with no journal, an attested lock permits only `awf upgrade --check` and
-//     refuses everything else with the install-the-current-state-release
-//     diagnostic; a would-be recovery with no journal is refused;
+//   - with no journal, an attested lock permits only plain `awf upgrade` (the
+//     seal consumption this binary performs) and refuses everything else with a
+//     consume-the-attestation diagnostic; a would-be recovery with no journal is
+//     refused;
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
 func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	switch top.Name {
@@ -132,9 +133,9 @@ func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	}
 	isUpgrade := top.Name == "upgrade"
 	isRecover := isUpgrade && inv.bools["--recover"]
-	isCheck := isUpgrade && inv.bools["--check"]
-	if bridge.JournalPresent(root) {
-		if _, err := bridge.LoadJournal(root); err != nil {
+	isPlainUpgrade := isUpgrade && !isRecover
+	if upgrade.JournalPresent(root) {
+		if _, err := upgrade.LoadJournal(root); err != nil {
 			return err // malformed journal: refuse every mode, recovery included
 		}
 		if isRecover {
@@ -147,10 +148,10 @@ func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	// only a cleanly loaded attested lock drives the guard here.
 	lock, found, loadErr := manifest.LoadOptional(config.LockPath(root))
 	if loadErr == nil && found && lock.BridgeAttestation != nil {
-		if isCheck {
+		if isPlainUpgrade {
 			return nil
 		}
-		return errors.New("this project carries a committed current-state attestation; install and run the current-state release to operate it")
+		return errors.New("this project carries a committed current-state attestation; run `awf upgrade` to consume it")
 	}
 	if isRecover {
 		return errors.New("no current-state upgrade journal to recover")

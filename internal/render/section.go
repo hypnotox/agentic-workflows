@@ -69,7 +69,7 @@ const stubMarkerLine = "<!-- awf:stub -->"
 // HasStubMarker reports whether a part body contains a line that is exactly the
 // awf:stub marker (modulo surrounding whitespace). Detection never mutates the
 // body - parts render byte-for-byte verbatim, marker included (ADR-0034, ADR-0070).
-// touches-invariant: stub-part-verbatim - stub-marker detection without mutation; proof in section_test.go
+// touches-state: rendering/render-engine:stub-part-verbatim - stub-marker detection without mutation; proof in section_test.go
 func HasStubMarker(body string) bool {
 	for _, line := range strings.Split(body, "\n") {
 		if strings.TrimSpace(line) == stubMarkerLine {
@@ -91,7 +91,7 @@ var markerLineRE = regexp.MustCompile(`^<!--\s*awf:(section|end)\b`)
 // always precedes it on the line. Inline quoting never fires; the awf:stub
 // part marker is out of scope by construction (the pattern names only
 // section/end). Callers exclude fenced code before the scan.
-// touches-invariant: part-marker-advisory - whole-line section-marker residue detection; proof in section_test.go
+// touches-state: rendering/render-engine:part-marker-advisory - whole-line section-marker residue detection; proof in section_test.go
 func HasMarkerLine(body string) bool {
 	for _, line := range strings.Split(body, "\n") {
 		if markerLineRE.MatchString(strings.TrimSpace(line)) {
@@ -113,7 +113,7 @@ var residualMarkerRE = regexp.MustCompile(`<!--\s*awf:(section|end)\b`)
 // otherwise leak verbatim into rendered output. It runs pre-Execute: part bodies
 // are NUL sentinels and data is uninterpolated, so parts and data that quote the
 // full comment form stay out of scope.
-// touches-invariant: no-residual-section-marker - hard error on surviving marker residue; proof in section_test.go
+// touches-state: rendering/render-engine:no-residual-section-marker - hard error on surviving marker residue; proof in section_test.go
 func CheckResidualMarkers(assembled string) error {
 	if m := residualMarkerRE.FindString(assembled); m != "" {
 		return fmt.Errorf("assembled template still contains a section marker (%q): malformed awf:section/awf:end marker", m)

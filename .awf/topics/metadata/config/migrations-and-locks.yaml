@@ -1,0 +1,5 @@
+title: Migrations and locks
+summary: Config schema-generation migrations and the awf.lock manifest.
+paths:
+  - internal/migrate/**
+  - internal/manifest/**

@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-26
 tags: [domain-index, adr-parsing]
-related: [5, 11, 13]
+related: [5, 11, 13, 133]
 domains: [adr-system, rendering]
 ---
 # ADR-0014: Domain Docs with a Generated Per-Domain ADR Index

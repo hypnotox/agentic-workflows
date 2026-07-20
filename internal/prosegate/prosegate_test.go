@@ -19,7 +19,7 @@ func TestParseCodepoint(t *testing.T) {
 	}
 }
 
-// invariant: prose-gate-tracked-file-scan
+// invariant: tooling/quality-gates:prose-gate-tracked-file-scan
 func TestScanReportsBannedRunesOutsideExemptions(t *testing.T) {
 	// two.md carries two distinct runes, so the sort comparator exercises both
 	// its path branch (across files) and its rune tie-break (within one file).

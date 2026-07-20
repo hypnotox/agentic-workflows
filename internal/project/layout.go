@@ -18,6 +18,7 @@ type Layout struct {
 	DocsDir    string
 	ADRDir     string
 	ActiveMd   string
+	IndexMd    string
 	PlansDir   string
 	Docs       map[string]string // name -> output path; present iff enabled (inv: layout-docs-enabled-only)
 	DomainsDir string
@@ -36,6 +37,7 @@ func (p *Project) layout() Layout {
 		DocsDir:    d,
 		ADRDir:     dec,
 		ActiveMd:   dec + "/ACTIVE.md",
+		IndexMd:    dec + "/INDEX.md",
 		PlansDir:   d + "/plans",
 		Docs:       docs,
 		DomainsDir: d + "/domains", // inv: domains-dir-given
@@ -57,6 +59,7 @@ func (l Layout) templateMap() map[string]any {
 		"docsDir":    l.DocsDir,
 		"adrDir":     l.ADRDir,
 		"activeMd":   l.ActiveMd,
+		"indexMd":    l.IndexMd,
 		"plansDir":   l.PlansDir,
 		"docs":       docs,
 		"domainsDir": l.DomainsDir,

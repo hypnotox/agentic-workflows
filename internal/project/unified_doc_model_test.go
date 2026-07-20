@@ -11,7 +11,7 @@ import (
 // The whole doc surface derives from the single catalog doc collection: every
 // projection is a function of the Mandatory/AgentsDoc/TemplateKey/Path metadata,
 // with no independent hand-maintained list (ADR-0061).
-// invariant: unified-doc-model
+// invariant: rendering/catalog-and-targets:unified-doc-model
 func TestUnifiedDocModelProjections(t *testing.T) {
 	// (a) SingletonKinds == exactly the Mandatory entries.
 	var wantSK []string
@@ -58,7 +58,7 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 
 // No Mandatory entry appears in the toggleable-doc pool, so a singleton is never
 // addable/removable via the doc CLI or validated as a toggleable doc (ADR-0061).
-// invariant: mandatory-doc-pool-exclusion
+// invariant: rendering/catalog-and-targets:mandatory-doc-pool-exclusion
 func TestMandatoryDocsExcludedFromPool(t *testing.T) {
 	pool, ok := CatalogNames(catalog.Standard, "doc")
 	if !ok {

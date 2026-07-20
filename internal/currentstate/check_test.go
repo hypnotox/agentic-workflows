@@ -1,0 +1,179 @@
+package currentstate_test
+
+import (
+	"strings"
+	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
+)
+
+// rec builds a current-state-v1 ADR record with a Status history whose terminal
+// entry carries seq as its state-sequence when status is Implemented with ops.
+func rec(num, status string, seq int, ops ...adr.Operation) adr.ADR {
+	hist := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
+	if status != "Proposed" {
+		e := adr.StatusEntry{Date: "2026-01-02", Status: status}
+		if status == "Implemented" && len(ops) > 0 && seq > 0 {
+			e.Sequence, e.HasSequence = seq, true
+		}
+		hist = append(hist, e)
+	}
+	return adr.ADR{Number: num, Format: adr.CurrentStateV1, Status: status, Operations: ops, History: hist}
+}
+
+func op(v adr.OpVerb, id string) adr.Operation { return adr.Operation{Verb: v, ID: id} }
+
+func claim(id, origin string, revisedBy ...string) topic.Claim {
+	return topic.Claim{ID: id, Origin: origin, RevisedBy: revisedBy}
+}
+
+func topics(cl ...topic.Claim) []topic.Topic { return []topic.Topic{{Claims: cl}} }
+
+// messages joins the findings for substring assertions.
+func messages(f []currentstate.Finding) string {
+	var b strings.Builder
+	for _, x := range f {
+		b.WriteString(x.Message)
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// TestCheckValid accepts a coherent corpus: an Implemented add, an Implemented
+// update, an Implemented remove, a legacy Origin, a pending Accepted add, and a
+// legacy record that filterV1 skips.
+func TestCheckValid(t *testing.T) {
+	records := []adr.ADR{
+		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:kept")),
+		rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:kept")),
+		rec("0139", "Implemented", 3, op(adr.OpAdd, "d/t:gone")),
+		rec("0140", "Implemented", 4, op(adr.OpUpdate, "d/t:gone")), // update of a later-removed claim
+		rec("0141", "Implemented", 5, op(adr.OpRemove, "d/t:gone")),
+		rec("0142", "Accepted", 0, op(adr.OpAdd, "d/t:pending")),
+		rec("0143", "Abandoned", 0, op(adr.OpAdd, "d/t:never")), // unapplied
+		{Number: "0100", Format: adr.Legacy, Status: "Implemented"},
+	}
+	tp := topics(
+		claim("d/t:kept", "0137", "0138"),
+		claim("d/t:legacy", "0100"), // Origin below cutoff: exempt
+	)
+	if f := currentstate.Check(records, tp, 137); len(f) != 0 {
+		t.Fatalf("expected no findings, got:\n%s", messages(f))
+	}
+}
+
+// TestCheckSequences covers duplicate and non-contiguous sequences.
+func TestCheckSequences(t *testing.T) {
+	dup := currentstate.Check([]adr.ADR{
+		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:a")),
+		rec("0138", "Implemented", 1, op(adr.OpAdd, "d/t:b")),
+	}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0138")), 137)
+	if !strings.Contains(messages(dup), "used by more than one ADR") {
+		t.Errorf("duplicate sequence not reported:\n%s", messages(dup))
+	}
+	gap := currentstate.Check([]adr.ADR{
+		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:a")),
+		rec("0138", "Implemented", 3, op(adr.OpAdd, "d/t:b")),
+	}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0138")), 137)
+	if !strings.Contains(messages(gap), "not contiguous") {
+		t.Errorf("sequence gap not reported:\n%s", messages(gap))
+	}
+}
+
+// TestCheckOperationHistory covers the per-identity add/update/remove ordering.
+func TestCheckOperationHistory(t *testing.T) {
+	cases := []struct {
+		name    string
+		records []adr.ADR
+		want    string
+	}{
+		{"two adds", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")), rec("0138", "Implemented", 2, op(adr.OpAdd, "d/t:x"))}, "2 add operations"},
+		{"update without add", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:x"))}, "does not begin with an add"},
+		{"two removes", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")), rec("0138", "Implemented", 2, op(adr.OpRemove, "d/t:x")), rec("0139", "Implemented", 3, op(adr.OpRemove, "d/t:x"))}, "more than one remove"},
+		{"op after remove", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpRemove, "d/t:x")), rec("0138", "Implemented", 2, op(adr.OpAdd, "d/t:x"))}, "operation after its remove"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Provide claims so backward/forward do not add unrelated noise we do not assert on.
+			if f := currentstate.Check(tc.records, nil, 137); !strings.Contains(messages(f), tc.want) {
+				t.Errorf("want %q in:\n%s", tc.want, messages(f))
+			}
+		})
+	}
+}
+
+// TestCheckForward covers the pending, Implemented, and Abandoned operation
+// outcomes against the current claim set.
+func TestCheckForward(t *testing.T) {
+	cases := []struct {
+		name    string
+		records []adr.ADR
+		topics  []topic.Topic
+		want    string
+	}{
+		{"pending add exists", []adr.ADR{rec("0137", "Accepted", 0, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0100")), "already exists"},
+		{"pending update missing", []adr.ADR{rec("0137", "Proposed", 0, op(adr.OpUpdate, "d/t:x"))}, nil, "updates missing claim"},
+		{"implemented add missing", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))}, nil, "has no active claim"},
+		{"implemented add wrong origin", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0199")), "Origin is ADR-0199"},
+		{"implemented update not revised", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100")), "does not list updating ADR-0137"},
+		{"implemented remove still present", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpRemove, "d/t:x"))}, topics(claim("d/t:x", "0100")), "still has an active claim"},
+		{"abandoned add applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0137")), "add for claim d/t:x was applied"},
+		{"abandoned update applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100", "0137")), "update for claim d/t:x was applied"},
+		{"abandoned remove applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpRemove, "d/t:x"))}, nil, "remove for claim d/t:x was applied"},
+		{"pending re-add of removed", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"), op(adr.OpRemove, "d/t:x")), rec("0138", "Proposed", 0, op(adr.OpAdd, "d/t:x"))}, nil, "may never be reused"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if f := currentstate.Check(tc.records, tc.topics, 137); !strings.Contains(messages(f), tc.want) {
+				t.Errorf("want %q in:\n%s", tc.want, messages(f))
+			}
+		})
+	}
+}
+
+// TestCheckBackward covers the claim-to-ADR handshake direction.
+func TestCheckBackward(t *testing.T) {
+	// Origin at/above cutoff whose ADR carries no add operation.
+	noAdd := currentstate.Check(
+		[]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:other"))},
+		topics(claim("d/t:x", "0137"), claim("d/t:other", "0137")),
+		137)
+	if !strings.Contains(messages(noAdd), "Origin ADR-0137, which has no matching add") {
+		t.Errorf("missing add operation not reported:\n%s", messages(noAdd))
+	}
+	// Revised-by whose ADR carries no update operation.
+	noUpdate := currentstate.Check(
+		[]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))},
+		topics(claim("d/t:x", "0137", "0199")),
+		137)
+	if !strings.Contains(messages(noUpdate), "Revised-by ADR-0199, which has no matching update") {
+		t.Errorf("missing update operation not reported:\n%s", messages(noUpdate))
+	}
+}
+
+// TestSeverityString covers both severities.
+func TestSeverityString(t *testing.T) {
+	if currentstate.Error.String() != "error" || currentstate.Warn.String() != "warn" {
+		t.Fatalf("severity strings = %q, %q", currentstate.Error, currentstate.Warn)
+	}
+}
+
+// TestParseRecordRouting covers cutoff-based legacy/v1 routing.
+func TestParseRecordRouting(t *testing.T) {
+	legacy := []byte("---\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: Legacy\n\n## Context\n\nx\n")
+	a, err := adr.ParseRecord("0100-legacy.md", legacy, 137)
+	if err != nil || a.IsV1() || a.Number != "0100" {
+		t.Fatalf("legacy routing: %+v err=%v", a, err)
+	}
+	// A below-cutoff ADR that declares the v1 marker is rejected.
+	strayV1 := []byte("---\nformat: current-state-v1\nstatus: Implemented\ndate: 2026-01-01\n---\n# ADR-0100: X\n")
+	if _, err := adr.ParseRecord("0100-x.md", strayV1, 137); err == nil || !strings.Contains(err.Error(), "below the format cutoff") {
+		t.Fatalf("stray v1 marker below cutoff: err=%v", err)
+	}
+	// Cutoff of zero treats everything as legacy.
+	if a, err := adr.ParseRecord("0200-x.md", legacy, 0); err != nil || a.IsV1() {
+		t.Fatalf("cutoff 0 routing: %+v err=%v", a, err)
+	}
+}

@@ -117,7 +117,7 @@ func PointerLinePrefixes(name string, style CommentStyle) []string {
 // output (unlike structural markers) and bounds the read-back region without
 // tripping the residual-marker guards (ADR-0100). Only the comment delimiters
 // vary by style; the token and phrasing are constant.
-// touches-invariant: section-edit-pointer - awf:edit provenance pointer emission; proof in render_test.go
+// touches-state: rendering/render-engine:section-edit-pointer - awf:edit provenance pointer emission; proof in render_test.go
 func editPointer(name string, stub bool, p SectionPlan, style CommentStyle) string {
 	switch {
 	case p.InPlace:
@@ -151,7 +151,7 @@ const SectionDefaultSentinel = "\x00awf:section-default\x00"
 // verbatim; each non-dropped section is prefixed with its awf:edit pointer, then
 // either a sentinel standing in for its part body (restored after Execute) or the
 // template default. Section markers are consumed here and never written.
-// touches-invariant: no-section-marker-leak - section markers consumed, never written; proof in render_test.go
+// touches-state: rendering/render-engine:no-section-marker-leak - section markers consumed, never written; proof in render_test.go
 func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (string, map[string]string) {
 	var b strings.Builder
 	parts := map[string]string{}
@@ -167,7 +167,7 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 		b.WriteString(editPointer(s.Name, s.Stub, p, style))
 		switch {
 		case p.InPlace:
-			// touches-invariant: in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
+			// touches-state: rendering/render-engine:in-place-pointer-distinct - distinct awf:edit-in-place pointer + verbatim interior; proof in render_test.go
 			// A located region's read-back body is emitted verbatim after the
 			// distinct awf:edit-in-place pointer (no re-templating), even when the
 			// adopter emptied it; only an unlocated region (first render / deleted
@@ -192,7 +192,6 @@ func Assemble(segs []Segment, plan map[string]SectionPlan, style CommentStyle) (
 // interleaved with the section's raw default source (s.Text), which Execute templates in
 // place. A part without the marker emits a single sentinel for the whole body, the
 // pre-ADR-0072 behaviour.
-// invariant: section-default-splice
 func writePartBody(b *strings.Builder, parts map[string]string, s Segment, p SectionPlan) {
 	if !strings.Contains(p.PartBody, SectionDefaultSentinel) {
 		sent := partSentinel(s.Name)
@@ -240,7 +239,6 @@ func StubSections(segs []Segment, plan map[string]SectionPlan) (defaults, parts 
 // in must-author state. Runs pre-Assemble on the same segs+plan StubSections consumes;
 // it scans the substituted part body for the render-layer sentinel, since planSections
 // has already replaced the {{=awf:sectionDefault}} token.
-// invariant: section-default-stub-error
 func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error {
 	for _, s := range segs {
 		if !s.IsSection {
@@ -258,7 +256,7 @@ func CheckSectionDefaultStubs(segs []Segment, plan map[string]SectionPlan) error
 // sentinels) under missingkey=zero, then restores each raw part body verbatim - so
 // a convention part is never parsed or executed as a template. name labels parse
 // and execute errors with the target rather than a hardcoded literal.
-// touches-invariant: parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go
+// touches-state: rendering/render-engine:parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
 	t, err := template.New(name).Option("missingkey=zero").Parse(assembled)
 	if err != nil {

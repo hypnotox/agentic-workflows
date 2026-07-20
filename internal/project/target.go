@@ -221,7 +221,6 @@ var targetRegistry = map[string]Target{
 
 // KnownTargets returns the known adapter names in sorted order. The bespoke
 // `awf {enable,disable,list} target` path validates against this set (inv: target-cli).
-// invariant: target-cli
 func KnownTargets() []string {
 	return slices.Sorted(maps.Keys(targetRegistry))
 }

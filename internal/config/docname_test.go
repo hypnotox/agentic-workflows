@@ -10,7 +10,7 @@ func TestValidateDocName(t *testing.T) {
 		}
 	}
 	invalid := []string{"", "Foo", "guides/Foo", "a.md", "../x", "a..b", "/x", "x/", "a//b", "_base", "guides/_base", "under_score", "-", "--", "guides/---"}
-	// invariant: local-doc-name-path-validated
+	// invariant: config/configuration:local-doc-name-path-validated
 	for _, n := range invalid {
 		if err := ValidateDocName(n); err == nil {
 			t.Errorf("ValidateDocName(%q) = nil, want error", n)

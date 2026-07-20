@@ -8,7 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// invariant: kind-dispatch-single-table
+// invariant: rendering/project-output-plan:kind-dispatch-single-table
 func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 	got := make([]string, len(kindDescriptors))
 	for i, d := range kindDescriptors {
@@ -28,7 +28,7 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 }
 
 func TestKindLookups(t *testing.T) {
-	// invariant: cli-config-kinds
+	// invariant: tooling/cli:cli-config-kinds
 	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "domain"}) {
 		t.Fatalf("Kinds() = %v", got)
 	}

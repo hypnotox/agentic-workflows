@@ -10,7 +10,44 @@ const (
 	statusImplemented = "Implemented"
 	statusProposed    = "Proposed"
 	statusSuperseded  = "Superseded"
+	// statusAbandoned is the current-state-v1 terminal state for a decision
+	// that stops before implementation (ADR-0135 item 1). It never appears in a
+	// legacy-format ADR.
+	statusAbandoned = "Abandoned"
 )
+
+// IsAbandoned reports the current-state-v1 terminal Abandoned state.
+func (a ADR) IsAbandoned() bool { return a.Status == statusAbandoned }
+
+// v1Statuses is the closed current-state-v1 status enum (ADR-0135 item 1);
+// Superseded is deliberately absent.
+var v1Statuses = map[string]bool{
+	statusProposed:    true,
+	statusAccepted:    true,
+	statusImplemented: true,
+	statusAbandoned:   true,
+}
+
+// v1Transitions maps each non-terminal status to the statuses it may become
+// (ADR-0135 item 1). Implemented and Abandoned are terminal and absent as keys.
+var v1Transitions = map[string]map[string]bool{
+	statusProposed: {statusAccepted: true, statusImplemented: true, statusAbandoned: true},
+	statusAccepted: {statusImplemented: true, statusAbandoned: true},
+}
+
+// v1StatusKnown reports whether s is a legal current-state-v1 status.
+func v1StatusKnown(s string) bool { return v1Statuses[s] }
+
+// v1TransitionLegal reports whether from -> to is one of the five legal
+// current-state-v1 edges. A same-status pair and any edge out of a terminal
+// state are illegal.
+func v1TransitionLegal(from, to string) bool { return v1Transitions[from][to] }
+
+// TransitionLegal reports whether from -> to is one of the five legal
+// current-state-v1 status edges (ADR-0135 item 1). It is the exported seam the
+// snapshot-diff transition check takes to validate an ADR status change observed
+// across a before/after pair, without re-encoding the lifecycle matrix.
+func TransitionLegal(from, to string) bool { return v1TransitionLegal(from, to) }
 
 // IsLive reports whether the ADR's decisions are current guidance.
 func (a ADR) IsLive() bool {
@@ -35,6 +72,11 @@ func (a ADR) IsLegacyShipped() bool {
 
 // IsProposed reports whether the ADR's body is still mutable.
 func (a ADR) IsProposed() bool { return a.Status == statusProposed }
+
+// IsAccepted reports the current-state-v1 Accepted state: the decision is
+// normative only for executing its pending State changes, which never override
+// the topic claims describing current reality (ADR-0135).
+func (a ADR) IsAccepted() bool { return a.Status == statusAccepted }
 
 // IsInflight reports a legacy decision that must be resolved before bridge
 // attestation.

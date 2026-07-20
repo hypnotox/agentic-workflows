@@ -16,7 +16,7 @@ import (
 
 // configHashOf re-opens the project and returns the per-target ConfigHash of the
 // rendered file at rel.
-// invariant: output-policy-explicit
+// invariant: rendering/project-output-plan:output-policy-explicit
 func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\n")
 	p, err := Open(root)
@@ -86,7 +86,7 @@ func configHashOf(t *testing.T, root, rel string) string {
 	return ""
 }
 
-// invariant: drift-source-set
+// invariant: rendering/project-output-plan:drift-source-set
 func TestPerTargetDriftProjection(t *testing.T) {
 	const (
 		A = ".claude/skills/example-tdd/SKILL.md"
@@ -274,7 +274,7 @@ func sprintfVars(pitfalls string) string {
 	return "vars:\n  testCmd: \"\"\n  gateCmd: \"\"\n  gateCmdFull: \"\"\n  workflowDoc: \"\"\n  pitfallsDoc: \"" + pitfalls + "\"\n"
 }
 
-// invariant: schema-version-lock
+// invariant: config/migrations-and-locks:schema-version-lock
 func TestSyncStampsSchemaVersion(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(root)
@@ -334,7 +334,7 @@ func chainClosureConfig(scope string) string {
 // Editing audit.allowedScopes reflags exactly the artifacts whose assembled
 // templates reference .commitScopes; non-referencing artifacts stay in sync,
 // and the rendered prose quotes the configured scopes (ADR-0051).
-// invariant: scopes-in-confighash
+// invariant: rendering/project-output-plan:scopes-in-confighash
 func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	root := scaffold(t, chainClosureConfig("awf"))
 	p, err := Open(root)
@@ -387,7 +387,7 @@ func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
 	h0 := configHashOf(t, root, "AGENTS.md")
 	testsupport.WriteAwfConfig(t, root, cfg("\n  - tdd"))
 	h1 := configHashOf(t, root, "AGENTS.md")
-	// invariant: skills-set-in-confighash
+	// invariant: rendering/project-output-plan:skills-set-in-confighash
 	if h1 == h0 {
 		t.Errorf("editing the skills enable array must change a .skills-referencing artifact's ConfigHash (got %s unchanged)", h0)
 	}
@@ -397,7 +397,7 @@ func TestSkillsEditReflagsReferencingArtifact(t *testing.T) {
 // a {{=awf:commitScope*}} placeholder - the config-hash folds scope data via the
 // part-body scan, not the template-source scan - while a non-referencing
 // artifact stays in sync (ADR-0057).
-// invariant: part-scopes-in-confighash
+// invariant: rendering/project-output-plan:part-scopes-in-confighash
 func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	cfg := func(meaning string) string {
 		return "prefix: example\nvars: {}\nskills: []\nagents: []\n" +
@@ -442,7 +442,7 @@ func corruptProjectLock(t *testing.T, root string) {
 	}
 }
 
-// invariant: corrupt-lock-refuses
+// invariant: config/migrations-and-locks:corrupt-lock-refuses
 func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)

@@ -24,7 +24,6 @@ func runConfig(cwd, key string, stdout io.Writer) error {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		// invariant: config-command-static-fallback
 		return printConfigReference(stdout, key, nil, "config reference (static: not inside an awf project; live state appears inside one)")
 	}
 	if err := gate(cwd); err != nil {

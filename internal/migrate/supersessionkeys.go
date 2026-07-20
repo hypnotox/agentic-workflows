@@ -52,12 +52,12 @@ var (
 // untouched lines survive byte-identical and meaning-preservation is checkable
 // by diff. Idempotency rests on the generation gate: appending an item is not
 // naturally idempotent the way stripping a key is.
-// touches-invariant: upgrade-migrates-supersession-keys - the migration itself; proof in supersessionkeys_test.go
+// touches-state: config/migrations-and-locks:upgrade-migrates-supersession-keys - the migration itself; proof in supersessionkeys_test.go
 func applySupersessionKeys(root string, out io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to migrate (idempotent re-run safe)
 	}
-	cfg, err := config.Load(config.RootDir(root))
+	cfg, err := loadForMigration(root)
 	if err != nil {
 		return err
 	}

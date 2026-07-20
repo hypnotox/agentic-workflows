@@ -1,0 +1,111 @@
+The render and refs packages drive the template overlay engine and resolve inter-document references. The claims below capture the current render-engine contracts.
+
+## Claims
+
+### `invariant: authoring-comment-malformed-fails`
+
+Outside a fence, a whole line that opens at the awf:comment directive token boundary but does not close with the comment terminator fails the render with an error naming the source line, and the input is returned unchanged; inside a fence such a line is preserved.
+Origin: ADR-0121
+Backing: test
+
+### `invariant: authoring-comment-whole-line-only`
+
+The authoring-comment strip removes only whole-line awf:comment directives, taking the trailing newline with them; a mid-line occurrence, a fenced whole-line directive, and a prefix-sharing token such as awf:commentary all render verbatim and are never treated as an error.
+Origin: ADR-0121
+Backing: test
+
+### `invariant: dead-reference-gated`
+
+When a managed rendered Markdown file contains an inline link whose relative target does not resolve on disk, the check emits a dead-reference drift and fails. Links to external schemes, bare anchors, and targets inside fenced code blocks or inline code spans are ignored, and resolving targets pass silently.
+Origin: ADR-0020
+Backing: test
+
+### `invariant: in-place-pointer-distinct`
+
+An in-place-editable section renders an awf:edit-in-place pointer in the target's comment syntax (a hash line comment for a shebang target, an HTML comment otherwise), textually distinct from the awf:edit pointer, and neither the pointer nor the read-back leaves any awf:section or awf:end marker residue in the output.
+Origin: ADR-0100
+Backing: test
+
+### `invariant: include-in-templatehash`
+
+A template's TemplateHash is computed over its include-expanded source, so a template carrying awf:include directives hashes differently from its raw bytes.
+Origin: ADR-0052
+Backing: test
+
+### `invariant: include-missing-fails`
+
+Expanding an awf:include directive that names a partial with no matching file fails with an unknown-partial error.
+Origin: ADR-0052
+Backing: test
+
+### `invariant: include-no-nested`
+
+An awf:include directive whose included partial itself contains an awf:include directive fails with a nested-include error.
+Origin: ADR-0052
+Backing: test
+
+### `invariant: include-no-sections`
+
+An included partial that contains an awf:section marker fails expansion with a section-marker error.
+Origin: ADR-0052
+Backing: test
+
+### `invariant: include-splice`
+
+An awf:include directive is replaced in place by the referenced partial's body, splicing that body into the surrounding text.
+Origin: ADR-0052
+Backing: test
+
+### `invariant: no-residual-section-marker`
+
+An assembled skeleton that still contains a section-marker-shaped comment token is a hard render error in production code, while a backtick-quoted bare identifier appearing in default prose does not trip the guard.
+Origin: ADR-0070
+Backing: test
+
+### `invariant: no-section-marker-leak`
+
+Rendered output never contains awf:section or awf:end markers; the only awf markers a rendered file may carry are the generated-by banner and awf:edit pointers.
+Origin: ADR-0015
+Backing: test
+
+### `invariant: part-marker-advisory`
+
+A section-override part whose trimmed line begins with a section or end marker comment opener is detected as leftover marker residue and surfaced as an advisory note. Detection is whole-line only: an inline backtick-quoted marker, a bare keyword mention, a stub comment, and unrelated comment openers do not trigger it, and detection never mutates or fails the render.
+Origin: ADR-0083
+Backing: test
+
+### `invariant: parts-raw-except-authoring-comments`
+
+A convention part body is never passed through text/template and appears verbatim in rendered output, apart from the sandboxed placeholder and sectionDefault substitution channels and the removal of whole-line awf:comment lines at ingestion.
+Origin: ADR-0121
+Backing: test
+
+### `invariant: section-default-splice`
+
+When a convention part body carries the section-default split marker, assembly splits the part at that marker and emits the overridden section's default template source between the two verbatim part fragments, so the default is rendered in place while the surrounding part prose is restored verbatim.
+Origin: ADR-0072
+Backing: test
+
+### `invariant: section-default-stub-error`
+
+A section-default re-injection reference inside a part that overrides a section whose default is a stub authoring prompt is a hard render error, never a silent splice of the prompt text.
+Origin: ADR-0072
+Backing: test
+
+### `invariant: section-edit-pointer`
+
+Every rendered, non-dropped section is immediately preceded by an awf:edit pointer naming the winning source and its conventional part path; a dropped section emits nothing.
+Origin: ADR-0015
+Backing: test
+
+### `invariant: sidecar-optional`
+
+An enabled target with no matching sidecar file renders successfully from its template defaults, emitting no <no value> token for any absent data field.
+Origin: ADR-0009
+Backing: test
+
+### `invariant: stub-part-verbatim`
+
+A stub-marked convention part renders byte-for-byte verbatim with its marker included; stub detection never mutates part bodies.
+Origin: ADR-0070
+Backing: test

@@ -17,6 +17,12 @@ func IndexTree(repoRoot string) (*Tree, error) {
 	if err != nil {
 		return nil, fmt.Errorf("snapshot index: %w", err)
 	}
+	return treeFromBlobs(blobs)
+}
+
+// treeFromBlobs converts git regular-file blobs into an immutable Tree,
+// mapping the executable bit onto the Tree's Mode.
+func treeFromBlobs(blobs []git.IndexBlob) (*Tree, error) {
 	files := make([]File, len(blobs))
 	for i, b := range blobs {
 		mode := Regular

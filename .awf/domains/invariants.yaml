@@ -1,2 +1,4 @@
 paths:
+  - internal/currentstate/**
   - internal/invariants/**
+  - internal/topic/**

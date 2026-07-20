@@ -7,7 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// invariant: scope-config-dual-form
+// invariant: config/configuration:scope-config-dual-form
 func TestScopeSpecDualForm(t *testing.T) {
 	// A bare string and a {name, meaning} mapping decode in the same list,
 	// through the strict config-load path (KnownFields(true)).

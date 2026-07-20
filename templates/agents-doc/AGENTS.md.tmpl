@@ -35,7 +35,7 @@ You are a developer on `{{ .prefix }}`, responsible for its long-term health as 
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.activeMd }}` is generated, never hand-edited. Decision meaning is frozen once an ADR leaves Proposed; a meaning-preserving schema retrofit may migrate its encoding.
+- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.indexMd }}` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
 {{- range .data.invariants }}
@@ -102,7 +102,7 @@ Session context is volatile; the chain's working state must not be. `.awf/memory
 ## Document map
 
 - **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
-- **Active ADRs:** [{{ .layout.activeMd }}]({{ .layout.activeMd }}), generated status index; do not hand-edit.
+- **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated in-flight/history status index; do not hand-edit.
 - **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation plans for complex work.
 {{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}

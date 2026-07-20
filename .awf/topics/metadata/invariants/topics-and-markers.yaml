@@ -1,0 +1,4 @@
+title: Topics and markers
+summary: How topic inputs, claims, and their relevance and proof markers are parsed and resolved.
+paths:
+  - internal/topic/**

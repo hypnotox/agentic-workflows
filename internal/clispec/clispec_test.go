@@ -96,7 +96,7 @@ func TestGatedCommandNames(t *testing.T) {
 
 func TestNamesAndUsageLine(t *testing.T) {
 	names := Names()
-	// invariant: cli-command-spec-single-source
+	// invariant: tooling/cli:cli-command-spec-single-source
 	if len(names) != len(Commands) || names[0] != "init" {
 		t.Errorf("Names() = %v", names)
 	}

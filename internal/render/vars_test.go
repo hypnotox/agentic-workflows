@@ -90,21 +90,3 @@ func TestReferencesScopes(t *testing.T) {
 		t.Error("a non-action mention must not match")
 	}
 }
-
-func TestReferencesInvariantMarkers(t *testing.T) {
-	if !render.ReferencesInvariantMarkers("x {{ with .invariantMarkers }}y{{ end }} z") {
-		t.Error("expected a .invariantMarkers action to be detected")
-	}
-	if render.ReferencesInvariantMarkers("prose mentioning .invariantMarkers outside an action") {
-		t.Error("a non-action mention must not match")
-	}
-}
-
-func TestReferencesInvariantMarkerPlaceholder(t *testing.T) {
-	if !render.ReferencesInvariantMarkerPlaceholder("a {{=awf:invariantMarkerSentence}} b") {
-		t.Error("expected an {{=awf:invariantMarker*}} placeholder to be detected")
-	}
-	if render.ReferencesInvariantMarkerPlaceholder("{{=awf:commitScopeTable}}") {
-		t.Error("a non-invariant placeholder must not match")
-	}
-}

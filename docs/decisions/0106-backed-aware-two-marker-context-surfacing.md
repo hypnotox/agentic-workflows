@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-13
 tags: [context-tiering, invariant-backing]
-related: [8, 31, 92, 104, 105]
+related: [8, 31, 92, 104, 105, 134]
 domains: [tooling, invariants]
 ---
 # ADR-0106: Backed-Aware Two-Marker Context Surfacing

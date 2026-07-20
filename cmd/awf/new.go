@@ -19,7 +19,7 @@ import (
 // runNew scaffolds a new templated artifact: an ADR, or a project-local skill/agent
 // (ADR-0068). ADR takes a single joined title; skill/agent take a name and a
 // separate quoted description.
-// touches-invariant: adr-new-version-gated - new-command version gate site; proof in gate_test.go
+// touches-state: tooling/cli:adr-new-version-gated - new-command version gate site; proof in gate_test.go
 func runNew(root, kind string, args []string, stdout io.Writer) error {
 	switch kind {
 	case "adr":
@@ -289,7 +289,6 @@ func newLocal(root, kind string, args []string, stdout io.Writer) error {
 // seedScaffoldVars seeds each of the scaffolded template's referenced vars as
 // an empty key when absent from cfgSrc - the creation-time open to-do
 // (ADR-0087 Decision 4). A present key, and a deleted one, are never touched.
-// invariant: new-seeds-scaffold-vars
 func seedScaffoldVars(cfgSrc []byte, refs []string) ([]byte, error) {
 	for _, r := range refs {
 		var err error

@@ -68,7 +68,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 {{ end }}<!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip; the prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.
+7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip with its appended `## Status history` line, and an `Implemented` flip stages the ADR's declared `State changes` (the claim add/update/remove edits under `.awf/topics/parts/`) in the same commit so the staged check sees them as one transaction; the prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.indexMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->

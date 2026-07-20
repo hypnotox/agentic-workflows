@@ -34,7 +34,6 @@ func Sun(loc Location, date time.Time) Day {
 
 // clampLatitude bounds latitude to [-90, 90] so the model never leaves the
 // domain of math.Acos; out-of-range input degrades to the pole (ADR-0001).
-// invariant: almanac-clamped-latitude
 func clampLatitude(lat float64) float64 {
 	return math.Max(-90, math.Min(90, lat))
 }

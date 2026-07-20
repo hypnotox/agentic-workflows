@@ -55,14 +55,12 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).
-		// touches-invariant: skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
+		// touches-state: rendering/project-output-plan:skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
 		proj["skills"] = slices.Sorted(maps.Keys(p.effSkills))
 	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).
-	// invariant: scopes-in-confighash
 	foldScopes := render.ReferencesScopes(assembled)
-	foldInvariants := render.ReferencesInvariantMarkers(assembled)
 	proj["sidecar"] = sc
 	sort.Strings(partPaths)
 	parts := map[string]string{}
@@ -82,27 +80,13 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		if render.ReferencesScopePlaceholder(stripped) {
 			// A convention part using {{=awf:commitScope*}} re-renders when
 			// audit.allowedScopes changes (ADR-0057).
-			// invariant: part-scopes-in-confighash
 			foldScopes = true
-		}
-		if render.ReferencesInvariantMarkerPlaceholder(stripped) {
-			// A convention part using {{=awf:invariantMarker*}} re-renders when
-			// invariants.sources changes (ADR-0064).
-			// invariant: invariant-markers-in-confighash
-			foldInvariants = true
 		}
 		parts[filepath.Base(filepath.Dir(pp))+"/"+filepath.Base(pp)] = manifest.Hash(b)
 	}
 	proj["parts"] = parts
 	if foldScopes {
 		proj["commitScopes"] = audit.Resolve(p.Cfg.Audit).AllowedScopes
-	}
-	if foldInvariants {
-		if p.Cfg.Invariants != nil {
-			proj["invariantMarkers"] = p.Cfg.Invariants.Sources
-		} else {
-			proj["invariantMarkers"] = nil
-		}
 	}
 	enc, err := yaml.Marshal(proj)
 	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here

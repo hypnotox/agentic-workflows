@@ -19,7 +19,7 @@ import (
 // walk recurses the whole tree so a future deeper subpackage cannot escape the
 // check, and the seen-count guard fails the test rather than passing vacuously
 // if the source files are ever renamed or relocated out from under it.
-// invariant: testsupport-zero-internal-deps
+// invariant: tooling/quality-gates:testsupport-zero-internal-deps
 func TestZeroInternalDeps(t *testing.T) {
 	seen := 0
 	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {

@@ -12,6 +12,7 @@
 package migrate
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -46,7 +47,27 @@ var registry = []Migration{
 	{To: 14, Name: "current-state-topic-substrate", Apply: applyCurrentStateTopicSubstrate},
 }
 
-func applyCurrentStateTopicSubstrate(string, io.Writer) error { return nil }
+// applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
+// cutover retires the top-level `invariants` config block. The current-state
+// topic corpus is authored, not migration-generated, so this migration performs
+// no topic synthesis; it only removes the schema field the current strict
+// config.Config no longer accepts, which would otherwise hard-fail the new binary
+// on the migrated tree. Mirroring applyDropAuditBase, the removal is announced so
+// deleting a value an adopter set stays readable from command output. The edit
+// routes through config.RemoveKey so config.yaml serialization stays owned by
+// internal/config (ADR-0026); the key is top-level, so RemoveKey applies.
+func applyCurrentStateTopicSubstrate(root string, w io.Writer) error {
+	return editConfig(root, func(src []byte) ([]byte, error) {
+		out, err := config.RemoveKey(src, "invariants")
+		if err != nil {
+			return nil, err
+		}
+		if !bytes.Equal(out, src) {
+			fmt.Fprintln(w, "current-state-topic-substrate: removed the retired top-level invariants block")
+		}
+		return out, nil
+	})
+}
 
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }
@@ -65,7 +86,6 @@ func Generation(root string) (int, error) {
 	oldTree := filepath.Join(root, ".claude", "awf", "config.yaml")
 	legacy := filepath.Join(root, ".claude", "awf.yaml")
 	if _, err := os.Stat(newTree); err == nil {
-		// invariant: corrupt-lock-refuses
 		l, found, err := manifest.LoadOptional(config.LockPath(root))
 		if err != nil {
 			return 0, err

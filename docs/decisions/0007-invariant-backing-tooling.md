@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-06-25
 tags: [invariant-backing, adr-parsing]
-related: [5, 6, 8]
+related: [5, 6, 8, 134]
 domains: [invariants]
 ---
 # ADR-0007: Invariant-Backing Tooling: `inv:` Tags and the `awf invariants` Checker

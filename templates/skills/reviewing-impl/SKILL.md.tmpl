@@ -35,7 +35,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 {{ end }}
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
-   - The affected context (paste the output of `awf context $(git diff --name-only ${baseSha}..${headSha})`) so the doc-currency and convention lenses know the owning domains, backed invariants, and related ADRs without re-deriving them.
+   - The affected context (paste the output of `awf context $(git diff --name-only ${baseSha}..${headSha})`) so the doc-currency and convention lenses know the owning domains, the applicable current-state claims (rules and invariants), and any Accepted pending changes without re-deriving them.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
@@ -55,7 +55,8 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:section run-audit -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run
    `awf audit ${baseSha}..${headSha}` (or this project's runner alias for it) over the session
-   range. `Error` findings block
+   range. The audit evaluates each parent-to-commit snapshot pair, so it also reports any ADR
+   whose claim `State changes` did not transition legally across the range. `Error` findings block
    this review from concluding: resolve them or escalate them as user-decision items before
    closing; `Warning` findings are advisory. Surface both in the digest. The audit itself never
    gates commits; it does not replace the gate or the drift check.

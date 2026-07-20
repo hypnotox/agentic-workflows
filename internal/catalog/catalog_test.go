@@ -10,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// invariant: catalog-go-single-source
+// invariant: rendering/catalog-and-targets:catalog-go-single-source
 func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 	if _, err := fs.Stat(templates.FS, "catalog.yaml"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("catalog.yaml must not be embedded; got stat err = %v", err)
@@ -23,7 +23,7 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 
 // Catalog default data must be generic: no default names an awf-repo path or
 // command (ADR-0045). Walks every spec's Data recursively down to the strings.
-// invariant: catalog-defaults-generic-denylist
+// invariant: rendering/catalog-and-targets:catalog-defaults-generic-denylist
 func TestCatalogDefaultDataIsGeneric(t *testing.T) {
 	cat := Standard
 	denylist := []string{"./x", "hypnotox/agentic-workflows"}
@@ -81,7 +81,7 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 // Every reviewing skill is a thin dispatcher around one reviewer agent; the
 // catalog must pair them so the ADR-0050 validation can enforce it - the
 // prefix anchor keeps a future reviewing skill from reopening the blind spot.
-// invariant: reviewing-skill-specs-paired
+// invariant: rendering/catalog-and-targets:reviewing-skill-specs-paired
 func TestReviewingSkillSpecsArePaired(t *testing.T) {
 	cat := Standard
 	for name, spec := range cat.Skills {
@@ -132,7 +132,7 @@ func TestRequiresSkillsDeclarationsValid(t *testing.T) {
 	}
 }
 
-// invariant: no-single-marker-init-descriptor
+// invariant: rendering/catalog-and-targets:no-single-marker-init-descriptor
 //
 // The catalog exposes no invariants-marker/globs var descriptor; the marker
 // reaches config only through invariants.sources (ADR-0064).

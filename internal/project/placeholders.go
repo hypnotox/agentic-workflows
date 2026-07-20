@@ -45,8 +45,6 @@ func (p *Project) placeholderRegistry() (map[string]string, error) {
 	put("commitScopeList", p.commitScopesDisplay())
 	put("commitScopeTable", p.commitScopeTable())
 	put("commitScopeSentence", p.commitScopeSentence())
-	put("invariantMarkerSentence", p.invariantMarkerSentence())
-	put("invariantMarkerTable", p.invariantMarkerTable())
 	put("gatedCommands", gatedCommandsDisplay())
 	put("prefix", p.Cfg.Prefix)
 	put("sectionDefault", render.SectionDefaultSentinel)
@@ -60,7 +58,6 @@ func (p *Project) placeholderRegistry() (map[string]string, error) {
 		if awfResidualRE.MatchString(v) {
 			// A registry value must never itself carry the token, else the
 			// residual guard would fire on awf-produced text (ADR-0058).
-			// invariant: placeholder-value-token-free
 			return nil, fmt.Errorf("registry value for key %q contains a {{=awf token", k)
 		}
 	}
@@ -92,39 +89,10 @@ func (p *Project) commitScopeSentence() string {
 	return "The allowed commit scopes are " + list + "."
 }
 
-// invariantMarkerSentence renders a self-contained sentence stating the invariant
-// backing-comment markers by file type, or "" when no sources are configured
-// (ADR-0064, the commitScopeSentence analog).
-func (p *Project) invariantMarkerSentence() string {
-	m := p.invariantMarkersDisplay()
-	if m == "" {
-		return ""
-	}
-	return "Its marker follows the file's type: " + m + "; the marker comment must open its line (indentation aside)."
-}
-
-// invariantMarkerTable renders the glob→marker mapping as a markdown table, or ""
-// when no sources are configured (ADR-0064, the commitScopeTable analog).
-func (p *Project) invariantMarkerTable() string {
-	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
-		return ""
-	}
-	var b strings.Builder
-	b.WriteString("| files | marker |\n|---|---|\n")
-	for _, s := range p.Cfg.Invariants.Sources {
-		globs := make([]string, len(s.Globs))
-		for j, g := range s.Globs {
-			globs[j] = "`" + g + "`"
-		}
-		b.WriteString("| " + strings.Join(globs, ", ") + " | `" + s.Marker + "` |\n")
-	}
-	return strings.TrimRight(b.String(), "\n")
-}
-
 // substitutePlaceholders replaces every {{=awf:key}} in a raw convention-part
 // body with its registry value. An unknown or empty-valued key, or any residual
 // {{=awf token surviving substitution, is a hard error (ADR-0057).
-// touches-invariant: part-placeholder-sandboxed - placeholder substitution + residual guard; proof in placeholders_test.go
+// touches-state: rendering/project-output-plan:part-placeholder-sandboxed - placeholder substitution + residual guard; proof in placeholders_test.go
 func (p *Project) substitutePlaceholders(partName, body string, reg map[string]string) (string, error) {
 	if !strings.Contains(body, "{{=") {
 		return body, nil

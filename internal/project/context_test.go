@@ -1,613 +1,453 @@
 package project
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-// ctxYAML configures three domains: alpha and beta both own cmd/** (a path can
-// be owned by two domains), gamma declares no paths (unreachable by path query).
-const ctxYAML = `prefix: example
-vars:
-  gateCmd: make gate
+// ctxConfig configures two domains (alpha owns internal/foo/**, core owns
+// nothing so it can carry a global topic) and a marker source over internal/**.
+const ctxConfig = `prefix: example
 skills:
   - tdd
 agents:
   - code-reviewer
 domains:
   - alpha
-  - beta
-  - gamma
-invariants:
+  - core
+currentState:
   sources:
-    - globs:
-        - '**/*.go'
-      marker: '//'
+    - globs: ["internal/**"]
+      marker: "//"
+  testGlobs: ["internal/**/*_test.go"]
 `
 
-func ctxProject(t *testing.T, configYAML string) (string, *Project) {
-	t.Helper()
-	root := scaffoldFiles(t, configYAML, map[string]string{
-		"domains/alpha.yaml": "paths:\n  - cmd/**\n",
-		"domains/beta.yaml":  "paths:\n  - cmd/**\n  - lib/**\n",
-		"domains/gamma.yaml": "paths: []\n",
-	})
-	// Markers under cmd/: two whose slug an Implemented ADR declares (Tier 1, one
-	// ADR declaring both → the dedup skip on the 2nd), and one orphan slug no
-	// Implemented ADR declares (the Tier-1 !ok skip).
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"),
-		"package x\n// invariant: gov-slug\n// invariant: gov-slug2\n// invariant: gov-slug3\n// invariant: orphan-slug\n")
-	// 0001 Implemented, declares BOTH present gov slugs; tag `precise` plus `alpha`
-	// (now in the precise set - no domain-name filtering); related: [3, 5] → Tier 1.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
-			testsupport.WithTags("precise", "alpha"), testsupport.WithRelated(3, 5),
-			testsupport.WithTitle("0001: Alpha decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` - a.\n- `invariant: gov-slug2` - b.\n## Consequences\nc\n")))
-	// 0002 Proposed, tag `other`, domain beta (owns cmd) → Tier 3 background only.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
-		testsupport.ADR("Proposed", testsupport.WithDate("2026-06-25"), testsupport.WithTags("other"),
-			testsupport.WithTitle("0002: Unrelated"), testsupport.WithDomains("beta"),
-			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// 0003 Accepted, tag `precise` → Tier 2 (shared precise tag; also related-linked).
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0003-c.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
-			testsupport.WithTitle("0003: Later decision"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// 0004 Superseded, tag `precise` → excluded from Tier 2 despite the shared tag;
-	// domain alpha owns cmd → Tier 3 background.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0004-d.md"),
-		testsupport.ADR("Superseded by ADR-0001", testsupport.WithDate("2026-06-25"), testsupport.WithTags("precise"),
-			testsupport.WithTitle("0004: Retired"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// 0005 Accepted, tag `nomatch` (no shared tag) but related-linked from 0001 →
-	// Tier 2 via the related: graph, exercising the relatedNum branch alone.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0005-e.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("nomatch"),
-			testsupport.WithTitle("0005: Related only"), testsupport.WithDomains("other"),
-			testsupport.WithBody("## Invariants\n- textual only.\n## Consequences\nc\n")))
-	// 0006 Implemented, declares the third present gov slug; tag `alpha` (a second
-	// Tier-1 ADR, so the Governing sort comparator runs). `alpha` is inert for Tier 2
-	// here because no non-Tier-1 ADR shares it.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0006-f.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("alpha"),
-			testsupport.WithTitle("0006: Second governor"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug3` - c.\n## Consequences\nc\n")))
-	// Plans: link Tier-1/2 ADRs (0001, 0003) → surfaced, sorted by filename; the
-	// plan linking the Tier-3 ADR 0002 and the frontmatter-less legacy plan do not.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
-		"---\ndate: 2026-07-12\nadrs: [1]\nstatus: Proposed\n---\n# Plan: Linked\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-also-linked.md"),
-		"---\ndate: 2026-07-12\nadrs: [3]\nstatus: Implemented\n---\n# Plan: Also Linked\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-unlinked.md"),
-		"---\ndate: 2026-07-12\nadrs: [2]\nstatus: Proposed\n---\n# Plan: Unlinked\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-06-24-legacy.md"),
-		"# Plan: Legacy\n\nNo frontmatter.\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
+// ctxFiles is the standard current-state fixture: alpha owns internal/foo/** and
+// owns the scoped topic alpha/one (a rule and an unbacked invariant); core owns
+// the global topic core/g. A state marker on internal/foo/x.go targets one claim.
+func ctxFiles() map[string]string {
+	return map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
+		".awf/domains/core.yaml":                       "paths: []\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
+		".awf/topics/metadata/core/g.yaml":             "title: Global\nsummary: Global rules.\napplies: global\n",
+		".awf/topics/parts/core/g/current-state.md":    "Intro.\n\n## Claims\n\n### `rule: everywhere`\nApplies everywhere.\nOrigin: ADR-0001\n",
+		"internal/foo/x.go":                            "package foo\n// state: alpha/one:order\n",
+		"internal/foo/y.go":                            "package foo\n",
 	}
-	return root, p
 }
 
-// TestContextForAssembles exercises the three-tier assembly: Tier 1 (an ADR
-// declaring a present invariant slug, deduped when it declares two, an orphan
-// present slug skipped), Tier 2 (shared precise tag and related-linked, with a
-// Superseded ADR dropped; the precise set is the plain union of Tier-1 tags - no
-// domain-name filtering, since the tag-not-domain-name gate forbids a tag naming
-// a domain), and the Tier-3 collapsed background count.
-// invariant: context-tier2-precise-tag
-// invariant: context-tier3-collapsed
+// claimIDs joins a topic context's claim IDs for compact assertions.
+func claimIDs(tc TopicContext) string {
+	var ids []string
+	for _, c := range tc.Claims {
+		ids = append(ids, c.ID)
+	}
+	return strings.Join(ids, ",")
+}
+
+func topicByID(res ContextResult, id string) (TopicContext, bool) {
+	for _, t := range res.Topics {
+		if t.ID == id {
+			return t, true
+		}
+	}
+	return TopicContext{}, false
+}
+
+// TestContextForAssembles proves the topic-centric assembly over the working
+// universe: owning domains, the applicable scoped and global topics with their
+// current claims, and no false unowned/pending.
 func TestContextForAssembles(t *testing.T) {
-	_, p := ctxProject(t, ctxYAML)
-
-	res, err := p.ContextFor([]string{"cmd/x.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if names := domainNames(res); names != "alpha,beta" {
-		t.Errorf("domains: got %q want %q", names, "alpha,beta")
-	}
-	if res.Domains[0].CurrentState != "docs/domains/alpha.md" {
-		t.Errorf("current-state pointer: got %q", res.Domains[0].CurrentState)
-	}
-	// Tier 1: 0001 (declares gov-slug + gov-slug2, deduped) and 0006 (gov-slug3),
-	// sorted; the orphan slug maps to no ADR.
-	if len(res.Governing) != 2 || res.Governing[0].Number != "0001" || res.Governing[1].Number != "0006" {
-		t.Fatalf("governing: got %+v, want [0001 0006]", res.Governing)
-	}
-	if res.Governing[0].Title != "Alpha decision" { // "ADR-0001: " prefix stripped
-		t.Errorf("governing title: got %q", res.Governing[0].Title)
-	}
-	// Tier 2: 0003 (shared precise tag) + 0005 (related-linked, no shared tag),
-	// sorted; 0004 (Superseded) and 0002 (no precise tag, not related) excluded.
-	if len(res.Related) != 2 || res.Related[0].Number != "0003" || res.Related[1].Number != "0005" {
-		t.Fatalf("related: got %+v, want [0003 0005]", res.Related)
-	}
-	// Tier 3: 0002 (beta owns cmd) + 0004 (alpha owns cmd), collapsed to a count.
-	if res.Background != 2 {
-		t.Errorf("background: got %d want 2 (0002, 0004)", res.Background)
-	}
-	if len(res.Unowned) != 0 {
-		t.Errorf("unowned: got %v want none", res.Unowned)
-	}
-}
-
-// TestContextForAnnotatesSupersededAnchors covers the ADR-0120 item 10
-// context annotation: a surfaced ADR with overridden anchors carries the
-// bracketed suffix (successors grouped), while an ADR without overrides
-// renders unchanged.
-// invariant: context-annotates-superseded-anchors
-func TestContextForAnnotatesSupersededAnchors(t *testing.T) {
-	root := scaffoldFiles(t, ctxYAML, map[string]string{
-		"domains/alpha.yaml": "paths:\n  - cmd/**\n",
-		"domains/beta.yaml":  "paths: []\n",
-		"domains/gamma.yaml": "paths: []\n",
-	})
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: gov-slug\n")
-	// 0001: Tier-1 governor with three Decision items, items 1 and 3 overridden
-	// by 0002's tokens (one successor, grouped in the suffix).
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-07-16"),
-			testsupport.WithTags("precise"), testsupport.WithRelated(2),
-			testsupport.WithTitle("0001: Governor"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Decision\n\n1. a.\n2. b.\n3. c.\n\n## Invariants\n- `invariant: gov-slug` - a.\n")))
-	// 0002: Tier-2 via related:, carries the tokens, itself override-free.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0002-b.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-16"), testsupport.WithTags("nomatch"),
-			testsupport.WithTitle("0002: Successor"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Decision\n\n1. Overrides `supersedes: ADR-0001#1` and `supersedes: ADR-0001#3`.\n")))
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := p.ContextFor([]string{"cmd/x.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Governing) != 1 || res.Governing[0].Title != "Governor [item 1, item 3 superseded by ADR-0002]" {
-		t.Fatalf("governing: got %+v, want the annotated Governor entry", res.Governing)
-	}
-	if len(res.Related) != 1 || res.Related[0].Title != "Successor" {
-		t.Fatalf("related: got %+v, want the unannotated Successor entry", res.Related)
-	}
-}
-
-// invariant: context-surfaces-tiered-plans
-func TestContextForSurfacesTieredPlans(t *testing.T) {
-	_, p := ctxProject(t, ctxYAML)
-
-	res, err := p.ContextFor([]string{"cmd/x.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	// The two plans linking a Tier-1/Tier-2 ADR (0001 Governing, 0003 Related)
-	// appear, sorted by filename; the plan linking the Tier-3 ADR 0002 and the
-	// frontmatter-less legacy plan do not.
-	if len(res.Plans) != 2 {
-		t.Fatalf("plans: got %+v, want the two tier-1/2-linked plans", res.Plans)
-	}
-	if res.Plans[0].Filename != "2026-07-12-also-linked.md" || res.Plans[1].Filename != "2026-07-12-linked.md" {
-		t.Errorf("plans not sorted by filename: got %+v", res.Plans)
-	}
-	pl := res.Plans[1]
-	if pl.Path != "docs/plans/2026-07-12-linked.md" {
-		t.Errorf("plan path: got %q", pl.Path)
-	}
-	if pl.Status != "Proposed" || len(pl.ADRs) != 1 || pl.ADRs[0] != 1 {
-		t.Errorf("plan ref fields: got %+v", pl)
-	}
-}
-
-// A duplicate inv slug across two Implemented ADRs makes DeclaringADRs error,
-// which ContextFor propagates (the Tier-1 join is the shared one-to-one map).
-func TestContextForDuplicateSlugError(t *testing.T) {
-	root, p := ctxProject(t, ctxYAML)
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0007-dup.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-			testsupport.WithTitle("0007: Dup"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: gov-slug` - clash.\n## Consequences\nc\n")))
-	if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
-		t.Fatal("expected a duplicate inv slug error from DeclaringADRs")
-	}
-}
-
-// context.go's plan.ParseDir error propagates rather than silently dropping plans.
-func TestContextForPropagatesPlanParseError(t *testing.T) {
-	root, p := ctxProject(t, ctxYAML)
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-07-12-linked.md"),
-		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
-		t.Fatal("expected ContextFor to propagate the plan parse error, got nil")
-	}
-}
-
-func TestContextForUnownedAndDedup(t *testing.T) {
-	_, p := ctxProject(t, ctxYAML)
-
-	// Unclean + duplicate paths collapse; an unowned path lands in Unowned.
-	res, err := p.ContextFor([]string{"./cmd/", "cmd", ".", "README.md"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Join(res.Paths, ",") != "README.md,cmd" {
-		t.Errorf("paths: got %v want [README.md cmd]", res.Paths)
-	}
-	if strings.Join(res.Unowned, ",") != "README.md" {
-		t.Errorf("unowned: got %v want [README.md]", res.Unowned)
-	}
-	if domainNames(res) != "alpha,beta" {
-		t.Errorf("domains: got %q", domainNames(res))
-	}
-}
-
-// TestContextForLabelsAndNotes exercises ADR-0106: each governing invariant
-// surfaced under a queried production path is labelled backed/unbacked from its
-// declaring ADR's class; an unbacked invariant surfaces its Verify: guidance and
-// a touches marker its site note; and a proof marker in a test file under the
-// queried production directory surfaces via the union scan.
-func TestContextForLabelsAndNotes(t *testing.T) {
-	const yaml = "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [foo]\n" +
-		"invariants:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n"
-	root := scaffoldFiles(t, yaml, map[string]string{"domains/foo.yaml": "paths:\n  - internal/foo/**\n"})
-	// Production file: an unbacked slug's touches note and a slug marked by both a
-	// proof and a touches marker.
-	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x.go"), "package x\n"+
-		"// touches-invariant: unbacked-slug - the reasoned site.\n"+
-		"// invariant: dual-slug\n"+
-		"// touches-invariant: dual-slug - dual note.\n")
-	// Test file under the same production directory: a proof marker only. The union
-	// scan surfaces it when the production directory is queried (ADR-0106).
-	testsupport.WriteFile(t, filepath.Join(root, "internal", "foo", "x_test.go"), "package x\n// invariant: backed-slug\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-			testsupport.WithTitle("0001: Labels"), testsupport.WithDomains("foo"),
-			testsupport.WithBody("## Invariants\n"+
-				"- `invariant: backed-slug` - b.\n"+
-				"- `invariant: dual-slug` - d.\n"+
-				"- `unbacked-invariant: unbacked-slug` - a reasoned contract. **Verify:** inspect by hand.\n"+
-				"## Consequences\nc\n")))
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
+	p := csRepo(t, ctxConfig, ctxFiles())
 	res, err := p.ContextFor([]string{"internal/foo"})
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("ContextFor: %v", err)
 	}
-	byslug := map[string]InvariantRef{}
-	var order []string
-	for _, iv := range res.Invariants {
-		byslug[iv.Slug] = iv
-		order = append(order, iv.Slug)
+	if len(res.Domains) != 1 || res.Domains[0].Name != "alpha" || res.Domains[0].CurrentState != "docs/domains/alpha.md" {
+		t.Fatalf("domains = %#v; want just alpha with its current-state pointer", res.Domains)
 	}
-	if strings.Join(order, ",") != "backed-slug,dual-slug,unbacked-slug" {
-		t.Fatalf("invariants (slug-sorted): got %v", order)
+	if len(res.Topics) != 2 || res.Topics[0].ID != "alpha/one" || res.Topics[1].ID != "core/g" {
+		t.Fatalf("topics = %#v; want [alpha/one core/g] sorted", res.Topics)
 	}
-	// backed-slug: surfaced via a proof marker in a test file (union scan), backed.
-	// invariant: context-invariant-backed-labeled
-	if b := byslug["backed-slug"]; b.Class != "backed" || b.Verify != "" || len(b.Touches) != 0 {
-		t.Errorf("backed-slug: %+v", b)
+	// A directory query has no exact-path state marker, so the whole topic applies.
+	if got := claimIDs(res.Topics[0]); got != "alpha/one:order,alpha/one:stable" {
+		t.Errorf("alpha/one claims = %q; want both", got)
 	}
-	// dual-slug: proof + touches, backed, carries the touches note.
-	if d := byslug["dual-slug"]; d.Class != "backed" || len(d.Touches) != 1 || !strings.Contains(d.Touches[0], "dual note") {
-		t.Errorf("dual-slug: %+v", d)
+	if !res.Topics[1].Global || claimIDs(res.Topics[1]) != "core/g:everywhere" {
+		t.Errorf("core/g = %#v; want the global everywhere claim", res.Topics[1])
 	}
-	// unbacked-slug: touches-only, labelled unbacked, surfaces Verify + touches note.
-	u := byslug["unbacked-slug"]
-	if u.Class != "unbacked" || u.Verify != "inspect by hand." {
-		t.Errorf("unbacked-slug label: %+v", u)
-	}
-	// invariant: context-surfaces-marker-notes
-	if len(u.Touches) != 1 || !strings.Contains(u.Touches[0], "reasoned site") {
-		t.Errorf("unbacked-slug touches: %+v", u.Touches)
-	}
-	// All three are declared by 0001 → a single deduped Governing entry.
-	if len(res.Governing) != 1 || res.Governing[0].Number != "0001" {
-		t.Errorf("governing: %+v", res.Governing)
+	if len(res.Unowned) != 0 || len(res.Pending) != 0 {
+		t.Errorf("unowned=%v pending=%v; want neither", res.Unowned, res.Pending)
 	}
 }
 
-func TestContextForInvariantsDisabled(t *testing.T) {
-	const disabledYAML = `prefix: example
-vars:
-  gateCmd: make gate
+// TestContextForStateMarkerNarrows proves a state marker under the exact queried
+// path narrows its already-applicable topic to the marked claim, while a topic
+// with no marker at that path keeps its whole claim set.
+func TestContextForStateMarkerNarrows(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	res, err := p.ContextFor([]string{"internal/foo/x.go"})
+	if err != nil {
+		t.Fatalf("ContextFor: %v", err)
+	}
+	one, ok := topicByID(res, "alpha/one")
+	if !ok || claimIDs(one) != "alpha/one:order" {
+		t.Fatalf("alpha/one = %#v; want narrowed to the marked order claim", one)
+	}
+	g, ok := topicByID(res, "core/g")
+	if !ok || claimIDs(g) != "core/g:everywhere" {
+		t.Fatalf("core/g = %#v; want the whole global topic (no marker narrows it)", g)
+	}
+}
+
+// TestContextForUnownedWithGlobal proves an unowned queried path lands in Unowned
+// yet still receives the always-applicable global topic.
+func TestContextForUnownedWithGlobal(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	res, err := p.ContextFor([]string{"README.md"})
+	if err != nil {
+		t.Fatalf("ContextFor: %v", err)
+	}
+	if len(res.Domains) != 0 || strings.Join(res.Unowned, ",") != "README.md" {
+		t.Fatalf("domains=%#v unowned=%v; want no domain and README.md unowned", res.Domains, res.Unowned)
+	}
+	if len(res.Topics) != 1 || res.Topics[0].ID != "core/g" {
+		t.Fatalf("topics = %#v; want only the global core/g", res.Topics)
+	}
+}
+
+// acceptedV1 builds a valid Accepted current-state-v1 ADR whose Status history
+// records the content digest of its five canonical sections, computed from the
+// Proposed scaffold that shares those sections byte-for-byte.
+func acceptedV1(t *testing.T, num, title, date, stateChanges string) string {
+	t.Helper()
+	doc := func(status, history string) string {
+		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: " + date + "\n---\n" +
+			"# ADR-" + num + ": " + title + "\n\n" +
+			"## Context\n\nBackground prose.\n\n" +
+			"## Decision\n\n1. The decision.\n\n" +
+			"## State changes\n\n" + stateChanges + "\n\n" +
+			"## Consequences\n\nConsequence prose.\n\n" +
+			"## Alternatives Considered\n\nNone considered.\n\n" +
+			"## Status history\n\n" + history + "\n"
+	}
+	scaffold, err := adr.ParseV1(num+"-x.md", []byte(doc("Proposed", "- "+date+": Proposed")))
+	if err != nil {
+		t.Fatalf("scaffold parse: %v", err)
+	}
+	digest := adr.ContentDigest(scaffold.Sections)
+	return doc("Accepted", "- "+date+": Proposed\n- "+date+": Accepted; content-sha256: "+digest)
+}
+
+// TestContextForPending proves an Accepted-ADR State-changes operation targeting
+// a matched topic surfaces in the pending section, not among current claims.
+func TestContextForPending(t *testing.T) {
+	files := ctxFiles()
+	files["docs/decisions/0002-later.md"] = acceptedV1(t, "0002", "Later", "2026-07-20",
+		"- add `alpha/one:pending-rule`")
+	p := csRepo(t, ctxConfig, files)
+	// A cutoff of 2 routes ADR-0001 legacy and ADR-0002 as current-state-v1.
+	writeCutoffLock(t, p, 2)
+
+	res, err := p.ContextFor([]string{"internal/foo"})
+	if err != nil {
+		t.Fatalf("ContextFor: %v", err)
+	}
+	if len(res.Pending) != 1 {
+		t.Fatalf("pending = %#v; want the one Accepted operation", res.Pending)
+	}
+	pc := res.Pending[0]
+	if pc.ADR != "0002" || pc.Op != "add" || pc.Claim != "alpha/one:pending-rule" || pc.Title != "Later" {
+		t.Errorf("pending change = %#v", pc)
+	}
+}
+
+// TestPendingChangesSort exercises the ADR-number-then-claim ordering: two
+// Accepted ADRs (different numbers) and two operations under one ADR (a claim
+// tie-break), with a Proposed ADR and an unmatched-topic operation both excluded.
+func TestPendingChangesSort(t *testing.T) {
+	adrs := []adr.ADR{
+		{Number: "0003", Title: "ADR-0003: Third", Status: "Accepted", Operations: []adr.Operation{
+			{Verb: adr.OpAdd, ID: "alpha/one:zeta"},
+			{Verb: adr.OpAdd, ID: "alpha/one:alpha"},
+			{Verb: adr.OpAdd, ID: "beta/two:unmatched"},
+		}},
+		{Number: "0002", Title: "ADR-0002: Second", Status: "Accepted", Operations: []adr.Operation{
+			{Verb: adr.OpUpdate, ID: "alpha/one:mid"},
+		}},
+		{Number: "0009", Title: "ADR-0009: Proposed", Status: "Proposed", Operations: []adr.Operation{
+			{Verb: adr.OpAdd, ID: "alpha/one:skipme"},
+		}},
+	}
+	out := pendingChanges(adrs, map[string]bool{"alpha/one": true})
+	got := make([]string, len(out))
+	for i, pc := range out {
+		got[i] = pc.ADR + ":" + pc.Claim
+	}
+	want := "0002:alpha/one:mid,0003:alpha/one:alpha,0003:alpha/one:zeta"
+	if strings.Join(got, ",") != want {
+		t.Errorf("pendingChanges order = %v, want %s", got, want)
+	}
+}
+
+// TestAttestationCutoffPermanentLockFields covers the post-cutover path where the
+// permanent lock fields (not a bridge attestation) carry the cutoff and gaps.
+func TestAttestationCutoffPermanentLockFields(t *testing.T) {
+	if c, g := attestationCutoff(nil); c != 0 || g != nil {
+		t.Errorf("nil lock = %d, %v; want 0, nil", c, g)
+	}
+	lock := &manifest.Lock{ADRFormatV1From: 5, LegacyADRGaps: []int{2, 3}}
+	c, g := attestationCutoff(lock)
+	if c != 5 || len(g) != 2 || g[0] != 2 || g[1] != 3 {
+		t.Errorf("permanent-field cutoff = %d, gaps = %v; want 5, [2 3]", c, g)
+	}
+}
+
+// TestNormalizeContextPaths covers the drop rules: "." and paths cleaning to ".",
+// duplicates, and slash normalization into a sorted set.
+func TestNormalizeContextPaths(t *testing.T) {
+	got := NormalizeContextPaths([]string{".", "./", "b/../b", "a", "a", "c"})
+	if strings.Join(got, ",") != "a,b,c" {
+		t.Errorf("NormalizeContextPaths = %v, want [a b c]", got)
+	}
+}
+
+// writeCutoffLock writes a lock whose sealed attestation sets the format-v1 cutoff.
+func writeCutoffLock(t *testing.T, p *Project, cutoff int) {
+	t.Helper()
+	lock := &manifest.Lock{
+		AWFVersion: "0.18.0", SchemaVersion: 14,
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: cutoff},
+	}
+	b, err := lock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, lockFile(p.Root), string(b))
+}
+
+// TestStagedContextFor proves the staged query reads the index universe: files
+// staged (but never committed) are the ones assembled.
+func TestStagedContextFor(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	staged := map[string]string{
+		".awf/config.yaml":                             ctxConfig,
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
+		".awf/domains/core.yaml":                       "paths: []\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n",
+		"docs/decisions/0001-first.md": testsupport.ADR("Implemented",
+			testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First"),
+			testsupport.WithBody("## Context\nx\n## Consequences\nc\n")),
+		"internal/foo/x.go": "package foo\n",
+	}
+	gitfixture.Stage(t, repo, dir, staged)
+	p, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := p.StagedContextFor([]string{"internal/foo/x.go"})
+	if err != nil {
+		t.Fatalf("StagedContextFor: %v", err)
+	}
+	one, ok := topicByID(res, "alpha/one")
+	if !ok || claimIDs(one) != "alpha/one:order" {
+		t.Fatalf("staged topics = %#v; want alpha/one from the index", res.Topics)
+	}
+}
+
+// TestStagedContextForNoConfig covers the missing-staged-config branch: a repo
+// whose index carries no .awf/config.yaml.
+func TestStagedContextForNoConfig(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	// csRepo commits only README.md; the .awf tree stays untracked, so the index
+	// holds no staged config.
+	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected a no-staged-config error")
+	}
+}
+
+// TestStagedContextForOutsideRepo covers the index-tree failure outside a repo.
+func TestStagedContextForOutsideRepo(t *testing.T) {
+	root := scaffoldFiles(t, ctxConfig, map[string]string{".awf/domains/core.yaml": "paths: []\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected an index-tree error outside a git repository")
+	}
+}
+
+// TestStagedContextForCorruptLock covers the on-disk lock read failure in the
+// index loader, which still consults the working-tree lock for the cutoff.
+func TestStagedContextForCorruptLock(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/config.yaml":        ctxConfig,
+		".awf/domains/alpha.yaml": "paths:\n  - internal/foo/**\n",
+		".awf/domains/core.yaml":  "paths: []\n",
+	})
+	p, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
+	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected a lock parse error")
+	}
+}
+
+// TestStagedContextForCorpusError propagates a corpus load failure from a
+// malformed staged ADR through the index loader.
+func TestStagedContextForCorpusError(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/config.yaml":             ctxConfig,
+		".awf/domains/core.yaml":       "paths: []\n",
+		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
+	})
+	p, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected a corpus load error from the staged tree")
+	}
+}
+
+// TestContextForOutsideRepo covers the working-Tree open failure outside a repo.
+func TestContextForOutsideRepo(t *testing.T) {
+	root := scaffoldFiles(t, ctxConfig, map[string]string{".awf/domains/core.yaml": "paths: []\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.ContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected a working-tree error outside a git repository")
+	}
+}
+
+// TestContextForLoadError propagates a corpus load failure from a malformed ADR.
+func TestContextForLoadError(t *testing.T) {
+	p := csRepo(t, ctxConfig, map[string]string{
+		".awf/domains/core.yaml":       "paths: []\n",
+		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
+	})
+	if _, err := p.ContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected a corpus load error")
+	}
+}
+
+// TestContextForCorruptLock covers the lock-read failure in the working loader.
+func TestContextForCorruptLock(t *testing.T) {
+	p := csRepo(t, ctxConfig, map[string]string{".awf/domains/core.yaml": "paths: []\n"})
+	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
+	if _, err := p.ContextFor([]string{"internal/foo"}); err == nil {
+		t.Fatal("expected a lock parse error")
+	}
+}
+
+// uncoveredConfig makes alpha own internal/** while the topic covers only
+// internal/foo/**, so internal/bar.go is owned-but-uncovered.
+const uncoveredConfig = `prefix: example
 skills:
   - tdd
 agents:
   - code-reviewer
 domains:
   - alpha
-  - beta
-  - gamma
-invariants:
-  disabled: true
-`
-	_, p := ctxProject(t, disabledYAML)
-	res, err := p.ContextFor([]string{"cmd/x.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(res.Invariants) != 0 {
-		t.Errorf("disabled invariants: got %v want none", res.Invariants)
-	}
-}
-
-const ctxPitfallsYAML = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [alpha, beta]\n" +
-	"invariants:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n"
-
-// ctxPitfallsProject scaffolds a tree where alpha owns cmd/**, beta owns lib/**,
-// a marker + Implemented ADR under cmd/ produce the precise tag `ptag`, and the
-// pitfalls sidecar carries the given data.
-func ctxPitfallsProject(t *testing.T, sidecar string) (string, *Project) {
-	t.Helper()
-	root := scaffoldFiles(t, ctxPitfallsYAML, map[string]string{
-		"domains/alpha.yaml": "paths:\n  - cmd/**\n",
-		"domains/beta.yaml":  "paths:\n  - lib/**\n",
-		"docs/pitfalls.yaml": sidecar,
-	})
-	testsupport.WriteFile(t, filepath.Join(root, "cmd", "x.go"), "package x\n// invariant: p-slug\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-a.md"),
-		testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("ptag"),
-			testsupport.WithTitle("0001: P"), testsupport.WithDomains("alpha"),
-			testsupport.WithBody("## Invariants\n- `invariant: p-slug` - x.\n## Consequences\nc\n")))
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return root, p
-}
-
-// A pitfall sharing the query's precise tag (ptag) surfaces (sorted by title); a
-// pitfall with only a non-matching tag, and an untagged pitfall, do not.
-// invariant: context-surfaces-tiered-pitfalls
-func TestContextForSurfacesTieredPitfalls(t *testing.T) {
-	_, p := ctxPitfallsProject(t, "data:\n  pitfalls:\n"+
-		"    - title: Bravo\n      tags: [ptag]\n      body: b\n"+
-		"    - title: Alfa\n      tags: [ptag]\n      body: b\n"+
-		"    - title: NoMatch\n      tags: [zzz]\n      body: b\n"+
-		"    - title: Untagged\n      body: b\n")
-	res, err := p.ContextFor([]string{"cmd/x.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	var got []string
-	for _, pf := range res.Pitfalls {
-		got = append(got, pf.Title)
-	}
-	if strings.Join(got, ",") != "Alfa,Bravo" {
-		t.Fatalf("pitfalls: got %v want [Alfa Bravo] sorted (NoMatch + Untagged excluded)", got)
-	}
-	if res.Pitfalls[0].Path != "docs/pitfalls.md" || strings.Join(res.Pitfalls[0].Tags, ",") != "ptag" {
-		t.Errorf("pitfall ref fields wrong: %+v", res.Pitfalls[0])
-	}
-}
-
-// A disabled pitfalls doc surfaces no pitfalls.
-func TestContextForPitfallsDisabled(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [alpha]\n",
-		map[string]string{"domains/alpha.yaml": "paths:\n  - cmd/**\n"})
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := p.ContextFor([]string{"cmd/x.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Pitfalls != nil {
-		t.Errorf("disabled pitfalls must surface none, got %v", res.Pitfalls)
-	}
-}
-
-// Both pitfalls reader faults propagate: a structural error (valid YAML, bad
-// shape) and a post-Open sidecar parse error (the sidecar re-reads on each call).
-func TestContextForPitfallsFaults(t *testing.T) {
-	t.Run("structural error", func(t *testing.T) {
-		_, p := ctxPitfallsProject(t, "data:\n  pitfalls: not-a-list\n")
-		if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
-			t.Error("expected a pitfalls structural error")
-		}
-	})
-	t.Run("sidecar parse error", func(t *testing.T) {
-		root, p := ctxPitfallsProject(t, "data:\n  pitfalls: []\n")
-		testsupport.WriteFile(t, filepath.Join(root, ".awf", "docs", "pitfalls.yaml"), "data:\n  pitfalls: [\n")
-		if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
-			t.Error("expected a pitfalls sidecar parse error")
-		}
-	})
-}
-
-// Each reader's fault propagates out of ContextFor. Faults are induced after
-// Open (config.Sidecar and adr.ParseDir re-read from disk on each call).
-func TestContextForReaderFaults(t *testing.T) {
-	t.Run("sidecar parse error", func(t *testing.T) {
-		root, p := ctxProject(t, ctxYAML)
-		testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "alpha.yaml"), "paths: [\n")
-		if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
-			t.Error("expected a domain-sidecar parse error")
-		}
-	})
-	t.Run("ADR parse error", func(t *testing.T) {
-		root, p := ctxProject(t, ctxYAML)
-		testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0009-bad.md"), "---\nstatus: \"unterminated\n---\n# ADR-X: T\n")
-		if _, err := p.ContextFor([]string{"cmd/x.go"}); err == nil {
-			t.Error("expected an ADR parse error")
-		}
-	})
-	t.Run("marker scan error", func(t *testing.T) {
-		root, p := ctxProject(t, ctxYAML)
-		if err := os.Symlink(filepath.Join(root, "missing"), filepath.Join(root, "cmd", "bad.go")); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := p.ContextFor([]string{"cmd"}); err == nil {
-			t.Error("expected a marker-scan read error")
-		}
-	})
-}
-
-func domainNames(res ContextResult) string {
-	var n []string
-	for _, d := range res.Domains {
-		n = append(n, d.Name)
-	}
-	return strings.Join(n, ",")
-}
-
-// uncoveredBase is ctxYAML without a domains block, so each Uncovered case injects
-// its own domain ownership.
-const uncoveredBase = `prefix: example
-vars:
-  gateCmd: make gate
-skills:
-  - tdd
-agents:
-  - code-reviewer
-invariants:
-  sources:
-    - globs:
-        - '**/*.go'
-      marker: '//'
+contextIgnore:
+  - .awf/**
+currentState:
+  topicCoverage: error
+  topicFanout: off
 `
 
+func uncoveredFiles() map[string]string {
+	return map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\n",
+		"internal/foo/x.go":                            "package foo\n",
+		"internal/bar.go":                              "package internalx\n",
+		"docs/thing.md":                                "doc\n",
+	}
+}
+
+// TestUncovered proves the report lists domain-owned paths with no scoped topic
+// and, separately, the eligible paths owned by no domain (collapsed).
+// invariant: invariants/current-state-authority:uncovered-lists-unowned-unignored
+// invariant: tooling/cli:uncovered-collapses-directories
 func TestUncovered(t *testing.T) {
-	type dom struct{ name, glob string }
-	build := func(t *testing.T, doms ...dom) *Project {
-		t.Helper()
-		var cfg strings.Builder
-		cfg.WriteString(uncoveredBase)
-		side := map[string]string{}
-		if len(doms) > 0 {
-			cfg.WriteString("domains:\n")
-			for _, d := range doms {
-				cfg.WriteString("  - " + d.name + "\n")
-				side["domains/"+d.name+".yaml"] = "paths:\n  - " + d.glob + "\n"
-			}
-		}
-		root := scaffoldFiles(t, cfg.String(), side)
-		p, err := Open(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return p
+	p := csRepo(t, uncoveredConfig, uncoveredFiles())
+	res, err := p.Uncovered(nil)
+	if err != nil {
+		t.Fatalf("Uncovered: %v", err)
 	}
-	join := func(e []string) string { return strings.Join(e, ",") }
-
-	t.Run("collapse fully-uncovered subtree", func(t *testing.T) {
-		p := build(t, dom{"render", "internal/render/**"})
-		res, err := p.Uncovered([]string{"internal/render/r.go", "internal/plan/p.go", "internal/plan/q.go"}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// invariant: uncovered-collapses-directories
-		if join(res.Entries) != "internal/plan/" {
-			t.Errorf("got %v want [internal/plan/]", res.Entries)
-		}
-	})
-	t.Run("stray top-level file reported individually", func(t *testing.T) {
-		p := build(t, dom{"runner", "x"})
-		res, err := p.Uncovered([]string{"x", "README.md"}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if join(res.Entries) != "README.md" {
-			t.Errorf("got %v want [README.md]", res.Entries)
-		}
-	})
-	t.Run("mixed dir reports files individually", func(t *testing.T) {
-		p := build(t, dom{"awf", "cmd/awf/main.go"})
-		res, err := p.Uncovered([]string{"cmd/awf/main.go", "cmd/awf/other.go"}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if join(res.Entries) != "cmd/awf/other.go" {
-			t.Errorf("got %v want [cmd/awf/other.go]", res.Entries)
-		}
-	})
-	t.Run("generated output excluded", func(t *testing.T) {
-		p := build(t, dom{"render", "internal/render/**"})
-		res, err := p.Uncovered([]string{"AGENTS.md", "internal/render/r.go", "internal/orphan/o.go"}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		// invariant: uncovered-lists-unowned-unignored
-		// AGENTS.md is a rendered output (in PlannedOutputs), so it is excluded
-		// even though no domain glob or contextIgnore covers it; only the genuinely
-		// unowned internal/orphan is reported.
-		if join(res.Entries) != "internal/orphan/" {
-			t.Errorf("got %v want [internal/orphan/] (AGENTS.md is generated)", res.Entries)
-		}
-	})
-	t.Run("contextIgnore glob excluded; absent is inert", func(t *testing.T) {
-		root := scaffoldFiles(t, uncoveredBase+"domains:\n  - render\ncontextIgnore:\n  - vendor/**\n",
-			map[string]string{"domains/render.yaml": "paths:\n  - internal/render/**\n"})
-		p, err := Open(root)
-		if err != nil {
-			t.Fatal(err)
-		}
-		tracked := []string{"vendor/lib.go", "internal/render/r.go", "internal/orphan/o.go"}
-		res, err := p.Uncovered(tracked, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if join(res.Entries) != "internal/orphan/" {
-			t.Errorf("got %v want [internal/orphan/] (vendor/** ignored)", res.Entries)
-		}
-		// Absent contextIgnore is inert: the same tracked set now reports vendor too.
-		res2, err := build(t, dom{"render", "internal/render/**"}).Uncovered(tracked, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if join(res2.Entries) != "internal/orphan/,vendor/" {
-			t.Errorf("absent contextIgnore should report both; got %v", res2.Entries)
-		}
-	})
-	t.Run("zero covered collapses to root", func(t *testing.T) {
-		p := build(t)
-		res, err := p.Uncovered([]string{"a/b.go", "c.go"}, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if join(res.Entries) != "." {
-			t.Errorf("got %v want [.]", res.Entries)
-		}
-	})
-	t.Run("scan-root segment boundary", func(t *testing.T) {
-		p := build(t)
-		res, err := p.Uncovered([]string{"internal/git/g.go", "internal/gitlab/h.go"}, []string{"internal/git"})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if join(res.Entries) != "internal/git/" {
-			t.Errorf("got %v want [internal/git/] (gitlab sibling out of scope)", res.Entries)
-		}
-		if join(res.ScanRoots) != "internal/git" {
-			t.Errorf("scanRoots: got %v want [internal/git]", res.ScanRoots)
-		}
-	})
-	t.Run("sidecar fault", func(t *testing.T) {
-		root, p := ctxProject(t, ctxYAML)
-		testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "alpha.yaml"), "paths: [\n")
-		if _, err := p.Uncovered([]string{"cmd/x.go"}, nil); err == nil {
-			t.Error("expected a domain-sidecar parse error")
-		}
-	})
+	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" || res.Uncovered[0].Domain != "alpha" {
+		t.Fatalf("uncovered = %#v; want internal/bar.go owned by alpha", res.Uncovered)
+	}
+	// docs/ and the committed README.md are owned by no domain; docs collapses.
+	if strings.Join(res.Unowned, ",") != "README.md,docs/" {
+		t.Errorf("unowned = %v; want [README.md docs/]", res.Unowned)
+	}
 }
 
-// Uncovered runs a render pass via PlannedOutputs, so a RenderAll failure (here a
-// corrupt skill sidecar) surfaces as an error rather than a silent partial report.
-func TestUncoveredSurfacesPlannedOutputsError(t *testing.T) {
-	root := scaffold(t, sampleYAML)
+// TestUncoveredCollapsesToRoot covers the root-collapse branch: when a domain
+// owns nothing present, no path seeds the repository root as covered, so a
+// whole-repo scan folds every unowned path up to ".".
+func TestUncoveredCollapsesToRoot(t *testing.T) {
+	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  topicCoverage: error\n  topicFanout: off\n"
+	files := map[string]string{
+		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
+		"top.txt":                 "x\n",
+	}
+	res, err := csRepo(t, cfg, files).Uncovered(nil)
+	if err != nil {
+		t.Fatalf("Uncovered: %v", err)
+	}
+	if strings.Join(res.Unowned, ",") != "." {
+		t.Errorf("unowned = %v; want just \".\"", res.Unowned)
+	}
+}
+
+// TestUncoveredScanRoot restricts the report to a scan root on segment boundaries.
+func TestUncoveredScanRoot(t *testing.T) {
+	p := csRepo(t, uncoveredConfig, uncoveredFiles())
+	res, err := p.Uncovered([]string{"internal"})
+	if err != nil {
+		t.Fatalf("Uncovered: %v", err)
+	}
+	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" {
+		t.Fatalf("uncovered = %#v; want just internal/bar.go", res.Uncovered)
+	}
+	if len(res.Unowned) != 0 {
+		t.Errorf("unowned = %v; want none in scope (docs/ and README.md are out of scope)", res.Unowned)
+	}
+	if strings.Join(res.ScanRoots, ",") != "internal" {
+		t.Errorf("scanRoots = %v", res.ScanRoots)
+	}
+}
+
+// TestUncoveredOutsideRepo covers the working-Tree failure in Uncovered.
+func TestUncoveredOutsideRepo(t *testing.T) {
+	root := scaffoldFiles(t, uncoveredConfig, map[string]string{".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"})
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	corruptSidecar(t, root, "skills/tdd.yaml")
-	if _, err := p.Uncovered([]string{"cmd/x.go"}, nil); err == nil {
-		t.Fatal("expected Uncovered to surface the PlannedOutputs error")
+	if _, err := p.Uncovered(nil); err == nil {
+		t.Fatal("expected a working-tree error outside a git repository")
 	}
 }

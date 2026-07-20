@@ -135,15 +135,12 @@ report enters model-visible content.
 - **Hand-maintained files.** `.goreleaser.yaml` and the workflow files live outside awf's
   render/lock set (like `.golangci.yml` and `./x`), so `awf check` does not track them; edit them
   directly.
-- **Current-state attestation (bridge release).** Attesting a project to current-state authority is
-  not part of cutting an awf release; it is an adopter operation the bridge release ships. The
-  sequence is: obtain and verify the matching current-state binary, reach a clean HEAD with `./x check`,
-  `./x gate`, and `awf upgrade --check` all green, then run `awf upgrade --attest-current-state`. It
-  records the clean HEAD, a post-normalization digest, and the ADR cutoff and gaps in an optional
-  `bridgeAttestation` lock block, journals the normalization/marker/status/terminal-deletion writes at
-  `.awf/current-state-upgrade.journal`, and commits the attested lock last; it runs no project tests
-  or gate. The terminal projection prunes `docs/decisions/ACTIVE.md` and the domain ADR indexes without
-  regenerating them, so the attested project is deliberately index-pruned and refuses every ordinary
-  command until a later current-state release consumes the attestation. If a transaction is interrupted,
+- **Current-state cutover (adopter operation).** Crossing a project to current-state authority is not
+  part of cutting an awf release; it is a one-time adopter operation. The preceding bridge release seals
+  the prepared tree into a `bridgeAttestation` lock block; this release's plain `awf upgrade` then
+  consumes that seal, verifying only the sealed HEAD and post-normalization tree digest, journaling the
+  migration approval-file deletion and permanent lock at `.awf/current-state-upgrade.journal`, and
+  committing the cutover last with the ADR format cutoff and gaps promoted. It runs no project tests or
+  gate, and this binary consumes seals rather than producing them. If a transaction is interrupted,
   `awf upgrade --recover` rolls it back or cleans it up; if the journal is unusable, restore the working
   tree from Git and reinstall the bridge release before retrying.

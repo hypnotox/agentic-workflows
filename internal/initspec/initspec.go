@@ -188,7 +188,6 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 			// seeded empty, never prompted (ADR-0086 Decision 6): a typed
 			// answer for it could only become unused-var drift. Explicit
 			// answers (the ok branch above) stay honored.
-			// invariant: init-prompts-enabled-vars
 			skip := neededVars != nil && d.Target == "" && !neededVars[d.Key]
 			if interactive && !r.eof && !skip {
 				p, err := prompt(r, out, d)

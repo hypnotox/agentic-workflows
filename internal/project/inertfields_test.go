@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-// invariant: inert-sidecar-field-rejected
+// invariant: rendering/project-output-plan:inert-sidecar-field-rejected
 func TestOpenRejectsInertSidecarFields(t *testing.T) {
 	cases := []struct {
 		name    string

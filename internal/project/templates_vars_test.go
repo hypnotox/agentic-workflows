@@ -13,7 +13,7 @@ import (
 // the doc-path or project-specific vars that ADR-0013 migrated onto .layout or
 // deleted outright. Doc paths are awf-given (.layout); these var names must not
 // reappear in any template.
-// invariant: no-doc-path-vars
+// invariant: rendering/templates:no-doc-path-vars
 func TestNoDocPathVarsInTemplates(t *testing.T) {
 	banned := []string{
 		"workflowDoc", "debuggingDoc", "pitfallsDoc", "roadmapDoc", "stateDocsPath",
@@ -47,7 +47,7 @@ func TestNoDocPathVarsInTemplates(t *testing.T) {
 // (ADR-0051): no template references .vars.commitScope and the catalog vars
 // block carries no commitScope descriptor - every rendered scope mention
 // derives from audit.allowedScopes via the commitScopes render-context key.
-// invariant: commit-scope-single-storage
+// invariant: rendering/templates:commit-scope-single-storage
 func TestCommitScopeSingleStorage(t *testing.T) {
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

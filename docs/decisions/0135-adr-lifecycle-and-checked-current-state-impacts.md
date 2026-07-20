@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-19
 tags: [adr-lifecycle, audit-rules, commit-gate, cross-references]
 related: [17, 20, 25, 28, 33, 36, 42, 73, 92, 111, 116, 120, 127, 128, 129, 130, 131, 133, 134]
@@ -42,6 +42,39 @@ The existing four-state lifecycle treats Implemented ADRs as continuing active g
 12. awf will replace `<docsDir>/decisions/ACTIVE.md` with generated `<docsDir>/decisions/INDEX.md`. Its In flight section lists Proposed and Accepted ADRs. Its History section lists Implemented and Abandoned ADRs by number, title, and status only. It renders no supersession chains, anchor annotations, partial-currentness claims, or domain ADR indexes.
 
 13. ADR authoring, lifecycle, review, planning, implementation, audit, and retrospective skills will use the new format and authority language. Every status transition runs sync and commits the generated decision index and any navigation actually changed. Claim/topic mutations occur only in an Implemented transaction and must be absent or reverted for Abandoned. The implementation updates `.awf/config.yaml`; the authored sources for AGENTS.md, the ADR guide and template, workflow guidance, reviewer lenses, domain current state, architecture components and data flow, glossary, pitfalls, config reference, and adopter documentation; plus audit and index naming inputs. `./x sync` prunes ACTIVE.md, creates INDEX.md, and regenerates every runtime copy in the same behavior-changing commits.
+
+This decision drops the Superseded status, the anchor-level supersession model, ADR-to-ADR citation checking, and the generated ACTIVE.md, retiring:
+
+- `supersedes-invariant: ADR-0120#context-annotates-superseded-anchors`
+- `supersedes-invariant: ADR-0120#retires-invariants-key-refused`
+- `supersedes-invariant: ADR-0120#supersession-token-ref-validity`
+- `supersedes-invariant: ADR-0120#token-retirement-dangling-errors`
+- `supersedes-invariant: ADR-0120#token-retirement-implemented-only`
+- `supersedes-invariant: ADR-0128#active-md-annotates-superseded-anchors`
+- `supersedes-invariant: ADR-0128#refines-token-never-covers`
+- `supersedes-invariant: ADR-0128#supersession-backpointer-any-status`
+- `supersedes-invariant: ADR-0128#supersession-contested-anchor-advisory`
+- `supersedes-invariant: ADR-0128#supersession-coverage-derives-status`
+- `supersedes-invariant: ADR-0128#supersession-coverage-implemented-only`
+- `supersedes-invariant: ADR-0128#supersession-keys-refused`
+- `supersedes-invariant: ADR-0129#active-md-chains-one-to-many`
+- `supersedes-invariant: ADR-0129#domain-index-surfaces-partial`
+- `supersedes-invariant: ADR-0129#supersession-graph-acyclic`
+- `supersedes-invariant: ADR-0129#supersession-model-anchor-nodes`
+- `supersedes-invariant: ADR-0129#supersession-model-derives-state`
+- `supersedes-invariant: ADR-0131#citation-check-decision-scoped`
+- `supersedes-invariant: ADR-0131#citation-check-exempts-code-spans`
+- `supersedes-invariant: ADR-0131#citation-check-exempts-proposed-target`
+- `supersedes-invariant: ADR-0131#citation-check-exempts-self-citation`
+- `supersedes-invariant: ADR-0131#citation-check-exempts-unslugged-bullet`
+- `supersedes-invariant: ADR-0131#citation-check-item-shapes`
+- `supersedes-invariant: ADR-0131#citation-check-slug-claims-per-carrier`
+- `supersedes-invariant: ADR-0131#citation-check-slug-spellings`
+- `supersedes-invariant: ADR-0131#citation-check-verb-forms`
+- `supersedes-invariant: ADR-0131#cites-token-suppresses-citation-check`
+- `supersedes-invariant: ADR-0131#cites-token-uncounted`
+- `supersedes-invariant: ADR-0131#cites-token-unrendered`
+- `supersedes-invariant: ADR-0131#render-active-md-grouped-or-placeholder`
 
 ## Invariants
 

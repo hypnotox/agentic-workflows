@@ -5,7 +5,7 @@ import (
 )
 
 // deadSkillRefs renders the project and runs the dead-skill-reference scan
-// over the rendered set (ACTIVE.md/domain docs are irrelevant to these fixtures).
+// over the rendered set (INDEX.md/domain docs are irrelevant to these fixtures).
 func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []string {
 	t.Helper()
 	p, err := Open(scaffoldFiles(t, configYAML, files))
@@ -28,7 +28,7 @@ func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []s
 
 // A managed rendered artifact referencing a known skill outside the effective
 // set fails check; enabling the skill clears it.
-// invariant: skill-ref-dead-fails
+// invariant: rendering/project-output-plan:skill-ref-dead-fails
 func TestDeadSkillReferenceFlagged(t *testing.T) {
 	part := map[string]string{
 		"parts/agents-doc/workflow.md": "Use `example-tdd` for test-first work.\n",
@@ -44,7 +44,7 @@ func TestDeadSkillReferenceFlagged(t *testing.T) {
 
 // Prefix-adjacent tokens that name no known skill, and references inside
 // fenced code blocks, produce no findings.
-// invariant: skill-ref-unknown-ignored
+// invariant: rendering/project-output-plan:skill-ref-unknown-ignored
 func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 	got := deadSkillRefs(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", map[string]string{
 		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nexample-tdd\n```\n",
@@ -96,7 +96,7 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 // semantics: enabled means rendered - the ADR-0013 doc-gate suppression is
 // gone), local-declared skills included. Dropping the doc post-Open no longer
 // changes membership; the invalid state is refused at Open instead.
-// invariant: skills-context-effective-set
+// invariant: rendering/project-output-plan:skills-context-effective-set
 func TestEffectiveSkillsMembership(t *testing.T) {
 	p, err := Open(scaffoldFiles(t,
 		"prefix: example\nvars: {}\nskills: [tdd, roadmap-graduation, brainstorming]\ndocs: [roadmap]\nagents: []\n",

@@ -19,7 +19,7 @@ var validTargets = []string{"", "var", "catalog-skills", "catalog-docs", "audit-
 // names a var absent from every template. Non-var descriptors (catalog trim,
 // audit scopes) are exempt. The referenced set is re-derived from the templates
 // here, independently of any production helper.
-// invariant: var-descriptor-parity
+// invariant: rendering/catalog-and-targets:var-descriptor-parity
 func TestVarDescriptorParity(t *testing.T) {
 	cat := catalog.Standard
 
@@ -91,7 +91,7 @@ var functionalVarKeys = []string{
 // bites: the release adding a catalog var must ship a one-time schema-migration
 // seed (`<key>: ""` where absent), or absent-key acknowledgement silently
 // swallows the new var's advisory for every existing adopter.
-// invariant: var-descriptor-set-pinned
+// invariant: rendering/catalog-and-targets:var-descriptor-set-pinned
 func TestVarDescriptorSetPinned(t *testing.T) {
 	var got, multiselects []string
 	for _, d := range catalog.Standard.Vars {

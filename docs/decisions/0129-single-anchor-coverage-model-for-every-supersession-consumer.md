@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-18
 tags: [adr-parsing, adr-lifecycle, active-md, domain-index, context-tiering]
-related: [14, 92, 104, 116, 120, 128, 130, 131]
+related: [14, 92, 104, 116, 120, 128, 130, 131, 135]
 domains: [adr-system, rendering]
 ---
 # ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer

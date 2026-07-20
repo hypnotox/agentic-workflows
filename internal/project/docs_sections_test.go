@@ -15,7 +15,7 @@ import (
 // TestDocsSectionParity asserts that for every catalog doc the declared section
 // set equals the template's marker-block set, and that each doc renders from
 // template defaults with no leaked <no value> token.
-// invariant: docs-section-parity
+// invariant: rendering/templates:docs-section-parity
 func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
@@ -57,7 +57,7 @@ func TestDocsSectionParity(t *testing.T) {
 // in the target's catalog-declared set is reported as drift, while a part at a
 // genuinely declared section is not. The valid section is read from the live
 // catalog so the test stays correct as the taxonomy evolves.
-// invariant: section-orphan-flagged
+// invariant: rendering/project-output-plan:section-orphan-flagged
 func TestSectionOrphanDetection(t *testing.T) {
 	cat := catalog.Standard
 	valid := cat.Docs["architecture"].Sections[0]
@@ -104,7 +104,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 // excluded from both TestDocsSectionParity (Mandatory skip) and
 // TestAdrSingletonSectionParity (plainSingletons excludes it), so without this
 // test a guide section could half-land with a broken override path (ADR-0069).
-// invariant: agents-doc-section-parity
+// invariant: rendering/templates:agents-doc-section-parity
 func TestAgentsDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	entry := cat.Docs["agents-doc"]
@@ -123,7 +123,7 @@ func TestAgentsDocSectionParity(t *testing.T) {
 	}
 }
 
-// invariant: adr-singleton-section-parity
+// invariant: rendering/catalog-and-targets:adr-singleton-section-parity
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	lay := testLayout()

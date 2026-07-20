@@ -14,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/invariants"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -25,7 +24,7 @@ import (
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.18.0"
+const Version = "0.19.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -120,7 +119,6 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	p.beginInvocation()
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
-	// invariant: corrupt-lock-refuses
 	old, _, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, nil, nil, err
@@ -166,7 +164,7 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
-				// touches-invariant: sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
+				// touches-state: rendering/project-output-plan:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
 				bak, err := p.BackupFile(f.Path)
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
 					return nil, nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)
@@ -208,7 +206,6 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	// every directory left empty - walking all ancestors deepest-first, not just the
 	// immediate parent, so dropping a target clears its whole tree (inv:
 	// target-prune-ancestors; reuses Uninstall's idiom).
-	// invariant: target-prune-ancestors
 	var pruned []string
 	if old != nil {
 		dirs := map[string]bool{}
@@ -283,18 +280,6 @@ func (p *Project) lockPath() string {
 	return config.LockPath(p.Root)
 }
 
-// CheckInvariants reports Implemented-ADR invariant backing findings (per the
-// ADR-0105 two-marker model and the project's configured invariant sources)
-// under the project root, alongside the non-failing advisory notes.
-func (p *Project) CheckInvariants() ([]invariants.Finding, []invariants.Note, error) {
-	p.beginInvocation()
-	c, err := p.Corpus()
-	if err != nil {
-		return nil, nil, err
-	}
-	return invariants.Check(c, p.Root, p.Cfg.Invariants)
-}
-
 // beginInvocation drops any per-invocation cached state, so the operation that
 // follows observes the decisions directory as it is on disk now. Every public
 // operation that reads ADRs calls it before its first Corpus use.
@@ -354,7 +339,7 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 			domainPaths[d] = sc.Paths
 		}
 	}
-	return audit.Run(p.Root, base, head, audit.Inputs{
+	findings, commits, err := audit.Run(p.Root, base, head, audit.Inputs{
 		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,
@@ -366,6 +351,18 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 		DomainsIndexDir:   lay.DomainsDir,
 		DomainPaths:       domainPaths,
 	})
+	if err != nil {
+		return nil, 0, err
+	}
+	// The snapshot-diff transition check rides the same range (ADR-0135): each
+	// commit's ADR/claim mutations must match its ADR operations. It is advisory
+	// like the rest of the audit and reuses the cutoff the lock already supplied.
+	cutoff, gaps := attestationCutoff(lock)
+	trans, err := p.auditTransitions(base, head, cutoff, gaps)
+	if err != nil { // coverage-ignore: audit.Run above validated this exact range through its own Collect, so auditTransitions' only error source (a re-Collect of base..head) cannot newly fail here
+		return nil, 0, err
+	}
+	return append(findings, trans...), commits, nil
 }
 
 // NewADR scaffolds a new ADR file under the project's decisions dir: the next

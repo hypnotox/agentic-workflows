@@ -31,13 +31,16 @@ func readDomainDoc(t *testing.T, root, name string) string {
 	return string(b)
 }
 
-func TestDomainDocRendersIndexAndNarrative(t *testing.T) {
+// TestDomainDocRendersNarrativeWithoutADRIndex locks the topic-only domain doc
+// (ADR-0135 item 8): the current-state narrative renders, but no per-domain ADR
+// index is generated - a domain doc points at topics, not decisions.
+func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
 		"domains/parts/rendering/current-state.md": "## Current state\n\nThe render engine is stable.\n",
 	})
+	// ADRs no longer feed a per-domain index; their domains: frontmatter has no
+	// effect on the domain doc.
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	writeADR(t, root, "0002-layout.md", testsupport.ADR("Accepted", testsupport.WithDomains("rendering"), testsupport.WithTitle("0002: Layout")))
-	writeADR(t, root, "0003-config.md", testsupport.ADR("Accepted", testsupport.WithDomains("config"), testsupport.WithTitle("0003: Config")))
 
 	p, err := Open(root)
 	if err != nil {
@@ -53,23 +56,17 @@ func TestDomainDocRendersIndexAndNarrative(t *testing.T) {
 	if !strings.Contains(out, "The render engine is stable.") {
 		t.Errorf("expected the current-state convention part:\n%s", out)
 	}
-	if !strings.Contains(out, "## Decisions") {
-		t.Errorf("expected the forced Decisions heading:\n%s", out)
+	if strings.Contains(out, "## Decisions") {
+		t.Errorf("domain doc must not carry an ADR decisions index:\n%s", out)
 	}
-	for _, want := range []string{"ADR-0001: Engine", "ADR-0002: Layout"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("expected %q in the index:\n%s", want, out)
-		}
-	}
-	if strings.Contains(out, "ADR-0003: Config") {
-		t.Errorf("ADR-0003 (config domain) must not appear in the rendering doc:\n%s", out)
+	if strings.Contains(out, "ADR-0001: Engine") {
+		t.Errorf("domain doc must not list ADRs:\n%s", out)
 	}
 }
 
-// invariant: domain-doc-regenerated
-func TestDomainDocStaleOnAdrRetag(t *testing.T) {
-	root := scaffoldFiles(t, domainCfg, nil)
-	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine"), testsupport.WithBody("## Decision\n\n1. x.\n")))
+// invariant: rendering/project-output-plan:domain-doc-regenerated
+func TestDomainDocStaleOnTopicAdd(t *testing.T) {
+	root := topicProject(t)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
@@ -80,14 +77,15 @@ func TestDomainDocStaleOnAdrRetag(t *testing.T) {
 	if drift, _ := p.Check(); len(drift) != 0 {
 		t.Fatalf("expected clean after sync, got: %#v", drift)
 	}
-	// Retag a NEW ADR into the rendering domain without re-syncing.
-	writeADR(t, root, "0002-new.md", testsupport.ADR("Accepted", testsupport.WithDomains("rendering"), testsupport.WithTitle("0002: New"), testsupport.WithBody("## Decision\n\n1. x.\n")))
+	// Add a NEW topic to the rendering domain without re-syncing: the domain
+	// doc's topic navigation now differs from the on-disk copy.
+	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	drift, err := p.Check()
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
 	if !hasDrift(drift, "docs/domains/rendering.md", "stale") {
-		t.Errorf("expected rendering.md stale after ADR retag, got: %#v", drift)
+		t.Errorf("expected rendering.md stale after topic add, got: %#v", drift)
 	}
 }
 
@@ -128,25 +126,27 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	}
 }
 
-// TestGenerateDomainDocsPropagatesIndexError exercises generateDomainDocs's
-// RenderDomainIndex error arm directly. Through Sync/Check this arm is unreachable
-// (generateActiveMD parses the same decisions dir and fails first, covered by
-// TestSyncFailsOnMalformedADR), so the method is called directly here.
-func TestGenerateDomainDocsPropagatesIndexError(t *testing.T) {
-	root := scaffoldFiles(t, domainCfg, nil)
-	writeADR(t, root, "0001-broken.md", "---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+// TestGenerateDomainDocsPropagatesTopicError exercises generateDomainDocs's
+// topic-corpus error arm directly. Through Sync/Check this arm is unreachable
+// (generateTopicDocs assembles the same corpus and fails first), so the method
+// is called directly here. An orphan topic part (no matching metadata) fails
+// corpus assembly.
+func TestGenerateDomainDocsPropagatesTopicError(t *testing.T) {
+	root := scaffoldFiles(t, domainCfg, map[string]string{
+		"topics/parts/rendering/orphan/current-state.md": "Intro.\n\n## Claims\n",
+	})
 	p, err := Open(root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	if _, err := p.generateDomainDocs(); err == nil {
-		t.Error("expected generateDomainDocs to propagate the RenderDomainIndex parse error")
+		t.Error("expected generateDomainDocs to propagate the topic-corpus assembly error")
 	}
 }
 
 func TestDomainPartOrphan(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
-		// A part for the forced-body index section - deliberately not declared.
+		// A part for an undeclared section (the domain doc has only current-state).
 		"domains/parts/rendering/decisions.md": "shadow\n",
 		// A part for an undeclared section.
 		"domains/parts/rendering/bogus.md": "nope\n",
@@ -172,7 +172,7 @@ func TestDomainPartOrphan(t *testing.T) {
 	}
 }
 
-// invariant: docs-section-parity (domain template)
+// invariant: rendering/templates:docs-section-parity
 func TestDomainDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	src, err := fs.ReadFile(templates.FS, "domains/domain.md.tmpl")
@@ -189,11 +189,11 @@ func TestDomainDocSectionParity(t *testing.T) {
 		t.Errorf("domain template markers %v != catalog domainDoc sections %v", markers, cat.DomainDoc.Sections)
 	}
 	if got := fmt.Sprint(markers); got != "[current-state]" {
-		t.Errorf("expected exactly [current-state] (Decisions is forced body, not a section), got %s", got)
+		t.Errorf("expected exactly [current-state] (Topics is generated body, not a section), got %s", got)
 	}
 }
 
-func TestDomainDocKeepsDecisionsBesideTopicNavigation(t *testing.T) {
+func TestDomainDocRendersTopicNavigation(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	p, _ := Open(root)
@@ -201,7 +201,8 @@ func TestDomainDocKeepsDecisionsBesideTopicNavigation(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := readDomainDoc(t, root, "rendering")
-	if !strings.Contains(out, "[Contracts](../topics/rendering/contracts.md)") || !strings.Contains(out, "## Decisions") {
+	// The domain doc lists topics and carries no ADR decisions index.
+	if !strings.Contains(out, "[Contracts](../topics/rendering/contracts.md)") || strings.Contains(out, "## Decisions") {
 		t.Fatalf("domain doc:\n%s", out)
 	}
 }

@@ -1,0 +1,4 @@
+title: Frontmatter parsing
+summary: How document frontmatter is split and validated.
+paths:
+  - internal/frontmatter/**

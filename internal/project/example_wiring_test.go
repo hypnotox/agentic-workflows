@@ -9,33 +9,28 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
 
-// TestSundialUnattestedBridgeOracle pins the committed sundial fixture as the
-// unattested bridge oracle for the unreleased Plans 1-2 tranche: it sits at
-// schema generation 14 with legacy invariant authority, has performed no
-// current-state cutover (no attestation, journal, migration approval, or topic
-// corpus), yet already ships the rendered bridge check/attest/recover guidance
-// Phase 3 produced. Because there is no journal or attestation, ordinary
-// commands stay unguarded - the fixture models a plain schema-14 adopter, not
-// an attested one. Reading the fixture as data (never executing the binary)
-// keeps this a static contract alongside the other example-wiring assertions.
-func TestSundialUnattestedBridgeOracle(t *testing.T) {
-	// The whole tranche is pinned to schema generation 14; the fixture and every
-	// assertion below track that generation, so guard the anchor explicitly.
+// TestSundialCurrentStateMigrated pins the committed sundial fixture as a
+// current-state adopter after the Plan 4 cutover: it carries a currentState
+// config block (not legacy invariants), an authored topic corpus, sits at schema
+// generation 14, and its committed lock records no bridge attestation. These
+// properties hold identically in the preparation slice and after the final
+// cutover, so the sealed contract stays green across both. Reading the fixture
+// as data (never executing the binary) keeps this a static contract alongside
+// the other example-wiring assertions.
+func TestSundialCurrentStateMigrated(t *testing.T) {
 	if migrate.Current() != 14 {
-		t.Fatalf("migrate.Current() = %d, want 14 for the unreleased Plans 1-2 tranche", migrate.Current())
+		t.Fatalf("migrate.Current() = %d, want 14", migrate.Current())
 	}
-
-	// Lock: schema generation 14, no sealed bridge attestation.
 	lockPath := "../../examples/sundial/.awf/awf.lock"
 	lock, err := manifest.Load(lockPath)
 	if err != nil {
 		t.Fatalf("read sundial lock: %v", err)
 	}
 	if lock.SchemaVersion != migrate.Current() {
-		t.Errorf("sundial lock schemaVersion = %d, want %d (migrate.Current())", lock.SchemaVersion, migrate.Current())
+		t.Errorf("sundial lock schemaVersion = %d, want %d", lock.SchemaVersion, migrate.Current())
 	}
 	if lock.BridgeAttestation != nil {
-		t.Errorf("sundial fixture must stay unattested, but its lock carries a bridgeAttestation")
+		t.Errorf("sundial committed lock must carry no bridge attestation")
 	}
 	rawLock, err := os.ReadFile(lockPath)
 	if err != nil {
@@ -44,57 +39,24 @@ func TestSundialUnattestedBridgeOracle(t *testing.T) {
 	if strings.Contains(string(rawLock), "bridgeAttestation") {
 		t.Errorf("sundial lock must not carry a bridgeAttestation field")
 	}
-
-	// No attestation/journal/topic cutover artifacts exist in the fixture.
-	for _, absent := range []string{
-		"../../examples/sundial/.awf/current-state-upgrade.journal",
-		"../../examples/sundial/.awf/current-state-migration.yaml",
-		"../../examples/sundial/.awf/topics",
-		"../../examples/sundial/docs/topics",
-	} {
-		if _, err := os.Stat(absent); err == nil {
-			t.Errorf("unattested sundial fixture must not contain %q", absent)
-		}
-	}
-
-	// Legacy authority: the config still carries an invariants block, not a
-	// currentState block.
 	cfg, err := os.ReadFile("../../examples/sundial/.awf/config.yaml")
 	if err != nil {
 		t.Fatalf("read sundial config: %v", err)
 	}
 	cfgStr := string(cfg)
-	if !strings.Contains(cfgStr, "\ninvariants:") {
-		t.Errorf("sundial config must keep its legacy invariants block")
+	if !strings.Contains(cfgStr, "\ncurrentState:") {
+		t.Errorf("sundial config must carry a currentState block after migration")
 	}
-	if strings.Contains(cfgStr, "\ncurrentState:") {
-		t.Errorf("sundial config must not carry a currentState block while unattested")
+	if strings.Contains(cfgStr, "\ninvariants:") {
+		t.Errorf("sundial config must not keep a legacy invariants block after migration")
 	}
-
-	// Rendered bridge guidance from Phase 3 is present in the fixture's outputs.
-	wwa, err := os.ReadFile("../../examples/sundial/docs/working-with-awf.md")
-	if err != nil {
-		t.Fatalf("read sundial working-with-awf: %v", err)
-	}
-	for _, phrase := range []string{
-		"awf upgrade --check",
-		"awf upgrade --attest-current-state",
-		"awf upgrade --recover",
+	for _, present := range []string{
+		"../../examples/sundial/.awf/topics/metadata/almanac/model.yaml",
+		"../../examples/sundial/.awf/topics/parts/almanac/model/current-state.md",
+		"../../examples/sundial/.awf/topics/metadata/cli/interface.yaml",
 	} {
-		if !strings.Contains(string(wwa), phrase) {
-			t.Errorf("sundial working-with-awf.md missing rendered bridge guidance %q", phrase)
-		}
-	}
-	upgrade, err := os.ReadFile("../../examples/sundial/.awf/upgrade.sh")
-	if err != nil {
-		t.Fatalf("read sundial upgrade.sh: %v", err)
-	}
-	for _, phrase := range []string{
-		"awf upgrade --attest-current-state",
-		"awf upgrade --recover",
-	} {
-		if !strings.Contains(string(upgrade), phrase) {
-			t.Errorf("sundial upgrade.sh missing rendered bridge guidance %q", phrase)
+		if _, err := os.Stat(present); err != nil {
+			t.Errorf("migrated sundial fixture must contain %q: %v", present, err)
 		}
 	}
 }
@@ -105,9 +67,9 @@ func TestSundialUnattestedBridgeOracle(t *testing.T) {
 // sweeps never see it; this test pins the wiring so it cannot be silently
 // dropped.
 //
-// invariant: example-adopter-checked
-// invariant: example-zero-notes
-// invariant: example-module-isolated
+// invariant: tooling/quality-gates:example-adopter-checked
+// invariant: tooling/quality-gates:example-zero-notes
+// invariant: tooling/quality-gates:example-module-isolated
 func TestExampleAdopterWiring(t *testing.T) {
 	raw, err := os.ReadFile("../../x")
 	if err != nil {
@@ -135,8 +97,8 @@ func TestExampleAdopterWiring(t *testing.T) {
 // hand-written runner was missing, ADR-0092) and its ported project verbs in the
 // in-place section.
 //
-// invariant: runner-example-adopted
-// invariant: pi-extension-container-gate
+// invariant: rendering/templates:runner-example-adopted
+// invariant: tooling/quality-gates:pi-extension-container-gate
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	raw, err := os.ReadFile("../../x")
 	if err != nil {
@@ -201,7 +163,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 // half stands alone: a missing strip leaves the lane green while `tsc` silently
 // skips the file, so only this static assertion enforces the coupling.
 //
-// invariant: pi-extension-editor-quiet-strip
+// invariant: rendering/templates:pi-extension-editor-quiet-strip
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	for _, name := range []string{"index.ts", "runner.ts"} {
 		content := renderPiExtensionFile(t, name)

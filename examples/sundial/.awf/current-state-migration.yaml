@@ -1,0 +1,4 @@
+version: 1
+invariantApprovals:
+  - key: ADR-0001#almanac-clamped-latitude
+    destination: almanac/model:almanac-clamped-latitude

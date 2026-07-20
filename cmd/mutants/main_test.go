@@ -31,7 +31,7 @@ func TestRunUsage(t *testing.T) {
 // ./x mutants pre-creates the report via mktemp, so a nonexistent path is a
 // caller error (typo, changed script) - it must fail loudly, not read as a
 // clean run. Only a present-but-empty file means "nothing to report".
-// invariant: mutants-missing-report-errors
+// invariant: tooling/cli:mutants-missing-report-errors
 func TestRunMissingFileErrors(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"mutants", filepath.Join(t.TempDir(), "nope.json")}, &out, &errb); code == 0 {
@@ -75,7 +75,7 @@ func TestRunMalformed(t *testing.T) {
 	}
 }
 
-// invariant: mutants-timeout-untrusted
+// invariant: tooling/quality-gates:mutants-timeout-untrusted
 func TestRunTimedOutIsUntrusted(t *testing.T) {
 	// A LIVED survivor is present, but the timeout makes the whole run untrustworthy.
 	const j = `{"files":[{"file_name":"refs.go","mutations":[

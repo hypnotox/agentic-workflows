@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -17,15 +16,14 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix     string            `yaml:"prefix"`
-	Vars       map[string]string `yaml:"vars"`
-	Skills     []string          `yaml:"skills"`
-	Agents     []string          `yaml:"agents"`
-	Docs       []string          `yaml:"docs"`
-	Audit      *SkeletonAudit    `yaml:"audit,omitempty"`
-	Invariants *InvariantConfig  `yaml:"invariants,omitempty"`
-	Bootstrap  *BootstrapConfig  `yaml:"bootstrap,omitempty"`
-	Hooks      *HooksConfig      `yaml:"hooks,omitempty"`
+	Prefix    string            `yaml:"prefix"`
+	Vars      map[string]string `yaml:"vars"`
+	Skills    []string          `yaml:"skills"`
+	Agents    []string          `yaml:"agents"`
+	Docs      []string          `yaml:"docs"`
+	Audit     *SkeletonAudit    `yaml:"audit,omitempty"`
+	Bootstrap *BootstrapConfig  `yaml:"bootstrap,omitempty"`
+	Hooks     *HooksConfig      `yaml:"hooks,omitempty"`
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
@@ -56,7 +54,7 @@ func MarshalSkeleton(s Skeleton) ([]byte, error) {
 // key (ADR-0026). The edited sequence is normalized to block style, so a flow-style
 // input (`key: [a, b]`) is accepted. Adding a member already present is a no-op;
 // removing a member absent from the key (or a key absent on remove) errors.
-// touches-invariant: config-mutation-roundtrip - yaml.Node add/remove round-trip; proof in edit_test.go
+// touches-state: config/configuration:config-mutation-roundtrip - yaml.Node add/remove round-trip; proof in edit_test.go
 func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {
@@ -80,7 +78,7 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 		case idx < 0:
 			return nil, fmt.Errorf("config: no %q entry under %q", name, key)
 		default:
-			// touches-invariant: remove-block-scoped - block-scoped sequence removal; proof in edit_test.go
+			// touches-state: config/configuration:remove-block-scoped - block-scoped sequence removal; proof in edit_test.go
 			val.Content = append(val.Content[:idx], val.Content[idx+1:]...)
 		}
 	default: // bare `key:` (null value)
@@ -113,88 +111,6 @@ func SetArray(src []byte, key string, values []string) ([]byte, error) {
 		root.Content = append(root.Content, strScalar(key), seq)
 	}
 	return encode(doc)
-}
-
-// ConvertInvariantsToCurrentState plans the bridge preparation conversion while
-// retaining the yaml.Node representation of every copied field and all unrelated
-// comments and key order. It never weakens an explicit legacy opt-out.
-func ConvertInvariantsToCurrentState(src []byte) ([]byte, error) {
-	doc, root, err := parseMapping(src)
-	if err != nil {
-		return nil, err
-	}
-	invNode, invValueIndex := mapValue(root, "invariants")
-	currentNode, _ := mapValue(root, "currentState")
-	if invNode == nil {
-		if currentNode != nil {
-			cfg, err := Parse("", src)
-			if err != nil {
-				return nil, err
-			}
-			if err := cfg.Validate(); err != nil {
-				return nil, err
-			}
-			return src, nil
-		}
-		return nil, errors.New("config: enabled invariants configuration is required for conversion")
-	}
-	if invNode.Kind != yaml.MappingNode {
-		return nil, errors.New("config: invariants must be a mapping")
-	}
-	if disabled, _ := mapValue(invNode, "disabled"); disabled != nil && disabled.Value == "true" {
-		return nil, errors.New("config: invariants.disabled: true cannot be converted; author currentState explicitly")
-	}
-	desired := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
-	copyField := func(name string) {
-		if value, _ := mapValue(invNode, name); value != nil {
-			desired.Content = append(desired.Content, strScalar(name), value)
-		}
-	}
-	copyField("sources")
-	copyField("testGlobs")
-	desired.Content = append(desired.Content,
-		strScalar("topicCoverage"), strScalar("error"),
-		strScalar("topicFanout"), strScalar("warn"),
-		strScalar("maxTopicsPerPath"), &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: "8"},
-	)
-	if currentNode != nil {
-		desiredDoc := &yaml.Node{Kind: yaml.DocumentNode, Content: []*yaml.Node{{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{strScalar("currentState"), desired}}}}
-		desiredBytes, err := encode(desiredDoc)
-		if err != nil { // coverage-ignore: the constructed YAML node contains only scalar, sequence, and mapping nodes
-			return nil, err
-		}
-		existingCfg, err := Parse("", src)
-		if err != nil {
-			return nil, err
-		}
-		desiredCfg, err := Parse("", append([]byte("prefix: bridge\ntargets: [claude]\n"), desiredBytes...))
-		if err != nil { // coverage-ignore: desiredBytes was encoded from the typed conversion node above
-			return nil, err
-		}
-		if !reflect.DeepEqual(existingCfg.CurrentState, desiredCfg.CurrentState) {
-			return nil, errors.New("config: authored currentState conflicts with invariants conversion")
-		}
-	} else {
-		keyIndex := invValueIndex - 1
-		key := strScalar("currentState")
-		key.HeadComment, key.LineComment, key.FootComment = root.Content[keyIndex].HeadComment, root.Content[keyIndex].LineComment, root.Content[keyIndex].FootComment
-		root.Content = append(root.Content[:keyIndex], append([]*yaml.Node{key, desired}, root.Content[keyIndex:]...)...)
-		invValueIndex += 2
-	}
-	invKeyIndex := invValueIndex - 1
-	root.Content = append(root.Content[:invKeyIndex], root.Content[invKeyIndex+2:]...)
-	out, err := encode(doc)
-	if err != nil { // coverage-ignore: doc was decoded from valid YAML and changed only with representable yaml.Node values
-		return nil, err
-	}
-	cfg, err := Parse("", out)
-	if err != nil { // coverage-ignore: strict parsing already succeeded above or the output was constructed only from recognized fields
-		return nil, err
-	}
-	if err := cfg.Validate(); err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 // RemoveKey deletes the top-level mapping entry under key from a config.yaml
@@ -370,7 +286,7 @@ func AnchorNoSlashGlobs(src []byte) ([]byte, []GlobRewrite, error) {
 
 // anchorSeq rewrites each non-empty no-slash scalar member of seq to `**/<value>`
 // and reports the rewrites under key.
-// touches-invariant: glob-migration-anchored - no-slash glob anchoring rewrite; proof in edit_test.go
+// touches-state: config/configuration:glob-migration-anchored - no-slash glob anchoring rewrite; proof in edit_test.go
 func anchorSeq(seq *yaml.Node, key string) []GlobRewrite {
 	var rewrites []GlobRewrite
 	for _, n := range seq.Content {
@@ -399,7 +315,7 @@ func parseMapping(src []byte) (*yaml.Node, *yaml.Node, error) {
 // encoder fixed at two-space indentation. Both MarshalSkeleton (construction) and
 // SetArrayMember (mutation) route through it, so the on-disk format has exactly one
 // definition.
-// touches-invariant: config-serialization-owned - single config.yaml serialization funnel; proof in edit_test.go
+// touches-state: config/configuration:config-serialization-owned - single config.yaml serialization funnel; proof in edit_test.go
 func encode(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

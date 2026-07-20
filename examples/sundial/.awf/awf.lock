@@ -804,7 +804,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:a9eab1d48919ef5232e9978f5cda6176ff447d17fe8f60263816909855f79f7d",
+      "outputHash": "sha256:cf486a71faeb55fa9e1858f4b05338220e7ee627c53d3699552942b4326047af",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -817,14 +817,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:b0ad1e66c82894a22ba3ad86b434797f9c20d7ed1d59beec39ad3b95b4ff497a",
+      "outputHash": "sha256:babce081c0db6afe2206ff94a2b278df9066e0410216ab5eb7c9ff156ff31a40",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
       "templateHash": "sha256:3fb88fc00d18751ebe0e9fbf36ca884184aa5b4a0df29d6e0923e1e5ed32f3e1",
-      "configHash": "sha256:da39564a9d0a89588a2358c64bcbcba31c18222e89d8e5817d92f941653dab19",
-      "outputHash": "sha256:902d1559c97c76678dec067b21d589a7efc8897580dac2f5e1dcdc2ba47373c6"
+      "configHash": "sha256:0d7f1ec6f5fe70701cb1935e19c2071ed9f8061a8e57a767aefe13629db9d9bb",
+      "outputHash": "sha256:4915d2c831b0676ae38ffb66258a19766f16b5f9b20de0c540542d358f126fc2"
     },
     "docs/decisions/template.md": {
       "templateId": "adr-template/template.md.tmpl",
@@ -848,14 +848,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:8b983f71300fb1e2a239f967583450638fab40bfb48eb4ab612463f2cd7c9b7f",
+      "outputHash": "sha256:3556348b69f9fb1070fd4b36c86f4fab5e7e433d012a256c3ab43240755939e7",
       "regenChecked": true
     },
     "docs/domains/cli.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:47af09b5107293578a17543e2398456833f9a45efb7f7a1fb5c5a5698510ef27",
+      "outputHash": "sha256:c13c96b9c1bf19c8a3cad6fcaebf48dd3a5bd1e601d4b8cc5094495bb6f32c6b",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -893,6 +893,30 @@
       "templateHash": "sha256:f9e4fd0b01ab248d45e0c51a281fb4181bed9c4af699edc97e00a428899bff03",
       "configHash": "sha256:5322872e0d9c7a226e81998bd0a56260897a0da254035aba6c8984dd8eba8219",
       "outputHash": "sha256:46d1d11888e61191693f597762203c1a511a35f3065cc4d24ed8b6a6360fed08"
+    },
+    "docs/topics/almanac/index.md": {
+      "templateId": "topics/index.md.tmpl",
+      "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
+      "configHash": "sha256:a64eae3085ec952603a9d0b6d03b422bcb4d19930c4f9972a2684d183f9324b2",
+      "outputHash": "sha256:1b235cd56b1467aa7516decdb50358fde1e835b1d9ab68ef08dbd0e9c9a56875"
+    },
+    "docs/topics/almanac/model.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:6fded880cd8fe8c30875693cfac10bdcf4c1c442e156350467927862186a026d",
+      "outputHash": "sha256:55be52dedcfb9635c5cbce1bd50be1b1dfa5925345772140ac0da77cf566b980"
+    },
+    "docs/topics/cli/index.md": {
+      "templateId": "topics/index.md.tmpl",
+      "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
+      "configHash": "sha256:6a05bed37584076566ff03ceae1322b771a3446c20e4edc884cda1d25e8e4e81",
+      "outputHash": "sha256:8b6f65b14d87cd7dc0d5f490eab2503e7653e308ad2fa6f060061d8e6c2e0869"
+    },
+    "docs/topics/cli/interface.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:92ad8223b80aa329666969d63f73f362bf3866c1bb2bdff84a0ded1f584cdeb9",
+      "outputHash": "sha256:e77db43e31cf0b54487ff6ad4291b950f19c913f2ebf74ee164a8a452c95b404"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

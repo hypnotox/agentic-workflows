@@ -1,11 +1,15 @@
 ---
-status: Proposed
+status: Abandoned
 date: 2026-07-09
 tags: [performance]
 related: [1]
 domains: [almanac, cli]
 ---
 # ADR-0003: Cache almanac tables per location
+
+> Abandoned: the speculative cache and `schedule` package seam was never built. Per-invocation
+> recomputation stayed fast enough for every real use, so the caching decision is retired with no
+> current-state effect and no code to unwind.
 
 ## Context
 

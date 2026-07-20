@@ -91,7 +91,7 @@ func writeMonolith(t *testing.T) string {
 }
 
 func TestGateBlocksWhenBehind(t *testing.T) {
-	// invariant: upgrade-gate
+	// invariant: config/migrations-and-locks:upgrade-gate
 	root := writeMonolith(t) // legacy layout → generation 0
 	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(legacy) = %d, want 0", got)
@@ -157,7 +157,7 @@ func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 }
 
 func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
-	// invariant: migration-ordering
+	// invariant: config/migrations-and-locks:migration-ordering
 	root := writeMonolith(t)
 	applied, err := Upgrade(root, io.Discard)
 	if err != nil {
@@ -185,7 +185,7 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 }
 
 func TestNoopGapAutoBumps(t *testing.T) {
-	// invariant: noop-autobump
+	// invariant: config/migrations-and-locks:noop-autobump
 	// A gap covered by no registered migration auto-bumps rather than gating.
 	if got := gateStateFor(2, 5, []int{1, 2}); got != "autobump" {
 		t.Errorf("gateStateFor(2,5,[1,2]) = %q, want autobump", got)
@@ -562,7 +562,7 @@ func TestPortAgentsDocProseWriteError(t *testing.T) {
 }
 
 func TestLegacyReadOnlyInMigrate(t *testing.T) {
-	// invariant: legacy-read-isolation
+	// invariant: config/migrations-and-locks:legacy-read-isolation
 	// (a) readLegacy parses a fixture monolith.
 	root := writeMonolith(t)
 	lc, err := readLegacy(filepath.Join(root, ".claude", "awf.yaml"))
@@ -613,7 +613,7 @@ func TestCurrentIsFourteen(t *testing.T) {
 	}
 }
 
-// invariant: awf-relocation-migration
+// invariant: config/migrations-and-locks:awf-relocation-migration
 func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	root := t.TempDir()
 	old := filepath.Join(root, ".claude", "awf")
@@ -672,7 +672,7 @@ func awfFile(t *testing.T, root, rel, body string) {
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", rel), body)
 }
 
-// invariant: hooks-config-dropped
+// invariant: config/migrations-and-locks:hooks-config-dropped
 func TestDropHooksStrips(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")

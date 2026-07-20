@@ -49,7 +49,6 @@ func glossaryTransform(sc config.Sidecar) (config.Sidecar, error) {
 }
 
 // glossaryEntries validates the authored value into a term→meaning map.
-// invariant: glossary-terms-validated
 func glossaryEntries(raw any) (map[string]string, error) {
 	m, err := glossaryStringMap(raw)
 	if err != nil {
@@ -111,7 +110,6 @@ func glossaryStringMap(raw any) (map[string]any, error) {
 // glossaryRows renders the sorted table rows. Ordering is case-insensitive by
 // term; ties are impossible because case-insensitive duplicates are rejected
 // upstream, so equal entry sets always render byte-identically.
-// invariant: glossary-terms-sorted
 func glossaryRows(entries map[string]string) string {
 	if len(entries) == 0 {
 		return ""

@@ -35,7 +35,7 @@ type Command struct {
 
 // Commands is the ordered command table - the sole source of the command set,
 // `awf help` order, the usage line, and the gated-command list.
-// touches-invariant: cli-command-spec-single-source - sole command-table source; proof in clispec_test.go
+// touches-state: tooling/cli:cli-command-spec-single-source - sole command-table source; proof in clispec_test.go
 var Commands = []Command{
 	{
 		Name: "init", Summary: "Scaffold .awf/ and render the workflow-core set",
@@ -64,10 +64,16 @@ Re-render every enabled target after a template or config change and update .awf
 	},
 	{
 		Name: "check", Summary: "Fail on stale or hand-edited rendered output",
-		MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf check
+		BoolFlags: []string{"--staged"}, MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf check [--staged]
 
-Re-render in memory and fail if any rendered file is stale or hand-edited (drift).
+Re-render in memory and fail if any rendered file is stale or hand-edited (drift),
+then check current-state authority over the working tree.
+
+With --staged, skip the drift check and instead validate the staged transition:
+the HEAD-to-index ADR status changes and claim add/update/remove mutations must
+correspond, and the index is checked for topic coverage. It reads only committed
+and staged content, never the working tree, so a pre-commit hook can invoke it.
 `,
 	},
 	{
@@ -275,31 +281,22 @@ Flags:
 `,
 	},
 	{
-		Name: "upgrade", Summary: "Migrate the .awf/ config tree or attest current-state readiness",
-		BoolFlags: []string{"--check", "--json", "--attest-current-state", "--recover"}, MaxPos: 0, Gating: Ungated,
-		HelpBody: `Usage: awf upgrade [--check [--json] | --attest-current-state | --recover]
+		Name: "upgrade", Summary: "Migrate the .awf/ config tree or consume a current-state attestation",
+		BoolFlags: []string{"--recover"}, MaxPos: 0, Gating: Ungated,
+		HelpBody: `Usage: awf upgrade [--recover]
 
-Migrate the .awf/ config tree to the current schema version. The mode flags are
-mutually exclusive:
+Migrate the .awf/ config tree to the current schema version, then sync.
 
-  --check                report exhaustive current-state migration readiness
-                         without touching the working tree, index, config, lock,
-                         or generated output; --json emits the machine-readable
-                         schema. Read-only; it does not require a clean tree.
-  --attest-current-state require readiness and a clean HEAD, then apply the
-                         normalization, marker, status, and terminal-output
-                         writes through a recoverable journal and seal the lock
-                         last. The project then refuses ordinary commands until
-                         the current-state release consumes the attestation.
+When the lock carries a bridge attestation, plain upgrade instead performs the
+final current-state cutover: it verifies only the sealed facts (the prepared
+HEAD and tree digest), then journals the deletion of the migration approval file
+and the permanent lock, promoting the sealed format cutoff and gaps. Attestation
+and readiness reporting live only in the preceding bridge release; this binary
+consumes seals, it never produces them.
+
   --recover              replay the current-state upgrade journal's recovery
-                         table: roll an interrupted attestation back or clean up
-                         a committed one. The only mode a journal permits.
-
-Flags:
-  --check                 report readiness without writes
-  --json                  emit the stable readiness schema (requires --check)
-  --attest-current-state  seal a clean prepared tree through a journaled transaction
-  --recover               recover from an interrupted or committed attestation
+                         table: roll an interrupted cutover back or clean up a
+                         committed one. The only mode a journal permits.
 `,
 	},
 	{

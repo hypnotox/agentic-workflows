@@ -30,7 +30,7 @@ func readInitConfig(t *testing.T, root string) string {
 
 // TestInitDescribeReadOnly asserts `awf init --describe` prints the descriptor
 // schema as JSON and writes nothing (no .awf/ created).
-// invariant: describe-read-only
+// invariant: tooling/cli:describe-read-only
 func TestInitDescribeReadOnly(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -64,7 +64,7 @@ func TestInitDescribeReadOnly(t *testing.T) {
 }
 
 // TestInitExplicitAnswersWin asserts a --set value lands in the scaffolded config.
-// invariant: explicit-answers-win
+// invariant: tooling/cli:explicit-answers-win
 func TestInitExplicitAnswersWin(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -81,7 +81,7 @@ func TestInitExplicitAnswersWin(t *testing.T) {
 // TestInitNonInteractiveDefault asserts the silent (non-TTY, no-answers) path
 // seeds every var empty and writes no invariants config - byte-identical to the
 // pre-feature seed-empty output.
-// invariant: init-noninteractive-default
+// invariant: tooling/cli:init-noninteractive-default
 func TestInitNonInteractiveDefault(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

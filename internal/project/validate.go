@@ -67,7 +67,6 @@ func (p *Project) validateAgainstCatalog() error {
 	// (ADR-0088): authored data: would be silently overwritten while its key
 	// names look consumed, so it is rejected like the domain paths-only rule.
 	// The Generated entry left plainSingletons, so its sidecar checks live here.
-	// invariant: config-reference-data-rejected
 	cr, err := p.Cfg.Sidecar("config-reference", "")
 	if err != nil {
 		return err
@@ -100,7 +99,6 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		// domain sidecars (ADR-0077), so on any other kind it is configuration
 		// that silently does nothing. Checked before the local: skip - a local
 		// sidecar cannot carry it either.
-		// invariant: inert-sidecar-field-rejected
 		if len(sc.Paths) > 0 {
 			return fmt.Errorf("%s %q: paths: is read only from domain sidecars; remove it from .awf/%s/%s.yaml", d.Singular, name, d.Plural, name)
 		}
@@ -115,8 +113,6 @@ func (p *Project) checkKindAgainstCatalog(d kindDescriptor) error {
 		// by induction. Generalizes the ADR-0050 RequiresAgent pairing (that
 		// edge is now one case of the same loop); a silently-thinner chain is
 		// the failure mode the workflow exists to prevent.
-		// invariant: reviewing-skill-agent-pairing
-		// invariant: enabled-set-closed
 		if d.Plural == "skills" || d.Plural == "agents" {
 			if err := p.checkNodeRequirements(catalog.Node{Kind: d.Singular, Name: name}); err != nil {
 				return err

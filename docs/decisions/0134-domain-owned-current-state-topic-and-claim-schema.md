@@ -1,8 +1,8 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-19
 tags: [anchored-globs, context-query, invariant-backing, sidecar-derived-doc]
-related: [14, 64, 77, 92, 102, 104, 105, 106, 109, 110, 112, 114, 133]
+related: [7, 14, 64, 77, 92, 102, 104, 105, 106, 109, 110, 112, 114, 133]
 domains: [adr-system, invariants, rendering, tooling]
 ---
 # ADR-0134: Domain-Owned Current-State Topic and Claim Schema
@@ -40,6 +40,22 @@ Retrieval also needs a stable address smaller than an ADR. A topic is still too 
 10. `awf topic <domain>/<topic>` and `awf topic <qualified-id>` are version-gated, read-only queries with a static usage reference outside an adopted tree. Default output shows current summary or claim prose and backing state but hides ADR provenance and claim-reference edges. The independently combinable `--history`, `--references`, and `--coverage` flags add direct ADR operation history, direct incoming and outgoing claim references, and topic scope plus marker sites; no flag performs transitive traversal. `--json` changes only presentation to a deterministic structured form. A removed identity resolves only with `--history`; exact former prose remains in Git rather than an active tombstone.
 
 11. `awf context --uncovered` reports unowned paths and, independently for every domain owning a path, missing scoped-topic coverage. A topic from one owner cannot satisfy another owner's gap, and global topics never satisfy scoped coverage. `awf context --uncovered --staged` is valid, and `awf check --staged` invokes the same index-snapshot coverage and transition assembly; the rendered pre-commit hook runs the latter. Multiple scoped topics may legitimately match. `currentState.topicCoverage` and `currentState.topicFanout` independently accept `error`, `warn`, or `off`; coverage defaults to `error`, fan-out defaults to `warn`. `currentState.maxTopicsPerPath` is a positive integer defaulting to 8 and counts path-scoped topics only. Exceeding it produces the configured fan-out finding; identical scopes have no separate meaning.
+
+This decision replaces ADR-derived context tiering and the pre-topic marker model with domain-owned topic claims and the qualified marker model, retiring:
+
+- `supersedes-invariant: ADR-0007#invariants-implemented-only`
+- `supersedes-invariant: ADR-0064#invariant-markers-derived`
+- `supersedes-invariant: ADR-0064#invariant-markers-in-confighash`
+- `supersedes-invariant: ADR-0104#context-surfaces-tiered-pitfalls`
+- `supersedes-invariant: ADR-0104#context-surfaces-tiered-plans`
+- `supersedes-invariant: ADR-0104#context-tier3-collapsed`
+- `supersedes-invariant: ADR-0105#absent-testglobs-source-fallback`
+- `supersedes-invariant: ADR-0105#bare-touches-note`
+- `supersedes-invariant: ADR-0105#dangling-marker-advisory`
+- `supersedes-invariant: ADR-0106#context-invariant-backed-labeled`
+- `supersedes-invariant: ADR-0106#context-surfaces-marker-notes`
+- `supersedes-invariant: ADR-0106#context-tier1-marker-union`
+- `supersedes-invariant: ADR-0109#context-tier2-precise-tag`
 
 ## Invariants
 

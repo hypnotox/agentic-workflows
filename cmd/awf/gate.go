@@ -32,7 +32,7 @@ func normalizeSemver(s string) (string, bool) {
 // pre-upgrade state. The version sub-check is skipped (never errors) on an absent,
 // unparseable, empty, or non-normalizable version, mirroring Generation's no-lock
 // tolerance.
-// touches-invariant: version-compat-gate - binary-vs-config version gate; proof in gate_test.go
+// touches-state: tooling/cli:version-compat-gate - binary-vs-config version gate; proof in gate_test.go
 func gate(root string) error {
 	state, gen, err := migrate.GateState(root)
 	if err != nil {

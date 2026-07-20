@@ -84,16 +84,15 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
-		"prefix":           p.Cfg.Prefix,
-		"vars":             nonNil(p.Cfg.Vars),
-		"data":             nonNil(sc.Data),
-		"layout":           p.layout().templateMap(),
-		"version":          Version,
-		"skills":           p.effSkills,
-		"taskSkills":       p.taskSkillsDisplay(),
-		"commitScopes":     p.commitScopesDisplay(),
-		"invariantMarkers": p.invariantMarkersDisplay(),
-		"gatedCommands":    gatedCommandsDisplay(),
+		"prefix":        p.Cfg.Prefix,
+		"vars":          nonNil(p.Cfg.Vars),
+		"data":          nonNil(sc.Data),
+		"layout":        p.layout().templateMap(),
+		"version":       Version,
+		"skills":        p.effSkills,
+		"taskSkills":    p.taskSkillsDisplay(),
+		"commitScopes":  p.commitScopesDisplay(),
+		"gatedCommands": gatedCommandsDisplay(),
 	}
 }
 
@@ -128,30 +127,11 @@ func (p *Project) commitScopesDisplay() string {
 	return strings.Join(quoted, ", ")
 }
 
-// invariantMarkersDisplay returns the inline glob→marker mapping derived from
-// invariants.sources (e.g. "`*.go` → `//`, `*.py` → `#`"), the invariant-tagging
-// analog of commitScopesDisplay - or "" when no sources are configured (ADR-0064).
-func (p *Project) invariantMarkersDisplay() string {
-	if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
-		return ""
-	}
-	entries := make([]string, len(p.Cfg.Invariants.Sources))
-	for i, s := range p.Cfg.Invariants.Sources {
-		globs := make([]string, len(s.Globs))
-		for j, g := range s.Globs {
-			globs[j] = "`" + g + "`"
-		}
-		entries[i] = strings.Join(globs, ", ") + " → `" + s.Marker + "`"
-	}
-	return strings.Join(entries, ", ")
-}
-
 // effectiveSkills returns the skill names whose files exist on disk under
 // awf's model: exactly the enabled set - closure validation (ADR-0081) makes
 // enabled mean rendered, and local-declared names are hand-maintained but
 // present. The sidecar read stays as the validation choke point Open relies
 // on (amended semantics; formerly enabled minus ADR-0013 doc-gate-suppressed).
-// invariant: skills-context-effective-set
 func (p *Project) effectiveSkills() (map[string]bool, error) {
 	eff := map[string]bool{}
 	for _, name := range p.Cfg.Skills {
@@ -272,8 +252,8 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // framing) are trimmed; the interior, including internal blank lines, is returned
 // verbatim. Returns ("", false) when `name`'s own pointer is absent (first render
 // or a deleted anchor), so the caller falls back to the template default.
-// touches-invariant: in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
-// touches-invariant: in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
+// touches-state: rendering/project-output-plan:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
+// touches-state: rendering/project-output-plan:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
 func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle) (string, bool) {
 	lines := strings.Split(output, "\n")
 	ownPrefixes := render.PointerLinePrefixes(name, style)
@@ -375,7 +355,7 @@ type renderKindSpec struct {
 
 // skillTID resolves a skill's template id: the shared base template for a
 // synthesized local entry, else the name-derived catalog path (ADR-0068).
-// touches-invariant: local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
+// touches-state: rendering/project-output-plan:local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
 func (p *Project) skillTID(n string) string {
 	if p.Cat.Skills[n].Base {
 		return baseSkillTID
@@ -395,7 +375,7 @@ func (p *Project) agentTID(n string) string {
 // doc template for a synthesized local doc (its DocEntry.TID), else the Standard
 // doc's own template. Reading p.Cat (not the package global) is what lets a
 // synthesized local doc render at all (ADR-0091).
-// touches-invariant: local-doc-renders-from-base - docTID resolves a local doc to the base template; proof in local_test.go
+// touches-state: rendering/project-output-plan:local-doc-renders-from-base - docTID resolves a local doc to the base template; proof in local_test.go
 func (p *Project) docTID(n string) string {
 	return p.Cat.Docs[n].TID
 }
@@ -475,7 +455,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	out = append(out, docsRfs...)
 	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
-	// touches-invariant: multi-target-render - skills/agents render once per enabled target; proof in target_test.go
+	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per enabled target; proof in target_test.go
 	for _, t := range p.Targets {
 		for _, spec := range []renderKindSpec{
 			{
@@ -551,7 +531,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
 		// must not get a bridge pointing at an un-rendered file. cursor has an empty
 		// BridgeFile and emits nothing (inv: cursor-no-bridge).
-		// touches-invariant: cursor-no-bridge - bridge suppression for an empty BridgeFile; proof in target_test.go
+		// touches-state: rendering/project-output-plan:cursor-no-bridge - bridge suppression for an empty BridgeFile; proof in target_test.go
 		for _, t := range p.Targets {
 			if t.BridgeFile == "" {
 				continue
@@ -585,7 +565,6 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// as a unit only when enabled - ADR-0040 for the pinned installer, relocated by
 	// ADR-0047; ADR-0085 for the upgrade porcelain). No catalog spec / no
 	// overridable sections, like the CLAUDE.md bridge.
-	// invariant: bootstrap-two-files
 	if p.Cfg.Bootstrap != nil && p.Cfg.Bootstrap.Enabled {
 		for _, u := range []struct{ tid, path string }{
 			{bootstrapTID, config.DirName + "/bootstrap.sh"},
@@ -615,7 +594,6 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// The command-runner `x` at the repo root (config-tree singleton rendered only
 	// when enabled - ADR-0101; a co-owned in-place file per ADR-0100, not a catalog
 	// DocEntry, so it stays out of SingletonKinds()). awf-the-repo leaves it disabled.
-	// invariant: runner-singleton-toggle
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
 		rrf, err := p.renderTarget("runner", "", runnerTID,
 			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}), "x")
@@ -710,8 +688,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		Path: outPath, Content: content, TemplateID: tid,
 		// TemplateHash covers the post-expansion source so an edit to an included
 		// partial flags every including artifact stale (ADR-0052).
-		// touches-invariant: include-in-templatehash - TemplateHash over expanded (post-include) source; proof in golden_test.go
-		// touches-invariant: authoring-comment-stripped - TemplateHash covers the pre-strip source, so a comment-only template edit reflags stale and self-settles
+		// touches-state: rendering/project-output-plan:authoring-comment-stripped - TemplateHash covers the pre-strip source, so a comment-only template edit reflags stale and self-settles
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		// A file carrying an in-place-editable section is drift-checked by
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
@@ -740,45 +717,40 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 	}
 }
 
-// generateActiveMD renders the ADR index for the project's decisions directory.
-// It always produces a file: a populated index when ADRs exist, else a placeholder
-// (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
-func (p *Project) generateActiveMD() (RenderedFile, error) {
+// generateIndexMD renders the ADR INDEX for the project's decisions directory
+// (ADR-0135 item 8). It always produces a file: In flight and History sections,
+// each with a placeholder line when empty, so the document-map link always
+// resolves (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
+func (p *Project) generateIndexMD() (RenderedFile, error) {
 	corpus, err := p.Corpus()
 	if err != nil { // coverage-ignore: OutputPlan loads the same corpus through topic generation before this producer
 		return RenderedFile{}, err
 	}
-	content := adr.RenderActiveMD(corpus)
+	content := adr.RenderIndexMD(corpus)
 	content = injectBanner(content, "")
-	return RenderedFile{Path: p.layout().ActiveMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, nil
+	return RenderedFile{Path: p.layout().IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, nil
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
-// (<docsDir>/domains/<name>.md): the domain template + its convention parts, with
-// the per-domain ADR index injected as .data.decisions. Like ACTIVE.md, the result
-// carries no TemplateID/Hash - drift is checked by regeneration, since the index
-// depends on external ADR frontmatter state.
+// (<docsDir>/domains/<name>.md): the domain template + its convention parts and
+// the domain's current-state topic navigation. Under current-state authority the
+// per-domain ADR index is gone (ADR-0135 item 8): a domain doc points at topics,
+// not decisions. Like INDEX.md the result carries no TemplateID/Hash - drift is
+// checked by regeneration, since the topic navigation depends on external state.
 func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
-	// The corpus is hoisted above the loop: it used to be re-parsed once per
-	// configured domain (ADR-0130 item 1).
-	corpus, err := p.Corpus()
-	if err != nil {
-		return nil, err
-	}
 	topics, err := p.Topics()
-	if err != nil { // coverage-ignore: OutputPlan generated topic documents from the same cached corpus before domain documents
+	if err != nil {
 		return nil, err
 	}
 	lay := p.layout()
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
-		index := adr.RenderDomainIndex(corpus, name)
 		data := p.data(config.Sidecar{})
-		data["data"] = map[string]any{"domain": name, "decisions": index, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
+		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
 		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
 			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
 			lay.DomainsDir+"/"+name+".md")
-		if err != nil { // coverage-ignore: .data.domain/.data.decisions are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
+		if err != nil { // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
 			return nil, err
 		}
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,

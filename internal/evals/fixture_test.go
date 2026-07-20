@@ -96,7 +96,7 @@ func agentPath(root, name string) string {
 // dropped (e.g. by a requiresDoc gate). This is the guard that keeps the eval
 // suite exhaustive as the catalog grows.
 //
-// invariant: evals-full-catalog-coverage
+// invariant: tooling/evaluations:evals-full-catalog-coverage
 func TestFullCatalogCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)

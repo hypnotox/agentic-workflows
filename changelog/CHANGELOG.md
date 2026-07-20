@@ -8,6 +8,31 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- Current-state topics are now awf's single active authority, replacing the ADR-derived context,
+  supersession, and invariant-authority engines. Active rules and invariants live as individually
+  identified claims in domain-owned topic documents under `.awf/topics/`, rendered to `docs/topics/`;
+  `awf context`, `awf check`, `awf invariants`, and the new `awf topic` read those claims rather than
+  the ADR corpus.
+- ADRs use the `current-state-v1` format: closed `format`/`status`/`date` frontmatter, the ordered
+  sections Context, Decision, State changes, Consequences, Alternatives Considered, and Status history,
+  and the four-state lifecycle Proposed/Accepted/Implemented/Abandoned. The `Superseded` status and all
+  anchor-level ADR-to-ADR supersession are removed; a later decision changes the affected current-state
+  claims through its own `## State changes` operations (`add`/`update`/`remove` over qualified
+  `<domain>/<topic>:<slug>` claim ids). `awf check --staged` verifies each operation against the
+  matching claim mutation in one Git transaction, and the rendered pre-commit hook runs it.
+- `docs/decisions/ACTIVE.md` and the per-domain ADR indexes are replaced by a generated
+  `docs/decisions/INDEX.md` (In flight and compact History); generated domain docs link a compact topic
+  list instead of an ADR index.
+- The legacy `invariants` config block is replaced by `currentState` (marker `sources`, `testGlobs`,
+  `topicCoverage`/`topicFanout` severities, `maxTopicsPerPath`); scanned markers are `state:`,
+  `invariant:`, and `touches-state:` over qualified claim ids.
+- Crossing an existing project to this release is a one-time cutover: run the preceding bridge release
+  to attest the prepared tree, then this binary's plain `awf upgrade` consumes the seal (with
+  `awf upgrade --recover` for an interrupted cutover). The bridge's `awf upgrade --check` and
+  `--attest-current-state` modes live only in that preceding release; this binary consumes seals and
+  never produces them.
+
 ## [0.18.0] - 2026-07-20
 
 ### Breaking changes

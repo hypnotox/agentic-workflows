@@ -1,0 +1,4 @@
+title: Plan artifacts
+summary: How implementation plan documents are parsed and validated.
+paths:
+  - internal/plan/**

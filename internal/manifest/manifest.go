@@ -31,6 +31,15 @@ type Lock struct {
 	// is optional (omitted when absent) so a lock written before the bridge
 	// tranche parses unchanged with a nil pointer.
 	BridgeAttestation *BridgeAttestation `json:"bridgeAttestation,omitempty"`
+	// ADRFormatV1From is the permanent format cutoff (the highest ADR number plus
+	// one) the final current-state upgrade promotes out of the consumed
+	// attestation. Every ADR at or above it is current-state-v1; below it is
+	// legacy. Zero (omitted) before cutover, when no ADR is current-state-v1.
+	ADRFormatV1From int `json:"adrFormatV1From,omitempty"`
+	// LegacyADRGaps is the sorted set of absent lower ADR numbers the final
+	// upgrade promotes alongside the cutoff, closing the migration-time identity
+	// set so a listed gap can never be backfilled as legacy. Omitted when empty.
+	LegacyADRGaps []int `json:"legacyAdrGaps,omitempty"`
 }
 
 // BridgeAttestation records the sealed identity of a current-state upgrade
@@ -88,7 +97,6 @@ func (l *Lock) Marshal() ([]byte, error) {
 // missing lock reports found=false with no error so callers keep their no-lock
 // semantics; a present-but-unreadable lock is a hard error carrying the one
 // recovery hint.
-// invariant: corrupt-lock-refuses
 func LoadOptional(path string) (*Lock, bool, error) {
 	l, err := Load(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -106,7 +114,7 @@ func LoadOptional(path string) (*Lock, bool, error) {
 // file is best-effort removed. Rename-only durability - no fsync - per
 // ADR-0076 Decision 1; Go's os.Rename replaces an existing destination on
 // every supported OS including Windows.
-// touches-invariant: lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
+// touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
 func WriteFileAtomic(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")

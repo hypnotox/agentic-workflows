@@ -11,7 +11,7 @@ import (
 // contract (ADR-0121 Decision 1): a directive line vanishes with its newline,
 // everything else - mid-line occurrences, prefix-sharing tokens, fenced
 // demos - renders verbatim.
-// invariant: authoring-comment-whole-line-only
+// invariant: rendering/render-engine:authoring-comment-whole-line-only
 func TestStripAuthoringComments(t *testing.T) {
 	cases := []struct {
 		name, in, want string
@@ -57,7 +57,7 @@ func TestStripAuthoringComments(t *testing.T) {
 // Decision 3): outside a fence, a whole line opening at the directive token
 // boundary that does not end with "-->" fails, naming the line, and the input
 // comes back unchanged.
-// invariant: authoring-comment-malformed-fails
+// invariant: rendering/render-engine:authoring-comment-malformed-fails
 func TestStripAuthoringCommentsMalformed(t *testing.T) {
 	cases := []struct {
 		name, in string

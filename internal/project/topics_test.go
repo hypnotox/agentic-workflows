@@ -135,7 +135,8 @@ func TestTopicRenderLifecycle(t *testing.T) {
 		t.Fatalf("topic output: %s", doc)
 	}
 	domain := readDomainDoc(t, root, "rendering")
-	if !strings.Contains(domain, "## Topics") || !strings.Contains(domain, "## Decisions") || !strings.Contains(domain, "ADR-0001") {
+	// The domain doc navigates topics only; no ADR decisions index remains.
+	if !strings.Contains(domain, "## Topics") || strings.Contains(domain, "## Decisions") || strings.Contains(domain, "ADR-0001") {
 		t.Fatalf("domain navigation lost authority: %s", domain)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -296,10 +297,6 @@ func TestTopicSubstrateEndToEnd(t *testing.T) {
 skills: []
 agents: []
 domains: [schedule]
-invariants:
-  sources:
-    - globs: ["internal/**"]
-      marker: "//"
 currentState:
   sources:
     - globs: ["internal/schedule*.go"]
@@ -312,11 +309,6 @@ currentState:
 	if err != nil {
 		t.Fatal(err)
 	}
-	legacyBefore := legacyTopicBoundary(t, p)
-	const expectedLegacy = `{"Context":{"paths":["internal/schedule.go"],"domains":[{"name":"schedule","currentState":"docs/domains/schedule.md"}],"invariants":null,"governing":null,"related":null,"pitfalls":null,"plans":null,"background":1,"unowned":null},"Findings":null,"Notes":[{"Slug":"schedule","Text":"invariant marker \"schedule\" names a slug no Implemented ADR declares"}]}`
-	if legacyBefore != expectedLegacy {
-		t.Fatalf("legacy baseline changed:\nwant %s\ngot  %s", expectedLegacy, legacyBefore)
-	}
 	scaffold, err := topic.ScaffoldFiles(root, p.Cfg, "schedule", "Contracts")
 	if err != nil {
 		t.Fatal(err)
@@ -327,7 +319,6 @@ currentState:
 	for _, file := range scaffold {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(file.Path)), string(file.Content))
 	}
-	assertLegacyTopicBoundary(t, p, legacyBefore, "topic scaffold")
 	metadataPath := filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml")
 	partPath := filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md")
 	testsupport.WriteFile(t, metadataPath, "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
@@ -359,7 +350,6 @@ Backing: test
 	if !ok || len(completed.Claims) != 2 {
 		t.Fatalf("completed topic = %#v, found %v", completed, ok)
 	}
-	assertLegacyTopicBoundary(t, p, legacyBefore, "topic completion")
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
@@ -377,7 +367,6 @@ Backing: test
 			t.Fatalf("lock missing %s", path)
 		}
 	}
-	assertLegacyTopicBoundary(t, p, legacyBefore, "topic sync")
 
 	binary := filepath.Join(t.TempDir(), "awf")
 	repoRoot, err := filepath.Abs("../..")
@@ -410,7 +399,6 @@ Backing: test
 			t.Errorf("human/JSON query parity missing %q:\n%s", value, human)
 		}
 	}
-	assertLegacyTopicBoundary(t, p, legacyBefore, "topic queries")
 
 	if err := os.Remove(metadataPath); err != nil {
 		t.Fatal(err)
@@ -441,35 +429,6 @@ Backing: test
 	if _, topicPresent := lock.Files["docs/topics/schedule/contracts.md"]; topicPresent {
 		t.Fatal("pruned topic remains in lock")
 	}
-	assertLegacyTopicBoundary(t, p, legacyBefore, "topic prune")
-}
-
-func assertLegacyTopicBoundary(t *testing.T, p *Project, want, phase string) {
-	t.Helper()
-	if got := legacyTopicBoundary(t, p); got != want {
-		t.Fatalf("%s changed legacy context/invariants:\nbefore %s\nafter  %s", phase, want, got)
-	}
-}
-
-func legacyTopicBoundary(t *testing.T, p *Project) string {
-	t.Helper()
-	contextResult, err := p.ContextFor([]string{"internal/schedule.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	findings, notes, err := p.CheckInvariants()
-	if err != nil {
-		t.Fatal(err)
-	}
-	encoded, err := json.Marshal(struct {
-		Context  ContextResult
-		Findings any
-		Notes    any
-	}{contextResult, findings, notes})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(encoded)
 }
 
 func mustRead(t *testing.T, path string) []byte {

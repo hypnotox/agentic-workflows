@@ -30,7 +30,7 @@ other change. Rendering is deterministic, so every contributor and every agent s
 reads the same skills and docs, with nothing to retype per session. And a set of
 mechanical checks guards what the agent produces, not how it reasons: stale or
 hand-edited output, invalid skill frontmatter, dead internal links, references to disabled
-skills, and documented invariants with no backing comment in source all fail loudly
+skills, and invariant claims with no backing marker in source all fail loudly
 instead of rotting.
 
 ## What gets rendered
@@ -51,12 +51,12 @@ instead of rotting.
   architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
 - **Domain docs** (`docs/domains/<name>.md`). One page per freeform domain you
   declare (`awf enable domain rendering`): your hand-authored current-state narrative
-  plus a generated index of that domain's ADRs. A domain's sidecar can declare
+  plus a generated compact list of that domain's current-state topics. A domain's sidecar can declare
   `paths` globs (its code territory), and `awf audit` then warns when code in that
   territory changes without the narrative being refreshed.
 - **ADR and plan scaffolding** (`docs/decisions/`, `docs/plans/`): a README and a
   template for each, always rendered, so `awf new adr` and `awf new plan` produce the
-  shape the review skills and the generated ADR index expect.
+  shape the review skills and the generated decision index expect.
 - **Git-hook payloads** (`.awf/hooks/`): inert pre-commit / commit-msg / pre-push
   scripts. You wire them up; awf never touches your git config.
 - **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
@@ -94,56 +94,32 @@ progress while intermediate activity stays outside parent model content.
 └── parts/<name>/...  singletons    └── docs/...             project docs
 ```
 
-Version 0.18.0 and schema generation 14 add an optional, strictly validated `currentState`
-configuration block and an unreleased current-state topic producer. A topic pairs strict metadata at
+Current-state topics are awf's active authority. A topic pairs strict metadata at
 `.awf/topics/metadata/<domain>/<topic>.yaml` with constrained Markdown at
-`.awf/topics/parts/<domain>/<topic>/current-state.md`. Metadata permits only title, one-line summary,
+`.awf/topics/parts/<domain>/<topic>/current-state.md`. Metadata permits only a title, one-line summary,
 and either anchored paths or `applies: global`; the authored part has one final `## Claims` section
-with canonical rule/invariant headings, prose, ordered Implemented-ADR provenance, direct references,
-and invariant backing metadata. Valid pairs render to `docs/topics/<domain>/<topic>.md` and a sorted
-`docs/topics/<domain>/index.md`, participate in the ordinary output plan, lock, drift, brownfield
-backup, and prune lifecycle, and add compact topic navigation while retaining domain Decisions.
-`awf new topic <domain> "<title>"` writes exactly the metadata and authored part with a
-collision-free kebab slug, a valid anchored path placeholder, generic editable prose, and no claims.
-It prints both repository-relative paths, does not sync or mutate config, lock, or rendered docs, and
-requires manual path, prose, and claim authoring. A zero-claim shell renders but does not satisfy
-scoped coverage. `awf topic <domain>/<topic>[:<claim>]` reads active topics and claims through one
-deterministic human/JSON result. Defaults show current title/summary, claims, types, prose, and
-backing while hiding provenance and references. The independent `--history`, `--references`, and
-`--coverage` flags add direct ADR details, direct incoming/outgoing claim IDs, and scope/marker sites;
-`--json` changes presentation only. The query is read-only, active-only, and never traverses
-references transitively or invents removed-claim history.
+with canonical rule/invariant headings, prose, ordered Implemented-ADR provenance (`Origin`/`Revised-by`),
+direct references, and invariant backing metadata. Valid pairs render to `docs/topics/<domain>/<topic>.md`
+and a sorted `docs/topics/<domain>/index.md`, participate in the ordinary output plan, lock, drift,
+brownfield backup, and prune lifecycle, and add compact topic navigation to the owning domain doc.
+`awf new topic <domain> "<title>"` scaffolds the metadata and authored part; `awf topic
+<domain>/<topic>[:<claim>]` reads active topics and claims read-only, with `--history`, `--references`,
+and `--coverage` independently adding direct ADR operations, claim edges, and scope/marker sites.
 
-`awf upgrade --check` adds the bridge's exhaustive read-only readiness report without switching
-normal context or invariant authority. It requires strict authored
-`.awf/current-state-migration.yaml`: exactly `version: 1` plus `invariantApprovals`, whose entries
-contain only an exact `ADR-NNNN#slug` key and `domain/topic:slug` destination; zero live mappings uses
-`invariantApprovals: []`. The bridge independently derives each unique local-slug, declaring-Origin,
-and backing-class-preserving mapping before approval matching, so evidence cannot disambiguate.
-Repository and commit review own attribution; no reviewer, timestamp, signature, or authored approved
-boolean exists.
+ADRs carry decisions through adoption and then become history. A current-state-v1 ADR has closed
+`format`/`status`/`date` frontmatter, a `## State changes` section listing `add`, `update`, and
+`remove` operations over qualified `<domain>/<topic>:<slug>` claim ids, and a four-state lifecycle
+(Proposed, Accepted, Implemented, Abandoned; there is no Superseded status). When an ADR reaches
+Implemented, `awf check --staged` verifies each declared operation against the matching claim mutation
+in one Git transaction, and the generated `docs/decisions/INDEX.md` lists in-flight and historical
+ADRs. `awf context <paths>` reports the topic claims that apply to a set of files plus any Accepted-ADR
+pending changes, and `awf context --uncovered` reports paths no scoped topic covers.
 
-Human and `--json` output share one deterministic report over every readiness predicate and legacy
-invariant adjudication. JSON fields are `ready`, `findings`, `invariantAdjudications`, and
-`plannedMutations`; mutations use exact before/after presence, mode, and SHA-256 records, including
-terminal ACTIVE/domain-index deletions and excluding the unchanged approval input. The command writes
-nothing. Schema stays 14 because the approval file is ephemeral authored migration input, not a
-permanent config key.
-
-`awf upgrade --attest-current-state` promotes a ready, clean-HEAD prepared tree into a recoverable
-transaction: it records the clean HEAD, a post-normalization digest, and the ADR cutoff and gaps in an
-optional `bridgeAttestation` lock block, journals every normalization, marker, status, and terminal
-legacy-index deletion at `.awf/current-state-upgrade.journal`, and commits the attested lock last
-(obtain and verify the matching current-state binary first; it runs no project tests or gate). Because
-the terminal projection prunes `docs/decisions/ACTIVE.md` and the domain ADR indexes without
-regenerating them, the attested project is deliberately index-pruned and refuses ordinary commands:
-only `awf upgrade --recover` runs while a journal exists, only `awf upgrade --check` runs against an
-attested lock, and a malformed journal refuses every mode with Git-restoration guidance.
-`awf upgrade --recover` replays the journal recovery table idempotently. INDEX.md and the runtime
-authority switch remain later work in the bridge tranche. Plans 1 and 2 of that bridge are one
-unreleased v0.18.0 tranche: the `project.BridgeTrancheComplete` sentinel gates publication and
-`cmd/releasecheck` refuses a release cut from any intermediate commit, so the tranche is released as a
-single v0.18.0 only once both plans have landed.
+Adopting this release from an older awf is a one-time cutover: the preceding bridge release seals the
+prepared tree into a `bridgeAttestation` lock block, and this binary's plain `awf upgrade` consumes
+that seal, verifying the sealed HEAD and tree digest and journaling the migration approval-file
+deletion and permanent lock; `awf upgrade --recover` handles an interrupted cutover. This binary
+consumes seals; it never produces them.
 
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into

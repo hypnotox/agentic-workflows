@@ -51,7 +51,7 @@ func TestRunPassesPinned(t *testing.T) {
 
 func TestRunFailsTagPinnedAction(t *testing.T) {
 	code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": "      - uses: actions/checkout@v6\n"}))
-	// invariant: workflow-actions-sha-pinned
+	// invariant: tooling/quality-gates:workflow-actions-sha-pinned
 	if code != 1 || !strings.Contains(errb, "full 40-hex commit SHA") {
 		t.Fatalf("want exit 1 with SHA error, got %d:\n%s", code, errb)
 	}

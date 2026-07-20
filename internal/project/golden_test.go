@@ -48,7 +48,7 @@ func TestEndToEndGolden(t *testing.T) {
 	// The plans-template singleton renders the ADR-0097 taxonomy, narrowed to the
 	// three-field header by ADR-0108: frontmatter spine + canonical headings,
 	// section-assembly markers stripped, no unresolved template value.
-	// invariant: plans-template-taxonomy
+	// invariant: adr-system/plan-artifacts:plans-template-taxonomy
 	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
 	if err != nil {
 		t.Fatalf("plans-template not rendered: %v", err)
@@ -110,7 +110,7 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	// code-reviewer.md.tmpl carries awf:include directives, so its expanded source differs
 	// from its raw bytes; TemplateHash must be over the expanded source (ADR-0052). A
 	// regression to manifest.Hash(src) would make these equal.
-	// invariant: include-in-templatehash
+	// invariant: rendering/render-engine:include-in-templatehash
 	if got == manifest.Hash(raw) {
 		t.Error("TemplateHash equals raw-source hash; expected expanded-source hash")
 	}

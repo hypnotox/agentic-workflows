@@ -86,74 +86,30 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 	return out, nil
 }
 
-// HeadBlob is one ordinary or executable file from the committed HEAD tree.
-type HeadBlob struct {
-	Path  string
-	Bytes []byte
-	Mode  uint32
-}
-
-// HeadBlobsUnder returns sorted regular HEAD blobs below prefix. It is the
-// read-only snapshot seam used by cross-schema bridge validation.
-func HeadBlobsUnder(repoRoot, prefix string) ([]HeadBlob, error) {
+// HeadExists reports whether the repository has a born HEAD (at least one
+// commit). A fresh repository with no commit yet reports false without error, so
+// the staged transition check can treat the first commit's before side as the
+// empty universe rather than failing to resolve HEAD. It reads the repository
+// only.
+func HeadExists(repoRoot string) (bool, error) {
 	repo, err := OpenRepo(repoRoot)
 	if err != nil {
-		return nil, fmt.Errorf("open repo: %w", err)
+		return false, fmt.Errorf("open repo: %w", err)
 	}
-	ref, err := repo.Head()
-	if err != nil {
-		return nil, fmt.Errorf("resolve HEAD: %w", err)
-	}
-	commit, err := repo.CommitObject(ref.Hash())
-	if err != nil { // coverage-ignore: resolved HEAD points at a commit
-		return nil, err
-	}
-	tree, err := commit.Tree()
-	if err != nil { // coverage-ignore: a resolved commit always yields its tree
-		return nil, err
-	}
-	prefix = strings.TrimSuffix(filepath.ToSlash(prefix), "/")
-	if prefix != "" {
-		prefix += "/"
-	}
-	var out []HeadBlob
-	err = tree.Files().ForEach(func(f *object.File) error {
-		if prefix != "" && !strings.HasPrefix(f.Name, prefix) {
-			return nil
+	if _, err := repo.Head(); err != nil {
+		if errors.Is(err, plumbing.ErrReferenceNotFound) {
+			return false, nil
 		}
-		reader, err := f.Reader()
-		if err != nil { // coverage-ignore: a tree file always supplies its blob reader
-			return err
-		}
-		data, err := io.ReadAll(reader)
-		closeErr := reader.Close()
-		if err != nil { // coverage-ignore: in-memory object readers do not fail
-			return err
-		}
-		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
-			return closeErr
-		}
-		mode := uint32(0o644)
-		if f.Mode == filemode.Executable {
-			mode = 0o755
-		}
-		out = append(out, HeadBlob{Path: f.Name, Bytes: data, Mode: mode})
-		return nil
-	})
-	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above
-		return nil, err
+		return false, fmt.Errorf("resolve HEAD: %w", err) // coverage-ignore: Head fails only with ErrReferenceNotFound on a healthy repo just opened; other faults require a corrupt ref store
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
-	return out, nil
+	return true, nil
 }
 
-// HeadAndClean returns the HEAD commit hash and refuses any repository whose
-// working tree is not pristine: a staged, unstaged, untracked, or conflicted
-// entry, or an unborn HEAD (no commit yet), each fails. It is the read-only
-// snapshot-identity seam attestation pins before it mutates the tree, so a
-// recorded PreparedHead unambiguously identifies the pre-mutation commit. It
-// reads the repository only.
-func HeadAndClean(repoRoot string) (string, error) {
+// HeadHash resolves the current HEAD commit hash without requiring a clean
+// working tree. The final current-state upgrade runs in an integration worktree
+// that carries the applied but uncommitted attestation patches, so it compares
+// HEAD identity against the sealed PreparedHead without a cleanliness check.
+func HeadHash(repoRoot string) (string, error) {
 	repo, err := OpenRepo(repoRoot)
 	if err != nil {
 		return "", fmt.Errorf("open repo: %w", err)
@@ -161,17 +117,6 @@ func HeadAndClean(repoRoot string) (string, error) {
 	ref, err := repo.Head()
 	if err != nil {
 		return "", fmt.Errorf("resolve HEAD: %w", err)
-	}
-	wt, err := repo.Worktree()
-	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
-		return "", err
-	}
-	status, err := wt.Status()
-	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
-		return "", err
-	}
-	if !status.IsClean() {
-		return "", errors.New("working tree is not clean: commit, stash, or discard every change (staged, unstaged, or untracked) before attestation")
 	}
 	return ref.Hash().String(), nil
 }
@@ -223,36 +168,6 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 	return out, nil
 }
 
-// TrackedPaths returns the sorted, unique repo-relative slash paths tracked at
-// HEAD. It reads the repository only.
-func TrackedPaths(repoRoot string) ([]string, error) {
-	repo, err := OpenRepo(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("open repo: %w", err)
-	}
-	ref, err := repo.Head()
-	if err != nil {
-		return nil, fmt.Errorf("resolve HEAD: %w", err)
-	}
-	c, err := repo.CommitObject(ref.Hash())
-	if err != nil { // coverage-ignore: HEAD resolved above points at a real commit
-		return nil, err
-	}
-	tree, err := c.Tree()
-	if err != nil { // coverage-ignore: a resolved commit always yields its tree
-		return nil, err
-	}
-	var out []string
-	if ferr := tree.Files().ForEach(func(f *object.File) error {
-		out = append(out, f.Name)
-		return nil
-	}); ferr != nil { // coverage-ignore: the collector callback never returns an error
-		return nil, ferr
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
 // ErrIndexUnmerged reports an index that has multiple merge stages and cannot
 // represent one deterministic pre-commit snapshot.
 var ErrIndexUnmerged = errors.New("index contains unmerged entries")
@@ -261,9 +176,10 @@ var ErrIndexUnmerged = errors.New("index contains unmerged entries")
 // read from the object store.
 var ErrIndexBlob = errors.New("read index blob")
 
-// IndexBlob is one regular file's exact bytes from the stage-0 index snapshot.
-// Executable reports whether the entry carries the executable file mode, so a
-// caller can preserve mode without re-reading the index.
+// IndexBlob is one regular file's exact bytes from a stage-0 index or a
+// resolved commit tree. Executable reports whether the entry carries the
+// executable file mode, so a caller can preserve mode without re-reading the
+// source.
 type IndexBlob struct {
 	Path       string
 	Bytes      []byte
@@ -310,6 +226,92 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 		}
 		out = append(out, IndexBlob{Path: e.Name, Bytes: b, Executable: e.Mode == filemode.Executable})
 	}
+	return out, nil
+}
+
+// CommitBlobs returns the sorted regular and executable blobs of the tree that
+// rev resolves to. Symlinks and gitlinks carry no regular-file content to scan
+// and are skipped. It reads the repository only.
+func CommitBlobs(repoRoot, rev string) ([]IndexBlob, error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, fmt.Errorf("open repo: %w", err)
+	}
+	tree, err := treeAt(repo, rev)
+	if err != nil {
+		return nil, err
+	}
+	return blobsOfTree(tree)
+}
+
+// RangeBlobs returns the before/after regular-blob sets for the transition into
+// the commit rev resolves to: after is that commit's tree, before is its
+// first-parent tree, or nil for a root commit. Merges follow the first parent
+// only, so an ADR status change committed on a branch and merged is still
+// observed at the merge. It reads the repository only.
+func RangeBlobs(repoRoot, rev string) (before, after []IndexBlob, err error) {
+	repo, err := OpenRepo(repoRoot)
+	if err != nil {
+		return nil, nil, fmt.Errorf("open repo: %w", err)
+	}
+	h, err := repo.ResolveRevision(plumbing.Revision(rev))
+	if err != nil {
+		return nil, nil, fmt.Errorf("resolve %q: %w", rev, err)
+	}
+	c, err := repo.CommitObject(*h)
+	if err != nil { // coverage-ignore: a hash ResolveRevision just returned points at a real object
+		return nil, nil, fmt.Errorf("commit %q: %w", rev, err)
+	}
+	curTree, err := c.Tree()
+	if err != nil { // coverage-ignore: a resolved commit always yields its tree
+		return nil, nil, err
+	}
+	if after, err = blobsOfTree(curTree); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+		return nil, nil, err
+	}
+	if c.NumParents() > 0 {
+		parent, perr := c.Parent(0)
+		if perr != nil { // coverage-ignore: parent count was just checked > 0; the parent object exists
+			return nil, nil, perr
+		}
+		parentTree, perr := parent.Tree()
+		if perr != nil { // coverage-ignore: a valid parent commit's tree resolves
+			return nil, nil, perr
+		}
+		if before, perr = blobsOfTree(parentTree); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+			return nil, nil, perr
+		}
+	}
+	return before, after, nil
+}
+
+// blobsOfTree collects the sorted regular and executable blobs of a resolved
+// tree. Symlinks and gitlinks are skipped; the executable mode is preserved.
+func blobsOfTree(tree *object.Tree) ([]IndexBlob, error) {
+	var out []IndexBlob
+	err := tree.Files().ForEach(func(f *object.File) error {
+		if f.Mode != filemode.Regular && f.Mode != filemode.Executable {
+			return nil
+		}
+		reader, err := f.Reader()
+		if err != nil { // coverage-ignore: a tree file always supplies its blob reader
+			return err
+		}
+		data, err := io.ReadAll(reader)
+		closeErr := reader.Close()
+		if err != nil { // coverage-ignore: in-memory object readers do not fail
+			return err
+		}
+		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
+			return closeErr
+		}
+		out = append(out, IndexBlob{Path: f.Name, Bytes: data, Executable: f.Mode == filemode.Executable})
+		return nil
+	})
+	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above
+		return nil, err
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out, nil
 }
 

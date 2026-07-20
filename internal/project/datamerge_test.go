@@ -60,7 +60,7 @@ func TestWithDefaultData(t *testing.T) {
 				}
 				return
 			}
-			// invariant: sidecar-key-overrides-default
+			// invariant: rendering/project-output-plan:sidecar-key-overrides-default
 			if !reflect.DeepEqual(got.Data, tc.want) {
 				t.Fatalf("got %v, want %v", got.Data, tc.want)
 			}
@@ -70,7 +70,7 @@ func TestWithDefaultData(t *testing.T) {
 
 // A change to an artifact's catalog default data must change its lock
 // configHash, so awf check flags the artifact stale (ADR-0045).
-// invariant: catalog-data-in-confighash
+// invariant: rendering/project-output-plan:catalog-data-in-confighash
 func TestCatalogDataChangesConfigHash(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)

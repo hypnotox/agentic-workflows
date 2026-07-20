@@ -16,7 +16,7 @@ import (
 // with a minimal-adopter data set (prefix + every referenced var seeded empty +
 // full layout) and asserts the frontmatter parses with non-empty name/description
 // and no leaked <no value> token. Agent metadata is encoded separately.
-// invariant: templates-valid-frontmatter
+// invariant: rendering/templates:templates-valid-frontmatter
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	cat := catalog.Standard
 	// check renders one template with a docs map seeded only for the skill's own

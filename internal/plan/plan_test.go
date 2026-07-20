@@ -62,8 +62,8 @@ func TestParseDirParsesFrontmatterAndSkipsNonPlans(t *testing.T) {
 // block is captured (first non-empty line, multi-line body ignored); a bare fence, a
 // language fence, a ```commit awf-ignore opt-out, and an empty ```commit block are
 // all skipped.
-// invariant: plan-commit-subject-marker-scoped
-// invariant: plan-commit-subject-optout-honored
+// invariant: adr-system/plan-artifacts:plan-commit-subject-marker-scoped
+// invariant: adr-system/plan-artifacts:plan-commit-subject-optout-honored
 func TestParseDirExtractsCommitSubjects(t *testing.T) {
 	dir := t.TempDir()
 	body := "---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: X\n\n" +
@@ -167,7 +167,7 @@ func TestNewFileHappyPath(t *testing.T) {
 		t.Fatalf("NewFile: %v", err)
 	}
 	want := filepath.Join(dir, "2026-07-12-my-cool-plan.md")
-	// invariant: plan-new-unnumbered
+	// invariant: adr-system/plan-artifacts:plan-new-unnumbered
 	if path != want {
 		t.Errorf("NewFile path = %q, want %q", path, want)
 	}

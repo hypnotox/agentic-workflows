@@ -7,4 +7,8 @@ paths:
   - internal/clispec/**
   - internal/initspec/**
   - internal/git/**
+  - internal/snapshot/**
+  - internal/upgrade/**
+  - internal/prosegate/**
+  - tools/**
   - x

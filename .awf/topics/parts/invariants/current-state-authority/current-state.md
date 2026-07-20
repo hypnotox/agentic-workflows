@@ -1,0 +1,71 @@
+The currentstate package is the active authority engine: it loads topic claims and ADRs from a tree, checks their static and transition consistency, and reports invariant obligations. The claims below capture the current authority contracts.
+
+## Claims
+
+### `invariant: accepted-authority-is-pending-only`
+
+An Accepted ADR appears as a pending implementation instruction and never replaces a current claim before its state-impact transaction completes.
+Origin: ADR-0133
+Backing: unbacked
+Verify: In a fixture with a conflicting current claim and an Accepted ADR, awf context keeps the claim under current authority and places the ADR only under pending changes.
+
+### `invariant: accepted-does-not-override-current`
+
+Accepted operations appear only as bounded pending instructions and do not replace current claim output.
+Origin: ADR-0135
+Backing: unbacked
+Verify: A fixture with an Accepted update conflicting with its current claim keeps both clearly separated with the claim remaining current.
+
+### `invariant: current-state-sole-active-authority`
+
+Normal context retrieval and invariant enforcement consume current-state topic claims, not Implemented historical ADR prose.
+Origin: ADR-0133
+Backing: unbacked
+Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf context emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf topic <claim-id> --history emits the provenance ADR.
+
+### `invariant: historical-rationale-is-explicit`
+
+Historical rationale stays reachable from active claim provenance without appearing in normal path-context output.
+Origin: ADR-0133
+Backing: unbacked
+Verify: Over the same fixture, normal context omits Implemented provenance while awf topic <claim-id> --history follows it.
+
+### `invariant: implemented-impact-bidirectional`
+
+Every Implemented state operation has its required current or removed result, and every active claim Origin or revision has the inverse ADR operation.
+Origin: ADR-0135
+Backing: unbacked
+Verify: Corpus tests with missing, extra, duplicate, and mismatched add, update, and remove operations against claim provenance pass only when both directions agree.
+
+### `invariant: invariants-zero-slugs-clean`
+
+When a project declares no invariant claims, loading the claim corpus succeeds and the invariant report is empty. There is no backing obligation to enforce, so the check passes with no findings and no error.
+Origin: ADR-0008
+Backing: test
+
+### `invariant: removed-claim-id-not-reused`
+
+Once an Implemented remove records a qualified claim ID, no later add may reuse it.
+Origin: ADR-0135
+Backing: unbacked
+Verify: Add-update-remove-add operation histories fail the final add whether or not an active claim file exists.
+
+### `invariant: state-impact-transition-atomic`
+
+A staged claim mutation and the ADR transition implementing it occur in one HEAD-to-index transaction.
+Origin: ADR-0135
+Backing: unbacked
+Verify: awf check --staged refuses each partial state split across snapshot fixtures and passes only the combined transition.
+
+### `invariant: uncovered-lists-unowned-unignored`
+
+The current-state coverage report lists as unowned only working-tree paths that are tracked, not generated or lock-listed, not context-ignored, and matched by no configured domain glob, collapsed to the topmost ancestor directory that has no owned descendant in scope. Owned, generated, and ignored paths never appear.
+Origin: ADR-0110
+Backing: test
+
+### `invariant: update-requires-substance`
+
+An update preserves Origin and prior revision history, appends its ADR once, and changes a canonical claim field other than formatting or provenance alone.
+Origin: ADR-0135
+Backing: unbacked
+Verify: Staged fixtures with Origin edits, revision deletion or reordering, whitespace-only, provenance-only, and substantive prose, reference, or backing changes satisfy an update only in the prefix-preserving substantive cases.

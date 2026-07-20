@@ -6,46 +6,6 @@ import (
 	"testing"
 )
 
-func TestConvertInvariantsToCurrentState(t *testing.T) {
-	src := []byte("# top\nprefix: awf\ntargets: [claude]\n# legacy\ninvariants:\n  disabled: false\n  sources:\n    - globs: ['**/*.go'] # keep\n      marker: //\n  testGlobs: ['**/*_test.go']\nvars:\n  untouched: yes # comment\n")
-	got, err := ConvertInvariantsToCurrentState(src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(got)
-	for _, want := range []string{"currentState:", "topicCoverage: error", "topicFanout: warn", "maxTopicsPerPath: 8", "# keep", "untouched: yes # comment"} {
-		if !strings.Contains(text, want) {
-			t.Errorf("missing %q in:\n%s", want, text)
-		}
-	}
-	if strings.Contains(text, "\ninvariants:") {
-		t.Errorf("legacy key retained:\n%s", text)
-	}
-	again, err := ConvertInvariantsToCurrentState(got)
-	if err != nil || string(again) != string(got) {
-		t.Fatalf("idempotence: %v\n%s", err, again)
-	}
-	identical := []byte("prefix: awf\ntargets: [claude]\ninvariants:\n  sources: [{globs: ['**/*.go'], marker: //}]\ncurrentState:\n  sources: [{globs: ['**/*.go'], marker: //}]\n  topicCoverage: error\n  topicFanout: warn\n  maxTopicsPerPath: 8\n")
-	if _, err := ConvertInvariantsToCurrentState(identical); err != nil {
-		t.Fatalf("identical authored block: %v", err)
-	}
-	for _, bad := range []string{
-		"prefix: awf\ntargets: [claude]\ninvariants:\n  disabled: true\n",
-		"prefix: awf\ntargets: [claude]\ninvariants:\n  sources: []\ncurrentState:\n  sources: []\n  topicCoverage: warn\n  topicFanout: warn\n  maxTopicsPerPath: 8\n",
-		"prefix: awf\ntargets: [claude]\n",
-		"prefix: awf\ntargets: [claude]\ninvariants: []\n",
-		"prefix: awf\ntargets: [claude]\ninvariants:\n  sources: [{globs: [], marker: //}]\n",
-		"[bad]\n",
-		"prefix: awf\ntargets: [claude]\ncurrentState:\n  topicCoverage: bad\n",
-		"prefix: awf\ntargets: [claude]\ncurrentState:\n  unknown: x\n",
-		"prefix: awf\ntargets: [claude]\ninvariants:\n  sources: []\ncurrentState:\n  unknown: x\n",
-	} {
-		if _, err := ConvertInvariantsToCurrentState([]byte(bad)); err == nil {
-			t.Errorf("accepted refusal case:\n%s", bad)
-		}
-	}
-}
-
 func TestMarshalSkeleton(t *testing.T) {
 	out, err := MarshalSkeleton(Skeleton{
 		Prefix: "awf",
@@ -62,7 +22,7 @@ func TestMarshalSkeleton(t *testing.T) {
 		"skills:\n  - tdd\n" +
 		"agents: []\n" +
 		"docs:\n  - workflow\n"
-	// invariant: config-serialization-owned
+	// invariant: config/configuration:config-serialization-owned
 	if string(out) != want {
 		t.Errorf("MarshalSkeleton:\n got: %q\nwant: %q", out, want)
 	}
@@ -83,7 +43,7 @@ func TestSetArrayMember(t *testing.T) {
 		{"add to flow with items", "skills: [a, b]\n", "skills", "c", true, "skills:\n  - a\n  - b\n  - c\n", false},
 		{"remove from items", "skills:\n  - a\n  - b\n", "skills", "a", false, "skills:\n  - b\n", false},
 		{"remove last empties", "docs:\n  - d\n", "docs", "d", false, "docs: []\n", false},
-		// invariant: remove-block-scoped
+		// invariant: config/configuration:remove-block-scoped
 		{"remove block-scoped", "skills:\n  - debugging\ndocs:\n  - debugging\n", "docs", "debugging", false, "skills:\n  - debugging\ndocs: []\n", false},
 		{"remove not found", "skills:\n  - a\n", "skills", "z", false, "", true},
 		{"remove from empty flow", "skills: []\n", "skills", "a", false, "", true},
@@ -105,7 +65,7 @@ func TestSetArrayMember(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			// invariant: config-mutation-roundtrip
+			// invariant: config/configuration:config-mutation-roundtrip
 			if string(got) != tc.want {
 				t.Errorf("SetArrayMember:\n got: %q\nwant: %q", got, tc.want)
 			}
@@ -435,7 +395,7 @@ audit:
 		t.Fatal(err)
 	}
 	s := string(out)
-	// invariant: glob-migration-anchored
+	// invariant: config/configuration:glob-migration-anchored
 	for _, want := range []string{"**/*.go", "cmd/**", "**/go.mod", "**/package.json"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("output missing %q:\n%s", want, s)

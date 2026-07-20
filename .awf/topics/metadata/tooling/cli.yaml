@@ -1,0 +1,6 @@
+title: CLI
+summary: Command dispatch and the behaviour of the awf command surfaces.
+paths:
+  - cmd/**
+  - internal/clispec/**
+  - internal/initspec/**

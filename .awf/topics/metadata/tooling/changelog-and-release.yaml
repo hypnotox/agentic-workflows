@@ -1,0 +1,4 @@
+title: Changelog and release
+summary: The changelog pipeline and release-notes contracts.
+paths:
+  - internal/changelog/**

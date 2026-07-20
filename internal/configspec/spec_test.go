@@ -67,7 +67,7 @@ func walkPaths(t reflect.Type, prefix string, out map[string]bool) {
 // from the command line (ADR-0127 Decision 3). Asserted across all three
 // surfaces at once, since key parity means a struct field would force a spec
 // entry and vice versa.
-// invariant: audit-no-base-branch-config
+// invariant: config/configuration:audit-no-base-branch-config
 func TestNoAuditBaseConfigSurface(t *testing.T) {
 	for _, e := range Keys() {
 		if strings.Contains(strings.ToLower(e.Path), "basebranch") {
@@ -90,7 +90,7 @@ func TestNoAuditBaseConfigSurface(t *testing.T) {
 
 // TestConfigspecKeyParity keeps the hand-authored key table bidirectionally
 // matched to the config structs, every entry fully described.
-// invariant: configspec-key-parity
+// invariant: config/configuration:configspec-key-parity
 func TestConfigspecKeyParity(t *testing.T) {
 	want := map[string]bool{}
 	walkPaths(reflect.TypeOf(config.Config{}), "", want)
@@ -139,12 +139,7 @@ func TestCurrentStateKeysPublished(t *testing.T) {
 			continue
 		}
 		if !strings.Contains(entry.Description, "current-state") {
-			t.Errorf("entry %q does not describe current-state preparation: %q", path, entry.Description)
-		}
-	}
-	for _, path := range []string{"currentState.sources", "currentState.topicCoverage", "currentState.topicFanout", "currentState.maxTopicsPerPath"} {
-		if !strings.Contains(got[path].Description, "does not switch normal context or invariant authority") {
-			t.Errorf("entry %q omits the bridge authority boundary", path)
+			t.Errorf("entry %q does not describe current-state authority: %q", path, entry.Description)
 		}
 	}
 }
@@ -171,7 +166,7 @@ func expandedTemplate(t *testing.T, tid string) string {
 // both directions. The domain template's injected pair and the generated
 // config reference's injected collections are exempt (neither is
 // adopter-settable).
-// invariant: configspec-data-parity
+// invariant: config/configuration:configspec-data-parity
 func TestConfigspecDataParity(t *testing.T) {
 	type ak struct{ kind, artifact, key string }
 	want := map[ak]bool{}
@@ -233,7 +228,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 		}
 	}
 	entries := VarEntries()
-	// invariant: configspec-var-derivation
+	// invariant: config/configuration:configspec-var-derivation
 	if len(entries) != len(want) {
 		t.Errorf("VarEntries returned %d entries, want %d", len(entries), len(want))
 	}
@@ -259,7 +254,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 
 // TestConfigspecDescriptionResidue bans awf-internal residue from every
 // adopter-facing string: concrete ADR citations and repo-identity literals.
-// invariant: configspec-description-residue
+// invariant: config/configuration:configspec-description-residue
 func TestConfigspecDescriptionResidue(t *testing.T) {
 	adrRE := regexp.MustCompile(`ADR-[0-9]{4}`)
 	check := func(where, s string) {

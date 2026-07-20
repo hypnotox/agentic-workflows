@@ -7,63 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
-// invariant: output-plan-complete
-// invariant: shared-output-coalesced
-// invariant: target-capabilities-closed
-func TestBridgeProjectionPreparedAndTerminal(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [core]\ntargets: [claude]\nrunner:\n  enabled: true\n", map[string]string{"domains/core.yaml": "paths: ['internal/**']\n", "current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n"})
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	prepared, err := p.BridgeProjection(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	terminal, err := p.BridgeProjection(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	prep, term := map[string]BridgeOutput{}, map[string]BridgeOutput{}
-	for _, o := range prepared {
-		prep[o.Path] = o
-	}
-	for _, o := range terminal {
-		term[o.Path] = o
-	}
-	for _, path := range []string{"docs/decisions/ACTIVE.md", "docs/domains/core.md"} {
-		if prep[path].Deletion || len(prep[path].Bytes) == 0 {
-			t.Errorf("prepared %s: %#v", path, prep[path])
-		}
-		if !term[path].Deletion || len(term[path].Bytes) != 0 {
-			t.Errorf("terminal %s: %#v", path, term[path])
-		}
-	}
-	if !prep[".awf/current-state-migration.yaml"].Reservation || string(prep[".awf/current-state-migration.yaml"].Bytes) != "version: 1\ninvariantApprovals: []\n" || string(term[".awf/current-state-migration.yaml"].Bytes) != string(prep[".awf/current-state-migration.yaml"].Bytes) {
-		t.Fatal("approval file not retained exactly")
-	}
-	for path, o := range prep {
-		if path == "docs/decisions/ACTIVE.md" || path == "docs/domains/core.md" {
-			continue
-		}
-		got, ok := term[path]
-		if !ok || string(got.Bytes) != string(o.Bytes) || got.Mode != o.Mode || got.Reservation != o.Reservation {
-			t.Errorf("projection drift at %s", path)
-		}
-	}
-}
-
-func TestBridgeProjectionPropagatesOutputPlanError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [core]\ntargets: [claude]\n", map[string]string{"domains/core.yaml": "paths: ['internal/**']\n", "topics/parts/core/orphan/current-state.md": "Intro.\n\n## Claims\n"})
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.BridgeProjection(false); err == nil {
-		t.Fatal("invalid output plan accepted")
-	}
-}
-
+// invariant: rendering/project-output-plan:output-plan-complete
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(root)
@@ -98,7 +42,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/ACTIVE.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
@@ -111,6 +55,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 }
 
+// invariant: rendering/project-output-plan:target-capabilities-closed
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},
@@ -144,8 +89,8 @@ func TestTargetDescriptorValidation(t *testing.T) {
 	}
 }
 
-// invariant: output-policy-explicit
-// invariant: shared-output-coalesced
+// invariant: rendering/project-output-plan:output-policy-explicit
+// invariant: rendering/project-output-plan:shared-output-coalesced
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
@@ -188,7 +133,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	}
 }
 
-// invariant: output-policy-explicit
+// invariant: rendering/project-output-plan:output-policy-explicit
 func TestOutputPolicyIsExplicit(t *testing.T) {
 	if got := declaredPolicy("agents", false); !got.ValidateFrontmatter || !got.ScanReferences {
 		t.Fatalf("agent policy = %#v", got)

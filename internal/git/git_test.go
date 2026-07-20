@@ -18,29 +18,12 @@ import (
 
 func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-git-test-home")) }
 
-func TestHeadBlobsAndWorkingPaths(t *testing.T) {
+func TestWorkingPaths(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	if err := os.MkdirAll(filepath.Join(dir, "src"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"src/a.txt": "a", "gone.txt": "gone", ".gitignore": "ignored.txt\n"})
-	if err := os.Chmod(filepath.Join(dir, "src", "a.txt"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add("src/a.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Commit("mode", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
-		t.Fatal(err)
-	}
-	blobs, err := awfgit.HeadBlobsUnder(dir, "src")
-	if err != nil || len(blobs) != 1 || blobs[0].Path != "src/a.txt" || string(blobs[0].Bytes) != "a" || blobs[0].Mode != 0o755 {
-		t.Fatalf("blobs: %#v %v", blobs, err)
-	}
 	if err := os.Remove(filepath.Join(dir, "gone.txt")); err != nil {
 		t.Fatal(err)
 	}
@@ -60,60 +43,45 @@ func TestHeadBlobsAndWorkingPaths(t *testing.T) {
 	}
 }
 
-func TestHeadBlobsAndWorkingPathsErrors(t *testing.T) {
+func TestWorkingPathsErrors(t *testing.T) {
 	_, unborn := gitfixture.InitRepo(t)
-	for _, fn := range []func(string) error{func(root string) error { _, e := awfgit.HeadBlobsUnder(root, "src"); return e }, func(root string) error { _, e := awfgit.WorkingPaths(root); return e }} {
-		if err := fn(unborn); err == nil {
-			t.Fatal("unborn repository accepted")
-		}
+	if _, err := awfgit.WorkingPaths(unborn); err == nil {
+		t.Fatal("unborn repository accepted")
 	}
-	for _, fn := range []func(string) error{func(root string) error { _, e := awfgit.HeadBlobsUnder(root, "src"); return e }, func(root string) error { _, e := awfgit.WorkingPaths(root); return e }} {
-		if err := fn(t.TempDir()); err == nil {
-			t.Fatal("non-repository accepted")
-		}
+	if _, err := awfgit.WorkingPaths(t.TempDir()); err == nil {
+		t.Fatal("non-repository accepted")
 	}
 }
 
-func TestHeadAndClean(t *testing.T) {
+func TestHeadExists(t *testing.T) {
+	_, unborn := gitfixture.InitRepo(t)
+	if has, err := awfgit.HeadExists(unborn); err != nil || has {
+		t.Fatalf("unborn HEAD: has=%v err=%v; want false, nil", has, err)
+	}
 	repo, dir := gitfixture.InitRepo(t)
-	head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	got, err := awfgit.HeadAndClean(dir)
-	if err != nil || got != head.String() {
-		t.Fatalf("clean tree: got %q err %v, want %q", got, err, head.String())
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	if has, err := awfgit.HeadExists(dir); err != nil || !has {
+		t.Fatalf("born HEAD: has=%v err=%v; want true, nil", has, err)
 	}
-	// An untracked file makes the tree unclean.
-	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("u"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := awfgit.HeadAndClean(dir); err == nil || !strings.Contains(err.Error(), "not clean") {
-		t.Fatalf("untracked file accepted: %v", err)
-	}
-	if err := os.Remove(filepath.Join(dir, "untracked.txt")); err != nil {
-		t.Fatal(err)
-	}
-	// A staged modification makes the tree unclean.
-	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("aa"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	wt, err := repo.Worktree()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add("a.txt"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := awfgit.HeadAndClean(dir); err == nil || !strings.Contains(err.Error(), "not clean") {
-		t.Fatalf("staged change accepted: %v", err)
+	if _, err := awfgit.HeadExists(t.TempDir()); err == nil {
+		t.Fatal("non-repository accepted")
 	}
 }
 
-func TestHeadAndCleanErrors(t *testing.T) {
-	_, unborn := gitfixture.InitRepo(t)
-	if _, err := awfgit.HeadAndClean(unborn); err == nil || !strings.Contains(err.Error(), "resolve HEAD") {
-		t.Fatalf("unborn repository accepted: %v", err)
+func TestHeadHash(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	if h, err := awfgit.HeadHash(dir); err != nil || h == "" {
+		t.Fatalf("born HEAD: hash=%q err=%v; want a hash, nil", h, err)
 	}
-	if _, err := awfgit.HeadAndClean(t.TempDir()); err == nil || !strings.Contains(err.Error(), "open repo") {
-		t.Fatalf("non-repository accepted: %v", err)
+	// An unborn HEAD (a repo with no commits) surfaces the resolve error.
+	_, unborn := gitfixture.InitRepo(t)
+	if _, err := awfgit.HeadHash(unborn); err == nil {
+		t.Fatal("unborn HEAD must surface a resolve error")
+	}
+	// A non-repository fails to open.
+	if _, err := awfgit.HeadHash(t.TempDir()); err == nil {
+		t.Fatal("non-repository accepted")
 	}
 }
 
@@ -188,39 +156,6 @@ func TestChangedPathsErrors(t *testing.T) {
 	}
 	if _, err := awfgit.ChangedPaths(t.TempDir(), false, "a..b"); err == nil {
 		t.Error("expected an open-repo error outside a repository")
-	}
-}
-
-// TrackedPaths lists the HEAD tree's files as sorted, slash-separated
-// repo-relative paths.
-func TestTrackedPathsListsHeadTreeSorted(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	if err := os.MkdirAll(filepath.Join(dir, "a"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	gitfixture.Commit(t, repo, dir, "one", map[string]string{"b.txt": "1", "a/c.txt": "2", "a/d.txt": "3"})
-
-	got, err := awfgit.TrackedPaths(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Join(got, ",") != "a/c.txt,a/d.txt,b.txt" {
-		t.Errorf("tracked: got %v want [a/c.txt a/d.txt b.txt]", got)
-	}
-}
-
-// A repository with no commit has no resolvable HEAD, which is a clear error.
-func TestTrackedPathsNoHeadErrors(t *testing.T) {
-	_, dir := gitfixture.InitRepo(t)
-	if _, err := awfgit.TrackedPaths(dir); err == nil || !strings.Contains(err.Error(), "resolve HEAD") {
-		t.Fatalf("want a resolve-HEAD error on a commit-less repo, got: %v", err)
-	}
-}
-
-// Outside a repository, opening fails.
-func TestTrackedPathsBadRepoErrors(t *testing.T) {
-	if _, err := awfgit.TrackedPaths(t.TempDir()); err == nil || !strings.Contains(err.Error(), "open repo") {
-		t.Fatalf("want an open-repo error outside a repository, got: %v", err)
 	}
 }
 

@@ -233,29 +233,6 @@ subagent also diverged and you must inspect). Prevention is partial; the dispatc
 "commit on the current branch; never create a branch", so always verify the branch after a
 fix-applying subagent returns rather than trusting it stayed put.
 
-## Zero-padded ADR numbers in YAML lists parse as octal
-
-_Domains: adr-system_
-
-_Related: ADR-0103_
-
-A bare `0017` inside `related:`/`supersedes:` frontmatter is a leading-zero integer, which YAML
-resolves as octal: `0017` becomes 15, silently pointing at the wrong ADR. This is not a
-foreign-parser hypothetical, as an earlier version of this note claimed ("PyYAML and kin"): awf's
-own parser does it. `gopkg.in/yaml.v3` unmarshals `related: [0017, 17, 0o17]` to `[15 17 15]`
-(verified 2026-07-15). And the field is no longer inert, the other half of that note's stale
-premise: ADR-0103 revived the metadata, so `internal/adr` parses it for real (`adr.ADR.Related
-[]int`), and `awf context` consumes it for relevance tiering. A padded entry would therefore
-mis-point a live consumer, not just a future one.
-
-The corpus is clean as of 2026-07-15 (every live `related:`/`supersedes:` list is bare sorted
-ints, normalized 2026-07-08; padded spellings survive only in ADR prose bodies, which nothing
-parses) and the ADR-README example models `[1]`. But the padded form reads naturally, since it
-matches the `NNNN-` filename convention, so an author copying an old diff can reintroduce it and
-no check would catch the mis-point. Write bare ints (`related: [17, 50]`). The deferred gate check
-(scan `docs/decisions/*.md` frontmatter for `[0`-prefixed list ints) was declined on the grounds
-that nothing parsed the field; that reasoning no longer holds.
-
 ## Enabled linters constrain API shape, sketch signatures against them
 
 _Domains: tooling_
@@ -283,51 +260,6 @@ set, or bumping the version therefore reds the gate in places far from the edit.
 such a change, grep for the pinned tests up front (`Current()`, the applied-list literal, the
 version const) and enumerate each update as a plan task; the ADR-0077 plan review found four
 of these as blockers precisely because the plan hadn't.
-
-## A partial amendment needs a back-pointer on the amended ADR
-
-_Domains: adr-system_
-
-_Related: ADR-0116_
-
-When ADR X overrides ADR Y's Decision item or invariant without superseding Y wholesale
-(partial supersession: X carries a `supersedes: ADR-NNNN#<item>` or
-`supersedes-invariant: ADR-NNNN#<slug>` token in its Decision section, Y stays live), Y's
-`related:` must name X in the same commit. Without that back-pointer Y's overridden item
-reads as current guidance and a reader of Y gets no signal. It is a metadata-only edit; the
-body stays append-only. Since ADR-0120 the rule is machine-checked: `awf check` fails a
-token into a live target whose `related:` lacks the carrier.
-
-**This entry has been wrong three times, and the corrections are the lesson.** It first
-recorded two instances (0079 → 0065, 0093 → 0024) and inferred a promotion trigger from
-them. A sweep on 2026-07-15 found **16 partial amendments, 10 missing the back-pointer**,
-the figures ADR-0116's Context records. The impl review of that very ADR then re-swept and
-found three more the first sweep had missed (42 → 39 and 59 → 43 missing, 94 → 93
-conformant), putting the real floor at **at least 19 amendments, at least 12 missing, 7
-conformant**. Treat every figure here as a floor, not a count: the detectors are
-verb-anchored, so a partial amendment phrased without one of their verbs is invisible to
-them, and two independent sweeps each missed edges the other found. The two instances
-originally recorded were merely the ones review happened to catch, and both had since been
-fixed. Counting only the failures someone noticed understated the problem by five times and
-pointed the diagnosis at the wrong place: prose *had* been tried (this note
-landed 2026-07-08 stating the rule verbatim, and 0093, 0105, and 0106 broke it anyway),
-while the rule had never been written into `awf-adr-lifecycle`'s partial-supersedence
-section, the procedure an agent actually loads while performing the act. That section
-taught the one-directional model outright. **If you are about to record a recurrence, sweep
-the corpus before you count.**
-
-The detector problem that stalled promotion was resolved by structure, not by a smarter
-detector. The shape this entry once proposed (for each ADR body citing another ADR's
-"Decision item", require a back-pointer) fires on well over a hundred sites against ~19
-real ones; ADR-0116 therefore stated the rule in the skill procedure and the
-`adr-reviewer` doc-currency lens and deliberately deferred any check. ADR-0120 (its token
-overriding ADR-0116 Decision 5) made the citation itself structured: a supersession token
-is unambiguous where prose verbs are not, so `awf check` anchors the back-pointer, ref
-validity, and flavour exclusivity on tokens with zero false positives. The corpus retrofit
-tokenized the freeform citations and backfilled the deferred edges, retiring ADR-0116
-Decision 6's known non-conformance. The sweep-before-you-count lesson stands for any
-*prose* claim about the corpus: the detectors that produced every figure above were
-verb-anchored, and two independent sweeps each missed edges the other found.
 
 ## A milestone-time check must not double as an every-commit test
 
@@ -503,20 +435,20 @@ propose-commit sentence in decision tense anchored to the status, "ADR-NNNN (Pro
 narrows the policy ... and will remove ...", and flip it to present tense in the
 implementation commit that makes it true, alongside the status flip.
 
-## Retiring an Implemented ADR's invariant couples the feature to the successor's status flip
+## Retiring an invariant claim couples the marker edit to the ADR's Implemented flip
 
 _Domains: invariants_
 
-The invariant scanner demands every `invariant:` slug of an Implemented ADR stay backed until an
-*Implemented* successor retires it; so a commit that removes or renames the backing marker
-cannot land while the successor is still Proposed, and the green-gate-per-commit rule then
-forces the feature and the successor's `Implemented` flip into one commit. The ADR-0085
-implementation (2026-07-10) planned "feature commit, then flip commit" and hit this at the
-first `./x check`: retiring `bootstrap-pin` for `bootstrap-env-override` unbacked an
-Implemented ADR-0040 slug. When an effort carries a retirement (a
-`supersedes-invariant: ADR-NNNN#<slug>` token since ADR-0120; formerly the ADR-0031
-retirement frontmatter), plan the final implementation commit to include the status flip
-from the start.
+A `Backing: test` invariant claim must stay backed by its proof marker until the ADR's
+`remove` (or backing-changing `update`) operation applies, and that happens only in the
+transaction that flips the ADR to `Implemented` (`awf check --staged` verifies the claim
+mutation and the ADR flip together). So a commit that removes or renames the proof marker
+cannot land while its ADR is still Proposed, and the green-gate-per-commit rule then forces
+the marker edit and the ADR's `Implemented` flip into one commit. The ADR-0085 implementation
+(2026-07-10) planned "feature commit, then flip commit" and hit the legacy form of this at the
+first `./x check`. When an effort removes or retargets an invariant claim, plan the final
+implementation commit to include both the claim mutation and the ADR status flip from the
+start.
 
 ## An unescaped consumable placeholder in a part is silently rewritten, check-clean
 
@@ -663,15 +595,15 @@ immune by construction and preferred where it fits.
 
 _Domains: invariants_
 
-The invariant-backing scanner (`internal/invariants`) matches a slug only when the marker
+The current-state marker scanner (`internal/topic`) matches a claim id only when the marker
 opens its line after indentation; `strings.TrimLeft(line, " \t")` must start with the
-configured marker, then `^\s*invariant:\s*<slug>`. This is deliberate: a mid-line match
-could sit inside a string literal (a test fixture's source-code string) and falsely back a
-slug. The consequence is a natural-looking backing that silently does not count: a trailing
-`clone.Docs = maps.Clone(...) // invariant: local-doc-catalog-clone` reads as *unbacked*,
-and because `awf check` only enforces backing once the ADR is `Implemented`, the gap hides
-until the status flip, exactly when the effort is trying to conclude. Put the
-`// invariant: <slug>` on its own line directly above the statement it describes.
+configured marker, then `invariant: <domain>/<topic>:<slug>`. This is deliberate: a mid-line
+match could sit inside a string literal (a test fixture's source-code string) and falsely back
+a claim. The consequence is a natural-looking backing that silently does not count: a trailing
+`clone.Docs = maps.Clone(...) // invariant: <domain>/<topic>:<slug>` reads as *unbacked*, and
+the gap hides until the claim is loaded or the ADR's `remove`/`update` operation is staged,
+exactly when the effort is trying to conclude. Put the `// invariant: <domain>/<topic>:<slug>`
+on its own line directly above the statement it describes.
 
 ## Relocating a cross-cutting guard out of a shared helper drops it for internal callers
 
@@ -914,7 +846,7 @@ the collision only surfaces at merge, as two unrelated ADRs with one number. Hit
 concurrent session's `awf new adr` minted 0116 again; the second was renumbered to 0117 by
 amending, which was only cheap because it was unpushed and provably exclusive to `main`
 (`git merge-base --is-ancestor`). Renumbering after a push is not cheap: the number is
-already cited by `related:`/`supersedes:` frontmatter, ACTIVE.md, and the domain indexes.
+already cited by claim `Origin`/`Revised-by` metadata, `State changes` operations, and INDEX.md.
 
 Before scaffolding an ADR in a parallel-worktree session, check every branch, not just
 yours: `git branch --format='%(refname:short)' | while read b; do git ls-tree -r
@@ -993,22 +925,6 @@ implementation review caught it. When touching frontmatter by regex, compute the
 once and bound every scan to it - both edges carry regression tests in
 `internal/migrate/retirementtokens_test.go`.
 
-## A supersession token quoted as an example is parsed as a real claim
-
-_Domains: adr-system_
-
-_Related: ADR-0120, ADR-0128_
-
-The token grammar has no escaping mechanism. Any `` `supersedes: ADR-NNNN#N` ``,
-`` `supersedes-invariant: ADR-NNNN#<slug>` ``, or `` `refines: ADR-NNNN#N` `` inside a
-`## Decision` section is a claim, including one written to *illustrate* the syntax.
-Quoting ADR-0127's token as an example while drafting ADR-0128 made ADR-0128 genuinely
-claim that anchor and demand a back-pointer from ADR-0017, and cost an `awf check`
-failure to diagnose. Only the enclosing section saves you: tokens outside `## Decision`
-are inert, so cite examples from Context, Consequences, or Alternatives, or describe the
-shape without writing a well-formed token (`supersedes: ADR-NNNN#<item>` with the
-placeholder left literal is safe, since the regex demands digits).
-
 ## Raw-byte offsets go stale the moment an earlier pass edits the file
 
 _Domains: config_
@@ -1028,56 +944,30 @@ way the same migration already tracked `removed` for stripped key lines. The tel
 drift about *declarations going missing*, which points at a mangled section heading
 rather than at the tokens the error names.
 
-## A rule gated on current status can make a chain unrepresentable
-
-_Domains: adr-system_
-
-_Related: ADR-0128, ADR-0129_
-
-ADR-0128 first said an anchor counts as covered only when its claiming carrier is
-`Implemented`, naming `Superseded` alongside `Proposed` as non-counting. That reads
-reasonably and is wrong: in a chain where A retires B and B retires C, flipping B to
-`Superseded` stops B's retirement counting, so C revives, and C's status can then never
-be made consistent by any edit to C - the drift is unfixable at the file it is reported
-on. The rule survived a brainstorm, three ADR reviews, and three plan reviews, and was
-found only by probing a four-deep fixture. The same ADR had already fixed this exact
-class for invariant slugs (item 4 exists because flipping to `Superseded` silently
-retired every slug an ADR declared) and missed it for Decision items.
-
-When a rule keys off an artifact's *current* status, ask what happens to the relations
-that artifact asserts once its own status changes. Retirement is repository state
-derivable from the present corpus, not history: a superseded ADR is not void in
-meaning, and what it superseded stays superseded. The corrected rule counts any carrier
-that has shipped, `Implemented` or `Superseded`, which keeps the original point - a
-successor that has not shipped must not kill its predecessor - without the hole.
-
 ## A scripted sweep over ADR prose can silently unmake the structure it edits
 
 _Domains: adr-system_
 
-_Related: ADR-0120, ADR-0131_
+_Related: ADR-0135_
 
-Backfilling relation tokens across the corpus is naturally scripted: find the citation,
-insert the token, re-wrap the paragraph. Both halves of the re-wrap have a failure mode
-that produces a file which still reads correctly to a human.
+Editing ADR bodies across the corpus by script (the project-atomic cutover rewrote every
+legacy ADR into the v1 format this way) has failure modes that produce a file which still
+reads correctly to a human.
 
-A code span must be atomic. Wrapping inside one splits a relation token across a
-newline, and the token regexes do not match across newlines, so the parser goes blind
-to a token a reader plainly sees. The claim silently becomes unencoded, and for a
-`supersedes:` token the target's coverage silently changes with it.
+A code span must be atomic. Wrapping a paragraph inside one splits an inline-code span
+(a qualified claim id, a `State changes` operation) across a newline, and the regexes do
+not match across newlines, so the parser goes blind to a construct a reader plainly sees.
 
-A paragraph's trailing newline must survive. An item span ends exactly where the next
-Decision item begins, so dropping it concatenates the last line onto the next item's
-`N.` lead and MERGES TWO ITEMS, renumbering every anchor after them. That one is
-caught: `checkDecisionFormat` requires items to run sequentially from 1, so the merge
-leaves a gap and reds `awf check`. The token split is not caught by anything until the
-citation check ships.
+A Decision item's boundary must survive. An item span ends exactly where the next Decision
+item begins, so dropping a trailing newline concatenates the last line onto the next item's
+`N.` lead and MERGES TWO ITEMS, renumbering every item after them. That one is caught:
+`validateDecisionItems` requires items to run sequentially from 1, so the merge leaves a gap
+and reds `awf check`.
 
-Verify a sweep by its effect on structure, not by reading its diff. Two commands settle
-it: compare each ADR's Decision item list before and after (identical), and compare the
-whitespace-normalised prose with relation tokens and `related:` arrays stripped from
-BOTH sides (identical). Stripping only the new side reports every pre-existing token as
-a prose change and buries the real finding in false positives.
+Verify a sweep by its effect on structure, not by reading its diff. Two commands settle it:
+compare each ADR's Decision item list before and after (identical), and compare the
+whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
+pre-existing construct as a change and buries the real finding in false positives.
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

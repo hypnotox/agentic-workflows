@@ -6,11 +6,11 @@
 # Deliberately nondeterministic porcelain for humans; CI and hooks call the
 # deterministic .awf/bootstrap.sh instead.
 #
-# This porcelain performs only the ordinary schema migration. It never attests
-# the current-state bridge: sealing a prepared tree is the explicit, clean-HEAD
-# `awf upgrade --attest-current-state`, and recovering an interrupted attestation
-# is `awf upgrade --recover`. Verify the matching current-state binary and a
-# green check/test/gate on a clean HEAD before attesting by hand.
+# This porcelain runs the ordinary `awf upgrade`, which migrates the schema or,
+# when the lock carries a bridge attestation, consumes that seal as the final
+# current-state cutover. Recovering an interrupted cutover is `awf upgrade
+# --recover`. Attestation lives only in the preceding bridge release; this binary
+# consumes seals, it never produces them.
 set -euo pipefail
 
 REPO="hypnotox/agentic-workflows"

@@ -4,6 +4,6 @@
 - [ADR-0001: Approximate sun events with the cosine day-length model](0001-approximate-sun-events-with-the-cosine-day-length-model.md) (Implemented)
 - [ADR-0002: CLI accepts coordinates as decimal degrees only](0002-cli-accepts-coordinates-as-decimal-degrees-only.md) (Implemented)
 
-## Proposed
+## Abandoned
 
-- [ADR-0003: Cache almanac tables per location](0003-cache-almanac-tables-per-location.md) (Proposed)
+- [ADR-0003: Cache almanac tables per location](0003-cache-almanac-tables-per-location.md) (Abandoned)

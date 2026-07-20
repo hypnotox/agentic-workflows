@@ -21,7 +21,7 @@ import (
 // .git/info/exclude) - so the rule mirrors `git status` and does not false-positive
 // on globally-ignored files. Run evaluates it (it holds the repo root); it is
 // range-independent, unlike the commit-history rules in evaluate.
-// touches-invariant: audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
+// touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
 func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 	if !in.UncommittedChanges {
 		return nil

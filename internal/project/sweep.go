@@ -146,7 +146,7 @@ var awfBakRE = regexp.MustCompile(`\.awf-bak(\.\d+)?$`)
 // their ADR-0011 detail strings byte-identical, sync-written backups get
 // the stale-backup detail (inv: awf-bak-flagged), local-managed artifacts'
 // parts their own, and everything else is unclaimed.
-// touches-invariant: awf-bak-flagged - stale awf-bak backup classification; proof in sweep_test.go
+// touches-state: rendering/project-output-plan:awf-bak-flagged - stale awf-bak backup classification; proof in sweep_test.go
 func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 	const localDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 	d := manifest.Drift{Path: rel, Kind: "orphaned"}
@@ -182,9 +182,6 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 // (ADR-0069). It subsumes the pre-ADR-0086 orphan sweep: wrong-name
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-// invariant: closed-config-tree
-// invariant: drift-source-set
-// invariant: section-orphan-flagged
 func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error) {
 	m, err := p.buildClaimedModel(files)
 	if err != nil { // coverage-ignore: see buildClaimedModel's sidecar coverage-ignores

@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// invariant: almanac/model:almanac-clamped-latitude
 func TestClampLatitude(t *testing.T) {
 	for _, tc := range []struct{ in, want float64 }{
 		{in: 91, want: 90},

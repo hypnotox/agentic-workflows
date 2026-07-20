@@ -26,13 +26,10 @@ var skillRefRe = regexp.MustCompile(`example-[a-z][a-z-]*[a-z]`)
 var doubleBacktickRe = regexp.MustCompile("(^|[^`])``([^`]|$)")
 
 // doubleBacktickExempt lists templates whose double-backtick spans are
-// deliberate; entries fail when stale (ADR-0080 Decision 7). proposing-adr
-// quotes nested backticks in its inv-slug authoring guidance; adr-lifecycle
-// quotes the backticked supersession-token grammar the same way (ADR-0120).
-var doubleBacktickExempt = map[string]bool{
-	"skills/proposing-adr/SKILL.md.tmpl": true,
-	"skills/adr-lifecycle/SKILL.md.tmpl": true,
-}
+// deliberate; entries fail when stale (ADR-0080 Decision 7). No skill or agent
+// template renders a double-backtick span under the current-state authority
+// model; the map stays declared so a future deliberate span registers here.
+var doubleBacktickExempt = map[string]bool{}
 
 // TestCatalogTemplatesDegradeLeakFree renders every catalog skill and agent
 // template under empty adopter data (full awf-given layout, RequiresDoc doc
@@ -40,7 +37,7 @@ var doubleBacktickExempt = map[string]bool{
 // artifact's RequiresSkills declaration, and on stale declarations or
 // exemptions. The artifact set derives from catalog.Standard, never a hand
 // list (ADR-0080).
-// invariant: catalog-template-sweep
+// invariant: rendering/templates:catalog-template-sweep
 func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 	cat := catalog.Standard
 	sweep := func(tid, self, requiresDoc string, requiresSkills []string) {
@@ -59,7 +56,7 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 			out := renderGolden(t, tid, data)
 			// Declarations are exact: undeclared reference residue and stale
 			// RequiresSkills entries both fail (ADR-0080 Decision 2).
-			// invariant: requires-skills-exact
+			// invariant: rendering/catalog-and-targets:requires-skills-exact
 			found := map[string]bool{}
 			for _, m := range skillRefRe.FindAllString(out, -1) {
 				name := strings.TrimPrefix(m, "example-")
@@ -101,7 +98,7 @@ var conditionalActionRe = regexp.MustCompile(`\{\{-?\s*(if|with|range)\b`)
 // unset-data case for every catalog template whose post-include-expansion
 // source contains a conditional action - only a human knows what the degraded
 // prose should say, so its presence is machine-forced (ADR-0080 Decision 3).
-// invariant: conditional-fallback-case-guard
+// invariant: rendering/templates:conditional-fallback-case-guard
 func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 	covered := map[string]bool{}
 	for _, tc := range unsetFallbackCases {
@@ -142,7 +139,7 @@ func kebabToCamel(name string) string {
 // func exists in this package's test source for every catalog skill and
 // agent - the goldens live in spine_test.go by convention (source-scan
 // mechanic, precedent TestArchitectureDocNamesEveryCmd; ADR-0080 Decision 4).
-// invariant: golden-test-completeness
+// invariant: rendering/templates:golden-test-completeness
 func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
 	src, err := os.ReadFile("spine_test.go")
 	if err != nil {

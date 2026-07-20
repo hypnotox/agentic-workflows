@@ -29,7 +29,7 @@ type pitfallEntry struct {
 // empty/newline-bearing title, an empty body, a wrong-typed field - are hard errors
 // naming the sidecar. Domain and ADR-link resolution is checkPitfalls' job (it
 // needs the project's domains and ADRs); this validates shape only.
-// touches-invariant: pitfall-data-validated - pitfall shape validation; proof in pitfalls_test.go
+// touches-state: rendering/project-output-plan:pitfall-data-validated - pitfall shape validation; proof in pitfalls_test.go
 func pitfallEntries(raw any) ([]pitfallEntry, error) {
 	if raw == nil {
 		return nil, nil

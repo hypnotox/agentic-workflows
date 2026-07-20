@@ -7,7 +7,7 @@ audit:
     - name: adr
       meaning: ADR markdown documents
     - name: adr-system
-      meaning: the ADR machinery code (ACTIVE.md generation, lifecycle)
+      meaning: the ADR machinery code (INDEX.md generation, lifecycle)
     - name: awf
       meaning: genuinely cross-cutting / repo-meta work, the umbrella of last resort
     - name: config
@@ -34,8 +34,7 @@ domains:
   - invariants
   - rendering
   - tooling
-invariants:
-  disabled: false
+currentState:
   sources:
     - globs:
         - '**/*.go'
@@ -47,6 +46,9 @@ invariants:
       close: '-->'
   testGlobs:
     - '**/*_test.go'
+  topicCoverage: error
+  topicFanout: warn
+  maxTopicsPerPath: 8
 prefix: awf
 skills:
   - adr-lifecycle
@@ -66,7 +68,7 @@ skills:
   - writing-plans
   - exploring
 tags:
-  active-md: Generated ACTIVE.md decision status index
+  active-md: Generated INDEX.md decision status index
   adopter-reference: The adopter-facing config reference authority
   adr-lifecycle: ADR state transitions and amendment scope
   adr-parsing: ADR frontmatter and section parsing

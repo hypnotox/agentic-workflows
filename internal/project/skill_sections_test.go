@@ -48,7 +48,7 @@ func assertSectionParity(t *testing.T, label, tid string, sections []string) {
 // updates the template but not the catalog Standard value (or vice versa) renders
 // green with a blank-path provenance pointer that no other gate catches (ADR-0054).
 //
-// invariant: skill-section-parity
+// invariant: rendering/catalog-and-targets:skill-section-parity
 func TestSkillAndAgentSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Skills {

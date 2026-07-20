@@ -71,7 +71,7 @@ func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 // Dormant doc-gated skills are dropped (printed), missing requirements are
 // added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
 // Decision 8).
-// invariant: close-enabled-set-migration
+// invariant: config/migrations-and-locks:close-enabled-set-migration
 func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	root := closeFixture(t, "prefix: ex\nskills: [brainstorming, roadmap-graduation, tdd]\nagents: []\n", nil)
 	var out bytes.Buffer

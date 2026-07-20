@@ -88,6 +88,9 @@ Verify: inspect output
 		t.Fatalf("empty: %#v %v", empty, err)
 	}
 }
+
+// invariant: invariants/topics-and-markers:invariants-duplicate-slug
+// invariant: invariants/topics-and-markers:unbacked-requires-verify-note
 func TestParsePartRejected(t *testing.T) {
 	head := "### `rule: x`\nProse.\nOrigin: ADR-0001\n"
 	cases := map[string]string{

@@ -58,7 +58,6 @@ func enableDisableSingleton(root, key string, add bool, stdout io.Writer) error 
 // is the bespoke path (targets is not a kindDescriptor - ADR-0037): it validates
 // against the known-adapter set and writes the full resolved list, since the
 // targets array carries a Load default that an absent on-disk key would drop.
-// invariant: target-cli
 func enableDisableTarget(root, name string, add bool, stdout io.Writer) error {
 	if !slices.Contains(project.KnownTargets(), name) {
 		return fmt.Errorf("%q is not a known target (known: %s)", name, strings.Join(project.KnownTargets(), ", "))
@@ -210,7 +209,7 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 			// full missing forward closure - skills, agents, and docs - in one
 			// config rewrite, printed as a plan. Generalizes the ADR-0050 pairing
 			// and subsumes the ADR-0013 doc advisory note.
-			// touches-invariant: add-skill-pairs-agent - closure plan enables the required agent; proof in list_add_test.go
+			// touches-state: tooling/cli:add-skill-pairs-agent - closure plan enables the required agent; proof in list_add_test.go
 			plan = p.ResolveEnable(kind, name)
 		} else {
 			// Dependent-refusing removal (ADR-0081 Decision 5): the plan is the
@@ -218,7 +217,6 @@ func toggle(root, kind, name string, dir direction, flags toggleFlags, stdout io
 			// change; a longer plan refuses upfront - BEFORE the config rewrite,
 			// so no half-broken tree is stranded. Generalizes the ADR-0050 agent
 			// guard (the reverse walk's length-1 case).
-			// invariant: remove-agent-pairing-guard
 			plan = p.ResolveDisable(kind, name)
 		}
 		printPlan(stdout, plan)

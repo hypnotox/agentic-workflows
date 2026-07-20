@@ -164,7 +164,7 @@ func TestCollectMergeCommitCarriesNoChanges(t *testing.T) {
 // A range with no commits beyond the base yields zero findings and exits clean.
 // ADR-0127 keeps this contract intact: an empty range is still reachable (a..a),
 // and the new notice reports it without turning it into a finding.
-// invariant: audit-empty-range-clean
+// invariant: tooling/audit-and-snapshots:audit-empty-range-clean
 func TestCollectEmptyRangeIsClean(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
@@ -278,7 +278,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}})
-	// invariant: audit-uncommitted-changes
+	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
 	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != Error || f[0].Commit != "" {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}

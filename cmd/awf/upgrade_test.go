@@ -2,89 +2,213 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
-	"errors"
+	"fmt"
+	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/bridge"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
-type failingWriter struct{}
-
-func (failingWriter) Write([]byte) (int, error) { return 0, errors.New("write") }
-
-func TestUpgradeCheckJSONSchema(t *testing.T) {
-	report := bridge.Report{Ready: false, Findings: []bridge.Finding{{Code: "invariant-approval", Path: bridge.ApprovalPath, Detail: "required"}}, InvariantAdjudications: []bridge.Adjudication{{Key: "ADR-0001#x", Disposition: "live", Destination: "core/x:x", Origin: "ADR-0001", Backing: "test", Approved: true}}, PlannedMutations: []bridge.Mutation{{Path: "x", BeforePresent: false, BeforeSHA256: strings.Repeat("0", 64), AfterPresent: true, AfterMode: 0o644, AfterSHA256: strings.Repeat("1", 64)}}}
-	var out bytes.Buffer
-	if err := writeReadinessJSON(&out, report); err != nil {
+// TestRunUpgradeGateStateError covers the GateState error branch in runUpgrade:
+// an old-tree (.claude/awf/) project whose legacy lock is corrupt. The new-tree
+// lock is absent (so the earlier LoadOptional passes), and the fault surfaces
+// when GateState reads the legacy lock to compute the generation.
+func TestRunUpgradeGateStateError(t *testing.T) {
+	root := t.TempDir()
+	oldDir := filepath.Join(root, ".claude", "awf")
+	if err := os.MkdirAll(oldDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	var got map[string]any
-	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+	if err := os.WriteFile(filepath.Join(oldDir, "config.yaml"), []byte("prefix: ex\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"ready", "findings", "invariantAdjudications", "plannedMutations"} {
-		if _, ok := got[key]; !ok {
-			t.Errorf("missing %s: %s", key, out.String())
-		}
+	if err := os.WriteFile(filepath.Join(oldDir, "awf.lock"), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
 	}
-	if strings.Contains(out.String(), "Before") || strings.Contains(out.String(), "After\"") {
-		t.Errorf("unstable field names: %s", out.String())
-	}
-	out.Reset()
-	writeReadinessHuman(&out, report)
-	for _, want := range []string{"finding: invariant-approval", "invariant: ADR-0001#x", "mutation: x"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("human missing %q: %s", want, out.String())
-		}
-	}
-	if err := writeReadinessJSON(failingWriter{}, report); err == nil {
-		t.Fatal("writer failure ignored")
+	if err := runUpgrade(root, io.Discard); err == nil {
+		t.Fatal("expected a GateState error from the corrupt legacy lock")
 	}
 }
-func TestUpgradeFlagRules(t *testing.T) {
-	var out bytes.Buffer
-	if err := runUpgradeFlags(t.TempDir(), false, true, false, false, &out); err == nil || !strings.Contains(err.Error(), "requires --check") {
-		t.Fatalf("%v", err)
+
+// writeValidJournal writes a minimal valid single-op (lock) journal in the given
+// phase. When finalMatchesLock, its final hash matches the on-disk lock so
+// recovery treats it as committed and cleans it up.
+func writeValidJournal(t *testing.T, root, phase string, finalMatchesLock bool) {
+	t.Helper()
+	lockPath := config.LockPath(root)
+	lockBytes, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := runUpgradeFlags(t.TempDir(), true, false, false, false, &out); err == nil || !strings.Contains(err.Error(), "not an awf project") {
-		t.Fatalf("%v", err)
+	info, err := os.Stat(lockPath)
+	if err != nil {
+		t.Fatal(err)
 	}
+	final := lockBytes
+	if !finalMatchesLock {
+		final = append(append([]byte{}, lockBytes...), '\n')
+	}
+	j := upgrade.Journal{
+		Version:         upgrade.JournalVersion,
+		Phase:           phase,
+		FinalLockSHA256: fmt.Sprintf("%x", sha256.Sum256(final)),
+		Operations: []upgrade.Operation{
+			{Path: upgrade.LockRel(), Prior: upgrade.Image{Present: true, Mode: uint32(info.Mode().Perm()), Content: lockBytes}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: final}},
+		},
+	}
+	b, err := json.MarshalIndent(j, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(upgrade.JournalPath(root), append(b, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// attestLock writes a bridge attestation into the project's lock so the guard
+// and the seal-consumption routing observe an attested lock. The sealed facts
+// are deliberately bogus: the tests assert only routing, not a passing seal.
+func attestLock(t *testing.T, root string) {
+	t.Helper()
+	lock, found, err := manifest.LoadOptional(config.LockPath(root))
+	if err != nil || !found {
+		t.Fatalf("load lock: %v found=%t", err, found)
+	}
+	lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "0000000000000000000000000000000000000000", TreeDigest: "sha256:0", ADRFormatV1From: 137}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	root := scaffoldProject(t)
-	out.Reset()
-	if err := runUpgradeFlags(root, true, false, false, false, &out); err == nil || !strings.Contains(out.String(), "ready: false") {
-		t.Fatalf("human: %v %s", err, out.String())
-	}
-	out.Reset()
-	if err := runUpgradeFlags(root, true, true, false, false, &out); err == nil || !strings.HasPrefix(out.String(), "{\"ready\":false") {
-		t.Fatalf("json: %v %s", err, out.String())
-	}
-	ready := scaffoldProject(t)
-	if err := os.WriteFile(filepath.Join(ready, ".awf", "config.yaml"), []byte("prefix: awf\ntargets: [claude]\ninvariants:\n  sources: []\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(ready, ".awf", "current-state-migration.yaml"), []byte("version: 1\ninvariantApprovals: []\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	for _, args := range [][]string{{"init", "-q"}, {"config", "user.email", "test@example.com"}, {"config", "user.name", "Test"}, {"add", "."}, {"commit", "-qm", "fixture"}} {
-		cmd := exec.Command("git", append([]string{"-C", ready}, args...)...)
-		if b, e := cmd.CombinedOutput(); e != nil {
-			t.Fatalf("git: %v %s", e, b)
+	writeValidJournal(t, root, "lock-committed", true)
+	// Every non-recover command refuses with the run-recover diagnostic.
+	for _, args := range [][]string{{"awf", "check"}, {"awf", "upgrade"}} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, args, &out, &errb); code == 0 || !strings.Contains(errb.String(), "awf upgrade --recover") {
+			t.Fatalf("%v not refused: code=%d\n%s", args, code, errb.String())
 		}
 	}
-	out.Reset()
-	if err := runUpgradeFlags(ready, true, false, false, false, &out); err != nil {
-		t.Fatalf("ready human: %v\n%s", err, out.String())
+	// version and changelog bypass the transaction state.
+	for _, args := range [][]string{{"awf", "version"}, {"awf", "changelog"}} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, args, &out, &errb); code != 0 {
+			t.Fatalf("%v was guarded: code=%d\n%s", args, code, errb.String())
+		}
+	}
+	// Recovery is permitted and cleans up the committed journal.
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "upgrade", "--recover"}, &out, &errb); code != 0 {
+		t.Fatalf("recover failed: code=%d\n%s", code, errb.String())
+	}
+	if upgrade.JournalPresent(root) {
+		t.Fatal("journal not cleaned by recovery")
+	}
+	if !strings.Contains(out.String(), "operation: recovered") {
+		t.Fatalf("no recovered line: %s", out.String())
+	}
+}
+
+func TestGuardMalformedJournalRefusesEveryMode(t *testing.T) {
+	root := scaffoldProject(t)
+	if err := os.WriteFile(upgrade.JournalPath(root), []byte("{not json"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"awf", "upgrade", "--recover"}, {"awf", "check"}} {
+		var out, errb bytes.Buffer
+		if code := runAt(t, root, args, &out, &errb); code == 0 || !strings.Contains(errb.String(), "restore the working tree from Git") {
+			t.Fatalf("%v not refused with restoration guidance: code=%d\n%s", args, code, errb.String())
+		}
+	}
+}
+
+func TestGuardRecoverWithoutJournal(t *testing.T) {
+	root := scaffoldProject(t)
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "upgrade", "--recover"}, &out, &errb); code == 0 || !strings.Contains(errb.String(), "no current-state upgrade journal to recover") {
+		t.Fatalf("recover-without-journal: code=%d\n%s", code, errb.String())
 	}
 	out.Reset()
-	if err := runUpgradeFlags(ready, true, true, false, false, &out); err != nil {
-		t.Fatalf("ready json: %v\n%s", err, out.String())
+	errb.Reset()
+	if code := runAt(t, t.TempDir(), []string{"awf", "upgrade", "--recover"}, &out, &errb); code == 0 || !strings.Contains(errb.String(), "not an awf project") {
+		t.Fatalf("recover outside tree: code=%d\n%s", code, errb.String())
 	}
-	if err := runUpgradeFlags(ready, true, true, false, false, failingWriter{}); err == nil {
-		t.Fatal("upgrade ignored JSON writer failure")
+}
+
+func TestGuardAttestedLockPermitsUpgradeRefusesOthers(t *testing.T) {
+	root := scaffoldProject(t)
+	attestLock(t, root)
+	// Ordinary commands refuse with the consume-the-attestation diagnostic.
+	var out, errb bytes.Buffer
+	if code := runAt(t, root, []string{"awf", "check"}, &out, &errb); code == 0 || !strings.Contains(errb.String(), "run `awf upgrade` to consume it") {
+		t.Fatalf("check not refused: code=%d\n%s", code, errb.String())
+	}
+	// Plain upgrade is permitted by the guard and reaches the handler, which
+	// verifies the seal and refuses the bogus prepared head (not a guard message).
+	out.Reset()
+	errb.Reset()
+	code := runAt(t, root, []string{"awf", "upgrade"}, &out, &errb)
+	if code == 0 || strings.Contains(errb.String(), "run `awf upgrade` to consume it") {
+		t.Fatalf("upgrade should reach the handler: code=%d\n%s", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "prepared head") {
+		t.Fatalf("want a seal-verification failure, got: %s", errb.String())
+	}
+}
+
+func TestUpgradeConsumesAttestationRouting(t *testing.T) {
+	// runUpgrade routes an attested lock into the final cutover verifier, which
+	// rejects the bogus sealed facts rather than running a schema migration.
+	root := scaffoldProject(t)
+	attestLock(t, root)
+	if err := runUpgrade(root, io.Discard); err == nil || !strings.Contains(err.Error(), "prepared head") {
+		t.Fatalf("want seal verification, got %v", err)
+	}
+}
+
+func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
+	// A precommit journal whose lock hash differs from the final hash rolls the
+	// prepared write back to its prior image on recovery.
+	root := scaffoldProject(t)
+	lockPath := config.LockPath(root)
+	lockBytes, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, _ := os.Stat(lockPath)
+	final := append(append([]byte{}, lockBytes...), []byte("\n# attested\n")...)
+	prepared := filepath.Join(root, "prepared.txt")
+	if err := os.WriteFile(prepared, []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	j := upgrade.Journal{
+		Version:         upgrade.JournalVersion,
+		Phase:           "applying",
+		FinalLockSHA256: fmt.Sprintf("%x", sha256.Sum256(final)),
+		Operations: []upgrade.Operation{
+			{Path: "prepared.txt", Prior: upgrade.Image{Present: false}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: []byte("new")}},
+			{Path: upgrade.LockRel(), Prior: upgrade.Image{Present: true, Mode: uint32(info.Mode().Perm()), Content: lockBytes}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: final}},
+		},
+	}
+	b, _ := json.MarshalIndent(j, "", "  ")
+	if err := os.WriteFile(upgrade.JournalPath(root), append(b, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runRecover(root, io.Discard); err != nil {
+		t.Fatalf("recover: %v", err)
+	}
+	if _, err := os.Stat(prepared); !os.IsNotExist(err) {
+		t.Fatal("prepared.txt not rolled back")
+	}
+	if upgrade.JournalPresent(root) {
+		t.Fatal("journal residue after rollback")
 	}
 }

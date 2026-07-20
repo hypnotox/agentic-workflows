@@ -13,7 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// invariant: guide-scopes-derived
+// invariant: rendering/templates:guide-scopes-derived
 //
 // The agent guide renders its commit-scope mention from the $.commitScopes
 // render key - never a hand-written token list - and degrades to generic

@@ -31,6 +31,7 @@ func testLayout() map[string]any {
 		"docsDir":          "docs",
 		"adrDir":           "docs/decisions",
 		"activeMd":         "docs/decisions/ACTIVE.md",
+		"indexMd":          "docs/decisions/INDEX.md",
 		"adrReadme":        "docs/decisions/README.md",
 		"adrTemplate":      "docs/decisions/template.md",
 		"plansDir":         "docs/plans",
@@ -106,7 +107,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 	}
 }
 
-// invariant: target-prune-ancestors
+// invariant: rendering/project-output-plan:target-prune-ancestors
 func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
 	p, err := Open(root)
@@ -491,7 +492,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	// Output moved, real hashes unmoved → a non-hashed input.
 	mutate(".awf/memory/.gitignore", func(e *manifest.Entry) { e.OutputHash = "x" })
 	// Output moved on a generated index (no hashes by design) → regenerated.
-	mutate("docs/decisions/ACTIVE.md", func(e *manifest.Entry) { e.OutputHash = "x" })
+	mutate("docs/decisions/INDEX.md", func(e *manifest.Entry) { e.OutputHash = "x" })
 	// No prior entry → added.
 	delete(lock.Files, "docs/workflow.md")
 	if err := lock.Save(p.lockPath()); err != nil {
@@ -507,7 +508,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 		{Path: ".claude/skills/example-tdd/SKILL.md", Cause: "config"},
 		{Path: "AGENTS.md", Cause: "template"},
 		{Path: "CLAUDE.md", Cause: "template+config"},
-		{Path: "docs/decisions/ACTIVE.md", Cause: "regenerated"},
+		{Path: "docs/decisions/INDEX.md", Cause: "regenerated"},
 		{Path: "docs/workflow.md", Cause: "added"},
 	}
 	if !slices.Equal(changes, want) {
@@ -688,19 +689,20 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	}
 }
 
-// invariant: layout-derivation
+// invariant: rendering/project-output-plan:layout-derivation
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
 	l := p.layout()
 	if l.DocsDir != "documentation" || l.ADRDir != "documentation/decisions" ||
-		l.ActiveMd != "documentation/decisions/ACTIVE.md" || l.PlansDir != "documentation/plans" {
+		l.ActiveMd != "documentation/decisions/ACTIVE.md" ||
+		l.IndexMd != "documentation/decisions/INDEX.md" || l.PlansDir != "documentation/plans" {
 		t.Errorf("layout = %+v", l)
 	}
-	// invariant: domains-dir-given
+	// invariant: rendering/project-output-plan:domains-dir-given
 	if l.DomainsDir != "documentation/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
 	}
-	// invariant: layout-docs-enabled-only
+	// invariant: rendering/project-output-plan:layout-docs-enabled-only
 	wantDocs := map[string]string{
 		"architecture": "documentation/architecture.md",
 	}
@@ -716,6 +718,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 		"docsDir":          "documentation",
 		"adrDir":           "documentation/decisions",
 		"activeMd":         "documentation/decisions/ACTIVE.md",
+		"indexMd":          "documentation/decisions/INDEX.md",
 		"plansDir":         "documentation/plans",
 		"domainsDir":       "documentation/domains",
 		"adrReadme":        "documentation/decisions/README.md",
@@ -735,11 +738,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 5 fixed dir keys + docs + 9 mandatory-singleton keys = 15 (agents-doc has
+	// 6 fixed dir keys + docs + 9 mandatory-singleton keys = 16 (agents-doc has
 	// no TemplateKey and is excluded; the generated config reference is
 	// layout-exposed like its hash-checked siblings).
-	if len(tm) != 15 {
-		t.Errorf("templateMap has %d keys, want 15", len(tm))
+	if len(tm) != 16 {
+		t.Errorf("templateMap has %d keys, want 16", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
@@ -782,8 +785,8 @@ func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 	}
 }
 
-// invariant: sync-always-writes-active-md
-// invariant: check-active-md-stale
+// invariant: rendering/project-output-plan:sync-always-writes-active-md
+// invariant: rendering/project-output-plan:check-active-md-stale
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
@@ -801,18 +804,25 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	active, err := os.ReadFile(filepath.Join(adrDir, "ACTIVE.md"))
+	index, err := os.ReadFile(filepath.Join(adrDir, "INDEX.md"))
 	if err != nil {
-		t.Fatalf("ACTIVE.md not generated: %v", err)
+		t.Fatalf("INDEX.md not generated: %v", err)
 	}
-	if !strings.Contains(string(active), "ADR-0001: First") {
-		t.Errorf("ACTIVE.md missing the ADR entry:\n%s", active)
+	// The Accepted ADR renders under the In flight status section.
+	inflightPos := strings.Index(string(index), "## In flight")
+	entryPos := strings.Index(string(index), "ADR-0001: First")
+	if inflightPos < 0 || !strings.Contains(string(index), "## History") {
+		t.Errorf("INDEX.md missing status sections:\n%s", index)
+	}
+	if entryPos < 0 || entryPos < inflightPos {
+		t.Errorf("INDEX.md missing the ADR entry under In flight:\n%s", index)
 	}
 	if drift, err := p.Check(); err != nil || len(drift) != 0 {
 		t.Fatalf("expected clean check after sync, got drift=%#v err=%v", drift, err)
 	}
 
-	// Change frontmatter status; the on-disk ACTIVE.md is now stale.
+	// Change frontmatter status (Accepted In flight -> Implemented History); the
+	// on-disk INDEX.md is now stale.
 	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adr2)
 	drift, err := p.Check()
@@ -821,17 +831,17 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	}
 	found := false
 	for _, d := range drift {
-		if strings.HasSuffix(d.Path, "decisions/ACTIVE.md") && d.Kind == "stale" {
+		if strings.HasSuffix(d.Path, "decisions/INDEX.md") && d.Kind == "stale" {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("expected stale drift for ACTIVE.md, got %#v", drift)
+		t.Errorf("expected stale drift for INDEX.md, got %#v", drift)
 	}
 }
 
-// invariant: sync-always-writes-active-md
-func TestSyncRendersPlaceholderActiveMDWithoutADRs(t *testing.T) {
+// invariant: rendering/project-output-plan:sync-always-writes-active-md
+func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(root)
 	if err != nil {
@@ -840,9 +850,9 @@ func TestSyncRendersPlaceholderActiveMDWithoutADRs(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "ACTIVE.md"))
+	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "INDEX.md"))
 	if err != nil {
-		t.Fatalf("expected a placeholder ACTIVE.md when no ADRs exist: %v", err)
+		t.Fatalf("expected a placeholder INDEX.md when no ADRs exist: %v", err)
 	}
 	if !strings.Contains(string(got), "No decisions recorded yet") {
 		t.Errorf("expected placeholder index, got:\n%s", got)
@@ -852,7 +862,7 @@ func TestSyncRendersPlaceholderActiveMDWithoutADRs(t *testing.T) {
 	}
 }
 
-// invariant: check-invalid-frontmatter
+// invariant: rendering/project-output-plan:check-invalid-frontmatter
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)
@@ -891,9 +901,9 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
-// invariant: adr-system-singletons-rendered
-// invariant: plain-singleton-via-renderkind
-// invariant: working-with-awf-mandatory
+// invariant: rendering/project-output-plan:adr-system-singletons-rendered
+// invariant: rendering/project-output-plan:plain-singleton-via-renderkind
+// invariant: rendering/project-output-plan:working-with-awf-mandatory
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
@@ -965,7 +975,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	lay := p.layout()
 	// Plant a foreign ADR index with hand content before the first sync (no lock yet),
 	// so its path is absent from the prior lock and therefore foreign.
-	foreign := filepath.Join(root, lay.ActiveMd)
+	foreign := filepath.Join(root, lay.IndexMd)
 	if err := os.MkdirAll(filepath.Dir(foreign), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -978,16 +988,16 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	}
 	var got *Backup
 	for i := range backups {
-		if backups[i].Path == lay.ActiveMd {
+		if backups[i].Path == lay.IndexMd {
 			got = &backups[i]
 		}
 	}
-	// invariant: sync-backs-up-foreign
+	// invariant: rendering/project-output-plan:sync-backs-up-foreign
 	if got == nil {
-		t.Fatalf("foreign ACTIVE.md not backed up; backups=%#v", backups)
+		t.Fatalf("foreign INDEX.md not backed up; backups=%#v", backups)
 	}
 	if !got.Index {
-		t.Errorf("ACTIVE.md backup must be flagged Index=true")
+		t.Errorf("INDEX.md backup must be flagged Index=true")
 	}
 	if b, _ := os.ReadFile(filepath.Join(root, got.Bak)); string(b) != "hand index\n" {
 		t.Errorf("backup = %q, want original hand content", b)
@@ -1015,13 +1025,13 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: regeneration-checked-attribute
-	amd, err := p.generateActiveMD()
+	// invariant: rendering/project-output-plan:regeneration-checked-attribute
+	amd, err := p.generateIndexMD()
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !amd.RegenChecked {
-		t.Errorf("ACTIVE.md must be regeneration-checked")
+		t.Errorf("INDEX.md must be regeneration-checked")
 	}
 	dds, err := p.generateDomainDocs()
 	if err != nil {
@@ -1058,7 +1068,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	}
 }
 
-// invariant: document-map-lists-mandatory-docs
+// invariant: rendering/templates:document-map-lists-mandatory-docs
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(root)
@@ -1097,7 +1107,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // the error names both sides and the fix. The fixture carries reviewing-impl's
 // skill closure so the agent edge is the failing one (ADR-0050, generalized by
 // ADR-0081's closure validation).
-// invariant: reviewing-skill-agent-pairing
+// invariant: rendering/project-output-plan:reviewing-skill-agent-pairing
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
 	_, err := Open(root)
@@ -1119,7 +1129,7 @@ func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
 
 // Every enabled, non-local artifact's direct catalog requirements must be
 // enabled - a violation fails open with a repair hint (ADR-0081 Decision 3).
-// invariant: enabled-set-closed
+// invariant: rendering/catalog-and-targets:enabled-set-closed
 func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	cases := []struct {
 		name, cfg, wantSub string

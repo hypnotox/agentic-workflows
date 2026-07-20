@@ -283,7 +283,7 @@ var memoryCheckpointSkills = []string{
 // TestMemoryCheckpointCoverage asserts every non-terminal chain node and the
 // multi-step task skills instruct the working-memory checkpoint in the rendered
 // full-catalog output, and the chain terminal instructs the deletion (ADR-0069).
-// invariant: memory-checkpoint-chain-coverage
+// invariant: rendering/templates:memory-checkpoint-chain-coverage
 func TestMemoryCheckpointCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)

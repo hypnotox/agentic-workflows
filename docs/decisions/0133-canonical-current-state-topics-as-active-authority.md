@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-19
 tags: [adr-lifecycle, context-query, domain-index, invariant-backing]
 related: [7, 14, 92, 104, 105, 109, 112, 114, 120, 128, 129, 130, 131]
@@ -33,6 +33,10 @@ The system needs separate artifacts for separate questions:
 5. awf will ship one authority engine, not a permanent or transitional compatibility mode. Upgrade is project-atomic and completes only after every domain-owned path has required topic coverage, every surviving legacy invariant maps to exactly one typed topic claim, every marker resolves under the new model, every existing Proposed or Accepted ADR is Implemented or Abandoned, and the static and staged gates pass. An adopter that has not curated this state remains on the preceding awf release. Migration preflight may inventory obligations and expose uncovered paths, but it must neither operate the legacy authority engine nor infer authoritative prose from the ADR corpus.
 
 6. Existing ADR-derived context, supersession, and invariant contracts remain intact while the replacement is developed. Focused successor ADRs will settle the topic and claim schema, the ADR lifecycle and mechanically checked state-impact protocol, and the invariant and adopter migration. The atomic cutover removes the legacy consumers; historical Decision anchors do not receive a corpus-wide supersession retrofit. The migration gate instead adjudicates each legacy invariant as migrated or retired, and surviving contracts are redeclared as current-state claims. Implementation will proceed through phased plans after those decisions are reviewed and reconciled.
+
+This decision replaces the generated per-domain ADR index with topic-only domain documents, retiring:
+
+- `supersedes-invariant: ADR-0014#domain-index-matches-domains`
 
 ## Invariants
 

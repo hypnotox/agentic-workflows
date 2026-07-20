@@ -24,7 +24,6 @@ var (
 	exactSemver = regexp.MustCompile(`^v[0-9]+\.[0-9]+\.[0-9]+$`)
 )
 
-// touches-invariant: workflow-actions-sha-pinned - workflow uses:-pin scan site; proof in main_test.go
 func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	entries, err := fs.ReadDir(fsys, ".")
 	if err != nil {

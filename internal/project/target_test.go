@@ -24,8 +24,8 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: claude-md-bridge
-// invariant: target-dialect-render
+// invariant: rendering/catalog-and-targets:claude-md-bridge
+// invariant: rendering/catalog-and-targets:target-dialect-render
 func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	if got := codexTarget.AgentPath("code-reviewer"); got != ".codex/agents/code-reviewer.toml" {
 		t.Fatalf("Codex AgentPath = %q", got)
@@ -69,7 +69,7 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	}
 }
 
-// invariant: pi-extension-target-render
+// invariant: rendering/catalog-and-targets:pi-extension-target-render
 func TestPiTargetRendersExtension(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
@@ -134,7 +134,7 @@ func registrationBlock(t *testing.T, content, name, nextMarker string) string {
 	return content[start : start+relativeEnd]
 }
 
-// invariant: pi-structured-exploration-contract
+// invariant: rendering/templates:pi-structured-exploration-contract
 func TestPiStructuredExplorationContract(t *testing.T) {
 	index := renderPiExtensionFile(t, "index.ts")
 	runner := renderPiExtensionFile(t, "runner.ts")
@@ -228,7 +228,7 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	return got
 }
 
-// invariant: cross-runtime-exploration-dispatch
+// invariant: rendering/templates:cross-runtime-exploration-dispatch
 func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	if !catalog.Standard.Skills["exploring"].Core {
 		t.Fatal("exploring is not a core skill")
@@ -286,7 +286,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	}
 }
 
-// invariant: bounded-exploration-reporting
+// invariant: rendering/templates:bounded-exploration-reporting
 func TestBoundedExplorationReporting(t *testing.T) {
 	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
@@ -327,7 +327,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 	}
 }
 
-// invariant: pi-subagent-progress-context-isolation
+// invariant: rendering/templates:pi-subagent-progress-context-isolation
 func TestPiSubagentProgressContextIsolation(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	for _, want := range []string{`text: "(running...)"`, `events: update.events`, `result.failureMessage`, `result.output`} {
@@ -342,7 +342,7 @@ func TestPiSubagentProgressContextIsolation(t *testing.T) {
 	}
 }
 
-// invariant: pi-subagent-progress-rendering
+// invariant: rendering/templates:pi-subagent-progress-rendering
 func TestPiSubagentProgressRendering(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	for _, role := range []string{"grounding", "explore", "review", "implement"} {
@@ -357,7 +357,7 @@ func TestPiSubagentProgressRendering(t *testing.T) {
 	}
 }
 
-// invariant: pi-subagent-failure-details
+// invariant: rendering/templates:pi-subagent-failure-details
 func TestPiSubagentFailureDetails(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	for _, want := range []string{`awfFailure: true`, `pi.on("tool_result"`, `SUBAGENT_TOOL_NAMES.has(event.toolName)`, `return { isError: true }`} {
@@ -367,7 +367,7 @@ func TestPiSubagentFailureDetails(t *testing.T) {
 	}
 }
 
-// invariant: pi-subagent-progress-bounds
+// invariant: rendering/templates:pi-subagent-progress-bounds
 func TestPiSubagentProgressBounds(t *testing.T) {
 	content := renderPiExtensionFile(t, "runner.ts") + renderPiExtensionFile(t, "index.ts")
 	for _, want := range []string{"MAX_DISPLAY_EVENTS = 20", "MAX_DISPLAY_EVENT_BYTES = 2 * 1024", "omittedEvents", `Buffer.byteLength(JSON.stringify(fitted), "utf8")`, "MAX_TASK_PREVIEW_BYTES", "MAX_FALLBACK_BYTES"} {
@@ -380,7 +380,7 @@ func TestPiSubagentProgressBounds(t *testing.T) {
 	}
 }
 
-// invariant: pi-child-tool-boundaries
+// invariant: rendering/catalog-and-targets:pi-child-tool-boundaries
 func TestPiSubagentToolBoundaries(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	for _, want := range []string{
@@ -393,7 +393,7 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 	}
 }
 
-// invariant: pi-child-process-safety
+// invariant: rendering/catalog-and-targets:pi-child-process-safety
 func TestPiSubagentProcessSafetyContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "runner.ts")
 	for _, want := range []string{"SIGTERM", "SIGKILL", "removeEventListener", "await deps.rm"} {
@@ -403,7 +403,7 @@ func TestPiSubagentProcessSafetyContract(t *testing.T) {
 	}
 }
 
-// invariant: pi-implementation-state-boundary
+// invariant: rendering/catalog-and-targets:pi-implementation-state-boundary
 func TestPiImplementationStateBoundary(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	for _, want := range []string{"implementationTail", "allowCommits=false", "changes were not reverted", "commitVerification"} {
@@ -413,7 +413,7 @@ func TestPiImplementationStateBoundary(t *testing.T) {
 	}
 }
 
-// invariant: pi-minimum-runtime
+// invariant: rendering/catalog-and-targets:pi-minimum-runtime
 func TestPiMinimumRuntimeContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
 	if !strings.Contains(content, `MIN_PI_VERSION = "0.80.9"`) || !strings.Contains(content, `pi.on("session_start"`) {
@@ -470,7 +470,7 @@ func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
 	}
 }
 
-// invariant: pi-dedicated-grounding-dispatch
+// invariant: rendering/templates:pi-dedicated-grounding-dispatch
 func TestPiDedicatedGroundingDispatch(t *testing.T) {
 	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	dirs := map[string]string{
@@ -589,7 +589,7 @@ func TestMultiTargetRender(t *testing.T) {
 			bridges++
 		}
 	}
-	// invariant: multi-target-render
+	// invariant: rendering/project-output-plan:multi-target-render
 	for _, pair := range [][2]string{
 		{".claude/skills/example-tdd/SKILL.md", ".cursor/skills/example-tdd/SKILL.md"},
 		{".claude/agents/code-reviewer.md", ".cursor/agents/code-reviewer.md"},
@@ -605,7 +605,7 @@ func TestMultiTargetRender(t *testing.T) {
 	if agentsMd != 1 {
 		t.Errorf("AGENTS.md rendered %d times, want 1 (neutral)", agentsMd)
 	}
-	// invariant: cursor-no-bridge
+	// invariant: rendering/project-output-plan:cursor-no-bridge
 	if bridges != 1 {
 		t.Errorf("bridge files = %d, want 1 (claude only; cursor has none)", bridges)
 	}
@@ -614,7 +614,7 @@ func TestMultiTargetRender(t *testing.T) {
 	}
 }
 
-// invariant: targets-default-claude
+// invariant: config/configuration:targets-default-claude
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ntargets:\n  - nope\n")
 	if _, err := Open(root); err == nil {
@@ -637,7 +637,7 @@ func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	for _, rel := range planned {
 		set[rel] = true
 	}
-	for _, want := range []string{"CLAUDE.md", "AGENTS.md", "docs/decisions/ACTIVE.md", "docs/domains/rendering.md"} {
+	for _, want := range []string{"CLAUDE.md", "AGENTS.md", "docs/decisions/INDEX.md", "docs/domains/rendering.md"} {
 		if !set[want] {
 			t.Errorf("PlannedOutputs missing %q; got %v", want, planned)
 		}

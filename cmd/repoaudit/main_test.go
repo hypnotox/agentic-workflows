@@ -61,7 +61,7 @@ func TestGitErrorSurfacesStderr(t *testing.T) {
 	}
 }
 
-// invariant: repoaudit-requires-explicit-range
+// invariant: tooling/cli:repoaudit-requires-explicit-range
 func TestUsageError(t *testing.T) {
 	// No argument at all: there is no default range (ADR-0127 Decision 11), so
 	// this is a refusal with the usage line rather than a report over
@@ -129,7 +129,7 @@ func TestWarningMissingEntry(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	// invariant: changelog-rule-advisory
+	// invariant: tooling/changelog-and-release:changelog-rule-advisory
 	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
@@ -210,7 +210,7 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 func TestMergeBaseFails(t *testing.T) {
 	g := fakeGit{"merge-base b h": {err: errors.New("boom")}}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	// invariant: repo-audit-error-exit
+	// invariant: tooling/audit-and-snapshots:repo-audit-error-exit
 	if code != 1 || !strings.Contains(out, "git merge-base b h failed") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}

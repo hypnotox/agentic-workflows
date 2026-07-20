@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-13
 tags: [invariant-backing, marker-scoping]
-related: [7, 8, 31, 64, 77, 98, 104]
+related: [7, 8, 31, 64, 77, 98, 104, 134]
 domains: [invariants, config, tooling]
 ---
 # ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split

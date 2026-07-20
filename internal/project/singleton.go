@@ -7,7 +7,6 @@ import "github.com/hypnotox/agentic-workflows/internal/catalog"
 // for its fixed output path and catalog sections. plainSingletons is the single
 // source of truth both RenderAll (via renderKind) and validateAgainstCatalog
 // range over.
-// invariant: plain-singleton-via-renderkind
 type singletonSpec struct {
 	kind     string
 	tid      string

@@ -38,11 +38,11 @@ var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 // branches of every conditional, which no render-based sweep can cover - and
 // fails on a concrete awf ADR citation or on a repo-identity literal outside
 // the explicit exemption list (ADR-0082).
-// invariant: template-source-residue
+// invariant: rendering/templates:template-source-residue
 func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
 	// proof site contains the check that proves it (ADR-0131 Task 3.3).
-	// invariant: residue-exemptions-pinned-three
+	// invariant: rendering/project-output-plan:residue-exemptions-pinned-three
 	if len(identityExempt) != 3 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
@@ -126,7 +126,6 @@ func collectStrings(t *testing.T, site string, v any, out *[]string) {
 // awf-the-product. An ordinary gate test, deliberately slug-free: ADR-0082
 // owns the principle and this is its enforcement catching up with the
 // catalog's move to Go (ADR-0060 postdates its scan scope).
-// touches-invariant: template-source-residue - the catalog-strings sibling of the templates scan; proof stays on TestTemplateSourceResidue
 func TestCatalogDataResidue(t *testing.T) {
 	cat := catalog.Standard
 	check := func(site string, strs []string) {
@@ -266,7 +265,7 @@ func scanGoLiterals(t *testing.T, dir string) int {
 // guard, so a mis-anchored walk fails rather than passing vacuously. Adopter
 // content, and this repository's authored ADR and plan bodies, are out of scope:
 // the ban covers what awf ships, in awf's own voice (ADR-0115).
-// invariant: emitted-prose-no-typographic-substitutes
+// invariant: tooling/quality-gates:emitted-prose-no-typographic-substitutes
 func TestEmittedProseNoTypographicSubstitutes(t *testing.T) {
 	if n := scanEmbedded(t, "templates", templates.FS); n < 40 {
 		t.Fatalf("inspected only %d embedded template file(s); expected the whole tree - did the FS move?", n)

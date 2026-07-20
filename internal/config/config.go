@@ -18,7 +18,7 @@ import (
 
 // SectionOverride is a sidecar's per-section override. Body replacement is by
 // convention part only; the field set is deliberately just Drop.
-// touches-invariant: no-replacewith - SectionOverride field set omits replaceWith; proof in config_test.go
+// touches-state: config/configuration:no-replacewith - SectionOverride field set omits replaceWith; proof in config_test.go
 type SectionOverride struct {
 	Drop bool `yaml:"drop"`
 }
@@ -51,7 +51,6 @@ type Config struct {
 	Tags          map[string]string   `yaml:"tags"`
 	ContextIgnore []string            `yaml:"contextIgnore"`
 	Targets       []string            `yaml:"targets"`
-	Invariants    *InvariantConfig    `yaml:"invariants"`
 	CurrentState  *CurrentStateConfig `yaml:"currentState"`
 	Audit         *AuditConfig        `yaml:"audit"`
 	Bootstrap     *BootstrapConfig    `yaml:"bootstrap"`
@@ -66,35 +65,6 @@ type Config struct {
 // (SetArrayMember, SetArray, SetMappingScalar) reuses these instead of re-reading
 // the file, which after a successful Load could only fail on a race.
 func (c *Config) Source() []byte { return c.raw }
-
-// InvariantConfig configures language-agnostic invariant backing. A nil
-// *InvariantConfig (key absent) means "unchecked"; Disabled is the explicit
-// opt-out; a non-empty Sources enables enforcement.
-//
-// TestGlobs scopes the proof `invariant:` marker to test files (ADR-0105): when
-// non-empty, a proof marker backs a slug only in a file matching one of these
-// anchored globs; when empty or absent, backing falls back to source-glob scope
-// (the pre-ADR-0105 semantics). TestGlobs is an inert optional field within the
-// current schema - an absent value degrades to the fallback, so it needs no
-// schema-generation bump.
-type InvariantConfig struct {
-	Disabled  bool              `yaml:"disabled"`
-	Sources   []InvariantSource `yaml:"sources"`
-	TestGlobs []string          `yaml:"testGlobs"`
-}
-
-// InvariantSource pairs anchored path globs (ADR-0077; matched against a file's
-// slash-separated repo-relative path) with
-// the literal comment marker that prefixes a backing `invariant: <slug>` tag.
-// Close is the optional literal close token for block-comment markers (`-->`,
-// `*/`): when non-empty, one trailing token (plus surrounding whitespace) is
-// stripped from a matched marker line before tag parsing (ADR-0121). Additive
-// and optional - empty means no stripping - so no schema-generation bump.
-type InvariantSource struct {
-	Globs  []string `yaml:"globs"`
-	Marker string   `yaml:"marker"`
-	Close  string   `yaml:"close"`
-}
 
 // CurrentStateConfig configures bridge-preparation validation for canonical
 // current-state topics. It is deliberately separate from the legacy invariant
@@ -420,26 +390,6 @@ func (c *Config) Validate() error {
 			return err
 		}
 	}
-	if c.Invariants != nil {
-		for _, src := range c.Invariants.Sources {
-			if src.Marker == "" {
-				return fmt.Errorf("invariants source %v has an empty marker; set a literal comment marker (e.g. \"//\", \"#\")", src.Globs)
-			}
-			if len(src.Globs) == 0 {
-				return fmt.Errorf("invariants source with marker %q has no globs; list at least one path glob (e.g. \"**/*.go\")", src.Marker)
-			}
-			for _, g := range src.Globs {
-				if err := validatePathGlob(g); err != nil {
-					return fmt.Errorf("invariants glob: %w", err)
-				}
-			}
-		}
-		for _, g := range c.Invariants.TestGlobs {
-			if err := validatePathGlob(g); err != nil {
-				return fmt.Errorf("invariants.testGlobs: %w", err)
-			}
-		}
-	}
 	if c.CurrentState != nil {
 		if !c.CurrentState.coverageSet {
 			c.CurrentState.TopicCoverage = "error"
@@ -522,7 +472,7 @@ func ValidateDomainName(name string) error {
 // invariant requires, awf's reserved "_" namespace, and the colon/space/quote
 // characters that would otherwise interpolate into the base template's name: line
 // and break its YAML frontmatter. It mirrors every catalog artifact's naming.
-// touches-invariant: local-name-validated - local skill/agent name charset validation; proof in config_test.go
+// touches-state: config/configuration:local-name-validated - local skill/agent name charset validation; proof in config_test.go
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
@@ -541,7 +491,7 @@ func ValidateArtifactName(kind, name string) error {
 // lowercase-kebab segments joined by "/", rejecting a path escape, an empty or
 // leading/trailing segment, a ".md" suffix, and any segment (e.g. the reserved
 // "_base" stem) carrying a non-kebab character. Skill/agent names stay flat.
-// touches-invariant: local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
+// touches-state: config/configuration:local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
 func ValidateDocName(name string) error {
 	if name == "" {
 		return errors.New("doc name must not be empty")

@@ -37,7 +37,7 @@ func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 
 // With the singleton enabled, exactly one runner `x` renders at the repo root;
 // absent or disabled, none does.
-// invariant: runner-singleton-toggle
+// invariant: rendering/templates:runner-singleton-toggle
 func TestRunnerToggle(t *testing.T) {
 	if runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n") == nil {
 		t.Error("expected the runner x to render when enabled")
@@ -55,8 +55,8 @@ func TestRunnerToggle(t *testing.T) {
 // The awf-verb arms are awf-owned (outside any awf:edit-in-place section) and each
 // delegates to the bootstrap-resolved pinned binary; the two adopter regions are
 // awf:edit-in-place sections rendered as #-comments (the shell comment style).
-// invariant: runner-awf-verbs-owned
-// invariant: runner-project-verbs-in-place
+// invariant: rendering/templates:runner-awf-verbs-owned
+// invariant: rendering/templates:runner-project-verbs-in-place
 func TestRunnerStructure(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
@@ -95,7 +95,7 @@ func TestRunnerStructure(t *testing.T) {
 
 // The runner renders leak-free (no unresolved token, no stray section/marker
 // residue) - the publication-safety contract every awf template meets.
-// invariant: runner-render-publication-safe
+// invariant: rendering/templates:runner-render-publication-safe
 func TestRunnerPublicationSafe(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
@@ -114,7 +114,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 // The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
 // stays out of SingletonKinds() - the unified-doc-model completeness set is
 // unchanged by the runner's existence.
-// invariant: singleton-kinds-complete
+// invariant: rendering/project-output-plan:singleton-kinds-complete
 func TestRunnerNotASingletonKind(t *testing.T) {
 	if slices.Contains(catalog.SingletonKinds(), "runner") {
 		t.Error("the runner must not be a catalog SingletonKind (it is a dedicated render block)")

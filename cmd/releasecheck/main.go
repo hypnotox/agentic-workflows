@@ -23,7 +23,6 @@ import (
 
 func main() { os.Exit(run(changelogfs.FS, os.Stdout, os.Stderr, project.BridgeTrancheComplete)) } // coverage-ignore: os.Exit wrapper; run is unit-tested
 
-// touches-invariant: release-changelog-pin - changelog ordering/pin enforcement site; proof in main_test.go
 func run(fsys fs.FS, stdout, stderr io.Writer, bridgeTrancheComplete bool) int {
 	if !bridgeTrancheComplete {
 		fmt.Fprintln(stderr, "releasecheck: current-state bridge tranche is incomplete; Plans 1 and 2 must both land before release")

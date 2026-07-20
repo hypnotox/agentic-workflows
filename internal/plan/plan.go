@@ -83,8 +83,6 @@ func ParseDir(dir string) ([]Plan, error) {
 // branch - so, as accepted best-effort edges over well-formed plan markdown, a
 // ```commit nested inside a `~~~` block is still read, and an unclosed ```commit
 // fence at end-of-file (subject appended only on its closing ```) yields no subject.
-// invariant: plan-commit-subject-marker-scoped
-// invariant: plan-commit-subject-optout-honored
 func commitSubjects(content string) []string {
 	var subjects []string
 	inFence := false
@@ -151,7 +149,7 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // NewFile scaffolds a new plan under dir from the rendered plans template
 // (dir/template.md): today's date filled, marker comments stripped, named
 // YYYY-MM-DD-slug.md. No sequential number is allocated. Refuses to overwrite.
-// touches-invariant: plan-new-unnumbered - unnumbered dated plan scaffold; proof in plan_test.go
+// touches-state: adr-system/plan-artifacts:plan-new-unnumbered - unnumbered dated plan scaffold; proof in plan_test.go
 func NewFile(dir, title string) (string, error) {
 	title = strings.TrimSpace(title)
 	slug, err := slugify(title)

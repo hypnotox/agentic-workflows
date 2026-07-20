@@ -13,7 +13,7 @@ Apply all five lenses to every plan:
 
 1. **executability**: no placeholder language ("TBD", "similar to Task N", "implement later", "as needed"); file paths are absolute; verify steps have exact commands with expected output or observable change; each phase ends with a commit step, and each phase's closing commit passes the project's gate on its own; flag any definition whose first production use lands in a later phase, unless the plan marks a coupled-phase group that genuinely cannot be sliced and states why; each task is one reviewable, logically-coherent change (a whole new file is one task); code changes shown as exact diff not prose.
 
-1. **doc-currency (plan-level)**: same-commit task to update workflow or convention docs when a rule changes; state doc updates when the plan shifts a tracked domain; predecessor status flips when `supersedes:` is non-empty; project-specific artifacts covered (see doc-currency checklist below).
+1. **doc-currency (plan-level)**: same-commit task to update workflow or convention docs when a rule changes; current-state topic-claim edits landing with the ADR's Implemented flip when the plan's ADR declares `State changes`; state doc updates when the plan shifts a tracked domain; project-specific artifacts covered (see doc-currency checklist below).
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 

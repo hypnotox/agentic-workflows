@@ -32,7 +32,7 @@ func renderGlossary(t *testing.T, root string) string {
 // The rendered table is ordered case-insensitively by term regardless of the
 // authored map order, and two sidecars carrying the same entries in different
 // order render byte-identically.
-// invariant: glossary-terms-sorted
+// invariant: rendering/templates:glossary-terms-sorted
 func TestGlossaryRendersSorted(t *testing.T) {
 	a := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n    zeta: last\n    Alpha: first\n    beta: middle\n",
@@ -68,7 +68,7 @@ func TestGlossaryEscapesPipes(t *testing.T) {
 // The table renders from plain template text between the prepend and append
 // framing sections: parts override the framing, never the table, and a part
 // for the retired terms section has no section to claim.
-// invariant: glossary-table-forced
+// invariant: rendering/templates:glossary-table-forced
 func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 	out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
 		"docs/glossary.yaml":             "data:\n  terms:\n    only: entry\n",
@@ -105,7 +105,7 @@ func TestGlossaryDegradesWithoutTerms(t *testing.T) {
 }
 
 // Content violations fail the render naming the sidecar path and the key.
-// invariant: glossary-terms-validated
+// invariant: rendering/templates:glossary-terms-validated
 func TestGlossaryContentViolations(t *testing.T) {
 	for name, tc := range map[string]struct{ yaml, wantErr string }{
 		"empty-term":      {"data:\n  terms:\n    \" \": meaning\n", "is empty"},

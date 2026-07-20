@@ -2,7 +2,7 @@
 status: Implemented
 date: 2026-07-13
 tags: [tag-vocabulary, context-tiering]
-related: [92, 99, 102, 103, 104, 106]
+related: [92, 99, 102, 103, 104, 106, 134]
 domains: [tooling, config, invariants]
 ---
 # ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance

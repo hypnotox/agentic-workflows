@@ -135,16 +135,16 @@ func TestLoadCorpusRejected(t *testing.T) {
 	}
 }
 
-func TestRecordTopicPathRejectsDuplicateID(t *testing.T) {
-	paths := map[string]string{}
+func TestRecordMetaRejectsDuplicateID(t *testing.T) {
+	metadata := map[string]metaEntry{}
 	id := TopicID{"alpha", "x"}
-	if err := recordTopicPath(paths, id, "first.yaml"); err != nil {
+	if err := recordMeta(metadata, id, metaEntry{path: "first.yaml"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := recordTopicPath(paths, id, "second.yaml"); err == nil {
+	if err := recordMeta(metadata, id, metaEntry{path: "second.yaml"}); err == nil {
 		t.Fatal("duplicate topic ID accepted")
 	}
-	if got := paths[id.String()]; got != "first.yaml" {
+	if got := metadata[id.String()].path; got != "first.yaml" {
 		t.Fatalf("duplicate overwrote first path: %q", got)
 	}
 }

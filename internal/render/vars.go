@@ -29,22 +29,6 @@ var scopePlaceholderRE = regexp.MustCompile(`\{\{=awf:commitScope[A-Za-z0-9]*\}\
 // the resolved scope list into its config hash and reflags on a scopes edit.
 func ReferencesScopePlaceholder(body string) bool { return scopePlaceholderRE.MatchString(body) }
 
-var invariantMarkersRE = regexp.MustCompile(`\{\{[^{}]*[.$]invariantMarkers[^{}]*\}\}`)
-
-// ReferencesInvariantMarkers reports whether src reads the .invariantMarkers
-// render context, so the artifact folds invariants.sources into its config hash
-// (ADR-0064, mirroring ReferencesScopes).
-func ReferencesInvariantMarkers(src string) bool { return invariantMarkersRE.MatchString(src) }
-
-var invariantMarkerPlaceholderRE = regexp.MustCompile(`\{\{=awf:invariantMarker[A-Za-z0-9]*\}\}`)
-
-// ReferencesInvariantMarkerPlaceholder reports whether a raw convention-part body
-// uses a {{=awf:invariantMarker*}} placeholder (ADR-0064, mirroring
-// ReferencesScopePlaceholder).
-func ReferencesInvariantMarkerPlaceholder(body string) bool {
-	return invariantMarkerPlaceholderRE.MatchString(body)
-}
-
 // ReferencedVars returns the sorted, de-duplicated list of variable names
 // referenced via {{ .vars.X }} patterns in src.
 func ReferencedVars(src string) []string {

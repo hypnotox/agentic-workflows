@@ -22,7 +22,6 @@ import (
 // every remaining enabled artifact's missing skills, agents, and docs - so a
 // dormant skill something still requires re-enters with its doc. Idempotent;
 // every addition and drop is printed; the config write is atomic.
-// invariant: close-enabled-set-migration
 func applyCloseEnabledSet(root string, out io.Writer) error {
 	return closeEnabledSet(root, catalog.Standard, out)
 }
@@ -34,7 +33,7 @@ func closeEnabledSet(root string, cat *catalog.Catalog, out io.Writer) error {
 	if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
 		return nil // no config: nothing to close (idempotent re-run safe)
 	}
-	cfg, err := config.Load(config.RootDir(root))
+	cfg, err := loadForMigration(root)
 	if err != nil {
 		return err
 	}

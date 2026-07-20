@@ -3,7 +3,7 @@ name: {{ .prefix }}-proposing-adr
 description: >
   Use to propose a new ADR under {{ .layout.adrDir }} for {{ .prefix }}.
   Writes the ADR file with required frontmatter and sections, regenerates
-  ACTIVE.md, commits, and hands off to {{ .prefix }}-reviewing-adr.
+  INDEX.md, commits, and hands off to {{ .prefix }}-reviewing-adr.
 ---
 
 # {{ .prefix }}-proposing-adr
@@ -28,9 +28,9 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 - **Next number:** `awf new adr` computes the next sequential number automatically. Never reuse numbers.
 - **Filename:** `NNNN-kebab-title.md`.
 - **Template:** `awf new adr` is the only sanctioned way to create the file from `{{ .layout.adrTemplate }}`; never hand-copy or shell-copy it yourself.
-- **Required frontmatter:** `status` (`Proposed`, the initial state), `date` (today, ISO-8601), `tags` (≥1 keyword label), `related` (array of ADR numbers or `[]`), `domains` (coarse domain keys driving the per-domain `{{ .layout.domainsDir }}/<domain>.md` index; fill ≥1 before committing when the project configures domain docs, otherwise leave `[]`).
+- **Required frontmatter:** exactly three keys, `format` (`current-state-v1`), `status` (`Proposed`, the initial state), and `date` (today, ISO-8601). There is no `tags`, `related`, or `domains` key: the affected topics and domains are derived from the `State changes` operations.
 - **Required sections:** {{ with .data.adrSections }}{{ range . }}{{ . }}, {{ end }}in that order. {{ else }}follow the ADR template's section order. {{ end }}Delete the authoring checklist before committing.
-- **Predecessor flip:** never write it by hand up front. Full supersedence is *derived*: an ADR becomes `Superseded` when every one of its Decision items and declared invariant slugs carries a retirement token from an `Implemented` ADR. `awf check` reports the flip when coverage completes, and names the exact edit.
+- **No predecessor flip:** ADRs are never active authority, so nothing is superseded. A decision that changes an earlier one declares the change as a `State changes` operation on the affected claim, not a status flip on the earlier ADR.
 <!-- awf:end -->
 
 ## Procedure
@@ -42,39 +42,35 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 <!-- awf:section procedure-write -->
 2. **Fill in every section** of the scaffolded file:
    - **Context:** the problem, couplings, prior discoveries. Mutable while `Proposed`.
-   - **Decision:** numbered items, each a discrete commitment. Numbers matter for partial-item supersedence.
-   - **Invariants:** testable textual contracts. Each bullet must be a verifiable property the codebase must maintain.
+   - **Decision:** numbered items, each a discrete commitment. Numbers order the decision for the reader; no machine treats them as anchors.
+   - **State changes:** see the next step.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.
    - **Alternatives Considered:** real options weighed and the one-line reason each was set aside. Skip if there were no genuine alternatives.
-   - Also fill in every remaining frontmatter array (`tags`, `related`, `domains`) that `awf new adr` left empty; `domains` stays `[]` when the project configures no domain docs.
+   - **Status history:** leave the scaffolded `- <date>: Proposed` line; later transitions append their own.
 <!-- awf:end -->
 
 <!-- awf:section state-doc-update -->
-3. **Update or create the relevant domain doc** under `{{ .layout.domainsDir }}` if the ADR materially shifts a domain's current state. Include this file in the same commit as the ADR.
+3. **Prepare the destination topics.** Every claim a `State changes` operation names must have somewhere to land: for a pending `add`, the topic metadata (`.awf/topics/metadata/<domain>/<topic>.yaml`) must exist before the ADR can be Accepted, an empty topic shell if the claim itself lands later. Create it with `awf new topic <domain> "<Title>"` if it is missing. The claim prose and its `Origin`/`Revised-by` are authored when the operation is applied (at `Implemented`), not now.
 <!-- awf:end -->
 
-<!-- awf:section procedure-predecessor-flip -->
-4. **Claim what you supersede, anchor by anchor.** Write one inline token per anchor you retire, inside the Decision item whose prose justifies it: `` `supersedes: ADR-NNNN#<item>` `` or `` `supersedes-invariant: ADR-NNNN#<slug>` ``. Use `` `refines: ADR-NNNN#<item>` `` when you adapt an item rather than replace it - a refinement counts toward nothing, which is what keeps an adapted ADR alive. Add your number to each target's `related:`. Do not touch the predecessor's `status`: it flips only when coverage completes, and only in the commit that brings the final covering ADR to `Implemented`.
-<!-- awf:end -->
-
-<!-- awf:section invariants-rule -->
-5. **Declare enforceable Invariants and back them with a test.** Declare each machine-checkable Invariants bullet with an explicit slug in one of two forms: a backed ``- `invariant: <slug>`, ...`` for a property a test is declared to back, or an ``- `unbacked-invariant: <slug>`, ... **Verify:** ...`` for a reasoned contract with no automatic test. Back a backed slug with a proof comment, your project's comment marker followed by `invariant: <slug>` (e.g. `// invariant: <slug>` in Go/Rust/TS, `# invariant: <slug>` in Python/Ruby), on a test file matching your `.awf/config.yaml` `invariants.testGlobs`, or (when `testGlobs` is unset) any source file matching `invariants.sources`, shipping in the same commit. A separate `touches-invariant: <slug>, <note>` marker records a related production site and never backs. `{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` fails once the ADR is `Implemented` if a backed slug is unproven, an unbacked slug is contradicted by a proof marker or lacks a `Verify:` note, or if `invariants` is unconfigured (set `invariants.sources` or `invariants.disabled: true`). Bullets without a slug remain textual contracts. Run {{ with .vars.gateCmd }}`{{ . }}` and {{ end }}`{{ with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}` to confirm.
+<!-- awf:section procedure-state-changes -->
+4. **Declare the State changes.** In the `## State changes` section, either write `None.` or list one `- add`, `- update`, or `- remove` entry per affected claim, each naming the claim by its qualified `<domain>/<topic>:<slug>` id in an inline code span. This is the authoritative link between the ADR and the topics it governs; awf derives the affected domains from it. A rule and an invariant are declared the same way; an invariant claim additionally carries `Backing:` (and a proof marker or `Verify:`) when its prose is authored at implementation time. A rename is remove plus add; a removed id is never reused.
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-6. **Regenerate ACTIVE.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.activeMd }}`. Stage the regenerated file. Do not hand-edit `ACTIVE.md`.
+5. **Regenerate INDEX.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.indexMd }}`. Stage the regenerated file. Do not hand-edit `INDEX.md`.
 <!-- awf:end -->
 
 <!-- awf:section procedure-commit -->
-7. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass; if the drift test fails, regenerate and re-stage `ACTIVE.md` before retrying.
+6. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass; if the drift test fails, regenerate and re-stage `INDEX.md` before retrying.
 <!-- awf:end -->
 
 <!-- awf:section autonomous-rule -->
-8. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval; once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
+7. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval; once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-9. **Terminal step: invoke `{{ .prefix }}-reviewing-adr`** via the project's skill-invocation mechanism, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
+8. **Terminal step: invoke `{{ .prefix }}-reviewing-adr`** via the project's skill-invocation mechanism, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
 <!-- awf:include memory-checkpoint -->
 <!-- awf:end -->
@@ -82,8 +78,8 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 ## Notes
 
 <!-- awf:section notes -->
-- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill.
-- `{{ .layout.activeMd }}` is never hand-edited; it is always regenerated via `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
-- Decision items are numbered so future ADRs can override a specific item via partial-item supersedence (`related:` frontmatter, predecessor status stays live, successor cites "ADR-NNNN Decision item M" in prose).
+- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill. The claim operations apply only in the `Implemented` transaction.
+- `{{ .layout.indexMd }}` is never hand-edited; it is always regenerated via `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
+- The `State changes` operations, not any frontmatter relation, are how a later ADR changes what an earlier one established: it updates or removes the affected claim directly.
 - For the full ADR lifecycle, see `{{ .layout.workflowRef }}`.
 <!-- awf:end -->

@@ -63,9 +63,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   coverage-ignore re-evaluation Warnings). Not part of the rendered standard.
 - **`internal/config/`**: owns `.awf/config.yaml`: the schema and strict load, its construction
   (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
-  behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The optional
-  presence-aware `currentState` block is bridge-preparation input for strict topic validation; it
-  remains beside the untouched legacy `invariants` authority during the unreleased bridge tranche.
+  behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The
+  `currentState` block configures strict topic validation and is the authority the current-state model
+  reads; the legacy `invariants` block it replaced was dropped at the project-atomic cutover.
   `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).
 - **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Its core `exploring`
@@ -77,30 +77,27 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   constructed once per invocation and threaded to every consumer (ADR-0130). The view answers
   ADR questions rather than exposing fields to re-derive them from: status predicates on the
   parsed record, declared invariant slugs, existence and metadata lookups, an enumerated
-  raw-bytes accessor for the enumerated schema-migration, retired-key, and temporary bridge
-  normalization consumers, and
+  raw-bytes accessor for the enumerated schema-migration and retired-key consumers, and
   a bytes-level `ParseBytes` seam for `internal/audit`, which reads git blobs rather than the
-  working tree. ADR-0129's anchor-coverage model is built as a facet of the view: anchors are
-  nodes, claims are edges carrying relation and rationale site, and `Live`/`PartiallySuperseded`
-  /`Covered` are derived from it rather than stored. It also renders ACTIVE.md and the
-  per-domain indexes, both of which take a `Corpus` rather than parsing.
+  working tree. Per-ADR format-v1 parsing enforces the closed frontmatter, section order,
+  State-changes grammar, and Status-history digest and sequence, while the corpus adds contiguity and
+  provenance across records. It also renders `INDEX.md` (In flight and History) from a `Corpus`
+  rather than parsing.
 - **`internal/topic/`**: the strict, path-derived current-state topic parser and one per-invocation
   corpus. It pairs metadata and constrained Markdown parts, resolves Implemented-ADR provenance and
   direct claim references, validates configured relevance, touches, and proof markers, computes
   focused topic coverage, and builds deterministic topic, index, and domain-navigation render models.
-  In this unreleased tranche these are parsed and rendered preparation artifacts only; legacy ADR
-  context and invariant authority remain unchanged.
-- **`internal/bridge/`**: the bridge-release-only migration inventory and read-only readiness
-  orchestrator. It inventories exact legacy ADR declaration, retirement, date, carrier-item, and
-  backing facts; strictly parses authored `.awf/current-state-migration.yaml`; plans comment-preserving
-  config, migration-history, status, and qualified-marker normalization; adapts the prepared topic
-  corpus and migration-safe output projection; and emits one sorted report for `upgrade --check`.
-  Approval confirms an independently unique Origin/backing-preserving mapping and cannot disambiguate
-  it. It also owns attestation: `Digest` hashes the post-normalization prepared inputs, `CutoffFacts`
-  derives the ADR cutoff and gaps, and `CommitTransaction`/`Recover` drive the versioned
-  `.awf/current-state-upgrade.journal` (`journal.go`) so `upgrade --attest-current-state` seals a clean
-  prepared tree and `upgrade --recover` replays the recovery table. This package does not answer normal
-  context or invariant queries and switches no authority.
+  Its claims are the active authority the current-state runtime reads for context, coverage, and
+  invariant backing.
+- **`internal/currentstate/`**: the tree-backed current-state loader and static checker. It loads the
+  ADR and topic corpora from one `snapshot.Tree`, validates the resulting lifecycle, sequence,
+  operation history, claim provenance, and absence rules (`Check`), and compares two universes for the
+  staged and range transition handshake (`CheckPair`).
+- **`internal/upgrade/`**: the final current-state cutover from a sealed bridge attestation. It
+  verifies only the sealed facts (the prepared HEAD and tree digest), then drives the versioned
+  `.awf/current-state-upgrade.journal` (`journal.go`) so plain `awf upgrade` consumes the seal
+  (`FinalUpgrade`) and `awf upgrade --recover` replays the recovery table. It consumes seals; it never
+  produces them.
 - **`internal/render/`**: Go `text/template` rendering (ADR-0001); first expands awf-owned
   `templates/partials/` bodies via `ExpandIncludes` (ADR-0052), then assembles section
   overlays (sidecar overrides + convention parts) and executes the template.
@@ -116,11 +113,8 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   pre-existing item token to `refines:`, and appends a bookkeeping Decision item retiring each
   predecessor's anchors (ADR-0128). The generation 13 migration reuses `applyCloseEnabledSet` to add `exploring`
   wherever an enabled brainstorming, debugging, or refactor coupling audit consumer requires it.
-  Generation 14, `current-state-topic-substrate`, is a no-op recognition boundary for prepared topic
-  inputs; it performs no authority conversion. Version 0.18.0 is one bridge tranche of Plans 1 and 2:
-  the `project.BridgeTrancheComplete` sentinel gates publication so no release is cut from an
-  intermediate commit, enforced by `cmd/releasecheck` before GoReleaser, and flips to `true` once both
-  plans have landed.
+  Later generations add the current-state topic substrate and the project-atomic cutover that drops
+  the legacy `invariants` config and promotes the ADR format cutoff and gaps into the permanent lock.
   Both corpus-writing migrations resolve their own decisions directory and run before a
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.
@@ -130,12 +124,11 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
-  The discovered topic producer loads through a lazy invocation cache and contributes ordinary
+  The topic producer loads through a lazy invocation cache and contributes ordinary
   managed Markdown nodes, so sync, manifest membership, brownfield backup, drift comparison, and
-  prune all use the shared output plan rather than topic-specific lock state. Its bridge projection
-  exposes sorted desired bytes, mode, policy, dependency hashes, reservations, and terminal legacy
-  ACTIVE/domain-index deletions without writing; the authored approval file is retained as a
-  reservation and is never generated.
+  prune all use the shared output plan rather than topic-specific lock state. `CheckCurrentState` and
+  `CheckStaged` run the current-state static and staged checks, and `Audit` evaluates per-commit claim
+  transitions across a range.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
@@ -143,9 +136,6 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
   it answers whether the tree is clean, not whether a commit made it worse.
-- **`internal/invariants/`**: verifies every Implemented ADR's `invariant:` slugs against
-  `invariant:`-marker backing comments under the config-driven source globs (ADR-0008);
-  powers `awf invariants` and the gated check.
 - **`internal/pathglob/`**: awf's single glob dialect (ADR-0077): anchored full-path doublestar
   matching against slash-separated repo-relative paths, consumed by config validation, invariant
   scanning, and the audit's path matching. Leaf package.
@@ -164,25 +154,25 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   Repo-only, not part of the rendered standard.
 - **`internal/frontmatter/`**: the single parser for `---`-delimited YAML frontmatter; used by
   `internal/adr` and skill/agent validation.
-- **`internal/adr/`**: parses ADRs, regenerates `docs/decisions/ACTIVE.md` from their
-  frontmatter, and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
+- **`internal/adr/`**: parses ADRs, regenerates `docs/decisions/INDEX.md` from the corpus,
+  and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
   `awf sync` (`./x sync`) and `awf new adr`.
 - **`internal/plan/`**: parses plan files under `docs/plans` and scaffolds new ones
   (`ParseDir`/`NewFile`); date-prefixed rather than sequentially numbered, unlike `internal/adr`
   (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
 - **`internal/git/`**: centralised tolerant go-git repo-open (linked worktrees, submodules, the
-  `worktreeConfig`-extension workaround) plus tracked-path, eligible working-path, HEAD-blob, and
-  staged-blob readers (each staged blob now also carrying its executable mode); read-only,
-  shared by `awf audit` and `awf context`, and feeding the `internal/snapshot` index seam that
-  `awf prose-gate` consumes (ADR-0092). It is also the sole
+  `worktreeConfig`-extension workaround) plus eligible working-path, commit-blob, range-blob, and
+  staged-blob readers (each carrying its executable mode); read-only,
+  shared by `awf audit` and `awf context`, and feeding the `internal/snapshot` seam that
+  the current-state checks and `awf prose-gate` consume (ADR-0092). It is also the sole
   definition site for `<a>..<b>` range parsing (`ParseRange`, ADR-0127): every command taking
   a range parses through it, and a test fails the build if a second parser reappears.
 - **`internal/snapshot/`**: captures immutable, path-sorted file trees whose `File`s own private
   byte copies, so a consumer reads the captured content and mode without mutating the snapshot or the
-  caller's data; `NewTree` rejects unsupported modes, unsafe paths, and duplicates. Phase 1 exposes
-  only `IndexTree`, which wraps `internal/git`'s stage-0 index blobs (preserving executable mode,
-  rejecting an unmerged index) and is consumed by `awf prose-gate`. Working, commit, and range
-  universes arrive with the current-state runtime.
+  caller's data; `NewTree` rejects unsupported modes, unsafe paths, and duplicates. It exposes
+  `IndexTree`, `WorkingTree`, `CommitTree`, and `RangePair` over `internal/git`'s blob readers
+  (preserving executable mode, rejecting an unmerged index), consumed by the current-state checks,
+  `awf context`, and `awf prose-gate`.
 - **`internal/configspec/`**: the compile-time, adopter-facing description authority (ADR-0088):
   every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
   availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional
@@ -221,53 +211,46 @@ convention parts layered over template defaults, precedence
 injects the `GENERATED by awf` banner and per-section `awf:edit` provenance pointers (ADR-0015),
 writes the rendered files, and stamps each one's per-target `ConfigHash` into `.awf/awf.lock`. A
 `check` re-renders in memory and compares against the lock (reporting drift, orphaned
-sidecars/parts, and stale `ACTIVE.md`) while a stale schema generation gates with a "run `awf
+sidecars/parts, and stale `INDEX.md`) while a stale schema generation gates with a "run `awf
 upgrade`" message (ADR-0010). Target descriptors, including optional outputs and dispatch
 capabilities, enter every target-scoped config hash. Pi's target outputs use `//` provenance valid
 in TypeScript and otherwise follow ordinary planned-output, drift, sync-repair, and cleanup paths.
 
-The unreleased topic producer discovers paired
+The topic producer discovers paired
 `.awf/topics/metadata/<domain>/<topic>.yaml` and
 `.awf/topics/parts/<domain>/<topic>/current-state.md` inputs, validates their path-derived identity,
 claim grammar, Implemented-ADR provenance, direct references, backing, and configured markers, then
 loads one corpus per invocation. It renders topic pages and per-domain indexes under
-`<docsDir>/topics/<domain>/`, and injects compact topic navigation into domain docs while retaining
-`## Decisions`. These files are ordinary output-plan nodes: exact metadata, part, and template inputs
-feed manifest, brownfield backup, regeneration, drift, and prune behavior. This is implementation
-substrate, not an adopter-ready shadow authority mode; legacy context and invariant enforcement stay
-solely authoritative. The bridge migration adds read-only readiness plus a recoverable attestation and
-an ordinary-command refusal; the authority switch itself stays with a later release.
+`<docsDir>/topics/<domain>/`, and injects compact topic navigation into domain docs in place of a
+per-domain ADR index. These files are ordinary output-plan nodes: exact metadata, part, and template
+inputs feed manifest, brownfield backup, regeneration, drift, and prune behavior. The topic claims are
+the active authority: `awf context`, `awf check`, and `awf topic` read them, and the ADR corpus supplies
+only provenance and history.
 
-`awf upgrade --check` now builds the bridge projection without mutation. It converts legacy
-`invariants` to strict `currentState` in memory, inventories shipped legacy declarations and effective
-retirements, normalizes append-only Migration history and bare Superseded status, independently maps
-each live key to one invariant claim with exact Origin and backing class, then matches the authored
-approval file. It plans qualified proof/touches rewrites and validates the proposed tree through the
-normal topic and output engines. The terminal projection reserves deletion of ACTIVE.md and generated
-domain ADR-index outputs but creates no INDEX.md and switches no authority. Findings sort by code,
-slash-relative path, and detail. JSON carries `ready`, exhaustive findings and invariant adjudications,
-and exact planned before/after presence, octal-mode value, and SHA-256 records; absent images use mode
-0 and the SHA-256 of empty bytes. Repository and commit review own approval attribution; the file
-records only exact key/destination results and cannot choose among candidates.
+A `check --staged` loads the HEAD tree (before) and the staged index tree (after), builds each side's
+ADR and topic corpora from that one snapshot, runs the static current-state checks over the after tree,
+and compares the two universes for the claim-transition handshake: each Implemented ADR's declared
+`State changes` must match exactly one staged claim add, update, or remove, with `Origin` and the prior
+`Revised-by` prefix preserved. It also runs the topic-coverage evaluator over the index. `awf audit`
+applies the same pair check to every parent-to-commit snapshot in a range.
 
-`awf upgrade --attest-current-state` promotes that read-only plan into a recoverable transaction. It
-reruns readiness, requires a clean HEAD (`internal/git.HeadAndClean`), digests the post-normalization
-config, domains, ADRs, topics, marker sources, and approval file, and records the clean HEAD, digest,
-ADR cutoff, and gaps in an optional `bridgeAttestation` lock block. It then writes a durable
-`.awf/current-state-upgrade.journal` (version `1`; phases prepared/applying/rolling-back/lock-committed;
-per-path prior and replacement images; the lock operation last), applies every normalization, marker,
-status, and terminal legacy-index deletion, and commits the attested lock last; a failure before the
-lock rolls back to the prior images, one after leaves the attested lock plus a recoverable journal.
-`awf upgrade --recover` replays the recovery table, and a central command-state guard refuses ordinary
-commands whenever a journal or attestation exists: a valid journal permits only `--recover`, an attested
-lock permits only `--check`, a malformed journal refuses every mode with Git-restoration guidance, and
-`version`/`changelog`/`help` always bypass it. The index-pruned attested tree stays non-operational
-until a later release regenerates the current-state index.
+`awf upgrade` consumes a sealed bridge attestation. When the lock carries one, it verifies only the
+sealed facts (the prepared HEAD and the post-normalization tree digest), then writes a durable
+`.awf/current-state-upgrade.journal` (version `1`; per-path prior and replacement images; the lock
+operation last), deletes the migration approval file, and replaces the lock last with the attestation
+cleared and the permanent ADR format cutoff and gaps promoted; a failure before the lock rolls back to
+the prior images, one after leaves a recoverable journal. `awf upgrade --recover` replays the recovery
+table, and a central command-state guard refuses ordinary commands whenever a journal or attestation
+exists: a committed journal permits only `--recover`, a committed attestation permits only plain
+`upgrade` (which consumes it), a malformed journal refuses every mode with Git-restoration guidance, and
+`version`/`changelog`/`help` always bypass it. Attestation and readiness reporting live only in the
+preceding bridge release; this binary consumes seals, it never produces them.
 
 `awf prose-gate` reads the staged files it scans through the immutable `internal/snapshot` index
 Tree rather than raw index blobs: the Tree captures each stage-0 file's path, executable mode, and a
 private byte copy in one path-sorted, tamper-proof view, so the scan and its `.awf/config.yaml`
-lookup share a single immutable snapshot. Only the index universe exists in Phase 1.
+lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
+and range universes the current-state checks compare.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
@@ -292,7 +275,7 @@ prose (ADR-0070).
 Both seams strip **whole-line authoring comments** first (ADR-0121): a line that is exactly
 an `<!-- awf:comment ... -->` HTML comment is removed from template source (after include
 expansion) and from part bodies (before placeholder substitution), so parts and templates
-carry `touches-invariant:` tags and internal notes that never render. Fenced examples are
+carry `touches-state:` tags and internal notes that never render. Fenced examples are
 preserved; a malformed whole-line opener is a hard render error; in-place regions
 (ADR-0100), read back from output, are never stripped. The lock hashes see the unstripped
 bytes, so a comment-only edit reflags stale and self-settles.

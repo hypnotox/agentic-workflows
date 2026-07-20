@@ -127,7 +127,7 @@ func TestHasStubMarker(t *testing.T) {
 		{"absent", "just prose\n", false},
 	}
 	for _, c := range cases {
-		// invariant: stub-part-verbatim
+		// invariant: rendering/render-engine:stub-part-verbatim
 		if got := HasStubMarker(c.body); got != c.want {
 			t.Errorf("%s: HasStubMarker = %v, want %v", c.name, got, c.want)
 		}
@@ -154,7 +154,7 @@ func TestHasMarkerLine(t *testing.T) {
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {
-			// invariant: part-marker-advisory
+			// invariant: rendering/render-engine:part-marker-advisory
 			if got := HasMarkerLine(c.body); got != c.want {
 				t.Errorf("HasMarkerLine(%q) = %v, want %v", c.body, got, c.want)
 			}
@@ -166,7 +166,7 @@ func TestCheckResidualMarkersBareTokenLegal(t *testing.T) {
 	if err := CheckResidualMarkers("A managed doc is a sequence of `awf:section` blocks.\n"); err != nil {
 		t.Errorf("bare backtick-quoted token must be legal, got %v", err)
 	}
-	// invariant: no-residual-section-marker
+	// invariant: rendering/render-engine:no-residual-section-marker
 	if err := CheckResidualMarkers("text\n<!-- awf:end -->\n"); err == nil {
 		t.Error("stray awf:end comment must be a residual-marker error")
 	}

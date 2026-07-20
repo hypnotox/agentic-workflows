@@ -141,7 +141,7 @@ func TestTOMLEncoderDoesNotDependOnMarkdownParser(t *testing.T) {
 	}
 }
 
-// invariant: structured-agent-encoding
+// invariant: rendering/catalog-and-targets:structured-agent-encoding
 func TestEncodeTOMLAgentRoundTripsMultilineInstructions(t *testing.T) {
 	t.Parallel()
 

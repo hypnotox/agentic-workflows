@@ -43,7 +43,7 @@ func TestCheckCountsCoveredAndTotal(t *testing.T) {
 	}
 }
 
-// invariant: coverage-gate-100
+// invariant: tooling/quality-gates:coverage-gate-100
 func TestCheckFailsBelow100(t *testing.T) {
 	root, modPath := module(t, "package m\nfunc F() {}\n")
 	prof := writeProfile(t, root, modPath+"/f.go:2.1,2.5 1 0\n")
@@ -96,7 +96,7 @@ func TestCheckIgnoreMarkerLineAbove(t *testing.T) {
 	}
 }
 
-// invariant: coverage-ignore-reason
+// invariant: tooling/quality-gates:coverage-ignore-reason
 func TestCheckRejectsReasonlessMarker(t *testing.T) {
 	src := "package m\nvar x = 1 //" + " coverage-ignore\n"
 	root, modPath := module(t, src)
@@ -226,7 +226,7 @@ func TestPercentEmptyIs100(t *testing.T) {
 	}
 }
 
-// invariant: covered-profile-honors-ignores
+// invariant: tooling/quality-gates:covered-profile-honors-ignores
 func TestFilterDropsIgnoredKeepsRest(t *testing.T) {
 	// Line 2 carries the directive; its block must be dropped from the emitted
 	// profile, and the line-3 block must survive verbatim - the "covered" report

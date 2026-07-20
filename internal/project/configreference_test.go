@@ -101,7 +101,7 @@ func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
 
 // Regeneration is the drift oracle: a hand-edit reports stale, a deletion
 // missing, and a local: opt-out with a leftover lock entry orphaned.
-// invariant: config-reference-regen-drift (backing test)
+// invariant: config/configuration:config-reference-regen-drift
 func TestConfigReferenceRegenDrift(t *testing.T) {
 	root, p := syncedProject(t, crefYAML, nil)
 	rel := filepath.Join(root, "docs/config-reference.md")
@@ -155,7 +155,7 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 // The reference template consumes only dedicated data keys - a bare .vars or
 // .data range would neutralize the consumption checks project-wide - and no
 // partial references .vars, keeping the raw-source dormancy scan sound.
-// invariant: config-reference-no-bare-vars (backing test)
+// invariant: config/configuration:config-reference-no-bare-vars
 func TestConfigReferenceNoBareVars(t *testing.T) {
 	_, p := syncedProject(t, crefYAML, nil)
 	files, err := p.RenderAll()
@@ -191,7 +191,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 
 // The config-reference sidecar is sections/local-only: data: and paths: refuse
 // at open, unknown section names refuse, a declared-section drop renders.
-// invariant: config-reference-data-rejected (backing test)
+// invariant: config/configuration:config-reference-data-rejected
 func TestConfigReferenceSidecarRules(t *testing.T) {
 	for _, tc := range []struct {
 		name, sidecar, wantErr string
@@ -231,12 +231,6 @@ func TestConfigReferenceCurrentValues(t *testing.T) {
   subjectMaxLength: 80
   allowedTypes: []
   dependencyManifests: []
-invariants:
-  sources:
-    - globs: ['**/*.go']
-      marker: '//'
-  testGlobs:
-    - '**/*_test.go'
 currentState:
   sources:
     - globs: ['**/*.md']
@@ -263,8 +257,6 @@ proseGate:
 		"| 72 | 80 |", // configured, no "(default)" marker
 		"| accept any |",
 		"| rule off |",
-		"| 1 sources |", // invariants.sources live-state count
-		"| 1 globs |",   // invariants.testGlobs live-state count (ADR-0088 projection)
 		"| 1 entries |", // proseGate.exemptions live-state count
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",

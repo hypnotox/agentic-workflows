@@ -54,7 +54,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 	return string(b)
 }
 
-// invariant: agentsdoc-parts
+// invariant: rendering/templates:agentsdoc-parts
 func TestAgentsDocPartsOverride(t *testing.T) {
 	cfg := "prefix: example\nskills: []\nagents: []\n"
 
@@ -80,7 +80,6 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 	}
 }
 
-// touches-invariant: no-replacewith - three-tier precedence; proof in config_test.go
 func TestConventionPartPrecedence(t *testing.T) {
 	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: []\n"
 	const part = "skills/parts/debugging/debugging-surfaces.md"
@@ -106,7 +105,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 	}
 }
 
-// invariant: sidecar-optional
+// invariant: rendering/render-engine:sidecar-optional
 func TestSidecarAbsentRendersDefault(t *testing.T) {
 	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: []\n"
 	root := scaffold(t, cfg) // no sidecar, no parts
@@ -119,7 +118,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 	}
 }
 
-// invariant: local-frontmatter
+// invariant: rendering/project-output-plan:local-frontmatter
 func TestLocalFrontmatterChecked(t *testing.T) {
 	cfg := "prefix: example\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})

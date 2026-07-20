@@ -76,12 +76,7 @@ func buildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig
 				return err
 			}
 			rel = filepath.ToSlash(rel)
-			var sources []config.CurrentStateSource
-			for _, src := range cfg.Sources {
-				if matchesAny(src.Globs, rel) {
-					sources = append(sources, src)
-				}
-			}
+			sources := matchingSources(cfg, rel)
 			if len(sources) == 0 {
 				return nil
 			}
@@ -89,37 +84,67 @@ func buildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig
 			if err != nil { // coverage-ignore: WalkDir just returned this file; failure requires a concurrent filesystem race
 				return err
 			}
-			for n, line := range strings.Split(string(b), "\n") {
-				trimmed := strings.TrimSpace(line)
-				for _, src := range sources {
-					if !strings.HasPrefix(trimmed, src.Marker) {
-						continue
-					}
-					raw := strings.TrimSpace(strings.TrimPrefix(trimmed, src.Marker))
-					payload, ok := markerPayload(trimmed, src)
-					if !ok {
-						if markerCandidate(raw) {
-							return fmt.Errorf("%s:%d: current-state marker is missing closing token %q", rel, n+1, src.Close)
-						}
-						continue
-					}
-					if !markerCandidate(payload) {
-						continue
-					}
-					site, err := resolveMarker(rel, n+1, payload, corpus, cfg)
-					if err != nil {
-						return err
-					}
-					idx.sites[site.ClaimID] = append(idx.sites[site.ClaimID], site)
-					break
-				}
-			}
-			return nil
+			return scanMarkerBytes(idx, rel, b, sources, corpus, cfg)
 		})
 		if err != nil {
 			return MarkerIndex{}, fmt.Errorf("scan current-state markers under %s: %w", filepath.ToSlash(root), err)
 		}
 	}
+	if err := finalizeMarkerIndex(idx, corpus); err != nil {
+		return MarkerIndex{}, err
+	}
+	return idx, nil
+}
+
+// matchingSources returns the configured marker-source families whose globs
+// select the repo-relative slash path rel.
+func matchingSources(cfg *config.CurrentStateConfig, rel string) []config.CurrentStateSource {
+	var sources []config.CurrentStateSource
+	for _, src := range cfg.Sources {
+		if matchesAny(src.Globs, rel) {
+			sources = append(sources, src)
+		}
+	}
+	return sources
+}
+
+// scanMarkerBytes scans one source file's bytes for the marker families that
+// select it, resolving each valid marker into a site on idx. It is the byte-fed
+// scan core shared by the filesystem walker and the snapshot loader.
+func scanMarkerBytes(idx MarkerIndex, rel string, b []byte, sources []config.CurrentStateSource, corpus Corpus, cfg *config.CurrentStateConfig) error {
+	for n, line := range strings.Split(string(b), "\n") {
+		trimmed := strings.TrimSpace(line)
+		for _, src := range sources {
+			if !strings.HasPrefix(trimmed, src.Marker) {
+				continue
+			}
+			raw := strings.TrimSpace(strings.TrimPrefix(trimmed, src.Marker))
+			payload, ok := markerPayload(trimmed, src)
+			if !ok {
+				if markerCandidate(raw) {
+					return fmt.Errorf("%s:%d: current-state marker is missing closing token %q", rel, n+1, src.Close)
+				}
+				continue
+			}
+			if !markerCandidate(payload) {
+				continue
+			}
+			site, err := resolveMarker(rel, n+1, payload, corpus, cfg)
+			if err != nil {
+				return err
+			}
+			idx.sites[site.ClaimID] = append(idx.sites[site.ClaimID], site)
+			break
+		}
+	}
+	return nil
+}
+
+// finalizeMarkerIndex validates each claim's backing contract against the
+// scanned sites (test-backed invariants require a proof marker; unbacked ones
+// forbid one) and path-sorts every claim's sites. It runs once after all source
+// files are scanned, regardless of how they were collected.
+func finalizeMarkerIndex(idx MarkerIndex, corpus Corpus) error {
 	for id, claim := range corpus.byClaim {
 		sites := idx.sites[id]
 		proofs := 0
@@ -129,15 +154,15 @@ func buildMarkerIndex(root string, corpus Corpus, cfg *config.CurrentStateConfig
 			}
 		}
 		if claim.Type == Invariant && claim.Backing == TestBacking && proofs == 0 {
-			return MarkerIndex{}, fmt.Errorf("test-backed invariant %s has no proof marker", id)
+			return fmt.Errorf("test-backed invariant %s has no proof marker", id)
 		}
 		if claim.Type == Invariant && claim.Backing == Unbacked && proofs > 0 { // coverage-ignore: resolveMarker rejects an unbacked proof before it can enter the index
-			return MarkerIndex{}, fmt.Errorf("unbacked invariant %s must not have a proof marker", id)
+			return fmt.Errorf("unbacked invariant %s must not have a proof marker", id)
 		}
 		sortSites(sites)
 		idx.sites[id] = sites
 	}
-	return idx, nil
+	return nil
 }
 
 func markerPayload(line string, src config.CurrentStateSource) (string, bool) {

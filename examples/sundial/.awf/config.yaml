@@ -59,8 +59,13 @@ runner:
 domains:
   - almanac
   - cli
-invariants:
+currentState:
   sources:
     - globs:
         - "**/*.go"
       marker: //
+  testGlobs:
+    - "**/*_test.go"
+  topicCoverage: error
+  topicFanout: warn
+  maxTopicsPerPath: 8

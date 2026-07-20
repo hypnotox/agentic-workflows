@@ -44,7 +44,7 @@ func DataKeys() []DataKey { return dataKeys }
 // VarEntries derives the var descriptions from the catalog's config-var
 // descriptors (empty or "var" Target - the init-routing descriptors are not
 // vars: keys), description text verbatim, availability clause attached here.
-// touches-invariant: configspec-var-derivation - var entries derived from catalog descriptors; proof in spec_test.go
+// touches-state: config/configuration:configspec-var-derivation - var entries derived from catalog descriptors; proof in spec_test.go
 func VarEntries() []VarEntry {
 	var out []VarEntry
 	for _, d := range catalog.Standard.Vars {
@@ -72,7 +72,6 @@ var varAvailability = map[string]string{
 // keys is the hand-authored description table for config.yaml and sidecar
 // keys; the reflection parity test keeps it bidirectionally matched to the
 // config structs.
-// invariant: configspec-key-parity
 var keys = []Entry{
 	{
 		Path: "prefix", Type: "string", Default: "none: required, set at init",
@@ -106,7 +105,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "domains", Type: "string list", Default: "none",
-		Description:  "Freeform domain keys. Each renders a generated `<docsDir>/domains/<name>.md` doc (its per-domain decision index plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
+		Description:  "Freeform domain keys. Each renders a generated `<docsDir>/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
 		Availability: "Always.",
 	},
 	{
@@ -126,73 +125,43 @@ var keys = []Entry{
 	},
 	{
 		Path: "currentState.sources", Type: "list of {globs, marker, close} mappings", Default: "none",
-		Description:  "Source families scanned for qualified current-state relevance, advisory, and invariant proof markers during topic validation and bridge preparation. This does not switch normal context or invariant authority away from the legacy model.",
-		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+		Description:  "Source families scanned for qualified current-state relevance, advisory, and invariant proof markers during topic validation.",
+		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
 		Path: "currentState.sources[].globs", Type: "string list", Default: "none",
 		Description:  "Non-empty, duplicate-free anchored path globs matched against slash-separated repository-relative paths for one current-state marker source.",
-		Availability: "Within each `currentState.sources` entry during topic validation and bridge preparation.",
+		Availability: "Within each `currentState.sources` entry during topic validation.",
 	},
 	{
 		Path: "currentState.sources[].marker", Type: "string", Default: "none",
 		Description:  "Non-empty literal opening comment token that prefixes a qualified current-state marker line.",
-		Availability: "Within each `currentState.sources` entry during topic validation and bridge preparation.",
+		Availability: "Within each `currentState.sources` entry during topic validation.",
 	},
 	{
 		Path: "currentState.sources[].close", Type: "string", Default: "none: no close token stripped",
 		Description:  "Optional non-empty literal closing comment token stripped from a matched current-state marker line.",
-		Availability: "Within each `currentState.sources` entry during topic validation and bridge preparation.",
+		Availability: "Within each `currentState.sources` entry during topic validation.",
 	},
 	{
 		Path: "currentState.testGlobs", Type: "string list", Default: "none",
 		Description:  "Duplicate-free anchored path globs identifying proof-eligible test files for current-state invariant claims.",
-		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
 		Path: "currentState.topicCoverage", Type: "severity (error, warn, or off)", Default: "error",
-		Description:  "Severity for missing scoped current-state topic coverage during topic validation and bridge preparation. It does not switch normal context or invariant authority.",
-		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+		Description:  "Severity for missing scoped current-state topic coverage during topic validation.",
+		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
 		Path: "currentState.topicFanout", Type: "severity (error, warn, or off)", Default: "warn",
-		Description:  "Severity for paths exceeding the current-state topic fan-out budget during topic validation and bridge preparation. It does not switch normal context or invariant authority.",
-		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
+		Description:  "Severity for paths exceeding the current-state topic fan-out budget during topic validation.",
+		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
 		Path: "currentState.maxTopicsPerPath", Type: "positive int", Default: "8",
-		Description:  "Maximum path-scoped current-state topics permitted to match one path before the configured fan-out finding is emitted. It does not switch normal context or invariant authority.",
-		Availability: "Optional bridge-preparation input; consumed only by current-state topic validation.",
-	},
-	{
-		Path: "invariants.disabled", Type: "bool", Default: "false",
-		Description:  "Explicit opt-out of invariant-backing enforcement. With enforcement neither configured (no `sources`) nor disabled, gated commands refuse once decision docs carry taggable invariants; set `sources` or set this true.",
-		Availability: "Always.",
-	},
-	{
-		Path: "invariants.sources", Type: "list of {globs, marker, close} mappings", Default: "none: enforcement unconfigured",
-		Description:  "Where invariant-backing comments live. Each entry pairs path globs with the literal comment marker that prefixes a backing `invariant: <slug>` tag in those files. Non-empty enables enforcement: every tagged invariant in an implemented decision doc must have a matching backing comment.",
-		Availability: "Always.",
-	},
-	{
-		Path: "invariants.sources[].globs", Type: "string list", Default: "none",
-		Description:  "Anchored path globs matched against slash-separated repo-relative paths: `*.go` is top-level only, any-depth is `**/*.go`. At least one glob per source.",
-		Availability: "Within each `invariants.sources` entry.",
-	},
-	{
-		Path: "invariants.sources[].marker", Type: "string", Default: "none",
-		Description:  "The literal comment marker (`//`, `#`, `--`, ...) that prefixes a backing `invariant: <slug>` tag in the entry's files. Must be non-empty.",
-		Availability: "Within each `invariants.sources` entry.",
-	},
-	{
-		Path: "invariants.sources[].close", Type: "string", Default: "none: no close token stripped",
-		Description:  "Optional literal close token for block-comment markers (`-->`, `*/`). When set, one trailing close token (plus surrounding whitespace) is stripped from a matched marker line before the `invariant: <slug>` / `touches-invariant: <slug>` tag is parsed, so a touches note stays clean and a note-less touches marker still counts as bare. Empty or absent means no stripping.",
-		Availability: "Within each `invariants.sources` entry.",
-	},
-	{
-		Path: "invariants.testGlobs", Type: "string list", Default: "none: proof markers fall back to source-glob scope",
-		Description:  "Anchored path globs (same dialect as `invariants.sources[].globs`) identifying test files. When non-empty, a proof `invariant: <slug>` marker backs an invariant only in a file matching one of these globs; backing means an executed test line. When empty or absent, backing falls back to source-glob scope. The `touches-invariant:` context marker is unaffected.",
-		Availability: "Within `invariants`; opt-in teeth for the proof marker.",
+		Description:  "Maximum path-scoped current-state topics permitted to match one path before the configured fan-out finding is emitted.",
+		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
 		Path: "audit.allowedTypes", Type: "string list", Default: "the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test)",
@@ -324,7 +293,6 @@ var keys = []Entry{
 // dataKeys is the hand-authored per-artifact data-key description table; the
 // parity test derives the expected set from the catalog and the embedded
 // templates (include-expanded), so an undescribed key cannot ship.
-// invariant: configspec-data-parity
 var dataKeys = []DataKey{
 	{Kind: "skills", Artifact: "brainstorming", Key: "errorBoundaries", Description: "The error-handling boundaries the design-sections step walks (list); unset, the section keeps its generic boundary prose."},
 	{Kind: "skills", Artifact: "brainstorming", Key: "loadBearingExamples", Description: "Project-specific examples of load-bearing decisions for the definitions section (list); unset, the generic examples render."},

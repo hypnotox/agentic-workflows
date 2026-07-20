@@ -22,7 +22,7 @@ type Entry struct {
 var headerRe = regexp.MustCompile(`^## \[(\d+\.\d+\.\d+)\] - (\d{4}-\d{2}-\d{2})$`)
 
 // Load reads "CHANGELOG.md" from fsys and parses it.
-// touches-invariant: changelog-embed-decodes - embedded CHANGELOG.md decode; proof in changelog_test.go
+// touches-state: tooling/changelog-and-release:changelog-embed-decodes - embedded CHANGELOG.md decode; proof in changelog_test.go
 func Load(fsys fs.FS) ([]Entry, error) {
 	b, err := fs.ReadFile(fsys, "CHANGELOG.md")
 	if err != nil {
@@ -111,7 +111,7 @@ func Since(entries []Entry, v string) ([]Entry, error) {
 // Range returns every entry in [from, to] inclusive, newest first. from must be
 // chronologically older than or equal to the to end (git range convention:
 // from..to); a reversed pair errors rather than silently reordering.
-// touches-invariant: changelog-range-chronological - chronological range selection; proof in changelog_test.go
+// touches-state: tooling/changelog-and-release:changelog-range-chronological - chronological range selection; proof in changelog_test.go
 func Range(entries []Entry, from, to string) ([]Entry, error) {
 	fromIdx, err := indexOf(entries, from)
 	if err != nil {

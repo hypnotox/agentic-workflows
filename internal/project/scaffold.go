@@ -29,7 +29,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 
 	// Collect referenced var names from every catalog template family - not only
 	// the core ones - so an opt-in target added later renders without <no value>.
-	// touches-invariant: scaffold-seeds-all-vars - seeds every referenced var; proof in scaffold_test.go
+	// touches-state: rendering/project-output-plan:scaffold-seeds-all-vars - seeds every referenced var; proof in scaffold_test.go
 	varSet := map[string]bool{}
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
@@ -64,7 +64,6 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 	// A non-empty resolved commitScopes answer becomes the audit block; an empty
 	// answer writes nothing - nil audit.allowedScopes = accept any (ADR-0017,
 	// ADR-0051 Decision 2).
-	// invariant: audit-scopes-descriptor-routed
 	var auditBlk *config.SkeletonAudit
 	if len(scopes) > 0 {
 		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
@@ -94,7 +93,7 @@ func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNam
 	// enabled (every one is workflow-essential). No core docs remain -
 	// workflow/doc-standard/agents-md-standard are mandatory singletons
 	// (ADR-0043), not toggleable.
-	// touches-invariant: scaffold-core-only - core-only skill scaffold; proof in scaffold_test.go
+	// touches-state: rendering/project-output-plan:scaffold-core-only - core-only skill scaffold; proof in scaffold_test.go
 	for name, spec := range cat.Skills {
 		if spec.Core {
 			skillNames = append(skillNames, name)
@@ -107,8 +106,6 @@ func scaffoldSelection(cat *catalog.Catalog, trim *config.CatalogTrim) (skillNam
 	// derivation, the always-enabled plan-reviewer's edge would silently
 	// re-complete any planning-core trim. Additions beyond the selection are
 	// returned so init can note each one.
-	// invariant: catalog-trim-applied
-	// touches-invariant: init-set-closed - closure-completed scaffold selection; proof in scaffold_test.go
 	if trim != nil && trim.Docs != nil {
 		docNames = slices.Clone(*trim.Docs)
 	}

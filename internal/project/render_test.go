@@ -31,7 +31,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 // rendered output, while a mid-line occurrence and a fenced whole-line demo
 // render verbatim (ADR-0121 Decisions 1-3; the template-source seam is proven
 // by the render-layer unit tests plus the strip call in renderTarget).
-// invariant: authoring-comment-stripped
+// invariant: rendering/project-output-plan:authoring-comment-stripped
 func TestAuthoringCommentStrippedFromPart(t *testing.T) {
 	out := syncedWorkflowDoc(t,
 		"<!-- awf:comment touches-invariant: demo-slug - an internal tag -->\n"+
@@ -98,7 +98,7 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 // dogfooded touches-invariant authoring comment, so any regression in the
 // renderTarget strip wiring (which the render-layer unit tests cannot see)
 // leaks it into every scaffolded project's rendered README.
-// touches-invariant: authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
+// touches-state: rendering/project-output-plan:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", nil)
 	p, err := Open(root)

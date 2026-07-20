@@ -15,7 +15,7 @@ import (
 // every rendered skill and agent body is free of runtime tool-name tokens. The
 // denylist is matched case-insensitively and word-anchored, so it does not fire
 // on the neutral "subagent" / "subagent's prompt" replacement language.
-// invariant: skill-prose-tool-agnostic
+// invariant: rendering/templates:skill-prose-tool-agnostic
 func TestSkillProseToolAgnostic(t *testing.T) {
 	cat := catalog.Standard
 	forbidden := []*regexp.Regexp{

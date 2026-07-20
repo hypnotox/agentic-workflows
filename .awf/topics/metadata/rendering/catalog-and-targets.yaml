@@ -1,0 +1,4 @@
+title: Catalog and targets
+summary: The compile-time catalog and the tool-agnostic target seam.
+paths:
+  - internal/catalog/**

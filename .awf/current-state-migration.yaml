@@ -1,0 +1,688 @@
+version: 1
+invariantApprovals:
+  - key: ADR-0005#check-active-md-stale
+    destination: rendering/project-output-plan:check-active-md-stale
+  - key: ADR-0005#docsdir-default
+    destination: config/configuration:docsdir-default
+  - key: ADR-0005#layout-derivation
+    destination: rendering/project-output-plan:layout-derivation
+  - key: ADR-0006#check-invalid-frontmatter
+    destination: rendering/project-output-plan:check-invalid-frontmatter
+  - key: ADR-0006#frontmatter-split
+    destination: adr-system/frontmatter:frontmatter-split
+  - key: ADR-0006#templates-valid-frontmatter
+    destination: rendering/templates:templates-valid-frontmatter
+  - key: ADR-0007#adr-sections-parsed
+    destination: adr-system/adr-lifecycle:adr-sections-parsed
+  - key: ADR-0007#invariants-duplicate-slug
+    destination: invariants/topics-and-markers:invariants-duplicate-slug
+  - key: ADR-0007#invariants-in-check
+    destination: tooling/cli:invariants-in-check
+  - key: ADR-0007#invariants-unbacked-detected
+    destination: invariants/topics-and-markers:invariants-unbacked-detected
+  - key: ADR-0008#invariants-marker-literal
+    destination: invariants/topics-and-markers:invariants-marker-literal
+  - key: ADR-0008#invariants-marker-whitespace
+    destination: invariants/topics-and-markers:invariants-marker-whitespace
+  - key: ADR-0008#invariants-multilang-scan
+    destination: invariants/topics-and-markers:invariants-multilang-scan
+  - key: ADR-0008#invariants-three-state
+    destination: invariants/topics-and-markers:invariants-three-state
+  - key: ADR-0008#invariants-zero-slugs-clean
+    destination: invariants/current-state-authority:invariants-zero-slugs-clean
+  - key: ADR-0009#agentsdoc-parts
+    destination: rendering/templates:agentsdoc-parts
+  - key: ADR-0009#drift-source-set
+    destination: rendering/project-output-plan:drift-source-set
+  - key: ADR-0009#enable-arrays
+    destination: config/configuration:enable-arrays
+  - key: ADR-0009#local-frontmatter
+    destination: rendering/project-output-plan:local-frontmatter
+  - key: ADR-0009#sidecar-optional
+    destination: rendering/render-engine:sidecar-optional
+  - key: ADR-0010#legacy-read-isolation
+    destination: config/migrations-and-locks:legacy-read-isolation
+  - key: ADR-0010#migration-ordering
+    destination: config/migrations-and-locks:migration-ordering
+  - key: ADR-0010#noop-autobump
+    destination: config/migrations-and-locks:noop-autobump
+  - key: ADR-0010#schema-version-lock
+    destination: config/migrations-and-locks:schema-version-lock
+  - key: ADR-0010#upgrade-gate
+    destination: config/migrations-and-locks:upgrade-gate
+  - key: ADR-0011#docs-section-parity
+    destination: rendering/templates:docs-section-parity
+  - key: ADR-0011#section-orphan-flagged
+    destination: rendering/project-output-plan:section-orphan-flagged
+  - key: ADR-0012#coverage-gate-100
+    destination: tooling/quality-gates:coverage-gate-100
+  - key: ADR-0012#coverage-ignore-reason
+    destination: tooling/quality-gates:coverage-ignore-reason
+  - key: ADR-0012#single-os-exit
+    destination: tooling/cli:single-os-exit
+  - key: ADR-0013#domains-dir-given
+    destination: rendering/project-output-plan:domains-dir-given
+  - key: ADR-0013#layout-docs-enabled-only
+    destination: rendering/project-output-plan:layout-docs-enabled-only
+  - key: ADR-0013#no-doc-path-vars
+    destination: rendering/templates:no-doc-path-vars
+  - key: ADR-0014#domain-doc-regenerated
+    destination: rendering/project-output-plan:domain-doc-regenerated
+  - key: ADR-0014#domain-name-validated
+    destination: config/configuration:domain-name-validated
+  - key: ADR-0015#no-replacewith
+    destination: config/configuration:no-replacewith
+  - key: ADR-0015#no-section-marker-leak
+    destination: rendering/render-engine:no-section-marker-leak
+  - key: ADR-0015#provenance-banner
+    destination: rendering/project-output-plan:provenance-banner
+  - key: ADR-0015#section-edit-pointer
+    destination: rendering/render-engine:section-edit-pointer
+  - key: ADR-0016#awf-config-root
+    destination: config/configuration:awf-config-root
+  - key: ADR-0016#awf-relocation-migration
+    destination: config/migrations-and-locks:awf-relocation-migration
+  - key: ADR-0016#claude-md-bridge
+    destination: rendering/catalog-and-targets:claude-md-bridge
+  - key: ADR-0016#init-collision-guard
+    destination: tooling/cli:init-collision-guard
+  - key: ADR-0017#audit-adr-status-cochange
+    destination: tooling/audit-and-snapshots:audit-adr-status-cochange
+  - key: ADR-0017#audit-conventional-commits
+    destination: tooling/audit-and-snapshots:audit-conventional-commits
+  - key: ADR-0017#audit-dependency-warn
+    destination: tooling/audit-and-snapshots:audit-dependency-warn
+  - key: ADR-0017#audit-empty-range-clean
+    destination: tooling/audit-and-snapshots:audit-empty-range-clean
+  - key: ADR-0017#audit-plan-threshold-warn
+    destination: tooling/audit-and-snapshots:audit-plan-threshold-warn
+  - key: ADR-0017#audit-warn-exit-zero
+    destination: tooling/cli:audit-warn-exit-zero
+  - key: ADR-0019#audit-domain-doc-staleness
+    destination: tooling/audit-and-snapshots:audit-domain-doc-staleness
+  - key: ADR-0019#audit-undocumented-domain
+    destination: tooling/audit-and-snapshots:audit-undocumented-domain
+  - key: ADR-0020#dead-reference-gated
+    destination: rendering/render-engine:dead-reference-gated
+  - key: ADR-0021#adr-singleton-section-parity
+    destination: rendering/catalog-and-targets:adr-singleton-section-parity
+  - key: ADR-0021#adr-system-singletons-rendered
+    destination: rendering/project-output-plan:adr-system-singletons-rendered
+  - key: ADR-0022#scaffold-core-only
+    destination: rendering/project-output-plan:scaffold-core-only
+  - key: ADR-0022#scaffold-seeds-all-vars
+    destination: rendering/project-output-plan:scaffold-seeds-all-vars
+  - key: ADR-0023#init-force-backs-up
+    destination: tooling/cli:init-force-backs-up
+  - key: ADR-0024#cli-config-kinds
+    destination: tooling/cli:cli-config-kinds
+  - key: ADR-0024#remove-block-scoped
+    destination: config/configuration:remove-block-scoped
+  - key: ADR-0025#audit-uncommitted-changes
+    destination: tooling/audit-and-snapshots:audit-uncommitted-changes
+  - key: ADR-0026#config-mutation-roundtrip
+    destination: config/configuration:config-mutation-roundtrip
+  - key: ADR-0026#config-serialization-owned
+    destination: config/configuration:config-serialization-owned
+  - key: ADR-0027#kind-dispatch-single-table
+    destination: rendering/project-output-plan:kind-dispatch-single-table
+  - key: ADR-0028#workflow-chain-adr-before-plan
+    destination: rendering/templates:workflow-chain-adr-before-plan
+  - key: ADR-0028#workflow-chain-surfaces-resync
+    destination: rendering/templates:workflow-chain-surfaces-resync
+  - key: ADR-0029#catalog-trim-applied
+    destination: rendering/project-output-plan:catalog-trim-applied
+  - key: ADR-0029#describe-read-only
+    destination: tooling/cli:describe-read-only
+  - key: ADR-0029#explicit-answers-win
+    destination: tooling/cli:explicit-answers-win
+  - key: ADR-0029#init-noninteractive-default
+    destination: tooling/cli:init-noninteractive-default
+  - key: ADR-0029#var-descriptor-parity
+    destination: rendering/catalog-and-targets:var-descriptor-parity
+  - key: ADR-0032#hooks-config-dropped
+    destination: config/migrations-and-locks:hooks-config-dropped
+  - key: ADR-0033#audit-adr-domain-cochange
+    destination: tooling/audit-and-snapshots:audit-adr-domain-cochange
+  - key: ADR-0035#sync-backs-up-foreign
+    destination: rendering/project-output-plan:sync-backs-up-foreign
+  - key: ADR-0036#commit-gate-shared-rule
+    destination: tooling/audit-and-snapshots:commit-gate-shared-rule
+  - key: ADR-0037#cursor-no-bridge
+    destination: rendering/project-output-plan:cursor-no-bridge
+  - key: ADR-0037#multi-target-render
+    destination: rendering/project-output-plan:multi-target-render
+  - key: ADR-0037#target-cli
+    destination: tooling/cli:target-cli
+  - key: ADR-0037#target-prune-ancestors
+    destination: rendering/project-output-plan:target-prune-ancestors
+  - key: ADR-0037#targets-default-claude
+    destination: config/configuration:targets-default-claude
+  - key: ADR-0038#skill-prose-tool-agnostic
+    destination: rendering/templates:skill-prose-tool-agnostic
+  - key: ADR-0039#version-compat-gate
+    destination: tooling/cli:version-compat-gate
+  - key: ADR-0040#bootstrap-checksum
+    destination: rendering/templates:bootstrap-checksum
+  - key: ADR-0041#changelog-embed-decodes
+    destination: tooling/changelog-and-release:changelog-embed-decodes
+  - key: ADR-0041#changelog-flags-exclusive
+    destination: tooling/changelog-and-release:changelog-flags-exclusive
+  - key: ADR-0041#changelog-range-chronological
+    destination: tooling/changelog-and-release:changelog-range-chronological
+  - key: ADR-0042#adr-new-heading-matches-file
+    destination: adr-system/adr-lifecycle:adr-new-heading-matches-file
+  - key: ADR-0042#adr-new-no-overwrite
+    destination: adr-system/adr-lifecycle:adr-new-no-overwrite
+  - key: ADR-0042#adr-new-sequential-numbering
+    destination: adr-system/adr-lifecycle:adr-new-sequential-numbering
+  - key: ADR-0042#adr-new-strips-markers
+    destination: adr-system/adr-lifecycle:adr-new-strips-markers
+  - key: ADR-0042#adr-new-version-gated
+    destination: tooling/cli:adr-new-version-gated
+  - key: ADR-0043#document-map-lists-mandatory-docs
+    destination: rendering/templates:document-map-lists-mandatory-docs
+  - key: ADR-0043#plain-singleton-via-renderkind
+    destination: rendering/project-output-plan:plain-singleton-via-renderkind
+  - key: ADR-0043#singleton-doc-migration-relocates-parts
+    destination: config/migrations-and-locks:singleton-doc-migration-relocates-parts
+  - key: ADR-0044#testsupport-zero-internal-deps
+    destination: tooling/quality-gates:testsupport-zero-internal-deps
+  - key: ADR-0045#catalog-data-in-confighash
+    destination: rendering/project-output-plan:catalog-data-in-confighash
+  - key: ADR-0045#catalog-defaults-generic-denylist
+    destination: rendering/catalog-and-targets:catalog-defaults-generic-denylist
+  - key: ADR-0045#completeness-advisory-nonfailing
+    destination: tooling/cli:completeness-advisory-nonfailing
+  - key: ADR-0045#empty-init-coherent-render
+    destination: rendering/templates:empty-init-coherent-render
+  - key: ADR-0045#sidecar-key-overrides-default
+    destination: rendering/project-output-plan:sidecar-key-overrides-default
+  - key: ADR-0046#curated-init-skill-refs-clean
+    destination: rendering/project-output-plan:curated-init-skill-refs-clean
+  - key: ADR-0046#skill-ref-dead-fails
+    destination: rendering/project-output-plan:skill-ref-dead-fails
+  - key: ADR-0046#skill-ref-unknown-ignored
+    destination: rendering/project-output-plan:skill-ref-unknown-ignored
+  - key: ADR-0046#skills-context-effective-set
+    destination: rendering/project-output-plan:skills-context-effective-set
+  - key: ADR-0046#skills-set-in-confighash
+    destination: rendering/project-output-plan:skills-set-in-confighash
+  - key: ADR-0047#bootstrap-config-tree-path
+    destination: rendering/project-output-plan:bootstrap-config-tree-path
+  - key: ADR-0048#hook-payloads-fallback-safe
+    destination: rendering/templates:hook-payloads-fallback-safe
+  - key: ADR-0048#hook-payloads-rendered
+    destination: rendering/project-output-plan:hook-payloads-rendered
+  - key: ADR-0048#init-hooks-default-on
+    destination: tooling/cli:init-hooks-default-on
+  - key: ADR-0049#bootstrap-local-first
+    destination: rendering/templates:bootstrap-local-first
+  - key: ADR-0049#bootstrap-stdout-path-only
+    destination: rendering/templates:bootstrap-stdout-path-only
+  - key: ADR-0049#schema-min-version
+    destination: config/migrations-and-locks:schema-min-version
+  - key: ADR-0049#single-version-authority
+    destination: tooling/cli:single-version-authority
+  - key: ADR-0050#add-skill-pairs-agent
+    destination: tooling/cli:add-skill-pairs-agent
+  - key: ADR-0050#remove-agent-pairing-guard
+    destination: tooling/cli:remove-agent-pairing-guard
+  - key: ADR-0050#reviewing-skill-agent-pairing
+    destination: rendering/project-output-plan:reviewing-skill-agent-pairing
+  - key: ADR-0050#reviewing-skill-specs-paired
+    destination: rendering/catalog-and-targets:reviewing-skill-specs-paired
+  - key: ADR-0051#audit-scopes-descriptor-routed
+    destination: tooling/cli:audit-scopes-descriptor-routed
+  - key: ADR-0051#commit-scope-single-storage
+    destination: rendering/templates:commit-scope-single-storage
+  - key: ADR-0051#scopes-in-confighash
+    destination: rendering/project-output-plan:scopes-in-confighash
+  - key: ADR-0052#include-in-templatehash
+    destination: rendering/render-engine:include-in-templatehash
+  - key: ADR-0052#include-missing-fails
+    destination: rendering/render-engine:include-missing-fails
+  - key: ADR-0052#include-no-nested
+    destination: rendering/render-engine:include-no-nested
+  - key: ADR-0052#include-no-sections
+    destination: rendering/render-engine:include-no-sections
+  - key: ADR-0052#include-splice
+    destination: rendering/render-engine:include-splice
+  - key: ADR-0053#evals-full-catalog-coverage
+    destination: tooling/evaluations:evals-full-catalog-coverage
+  - key: ADR-0054#skill-section-parity
+    destination: rendering/catalog-and-targets:skill-section-parity
+  - key: ADR-0055#guide-scopes-derived
+    destination: rendering/templates:guide-scopes-derived
+  - key: ADR-0056#scope-config-dual-form
+    destination: config/configuration:scope-config-dual-form
+  - key: ADR-0057#part-placeholder-sandboxed
+    destination: rendering/project-output-plan:part-placeholder-sandboxed
+  - key: ADR-0057#part-scopes-in-confighash
+    destination: rendering/project-output-plan:part-scopes-in-confighash
+  - key: ADR-0058#escaped-placeholder-literal
+    destination: rendering/project-output-plan:escaped-placeholder-literal
+  - key: ADR-0058#placeholder-value-token-free
+    destination: rendering/project-output-plan:placeholder-value-token-free
+  - key: ADR-0059#working-with-awf-mandatory
+    destination: rendering/project-output-plan:working-with-awf-mandatory
+  - key: ADR-0060#catalog-go-single-source
+    destination: rendering/catalog-and-targets:catalog-go-single-source
+  - key: ADR-0061#mandatory-doc-pool-exclusion
+    destination: rendering/catalog-and-targets:mandatory-doc-pool-exclusion
+  - key: ADR-0061#unified-doc-model
+    destination: rendering/catalog-and-targets:unified-doc-model
+  - key: ADR-0063#deadcode-gate
+    destination: tooling/quality-gates:deadcode-gate
+  - key: ADR-0064#no-single-marker-init-descriptor
+    destination: rendering/catalog-and-targets:no-single-marker-init-descriptor
+  - key: ADR-0065#covered-profile-honors-ignores
+    destination: tooling/quality-gates:covered-profile-honors-ignores
+  - key: ADR-0066#mutants-timeout-untrusted
+    destination: tooling/quality-gates:mutants-timeout-untrusted
+  - key: ADR-0068#local-base-publication-safe
+    destination: rendering/templates:local-base-publication-safe
+  - key: ADR-0068#local-catalog-clone
+    destination: rendering/project-output-plan:local-catalog-clone
+  - key: ADR-0068#local-name-validated
+    destination: config/configuration:local-name-validated
+  - key: ADR-0068#local-no-shadow
+    destination: rendering/project-output-plan:local-no-shadow
+  - key: ADR-0068#local-renders-from-base
+    destination: rendering/project-output-plan:local-renders-from-base
+  - key: ADR-0068#local-requires-declaration
+    destination: rendering/project-output-plan:local-requires-declaration
+  - key: ADR-0069#agents-doc-section-parity
+    destination: rendering/templates:agents-doc-section-parity
+  - key: ADR-0069#memory-checkpoint-chain-coverage
+    destination: rendering/templates:memory-checkpoint-chain-coverage
+  - key: ADR-0069#memory-gitignore-always-on
+    destination: rendering/project-output-plan:memory-gitignore-always-on
+  - key: ADR-0070#no-residual-section-marker
+    destination: rendering/render-engine:no-residual-section-marker
+  - key: ADR-0070#stub-advisory-nonfailing
+    destination: tooling/cli:stub-advisory-nonfailing
+  - key: ADR-0070#stub-notes-path-keyed
+    destination: rendering/project-output-plan:stub-notes-path-keyed
+  - key: ADR-0070#stub-part-verbatim
+    destination: rendering/render-engine:stub-part-verbatim
+  - key: ADR-0071#mutants-missing-report-errors
+    destination: tooling/cli:mutants-missing-report-errors
+  - key: ADR-0072#section-default-splice
+    destination: rendering/render-engine:section-default-splice
+  - key: ADR-0072#section-default-stub-error
+    destination: rendering/render-engine:section-default-stub-error
+  - key: ADR-0073#repo-audit-error-exit
+    destination: tooling/audit-and-snapshots:repo-audit-error-exit
+  - key: ADR-0074#reviewers-report-only
+    destination: rendering/templates:reviewers-report-only
+  - key: ADR-0076#corrupt-lock-refuses
+    destination: config/migrations-and-locks:corrupt-lock-refuses
+  - key: ADR-0076#lock-atomic-save
+    destination: config/migrations-and-locks:lock-atomic-save
+  - key: ADR-0077#audit-domain-code-staleness
+    destination: tooling/audit-and-snapshots:audit-domain-code-staleness
+  - key: ADR-0077#glob-migration-anchored
+    destination: config/configuration:glob-migration-anchored
+  - key: ADR-0077#pathglob-anchored
+    destination: config/configuration:pathglob-anchored
+  - key: ADR-0078#changelog-monotonic
+    destination: tooling/changelog-and-release:changelog-monotonic
+  - key: ADR-0078#release-changelog-pin
+    destination: tooling/changelog-and-release:release-changelog-pin
+  - key: ADR-0079#release-gate-on-tag
+    destination: tooling/changelog-and-release:release-gate-on-tag
+  - key: ADR-0079#workflow-actions-sha-pinned
+    destination: tooling/quality-gates:workflow-actions-sha-pinned
+  - key: ADR-0080#catalog-template-sweep
+    destination: rendering/templates:catalog-template-sweep
+  - key: ADR-0080#conditional-fallback-case-guard
+    destination: rendering/templates:conditional-fallback-case-guard
+  - key: ADR-0080#golden-test-completeness
+    destination: rendering/templates:golden-test-completeness
+  - key: ADR-0080#requires-skills-exact
+    destination: rendering/catalog-and-targets:requires-skills-exact
+  - key: ADR-0081#add-applies-closure-plan
+    destination: tooling/cli:add-applies-closure-plan
+  - key: ADR-0081#close-enabled-set-migration
+    destination: config/migrations-and-locks:close-enabled-set-migration
+  - key: ADR-0081#enabled-set-closed
+    destination: rendering/catalog-and-targets:enabled-set-closed
+  - key: ADR-0081#init-set-closed
+    destination: tooling/cli:init-set-closed
+  - key: ADR-0081#remove-refuses-dependents
+    destination: tooling/cli:remove-refuses-dependents
+  - key: ADR-0082#template-source-residue
+    destination: rendering/templates:template-source-residue
+  - key: ADR-0083#part-marker-advisory
+    destination: rendering/render-engine:part-marker-advisory
+  - key: ADR-0084#var-descriptor-set-pinned
+    destination: rendering/catalog-and-targets:var-descriptor-set-pinned
+  - key: ADR-0085#bootstrap-env-override
+    destination: rendering/templates:bootstrap-env-override
+  - key: ADR-0085#bootstrap-two-files
+    destination: rendering/project-output-plan:bootstrap-two-files
+  - key: ADR-0085#upgrade-always-syncs
+    destination: tooling/cli:upgrade-always-syncs
+  - key: ADR-0085#upgrade-delegates-fetch
+    destination: rendering/templates:upgrade-delegates-fetch
+  - key: ADR-0085#upgrade-exec-final
+    destination: rendering/templates:upgrade-exec-final
+  - key: ADR-0086#awf-bak-flagged
+    destination: rendering/project-output-plan:awf-bak-flagged
+  - key: ADR-0086#closed-config-tree
+    destination: rendering/project-output-plan:closed-config-tree
+  - key: ADR-0086#inert-sidecar-field-rejected
+    destination: rendering/project-output-plan:inert-sidecar-field-rejected
+  - key: ADR-0086#init-prompts-enabled-vars
+    destination: tooling/cli:init-prompts-enabled-vars
+  - key: ADR-0086#unused-data-drift
+    destination: rendering/project-output-plan:unused-data-drift
+  - key: ADR-0086#unused-var-drift
+    destination: rendering/project-output-plan:unused-var-drift
+  - key: ADR-0087#absent-var-acknowledged
+    destination: rendering/project-output-plan:absent-var-acknowledged
+  - key: ADR-0087#new-seeds-scaffold-vars
+    destination: tooling/cli:new-seeds-scaffold-vars
+  - key: ADR-0088#config-command-static-fallback
+    destination: tooling/cli:config-command-static-fallback
+  - key: ADR-0088#config-reference-data-rejected
+    destination: config/configuration:config-reference-data-rejected
+  - key: ADR-0088#config-reference-no-bare-vars
+    destination: config/configuration:config-reference-no-bare-vars
+  - key: ADR-0088#config-reference-regen-drift
+    destination: config/configuration:config-reference-regen-drift
+  - key: ADR-0088#configspec-data-parity
+    destination: config/configuration:configspec-data-parity
+  - key: ADR-0088#configspec-description-residue
+    destination: config/configuration:configspec-description-residue
+  - key: ADR-0088#configspec-key-parity
+    destination: config/configuration:configspec-key-parity
+  - key: ADR-0088#configspec-var-derivation
+    destination: config/configuration:configspec-var-derivation
+  - key: ADR-0089#glossary-table-forced
+    destination: rendering/templates:glossary-table-forced
+  - key: ADR-0089#glossary-terms-sorted
+    destination: rendering/templates:glossary-terms-sorted
+  - key: ADR-0089#glossary-terms-validated
+    destination: rendering/templates:glossary-terms-validated
+  - key: ADR-0090#example-adopter-checked
+    destination: tooling/quality-gates:example-adopter-checked
+  - key: ADR-0090#example-module-isolated
+    destination: tooling/quality-gates:example-module-isolated
+  - key: ADR-0090#example-zero-notes
+    destination: tooling/quality-gates:example-zero-notes
+  - key: ADR-0091#local-doc-base-publication-safe
+    destination: rendering/templates:local-doc-base-publication-safe
+  - key: ADR-0091#local-doc-catalog-clone
+    destination: rendering/project-output-plan:local-doc-catalog-clone
+  - key: ADR-0091#local-doc-map-fields
+    destination: rendering/project-output-plan:local-doc-map-fields
+  - key: ADR-0091#local-doc-name-path-validated
+    destination: config/configuration:local-doc-name-path-validated
+  - key: ADR-0091#local-doc-no-shadow
+    destination: rendering/project-output-plan:local-doc-no-shadow
+  - key: ADR-0091#local-doc-renders-from-base
+    destination: rendering/project-output-plan:local-doc-renders-from-base
+  - key: ADR-0091#local-doc-requires-declaration
+    destination: rendering/project-output-plan:local-doc-requires-declaration
+  - key: ADR-0092#context-output-parity
+    destination: tooling/cli:context-output-parity
+  - key: ADR-0092#context-read-only
+    destination: tooling/cli:context-read-only
+  - key: ADR-0092#context-static-fallback
+    destination: tooling/cli:context-static-fallback
+  - key: ADR-0094#cli-command-spec-single-source
+    destination: tooling/cli:cli-command-spec-single-source
+  - key: ADR-0094#gated-commands-generated
+    destination: tooling/cli:gated-commands-generated
+  - key: ADR-0096#release-notes-from-changelog
+    destination: tooling/changelog-and-release:release-notes-from-changelog
+  - key: ADR-0098#plan-adr-link-resolved
+    destination: adr-system/plan-artifacts:plan-adr-link-resolved
+  - key: ADR-0098#plan-frontmatter-validated
+    destination: adr-system/plan-artifacts:plan-frontmatter-validated
+  - key: ADR-0098#plan-new-unnumbered
+    destination: adr-system/plan-artifacts:plan-new-unnumbered
+  - key: ADR-0098#plans-template-taxonomy
+    destination: adr-system/plan-artifacts:plans-template-taxonomy
+  - key: ADR-0099#pitfall-adr-link-resolved
+    destination: rendering/project-output-plan:pitfall-adr-link-resolved
+  - key: ADR-0099#pitfall-data-validated
+    destination: rendering/project-output-plan:pitfall-data-validated
+  - key: ADR-0099#pitfall-domains-resolved
+    destination: rendering/project-output-plan:pitfall-domains-resolved
+  - key: ADR-0100#in-place-pointer-distinct
+    destination: rendering/render-engine:in-place-pointer-distinct
+  - key: ADR-0100#in-place-readback
+    destination: rendering/project-output-plan:in-place-readback
+  - key: ADR-0100#in-place-spacing-owned
+    destination: rendering/project-output-plan:in-place-spacing-owned
+  - key: ADR-0100#in-place-tamper-drift
+    destination: rendering/project-output-plan:in-place-tamper-drift
+  - key: ADR-0100#regeneration-checked-attribute
+    destination: rendering/project-output-plan:regeneration-checked-attribute
+  - key: ADR-0100#section-source-exclusive
+    destination: rendering/project-output-plan:section-source-exclusive
+  - key: ADR-0100#shebang-rendered-executable
+    destination: rendering/project-output-plan:shebang-rendered-executable
+  - key: ADR-0101#runner-awf-verbs-owned
+    destination: rendering/templates:runner-awf-verbs-owned
+  - key: ADR-0101#runner-example-adopted
+    destination: rendering/templates:runner-example-adopted
+  - key: ADR-0101#runner-project-verbs-in-place
+    destination: rendering/templates:runner-project-verbs-in-place
+  - key: ADR-0101#runner-render-publication-safe
+    destination: rendering/templates:runner-render-publication-safe
+  - key: ADR-0101#runner-singleton-toggle
+    destination: rendering/templates:runner-singleton-toggle
+  - key: ADR-0101#singleton-kinds-complete
+    destination: rendering/project-output-plan:singleton-kinds-complete
+  - key: ADR-0102#uncovered-collapses-directories
+    destination: tooling/cli:uncovered-collapses-directories
+  - key: ADR-0102#uncovered-output-parity
+    destination: tooling/cli:uncovered-output-parity
+  - key: ADR-0103#adr-related-link-resolved
+    destination: adr-system/adr-lifecycle:adr-related-link-resolved
+  - key: ADR-0103#tag-vocabulary-governed
+    destination: config/configuration:tag-vocabulary-governed
+  - key: ADR-0105#backed-requires-proof
+    destination: invariants/topics-and-markers:backed-requires-proof
+  - key: ADR-0105#proof-marker-test-scoped
+    destination: invariants/topics-and-markers:proof-marker-test-scoped
+  - key: ADR-0105#testglobs-anchored-validated
+    destination: config/configuration:testglobs-anchored-validated
+  - key: ADR-0105#touches-marker-advisory
+    destination: invariants/topics-and-markers:touches-marker-advisory
+  - key: ADR-0105#unbacked-refuses-proof
+    destination: invariants/topics-and-markers:unbacked-refuses-proof
+  - key: ADR-0105#unbacked-requires-verify-note
+    destination: invariants/topics-and-markers:unbacked-requires-verify-note
+  - key: ADR-0107#changelog-rule-advisory
+    destination: tooling/changelog-and-release:changelog-rule-advisory
+  - key: ADR-0109#tag-coverage-note
+    destination: config/configuration:tag-coverage-note
+  - key: ADR-0109#tag-frequency-note
+    destination: config/configuration:tag-frequency-note
+  - key: ADR-0109#tag-not-domain-name
+    destination: config/configuration:tag-not-domain-name
+  - key: ADR-0110#uncovered-lists-unowned-unignored
+    destination: invariants/current-state-authority:uncovered-lists-unowned-unignored
+  - key: ADR-0111#plan-commit-subject-length-checked
+    destination: adr-system/plan-artifacts:plan-commit-subject-length-checked
+  - key: ADR-0111#plan-commit-subject-marker-scoped
+    destination: adr-system/plan-artifacts:plan-commit-subject-marker-scoped
+  - key: ADR-0111#plan-commit-subject-optout-honored
+    destination: adr-system/plan-artifacts:plan-commit-subject-optout-honored
+  - key: ADR-0111#plan-commit-subject-scope-advisory
+    destination: adr-system/plan-artifacts:plan-commit-subject-scope-advisory
+  - key: ADR-0111#plan-commit-subject-shape-checked
+    destination: adr-system/plan-artifacts:plan-commit-subject-shape-checked
+  - key: ADR-0115#emitted-prose-no-typographic-substitutes
+    destination: tooling/quality-gates:emitted-prose-no-typographic-substitutes
+  - key: ADR-0117#audit-plain-punctuation
+    destination: tooling/audit-and-snapshots:audit-plain-punctuation
+  - key: ADR-0119#prose-gate-refuses-without-git
+    destination: tooling/quality-gates:prose-gate-refuses-without-git
+  - key: ADR-0119#prose-gate-tracked-file-scan
+    destination: tooling/quality-gates:prose-gate-tracked-file-scan
+  - key: ADR-0120#decision-items-enumerable
+    destination: adr-system/adr-lifecycle:decision-items-enumerable
+  - key: ADR-0120#upgrade-migrates-retirements
+    destination: config/migrations-and-locks:upgrade-migrates-retirements
+  - key: ADR-0121#authoring-comment-inplace-inert
+    destination: rendering/project-output-plan:authoring-comment-inplace-inert
+  - key: ADR-0121#authoring-comment-malformed-fails
+    destination: rendering/render-engine:authoring-comment-malformed-fails
+  - key: ADR-0121#authoring-comment-stripped
+    destination: rendering/project-output-plan:authoring-comment-stripped
+  - key: ADR-0121#authoring-comment-whole-line-only
+    destination: rendering/render-engine:authoring-comment-whole-line-only
+  - key: ADR-0121#invariant-marker-close-token
+    destination: invariants/topics-and-markers:invariant-marker-close-token
+  - key: ADR-0121#parts-raw-except-authoring-comments
+    destination: rendering/render-engine:parts-raw-except-authoring-comments
+  - key: ADR-0122#structured-agent-encoding
+    destination: rendering/catalog-and-targets:structured-agent-encoding
+  - key: ADR-0122#target-dialect-render
+    destination: rendering/catalog-and-targets:target-dialect-render
+  - key: ADR-0123#pi-child-process-safety
+    destination: rendering/catalog-and-targets:pi-child-process-safety
+  - key: ADR-0123#pi-child-tool-boundaries
+    destination: rendering/catalog-and-targets:pi-child-tool-boundaries
+  - key: ADR-0123#pi-extension-container-gate
+    destination: tooling/quality-gates:pi-extension-container-gate
+  - key: ADR-0123#pi-extension-target-render
+    destination: rendering/catalog-and-targets:pi-extension-target-render
+  - key: ADR-0123#pi-implementation-state-boundary
+    destination: rendering/catalog-and-targets:pi-implementation-state-boundary
+  - key: ADR-0123#pi-minimum-runtime
+    destination: rendering/catalog-and-targets:pi-minimum-runtime
+  - key: ADR-0123#pi-real-runtime-smoke
+    destination: rendering/catalog-and-targets:pi-real-runtime-smoke
+  - key: ADR-0124#duplicate-target-rejected
+    destination: config/configuration:duplicate-target-rejected
+  - key: ADR-0124#output-plan-complete
+    destination: rendering/project-output-plan:output-plan-complete
+  - key: ADR-0124#output-policy-explicit
+    destination: rendering/project-output-plan:output-policy-explicit
+  - key: ADR-0124#shared-output-coalesced
+    destination: rendering/project-output-plan:shared-output-coalesced
+  - key: ADR-0124#target-capabilities-closed
+    destination: rendering/project-output-plan:target-capabilities-closed
+  - key: ADR-0125#pi-dedicated-grounding-dispatch
+    destination: rendering/templates:pi-dedicated-grounding-dispatch
+  - key: ADR-0125#pi-subagent-failure-details
+    destination: rendering/templates:pi-subagent-failure-details
+  - key: ADR-0125#pi-subagent-progress-bounds
+    destination: rendering/templates:pi-subagent-progress-bounds
+  - key: ADR-0125#pi-subagent-progress-context-isolation
+    destination: rendering/templates:pi-subagent-progress-context-isolation
+  - key: ADR-0125#pi-subagent-progress-rendering
+    destination: rendering/templates:pi-subagent-progress-rendering
+  - key: ADR-0126#pi-extension-editor-quiet-strip
+    destination: rendering/templates:pi-extension-editor-quiet-strip
+  - key: ADR-0127#audit-empty-range-announced
+    destination: tooling/cli:audit-empty-range-announced
+  - key: ADR-0127#audit-migration-announces-removal
+    destination: config/migrations-and-locks:audit-migration-announces-removal
+  - key: ADR-0127#audit-no-base-branch-config
+    destination: config/configuration:audit-no-base-branch-config
+  - key: ADR-0127#audit-reports-evaluated-scope
+    destination: tooling/cli:audit-reports-evaluated-scope
+  - key: ADR-0127#audit-requires-explicit-range
+    destination: tooling/cli:audit-requires-explicit-range
+  - key: ADR-0127#git-range-parser-single-definition
+    destination: tooling/audit-and-snapshots:git-range-parser-single-definition
+  - key: ADR-0127#git-range-rejects-malformed
+    destination: tooling/audit-and-snapshots:git-range-rejects-malformed
+  - key: ADR-0127#repoaudit-requires-explicit-range
+    destination: tooling/cli:repoaudit-requires-explicit-range
+  - key: ADR-0128#upgrade-migrates-supersession-keys
+    destination: config/migrations-and-locks:upgrade-migrates-supersession-keys
+  - key: ADR-0129#supersession-model-single-source
+    destination: adr-system/adr-lifecycle:supersession-model-single-source
+  - key: ADR-0130#audit-shares-adr-parser
+    destination: adr-system/adr-lifecycle:audit-shares-adr-parser
+  - key: ADR-0130#corpus-model-not-rebuilt
+    destination: adr-system/adr-lifecycle:corpus-model-not-rebuilt
+  - key: ADR-0130#corpus-owns-field-reads
+    destination: adr-system/adr-lifecycle:corpus-owns-field-reads
+  - key: ADR-0130#corpus-owns-status-literals
+    destination: adr-system/adr-lifecycle:corpus-owns-status-literals
+  - key: ADR-0130#corpus-parsed-once
+    destination: adr-system/adr-lifecycle:corpus-parsed-once
+  - key: ADR-0130#corpus-raw-access-enumerated
+    destination: adr-system/adr-lifecycle:corpus-raw-access-enumerated
+  - key: ADR-0130#corpus-single-identity-key
+    destination: adr-system/adr-lifecycle:corpus-single-identity-key
+  - key: ADR-0131#adr-related-ascending
+    destination: adr-system/adr-lifecycle:adr-related-ascending
+  - key: ADR-0131#residue-exemptions-pinned-three
+    destination: rendering/project-output-plan:residue-exemptions-pinned-three
+  - key: ADR-0131#sync-always-writes-active-md
+    destination: rendering/project-output-plan:sync-always-writes-active-md
+  - key: ADR-0131#uninstall-removes-lock-entries
+    destination: rendering/project-output-plan:uninstall-removes-lock-entries
+  - key: ADR-0132#bounded-exploration-reporting
+    destination: rendering/templates:bounded-exploration-reporting
+  - key: ADR-0132#cross-runtime-exploration-dispatch
+    destination: rendering/templates:cross-runtime-exploration-dispatch
+  - key: ADR-0132#exploration-skill-closure
+    destination: rendering/catalog-and-targets:exploration-skill-closure
+  - key: ADR-0132#pi-structured-exploration-contract
+    destination: rendering/templates:pi-structured-exploration-contract
+  - key: ADR-0133#accepted-authority-is-pending-only
+    destination: invariants/current-state-authority:accepted-authority-is-pending-only
+  - key: ADR-0133#current-state-cutover-is-atomic
+    destination: tooling/upgrade-runtime:current-state-cutover-is-atomic
+  - key: ADR-0133#current-state-sole-active-authority
+    destination: invariants/current-state-authority:current-state-sole-active-authority
+  - key: ADR-0133#historical-rationale-is-explicit
+    destination: invariants/current-state-authority:historical-rationale-is-explicit
+  - key: ADR-0133#migration-does-not-infer-authority
+    destination: tooling/upgrade-runtime:migration-does-not-infer-authority
+  - key: ADR-0133#topic-scope-is-domain-bounded
+    destination: invariants/topics-and-markers:topic-scope-is-domain-bounded
+  - key: ADR-0134#claim-id-qualified
+    destination: invariants/topics-and-markers:claim-id-qualified
+  - key: ADR-0134#context-default-excludes-history
+    destination: tooling/cli:context-default-excludes-history
+  - key: ADR-0134#relevance-markers-only-narrow
+    destination: invariants/topics-and-markers:relevance-markers-only-narrow
+  - key: ADR-0134#topic-identity-path-derived
+    destination: invariants/topics-and-markers:topic-identity-path-derived
+  - key: ADR-0134#topic-output-complete
+    destination: rendering/project-output-plan:topic-output-complete
+  - key: ADR-0134#topic-scope-cannot-expand-domain
+    destination: invariants/topics-and-markers:topic-scope-cannot-expand-domain
+  - key: ADR-0135#accepted-does-not-override-current
+    destination: invariants/current-state-authority:accepted-does-not-override-current
+  - key: ADR-0135#adr-status-enum-and-matrix
+    destination: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+  - key: ADR-0135#decision-index-is-historical-not-authoritative
+    destination: adr-system/adr-lifecycle:decision-index-is-historical-not-authoritative
+  - key: ADR-0135#implemented-impact-bidirectional
+    destination: invariants/current-state-authority:implemented-impact-bidirectional
+  - key: ADR-0135#removed-claim-id-not-reused
+    destination: invariants/current-state-authority:removed-claim-id-not-reused
+  - key: ADR-0135#state-impact-transition-atomic
+    destination: invariants/current-state-authority:state-impact-transition-atomic
+  - key: ADR-0135#update-requires-substance
+    destination: invariants/current-state-authority:update-requires-substance
+  - key: ADR-0136#every-live-legacy-invariant-adjudicated
+    destination: tooling/upgrade-runtime:every-live-legacy-invariant-adjudicated
+  - key: ADR-0136#legacy-format-set-is-closed
+    destination: tooling/upgrade-runtime:legacy-format-set-is-closed
+  - key: ADR-0136#migration-approval-artifact-is-ephemeral
+    destination: tooling/upgrade-runtime:migration-approval-artifact-is-ephemeral
+  - key: ADR-0136#migration-never-authors-claims
+    destination: tooling/upgrade-runtime:migration-never-authors-claims
+  - key: ADR-0136#no-unqualified-markers-after-upgrade
+    destination: tooling/upgrade-runtime:no-unqualified-markers-after-upgrade
+  - key: ADR-0136#upgrade-failure-is-recoverable
+    destination: tooling/upgrade-runtime:upgrade-failure-is-recoverable
+  - key: ADR-0136#upgrade-requires-complete-current-state
+    destination: tooling/upgrade-runtime:upgrade-requires-complete-current-state
+  - key: ADR-0136#upgraded-runtime-has-one-authority-engine
+    destination: tooling/upgrade-runtime:upgraded-runtime-has-one-authority-engine

@@ -1,0 +1,110 @@
+The topic package parses topic metadata and claim inputs, builds the claim corpus, and resolves relevance, touches, and proof markers. The claims below capture the current topic and marker contracts.
+
+## Claims
+
+### `invariant: backed-requires-proof`
+
+Building the current-state marker index fails when a test-backed invariant claim has no proof marker in backing scope.
+Origin: ADR-0105
+Backing: test
+
+### `invariant: claim-id-qualified`
+
+Every parsed rule and invariant has the unique identity <domain>/<topic>:<local-slug>; claim references and relevance, touches, and proof markers resolve through that identity, while Origin and Revised-by resolve through the ADR corpus.
+Origin: ADR-0134
+Backing: unbacked
+Verify: Topic corpus tests exercise duplicate local slugs across different and identical topics plus valid and dangling claim and ADR references.
+
+### `invariant: invariant-marker-close-token`
+
+When a current-state marker source declares a close token, the payload extractor strips exactly one trailing close token from a matched marker line before the slug and any touches note are parsed, and rejects a marker line that is missing the declared close token.
+Origin: ADR-0121
+Backing: test
+
+### `invariant: invariants-duplicate-slug`
+
+A topic part that declares the same claim slug more than once fails to parse with a duplicate-slug error, so no two claims within a topic can share an identifier.
+Origin: ADR-0007
+Backing: test
+
+### `invariant: invariants-marker-literal`
+
+Each source family's comment leader and optional closing token are matched as literal strings when scanning for claim markers, using plain prefix and suffix comparison. A marker that contains regular-expression metacharacters, such as an opening or closing block-comment delimiter, is stripped literally and never compiled as a pattern.
+Origin: ADR-0008
+Backing: test
+
+### `invariant: invariants-marker-whitespace`
+
+A claim marker is still recognized when arbitrary whitespace separates the comment leader from the marker keyword. Each scanned line is trimmed before the leader is removed and the remaining payload is trimmed again, so leading indentation and spacing around the keyword are absorbed.
+Origin: ADR-0008
+Backing: test
+
+### `invariant: invariants-multilang-scan`
+
+The marker scanner accepts a list of source families, each pairing path globs with its own comment leader and optional closing token. A marker written in any configured comment syntax, such as a double-slash comment in one file set and an HTML comment in another, is detected in the files its family governs.
+Origin: ADR-0008
+Backing: test
+
+### `invariant: invariants-three-state`
+
+A test-backed claim that carries no matching proof marker fails to load, and an unbacked claim that carries any proof marker also fails to load. A touches-state marker is advisory context only and never satisfies a backing obligation.
+Origin: ADR-0008
+Backing: test
+
+### `invariant: invariants-unbacked-detected`
+
+Building the marker index rejects a test-backed invariant claim that has no proof-marker comment on any scanned test, and accepts the same claim once at least one proof marker is present.
+Origin: ADR-0007
+Backing: test
+
+### `invariant: proof-marker-test-scoped`
+
+A proof invariant: marker backs a claim only when its file matches a configured currentState.testGlobs pattern; the identical marker in a non-test source file is rejected.
+Origin: ADR-0105
+Backing: test
+
+### `invariant: relevance-markers-only-narrow`
+
+A relevance marker selects claims only from an already applicable topic and never repairs uncovered topic metadata.
+Origin: ADR-0134
+Backing: unbacked
+Verify: The same qualified marker inside topic scope narrows output while outside scope it fails and the path remains uncovered.
+
+### `invariant: topic-identity-path-derived`
+
+A topic has one path-derived domain and topic identity that no second registry can contradict.
+Origin: ADR-0134
+Backing: unbacked
+Verify: Renaming an unreferenced fixture topic changes its identity and output paths deterministically, and a retained reference to the old identity fails the rename with a dangling-reference diagnostic.
+
+### `invariant: topic-scope-cannot-expand-domain`
+
+A path-scoped topic applies only where its selectors and its parent domain both match; only applies: global bypasses path bounding.
+Origin: ADR-0134
+Backing: unbacked
+Verify: Queries inside and outside the domain intersection match only the intersection, and a global topic stored under the same domain applies to both.
+
+### `invariant: topic-scope-is-domain-bounded`
+
+Every topic has one owning domain; a path-scoped topic is bounded by that domain, and an explicit globally applicable topic remains stored under its owner as the only exception.
+Origin: ADR-0133
+Backing: unbacked
+Verify: A path-scoped selector that also matches outside its parent domain yields context only for the domain-owned match, and an applies: global topic under the same domain applies repository-wide without changing its rendered domain path.
+
+### `invariant: touches-marker-advisory`
+
+A touches-state marker records a related code site for a claim but never counts toward a test-backed invariant claim's proof requirement.
+Origin: ADR-0105
+Backing: test
+
+### `invariant: unbacked-refuses-proof`
+
+A proof invariant: marker declared for an unbacked invariant claim is rejected, and building the current-state marker index fails.
+Origin: ADR-0105
+Backing: test
+
+### `invariant: unbacked-requires-verify-note`
+
+Parsing a claim declared with unbacked backing fails when it carries no Verify note.
+Origin: ADR-0105
+Backing: test

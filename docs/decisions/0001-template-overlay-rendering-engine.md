@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Implemented
 date: 2026-06-24
 tags: [template-overlay, section-assembly]
 related: [15, 45]

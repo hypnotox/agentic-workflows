@@ -11,7 +11,7 @@ import (
 // through the full Open→RenderAll pipeline here: a renderTarget call-order
 // regression (substitution after Assemble, or the stub check hoisted before
 // planSections) would pass both unit halves but fail this.
-// invariant: section-default-splice
+// invariant: rendering/render-engine:section-default-splice
 func TestSectionDefaultPartRendersEndToEnd(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", map[string]string{
 		"parts/adr-readme/naming.md": "Preamble before the default.\n\n{{=awf:sectionDefault}}\n\nAppendix after the default.\n",
@@ -41,7 +41,7 @@ func TestSectionDefaultPartRendersEndToEnd(t *testing.T) {
 
 // A part re-injecting a stub section's default must fail the same full
 // pipeline with the ADR-0072 hard error, not render an authoring prompt.
-// invariant: section-default-stub-error
+// invariant: rendering/render-engine:section-default-stub-error
 func TestSectionDefaultStubPartFailsRender(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", map[string]string{
 		"parts/agents-doc/identity.md": "{{=awf:sectionDefault}}\n",

@@ -29,7 +29,7 @@ func TestInjectBannerShebang(t *testing.T) {
 // TestInjectBannerPlain covers the unchanged non-frontmatter HTML-comment branch.
 func TestInjectBannerPlain(t *testing.T) {
 	got := injectBanner("# Title\n\nbody\n", "")
-	// invariant: provenance-banner
+	// invariant: rendering/project-output-plan:provenance-banner
 	if !strings.HasPrefix(got, "<!-- "+bannerText+" -->\n") {
 		t.Fatalf("plain content missing leading HTML banner: %q", got)
 	}
@@ -70,11 +70,11 @@ func TestInjectBannerMemoryGitignore(t *testing.T) {
 	}
 }
 
-// TestActiveMdCarriesCanonicalBanner regresses a banner drift: generateActiveMD
-// used to return adr.RenderActiveMD's content as-is without ever calling
-// injectBanner, so ACTIVE.md's banner diverged from every other rendered
-// artifact's canonical bannerText.
-func TestActiveMdCarriesCanonicalBanner(t *testing.T) {
+// TestIndexMdCarriesCanonicalBanner regresses a banner drift: generateIndexMD
+// (like the former generateActiveMD) must call injectBanner rather than return
+// adr.RenderIndexMD's content as-is, so INDEX.md's banner matches every other
+// rendered artifact's canonical bannerText.
+func TestIndexMdCarriesCanonicalBanner(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
 	p, err := Open(root)
 	if err != nil {
@@ -83,12 +83,12 @@ func TestActiveMdCarriesCanonicalBanner(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "ACTIVE.md"))
+	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "INDEX.md"))
 	if err != nil {
-		t.Fatalf("read ACTIVE.md: %v", err)
+		t.Fatalf("read INDEX.md: %v", err)
 	}
 	want := "<!-- " + bannerText + " -->\n"
 	if !strings.HasPrefix(string(got), want) {
-		t.Fatalf("ACTIVE.md banner = %q, want prefix %q", got[:min(60, len(got))], want)
+		t.Fatalf("INDEX.md banner = %q, want prefix %q", got[:min(60, len(got))], want)
 	}
 }

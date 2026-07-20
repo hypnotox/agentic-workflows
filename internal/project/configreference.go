@@ -150,21 +150,6 @@ func (p *Project) currentValue(path string) string {
 		return withDefault(p.Cfg.CurrentState.TopicFanout, p.Cfg.CurrentState.TopicFanout == "warn")
 	case "currentState.maxTopicsPerPath":
 		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
-	case "invariants.disabled":
-		if p.Cfg.Invariants == nil {
-			return "(unset)"
-		}
-		return strconv.FormatBool(p.Cfg.Invariants.Disabled)
-	case "invariants.sources":
-		if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.Sources) == 0 {
-			return "(none)"
-		}
-		return strconv.Itoa(len(p.Cfg.Invariants.Sources)) + " sources"
-	case "invariants.testGlobs":
-		if p.Cfg.Invariants == nil || len(p.Cfg.Invariants.TestGlobs) == 0 {
-			return "(none)"
-		}
-		return strconv.Itoa(len(p.Cfg.Invariants.TestGlobs)) + " globs"
 	case "audit.allowedTypes":
 		if len(res.AllowedTypes) == 0 {
 			return "accept any"
@@ -205,7 +190,7 @@ func (p *Project) currentValue(path string) string {
 			return "(none)"
 		}
 		return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
-	default: // per-entry leaves (invariants.sources[]...., audit.allowedScopes[]....)
+	default: // per-entry leaves (audit.allowedScopes[]....)
 		return "n/a"
 	}
 }

@@ -38,7 +38,7 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	if _, err := os.Stat(victim); err != nil {
 		t.Errorf("escaping lock entry deleted the out-of-tree file: %v", err)
 	}
-	// invariant: uninstall-removes-lock-entries
+	// invariant: rendering/project-output-plan:uninstall-removes-lock-entries
 	if _, err := os.Stat(filepath.Join(root, inTree)); !os.IsNotExist(err) {
 		t.Errorf("in-tree lock entry not removed (err = %v)", err)
 	}
@@ -54,7 +54,7 @@ func TestInitCollisionsSurfacesPlannedOutputsError(t *testing.T) {
 		[]byte("prefix: awf\nskills: []\nagents: []\ndocs: []\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// A malformed ADR makes generateActiveMD (inside PlannedOutputs) fail.
+	// A malformed ADR makes generateIndexMD (inside PlannedOutputs) fail.
 	dd := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(dd, 0o755); err != nil {
 		t.Fatal(err)

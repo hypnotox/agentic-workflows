@@ -28,7 +28,7 @@ func NewCorpus(adrs []ADR) Corpus {
 	for _, a := range adrs {
 		byNum[a.Number] = a
 	}
-	return Corpus{all: adrs, byNum: byNum, cov: buildCoverage(adrs, byNum)}
+	return Corpus{all: adrs, byNum: byNum, cov: buildCoverage(adrs)}
 }
 
 // LoadCorpus parses a decisions directory into the view. It is the single
@@ -58,43 +58,6 @@ func (c Corpus) ByNumber(num string) (ADR, bool) {
 func (c Corpus) Has(num string) bool {
 	_, ok := c.byNum[num]
 	return ok
-}
-
-// DecisionItems returns the Decision item numbers the named ADR enumerates.
-// An absent ADR yields no items rather than an error: every caller is already
-// validating existence separately, and a token into a missing target is that
-// check's finding to report, not this one's.
-func (c Corpus) DecisionItems(num string) []int {
-	a, ok := c.byNum[num]
-	if !ok {
-		return nil
-	}
-	return a.DecisionItems()
-}
-
-// DeclaredSlugs returns the invariant slugs the named ADR declares, backed and
-// unbacked alike, in declaration order.
-func (c Corpus) DeclaredSlugs(num string) []string {
-	a, ok := c.byNum[num]
-	if !ok {
-		return nil
-	}
-	return a.DeclaredSlugs()
-}
-
-// RefsOf returns the supersession tokens the named ADR carries, in document
-// order. This is the "what does this ADR claim" question consumers previously
-// answered by ranging over ADR.Refs themselves (corpus-owns-field-reads).
-//
-// The mirror question - "who claims this anchor" - is not here yet: nothing
-// asks it until the coverage model needs it, and the dead-code gate refuses a
-// production method no main can reach.
-func (c Corpus) RefsOf(num string) []SupersessionRef {
-	a, ok := c.byNum[num]
-	if !ok {
-		return nil
-	}
-	return a.Refs
 }
 
 // Raw returns the ADR file's bytes. Raw access is enumerated and closed

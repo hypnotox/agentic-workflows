@@ -9,7 +9,7 @@ import (
 // bootstrapFile renders a project with the given config and returns the
 // .awf/bootstrap.sh RenderedFile, or nil if none was produced. It also asserts
 // no output lands at the retired repo-root path (ADR-0047).
-// invariant: bootstrap-config-tree-path
+// invariant: rendering/project-output-plan:bootstrap-config-tree-path
 func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
@@ -33,7 +33,7 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	return found
 }
 
-// invariant: bootstrap-env-override
+// invariant: rendering/templates:bootstrap-env-override
 func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -56,7 +56,7 @@ func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	}
 }
 
-// invariant: bootstrap-checksum
+// invariant: rendering/templates:bootstrap-checksum
 func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -77,7 +77,7 @@ func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	}
 }
 
-// invariant: bootstrap-stdout-path-only
+// invariant: rendering/templates:bootstrap-stdout-path-only
 func TestBootstrapStdoutPathOnly(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -95,7 +95,7 @@ func TestBootstrapStdoutPathOnly(t *testing.T) {
 	}
 }
 
-// invariant: bootstrap-local-first
+// invariant: rendering/templates:bootstrap-local-first
 func TestBootstrapLocalFirstResolution(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -172,7 +172,7 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 	return nil
 }
 
-// invariant: bootstrap-two-files
+// invariant: rendering/project-output-plan:bootstrap-two-files
 func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	root := scaffold(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	p, err := Open(root)
@@ -197,7 +197,7 @@ func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	}
 }
 
-// invariant: upgrade-exec-final
+// invariant: rendering/templates:upgrade-exec-final
 func TestUpgradeScriptExecFinal(t *testing.T) {
 	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -219,7 +219,7 @@ func TestUpgradeScriptExecFinal(t *testing.T) {
 	}
 }
 
-// invariant: upgrade-delegates-fetch
+// invariant: rendering/templates:upgrade-delegates-fetch
 func TestUpgradeScriptDelegatesFetch(t *testing.T) {
 	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {

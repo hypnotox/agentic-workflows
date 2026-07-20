@@ -42,7 +42,7 @@ func TestSingletonStandardDocsRelocatesSidecarAndParts(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(awf, "docs", "workflow.yaml")); !os.IsNotExist(err) {
 		t.Errorf("old workflow sidecar location should be gone, stat err = %v", err)
 	}
-	// invariant: singleton-doc-migration-relocates-parts
+	// invariant: config/migrations-and-locks:singleton-doc-migration-relocates-parts
 	if b, err := os.ReadFile(filepath.Join(awf, "parts", "workflow", "local-hooks.md")); err != nil || string(b) != "LOCAL HOOKS BODY\n" {
 		t.Errorf("workflow part not relocated: %v, %s", err, b)
 	}

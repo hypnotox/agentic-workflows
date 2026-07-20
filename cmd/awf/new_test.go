@@ -622,7 +622,7 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 	if !strings.Contains(string(rendered), "<!-- awf:stub -->") {
 		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", rendered)
 	}
-	if err := runCheck(root, io.Discard); err != nil {
+	if err := runCheck(root, false, io.Discard); err != nil {
 		t.Errorf("post-scaffold check not clean: %v", err)
 	}
 }
@@ -732,7 +732,7 @@ func TestRunNewDocOpenError(t *testing.T) {
 
 // seedScaffoldVars: an absent referenced var is seeded empty, a present one is
 // untouched, and a malformed source surfaces the editor's error.
-// invariant: new-seeds-scaffold-vars
+// invariant: tooling/cli:new-seeds-scaffold-vars
 func TestSeedScaffoldVars(t *testing.T) {
 	src := []byte("prefix: x\nvars:\n  kept: value\n")
 	got, err := seedScaffoldVars(src, []string{"kept", "added"})

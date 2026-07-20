@@ -66,7 +66,7 @@ func rtFixture(t *testing.T, files map[string]string) string {
 // stripped, the bookkeeping Decision item appended without renumbering, the
 // target's related: back-pointer inserted, and the provenance lines printed
 // exactly.
-// invariant: upgrade-migrates-retirements
+// invariant: config/migrations-and-locks:upgrade-migrates-retirements
 func TestRetirementTokensMigratesCorpus(t *testing.T) {
 	root := rtFixture(t, map[string]string{
 		"0001-target.md":  rtTarget,
@@ -125,7 +125,7 @@ func TestRetirementTokensAppendsAfterFencedSyntax(t *testing.T) {
 // An empty key is stripped without appending an item; a target already
 // back-pointed gains no duplicate; existing related: order is preserved with
 // the carrier appended last.
-// invariant: upgrade-migrates-retirements
+// invariant: config/migrations-and-locks:upgrade-migrates-retirements
 func TestRetirementTokensEmptyKeyAndExistingBackpointer(t *testing.T) {
 	t.Run("empty key stripped, no item", func(t *testing.T) {
 		root := rtFixture(t, map[string]string{
@@ -180,7 +180,7 @@ func TestRetirementTokensEmptyKeyAndExistingBackpointer(t *testing.T) {
 // A target that is itself a carrier is edited twice - the back-pointer pass
 // must read the stripped content, not the on-disk original - and a Decision
 // section with no following heading appends at end of file.
-// invariant: upgrade-migrates-retirements
+// invariant: config/migrations-and-locks:upgrade-migrates-retirements
 func TestRetirementTokensCarrierTargetAndTrailingDecision(t *testing.T) {
 	// 0001 declares fixture-gone and itself retires fixture-old (declared by
 	// 0003); 0002 retires fixture-gone. 0001's Decision is the last section.
@@ -210,7 +210,7 @@ func TestRetirementTokensCarrierTargetAndTrailingDecision(t *testing.T) {
 }
 
 // A re-run after migration prints nothing and leaves the corpus byte-identical.
-// invariant: upgrade-migrates-retirements
+// invariant: config/migrations-and-locks:upgrade-migrates-retirements
 func TestRetirementTokensIdempotent(t *testing.T) {
 	root := rtFixture(t, map[string]string{
 		"0001-target.md":  rtTarget,
@@ -248,7 +248,7 @@ func TestRetirementTokensIdempotent(t *testing.T) {
 // The loud-failure paths: an unresolvable slug, a multi-declared slug, a
 // multi-line key, a carrier without a Decision section, and a target without a
 // related: line each fail naming the offender.
-// invariant: upgrade-migrates-retirements
+// invariant: config/migrations-and-locks:upgrade-migrates-retirements
 func TestRetirementTokensLoudFailures(t *testing.T) {
 	cases := []struct {
 		name    string

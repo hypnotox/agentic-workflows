@@ -51,7 +51,7 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 	return root, base
 }
 
-// invariant: audit-warn-exit-zero
+// invariant: tooling/cli:audit-warn-exit-zero
 func TestRunAuditWarningsExitZero(t *testing.T) {
 	root, base := auditProject(t)
 	repo, err := git.PlainOpen(root)
@@ -119,7 +119,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 // A missing range is refused before the project is even opened: an audit that
 // silently reports over nothing is worse than one that refuses (ADR-0127
 // Decision 2).
-// invariant: audit-requires-explicit-range
+// invariant: tooling/cli:audit-requires-explicit-range
 func TestRunAuditRequiresARange(t *testing.T) {
 	err := runAudit(t.TempDir(), "", out(t))
 	if err == nil {
@@ -133,7 +133,7 @@ func TestRunAuditRequiresARange(t *testing.T) {
 
 // Every verdict names the scope that produced it, so a wrongly-scoped range is
 // visible even when it is non-empty (ADR-0127 Decision 9).
-// invariant: audit-reports-evaluated-scope
+// invariant: tooling/cli:audit-reports-evaluated-scope
 func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 	root, base := auditProject(t)
 	repo, err := git.PlainOpen(root)
@@ -154,7 +154,7 @@ func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 // The scope suffix is on every verdict, not just the clean one: a warning or
 // error summary read without its scope is the same ambiguity (ADR-0127
 // Decision 9).
-// invariant: audit-reports-evaluated-scope
+// invariant: tooling/cli:audit-reports-evaluated-scope
 func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	root, base := auditProject(t)
 	repo, err := git.PlainOpen(root)
@@ -188,7 +188,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 
 // An empty range says so instead of reading as clean, and still exits zero, so
 // ADR-0017's audit-empty-range-clean survives (ADR-0127 Decision 10).
-// invariant: audit-empty-range-announced
+// invariant: tooling/cli:audit-empty-range-announced
 func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 	root, _ := auditProject(t)
 	var buf bytes.Buffer

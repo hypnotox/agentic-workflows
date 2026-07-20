@@ -33,7 +33,7 @@ func TestRenderDefault(t *testing.T) {
 		!strings.Contains(out, "<!-- awf:edit notes: default;") {
 		t.Errorf("default edit pointers missing:\n%s", out)
 	}
-	// invariant: no-section-marker-leak
+	// invariant: rendering/render-engine:no-section-marker-leak
 	if strings.Contains(out, "awf:section") || strings.Contains(out, "awf:end") {
 		t.Errorf("markers leaked into output:\n%s", out)
 	}
@@ -96,7 +96,7 @@ func TestEditPointerStub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: section-edit-pointer
+	// invariant: rendering/render-engine:section-edit-pointer
 	if !strings.Contains(out, "<!-- awf:edit notes: stub; replace by creating .awf/x.md -->") {
 		t.Errorf("stub default must render the stub pointer:\n%s", out)
 	}
@@ -124,7 +124,7 @@ func TestAssembleInPlaceSection(t *testing.T) {
 	src := "head\n<!-- awf:section body inplace -->\nDEFAULT\n<!-- awf:end -->\ntail\n"
 	segs := ParseSections(src)
 
-	// invariant: in-place-pointer-distinct
+	// invariant: rendering/render-engine:in-place-pointer-distinct
 	// A non-empty read-back body is emitted verbatim (internal blank line kept)
 	// after the distinct awf:edit-in-place pointer: no re-templating.
 	body := "line one\n\nline two\n"
@@ -190,7 +190,7 @@ func TestCommentStyleForSourceAndPointers(t *testing.T) {
 		t.Errorf("SlashComment pointer prefixes = %v", got)
 	}
 
-	// invariant: in-place-pointer-distinct
+	// invariant: rendering/render-engine:in-place-pointer-distinct
 	// The distinct awf:edit-in-place pointer renders in the target's comment
 	// syntax - # for a shebang target, <!-- --> otherwise.
 	src := "#!/usr/bin/env bash\n<!-- awf:section body inplace -->\nDEFAULT\n<!-- awf:end -->\n"
@@ -324,7 +324,7 @@ func TestPartBodyIsRawNeverTemplated(t *testing.T) {
 		t.Fatalf("Execute over a part with literal braces must not error: %v", err)
 	}
 	want := "Literal braces survive: {{ .vars.x }} {{ if }} }} and a mustache {{name}}."
-	// invariant: parts-raw-except-authoring-comments
+	// invariant: rendering/render-engine:parts-raw-except-authoring-comments
 	if !strings.Contains(out, want) {
 		t.Fatalf("part body must render verbatim (not interpolated)\n got: %q\nwant substring: %q", out, want)
 	}

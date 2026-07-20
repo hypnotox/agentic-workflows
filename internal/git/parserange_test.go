@@ -8,7 +8,7 @@ import (
 )
 
 // TestParseRangeTable pins the two accepted shapes and every rejection.
-// invariant: git-range-rejects-malformed
+// invariant: tooling/audit-and-snapshots:git-range-rejects-malformed
 func TestParseRangeTable(t *testing.T) {
 	cases := []struct {
 		arg          string
@@ -66,7 +66,7 @@ func TestParseRangeTable(t *testing.T) {
 // anywhere in the module. internal/git is skipped because ParseRange itself
 // splits on ".."; the repo-walk boundary (hidden trees, nested checkouts,
 // test files) is owned by testsupport.WalkRepoSources.
-// invariant: git-range-parser-single-definition
+// invariant: tooling/audit-and-snapshots:git-range-parser-single-definition
 func TestParseRangeIsTheOnlyRangeParser(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	var offenders []string

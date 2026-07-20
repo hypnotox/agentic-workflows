@@ -49,7 +49,7 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	if c.Bootstrap == nil || !c.Bootstrap.Enabled {
 		t.Errorf("scaffold bootstrap = %+v, want enabled true", c.Bootstrap)
 	}
-	// invariant: init-hooks-default-on
+	// invariant: tooling/cli:init-hooks-default-on
 	if c.Hooks == nil || !c.Hooks.Enabled {
 		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)
 	}
@@ -92,8 +92,8 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 			wantSkills[name] = true
 		}
 	}
-	// invariant: scaffold-core-only
-	// invariant: exploration-skill-closure
+	// invariant: rendering/project-output-plan:scaffold-core-only
+	// invariant: rendering/catalog-and-targets:exploration-skill-closure
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
@@ -125,7 +125,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 
 // TestScaffoldCatalogTrim asserts a non-nil trim dimension replaces the curated
 // core verbatim while a nil dimension keeps the core (full-deselectable trim).
-// invariant: catalog-trim-applied
+// invariant: rendering/project-output-plan:catalog-trim-applied
 func TestScaffoldCatalogTrim(t *testing.T) {
 	cat := catalog.Standard
 
@@ -287,7 +287,7 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 			t.Fatalf("read %s: %v", tmplPath, err)
 		}
 		for _, v := range render.ReferencedVars(string(src)) {
-			// invariant: scaffold-seeds-all-vars
+			// invariant: rendering/project-output-plan:scaffold-seeds-all-vars
 			if _, ok := cfg.Vars[v]; !ok {
 				t.Errorf("scaffold vars missing %q (referenced in %s)", v, tmplPath)
 			}
@@ -345,7 +345,7 @@ func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
 
 // A resolved scope list lands under audit.allowedScopes; an empty list writes
 // no audit key at all (ADR-0051).
-// invariant: audit-scopes-descriptor-routed
+// invariant: tooling/cli:audit-scopes-descriptor-routed
 func TestScaffoldWritesAuditScopes(t *testing.T) {
 	b, _, err := ScaffoldConfig("example", nil, nil, []string{"adr", "awf"})
 	if err != nil {
@@ -390,7 +390,7 @@ func TestScaffoldDefaultIsClosed(t *testing.T) {
 	for _, d := range cfg.Docs {
 		enabled[catalog.Node{Kind: "doc", Name: d}] = true
 	}
-	// invariant: init-set-closed
+	// invariant: tooling/cli:init-set-closed
 	for n := range enabled {
 		for _, r := range catalog.RequiresOf(catalog.Standard, n) {
 			if !enabled[r] {

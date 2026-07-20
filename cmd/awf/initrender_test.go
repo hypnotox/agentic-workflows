@@ -10,16 +10,18 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // TestEmptyInitRendersCoherently is the out-of-box floor oracle (ADR-0045): a
 // non-interactive `awf init` with no answers must render artifacts with no
 // empty inline code spans, no tables without body rows, and no dangling
 // list-introduction sentences.
-// invariant: empty-init-coherent-render
+// invariant: rendering/templates:empty-init-coherent-render
 func TestEmptyInitRendersCoherently(t *testing.T) {
 	forceNonInteractive(t)
-	root := t.TempDir()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
@@ -70,9 +72,9 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	}
 	// The fresh tree must also pass check, with notes only (advisory, exit 0) -
 	// in particular zero dead-skill-reference findings on the curated default.
-	// invariant: curated-init-skill-refs-clean
+	// invariant: rendering/project-output-plan:curated-init-skill-refs-clean
 	var checkOut bytes.Buffer
-	if err := runCheck(root, &checkOut); err != nil {
+	if err := runCheck(root, false, &checkOut); err != nil {
 		t.Fatalf("check on fresh init: %v\n%s", err, checkOut.String())
 	}
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
@@ -112,15 +114,16 @@ func isTableSeparator(line string) bool {
 }
 
 // Unset-var notes are advisory: they print and never affect the exit code.
-// invariant: completeness-advisory-nonfailing
+// invariant: tooling/cli:completeness-advisory-nonfailing
 func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
-	root := t.TempDir()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	var out bytes.Buffer
-	if err := runCheck(root, &out); err != nil {
+	if err := runCheck(root, false, &out); err != nil {
 		t.Fatalf("check must stay clean with unset vars, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: skill tdd references unset vars: gateCmd") {
@@ -129,9 +132,10 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 }
 
 // Stub notes are advisory: they print and never affect the exit code.
-// invariant: stub-advisory-nonfailing
+// invariant: tooling/cli:stub-advisory-nonfailing
 func TestCheckStubNotesAreNonFailing(t *testing.T) {
-	root := t.TempDir()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
 		"<!-- awf:stub -->\nstarter notes\n")
@@ -139,7 +143,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 		t.Fatalf("sync: %v", err)
 	}
 	var out bytes.Buffer
-	if err := runCheck(root, &out); err != nil {
+	if err := runCheck(root, false, &out); err != nil {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") ||
@@ -153,7 +157,7 @@ func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
-	if err := runCheck(root, io.Discard); err == nil {
+	if err := runCheck(root, false, io.Discard); err == nil {
 		t.Fatal("expected check to surface the render error from the notes pass")
 	}
 }
@@ -161,7 +165,7 @@ func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
 func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runCheck(root, &out); err != nil {
+	if err := runCheck(root, false, &out); err != nil {
 		t.Fatalf("check: %v", err)
 	}
 	// The fixture sets every var the tdd skill references; other artifacts

@@ -21,7 +21,7 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
-// invariant: duplicate-target-rejected
+// invariant: config/configuration:duplicate-target-rejected
 func TestConfigRejectsDuplicateTargets(t *testing.T) {
 	cfg, err := Load(writeConfig(t, "prefix: awf\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
 	if err != nil {
@@ -94,7 +94,7 @@ func TestLoadRetainsSource(t *testing.T) {
 	}
 }
 
-// invariant: enable-arrays
+// invariant: config/configuration:enable-arrays
 func TestEnableListsAreArrays(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n  - bugfix\n")
 	c, err := Load(dir)
@@ -118,7 +118,7 @@ func TestEnableListsAreArrays(t *testing.T) {
 	}
 }
 
-// invariant: awf-config-root
+// invariant: config/configuration:awf-config-root
 // TestLoadReadsTreeRoot pins the config root to .awf/config.yaml and
 // co-owns (with the migrate package's TestLegacyReadOnlyInMigrate, ADR-0010
 // inv: legacy-read-isolation) the exemption that ONLY internal/migrate reads the
@@ -218,7 +218,7 @@ func TestSidecarReadsDomainPaths(t *testing.T) {
 	}
 }
 
-// invariant: sidecar-optional
+// invariant: rendering/render-engine:sidecar-optional
 func TestSidecarAbsentIsEmpty(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nskills:\n  - tdd\n")
 	c, err := Load(dir)
@@ -247,7 +247,7 @@ func TestSidecarRejectsReplaceWith(t *testing.T) {
 	}
 	c, _ := Load(dir)
 	_, err := c.Sidecar("skills", "tdd")
-	// invariant: no-replacewith
+	// invariant: config/configuration:no-replacewith
 	if err == nil || !strings.Contains(err.Error(), "replaceWith") {
 		t.Errorf("expected a strict-decoder error mentioning replaceWith, got: %v", err)
 	}
@@ -282,7 +282,7 @@ func TestLoadMissingConfigErrors(t *testing.T) {
 	}
 }
 
-// invariant: sidecar-optional
+// invariant: rendering/render-engine:sidecar-optional
 func TestSidecarAgentsDocSingleton(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\n")
 	c, err := Load(dir)
@@ -364,7 +364,7 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 	}
 }
 
-// invariant: domain-name-validated
+// invariant: config/configuration:domain-name-validated
 func TestValidateRejectsBadDomainName(t *testing.T) {
 	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
 		c := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{bad}}
@@ -385,7 +385,7 @@ func TestLoadRejectsUnknownTopLevelKey(t *testing.T) {
 	}
 }
 
-// invariant: targets-default-claude
+// invariant: config/configuration:targets-default-claude
 func TestTargetsDefaultAndValidation(t *testing.T) {
 	// An absent targets: key loads as ["claude"] (the unknown-name check itself
 	// lives in project.Open/resolveTargets - config stays registry-free).
@@ -409,7 +409,7 @@ func TestTargetsDefaultAndValidation(t *testing.T) {
 	}
 }
 
-// invariant: docsdir-default
+// invariant: config/configuration:docsdir-default
 func TestDocsDirDefaultsToDocs(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\n")
 	c, err := Load(dir)
@@ -436,67 +436,6 @@ func TestDocsDirRejectsEscapingPath(t *testing.T) {
 	c := &Config{Prefix: "example", DocsDir: "../escape"}
 	if err := c.Validate(); err == nil {
 		t.Fatal("expected error for escaping docsDir")
-	}
-}
-
-func TestInvariantGlobValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Globs: []string{"**/*.go", "**/*_test.py"}, Marker: "//"}},
-	}}
-	if err := ok.Validate(); err != nil {
-		t.Errorf("valid anchored globs rejected: %v", err)
-	}
-	pathGlob := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Globs: []string{"**/*.go", "cmd/**"}, Marker: "//"}},
-	}}
-	if err := pathGlob.Validate(); err != nil {
-		t.Errorf("path globs must be accepted under ADR-0077: %v", err)
-	}
-	bad := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Globs: []string{"[", "*.go"}, Marker: "//"}},
-	}}
-	if err := bad.Validate(); err == nil {
-		t.Error("expected malformed glob to be rejected")
-	}
-	emptyMarker := &Config{Prefix: "x", DocsDir: "docs", Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Globs: []string{"*.go"}}},
-	}}
-	if err := emptyMarker.Validate(); err == nil {
-		t.Error("expected empty marker to be rejected (a bare marker would match prose)")
-	}
-	emptyGlobs := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources: []InvariantSource{{Marker: "//"}},
-	}}
-	if err := emptyGlobs.Validate(); err == nil {
-		t.Error("expected a source with no globs to be rejected (it scans no files)")
-	}
-}
-
-func TestInvariantTestGlobsValidation(t *testing.T) {
-	ok := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
-		TestGlobs: []string{"**/*_test.go"},
-	}}
-	if err := ok.Validate(); err != nil {
-		t.Errorf("valid anchored testGlobs rejected: %v", err)
-	}
-	// A no-slash pattern is a valid anchored glob under ADR-0077 (top-level only),
-	// so it is accepted like any source glob - validation rejects only malformed
-	// patterns, matching the source-glob rule.
-	topLevel := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
-		TestGlobs: []string{"*_test.go"},
-	}}
-	if err := topLevel.Validate(); err != nil {
-		t.Errorf("a top-level anchored testGlobs pattern must be accepted (ADR-0077): %v", err)
-	}
-	malformed := &Config{Prefix: "x", DocsDir: "docs", Targets: []string{"claude"}, Invariants: &InvariantConfig{
-		Sources:   []InvariantSource{{Globs: []string{"**/*.go"}, Marker: "//"}},
-		TestGlobs: []string{"**/["},
-	}}
-	// invariant: testglobs-anchored-validated
-	if err := malformed.Validate(); err == nil {
-		t.Error("expected a malformed testGlobs pattern to be rejected")
 	}
 }
 
@@ -562,6 +501,7 @@ func TestCurrentStateSeverityValidation(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:testglobs-anchored-validated
 func TestCurrentStateStrictValidation(t *testing.T) {
 	valid := `prefix: x
 currentState:
@@ -768,7 +708,7 @@ func TestValidateArtifactName(t *testing.T) {
 	if err := ValidateArtifactName("skill", "good-name"); err != nil {
 		t.Errorf("valid name rejected: %v", err)
 	}
-	// invariant: local-name-validated
+	// invariant: config/configuration:local-name-validated
 	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved", "Foo", "foo bar", "foo: bar", "foo.bar", "über"} {
 		if err := ValidateArtifactName("skill", bad); err == nil {
 			t.Errorf("expected %q rejected", bad)

@@ -26,7 +26,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of multi-runtime skills, review agents, docs, and this agent guide into any project from a committed `.awf/` config tree, supplying a default way to set things up and the deterministic checks that guard the probabilistic agent's output rather than its behaviour (drift, frontmatter, invariant backing). The workflow chain is project-owned target-native skill files and reviewer definitions; Pi receives four generated project-extension tools (`subagent_grounding`, `subagent_explore`, `subagent_review`, and `subagent_implement`) that run isolated no-session child processes for grounding, exploration, governed review, and sequential implementation, with bounded inline progress kept out of parent model content; a hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of multi-runtime skills, review agents, docs, and this agent guide into any project from a committed `.awf/` config tree, supplying a default way to set things up and the deterministic checks that guard the probabilistic agent's output rather than its behaviour (drift, frontmatter, current-state claim provenance and invariant backing). The workflow chain is project-owned target-native skill files and reviewer definitions; Pi receives four generated project-extension tools (`subagent_grounding`, `subagent_explore`, `subagent_review`, and `subagent_implement`) that run isolated no-session child processes for grounding, exploration, governed review, and sequential implementation, with bounded inline progress kept out of parent model content; a hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
@@ -41,7 +41,7 @@ Hard rules every change must respect:
 - **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.
 - **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
-- **Backed invariants.** Every Implemented-ADR invariant is declared in one of two forms and symmetrically enforced: a backed `` `invariant: <slug>` `` requires a matching proof `<marker> invariant: <slug>` comment on a test, scoped to `invariants.testGlobs` when set, else any `invariants.sources` file (source-only fallback), while an `` `unbacked-invariant: <slug>` `` is a reasoned contract that must carry a `Verify:` note and must NOT have a proof marker. A `touches-invariant: <slug>` marker is advisory context, never backing. A `supersedes-invariant:` token on an Implemented successor ADR retires a slug (ADR-0120); an inert `cites-invariant:` names a slug while asserting nothing about it, so the backing stays owed (ADR-0131). Where a retired sentence is false only in part, the successor redeclares the surviving property under a new slug and the proof marker moves onto it, so retirement costs no enforcement; retarget every marker kind, since an advisory `touches-invariant:` left on a retired slug becomes a note nothing fails on. (ADR-0008)
+- **Backed invariants.** Every invariant is a current-state topic claim declared with `` `invariant: <slug>` `` in one of two forms and symmetrically enforced: a `Backing: test` claim requires a matching proof `<marker> invariant: <domain>/<topic>:<slug>` comment on a test in a `currentState.testGlobs` file, while a `Backing: unbacked` claim is a reasoned contract that must carry a `Verify:` line and must NOT have a proof marker. A `touches-state: <domain>/<topic>:<slug>` marker is advisory context for either claim type, never backing, and a `state:` marker narrows selection within an already-applicable topic. The ADR corpus declares no invariants: an ADR creates, changes, or retires an invariant claim through its `State changes` operations, and `awf check` validates the claim provenance and backing against those operations. (ADR-0134)
 - **Plain punctuation, repo-wide.** No tracked text file carries a typographic punctuation substitute: not the embedded templates or changelog, not a string literal in production Go, and not a Go comment, a test, a sidecar, or the infrastructure scripts. Seven codepoints are banned (the em-dash U+2014, en-dash U+2013, ellipsis U+2026, and the curly quotes U+2018, U+2019, U+201C, U+201D); use plain ASCII punctuation, a bare hyphen included. Two layers enforce this: ADR-0115 gates the shipped surfaces unconditionally with no exemption list, and the opt-in `awf prose-gate` (ADR-0119, on in this repo, wired into `./x gate`) scans every tracked file, exempting only the handful of genuine depictions pinned in `proseGate.exemptions`. Notation (arrows, mathematical symbols, accented letters) stays legal. A doc that must show a banned glyph names it by codepoint or lands in the exemption list. (ADR-0115, ADR-0119)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
@@ -91,22 +91,19 @@ part without syncing. Replace the anchored path placeholder and generic prose, t
 claims manually. The command prints both repository-relative input paths and does not mutate config,
 the lock, or rendered docs. `awf topic <domain>/<topic>[:<claim>]` queries active state read-only;
 `--history`, `--references`, and `--coverage` independently add direct details, while `--json` changes
-presentation only. `awf upgrade --check` evaluates bridge readiness without writing the worktree,
-index, config, lock, or generated output; add `--json` for the stable exhaustive report. Readiness
-requires the authored `.awf/current-state-migration.yaml` approval inventory, including
-`version: 1` and `invariantApprovals: []` when no live legacy invariant maps. The check independently
-derives each exact Origin/backing-preserving mapping before matching approval evidence.
+presentation only. `awf context <paths>` answers which current-state claims apply to those paths;
+`awf context --uncovered` reports unowned paths and per-domain uncovered coverage, and `--staged`
+evaluates the Git index instead of the working tree. `awf check --staged` runs the same index-snapshot
+coverage and the HEAD-to-index claim-transition handshake; the rendered pre-commit hook runs it.
 
-`awf upgrade --attest-current-state` seals a ready, clean-HEAD prepared tree: it records the clean
-HEAD, a post-normalization digest, and the ADR cutoff and gaps in an optional `bridgeAttestation` lock
-block, journals every normalization, marker, status, and terminal legacy-index deletion at
-`.awf/current-state-upgrade.journal`, and commits the attested lock last. Obtain and verify the
-matching current-state binary before attesting. The four upgrade modes are mutually exclusive, and a
-committed journal or attestation makes ordinary commands non-operational: only `awf upgrade --recover`
-runs while a journal exists, only `awf upgrade --check` runs against an attested lock, a malformed
-journal refuses every mode with Git-restoration guidance, and `awf version`/`awf changelog`/`awf help`
-always bypass the transaction state. `awf upgrade --recover` replays the journal recovery table
-idempotently, rolling an interrupted attestation back or cleaning up a committed one.
+`awf upgrade` migrates the `.awf/` config tree to the current schema and syncs. When the lock carries
+a bridge attestation, plain `awf upgrade` instead performs the final current-state cutover: it verifies
+only the sealed facts (the prepared HEAD and tree digest), journals the deletion of the migration
+approval file and the permanent lock, and promotes the sealed format cutoff and gaps. Attestation and
+readiness reporting live only in the preceding bridge release; this binary consumes seals, it never
+produces them. `awf upgrade --recover` replays the current-state upgrade journal recovery table,
+rolling an interrupted cutover back or cleaning up a committed one, and is the only mode a committed
+journal permits.
 
 
 <!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->

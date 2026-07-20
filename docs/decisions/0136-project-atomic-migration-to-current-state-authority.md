@@ -1,5 +1,5 @@
 ---
-status: Proposed
+status: Implemented
 date: 2026-07-19
 tags: [invariant-retirement, schema-migration, uncovered-coverage, upgrade-flow]
 related: [7, 8, 10, 14, 31, 39, 64, 85, 102, 105, 110, 114, 120, 133, 134, 135]

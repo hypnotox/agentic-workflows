@@ -355,34 +355,6 @@ func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 	}
 }
 
-// --- CheckInvariants ---
-
-func TestCheckInvariantsReportsUnbacked(t *testing.T) {
-	cfg := "prefix: example\nskills: []\nagents: []\n" +
-		"invariants:\n  sources:\n    - globs: [\"*.go\"]\n      marker: \"//\"\n"
-	root := scaffold(t, cfg)
-	adrBody := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Invariants\n- `invariant: my-slug`\n## Context\nx\n"))
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	findings, _, err := p.CheckInvariants()
-	if err != nil {
-		t.Fatalf("CheckInvariants: %v", err)
-	}
-	found := false
-	for _, f := range findings {
-		if f.Slug == "my-slug" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected an unbacked finding for my-slug, got %#v", findings)
-	}
-}
-
 // --- Check error branches ---
 
 func TestCheckFailsWithoutLock(t *testing.T) {
@@ -560,8 +532,8 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	// Delete the generated ACTIVE.md: Check reports it missing.
-	if err := os.Remove(filepath.Join(root, "docs", "decisions", "ACTIVE.md")); err != nil {
+	// Delete the generated INDEX.md: Check reports it missing.
+	if err := os.Remove(filepath.Join(root, "docs", "decisions", "INDEX.md")); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := p.Check()
@@ -570,12 +542,12 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	}
 	found := false
 	for _, d := range drift {
-		if strings.HasSuffix(d.Path, "decisions/ACTIVE.md") && d.Kind == "missing" {
+		if strings.HasSuffix(d.Path, "decisions/INDEX.md") && d.Kind == "missing" {
 			found = true
 		}
 	}
 	if !found {
-		t.Errorf("expected missing drift for ACTIVE.md, got %#v", drift)
+		t.Errorf("expected missing drift for INDEX.md, got %#v", drift)
 	}
 }
 
@@ -587,7 +559,7 @@ func TestCollectVarsReadError(t *testing.T) {
 	}
 }
 
-// invariant: dead-reference-gated
+// invariant: rendering/render-engine:dead-reference-gated
 func TestCheckDetectsDeadReference(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",

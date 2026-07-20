@@ -97,7 +97,7 @@ func TestAdrReviewerAgent(t *testing.T) {
 			"invariantTestPath": "internal/adrtools/invariants_test.go",
 			"activeMdRegenCmd":  "go test ./internal/adrtools/",
 		},
-		"layout": map[string]any{"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md"},
+		"layout": map[string]any{"adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md"},
 		"data": map[string]any{
 			"focusItems": []map[string]any{
 				{
@@ -106,12 +106,12 @@ func TestAdrReviewerAgent(t *testing.T) {
 				},
 			},
 			"docCurrencyItems": []map[string]any{
-				{"check": "docs/decisions/state/<domain>.md - state-doc update or creation when ADR shifts a domain"},
-				{"check": "Predecessor status flip when supersedes: is non-empty"},
+				{"check": "each State changes claim is authored to match in the same Implemented commit"},
+				{"check": "each operation's destination topic metadata exists before the ADR is Accepted"},
 				{"check": "docs/workflow.md - update when ADR changes a workflow rule"},
 				{"check": "AGENTS.md - update when ADR changes chain, principles, or invariants"},
-				{"check": "Frontmatter completeness: status, date, supersedes, superseded_by, tags, related"},
-				{"check": "docs/decisions/ACTIVE.md - regenerate when status lands as Accepted or Implemented"},
+				{"check": "Frontmatter completeness: format, status, date"},
+				{"check": "docs/decisions/INDEX.md - regenerate when status lands as Accepted or Implemented"},
 			},
 		},
 	}
@@ -293,7 +293,7 @@ func TestExecutingPlansTemplate(t *testing.T) {
 			"gateCmdFull":      "./x gate full",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
 		},
-		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md"},
+		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md"},
 		"data": map[string]any{
 			"e2eSuitePaths": []map[string]any{
 				{"path": "tests/e2e/libraries/"},
@@ -332,7 +332,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 			"gateCmdFull":      "./x gate full",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
 		},
-		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md"},
+		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md"},
 		"data":   map[string]any{},
 	}
 
@@ -508,7 +508,7 @@ func TestProposingAdrTemplate(t *testing.T) {
 		},
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "adrTemplate": "docs/decisions/template.md",
-			"activeMd": "docs/decisions/ACTIVE.md", "adrReadme": "docs/decisions/README.md",
+			"activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md", "adrReadme": "docs/decisions/README.md",
 		},
 		"data": map[string]any{
 			"adrTriggers": []string{
@@ -557,7 +557,7 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 			"gateCmd":          "./x gate",
 		},
 		"layout": map[string]any{
-			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md",
+			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md",
 			"adrReadme": "docs/decisions/README.md",
 		},
 		"data": map[string]any{
@@ -578,9 +578,9 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 					"mutability": "Append-only; only `status` editable in place",
 				},
 				{
-					"name":       "Superseded by ADR-NNNN",
-					"meaning":    "Replaced by a later ADR",
-					"mutability": "Terminal; in-place status edit only at supersedence",
+					"name":       "Abandoned",
+					"meaning":    "Will not be implemented; intended operations stay unapplied",
+					"mutability": "Terminal; status and append-only Status history only",
 				},
 			},
 		},
@@ -595,7 +595,7 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to adr-lifecycle
 	loadBearing := []string{
-		"supersedes",
+		"State changes",
 		"status transition",
 		"regenerate",
 		"Append-only",
@@ -863,11 +863,11 @@ func TestAgentsDocTemplate(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	// invariant: workflow-chain-adr-before-plan
+	// invariant: rendering/templates:workflow-chain-adr-before-plan
 	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
 		t.Errorf("Workflow chain must present ADR before plan:\n%s", out)
 	}
-	// invariant: workflow-chain-surfaces-resync
+	// invariant: rendering/templates:workflow-chain-surfaces-resync
 	if !strings.Contains(out, "resync (when both)") {
 		t.Errorf("Workflow chain must surface the resync step:\n%s", out)
 	}
@@ -977,7 +977,7 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"example-reviewing-impl", "example-proposing-adr", "``"},
 	},
-	// invariant: local-base-publication-safe
+	// invariant: rendering/templates:local-base-publication-safe
 	{
 		tmpl: "skills/_base/SKILL.md.tmpl",
 		want: []string{
@@ -995,13 +995,13 @@ var unsetFallbackCases = []fallbackCase{
 		},
 		ban: []string{"<no value>"},
 	},
-	// invariant: local-doc-base-publication-safe
+	// invariant: rendering/templates:local-doc-base-publication-safe
 	{
 		tmpl: "docs/_base.md.tmpl",
 		want: []string{"Project documentation", "Project-local documentation.", "Replace this with the document body"},
 		ban:  []string{"<no value>"},
 	},
-	// invariant: reviewers-report-only
+	// invariant: rendering/templates:reviewers-report-only
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
 		want: []string{"Regen command: `awf sync`."},
@@ -1037,7 +1037,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
-		want: []string{"follow the ADR template's section order", "Run `awf check` to confirm."},
+		want: []string{"follow the ADR template's section order", "Run `awf sync` to regenerate"},
 	},
 	{
 		tmpl: "skills/reviewing-adr/SKILL.md.tmpl",

@@ -1,0 +1,4 @@
+title: Project output plan
+summary: How a project assembles its render set, output plan, drift check, and prune behaviour.
+paths:
+  - internal/project/**

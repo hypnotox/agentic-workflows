@@ -13,17 +13,15 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// runContext prints the read-only context for the given repo-relative paths:
-// owning domains, backed invariants, related ADRs, and each domain's rendered
-// current-state pointer. When no explicit paths are given, --staged/--range
+// runContext prints the read-only current-state context for the given
+// repo-relative paths: their owning domains, the applicable topics with their
+// current claims, any Accepted-ADR pending changes on those topics, and each
+// unowned path. Explicit paths and --range query the working universe; --staged
+// queries the index universe. When no explicit paths are given, --staged/--range
 // resolve them from git first (a bad selector still errors, an empty selector is
-// a usage error) - placed before the static-fallback stat so the resolved paths
-// carry into the outside-a-tree output. It then mirrors runConfig's gate +
-// static-fallback shape: a genuinely absent config prints the pre-adoption
-// notice; any other stat fault is an error; inside a tree the binary-version
-// gate runs before Open. The command entry point holds no writer dependency -
-// it only reads.
-// touches-invariant: context-read-only - read-only command entry point (no writer dependency); proof in context_test.go
+// a usage error). It then mirrors runConfig's gate + static-fallback shape: a
+// genuinely absent config prints the pre-adoption notice; any other stat fault
+// is an error; inside a tree the binary-version gate runs before Open.
 func runContext(cwd string, paths []string, staged bool, rng string, asJSON, uncovered bool, stdout io.Writer) error {
 	if uncovered {
 		return runUncovered(cwd, paths, staged, rng, asJSON, stdout)
@@ -45,7 +43,6 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		// touches-invariant: context-static-fallback - static pre-adoption fallback output; proof in context_test.go
 		return printContext(stdout, project.ContextResult{Paths: paths}, asJSON,
 			"context (static: not inside an awf project; live context appears inside one)")
 	}
@@ -56,17 +53,25 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 	if err != nil {
 		return err
 	}
-	res, err := p.ContextFor(paths)
+	res, err := contextFor(p, paths, staged)
 	if err != nil {
 		return err
 	}
 	return printContext(stdout, res, asJSON, "context: live state for this project")
 }
 
-// runUncovered serves `awf context --uncovered`: the whole-tree inverse of the
-// domain-ownership resolution. Positional args are optional scan roots; --staged and
-// --range are rejected. It mirrors runContext's read-only + static-fallback shape.
-// touches-invariant: context-read-only - read-only command entry point (no writer dependency); proof in context_test.go
+// contextFor routes to the index universe under --staged and the working
+// universe otherwise, so the two universes are never mixed in one query.
+func contextFor(p *project.Project, paths []string, staged bool) (project.ContextResult, error) {
+	if staged {
+		return p.StagedContextFor(paths)
+	}
+	return p.ContextFor(paths)
+}
+
+// runUncovered serves `awf context --uncovered`: the whole-tree coverage report.
+// Positional args are optional scan roots; --staged and --range are rejected. It
+// mirrors runContext's read-only + static-fallback shape.
 func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
 	if staged || rng != "" {
 		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --staged/--range"}
@@ -75,7 +80,6 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		// touches-invariant: context-static-fallback - static pre-adoption fallback output; proof in context_test.go
 		return printUncovered(stdout, project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(scanRoots)}, asJSON,
 			"context --uncovered (static: not inside an awf project; live coverage appears inside one)")
 	}
@@ -86,20 +90,15 @@ func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSO
 	if err != nil {
 		return err
 	}
-	tracked, err := awfgit.TrackedPaths(cwd)
+	res, err := p.Uncovered(scanRoots)
 	if err != nil {
 		return err
 	}
-	res, err := p.Uncovered(tracked, scanRoots)
-	if err != nil { // coverage-ignore: Uncovered's only fault is a domain-sidecar read, which project.Open validates first - unreachable post-Open here; the branch is covered at the project level (TestUncovered sidecar fault)
-		return err
-	}
-	return printUncovered(stdout, res, asJSON, "context --uncovered: tracked paths owned by no domain")
+	return printUncovered(stdout, res, asJSON, "context --uncovered: coverage gaps for this project")
 }
 
-// printUncovered renders res as JSON or human-readable text. Both modes read the same
-// assembled res, so they cannot diverge.
-// touches-invariant: uncovered-output-parity - uncovered render reads one assembled result; proof in context_test.go
+// printUncovered renders res as JSON or human-readable text. Both modes read the
+// same assembled res, so they cannot diverge.
 func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, header string) error {
 	if asJSON {
 		enc := json.NewEncoder(stdout)
@@ -110,20 +109,27 @@ func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, 
 	if len(res.ScanRoots) > 0 {
 		fmt.Fprintf(stdout, "\nscan roots: %v\n", res.ScanRoots)
 	}
-	if len(res.Entries) == 0 {
-		fmt.Fprintln(stdout, "\nall scanned tracked paths are owned by a domain")
+	if len(res.Uncovered) == 0 && len(res.Unowned) == 0 {
+		fmt.Fprintln(stdout, "\nall scanned paths are owned and covered by a scoped topic")
 		return nil
 	}
-	fmt.Fprintln(stdout, "\n## Uncovered (configure a domain to own these)")
-	for _, e := range res.Entries {
-		fmt.Fprintf(stdout, "  %s\n", e)
+	if len(res.Uncovered) > 0 {
+		fmt.Fprintln(stdout, "\n## Uncovered (owned by a domain, no scoped topic)")
+		for _, u := range res.Uncovered {
+			fmt.Fprintf(stdout, "  %s (%s)\n", u.Path, u.Domain)
+		}
+	}
+	if len(res.Unowned) > 0 {
+		fmt.Fprintln(stdout, "\n## Unowned (configure a domain to own these)")
+		for _, u := range res.Unowned {
+			fmt.Fprintf(stdout, "  %s\n", u)
+		}
 	}
 	return nil
 }
 
 // printContext renders res as JSON or human-readable text. Both modes read the
 // same assembled res, so they cannot diverge.
-// touches-invariant: context-output-parity - context render reads one assembled result; proof in context_test.go
 func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, header string) error {
 	if asJSON {
 		enc := json.NewEncoder(stdout)
@@ -136,46 +142,26 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	for _, d := range res.Domains {
 		fmt.Fprintf(stdout, "  %s: %s\n", d.Name, d.CurrentState)
 	}
-	fmt.Fprintln(stdout, "\n## Invariants")
-	for _, iv := range res.Invariants {
-		if iv.Class != "" {
-			fmt.Fprintf(stdout, "  %s [%s]\n", iv.Slug, iv.Class)
+	fmt.Fprintln(stdout, "\n## Topics")
+	for _, t := range res.Topics {
+		label := t.ID
+		if t.Global {
+			label += " (global)"
+		}
+		if t.Title != "" {
+			fmt.Fprintf(stdout, "  %s - %s\n", label, t.Title)
 		} else {
-			fmt.Fprintf(stdout, "  %s\n", iv.Slug)
+			fmt.Fprintf(stdout, "  %s\n", label)
 		}
-		if iv.Verify != "" {
-			fmt.Fprintf(stdout, "    Verify: %s\n", iv.Verify)
-		}
-		for _, n := range iv.Touches {
-			fmt.Fprintf(stdout, "    touches: %s\n", n)
+		for _, c := range t.Claims {
+			fmt.Fprintf(stdout, "    [%s] %s: %s\n", c.Type, c.ID, c.Prose)
 		}
 	}
-	if len(res.Governing) > 0 {
-		fmt.Fprintln(stdout, "\n## Governing ADRs (invariants backed here)")
-		for _, a := range res.Governing {
-			fmt.Fprintf(stdout, "  ADR-%s (%s) %s: %s\n", a.Number, a.Status, a.Title, a.Path)
+	if len(res.Pending) > 0 {
+		fmt.Fprintln(stdout, "\n## Pending accepted changes (not yet current)")
+		for _, pc := range res.Pending {
+			fmt.Fprintf(stdout, "  ADR-%s (%s) %s %s\n", pc.ADR, pc.Title, pc.Op, pc.Claim)
 		}
-	}
-	if len(res.Related) > 0 {
-		fmt.Fprintln(stdout, "\n## Related ADRs (shared tag)")
-		for _, a := range res.Related {
-			fmt.Fprintf(stdout, "  ADR-%s (%s) %s: %s\n", a.Number, a.Status, a.Title, a.Path)
-		}
-	}
-	if len(res.Plans) > 0 {
-		fmt.Fprintln(stdout, "\n## Related plans")
-		for _, pl := range res.Plans {
-			fmt.Fprintf(stdout, "  %s (%s): %s\n", pl.Filename, pl.Status, pl.Path)
-		}
-	}
-	if len(res.Pitfalls) > 0 {
-		fmt.Fprintln(stdout, "\n## Related pitfalls (shared tag)")
-		for _, pf := range res.Pitfalls {
-			fmt.Fprintf(stdout, "  %s %v: %s\n", pf.Title, pf.Tags, pf.Path)
-		}
-	}
-	if res.Background > 0 {
-		fmt.Fprintf(stdout, "\n## Domain background: %d more ADR(s) (see the domain docs above)\n", res.Background)
 	}
 	if len(res.Unowned) > 0 {
 		fmt.Fprintln(stdout, "\n## Unowned paths (no configured domain)")

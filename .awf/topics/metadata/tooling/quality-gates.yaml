@@ -1,0 +1,7 @@
+title: Quality gates
+summary: Coverage, prose, and the command-runner gate machinery.
+paths:
+  - internal/coverage/**
+  - internal/prosegate/**
+  - tools/**
+  - x

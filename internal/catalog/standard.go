@@ -53,11 +53,11 @@ var Standard = &Catalog{
 			RequiresSkills: []string{"adr-lifecycle", "reviewing-adr"},
 			Sections: []string{
 				"positioning", "when-to-invoke", "conventions", "procedure-number", "procedure-write",
-				"state-doc-update", "procedure-predecessor-flip", "invariants-rule", "procedure-regen",
+				"state-doc-update", "procedure-state-changes", "procedure-regen",
 				"procedure-commit", "autonomous-rule", "terminal-step", "notes",
 			},
 			Data: map[string]any{
-				"adrSections": []any{"Context", "Decision", "Invariants", "Consequences", "Alternatives Considered"},
+				"adrSections": []any{"Context", "Decision", "State changes", "Consequences", "Alternatives Considered", "Status history"},
 				"adrTriggers": []any{
 					"Introducing or moving a module/package boundary",
 					"Adopting a new external dependency",
@@ -70,16 +70,16 @@ var Standard = &Catalog{
 		"adr-lifecycle": {
 			Core: true,
 			Sections: []string{
-				"states", "transitions", "supersedence-full", "supersedence-partial",
-				"procedure-status-edit", "procedure-predecessor-flip", "state-doc-update",
+				"states", "transitions", "state-changes",
+				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
 				"procedure-regen", "procedure-gate", "commit-templates", "amendment-while-proposed", "notes",
 			},
 			Data: map[string]any{
 				"adrStates": []any{
 					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
-					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed in the repository", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Superseded", "meaning": "Replaced by a later ADR; kept for historical record", "mutability": "Status and cross-reference metadata (superseded_by, related) only; the body is frozen; a schema retrofit may migrate the encoding"},
+					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status and the append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
+					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed; the declared claim operations are applied", "mutability": "Terminal; status and the append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
+					map[string]any{"name": "Abandoned", "meaning": "The decision will not be implemented; its intended claim operations stay recorded but unapplied", "mutability": "Terminal; status and the append-only Status history only (the final entry carries a rationale); the body is frozen"},
 				},
 			},
 		},
@@ -128,13 +128,13 @@ var Standard = &Catalog{
 				"docCurrencyItems": []any{
 					map[string]any{"check": "every document that states the behaviour this ADR changes is updated in the same commit"},
 					map[string]any{"check": "the decision index is regenerated when the ADR's status changes"},
-					map[string]any{"check": "when this ADR overrides a live ADR's Decision item or Invariant without superseding it wholesale, the overridden ADR's `related:` names this ADR in the same commit"},
-					map[string]any{"check": "a partial override of a live ADR carries the matching `supersedes: ADR-NNNN#<item>` or `supersedes-invariant: ADR-NNNN#<slug>` token in the successor's Decision section, one per overridden anchor"},
+					map[string]any{"check": "every claim named in the ADR's `State changes` is authored to match in the same Implemented commit: an `add` claim carries this ADR as `Origin`, an `update` appends it to `Revised-by` and changes a canonical field, and a `remove` leaves no active claim"},
+					map[string]any{"check": "each `State changes` operation's destination topic metadata exists before the ADR is Accepted, an empty topic shell for a pending add"},
 				},
 				"reviewSubject": "ADR",
-				"readStep":      "Read the ADR in full. Read every doc, ADR, or state doc it references by name.",
+				"readStep":      "Read the ADR in full. Read every doc, ADR, or current-state topic it references by name.",
 				"digestLabel":   "ADR",
-				"digestSummary": "- Decision: <one line, the load-bearing item>\n- Invariants: <1-2 headlines>\n- Trade-off: <one notable rejected alternative + why>",
+				"digestSummary": "- Decision: <one line, the load-bearing item>\n- State changes: <the claim add/update/remove operations>\n- Trade-off: <one notable rejected alternative + why>",
 			},
 		},
 		"plan-reviewer": {
@@ -198,7 +198,7 @@ var Standard = &Catalog{
 		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
 			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "working-memory", "commands", "document-map",
 		}},
-		"adr-readme":     {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "invariants", "supersession", "active-md"}},
+		"adr-readme":     {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "lifecycle", "state-changes", "index"}},
 		"adr-template":   {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
 		"plans-readme":   {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
 		"plans-template": {Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
@@ -220,7 +220,7 @@ var Standard = &Catalog{
 		{Key: "proseGateCmd", Kind: "string", Description: "Command that runs the prose scan (the pre-commit hook payload calls it). Leave empty to have the payload run the pinned awf via the bootstrap shim.", Default: "", Options: []string{"./x prose-gate"}},
 		{Key: "testCmd", Kind: "string", Description: "Command that runs the test suite.", Default: "", Options: []string{"./x test", "go test ./...", "npm test"}},
 		{Key: "commitScopes", Kind: "string", Target: "audit-scopes", Description: "Comma-separated Conventional Commits scopes this project allows. Written to audit.allowedScopes and enforced by awf commit-gate/audit and quoted by the reviewing skills. Leave empty to accept any scope.", Default: "", Options: []string{"adr,awf,plans"}},
-		{Key: "activeMdRegenCmd", Kind: "string", Description: "Command that regenerates the generated ADR index (ACTIVE.md).", Default: "", Options: []string{"./x sync", "awf sync"}},
+		{Key: "activeMdRegenCmd", Kind: "string", Description: "Command that regenerates the generated ADR decision index (INDEX.md).", Default: "", Options: []string{"./x sync", "awf sync"}},
 		{Key: "invariantTestPath", Kind: "string", Description: "Path or glob where invariant-backing tests live.", Default: "", Options: []string{"./internal/..."}},
 		{Key: "skills", Kind: "multiselect", Target: "catalog-skills", Description: "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog."},
 		{Key: "docs", Kind: "multiselect", Target: "catalog-docs", Description: "Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog."},

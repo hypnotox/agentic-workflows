@@ -1,0 +1,6 @@
+title: Configuration
+summary: The .awf config tree schema, its serialization, and the anchored path-glob dialect.
+paths:
+  - internal/config/**
+  - internal/configspec/**
+  - internal/pathglob/**

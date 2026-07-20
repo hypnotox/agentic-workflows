@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.
@@ -21,11 +22,13 @@ skills: [tdd]
 agents: []
 `
 
-// scaffoldProject writes a minimal tree config under root and syncs it, leaving a
-// drift-clean project. It returns root.
+// scaffoldProject writes a minimal tree config under a git-backed root and syncs
+// it, leaving a drift-clean project. The base commit gives the working Tree a
+// HEAD, which the commands that read one (check, invariants) require.
 func scaffoldProject(t *testing.T) string {
 	t.Helper()
-	root := t.TempDir()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
 	if err := runSync(root, io.Discard); err != nil {
 		t.Fatalf("scaffold sync: %v", err)
@@ -34,7 +37,8 @@ func scaffoldProject(t *testing.T) string {
 }
 
 func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
-	root := t.TempDir()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [debugging]\nagents: []\n")
 	lock := &manifest.Lock{AWFVersion: "0.17.0", SchemaVersion: 12, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(config.LockPath(root)); err != nil {
@@ -73,7 +77,7 @@ func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
 	if !found {
 		t.Errorf("upgraded skills missing exploring: %v", cfg.Skills)
 	}
-	if err := runCheck(root, io.Discard); err != nil {
+	if err := runCheck(root, false, io.Discard); err != nil {
 		t.Errorf("post-upgrade check: %v", err)
 	}
 }
@@ -262,7 +266,7 @@ func TestRunDispatchArms(t *testing.T) {
 func TestHandlersOnBareDirError(t *testing.T) {
 	bare := func(t *testing.T) string { return t.TempDir() }
 	t.Run("check", func(t *testing.T) {
-		if err := runCheck(bare(t), io.Discard); err == nil {
+		if err := runCheck(bare(t), false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
@@ -293,30 +297,8 @@ func TestHandlersOnBareDirError(t *testing.T) {
 	})
 }
 
-func TestRunInvariantsReportsFindings(t *testing.T) {
-	root := scaffoldProject(t)
-	// An Implemented ADR with an unbacked slug -> a finding.
-	adrDir := filepath.Join(root, "docs", "decisions")
-	if err := os.MkdirAll(adrDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	adr := testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: X"), testsupport.WithBody("## Invariants\n- `invariant: unbacked-here` - x.\n## Consequences\nc\n"))
-	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-x.md"), adr)
-	if err := runSync(root, io.Discard); err != nil {
-		t.Fatal(err)
-	}
-	var out bytes.Buffer
-	if err := runInvariants(root, &out); err == nil {
-		t.Error("expected invariants failure for an unbacked slug")
-	}
-	if !strings.Contains(out.String(), "unbacked-here") {
-		t.Errorf("expected the slug in output, got %q", out.String())
-	}
-}
-
-func TestRunInvariantsCheckError(t *testing.T) {
-	// A malformed ADR makes invariants.Check (via ParseDir) error.
+func TestRunInvariantsLoadFault(t *testing.T) {
+	// A malformed ADR makes the working-tree corpus load error out of runInvariants.
 	root := scaffoldProject(t)
 	adrDir := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
@@ -326,7 +308,7 @@ func TestRunInvariantsCheckError(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := runInvariants(root, io.Discard); err == nil {
-		t.Error("expected CheckInvariants error on a malformed ADR")
+		t.Error("expected a corpus load error on a malformed ADR")
 	}
 }
 
@@ -347,7 +329,7 @@ func TestRunCheckErrorPaths(t *testing.T) {
 		}
 	})
 	t.Run("check-error-malformed-adr", func(t *testing.T) {
-		// A malformed ADR makes p.Check() (ACTIVE.md generation) error.
+		// A malformed ADR makes p.Check() (INDEX.md generation) error.
 		root := scaffoldProject(t)
 		adrDir := filepath.Join(root, "docs", "decisions")
 		if err := os.MkdirAll(adrDir, 0o755); err != nil {
@@ -356,7 +338,7 @@ func TestRunCheckErrorPaths(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte("---\n: : bad yaml : :\n---\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := runCheck(root, io.Discard); err == nil {
+		if err := runCheck(root, false, io.Discard); err == nil {
 			t.Error("expected check error on a malformed ADR")
 		}
 	})
@@ -433,13 +415,14 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 // awf upgrade: close-enabled-set closes the enabled set, then the terminal
 // sync opens it cleanly.
 func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
-	root := t.TempDir()
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: []\n")
 	lock := &manifest.Lock{SchemaVersion: 7, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(root, io.Discard); err == nil {
+	if err := runCheck(root, false, io.Discard); err == nil {
 		t.Fatal("pre-upgrade check should refuse (schema gate)")
 	}
 	var out bytes.Buffer
@@ -449,7 +432,7 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	if !strings.Contains(out.String(), `close-enabled-set: enabled skill "proposing-adr" (required by "brainstorming")`) {
 		t.Errorf("expected closure additions printed, got %q", out.String())
 	}
-	if err := runCheck(root, io.Discard); err != nil {
+	if err := runCheck(root, false, io.Discard); err != nil {
 		t.Errorf("post-upgrade check should pass, got %v", err)
 	}
 }
@@ -469,7 +452,7 @@ func TestRunUpgradeMigrationError(t *testing.T) {
 	}
 }
 
-// invariant: single-os-exit
+// invariant: tooling/cli:single-os-exit
 func TestNoOsExitOutsideMain(t *testing.T) {
 	files, err := filepath.Glob("*.go")
 	if err != nil {
@@ -525,14 +508,14 @@ func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	}
 }
 
-func TestRunInvariantsClean(t *testing.T) {
+func TestRunInvariantsNoClaims(t *testing.T) {
 	root := scaffoldProject(t)
 	var out bytes.Buffer
 	if err := runInvariants(root, &out); err != nil {
 		t.Fatalf("runInvariants: %v", err)
 	}
-	if !strings.Contains(out.String(), "clean") {
-		t.Errorf("expected clean output, got %q", out.String())
+	if !strings.Contains(out.String(), "no invariant claims") {
+		t.Errorf("expected the no-claims report, got %q", out.String())
 	}
 }
 
@@ -547,7 +530,7 @@ func TestRunListPrintsSkills(t *testing.T) {
 	}
 }
 
-// invariant: upgrade-always-syncs
+// invariant: tooling/cli:upgrade-always-syncs
 func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	root := scaffoldProject(t)
 	var out bytes.Buffer
@@ -564,7 +547,7 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	}
 }
 
-// invariant: init-collision-guard
+// invariant: tooling/cli:init-collision-guard
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
@@ -593,7 +576,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("init --force failed: %s", errb.String())
 	}
 	// The original is preserved at <path>.awf-bak.
-	// invariant: init-force-backs-up
+	// invariant: tooling/cli:init-force-backs-up
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
 		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
 	}
@@ -730,7 +713,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(adrDir, "ACTIVE.md"), []byte("hand index\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -738,7 +721,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if code := run([]string{"awf", "sync"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
-	if !strings.Contains(out.String(), "backed up docs/decisions/ACTIVE.md") {
+	if !strings.Contains(out.String(), "backed up docs/decisions/INDEX.md") {
 		t.Errorf("missing backup line: %q", out.String())
 	}
 	if !strings.Contains(out.String(), "note: awf now generates") {

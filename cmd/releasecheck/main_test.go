@@ -84,7 +84,7 @@ func TestRunFailsUnparseable(t *testing.T) {
 
 func TestRunFailsStaleNewestEntry(t *testing.T) {
 	code, _, errb := runOn(t, changelogFS("# Changelog\n\n## [Unreleased]\n\n## [0.0.1] - 2026-01-01\n- old\n"))
-	// invariant: release-changelog-pin
+	// invariant: tooling/changelog-and-release:release-changelog-pin
 	if code != 1 || !strings.Contains(errb, "promote [Unreleased] before tagging") {
 		t.Fatalf("want exit 1 with stale-entry error, got %d:\n%s", code, errb)
 	}
@@ -125,7 +125,7 @@ func TestUnreleasedBodyAtEOF(t *testing.T) {
 // TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079) - the
 // Release workflow must run the ancestry check, ./x gate, and ./x check before
 // the GoReleaser step, so an untested or off-main tag cannot publish.
-// invariant: release-gate-on-tag
+// invariant: tooling/changelog-and-release:release-gate-on-tag
 func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	b, err := os.ReadFile("../../.github/workflows/release.yml")
 	if err != nil {
@@ -179,7 +179,7 @@ func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 // the curated changelog via `awf changelog --version` before the GoReleaser step and
 // pass it through `--release-notes`, and `.goreleaser.yaml` must disable GoReleaser's
 // commit-derived changelog, so a commit subject can no longer reach the release notes.
-// invariant: release-notes-from-changelog
+// invariant: tooling/changelog-and-release:release-notes-from-changelog
 func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	wfb, err := os.ReadFile("../../.github/workflows/release.yml")
 	if err != nil {
