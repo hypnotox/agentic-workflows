@@ -437,7 +437,15 @@ data:
         "only a delete race loses it" claim on a read-after-stat: file *permissions* are the standard
         refuting move for any "stat just succeeded, so the read cannot fail" shape; a `chmod 0o000`
         file stats fine and fails the read deterministically (guard the test with a
-        `os.Geteuid() == 0` skip, since root bypasses it).
+        `os.Geteuid() == 0` skip, since root bypasses it). A sixth recurrence (the 2026-07-20 bridge
+        Phase 3) shipped a "a journaled path reads cleanly unless a concurrent removal races" ignore on
+        the journal rollback read; the branch is reached deterministically by a directory sitting at
+        the lock path during a halted rollback (EISDIR, no race), and an existing failure-injection
+        test already executed it - so the ignore was not merely stale but false over a line the profile
+        counted as covered. That the impl-review focus item still did not stop it at write time is the
+        signal to climb a rung: a mechanical "a `coverage-ignore` line the coverage profile records as
+        executed is a false ignore" check in `cmd/covercheck` would catch this whole ignored-but-covered
+        class deterministically (deferred follow-up).
     - title: "An attribute-filtered pinned-set test exempts every other attribute value"
       domains: [tooling]
       tags: [pinned-set-tests, invariant-backing]
