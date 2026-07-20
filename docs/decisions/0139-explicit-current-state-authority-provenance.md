@@ -51,15 +51,17 @@ valid empty baseline for initialization checks, not a malformed repository.
    authority is refused rather than invented.
 
 4. Lock validation and upgrade routing use these mutually exclusive states:
-   - **Bridge:** `bridgeAttestation` is present, `adrFormatV1From` is zero, and
-     `initializedWithVersion` is absent. Only the sealed final-cutover upgrade may mutate it.
+   - **Bridge:** `bridgeAttestation` is present, `adrFormatV1From` is zero,
+     `initializedWithVersion` is absent, and no top-level `legacyAdrGaps` field is present. The
+     attestation owns its sealed gaps. Only the sealed final-cutover upgrade may mutate this state.
    - **Permanent:** `bridgeAttestation` is absent, `adrFormatV1From` is positive, and the explicit
      sorted, unique `legacyAdrGaps` contains only positive numbers below the cutoff. This is the
      ordinary operating state. `initializedWithVersion` may be absent for a migrated older
      adopter or present for a first adoption made after provenance tracking began.
-   - **Pre-tracking:** attestation and permanent cutoff are absent and initialization provenance
-     is absent. An existing awf config or lock in this state is legacy or unattested; the current
-     binary refuses mutation and directs the adopter to the bridge/recovery path.
+   - **Pre-tracking:** attestation, permanent cutoff, top-level gaps, and initialization
+     provenance are all absent. An existing awf config or lock in this state is legacy or
+     unattested; the current binary refuses mutation and directs the adopter to the
+     bridge/recovery path.
    - **Invalid:** every other combination, including attestation mixed with permanent or init
      authority, initialization provenance without a permanent cutoff, gaps without a cutoff, or
      malformed cutoff/gaps. Every mutating or authority-consuming command refuses it with
@@ -71,12 +73,15 @@ valid empty baseline for initialization checks, not a malformed repository.
    A missing lock beside an existing awf config is Pre-tracking rather than permission to create
    new authority.
 
-6. The lock model, canonical parser and serializer, init command, project initialization and sync
-   paths, binary/version gate, staged lock-authority comparison, upgrade router, snapshot loaders,
-   and recovery tests consume this state model. Older locks remain readable because the field is
-   optional. A new lock retains binary downgrade protection through `awfVersion`, so an older
-   binary cannot successfully sync and erase the unknown field. No config-schema migration
-   backfills initial-version provenance.
+6. Package ownership is explicit. `internal/manifest` parses, validates, and canonically
+   serializes the optional field and complete state matrix. `cmd/awf/init` establishes provenance
+   only for a first adoption. `internal/project` preserves it through sync/render planning and
+   compares it as staged immutable authority. `cmd/awf/upgrade` and `internal/upgrade` route the
+   Bridge, Permanent, Pre-tracking, and Invalid states. Snapshot loaders consume the same manifest
+   validation. `internal/migrate` deliberately performs no backfill, and `internal/config` owns no
+   corresponding schema field. Older locks remain readable because the field is optional. A new
+   lock retains binary downgrade protection through `awfVersion`, so an older binary cannot
+   successfully sync and erase the unknown field.
 
 7. In a Git repository whose `HEAD` is specifically unborn, working-state assembly uses an
    empty committed baseline and continues to include eligible working files. Other reference,
@@ -131,6 +136,7 @@ the staged check explicitly even where Git hook activation is absent.
 | Alternative | Why not chosen |
 |---|---|
 | Infer freshness from a missing cutoff or empty ADR directory | The same shape can belong to a legacy, unattested, or deliberately re-adopted project. |
+| Reject every first adoption with an existing ADR corpus | A brownfield project should retain valid decision history; sealing its existing identities gives that history an explicit boundary without treating it as active authority. |
 | Store the initial version in authored config | Repository origin is runtime lock provenance, not adopter-authored workflow policy, and config edits would make it mutable. |
 | Put adoption provenance in a separate file | A second authority file would complicate atomic writes, staged comparison, recovery, and project-state gating without adding information. |
 | Keep rejecting every absent claim for an Abandoned remove | Final absence cannot distinguish that operation from a separately checked later Implemented removal. |
