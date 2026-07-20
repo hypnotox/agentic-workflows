@@ -123,13 +123,17 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 		}
 	})
 
-	t.Run("corrupt-reference", func(t *testing.T) {
+	t.Run("corrupt-head-store", func(t *testing.T) {
 		_, dir := gitfixture.InitRepo(t)
-		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("not a reference\n"), 0o644); err != nil {
+		headPath := filepath.Join(dir, ".git", "HEAD")
+		if err := os.Remove(headPath); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Mkdir(headPath, 0o755); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := awfgit.WorkingPaths(dir); err == nil {
-			t.Fatal("corrupt HEAD accepted as unborn")
+			t.Fatal("unreadable HEAD accepted as unborn")
 		}
 	})
 
@@ -172,6 +176,43 @@ func TestHeadExists(t *testing.T) {
 	}
 	if _, err := awfgit.HeadExists(t.TempDir()); err == nil {
 		t.Fatal("non-repository accepted")
+	}
+}
+
+func TestHeadExistsRejectsBrokenSymbolicChains(t *testing.T) {
+	for name, refs := range map[string]map[string]string{
+		"existing-symbolic-ref-to-missing-ref": {
+			"HEAD":             "ref: refs/heads/alias\n",
+			"refs/heads/alias": "ref: refs/heads/missing\n",
+		},
+		"cyclic-chain": {
+			"HEAD":           "ref: refs/heads/one\n",
+			"refs/heads/one": "ref: refs/heads/two\n",
+			"refs/heads/two": "ref: refs/heads/one\n",
+		},
+		"corrupt-chain": {
+			"HEAD":              "ref: refs/heads/broken\n",
+			"refs/heads/broken": "not a reference\n",
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, dir := gitfixture.InitRepo(t)
+			for ref, content := range refs {
+				path := filepath.Join(dir, ".git", filepath.FromSlash(ref))
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if has, err := awfgit.HeadExists(dir); err == nil {
+				t.Fatalf("HeadExists accepted broken chain: has=%v", has)
+			}
+			if paths, err := awfgit.WorkingPaths(dir); err == nil {
+				t.Fatalf("WorkingPaths accepted broken chain: paths=%v", paths)
+			}
+		})
 	}
 }
 

@@ -87,22 +87,58 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 }
 
 // HeadExists reports whether the repository has a born HEAD (at least one
-// commit). A fresh repository with no commit yet reports false without error, so
-// the staged transition check can treat the first commit's before side as the
-// empty universe rather than failing to resolve HEAD. It reads the repository
-// only.
+// commit). A fresh repository whose immediate symbolic HEAD target is absent
+// reports false without error. Missing refs deeper in a symbolic chain and
+// corrupt or cyclic chains are errors. It reads the repository only.
 func HeadExists(repoRoot string) (bool, error) {
 	repo, _, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return false, fmt.Errorf("open repo: %w", err)
 	}
-	if _, err := repo.Head(); err != nil {
-		if errors.Is(err, plumbing.ErrReferenceNotFound) {
-			return false, nil
-		}
-		return false, fmt.Errorf("resolve HEAD: %w", err) // coverage-ignore: Head fails only with ErrReferenceNotFound on a healthy repo just opened; other faults require a corrupt ref store
+	head, err := resolveHead(repo)
+	if err != nil {
+		return false, err
+	}
+	if head.unborn {
+		return false, nil
+	}
+	if _, err := repo.CommitObject(head.ref.Hash()); err != nil {
+		return false, fmt.Errorf("resolve HEAD commit: %w", err)
 	}
 	return true, nil
+}
+
+type headResolution struct {
+	ref    *plumbing.Reference
+	unborn bool
+}
+
+// resolveHead follows HEAD one symbolic reference at a time so only absence of
+// HEAD's immediate target is classified as unborn. go-git's Repository.Head
+// reports ErrReferenceNotFound for both that case and a missing ref anywhere
+// deeper in the chain, losing the distinction.
+func resolveHead(repo *gogit.Repository) (headResolution, error) {
+	ref, err := repo.Reference(plumbing.HEAD, false)
+	if err != nil { // coverage-ignore: OpenContainingRepo only returns after go-git has successfully read HEAD from the same storer
+		return headResolution{}, fmt.Errorf("resolve HEAD: %w", err)
+	}
+	seen := map[plumbing.ReferenceName]bool{plumbing.HEAD: true}
+	for ref.Type() == plumbing.SymbolicReference {
+		target := ref.Target()
+		if seen[target] {
+			return headResolution{}, fmt.Errorf("resolve HEAD: cyclic symbolic reference at %s", target)
+		}
+		seen[target] = true
+		next, err := repo.Reference(target, false)
+		if err != nil {
+			if ref.Name() == plumbing.HEAD && errors.Is(err, plumbing.ErrReferenceNotFound) {
+				return headResolution{unborn: true}, nil
+			}
+			return headResolution{}, fmt.Errorf("resolve HEAD via %s: %w", target, err)
+		}
+		ref = next
+	}
+	return headResolution{ref: ref}, nil
 }
 
 // HeadHash resolves the current HEAD commit hash without requiring a clean
@@ -132,17 +168,13 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
-	hasHead, err := HeadExists(repoRoot)
-	if err != nil { // coverage-ignore: the repository was just opened above; only a concurrent ref-store fault can make this second open or HEAD resolution fail
+	head, err := resolveHead(repo)
+	if err != nil {
 		return nil, err
 	}
 	set := map[string]bool{}
-	if hasHead {
-		ref, err := repo.Head()
-		if err != nil { // coverage-ignore: HeadExists just resolved this HEAD
-			return nil, fmt.Errorf("resolve HEAD: %w", err)
-		}
-		commit, err := repo.CommitObject(ref.Hash())
+	if !head.unborn {
+		commit, err := repo.CommitObject(head.ref.Hash())
 		if err != nil {
 			return nil, err
 		}
