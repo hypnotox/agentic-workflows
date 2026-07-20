@@ -33,6 +33,16 @@ query a single version or a range.
   `--attest-current-state` modes live only in that preceding release; this binary consumes seals and
   never produces them.
 
+### Bug fixes
+- Staged current-state checks and `awf context --staged` now read config, lock, topics, markers, and
+  coverage from one index snapshot. Staged transitions reject changes to the permanent ADR format
+  cutoff or legacy gaps, and `awf context --uncovered --staged` reports index-only coverage.
+- Context directory queries, including repository root `.`, now expand only eligible descendants and
+  return no paths for an existing directory with none. Topic rendering also normalizes trailing part
+  newlines so generated topic documents end with exactly one newline.
+- The permanent pre-commit path no longer accepts the preparation-only bridge bypass, and a
+  reintroduced `.awf/current-state-migration.yaml` is reported as unclaimed drift after cutover.
+
 ## [0.18.0] - 2026-07-20
 
 ### Breaking changes
