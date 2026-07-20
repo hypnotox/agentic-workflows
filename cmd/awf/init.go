@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
@@ -25,6 +26,17 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 		fmt.Fprintln(stdout, string(out))
 		return nil
+	}
+	cfgPath := config.ConfigPath(root)
+	lockPath := config.LockPath(root)
+	_, statErr := os.Stat(cfgPath)
+	configExists := statErr == nil
+	_, lockStatErr := os.Stat(lockPath)
+	lockExists := lockStatErr == nil
+	if !configExists && !lockExists {
+		if _, _, err := adr.AdoptionBoundary(filepath.Join(root, "docs", "decisions")); err != nil {
+			return fmt.Errorf("seal first-adoption ADR authority: %w", err)
+		}
 	}
 	answers := map[string]string{}
 	if answersFile != "" {
@@ -52,12 +64,6 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 			return collisionRefusal(collisions)
 		}
 	}
-	cfgPath := config.ConfigPath(root)
-	lockPath := config.LockPath(root)
-	_, statErr := os.Stat(cfgPath)
-	configExists := statErr == nil
-	_, lockStatErr := os.Stat(lockPath)
-	lockExists := lockStatErr == nil
 	if configExists || lockExists {
 		lock, found, err := manifest.LoadOptional(lockPath)
 		if err != nil {
@@ -113,12 +119,12 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 	}
 	p, err := project.Open(root)
-	if err != nil { // coverage-ignore: a just-generated scaffold uses the same embedded catalog Open validates
+	if err != nil {
 		return err
 	}
 	collisions, err := p.InitCollisions()
 	if err != nil {
-		if scaffolded {
+		if scaffolded { // coverage-ignore: first adoption validated its ADR boundary and the generated scaffold before this second collision plan; only a concurrent tree mutation can make it fail
 			_ = os.Remove(cfgPath)
 			_ = os.Remove(filepath.Dir(cfgPath))
 		}
@@ -149,7 +155,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		syncErr = runSync(root, stdout)
 	}
 	if syncErr != nil {
-		if scaffolded {
+		if scaffolded { // coverage-ignore: the first-adoption boundary, scaffold, collision plan, and gate all succeeded; a failure now requires a concurrent mutation or filesystem fault
 			_ = os.Remove(cfgPath)
 			_ = os.Remove(filepath.Dir(cfgPath))
 		}

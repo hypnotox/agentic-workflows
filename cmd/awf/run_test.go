@@ -103,14 +103,16 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 			for path, body := range tc.files {
 				testsupport.WriteFile(t, filepath.Join(root, path), body)
 			}
-			if err := runInit(root, false, false, nil, "", io.Discard); err == nil {
+			before := snapshotTree(t, root)
+			var out bytes.Buffer
+			if err := runInit(root, false, false, nil, "", &out); err == nil {
 				t.Fatal("expected refusal")
 			}
-			if _, err := os.Stat(config.ConfigPath(root)); !os.IsNotExist(err) {
-				t.Fatalf("init config remains after refusal: %v", err)
+			if after := snapshotTree(t, root); after != before {
+				t.Fatal("ambiguous first adoption mutated the repository tree")
 			}
-			if _, err := os.Stat(config.LockPath(root)); !os.IsNotExist(err) {
-				t.Fatalf("init lock remains after refusal: %v", err)
+			if out.Len() != 0 {
+				t.Fatalf("ambiguous first adoption wrote output: %q", out.String())
 			}
 		})
 	}
@@ -150,14 +152,17 @@ func TestInitForceRefusesMissingAuthority(t *testing.T) {
 			if tc.lock != "" {
 				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
 			}
-			before, _ := os.ReadFile(config.ConfigPath(root))
-			err := runInit(root, true, false, nil, "", io.Discard)
+			before := snapshotTree(t, root)
+			var out bytes.Buffer
+			err := runInit(root, true, false, nil, "", &out)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error=%v, want %q", err, tc.want)
 			}
-			after, _ := os.ReadFile(config.ConfigPath(root))
-			if !bytes.Equal(before, after) {
-				t.Fatal("config mutated on refusal")
+			if after := snapshotTree(t, root); after != before {
+				t.Fatal("forced init authority refusal mutated the repository tree")
+			}
+			if out.Len() != 0 {
+				t.Fatalf("forced init authority refusal wrote output: %q", out.String())
 			}
 		})
 	}
@@ -885,6 +890,10 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
@@ -899,8 +908,13 @@ func TestInitCollisionsOpenError(t *testing.T) {
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	root := t.TempDir()
-	// A malformed ADR makes PlannedOutputs (inside p.InitCollisions) fail after the
-	// config is scaffolded, exercising runInit's collision-scan error forward.
+	// An existing permanent project can still have a malformed ADR. --force skips
+	// the probe so runInit's own p.InitCollisions call forwards that deterministic
+	// planning error.
+	testsupport.WriteAwfConfig(t, root, minimalYAML)
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
 	dd := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(dd, 0o755); err != nil {
 		t.Fatal(err)
@@ -910,7 +924,7 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when p.InitCollisions errors")
 	}
 }

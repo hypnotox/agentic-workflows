@@ -34,7 +34,7 @@ func stagedHeadFiles() map[string]string {
 
 // attestedLock returns the permanent cutoff used by staged fixtures.
 func attestedLock() *manifest.Lock {
-	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2}
+	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}}
 }
 
 // writeLock writes and stages the project's awf.lock.
@@ -91,7 +91,7 @@ func TestCheckStagedRejectsPermanentFormatAuthorityMutation(t *testing.T) {
 		cutoff int
 		gaps   []int
 	}{
-		{"raise cutoff", 3, nil},
+		{"raise cutoff", 3, []int{}},
 		{"alter gaps", 2, []int{1}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -127,7 +127,7 @@ func TestCheckStagedAllowsSealedBridgePromotion(t *testing.T) {
 	gitfixture.Stage(t, repo, dir, files)
 	gitfixture.Commit(t, repo, dir, "bridge", nil)
 	p := openStaged(t, dir)
-	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2})
+	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}})
 	if _, err := p.CheckStaged(); err != nil {
 		t.Fatalf("sealed promotion: %v", err)
 	}

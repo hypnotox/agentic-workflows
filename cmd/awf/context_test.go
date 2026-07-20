@@ -70,7 +70,7 @@ func ctxCmdFixture(t *testing.T) string {
 	lock := &manifest.Lock{
 		AWFVersion: awfVersion(), SchemaVersion: migrate.Current(),
 		Files:             map[string]manifest.Entry{},
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2},
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}},
 	}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
@@ -593,15 +593,23 @@ func snapshotTree(t *testing.T, root string) string {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() {
-			return nil
-		}
 		info, err := d.Info()
 		if err != nil {
 			return err
 		}
-		rel, _ := filepath.Rel(root, path)
-		b.WriteString(rel + "@" + info.ModTime().String() + ";")
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		b.WriteString(rel + "@" + info.Mode().String() + ":")
+		if !d.IsDir() {
+			content, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			b.Write(content)
+		}
+		b.WriteByte(';')
 		return nil
 	})
 	if err != nil {

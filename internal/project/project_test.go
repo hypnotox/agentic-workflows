@@ -104,35 +104,43 @@ func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
 }
 
 func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	prior := &manifest.Lock{
-		AWFVersion:             "0.18.0",
-		SchemaVersion:          14,
-		Files:                  map[string]manifest.Entry{},
-		ADRFormatV1From:        137,
-		LegacyADRGaps:          []int{2, 9},
-		InitializedWithVersion: "0.18.0",
-	}
-	raw, err := prior.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(lockFile(root), raw, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	got, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.InitializedWithVersion != "0.18.0" || got.ADRFormatV1From != 137 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
-		t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoff=%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.LegacyADRGaps)
+	for _, initializedWithVersion := range []string{"0.18.0", ""} {
+		name := "initialized"
+		if initializedWithVersion == "" {
+			name = "migrated"
+		}
+		t.Run(name, func(t *testing.T) {
+			root := scaffold(t, sampleYAML)
+			prior := &manifest.Lock{
+				AWFVersion:             "0.18.0",
+				SchemaVersion:          14,
+				Files:                  map[string]manifest.Entry{},
+				ADRFormatV1From:        137,
+				LegacyADRGaps:          []int{2, 9},
+				InitializedWithVersion: initializedWithVersion,
+			}
+			raw, err := prior.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(lockFile(root), raw, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			got, err := manifest.Load(lockFile(root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.InitializedWithVersion != initializedWithVersion || got.ADRFormatV1From != 137 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
+				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoff=%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.LegacyADRGaps)
+			}
+		})
 	}
 }
 

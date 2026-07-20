@@ -272,7 +272,7 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		t.Helper()
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 		if attested {
-			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2}
+			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}}
 		} else {
 			lock.ADRFormatV1From = 1
 			lock.LegacyADRGaps = []int{}
@@ -408,7 +408,7 @@ func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 
 func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
-	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2}
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, LegacyADRGaps: []int{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)

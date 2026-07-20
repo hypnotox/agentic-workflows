@@ -69,7 +69,7 @@ func runUpgrade(root string, stdout io.Writer) error {
 		return errors.New("invalid authority: restore .awf/awf.lock from version control")
 	}
 	state, gen, err := migrate.GateState(root)
-	if err != nil { // coverage-ignore: the authority load just read the same active layout lock; only a concurrent fault can newly fail
+	if err != nil {
 		return err
 	}
 	if state == "ahead" {

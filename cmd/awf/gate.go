@@ -11,17 +11,9 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-// normalizeSemver returns s in the single-leading-v form x/mod/semver requires.
-// project.Version and lock awfVersion values are the no-v form, but historical
-// locks may carry either; trimming any existing v first makes the
-// normalization idempotent (ADR-0039 Decision 3, single-sourced by ADR-0049).
-func normalizeSemver(s string) (string, bool) {
-	v := "v" + strings.TrimPrefix(s, "v")
-	if !semver.IsValid(v) {
-		return "", false
-	}
-	return v, true
-}
+// normalizeSemver keeps the command-local call sites readable while delegating
+// lock syntax to the manifest package's shared authority normalizer.
+func normalizeSemver(s string) (string, bool) { return manifest.NormalizeSemver(s) }
 
 // gate refuses to operate against a config the running binary cannot correctly
 // interpret. It runs before project.Open. On the schema axis: "gate" (config

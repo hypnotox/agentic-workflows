@@ -117,7 +117,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 // guardProjectState enforces the current-state upgrade command-state matrix.
-// Help, version, and changelog bypass it outright; outside an adopted tree it is
+// Help, version, changelog, and the read-only init descriptor query bypass it
+// outright; outside an adopted tree it is
 // a no-op so config/context/topic keep their static fallback. Inside a tree:
 //   - a valid journal permits only `awf upgrade --recover`; every other command
 //     refuses with a run-recover diagnostic;
@@ -131,6 +132,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	switch top.Name {
 	case "version", "changelog", "commit-gate", "prose-gate":
+		return nil
+	}
+	if top.Name == "init" && inv.bools["--describe"] {
 		return nil
 	}
 	staged := top.Name == "check" && inv.bools["--staged"]

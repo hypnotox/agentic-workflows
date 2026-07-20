@@ -94,7 +94,7 @@ func TestCheckCurrentState(t *testing.T) {
 	lock := &manifest.Lock{
 		AWFVersion: "0.18.0", SchemaVersion: 14,
 		Files:             map[string]manifest.Entry{"internal/gen.go": {}},
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2},
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2, LegacyADRGaps: []int{}},
 	}
 	b, err := lock.Marshal()
 	if err != nil {

@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"golang.org/x/mod/semver"
 )
@@ -48,8 +49,7 @@ type Lock struct {
 	// It is absent for older migrated adopters and immutable once present.
 	InitializedWithVersion string `json:"initializedWithVersion,omitempty"`
 
-	legacyADRGapsPresent  bool
-	authorityFieldsParsed bool
+	legacyADRGapsPresent bool
 }
 
 // AuthorityState is the closed lock-authority state machine.
@@ -64,9 +64,6 @@ const (
 // AuthorityState validates and classifies the lock's current-state authority.
 func (l *Lock) AuthorityState() (AuthorityState, error) {
 	gapsPresent := l.legacyADRGapsPresent || l.LegacyADRGaps != nil
-	if !l.authorityFieldsParsed && l.ADRFormatV1From > 0 {
-		gapsPresent = true
-	}
 	hasBridge := l.BridgeAttestation != nil
 	hasCutoff := l.ADRFormatV1From != 0
 	hasInit := l.InitializedWithVersion != ""
@@ -74,6 +71,12 @@ func (l *Lock) AuthorityState() (AuthorityState, error) {
 	if hasBridge {
 		if hasCutoff || gapsPresent || hasInit {
 			return 0, errors.New("invalid lock authority: bridge attestation cannot be mixed with permanent or initialization authority")
+		}
+		if l.BridgeAttestation.LegacyADRGaps == nil {
+			return 0, errors.New("invalid lock authority: bridgeAttestation legacyADRGaps must be an array, not null")
+		}
+		if err := validateBoundary("bridgeAttestation", l.BridgeAttestation.ADRFormatV1From, l.BridgeAttestation.LegacyADRGaps); err != nil {
+			return 0, err
 		}
 		return AuthorityBridge, nil
 	}
@@ -87,29 +90,56 @@ func (l *Lock) AuthorityState() (AuthorityState, error) {
 		return 0, errors.New("invalid lock authority: adrFormatV1From must be positive")
 	}
 	if !gapsPresent {
-		return 0, errors.New("invalid lock authority: adrFormatV1From requires an explicit legacyAdrGaps field")
+		return 0, errors.New("invalid lock authority: adrFormatV1From requires an explicit non-nil legacyAdrGaps field")
 	}
-	previous := 0
-	for _, gap := range l.LegacyADRGaps {
-		if gap <= 0 || gap >= l.ADRFormatV1From {
-			return 0, fmt.Errorf("invalid lock authority: legacyAdrGaps value %d must be positive and below cutoff %d", gap, l.ADRFormatV1From)
-		}
-		if gap <= previous {
-			return 0, errors.New("invalid lock authority: legacyAdrGaps must be sorted and unique")
-		}
-		previous = gap
+	if l.LegacyADRGaps == nil {
+		return 0, errors.New("invalid lock authority: legacyAdrGaps must be an array, not null")
+	}
+	if err := validateBoundary("lock authority", l.ADRFormatV1From, l.LegacyADRGaps); err != nil {
+		return 0, err
 	}
 	if hasInit {
-		v := "v" + l.InitializedWithVersion
-		awf := "v" + l.AWFVersion
-		if !semver.IsValid(v) {
+		initialized, ok := NormalizeSemver(l.InitializedWithVersion)
+		if !ok {
 			return 0, fmt.Errorf("invalid lock authority: initializedWithVersion %q is not semantic version syntax", l.InitializedWithVersion)
 		}
-		if !semver.IsValid(awf) || semver.Compare(v, awf) > 0 {
+		awf, ok := NormalizeSemver(l.AWFVersion)
+		if !ok {
+			return 0, fmt.Errorf("invalid lock authority: awfVersion %q is not semantic version syntax", l.AWFVersion)
+		}
+		if semver.Compare(initialized, awf) > 0 {
 			return 0, fmt.Errorf("invalid lock authority: initializedWithVersion %q is later than awfVersion %q", l.InitializedWithVersion, l.AWFVersion)
 		}
 	}
 	return AuthorityPermanent, nil
+}
+
+// NormalizeSemver returns s in the single-leading-v form x/mod/semver requires.
+// Lock authority and the CLI version gate share it so historical v-prefixed
+// versions are interpreted identically.
+func NormalizeSemver(s string) (string, bool) {
+	v := "v" + strings.TrimPrefix(s, "v")
+	if !semver.IsValid(v) {
+		return "", false
+	}
+	return v, true
+}
+
+func validateBoundary(owner string, cutoff int, gaps []int) error {
+	if cutoff < 1 {
+		return fmt.Errorf("invalid lock authority: %s adrFormatV1From must be positive", owner)
+	}
+	previous := 0
+	for _, gap := range gaps {
+		if gap <= 0 || gap >= cutoff {
+			return fmt.Errorf("invalid lock authority: %s legacyAdrGaps value %d must be positive and below cutoff %d", owner, gap, cutoff)
+		}
+		if gap <= previous {
+			return fmt.Errorf("invalid lock authority: %s legacyAdrGaps must be sorted and unique", owner)
+		}
+		previous = gap
+	}
+	return nil
 }
 
 // BridgeAttestation records the sealed identity of a current-state upgrade
@@ -151,7 +181,6 @@ func Parse(b []byte) (*Lock, error) {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
 	_, l.legacyADRGapsPresent = raw["legacyAdrGaps"]
-	l.authorityFieldsParsed = true
 	if _, err := l.AuthorityState(); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
@@ -178,9 +207,6 @@ func (l *Lock) Marshal() ([]byte, error) {
 	var gaps *[]int
 	if l.ADRFormatV1From != 0 {
 		value := slices.Clone(l.LegacyADRGaps)
-		if value == nil {
-			value = []int{}
-		}
 		gaps = &value
 	}
 	canonical := struct {

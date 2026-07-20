@@ -290,7 +290,7 @@ func writeCutoffLock(t *testing.T, p *Project, cutoff int) {
 	t.Helper()
 	lock := &manifest.Lock{
 		AWFVersion: "0.18.0", SchemaVersion: 14,
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: cutoff},
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: cutoff, LegacyADRGaps: []int{}},
 	}
 	b, err := lock.Marshal()
 	if err != nil {

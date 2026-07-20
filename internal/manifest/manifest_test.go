@@ -164,7 +164,7 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	if b, _ := os.ReadFile(p); strings.Contains(string(b), "legacyAdrGaps") {
 		t.Fatalf("pre-cutover lock gained permanent gap authority: %s", b)
 	}
-	permanent := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}, ADRFormatV1From: 137}
+	permanent := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}, ADRFormatV1From: 137, LegacyADRGaps: []int{}}
 	if err := permanent.Save(p); err != nil {
 		t.Fatal(err)
 	}
@@ -201,18 +201,27 @@ func TestAuthorityStateMatrix(t *testing.T) {
 		{"bridge", bridge, AuthorityBridge, false},
 		{"permanent-migrated", `"adrFormatV1From":4,"legacyAdrGaps":[2]`, AuthorityPermanent, false},
 		{"permanent-initialized", `"adrFormatV1From":4,"legacyAdrGaps":[2],"initializedWithVersion":"0.20.0"`, AuthorityPermanent, false},
+		{"permanent-v-prefixed", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"v0.20.0"`, AuthorityPermanent, false},
 		{"pre-tracking", "", AuthorityPreTracking, false},
 		{"mixed", bridge + `,"adrFormatV1From":4,"legacyAdrGaps":[]`, 0, true},
 		{"init-without-cutoff", `"initializedWithVersion":"0.20.0"`, 0, true},
 		{"gaps-without-cutoff", `"legacyAdrGaps":[]`, 0, true},
 		{"cutoff-without-gaps", `"adrFormatV1From":1`, 0, true},
+		{"null-gaps", `"adrFormatV1From":1,"legacyAdrGaps":null`, 0, true},
 		{"negative-cutoff", `"adrFormatV1From":-1,"legacyAdrGaps":[]`, 0, true},
 		{"bad-gaps-duplicate", `"adrFormatV1From":4,"legacyAdrGaps":[2,2]`, 0, true},
 		{"bad-gaps-descending", `"adrFormatV1From":4,"legacyAdrGaps":[3,2]`, 0, true},
 		{"bad-gaps-zero", `"adrFormatV1From":4,"legacyAdrGaps":[0]`, 0, true},
 		{"bad-gaps-cutoff", `"adrFormatV1From":4,"legacyAdrGaps":[4]`, 0, true},
 		{"bad-init-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"nope"`, 0, true},
+		{"bad-awf-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"0.20.0"`, 0, true},
 		{"future-init-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"0.21.0"`, 0, true},
+		{"bridge-null-gaps", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":null}`, 0, true},
+		{"bridge-zero-cutoff", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":0,"legacyADRGaps":[]}`, 0, true},
+		{"bridge-bad-gaps", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2,2]}`, 0, true},
+		{"bridge-descending-gaps", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[3,2]}`, 0, true},
+		{"bridge-gap-zero", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[0]}`, 0, true},
+		{"bridge-gap-cutoff", `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[4]}`, 0, true},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -220,7 +229,14 @@ func TestAuthorityStateMatrix(t *testing.T) {
 			if tc.fields != "" {
 				comma = "," + tc.fields
 			}
-			lock, err := Parse([]byte(`{"awfVersion":"0.20.0","schemaVersion":14,"files":{}` + comma + `}`))
+			awfVersion := "0.20.0"
+			if tc.name == "permanent-v-prefixed" {
+				awfVersion = "v0.20.0"
+			}
+			if tc.name == "bad-awf-version" {
+				awfVersion = "broken"
+			}
+			lock, err := Parse([]byte(`{"awfVersion":"` + awfVersion + `","schemaVersion":14,"files":{}` + comma + `}`))
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected invalid authority")
@@ -255,6 +271,14 @@ func TestAuthorityStateMatrix(t *testing.T) {
 	}
 	if err := invalid.Save(filepath.Join(t.TempDir(), "invalid.lock")); err == nil {
 		t.Fatal("invalid programmatic lock saved")
+	}
+	cutoffWithoutExplicitGaps := &Lock{AWFVersion: "0.20.0", ADRFormatV1From: 4}
+	if _, err := cutoffWithoutExplicitGaps.Marshal(); err == nil || !strings.Contains(err.Error(), "non-nil legacyAdrGaps") {
+		t.Fatalf("cutoff plus nil gaps Marshal error = %v", err)
+	}
+	validProgrammatic := &Lock{AWFVersion: "v0.20.0", ADRFormatV1From: 4, LegacyADRGaps: []int{}, InitializedWithVersion: "v0.19.0"}
+	if _, err := validProgrammatic.Marshal(); err != nil {
+		t.Fatalf("v-prefixed programmatic authority rejected: %v", err)
 	}
 	if _, found, err := LoadOptional(filepath.Join(t.TempDir(), "missing.lock")); found || err != nil {
 		t.Fatalf("missing lock is pre-tracking at the project boundary: found=%v err=%v", found, err)
