@@ -49,6 +49,11 @@ lock permits only `--check`, a malformed journal refuses every mode with Git-res
 `version`/`changelog`/`help` always bypass it. The index-pruned attested tree stays non-operational
 until a later release regenerates the current-state index.
 
+`awf prose-gate` reads the staged files it scans through the immutable `internal/snapshot` index
+Tree rather than raw index blobs: the Tree captures each stage-0 file's path, executable mode, and a
+private byte copy in one path-sorted, tamper-proof view, so the scan and its `.awf/config.yaml`
+lookup share a single immutable snapshot. Only the index universe exists in Phase 1.
+
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
 skeleton is executed, then the raw part bodies are restored verbatim, so a literal `{{` in a part

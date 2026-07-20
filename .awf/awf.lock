@@ -287,8 +287,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:f96891f61ec43a0b7d4a7dca2f3049d5e78566dae4d1e11d5ab8ba0a9db79748",
-      "configHash": "sha256:50b85b9f83aa7347a9032cea171a430e1c17cda2a6f8568d302ef0679a14fe01",
-      "outputHash": "sha256:2519a5ddfc933027c8589f838b07109c18525c0f08c68ba00904b4108b07298a"
+      "configHash": "sha256:4c37012c99a41506a44a67339b8487683cd54bb9f5c9367e1761832b51973190",
+      "outputHash": "sha256:e64e347208e61540d8084861533cec3898df13aa72fa30acd7de6f164030eab4"
     },
     "docs/config-reference.md": {
       "templateId": "",

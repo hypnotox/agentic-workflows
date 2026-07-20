@@ -6,26 +6,20 @@ import (
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // runProseGate scans the project's tracked text files for banned typographic
 // punctuation substitutes (ADR-0119). It returns nil without scanning when the
 // knob is off, so a hook or a runner may invoke it unconditionally.
 func runProseGate(root string, stdout io.Writer) error {
-	blobs, err := git.IndexBlobs(root)
+	tree, err := snapshot.IndexTree(root)
 	if err != nil {
 		return fmt.Errorf("prose-gate: cannot read staged files: %w", err)
 	}
-	var stagedConfig *git.IndexBlob
-	for i := range blobs {
-		if blobs[i].Path == ".awf/config.yaml" {
-			stagedConfig = &blobs[i]
-			break
-		}
-	}
-	if stagedConfig == nil {
+	stagedConfig, ok := tree.Lookup(".awf/config.yaml")
+	if !ok {
 		return errors.New("prose-gate: staged snapshot has no .awf/config.yaml")
 	}
 	cfg, err := config.Parse(config.RootDir(root), stagedConfig.Bytes)
@@ -43,6 +37,7 @@ func runProseGate(root string, stdout io.Writer) error {
 		}
 		exemptions = append(exemptions, prosegate.Exemption{Path: e.Path, Codepoint: r, Count: e.Count})
 	}
+	blobs := tree.List()
 	files := make([]prosegate.File, len(blobs))
 	for i, blob := range blobs {
 		files[i] = prosegate.File{Path: blob.Path, Bytes: blob.Bytes}

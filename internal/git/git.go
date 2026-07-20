@@ -262,9 +262,12 @@ var ErrIndexUnmerged = errors.New("index contains unmerged entries")
 var ErrIndexBlob = errors.New("read index blob")
 
 // IndexBlob is one regular file's exact bytes from the stage-0 index snapshot.
+// Executable reports whether the entry carries the executable file mode, so a
+// caller can preserve mode without re-reading the index.
 type IndexBlob struct {
-	Path  string
-	Bytes []byte
+	Path       string
+	Bytes      []byte
+	Executable bool
 }
 
 // IndexBlobs returns sorted stage-0 ordinary and executable blobs from the
@@ -305,7 +308,7 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 		if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
 			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, closeErr)
 		}
-		out = append(out, IndexBlob{Path: e.Name, Bytes: b})
+		out = append(out, IndexBlob{Path: e.Name, Bytes: b, Executable: e.Mode == filemode.Executable})
 	}
 	return out, nil
 }

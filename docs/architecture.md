@@ -172,10 +172,17 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
 - **`internal/git/`**: centralised tolerant go-git repo-open (linked worktrees, submodules, the
   `worktreeConfig`-extension workaround) plus tracked-path, eligible working-path, HEAD-blob, and
-  staged-blob readers; read-only,
-  shared by `awf audit`, `awf context`, and `awf prose-gate` (ADR-0092). It is also the sole
+  staged-blob readers (each staged blob now also carrying its executable mode); read-only,
+  shared by `awf audit` and `awf context`, and feeding the `internal/snapshot` index seam that
+  `awf prose-gate` consumes (ADR-0092). It is also the sole
   definition site for `<a>..<b>` range parsing (`ParseRange`, ADR-0127): every command taking
   a range parses through it, and a test fails the build if a second parser reappears.
+- **`internal/snapshot/`**: captures immutable, path-sorted file trees whose `File`s own private
+  byte copies, so a consumer reads the captured content and mode without mutating the snapshot or the
+  caller's data; `NewTree` rejects unsupported modes, unsafe paths, and duplicates. Phase 1 exposes
+  only `IndexTree`, which wraps `internal/git`'s stage-0 index blobs (preserving executable mode,
+  rejecting an unmerged index) and is consumed by `awf prose-gate`. Working, commit, and range
+  universes arrive with the current-state runtime.
 - **`internal/configspec/`**: the compile-time, adopter-facing description authority (ADR-0088):
   every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
   availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional
@@ -256,6 +263,11 @@ commands whenever a journal or attestation exists: a valid journal permits only 
 lock permits only `--check`, a malformed journal refuses every mode with Git-restoration guidance, and
 `version`/`changelog`/`help` always bypass it. The index-pruned attested tree stays non-operational
 until a later release regenerates the current-state index.
+
+`awf prose-gate` reads the staged files it scans through the immutable `internal/snapshot` index
+Tree rather than raw index blobs: the Tree captures each stage-0 file's path, executable mode, and a
+private byte copy in one path-sorted, tamper-proof view, so the scan and its `.awf/config.yaml`
+lookup share a single immutable snapshot. Only the index universe exists in Phase 1.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
