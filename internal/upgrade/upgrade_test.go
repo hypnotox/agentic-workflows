@@ -236,6 +236,10 @@ func TestFinalUpgradeRequiresAttestation(t *testing.T) {
 	if err := FinalUpgrade(dir, lock, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "no current-state attestation") {
 		t.Fatalf("want no-attestation error, got %v", err)
 	}
+	invalid := &manifest.Lock{AWFVersion: "0.19.0", InitializedWithVersion: "0.19.0"}
+	if err := FinalUpgrade(dir, invalid, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "restore") {
+		t.Fatalf("want invalid-authority error, got %v", err)
+	}
 }
 
 func TestFinalUpgradeRejectsInvalidSeal(t *testing.T) {

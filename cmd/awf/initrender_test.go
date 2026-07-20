@@ -119,7 +119,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	repo, root := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: \"\"}\nskills: [tdd]\nagents: []\n")
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	var out bytes.Buffer
@@ -139,7 +139,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\nskills: [tdd]\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
 		"<!-- awf:stub -->\nstarter notes\n")
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	var out bytes.Buffer

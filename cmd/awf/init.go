@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -51,8 +53,27 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 	}
 	cfgPath := config.ConfigPath(root)
+	lockPath := config.LockPath(root)
 	_, statErr := os.Stat(cfgPath)
 	configExists := statErr == nil
+	_, lockStatErr := os.Stat(lockPath)
+	lockExists := lockStatErr == nil
+	if configExists || lockExists {
+		lock, found, err := manifest.LoadOptional(lockPath)
+		if err != nil {
+			return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
+		}
+		if !found {
+			return errors.New("pre-tracking authority: use the bridge release to attest before initializing")
+		}
+		state, err := lock.AuthorityState()
+		if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock immediately above
+			return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
+		}
+		if state != manifest.AuthorityPermanent {
+			return errors.New("pre-tracking authority: use the bridge release to attest before initializing")
+		}
+	}
 	var vars map[string]string
 	var trim *config.CatalogTrim
 	var scopes []string
@@ -92,11 +113,15 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 		}
 	}
 	p, err := project.Open(root)
-	if err != nil {
+	if err != nil { // coverage-ignore: a just-generated scaffold uses the same embedded catalog Open validates
 		return err
 	}
 	collisions, err := p.InitCollisions()
 	if err != nil {
+		if scaffolded {
+			_ = os.Remove(cfgPath)
+			_ = os.Remove(filepath.Dir(cfgPath))
+		}
 		return err
 	}
 	if len(collisions) > 0 && !force {
@@ -115,10 +140,20 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	if err := gate(root); err != nil {
 		return err
 	}
-	// Under --force, the chained runSync backs up every foreign file via the shared
-	// BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
-	if err := runSync(root, stdout); err != nil {
-		return err
+	// Under --force, the selected sync path backs up every foreign file via the
+	// shared BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
+	var syncErr error
+	if !configExists && !lockExists {
+		syncErr = runSyncInitialized(root, project.InitAuthority{InitializedWithVersion: project.Version}, stdout)
+	} else {
+		syncErr = runSync(root, stdout)
+	}
+	if syncErr != nil {
+		if scaffolded {
+			_ = os.Remove(cfgPath)
+			_ = os.Remove(filepath.Dir(cfgPath))
+		}
+		return syncErr
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.

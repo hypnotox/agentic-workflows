@@ -46,15 +46,30 @@ func runUpgrade(root string, stdout io.Writer) error {
 	if !migrate.ProjectPresent(root) {
 		return errors.New("not an awf project (run `awf init`)")
 	}
-	lock, found, err := manifest.LoadOptional(config.LockPath(root))
+	authorityPath := authorityLockPath(root)
+	lock, found, err := manifest.LoadOptional(authorityPath)
 	if err != nil {
 		return err
 	}
-	if found && lock.BridgeAttestation != nil {
+	if !found {
+		return errors.New("pre-tracking authority: use the bridge release to attest before upgrading")
+	}
+	authority, err := lock.AuthorityState()
+	if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock
+		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; if a cutover journal exists run `awf upgrade --recover`: %w", err)
+	}
+	switch authority {
+	case manifest.AuthorityBridge:
 		return upgrade.FinalUpgrade(root, lock, stdout)
+	case manifest.AuthorityPermanent:
+		// Continue with ordinary schema migration and sync.
+	case manifest.AuthorityPreTracking:
+		return errors.New("pre-tracking authority: use the bridge release to attest before upgrading")
+	default: // coverage-ignore: AuthorityState returns only the closed enum values
+		return errors.New("invalid authority: restore .awf/awf.lock from version control")
 	}
 	state, gen, err := migrate.GateState(root)
-	if err != nil {
+	if err != nil { // coverage-ignore: the authority load just read the same active layout lock; only a concurrent fault can newly fail
 		return err
 	}
 	if state == "ahead" {
@@ -69,6 +84,12 @@ func runUpgrade(root string, stdout io.Writer) error {
 	}
 	for _, name := range applied {
 		fmt.Fprintf(stdout, "awf upgrade: applied %s\n", name)
+	}
+	if authorityPath != config.LockPath(root) {
+		lock.SchemaVersion = migrate.Current()
+		if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: migration just created the writable current config directory
+			return err
+		}
 	}
 	// Gate before the terminal sync: migration brings the schema current, but a
 	// binary behind the lock's awfVersion (version axis, schema equal) must still

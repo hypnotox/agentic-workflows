@@ -174,7 +174,7 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/topics/rendering/contracts.md"), "foreign\n")
 	p, _ := Open(root)
-	backups, _, _, err := p.SyncReport()
+	backups, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}

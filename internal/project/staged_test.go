@@ -21,7 +21,7 @@ import (
 // internal/foo/**, and the Implemented ADR the claim cites.
 func stagedHeadFiles() map[string]string {
 	return map[string]string{
-		".awf/awf.lock":                                `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2}`,
+		".awf/awf.lock":                                `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2,"legacyAdrGaps":[]}`,
 		".awf/config.yaml":                             csYAML,
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
@@ -104,6 +104,19 @@ func TestCheckStagedRejectsPermanentFormatAuthorityMutation(t *testing.T) {
 				t.Fatalf("CheckStaged mutation error = %v", err)
 			}
 		})
+	}
+}
+
+func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2,"legacyAdrGaps":[],"initializedWithVersion":"0.18.0"}`
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "head", nil)
+	p := openStaged(t, dir)
+	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, InitializedWithVersion: "0.19.0"})
+	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
+		t.Fatalf("CheckStaged init-version mutation error = %v", err)
 	}
 }
 

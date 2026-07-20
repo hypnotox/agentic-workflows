@@ -191,6 +191,76 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	}
 }
 
+func TestAuthorityStateMatrix(t *testing.T) {
+	bridge := `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2]}`
+	tests := []struct {
+		name, fields string
+		want         AuthorityState
+		wantErr      bool
+	}{
+		{"bridge", bridge, AuthorityBridge, false},
+		{"permanent-migrated", `"adrFormatV1From":4,"legacyAdrGaps":[2]`, AuthorityPermanent, false},
+		{"permanent-initialized", `"adrFormatV1From":4,"legacyAdrGaps":[2],"initializedWithVersion":"0.20.0"`, AuthorityPermanent, false},
+		{"pre-tracking", "", AuthorityPreTracking, false},
+		{"mixed", bridge + `,"adrFormatV1From":4,"legacyAdrGaps":[]`, 0, true},
+		{"init-without-cutoff", `"initializedWithVersion":"0.20.0"`, 0, true},
+		{"gaps-without-cutoff", `"legacyAdrGaps":[]`, 0, true},
+		{"cutoff-without-gaps", `"adrFormatV1From":1`, 0, true},
+		{"negative-cutoff", `"adrFormatV1From":-1,"legacyAdrGaps":[]`, 0, true},
+		{"bad-gaps-duplicate", `"adrFormatV1From":4,"legacyAdrGaps":[2,2]`, 0, true},
+		{"bad-gaps-descending", `"adrFormatV1From":4,"legacyAdrGaps":[3,2]`, 0, true},
+		{"bad-gaps-zero", `"adrFormatV1From":4,"legacyAdrGaps":[0]`, 0, true},
+		{"bad-gaps-cutoff", `"adrFormatV1From":4,"legacyAdrGaps":[4]`, 0, true},
+		{"bad-init-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"nope"`, 0, true},
+		{"future-init-version", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"0.21.0"`, 0, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			comma := ""
+			if tc.fields != "" {
+				comma = "," + tc.fields
+			}
+			lock, err := Parse([]byte(`{"awfVersion":"0.20.0","schemaVersion":14,"files":{}` + comma + `}`))
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected invalid authority")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			got, err := lock.AuthorityState()
+			if err != nil || got != tc.want {
+				t.Fatalf("state=%v err=%v, want %v", got, err, tc.want)
+			}
+			b, err := lock.Marshal()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tc.want == AuthorityPermanent && !strings.Contains(string(b), `"legacyAdrGaps"`) {
+				t.Fatalf("permanent gaps omitted: %s", b)
+			}
+			if tc.name == "permanent-migrated" && strings.Contains(string(b), "initializedWithVersion") {
+				t.Fatalf("old lock gained init provenance: %s", b)
+			}
+		})
+	}
+	if _, err := Parse([]byte(`{"awfVersion":"0.20.0","schemaVersion":"bad","files":{}}`)); err == nil {
+		t.Fatal("typed lock mismatch parsed")
+	}
+	invalid := &Lock{AWFVersion: "0.20.0", InitializedWithVersion: "0.20.0"}
+	if _, err := invalid.Marshal(); err == nil {
+		t.Fatal("invalid programmatic lock marshaled")
+	}
+	if err := invalid.Save(filepath.Join(t.TempDir(), "invalid.lock")); err == nil {
+		t.Fatal("invalid programmatic lock saved")
+	}
+	if _, found, err := LoadOptional(filepath.Join(t.TempDir(), "missing.lock")); found || err != nil {
+		t.Fatalf("missing lock is pre-tracking at the project boundary: found=%v err=%v", found, err)
+	}
+}
+
 func TestSaveDirectoryAtPath(t *testing.T) {
 	// A directory squatting on the lock path makes WriteFile fail for all users (incl. root).
 	dir := t.TempDir()

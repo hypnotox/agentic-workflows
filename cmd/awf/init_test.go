@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -187,6 +188,9 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
 	testsupport.WriteAwfConfig(t, root, "prefix: ex\nskills: []\nagents: []\n")
+	if err := initializeProject(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
 	origStdin := stdin
 	stdin = strings.NewReader("answered-one\nanswered-two\nanswered-three\n")
 	t.Cleanup(func() { stdin = origStdin })

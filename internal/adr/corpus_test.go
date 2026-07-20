@@ -339,19 +339,20 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 
 // TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
 // adr.ParseDir has no production caller outside internal/adr - every consumer
-// enters through Corpus construction - and inside internal/adr only that seam
-// and NextNumber call it. NextNumber is the enumerated exception: it runs on
-// the awf new adr path, which holds no corpus.
+// enters through Corpus construction - and inside internal/adr only that seam,
+// NextNumber, and AdoptionBoundary call it. The latter two are enumerated
+// command-boundary exceptions that hold no active topic corpus.
 // invariant: adr-system/adr-lifecycle:corpus-parsed-once
 func parseDirProblems(callers map[callOwner][]string) []string {
 	want := map[callOwner]bool{
-		{path: "internal/adr/corpus.go", name: "LoadCorpus"}: true,
-		{path: "internal/adr/adr.go", name: "NextNumber"}:    true,
+		{path: "internal/adr/corpus.go", name: "LoadCorpus"}:    true,
+		{path: "internal/adr/adr.go", name: "NextNumber"}:       true,
+		{path: "internal/adr/adr.go", name: "AdoptionBoundary"}: true,
 	}
 	var problems []string
 	for owner, positions := range callers {
 		if !want[owner] {
-			problems = append(problems, owner.path+":"+owner.name+" calls ParseDir outside LoadCorpus or NextNumber: "+strings.Join(positions, ", "))
+			problems = append(problems, owner.path+":"+owner.name+" calls ParseDir outside the approved seams: "+strings.Join(positions, ", "))
 		}
 	}
 	for owner := range want {
@@ -411,8 +412,8 @@ func mutationParseDir() {
 		t.Fatalf("aliased ParseDir invocation escaped the production detector: %#v", got)
 	}
 
-	const parseCall = "\tadrs, err := ParseDir(dir)\n"
-	withoutNext := replaceMutationSource(t, "internal/adr/adr.go", parseCall, "\tvar adrs []ADR\n\tvar err error\n")
+	const nextParseCall = "func NextNumber(dir string) (string, error) {\n\tadrs, err := ParseDir(dir)\n"
+	withoutNext := replaceMutationSource(t, "internal/adr/adr.go", nextParseCall, "func NextNumber(dir string) (string, error) {\n\tvar adrs []ADR\n\tvar err error\n")
 	withoutNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutNext)
 	if problems := parseDirProblems(parseDirCallFindings(withoutNextPkgs)); len(problems) != 1 ||
 		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once") {
@@ -433,7 +434,7 @@ func NextNumber(dir string)`)
 		t.Fatalf("additional adr.go function call escaped enclosing-function proof: %#v", problems)
 	}
 
-	duplicateNext := replaceMutationSource(t, "internal/adr/adr.go", parseCall, parseCall+"\t_, _ = ParseDir(dir)\n")
+	duplicateNext := replaceMutationSource(t, "internal/adr/adr.go", nextParseCall, nextParseCall+"\t_, _ = ParseDir(dir)\n")
 	duplicateNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateNext)
 	if problems := parseDirProblems(parseDirCallFindings(duplicateNextPkgs)); len(problems) != 1 ||
 		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once; found 2") {

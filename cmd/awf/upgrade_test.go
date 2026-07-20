@@ -13,6 +13,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
@@ -20,6 +21,30 @@ import (
 // an old-tree (.claude/awf/) project whose legacy lock is corrupt. The new-tree
 // lock is absent (so the earlier LoadOptional passes), and the fault surfaces
 // when GateState reads the legacy lock to compute the generation.
+func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
+	for _, tc := range []struct{ name, lock, want string }{
+		{"missing", "", "use the bridge release to attest"},
+		{"pre-tracking", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`, "use the bridge release to attest"},
+		{"invalid", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"adrFormatV1From":1}`, "restore"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			testsupport.WriteAwfConfig(t, root, minimalYAML)
+			if tc.lock != "" {
+				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
+			}
+			before := snapshotTree(t, root)
+			err := runUpgrade(root, io.Discard)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error=%v, want %q", err, tc.want)
+			}
+			if after := snapshotTree(t, root); after != before {
+				t.Fatal("refused upgrade mutated the tree")
+			}
+		})
+	}
+}
+
 func TestRunUpgradeGateStateError(t *testing.T) {
 	root := t.TempDir()
 	oldDir := filepath.Join(root, ".claude", "awf")
@@ -81,7 +106,10 @@ func attestLock(t *testing.T, root string) {
 	if err != nil || !found {
 		t.Fatalf("load lock: %v found=%t", err, found)
 	}
-	lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "0000000000000000000000000000000000000000", TreeDigest: "sha256:0", ADRFormatV1From: 137}
+	lock = &manifest.Lock{
+		AWFVersion: lock.AWFVersion, SchemaVersion: lock.SchemaVersion, Files: lock.Files,
+		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "0000000000000000000000000000000000000000", TreeDigest: "sha256:0", ADRFormatV1From: 137},
+	}
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}

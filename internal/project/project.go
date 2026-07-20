@@ -113,15 +113,49 @@ type Change struct {
 // it, and returning those backups (ADR-0035) plus the per-file provenance of
 // output that changed against the prior lock and the lock-relative paths of the
 // files its prune actually removed (both path-sorted; a file whose output is
-// byte-identical, and a first sync with no prior lock, report no change - a
-// routine re-sync stays silent).
+// byte-identical, and first-adoption initialization with no prior lock reports
+// no change - a routine re-sync stays silent).
 func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
+	return p.syncReport(nil)
+}
+
+// InitAuthority is the explicit provenance supplied only by first adoption.
+type InitAuthority struct {
+	InitializedWithVersion string
+}
+
+// InitializeReport renders a first adoption while sealing its existing ADR
+// identities. It has the same reporting contract as SyncReport.
+func (p *Project) InitializeReport(seed InitAuthority) ([]Backup, []Change, []string, error) {
+	return p.syncReport(&seed)
+}
+
+func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string, error) {
 	p.beginInvocation()
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
-	old, _, err := manifest.LoadOptional(p.lockPath())
+	old, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return nil, nil, nil, err
+	}
+	var initCutoff int
+	var initGaps []int
+	if seed != nil {
+		if found {
+			return nil, nil, nil, errors.New("first-adoption initialization requires an absent lock")
+		}
+		initCutoff, initGaps, err = adr.AdoptionBoundary(p.decisionsDir())
+		if err != nil {
+			return nil, nil, nil, fmt.Errorf("seal first-adoption ADR authority: %w", err)
+		}
+	} else {
+		if !found {
+			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync cannot create lock authority; use the bridge release to attest")
+		}
+		state, stateErr := old.AuthorityState()
+		if stateErr != nil || state != manifest.AuthorityPermanent {
+			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
+		}
 	}
 	op, err := p.OutputPlan()
 	if err != nil {
@@ -157,8 +191,13 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 	var backups []Backup
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	if old != nil {
+		lock.InitializedWithVersion = old.InitializedWithVersion
 		lock.ADRFormatV1From = old.ADRFormatV1From
 		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
+	} else {
+		lock.InitializedWithVersion = seed.InitializedWithVersion
+		lock.ADRFormatV1From = initCutoff
+		lock.LegacyADRGaps = slices.Clone(initGaps)
 	}
 	want := map[string]bool{}
 	for _, f := range files {

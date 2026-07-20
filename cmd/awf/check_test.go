@@ -57,7 +57,7 @@ func TestRunCheckNoLock(t *testing.T) {
 func TestRunCheckCurrentStateError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
 	if err := runCheck(root, false, io.Discard); err == nil {
@@ -75,6 +75,7 @@ func repinLockVersion(t *testing.T, root, version string) {
 		t.Fatal(err)
 	}
 	l.AWFVersion = version
+	l.InitializedWithVersion = ""
 	if err := l.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +222,7 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 	lockText := func(version string, generation int) string {
 		t.Helper()
-		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}}
+		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
 		b, err := lock.Marshal()
 		if err != nil {
 			t.Fatal(err)
@@ -272,6 +273,9 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 		if attested {
 			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2}
+		} else {
+			lock.ADRFormatV1From = 1
+			lock.LegacyADRGaps = []int{}
 		}
 		b, err := lock.Marshal()
 		if err != nil {

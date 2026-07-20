@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+
+	"golang.org/x/mod/semver"
 )
 
 type Entry struct {
@@ -35,13 +37,79 @@ type Lock struct {
 	// ADRFormatV1From is the permanent format cutoff (the highest ADR number plus
 	// one) the final current-state upgrade promotes out of the consumed
 	// attestation. Every ADR at or above it is current-state-v1; below it is
-	// legacy. Zero (omitted) before cutover, when no ADR is current-state-v1.
+	// legacy. Zero is valid only for bridge or pre-tracking authority.
 	ADRFormatV1From int `json:"adrFormatV1From,omitempty"`
 	// LegacyADRGaps is the sorted set of absent lower ADR numbers the final
 	// upgrade promotes alongside the cutoff, closing the migration-time identity
 	// set so a listed gap can never be backfilled as legacy. It is absent before
 	// cutover and serialized as an explicit array, including [], after cutover.
 	LegacyADRGaps []int `json:"legacyAdrGaps,omitempty"`
+	// InitializedWithVersion records the binary that completed first adoption.
+	// It is absent for older migrated adopters and immutable once present.
+	InitializedWithVersion string `json:"initializedWithVersion,omitempty"`
+
+	legacyADRGapsPresent  bool
+	authorityFieldsParsed bool
+}
+
+// AuthorityState is the closed lock-authority state machine.
+type AuthorityState uint8
+
+const (
+	AuthorityBridge AuthorityState = iota + 1
+	AuthorityPermanent
+	AuthorityPreTracking
+)
+
+// AuthorityState validates and classifies the lock's current-state authority.
+func (l *Lock) AuthorityState() (AuthorityState, error) {
+	gapsPresent := l.legacyADRGapsPresent || l.LegacyADRGaps != nil
+	if !l.authorityFieldsParsed && l.ADRFormatV1From > 0 {
+		gapsPresent = true
+	}
+	hasBridge := l.BridgeAttestation != nil
+	hasCutoff := l.ADRFormatV1From != 0
+	hasInit := l.InitializedWithVersion != ""
+
+	if hasBridge {
+		if hasCutoff || gapsPresent || hasInit {
+			return 0, errors.New("invalid lock authority: bridge attestation cannot be mixed with permanent or initialization authority")
+		}
+		return AuthorityBridge, nil
+	}
+	if !hasCutoff && !gapsPresent && !hasInit {
+		return AuthorityPreTracking, nil
+	}
+	if !hasCutoff {
+		return 0, errors.New("invalid lock authority: initializedWithVersion or legacyAdrGaps requires adrFormatV1From")
+	}
+	if l.ADRFormatV1From < 1 {
+		return 0, errors.New("invalid lock authority: adrFormatV1From must be positive")
+	}
+	if !gapsPresent {
+		return 0, errors.New("invalid lock authority: adrFormatV1From requires an explicit legacyAdrGaps field")
+	}
+	previous := 0
+	for _, gap := range l.LegacyADRGaps {
+		if gap <= 0 || gap >= l.ADRFormatV1From {
+			return 0, fmt.Errorf("invalid lock authority: legacyAdrGaps value %d must be positive and below cutoff %d", gap, l.ADRFormatV1From)
+		}
+		if gap <= previous {
+			return 0, errors.New("invalid lock authority: legacyAdrGaps must be sorted and unique")
+		}
+		previous = gap
+	}
+	if hasInit {
+		v := "v" + l.InitializedWithVersion
+		awf := "v" + l.AWFVersion
+		if !semver.IsValid(v) {
+			return 0, fmt.Errorf("invalid lock authority: initializedWithVersion %q is not semantic version syntax", l.InitializedWithVersion)
+		}
+		if !semver.IsValid(awf) || semver.Compare(v, awf) > 0 {
+			return 0, fmt.Errorf("invalid lock authority: initializedWithVersion %q is later than awfVersion %q", l.InitializedWithVersion, l.AWFVersion)
+		}
+	}
+	return AuthorityPermanent, nil
 }
 
 // BridgeAttestation records the sealed identity of a current-state upgrade
@@ -74,8 +142,17 @@ func Load(path string) (*Lock, error) {
 
 // Parse decodes lock bytes from any snapshot universe.
 func Parse(b []byte) (*Lock, error) {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return nil, fmt.Errorf("parse lock: %w", err)
+	}
 	var l Lock
 	if err := json.Unmarshal(b, &l); err != nil {
+		return nil, fmt.Errorf("parse lock: %w", err)
+	}
+	_, l.legacyADRGapsPresent = raw["legacyAdrGaps"]
+	l.authorityFieldsParsed = true
+	if _, err := l.AuthorityState(); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
 	return &l, nil
@@ -83,7 +160,7 @@ func Parse(b []byte) (*Lock, error) {
 
 func (l *Lock) Save(path string) error {
 	b, err := l.Marshal()
-	if err != nil { // coverage-ignore: Marshal fails only on an unsupported type, which Lock never holds
+	if err != nil {
 		return err
 	}
 	return WriteFileAtomic(path, b)
@@ -93,6 +170,9 @@ func (l *Lock) Save(path string) error {
 // with a trailing newline. Attestation reuses it so the sealed lock bytes match
 // what a subsequent Load/Save round-trips.
 func (l *Lock) Marshal() ([]byte, error) {
+	if _, err := l.AuthorityState(); err != nil {
+		return nil, err
+	}
 	// A pointer distinguishes the permanent post-cutover empty gap set ([])
 	// from the pre-cutover absence of gap authority (field omitted).
 	var gaps *[]int
@@ -104,13 +184,14 @@ func (l *Lock) Marshal() ([]byte, error) {
 		gaps = &value
 	}
 	canonical := struct {
-		AWFVersion        string             `json:"awfVersion"`
-		SchemaVersion     int                `json:"schemaVersion"`
-		Files             map[string]Entry   `json:"files"`
-		BridgeAttestation *BridgeAttestation `json:"bridgeAttestation,omitempty"`
-		ADRFormatV1From   int                `json:"adrFormatV1From,omitempty"`
-		LegacyADRGaps     *[]int             `json:"legacyAdrGaps,omitempty"`
-	}{l.AWFVersion, l.SchemaVersion, l.Files, l.BridgeAttestation, l.ADRFormatV1From, gaps}
+		AWFVersion             string             `json:"awfVersion"`
+		SchemaVersion          int                `json:"schemaVersion"`
+		Files                  map[string]Entry   `json:"files"`
+		BridgeAttestation      *BridgeAttestation `json:"bridgeAttestation,omitempty"`
+		ADRFormatV1From        int                `json:"adrFormatV1From,omitempty"`
+		LegacyADRGaps          *[]int             `json:"legacyAdrGaps,omitempty"`
+		InitializedWithVersion string             `json:"initializedWithVersion,omitempty"`
+	}{l.AWFVersion, l.SchemaVersion, l.Files, l.BridgeAttestation, l.ADRFormatV1From, gaps, l.InitializedWithVersion}
 	b, err := json.MarshalIndent(canonical, "", "  ")
 	if err != nil { // coverage-ignore: the canonical lock holds only JSON-supported scalar, slice, map, and struct fields
 		return nil, err

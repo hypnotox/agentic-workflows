@@ -45,10 +45,14 @@ func Verify(root string, att *manifest.BridgeAttestation) error {
 // fields. The lock replacement is the transaction commit point; a pre-commit
 // failure rolls back, a post-commit failure leaves a recoverable journal.
 func FinalUpgrade(root string, lock *manifest.Lock, log io.Writer) error {
-	att := lock.BridgeAttestation
-	if att == nil {
+	state, err := lock.AuthorityState()
+	if err != nil {
+		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control; run `awf upgrade --recover` if a journal exists: %w", err)
+	}
+	if state != manifest.AuthorityBridge {
 		return errors.New("no current-state attestation to consume")
 	}
+	att := lock.BridgeAttestation
 	if err := Verify(root, att); err != nil {
 		return err
 	}

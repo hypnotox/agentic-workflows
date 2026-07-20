@@ -21,7 +21,7 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
 	// Sync writes the lock so Project.Audit's generated-path set is populated.
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	repo, err := git.PlainInit(root, false)

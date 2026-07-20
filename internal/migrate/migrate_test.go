@@ -940,6 +940,27 @@ func writeCorruptLock(t *testing.T, path string) {
 	}
 }
 
+func TestAuthorityLockPath(t *testing.T) {
+	for _, tc := range []struct{ name, marker, want string }{
+		{"absent", "", ".awf/awf.lock"},
+		{"current config", ".awf/config.yaml", ".awf/awf.lock"},
+		{"current lock", ".awf/awf.lock", ".awf/awf.lock"},
+		{"legacy", ".claude/awf.yaml", ".claude/awf.lock"},
+		{"old tree", ".claude/awf/config.yaml", ".claude/awf/awf.lock"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tc.marker != "" {
+				testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(tc.marker)), "x")
+			}
+			want := filepath.Join(root, filepath.FromSlash(tc.want))
+			if got := AuthorityLockPath(root); got != want {
+				t.Fatalf("got %s, want %s", got, want)
+			}
+		})
+	}
+}
+
 func TestGenerationCorruptTreeLockErrors(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {

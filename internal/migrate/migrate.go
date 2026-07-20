@@ -111,6 +111,22 @@ func Generation(root string) (int, error) {
 	return Current(), nil
 }
 
+// AuthorityLockPath returns the lock belonging to the active config layout.
+// It keeps all knowledge of retired layout paths inside the migration package.
+func AuthorityLockPath(root string) string {
+	current := config.LockPath(root)
+	if fileExists(config.ConfigPath(root)) || fileExists(current) {
+		return current
+	}
+	if fileExists(filepath.Join(root, ".claude", "awf.yaml")) {
+		return filepath.Join(root, ".claude", "awf.lock")
+	}
+	if fileExists(filepath.Join(root, ".claude", "awf", "config.yaml")) {
+		return filepath.Join(root, ".claude", "awf", "awf.lock")
+	}
+	return current
+}
+
 // ProjectPresent reports whether any awf config layout (current tree,
 // pre-relocation tree, or legacy single file) exists under root - the
 // distinction Generation cannot express, since "nothing present" reports

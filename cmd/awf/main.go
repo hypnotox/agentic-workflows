@@ -130,7 +130,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
 func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	switch top.Name {
-	case "version", "changelog":
+	case "version", "changelog", "commit-gate", "prose-gate":
 		return nil
 	}
 	staged := top.Name == "check" && inv.bools["--staged"]
@@ -158,20 +158,39 @@ func guardProjectState(root string, top clispec.Command, inv invocation) error {
 		}
 		return errors.New("a current-state upgrade journal is present; run `awf upgrade --recover` before any other command")
 	}
-	// No journal: consult the lock for a committed attestation. A corrupt lock
-	// (loadErr) is left to the existing ADR-0076 refusal downstream, so only a
-	// cleanly loaded attested lock drives the guard here.
-	if loadErr == nil && found && lock.BridgeAttestation != nil {
+	// No journal: classify the lock before any authority-consuming command can
+	// mutate or interpret the project.
+	if loadErr != nil {
+		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", loadErr)
+	}
+	if !found {
+		return errors.New("pre-tracking authority: use the bridge release to attest before continuing")
+	}
+	state, stateErr := lock.AuthorityState()
+	if stateErr != nil { // coverage-ignore: projectGuardState loaded and validated this unchanged lock
+		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", stateErr)
+	}
+	switch state {
+	case manifest.AuthorityBridge:
 		if isPlainUpgrade {
 			return nil
 		}
 		return errors.New("this project carries a committed current-state attestation; run `awf upgrade` to consume it")
+	case manifest.AuthorityPermanent:
+		if isRecover {
+			return errors.New("no current-state upgrade journal to recover")
+		}
+		return nil
+	case manifest.AuthorityPreTracking:
+		return errors.New("pre-tracking authority: use the bridge release to attest before continuing")
+	default: // coverage-ignore: AuthorityState returns only the closed enum values
+		return errors.New("invalid authority: restore .awf/awf.lock from version control")
 	}
-	if isRecover {
-		return errors.New("no current-state upgrade journal to recover")
-	}
-	return nil
 }
+
+// authorityLockPath resolves the lock belonging to the active config layout so
+// pre-tree adopters can still prove permanent authority before migration.
+func authorityLockPath(root string) string { return migrate.AuthorityLockPath(root) }
 
 // projectGuardState captures the presence, journal, and lock used by the
 // command-state guard. A staged check derives all three from the index snapshot;
@@ -180,7 +199,7 @@ func projectGuardState(root string, staged bool) (present bool, journal []byte, 
 	if !staged {
 		present = migrate.ProjectPresent(root)
 		journalFound = upgrade.JournalPresent(root)
-		lock, lockFound, loadErr = manifest.LoadOptional(config.LockPath(root))
+		lock, lockFound, loadErr = manifest.LoadOptional(authorityLockPath(root))
 		return
 	}
 	tree, err := snapshot.IndexTree(root)

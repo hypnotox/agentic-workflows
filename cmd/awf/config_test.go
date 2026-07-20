@@ -48,7 +48,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
@@ -145,7 +145,7 @@ func TestRunConfigOpenError(t *testing.T) {
 func TestRunConfigRenderFault(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	// A directory where a part file may sit makes the part read fail non-ErrNotExist.

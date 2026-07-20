@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -44,6 +46,16 @@ func TestGateStagedLoadErrors(t *testing.T) {
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/awf.lock": "{not json"})
 	if err := gateStaged(dir); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
 		t.Fatalf("gateStaged malformed lock error = %v", err)
+	}
+}
+
+func TestGateCorruptLockError(t *testing.T) {
+	root := gateFixture(t, "0.4.0", migrate.Current())
+	if err := os.WriteFile(config.LockPath(root), []byte("{bad"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := gate(root); err == nil {
+		t.Fatal("expected gate lock error")
 	}
 }
 

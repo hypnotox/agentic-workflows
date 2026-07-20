@@ -287,8 +287,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:f96891f61ec43a0b7d4a7dca2f3049d5e78566dae4d1e11d5ab8ba0a9db79748",
-      "configHash": "sha256:c2c4b4a85c6fd2fb2a9d11cdd28945613c130554f387171d3a3e505e2b800848",
-      "outputHash": "sha256:7779eb8fe95085632fe5fe54cf7aa5a633532d369891224272661a043a16fd9e"
+      "configHash": "sha256:0c15b316592c7198b8fd479fe53e8426091b44662d6490f32d9460cc6f166e58",
+      "outputHash": "sha256:31f7302a1080fe564aa1f70b585a4576de6fa405e1a48fa3d1b866491c863ea4"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -339,7 +339,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:d384172702f6e87915d1cdab01073121f0ee20050a69d4d09582277f6a476690",
+      "outputHash": "sha256:88281bd0c4bb0fe2e783c3e6bebff850dac24556adc7ca5560fa4dcee30299ef",
       "regenChecked": true
     },
     "docs/domains/invariants.md": {
@@ -360,7 +360,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:a2b8dd0c2c6c2b6f31c89690dc0de1d5ba0a51eca2904b26f4fa995339f5299c",
+      "outputHash": "sha256:9369dcaa3f59421e263bb0c35ba2c96c43d7c20e9ae358753a32176047d0c15d",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -545,9 +545,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:303cf141548fe375b7e9182ddeebf213abd2d19e8157f7baa76df699d3caab46",
+      "templateHash": "sha256:347cbc6f5476df31f749f24f10eccb90fe4695cf9c86a6350a7a7bc670fea06d",
       "configHash": "sha256:d6553594cd9923482a9785afb9e7ee44e2672a04c09b4d00f53d912c9848658d",
-      "outputHash": "sha256:af1d8f2c7969ab5490dfd63c4ffb08db802335d82382feb7b18f7b3be47130ee"
+      "outputHash": "sha256:acf4d65ba29f6b9cbe307fabb86cb04c0a87010dad8aefc2c4f73d018be6fc65"
     }
   },
   "adrFormatV1From": 137,

@@ -36,7 +36,7 @@ func syncedGitProject(t *testing.T, configYAML string) string {
 func syncedGitProjectFiles(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
 	dir := gitProjectFiles(t, configYAML, files)
-	if err := runSync(dir, io.Discard); err != nil {
+	if err := initializeProject(dir, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
 	return dir

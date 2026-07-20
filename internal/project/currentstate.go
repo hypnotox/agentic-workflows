@@ -79,9 +79,8 @@ type workingState struct {
 }
 
 // workingCurrentState loads the working-tree ADR/topic view plus the sealed
-// cutoff/gaps. The cutoff and recorded gaps come from the bridge attestation
-// while one is present; before cutover no ADR is current-state-v1 and the cutoff
-// is zero.
+// cutoff/gaps. Parse has already classified the lock: permanent authority owns
+// the fields directly, while a bridge attestation owns them until cutover.
 func (p *Project) workingCurrentState() (workingState, error) {
 	tree, err := snapshot.WorkingTree(p.Root)
 	if err != nil {
@@ -242,16 +241,19 @@ func validatePermanentLockTransition(before, after *manifest.Lock) error {
 	if before == nil {
 		return nil
 	}
-	if before.ADRFormatV1From == after.ADRFormatV1From && slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+	if before.InitializedWithVersion == after.InitializedWithVersion &&
+		before.ADRFormatV1From == after.ADRFormatV1From &&
+		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		return nil
 	}
-	if before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
+	if before.InitializedWithVersion == "" && after.InitializedWithVersion == "" &&
+		before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
 		after.BridgeAttestation == nil &&
 		after.ADRFormatV1From == before.BridgeAttestation.ADRFormatV1From &&
 		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
 		return nil
 	}
-	return errors.New("staged .awf/awf.lock changes immutable adrFormatV1From/legacyAdrGaps authority")
+	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/legacyAdrGaps authority")
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config

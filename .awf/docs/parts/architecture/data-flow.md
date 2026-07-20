@@ -1,5 +1,7 @@
 ## Data flow
 
+First adoption seals initializedWithVersion plus the next ADR identity and gaps before rendering: cutoff 1 for an empty decision corpus, or highest-plus-one and explicit lower gaps for validated brownfield history. The init-only seed is immutable; ordinary sync accepts only permanent authority and copies all three fields.
+
 A `sync` loads the config tree, resolves each enabled target's sections (sidecar `drop` and
 convention parts layered over template defaults, precedence
 `drop > convention part > template default`), renders each section publication-safe (ADR-0001),

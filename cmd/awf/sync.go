@@ -8,11 +8,26 @@ import (
 )
 
 func runSync(root string, stdout io.Writer) error {
+	return runSyncPrinting(root, nil, stdout)
+}
+
+func runSyncInitialized(root string, seed project.InitAuthority, stdout io.Writer) error {
+	return runSyncPrinting(root, &seed, stdout)
+}
+
+func runSyncPrinting(root string, seed *project.InitAuthority, stdout io.Writer) error {
 	p, err := project.Open(root)
 	if err != nil {
 		return err
 	}
-	backups, changes, pruned, err := p.SyncReport()
+	var backups []project.Backup
+	var changes []project.Change
+	var pruned []string
+	if seed == nil {
+		backups, changes, pruned, err = p.SyncReport()
+	} else {
+		backups, changes, pruned, err = p.InitializeReport(*seed)
+	}
 	if err != nil {
 		return err
 	}

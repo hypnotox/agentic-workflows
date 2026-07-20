@@ -79,14 +79,39 @@ agents:
   - code-reviewer
 `
 
+func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.SyncReport(); err == nil || !strings.Contains(err.Error(), "pre-tracking") {
+		t.Fatalf("missing-lock sync error=%v", err)
+	}
+	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "absent lock") {
+		t.Fatalf("repeat initialize error=%v", err)
+	}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.SyncReport(); err == nil || !strings.Contains(err.Error(), "permanent") {
+		t.Fatalf("pre-tracking sync error=%v", err)
+	}
+}
+
 func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	prior := &manifest.Lock{
-		AWFVersion:      "0.18.0",
-		SchemaVersion:   14,
-		Files:           map[string]manifest.Entry{},
-		ADRFormatV1From: 137,
-		LegacyADRGaps:   []int{2, 9},
+		AWFVersion:             "0.18.0",
+		SchemaVersion:          14,
+		Files:                  map[string]manifest.Entry{},
+		ADRFormatV1From:        137,
+		LegacyADRGaps:          []int{2, 9},
+		InitializedWithVersion: "0.18.0",
 	}
 	raw, err := prior.Marshal()
 	if err != nil {
@@ -106,8 +131,8 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ADRFormatV1From != 137 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
-		t.Fatalf("permanent current-state cutoff was not preserved: cutoff=%d gaps=%v", got.ADRFormatV1From, got.LegacyADRGaps)
+	if got.InitializedWithVersion != "0.18.0" || got.ADRFormatV1From != 137 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
+		t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoff=%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.LegacyADRGaps)
 	}
 }
 
@@ -494,7 +519,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)
-	_, changes, _, err := p.SyncReport()
+	_, changes, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1011,9 +1036,9 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	backups, _, _, err := p.SyncReport()
+	backups, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
-		t.Fatalf("SyncReport: %v", err)
+		t.Fatalf("InitializeReport: %v", err)
 	}
 	var got *Backup
 	for i := range backups {

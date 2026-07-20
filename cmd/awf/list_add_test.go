@@ -24,7 +24,7 @@ func scaffoldedProject(t *testing.T) string {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, string(b))
-	if err := runSync(root, io.Discard); err != nil {
+	if err := initializeProject(root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
 	return root

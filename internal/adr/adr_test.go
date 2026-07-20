@@ -239,6 +239,59 @@ func swapNow(t *testing.T, fn func() time.Time) {
 
 func fixedNow() time.Time { return time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC) }
 
+func TestAdoptionBoundary(t *testing.T) {
+	legacy := func(number string) string {
+		return testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(number+": Legacy"))
+	}
+	t.Run("empty", func(t *testing.T) {
+		cutoff, gaps, err := adr.AdoptionBoundary(t.TempDir())
+		if err != nil || cutoff != 1 || gaps == nil || len(gaps) != 0 {
+			t.Fatalf("got %d %v %v", cutoff, gaps, err)
+		}
+	})
+	t.Run("contiguous and gapped", func(t *testing.T) {
+		for _, tc := range []struct {
+			names  []string
+			cutoff int
+			gaps   []int
+		}{
+			{[]string{"0001-one.md", "0002-two.md"}, 3, []int{}},
+			{[]string{"0001-one.md", "0003-three.md"}, 4, []int{2}},
+		} {
+			dir := t.TempDir()
+			for _, name := range tc.names {
+				testsupport.WriteFile(t, filepath.Join(dir, name), legacy(name[:4]))
+			}
+			cutoff, gaps, err := adr.AdoptionBoundary(dir)
+			if err != nil || cutoff != tc.cutoff || !reflect.DeepEqual(gaps, tc.gaps) {
+				t.Fatalf("got %d %v %v, want %d %v", cutoff, gaps, err, tc.cutoff, tc.gaps)
+			}
+		}
+	})
+	t.Run("malformed", func(t *testing.T) {
+		dir := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(dir, "0001-bad.md"), "---\nstatus: [bad\n---\n")
+		if _, _, err := adr.AdoptionBoundary(dir); err == nil {
+			t.Fatal("expected parse error")
+		}
+	})
+	t.Run("duplicate", func(t *testing.T) {
+		dir := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(dir, "0001-one.md"), legacy("0001"))
+		testsupport.WriteFile(t, filepath.Join(dir, "0001-two.md"), legacy("0001"))
+		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "duplicate") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+	t.Run("v1 below cutoff", func(t *testing.T) {
+		dir := t.TempDir()
+		testsupport.WriteFile(t, filepath.Join(dir, "0001-v1.md"), "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0001: V1\n")
+		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "current-state-v1") {
+			t.Fatalf("error=%v", err)
+		}
+	})
+}
+
 func TestNextNumberEmptyDir(t *testing.T) {
 	dir := t.TempDir()
 	got, err := adr.NextNumber(dir)
