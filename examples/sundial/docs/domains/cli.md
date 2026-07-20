@@ -13,13 +13,3 @@ ADR-0003's proposed cache would slot between it and the almanac.
 
 - [CLI interface](../topics/cli/interface.md): The sundial command coordinate input contract and its usage-error behaviour.
 
-## Decisions
-
-### Implemented
-
-- [ADR-0002: CLI accepts coordinates as decimal degrees only](../decisions/0002-cli-accepts-coordinates-as-decimal-degrees-only.md)
-
-### Abandoned
-
-- [ADR-0003: Cache almanac tables per location](../decisions/0003-cache-almanac-tables-per-location.md)
-

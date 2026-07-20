@@ -9,9 +9,8 @@ import (
 // legacy-authority denylist (its source-scan half is
 // currentstate.TestLegacyAuthorityAbsent, kept there to avoid a project import
 // cycle). It asserts the ADR-projected ACTIVE.md index is no longer a planned
-// output: INDEX.md replaced it (ADR-0135). The residual layout.ActiveMd field and
-// activeMd templateMap key survive until the Plan 4 authored fan-out, so this is
-// a check over the output plan rather than a source-string ban.
+// output: INDEX.md replaced it (ADR-0135). This behavioral check keeps the
+// absence pinned independently of the source denylist.
 func TestLegacyActiveMDIndexNotPlanned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\ntargets: [claude]\n",
 		map[string]string{"domains/rendering.yaml": "paths: ['internal/**']\n"})

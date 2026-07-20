@@ -42,9 +42,9 @@ Severity is informational only; the dispatching skill routes by classification k
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/adr-reviewer/universal-lenses.md to override -->
 Apply all five lenses to every ADR:
 
-1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered for partial-item supersedence; no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
+1. **decision-clarity**: each Decision item must be a discrete, actionable commitment; numbered as a readable commitment (item numbers are not supersession anchors); no hedging or narrative; no bundling of items whose motivating frictions are unrelated (scope-coherence sub-check: flag only when items do not share a single rationale across all items).
 
-1. **invariants-checkability**: each Invariant bullet must be mechanically verifiable (file contains string X, no file under Z contains W, function F has signature G, artifact A appears at path P). Flag aspirational bullets ("we should prefer ...") with a concrete checkable rewrite; name the file, string, or structure a test would inspect. When a project-level invariant test path is configured, note that each Invariant requires a corresponding test annotation at `./internal/...`.
+1. **state-changes-fidelity**: the `State changes` section must be `None.` or a list whose every entry names one claim by a valid `<domain>/<topic>:<slug>` id and picks the operation (add, update, remove) that matches the Decision's intent; a rename is remove plus add. Flag an operation whose destination topic does not exist, an id named more than once, a re-add of a removed id, or a claim the Decision describes changing that is missing an operation. A claim the ADR adds is a rule or an invariant; an invariant claim must state how it will be backed. Backed invariant claims are proven by a test annotation at `./internal/...`.
 
 1. **alternatives-honesty**: no strawmen; each alternative gets a substantive rejection reason; obvious alternatives must not be omitted; the chosen option's weaknesses should surface here rather than in Consequences.
 
@@ -70,10 +70,10 @@ For each item below, flag a finding if the gating condition is met AND the ADR d
 
 - every document that states the behaviour this ADR changes is updated in the same commit
 - the decision index is regenerated when the ADR's status changes
-- when this ADR overrides a live ADR's Decision item or Invariant without superseding it wholesale, the overridden ADR's `related:` names this ADR in the same commit
-- a partial override of a live ADR carries the matching `supersedes: ADR-NNNN#<item>` or `supersedes-invariant: ADR-NNNN#<slug>` token in the successor's Decision section, one per overridden anchor
+- every claim named in the ADR's `State changes` is authored to match in the same Implemented commit: an `add` claim carries this ADR as `Origin`, an `update` appends it to `Revised-by` and changes a canonical field, and a `remove` leaves no active claim
+- each `State changes` operation's destination topic metadata exists before the ADR is Accepted, an empty topic shell for a pending add
 
-When the ADR status will land as Accepted or Implemented: a task regenerating `docs/decisions/ACTIVE.md` must be present. Regen command: `./x sync`.
+When the ADR status will land as Accepted or Implemented: a task regenerating `docs/decisions/INDEX.md` must be present. Regen command: `./x sync`.
 
 ## Dedup rule
 
@@ -81,7 +81,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 
 ## Review procedure
 
-1. Read the ADR in full. Read every doc, ADR, or state doc it references by name.
+1. Read the ADR in full. Read every doc, ADR, or current-state topic it references by name.
 1. Run all universal lenses plus any project-specific focus items.
 1. Dedup overlapping findings.
 1. Classify each finding as mechanical / reasoned / user-decision.
@@ -92,7 +92,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 ```
 ADR summary:
 - Decision: <one line, the load-bearing item>
-- Invariants: <1-2 headlines>
+- State changes: <the claim add/update/remove operations>
 - Trade-off: <one notable rejected alternative + why>
 
 ADR review complete (N lenses, M findings).

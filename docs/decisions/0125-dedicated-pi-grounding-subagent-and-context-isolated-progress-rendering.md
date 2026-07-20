@@ -208,3 +208,8 @@ in-place change to that Implemented record.
 | Use TUI-only `appendEntry` with `registerEntryRenderer` | Avoids model context, but creates persisted standalone entries, cannot naturally update the owning tool row, and complicates streaming replacement and cleanup. |
 | Stream child prose token by token | More immediate, but unstable partial prose and redraw churn add complexity without improving workflow decisions. |
 | Retain the full child transcript in details | Makes expansion complete but violates the fixed bounded-retention and no-secondary-transcript boundary. |
+
+## Migration history
+
+- 2026-07-17: retired invariant `ADR-0123#pi-explicit-workflow-dispatch`; basis: encoded
+- 2026-07-17: retired invariant `ADR-0123#pi-subagent-public-contract`; basis: encoded

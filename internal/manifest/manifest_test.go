@@ -161,6 +161,16 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	if b, _ := os.ReadFile(p); strings.Contains(string(b), "bridgeAttestation") {
 		t.Fatalf("absent attestation still serialized: %s", b)
 	}
+	if b, _ := os.ReadFile(p); strings.Contains(string(b), "legacyAdrGaps") {
+		t.Fatalf("pre-cutover lock gained permanent gap authority: %s", b)
+	}
+	permanent := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}, ADRFormatV1From: 137}
+	if err := permanent.Save(p); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(p); !strings.Contains(string(b), `"legacyAdrGaps": []`) {
+		t.Fatalf("post-cutover empty gap set is not explicit: %s", b)
+	}
 	// A populated attestation round-trips byte-stably.
 	l := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}, BridgeAttestation: &BridgeAttestation{Version: 1, PreparedHead: "abc123", TreeDigest: "sha256:deadbeef", ADRFormatV1From: 137, LegacyADRGaps: []int{12, 44}}}
 	if err := l.Save(p); err != nil {

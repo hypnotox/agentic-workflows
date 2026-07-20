@@ -30,7 +30,6 @@ func testLayout() map[string]any {
 	return map[string]any{
 		"docsDir":          "docs",
 		"adrDir":           "docs/decisions",
-		"activeMd":         "docs/decisions/ACTIVE.md",
 		"indexMd":          "docs/decisions/INDEX.md",
 		"adrReadme":        "docs/decisions/README.md",
 		"adrTemplate":      "docs/decisions/template.md",
@@ -79,6 +78,38 @@ skills:
 agents:
   - code-reviewer
 `
+
+func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	prior := &manifest.Lock{
+		AWFVersion:      "0.18.0",
+		SchemaVersion:   14,
+		Files:           map[string]manifest.Entry{},
+		ADRFormatV1From: 137,
+		LegacyADRGaps:   []int{2, 9},
+	}
+	raw, err := prior.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(lockFile(root), raw, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	got, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.ADRFormatV1From != 137 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
+		t.Fatalf("permanent current-state cutoff was not preserved: cutoff=%d gaps=%v", got.ADRFormatV1From, got.LegacyADRGaps)
+	}
+}
 
 func TestSyncWritesFilesAndLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
@@ -694,7 +725,6 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
 	l := p.layout()
 	if l.DocsDir != "documentation" || l.ADRDir != "documentation/decisions" ||
-		l.ActiveMd != "documentation/decisions/ACTIVE.md" ||
 		l.IndexMd != "documentation/decisions/INDEX.md" || l.PlansDir != "documentation/plans" {
 		t.Errorf("layout = %+v", l)
 	}
@@ -717,7 +747,6 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	wantTM := map[string]string{
 		"docsDir":          "documentation",
 		"adrDir":           "documentation/decisions",
-		"activeMd":         "documentation/decisions/ACTIVE.md",
 		"indexMd":          "documentation/decisions/INDEX.md",
 		"plansDir":         "documentation/plans",
 		"domainsDir":       "documentation/domains",
@@ -738,11 +767,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 6 fixed dir keys + docs + 9 mandatory-singleton keys = 16 (agents-doc has
+	// 5 fixed dir keys + docs + 9 mandatory-singleton keys = 15 (agents-doc has
 	// no TemplateKey and is excluded; the generated config reference is
 	// layout-exposed like its hash-checked siblings).
-	if len(tm) != 16 {
-		t.Errorf("templateMap has %d keys, want 16", len(tm))
+	if len(tm) != 15 {
+		t.Errorf("templateMap has %d keys, want 15", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)

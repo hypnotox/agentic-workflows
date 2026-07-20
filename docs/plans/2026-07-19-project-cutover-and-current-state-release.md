@@ -414,6 +414,19 @@ No commit is legal between these phases: an attested bridge lock intentionally p
   retargeted from `bridge_head` to `prep_base`. The pinned bridge binary is built from `prep_base`
   and remains 0.18.0 because Phase 1 changed neither `internal/bridge` nor the version constant.
   `prep_base` must equal `origin/main`, so the Phase 1 commits are pushed before this plan runs.
+- Execution finding: Sundial is an ordinary nested directory, not a Git submodule, while both bridge
+  attestation and seal verification require a project-root Git identity. Its exact prepared subtree
+  was therefore committed to a temporary standalone repository, attested and consumed there, and the
+  verified final diff was rerooted into the integration worktree. The permanent runtime now resolves
+  working snapshots for nested adopted projects against the containing monorepo.
+- Execution finding: bridge readiness `plannedMutations` enumerates normalization/output mutations but
+  not the attestation lock written by the attest command. Patch verification required exact equality
+  with that set plus `.awf/awf.lock`, and independently verified the lock's prepared identity and the
+  approval file's digest membership and mutation exclusion.
+- Cutover verification found one migrated claim for the removed domain ADR index rule. Reviewed
+  ADR-0137 records the forward v1 removal and narrows status-index co-change auditing to v1 ADRs and
+  INDEX.md. Verification also fixed permanent lock-field preservation across sync and explicit empty
+  gap serialization; no consumed preparation history was rewritten.
 - If a journal exists, run the matching binary's `upgrade --recover` in that project before any other
   command; if only one project upgraded, recover/restore it before touching the other. Before the
   cutover commit, discard the integration worktree and recreate it at `prep_head`. After a successful

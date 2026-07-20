@@ -158,3 +158,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Round-trip reverse-sync | Attributing an arbitrary rendered-file edit back to a section/part is ambiguous (default text, cross-section edits, reformatting) and breaks the drift oracle. |
 | Banner only, no per-section pointers | The agent still has to hunt for which section's source to edit; per-section pointers are the locality win. |
 | Keep `replaceWith`, annotate its path | Retains unused config surface and a non-deterministic edit target, making the pointer ambiguous. |
+
+## Migration history
+
+- 2026-06-26: retired invariant `ADR-0009#parts-convention`; basis: encoded

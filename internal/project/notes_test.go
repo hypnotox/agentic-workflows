@@ -375,6 +375,22 @@ func TestTagHealthNotes(t *testing.T) {
 	}
 }
 
+func TestTagHealthNotesSkipCurrentStateV1ADRs(t *testing.T) {
+	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  tooling: Tooling\n")
+	writeADR(t, root, "0001-a.md", "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-20\n---\n# ADR-0001: A\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.tagHealthNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("current-state-v1 ADR produced legacy tag-health notes: %v", notes)
+	}
+}
+
 // An empty/absent vocabulary makes the whole tag-health producer inert - the
 // example-adopter safety case (sundial carries free-form tags but no vocabulary).
 func TestTagHealthNotesEmptyVocabInert(t *testing.T) {

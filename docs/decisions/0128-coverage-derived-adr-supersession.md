@@ -301,3 +301,11 @@ at item 1, `supersession-backpointer` at item 5, `supersession-flavour-exclusive
 | One token, with an advisory when a target reaches one anchor short of coverage | Warns about the symptom. 22 of the 37 pre-existing item tokens are refinements, so the warning would fire routinely on ADRs nobody intends to retire. |
 | Name the second relation `amends:` | "Amendment" already names editing a `Proposed` ADR in place (`awf-adr-lifecycle`, and the glossary's back-pointer entry). `refines:` is unclaimed. |
 | Hand-classify the 37 pre-existing item tokens during migration | Classification needs prose judgment a migration cannot make, and adopters would get a different migration from this repo. Downgrading everything to `refines:` is mechanical and never asserts more than the original did. |
+
+## Migration history
+
+- 2026-07-18: retired invariant `ADR-0120#active-md-supersedence-rendering`; basis: encoded
+- 2026-07-18: retired invariant `ADR-0120#supersession-backpointer`; basis: encoded
+- 2026-07-18: retired invariant `ADR-0120#supersession-conflict-advisory`; basis: encoded
+- 2026-07-18: retired invariant `ADR-0120#supersession-flavour-exclusive`; basis: encoded
+- 2026-07-18: retired invariant `ADR-0120#supersession-full-symmetry`; basis: encoded

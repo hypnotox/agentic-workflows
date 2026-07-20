@@ -6,7 +6,7 @@
 
 The `currentState` block configures topic validation and is the authority the current-state model reads: strict `sources` (each with `globs`, a `marker` token, and an optional `close`) and `testGlobs`, `topicCoverage` and `topicFanout` severities (default `error` and `warn`), and a positive `maxTopicsPerPath` budget (default 8 without replacing an explicitly configured value). It replaced the legacy `invariants` block, which the project-atomic cutover dropped. Topic inputs live in paired fixed trees: strict sidecars at `.awf/topics/metadata/<domain>/<topic>.yaml` and constrained Markdown at `.awf/topics/parts/<domain>/<topic>/current-state.md`. The closed-tree sweep claims only valid pairs and their structural directories; orphan halves, unknown files, invalid path components, and unconfigured domain directories fail.
 
-The permanent `.awf/awf.lock` carries the ADR format cutoff (`adrFormatV1From`) and any legacy ADR gaps (`legacyAdrGaps`) promoted at the cutover; a transient `bridgeAttestation` block (format version, clean prepared HEAD, and post-normalization tree digest) appears only between the preceding bridge release's attestation and this binary's consumption of it, and is cleared when the cutover completes. `.awf/current-state-upgrade.journal` is the durable transaction record the closed-tree sweep claims during a cutover, so a present journal is recognized transaction state, never an orphan; it is removed when recovery finishes.
+The permanent `.awf/awf.lock` carries the ADR format cutoff (`adrFormatV1From`) and an explicit legacy ADR gap array (`legacyAdrGaps`, including `[]`) promoted at the cutover, and every later sync preserves both fields while regenerating the file manifest; a transient `bridgeAttestation` block (format version, clean prepared HEAD, and post-normalization tree digest) appears only between the preceding bridge release's attestation and this binary's consumption of it, and is cleared when the cutover completes. `.awf/current-state-upgrade.journal` is the durable transaction record the closed-tree sweep claims during a cutover, so a present journal is recognized transaction state, never an orphan; it is removed when recovery finishes.
 
 ADR-0132 adds schema generation 13 and the `exploring-skill-closure` migration. It reuses close-enabled-set to add `exploring` automatically when an adopted config enables brainstorming, debugging, or refactor-coupling-audit.
 
@@ -27,58 +27,4 @@ precedent) - empty or absent means no stripping. Migrations validate serialized 
 
 - [Configuration](../topics/config/configuration.md): The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 - [Migrations and locks](../topics/config/migrations-and-locks.md): Config schema-generation migrations and the awf.lock manifest.
-
-## Decisions
-
-### Implemented
-
-- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md) → superseded by ADR-0020
-- [ADR-0009: Tree-Based Config Layout Under a Single `.claude/awf/` Root](../decisions/0009-tree-based-config-layout.md) → superseded by ADR-0015, ADR-0016
-- [ADR-0010: Schema-Versioned Lock and the `awf upgrade` Migration Mechanism](../decisions/0010-versioned-lock-and-awf-upgrade.md)
-- [ADR-0015: In-File Provenance for Rendered Output and Convention-Only Section Overrides](../decisions/0015-in-file-provenance-and-convention-only-overrides.md)
-- [ADR-0016: Tool-Agnostic Target Seam, `.awf/` Config Relocation, and the Claude Adapter](../decisions/0016-tool-agnostic-target-seam-and-awf-relocation.md) → superseded by ADR-0037
-- [ADR-0017: Process-conformance audit (`awf audit`)](../decisions/0017-process-conformance-audit.md)
-- [ADR-0022: Curated Init Default: Workflow-Core Targets](../decisions/0022-curated-init-default.md)
-- [ADR-0024: CLI Config Management Across Kinds](../decisions/0024-cli-config-management.md) → superseded by ADR-0093
-- [ADR-0026: Config Serialization Owned by internal/config](../decisions/0026-config-serialization-ownership.md)
-- [ADR-0029: Interactive and Agent-Prefillable `awf init`](../decisions/0029-interactive-agent-prefillable-init.md)
-- [ADR-0037: Multi-Target Rendering and the Cursor Adapter](../decisions/0037-multi-target-rendering-and-cursor-adapter.md)
-- [ADR-0040: Self-Pinning Rendered Bootstrap](../decisions/0040-self-pinning-rendered-bootstrap.md) → superseded by ADR-0085
-- [ADR-0043: Mandatory Singleton Status for Workflow and Documentation Standards](../decisions/0043-mandatory-singleton-status-for-workflow-and-documentation-standards.md) → superseded by ADR-0061
-- [ADR-0045: Out-of-box render completeness](../decisions/0045-out-of-box-render-completeness.md)
-- [ADR-0046: Skill-reference integrity](../decisions/0046-skill-reference-integrity.md)
-- [ADR-0048: Rendered git-hook payloads singleton](../decisions/0048-rendered-git-hook-payloads-singleton.md)
-- [ADR-0050: Reviewing-skill and agent pairing](../decisions/0050-reviewing-skill-and-agent-pairing.md)
-- [ADR-0051: Single commit-scope knob](../decisions/0051-single-commit-scope-knob.md)
-- [ADR-0055: Granular domain-aligned commit scopes](../decisions/0055-granular-domain-aligned-commit-scopes.md)
-- [ADR-0056: Structured commit-scope config with meanings](../decisions/0056-structured-commit-scope-config-with-meanings.md)
-- [ADR-0057: Sandboxed placeholder substitution in convention parts](../decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md)
-- [ADR-0059: Mandatory working-with-awf usage doc singleton](../decisions/0059-mandatory-working-with-awf-usage-doc-singleton.md)
-- [ADR-0060: Catalog representation moves from embedded YAML to compile-time Go](../decisions/0060-catalog-representation-moves-from-embedded-yaml-to-compile-time-go.md)
-- [ADR-0061: Unified catalog doc model for toggleable docs and singletons](../decisions/0061-unified-catalog-doc-model-for-toggleable-docs-and-singletons.md)
-- [ADR-0064: Config-derived invariant comment markers](../decisions/0064-config-derived-invariant-comment-markers.md) → superseded by ADR-0134
-- [ADR-0076: Lock integrity and corrupt-lock failure policy](../decisions/0076-lock-integrity-and-corrupt-lock-failure-policy.md)
-- [ADR-0077: Anchored Path Globs and the Domain Code-Staleness Audit Rule](../decisions/0077-anchored-path-globs-and-the-domain-code-staleness-audit-rule.md)
-- [ADR-0081: Enforced dependency graph over catalog Requires declarations](../decisions/0081-enforced-dependency-graph-over-catalog-requires-declarations.md)
-- [ADR-0084: Catalog vars carry functional values only](../decisions/0084-catalog-vars-carry-functional-values-only.md)
-- [ADR-0085: Self-contained adopter upgrade flow](../decisions/0085-self-contained-adopter-upgrade-flow.md)
-- [ADR-0086: Closed config tree and configuration-consumption checks](../decisions/0086-closed-config-tree-and-configuration-consumption-checks.md)
-- [ADR-0087: Deletion-as-acknowledgement for unset-var notes](../decisions/0087-deletion-as-acknowledgement-for-unset-var-notes.md)
-- [ADR-0088: Adopter config reference: configspec authority, generated doc, and awf config command](../decisions/0088-adopter-config-reference-configspec-authority-generated-doc-and-awf-config-command.md)
-- [ADR-0089: Data-driven glossary terms rendered sorted](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md)
-- [ADR-0091: Project-local custom docs as a third local artifact kind](../decisions/0091-project-local-custom-docs-as-a-third-local-artifact-kind.md)
-- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
-- [ADR-0093: Rename config-toggle commands to `enable`/`disable`](../decisions/0093-rename-config-toggle-commands-to-enable-disable.md)
-- [ADR-0100: In-Place-Editable Sections in Rendered Output](../decisions/0100-in-place-editable-sections-in-rendered-output.md)
-- [ADR-0101: Managed Command Runner Singleton](../decisions/0101-managed-command-runner-singleton.md)
-- [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
-- [ADR-0105: Enforced Test-Backing and the Proof-Touches Invariant Marker Split](../decisions/0105-enforced-test-backing-and-the-proof-touches-invariant-marker-split.md) → superseded by ADR-0134
-- [ADR-0109: Narrow-Topic Tag Taxonomy for Precise Context Relevance](../decisions/0109-narrow-topic-tag-taxonomy-for-precise-context-relevance.md) → superseded by ADR-0134
-- [ADR-0110: Domain-Coverage Floor and Context-Ignore for awf context](../decisions/0110-domain-coverage-floor-and-context-ignore-for-awf-context.md)
-- [ADR-0119: Repo-wide plain punctuation: the remaining surfaces and an opt-in prose gate](../decisions/0119-repo-wide-plain-punctuation-the-remaining-surfaces-and-an-opt-in-prose-gate.md)
-- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md) → superseded by ADR-0128, ADR-0135
-- [ADR-0121: Whole-Line Authoring Comments in Templates and Parts](../decisions/0121-whole-line-authoring-comments-in-templates-and-parts.md)
-- [ADR-0127: Explicit Audit Ranges and a Single Git Range Parser](../decisions/0127-explicit-audit-ranges-and-a-single-git-range-parser.md)
-- [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md) → superseded by ADR-0135
-- [ADR-0132: Structured Cross-Runtime Exploration Workflow](../decisions/0132-structured-cross-runtime-exploration-workflow.md)
 

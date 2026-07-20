@@ -293,7 +293,7 @@ func TestExecutingPlansTemplate(t *testing.T) {
 			"gateCmdFull":      "./x gate full",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
 		},
-		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md"},
+		"layout": map[string]any{"plansDir": "docs/plans", "indexMd": "docs/decisions/INDEX.md"},
 		"data": map[string]any{
 			"e2eSuitePaths": []map[string]any{
 				{"path": "tests/e2e/libraries/"},
@@ -332,7 +332,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 			"gateCmdFull":      "./x gate full",
 			"activeMdRegenCmd": "go test ./internal/adrtools/",
 		},
-		"layout": map[string]any{"plansDir": "docs/plans", "activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md"},
+		"layout": map[string]any{"plansDir": "docs/plans", "indexMd": "docs/decisions/INDEX.md"},
 		"data":   map[string]any{},
 	}
 
@@ -508,7 +508,7 @@ func TestProposingAdrTemplate(t *testing.T) {
 		},
 		"layout": map[string]any{
 			"adrDir": "docs/decisions", "adrTemplate": "docs/decisions/template.md",
-			"activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md", "adrReadme": "docs/decisions/README.md",
+			"indexMd": "docs/decisions/INDEX.md", "adrReadme": "docs/decisions/README.md",
 		},
 		"data": map[string]any{
 			"adrTriggers": []string{
@@ -557,7 +557,7 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 			"gateCmd":          "./x gate",
 		},
 		"layout": map[string]any{
-			"adrDir": "docs/decisions", "activeMd": "docs/decisions/ACTIVE.md", "indexMd": "docs/decisions/INDEX.md",
+			"adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md",
 			"adrReadme": "docs/decisions/README.md",
 		},
 		"data": map[string]any{

@@ -43,6 +43,32 @@ func TestWorkingPaths(t *testing.T) {
 	}
 }
 
+func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	if err := os.MkdirAll(filepath.Join(dir, "nested", ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{
+		"nested/.awf/config.yaml": "prefix: nested\n",
+		"nested/tracked.txt":      "tracked",
+		"outside.txt":             "outside",
+	})
+	if err := os.WriteFile(filepath.Join(dir, "nested", "new.txt"), []byte("new"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "outside-new.txt"), []byte("outside"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := awfgit.WorkingPaths(filepath.Join(dir, "nested"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ".awf/config.yaml,new.txt,tracked.txt"
+	if got := strings.Join(paths, ","); got != want {
+		t.Fatalf("nested project paths = %q, want %q", got, want)
+	}
+}
+
 func TestWorkingPathsErrors(t *testing.T) {
 	_, unborn := gitfixture.InitRepo(t)
 	if _, err := awfgit.WorkingPaths(unborn); err == nil {

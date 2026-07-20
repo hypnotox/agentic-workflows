@@ -156,6 +156,10 @@ func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
 
 	var backups []Backup
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	if old != nil {
+		lock.ADRFormatV1From = old.ADRFormatV1From
+		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
+	}
 	want := map[string]bool{}
 	for _, f := range files {
 		abs := filepath.Join(p.Root, f.Path)
@@ -344,11 +348,10 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,
 		DocsDir:           lay.DocsDir,
-		ActiveMd:          lay.ActiveMd,
+		IndexMd:           lay.IndexMd,
 		PlansDir:          lay.PlansDir,
 		ConfiguredDomains: p.Cfg.Domains,
 		DomainsPartsDir:   config.DirName + "/domains/parts",
-		DomainsIndexDir:   lay.DomainsDir,
 		DomainPaths:       domainPaths,
 	})
 	if err != nil {

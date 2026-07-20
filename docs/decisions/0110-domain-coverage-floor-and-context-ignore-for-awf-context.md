@@ -157,3 +157,7 @@ now the narrowed one above.
 | A sixth domain (e.g. `project`) for `internal/project` | Breaks the ADR-0055 five-domain / five-scope mirror and adds a current-state doc to author; every orphan folds acceptably into the five. |
 | Restrict `--uncovered`'s default scan to code roots (`internal/**`, `cmd/`, `x`) | Loses the whole-tree reach that can surface a stray unowned tree anywhere; explicit ignore + generated auto-exclude keeps the reach and still reaches zero. |
 | Cover literally everything with domains, including docs and config files | Strains the domain concept: a domain owns file territory and a generated current-state doc, which `go.sum`/`LICENSE` have no meaningful version of. |
+
+## Migration history
+
+- 2026-07-13: retired invariant `ADR-0102#uncovered-lists-unowned-only`; basis: encoded

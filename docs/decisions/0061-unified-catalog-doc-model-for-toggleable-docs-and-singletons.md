@@ -191,3 +191,8 @@ to each entry's `TID` or filter `!Mandatory`; `DocEntry.TID` (Decision item 1) i
 | Move only the mandatory singletons to a registry, leave toggleable docs as-is | Closes the ~6-place drift but keeps two doc mechanisms and two mental models; a promotion still means moving an entry between collections rather than flipping a flag. |
 | Unify the document map fully (data-drive singleton link text now) | Forces authoring every singleton's document-map description into the catalog byte-for-byte in the same change; deferrable because `.layout.*` references still resolve, so it is sequenced as a follow-up rather than bundled. |
 | Fold `agents-doc` into the uniform render loop | Its root output path, absent document-map slot, and CLAUDE.md-bridge coupling make it genuinely irregular; a flag-guarded special case is simpler and safer than generalising the loop to accommodate one outlier. |
+
+## Migration history
+
+- 2026-07-05: retired invariant `ADR-0043#mandatory-docs-not-in-docs-catalog`; basis: encoded
+- 2026-07-05: retired invariant `ADR-0043#singleton-kind-single-source`; basis: encoded

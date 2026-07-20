@@ -66,3 +66,7 @@ The implementation is too broad for one package or one plan. Topic rendering aff
 | Replace ADRs with lightweight claim change logs | This would simplify active state but discard valuable proposal review, alternatives, rationale, and consequences for consequential decisions. |
 | Keep both legacy ADR authority and topic authority | Two active models would create ambiguity, duplicate checks, and a permanent migration burden. |
 | Shadow-validate topics while upgrading an adopted project | A staged per-project cutover would require the new release to retain the obsolete authority engine; a project-atomic preflight provides readiness evidence without shipping two engines. |
+
+## Migration history
+
+- 2026-07-19: retired invariant `ADR-0014#domain-index-matches-domains`; basis: encoded

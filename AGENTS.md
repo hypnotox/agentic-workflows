@@ -35,7 +35,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/ACTIVE.md` is generated, never hand-edited. Decision meaning is frozen once an ADR leaves Proposed; a meaning-preserving schema retrofit may migrate its encoding.
+- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Green gate before every commit.** `./x gate` must pass before any commit lands.
 - **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
@@ -110,7 +110,7 @@ journal permits.
 ## Document map
 
 - **ADR index:** [docs/decisions/README.md](docs/decisions/README.md), architecture decisions and lifecycle.
-- **Active ADRs:** [docs/decisions/ACTIVE.md](docs/decisions/ACTIVE.md), generated status index; do not hand-edit.
+- **Decision index:** [docs/decisions/INDEX.md](docs/decisions/INDEX.md), generated in-flight/history status index; do not hand-edit.
 - **Plans:** [docs/plans](docs/plans), implementation plans for complex work.
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md), layout, content, and rules for the agent guide
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state

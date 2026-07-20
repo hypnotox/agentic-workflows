@@ -174,3 +174,8 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Keep `awf setup` as an opt-in command, drop only the `init` chaining | Retains all the git-config-mutation code and guards for a command few would run; the user chose full removal. |
 | Tolerate-and-ignore the legacy `hooks:` field instead of migrating | Leaves dead config in adopter trees and is dishonest about the breaking change; the schema-version + `awf upgrade` mechanism exists precisely for this. |
 | Drop awf's own hooks entirely and rely on CI | Loses the local pre-commit safety net the "green gate before every commit" invariant leans on; hand-maintaining `.githooks/` keeps it and doubles as the adopter example. |
+
+## Migration history
+
+- 2026-06-29: retired invariant `ADR-0023#setup-guards-hookspath`; basis: encoded
+- 2026-06-29: retired invariant `ADR-0023#uninstall-removes-lock-tracked`; basis: encoded

@@ -81,11 +81,10 @@ type Inputs struct {
 	GeneratedPaths    map[string]bool
 	ADRDir            string   // e.g. "docs/decisions"
 	DocsDir           string   // e.g. "docs"; the authored-prose root (ADRDir and PlansDir sit under it)
-	ActiveMd          string   // e.g. "docs/decisions/ACTIVE.md"
+	IndexMd           string   // e.g. "docs/decisions/INDEX.md"
 	PlansDir          string   // e.g. "docs/plans"
 	ConfiguredDomains []string // config.Domains; staleness limited to these, undocumented-domain fires outside them
 	DomainsPartsDir   string   // e.g. ".awf/domains/parts"
-	DomainsIndexDir   string   // e.g. "docs/domains"; rendered per-domain index dir (adr-domain-cochange)
 	// DomainPaths maps a configured domain to its sidecar-declared anchored
 	// path globs (ADR-0077); empty = the domain-code-staleness rule is inert.
 	DomainPaths map[string][]string
@@ -199,49 +198,27 @@ func ruleADRFrontmatter(commits []Commit, in Inputs) []Finding {
 func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, c := range commits {
-		activeTouched := false
-		touched := make(map[string]bool, len(c.Changes))
+		indexTouched := false
 		for _, ch := range c.Changes {
-			if ch.Path == in.ActiveMd {
-				activeTouched = true
+			if ch.Path == in.IndexMd {
+				indexTouched = true
 			}
-			touched[ch.Path] = true
 		}
 		for _, ch := range c.Changes {
 			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
 				continue
 			}
 			rec, ok := adrRecordOf(ch.Path, ch.NewText)
-			if !ok || !rec.HasStatus() {
-				continue // unparseable new frontmatter is ruleADRFrontmatter's finding
+			if !ok || !rec.HasStatus() || !rec.IsV1() {
+				continue // malformed ADRs are reported separately; legacy transitions predate INDEX.md
 			}
 			// An unparseable old side cannot witness a transition - skip rather
 			// than read garbage as a status change.
 			oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText)
 			if ch.Action == Added || (oldOK && oldRec.Status != rec.Status) {
-				if !activeTouched {
+				if !indexTouched {
 					out = append(out, finding(Error, "adr-status-cochange", c,
-						filepath.Base(ch.Path)+" status set/changed without ACTIVE.md in the same commit"))
-				}
-				// The same ADR frontmatter regenerates each configured domain's index;
-				// require it co-changed in the same commit (ADR-0033). seen dedupes a
-				// repeated domain so a missing index yields exactly one finding.
-				if in.DomainsIndexDir != "" {
-					seen := map[string]bool{}
-					for _, d := range rec.Domains {
-						if !slices.Contains(in.ConfiguredDomains, d) {
-							continue
-						}
-						idx := in.DomainsIndexDir + "/" + d + ".md"
-						if seen[idx] {
-							continue
-						}
-						seen[idx] = true
-						if !touched[idx] {
-							out = append(out, finding(Error, "adr-domain-cochange", c,
-								filepath.Base(ch.Path)+" status set/changed without "+idx+" in the same commit"))
-						}
-					}
+						filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
 				}
 			}
 		}

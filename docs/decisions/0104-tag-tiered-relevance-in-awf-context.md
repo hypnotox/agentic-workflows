@@ -192,3 +192,8 @@ When this ADR flips to `Implemented`, the same commit regenerates `docs/decision
 | Add a `paths:` field to tags or invariants for path precision | Rejected in ADR-0103 as duplicated, stale-prone territory; the invariant-marker → declaring-ADR bridge is free and self-maintaining. |
 | Include Tier-1 tags verbatim (no domain-mirror exclusion) in the precise set | A domain-mirror tag like `tooling` (~58 ADRs) would flood Tier 2 with the whole coarse set: the dump this rework removes, relabelled. Domain-level relatedness is Tier 3's job; Tier 2 uses the finer tags. |
 | Bundle the domain-coverage expansion into this ADR as a decision | It is a distinct load-bearing choice (new domain vs fold-in, with its own territory/staleness/currency) on a different rationale (coverage, not noise); Tier 1 works without it and empty Tier 3 for an unowned package is honest, so it is a follow-up, not a bundled sub-decision. |
+
+## Migration history
+
+- 2026-07-13: retired invariant `ADR-0098#context-surfaces-linked-plans`; basis: encoded
+- 2026-07-13: retired invariant `ADR-0099#context-surfaces-pitfalls`; basis: encoded

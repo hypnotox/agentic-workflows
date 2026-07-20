@@ -88,6 +88,9 @@ func (p *Project) tagHealthNotes() ([]string, error) {
 	var arts []artifact
 	rel := filepath.ToSlash(filepath.Join(p.Cfg.DocsDir, "decisions"))
 	for _, a := range adrs {
+		if a.IsV1() {
+			continue // current-state-v1 frontmatter deliberately has no tags
+		}
 		arts = append(arts, artifact{label: rel + "/" + a.Filename, tags: a.Tags})
 	}
 	for _, e := range pf {

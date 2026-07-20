@@ -60,6 +60,23 @@ func TestLoadCorpusFromTreeValidWithoutCurrentState(t *testing.T) {
 	}
 }
 
+func TestLoadCorpusFromTreeSkipsNestedAdoptedProjectMarkers(t *testing.T) {
+	tree := treeFrom(t, map[string]string{
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+		"examples/nested/.awf/config.yaml":             "prefix: nested\n",
+		"examples/nested/internal/x_test.go":           "// invariant: nested/model:unknown\n",
+	})
+	cfg := parseCfg(t, "prefix: test\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"**/*_test.go\"]\n      marker: //\n  testGlobs: [\"**/*_test.go\"]\n")
+	c, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Markers.All()) != 0 {
+		t.Fatalf("nested adopted-project markers leaked into parent corpus: %#v", c.Markers.All())
+	}
+}
+
 func TestLoadCorpusFromTreeErrors(t *testing.T) {
 	invariantPart := "Intro.\n\n## Claims\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: test\n"
 	currentStateCfg := "prefix: test\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"

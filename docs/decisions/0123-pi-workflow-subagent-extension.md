@@ -204,3 +204,7 @@ lane with a low steady-state cost.
 | Temporary worktree per implementation child | Stronger checkout isolation, but adds branch, merge, conflict, and cleanup policy that contradicts the existing sequential per-task commit workflow. |
 | Reviewer-only extension | Leaves brainstorming, coupling audits, and subagent-driven development without the fresh-context mechanism they require. |
 | Host npm test lane | Simpler container plumbing, but imposes Node/npm state on every awf contributor and violates the agreed local-environment constraint. |
+
+## Migration history
+
+- 2026-07-16: retired invariant `ADR-0122#pi-generic-review-dispatch`; basis: encoded

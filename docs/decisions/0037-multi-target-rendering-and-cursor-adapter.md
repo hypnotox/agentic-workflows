@@ -180,3 +180,7 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Emit a thin always-apply Cursor rule pointing at AGENTS.md | Redundant: Cursor reads AGENTS.md natively; extra rendered output to maintain for no gain. |
 | Build a frontmatter-transform / container-rename capability now | Speculative: Claude and Cursor both use identity under the shared standard; the capability earns its place only when a genuinely divergent adapter (e.g. single-file Copilot) arrives. |
 | Make `targets` a fifth `kindDescriptor` | `targets` has no catalog pool, sidecars, parts, or orphan semantics; forcing it into the kind machinery drags it into `orphans()` and render dispatch for no benefit. A bespoke CLI path is cleaner. |
+
+## Migration history
+
+- 2026-06-29: retired invariant `ADR-0016#target-output-paths`; basis: encoded

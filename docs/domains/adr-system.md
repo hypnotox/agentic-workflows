@@ -8,7 +8,7 @@ ADRs are append-only history, not active authority: an ADR carries a decision th
 
 `status` is one of Proposed, Accepted, Implemented, or Abandoned, with legal transitions Proposed to Accepted, Implemented, or Abandoned and Accepted to Implemented or Abandoned; Implemented and Abandoned are terminal, and there is no Superseded status. A Proposed ADR is editable and non-authoritative; Accepted freezes the body and is normative only as the instruction for executing its pending change, never overriding the claims describing current reality; Implemented has applied its claim operations; Abandoned keeps its intended operations recorded but unapplied. The `## Status history` section is append-only bookkeeping: a `- <date>: Proposed` scaffold, then a `content-sha256` digest on each later transition, a `state-sequence` on an Implemented mutation ADR, and a nonempty rationale on an Abandoned entry. `awf check` recomputes the digest over the frozen body sections and reports the expected value.
 
-The `## State changes` section is the authoritative relationship between an ADR and the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id. awf derives the affected topics and domains from these operations, so a v1 ADR carries no `topics`, `related`, `tags`, or `domains` frontmatter; a rename is a remove plus an add, a split is one remove plus several adds, and a removed id is never reused. When an ADR reaches Implemented, `awf check --staged` compares HEAD with the index and verifies the whole transaction as one commit: an `add` claim appears with the ADR as `Origin`, an `update` preserves the claim's `Origin` and prior `Revised-by` prefix, appends the ADR once, and changes a canonical field, and a `remove` leaves no active claim. Static `awf check` validates the lifecycle, sequence, operation history, claim provenance, digest, and absence rules, while `awf audit` and implementation review evaluate every parent-to-commit snapshot pair in an explicit range rather than only its endpoints.
+The `## State changes` section is the authoritative relationship between an ADR and the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id. awf derives the affected topics and domains from these operations, so a v1 ADR carries no `topics`, `related`, `tags`, or `domains` frontmatter; a rename is a remove plus an add, a split is one remove plus several adds, and a removed id is never reused. When an ADR reaches Implemented, `awf check --staged` compares HEAD with the index and verifies the whole transaction as one commit: an `add` claim appears with the ADR as `Origin`, an `update` preserves the claim's `Origin` and prior `Revised-by` prefix, appends the ADR once, and changes a canonical field, and a `remove` leaves no active claim. Static `awf check` validates the lifecycle, sequence, operation history, claim provenance, digest, and absence rules; the first v1 update or remove for an identity sealed into the migration baseline is allowed to begin without a v1 add operation, while every claim introduced after the cutoff still begins with exactly one add. `awf audit` and implementation review evaluate every parent-to-commit snapshot pair in an explicit range rather than only its endpoints.
 
 Append-only protects rationale, not orthography (ADR-0115, widened by ADR-0118): an ADR's arguments, decision items, alternatives, and consequences are never rewritten, but a meaning-preserving punctuation normalization of its authored body is permitted, proven word-preserving by an alphanumeric-run comparison that must report zero delta. A live body's meaning is otherwise frozen, though a meaning-preserving schema retrofit may migrate its machine-readable encoding, the license under which the project-atomic upgrade rewrote the legacy corpus into the v1 format.
 
@@ -22,37 +22,4 @@ Append-only protects rationale, not orthography (ADR-0115, widened by ADR-0118):
 - [ADR lifecycle and parsing](../topics/adr-system/adr-lifecycle.md): How ADR records are parsed, identified, and moved through their lifecycle states.
 - [Frontmatter parsing](../topics/adr-system/frontmatter.md): How document frontmatter is split and validated.
 - [Plan artifacts](../topics/adr-system/plan-artifacts.md): How implementation plan documents are parsed and validated.
-
-## Decisions
-
-### Implemented
-
-- [ADR-0004: Family-Aligned AGENTS.md Template and Opt-In Docs Module](../decisions/0004-agents-md-template-and-docs-module.md)
-- [ADR-0005: docsDir Layout Key and Built-In ACTIVE.md Generation](../decisions/0005-docsdir-layout-and-builtin-active-md.md) → superseded by ADR-0020
-- [ADR-0006: Shared Frontmatter Parser and Rendered Skill/Agent Frontmatter Validation](../decisions/0006-frontmatter-parser-and-skill-validation.md) → superseded by ADR-0020
-- [ADR-0014: Domain Docs with a Generated Per-Domain ADR Index](../decisions/0014-domain-docs-with-generated-adr-index.md) → superseded by ADR-0133
-- [ADR-0020: Dead-Reference Check in `awf check`](../decisions/0020-dead-reference-check.md)
-- [ADR-0021: Scaffold the ADR-System Files as Managed Singletons](../decisions/0021-adr-system-managed-singletons.md)
-- [ADR-0028: ADR-first ordering and a visible plan-ADR resync loop in the workflow chain](../decisions/0028-workflow-chain-adr-first-visible-resync.md)
-- [ADR-0042: `awf new adr` Scaffolding Command](../decisions/0042-adr-scaffolding-command.md)
-- [ADR-0092: Read-Only Context Query Command](../decisions/0092-read-only-context-query-command.md)
-- [ADR-0103: Governed Tag Vocabulary and Metadata Revival](../decisions/0103-governed-tag-vocabulary-and-metadata-revival.md)
-- [ADR-0111: Plan-time commit-subject check via a commit-tagged fence](../decisions/0111-plan-time-commit-subject-check-via-a-commit-tagged-fence.md)
-- [ADR-0115: Ban typographic punctuation substitutes in emitted prose](../decisions/0115-ban-typographic-punctuation-substitutes-in-emitted-prose.md) → superseded by ADR-0119
-- [ADR-0116: Partial-amendment back-pointers belong in the procedure, not a check](../decisions/0116-partial-amendment-back-pointers-belong-in-the-procedure-not-a-check.md)
-- [ADR-0117: Advisory plain-punctuation audit rule for authored prose](../decisions/0117-advisory-plain-punctuation-audit-rule-for-authored-prose.md)
-- [ADR-0118: Retroactive plain-punctuation sweep of authored ADR and plan prose](../decisions/0118-retroactive-plain-punctuation-sweep-of-authored-adr-and-plan-prose.md)
-- [ADR-0120: Structured, machine-checked ADR supersession](../decisions/0120-structured-machine-checked-adr-supersession.md) → superseded by ADR-0128, ADR-0135
-- [ADR-0128: Coverage-Derived ADR Supersession](../decisions/0128-coverage-derived-adr-supersession.md) → superseded by ADR-0135
-- [ADR-0129: Single Anchor-Coverage Model for Every Supersession Consumer](../decisions/0129-single-anchor-coverage-model-for-every-supersession-consumer.md) → superseded by ADR-0135
-- [ADR-0130: One Parsed ADR Corpus View for Every Consumer](../decisions/0130-one-parsed-adr-corpus-view-for-every-consumer.md)
-- [ADR-0131: Complete and Self-Enforcing Supersession Records](../decisions/0131-complete-and-self-enforcing-supersession-records.md) → superseded by ADR-0135
-- [ADR-0133: Canonical Current-State Topics as Active Authority](../decisions/0133-canonical-current-state-topics-as-active-authority.md)
-- [ADR-0134: Domain-Owned Current-State Topic and Claim Schema](../decisions/0134-domain-owned-current-state-topic-and-claim-schema.md)
-- [ADR-0135: ADR Lifecycle and Checked Current-State Impacts](../decisions/0135-adr-lifecycle-and-checked-current-state-impacts.md)
-- [ADR-0136: Project-Atomic Migration to Current-State Authority](../decisions/0136-project-atomic-migration-to-current-state-authority.md)
-
-### Superseded
-
-- [ADR-0031: Invariant Retirement via Successor ADR](../decisions/0031-invariant-retirement-via-successor-adr.md) → superseded by ADR-0120
 

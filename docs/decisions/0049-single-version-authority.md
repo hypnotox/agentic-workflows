@@ -147,3 +147,7 @@ removes the split behind failures 1 and 2.
 | Derive the version purely from VCS build info (drop the const) | Pseudo-versions are not downloadable release assets; breaks self-pinning (ADR-0040) and reproducible renders. |
 | Detect released-ness and render a PATH-fallback bootstrap for unreleased versions | Requires remote knowledge at render time and weakens the self-pinning invariant; local-first resolution achieves the same relief deterministically. |
 | Runtime compatibility probe in the hook shim (fall back when the pinned binary rejects the tree) | Treats the symptom in every rendered payload instead of removing the version split at its source. |
+
+## Migration history
+
+- 2026-07-02: retired invariant `ADR-0030#version-ldflags-precedence`; basis: encoded

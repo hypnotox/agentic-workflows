@@ -15,13 +15,3 @@ clamp must keep `almanac-clamped-latitude` backed.
 
 - [Almanac model](../topics/almanac/model.md): The cosine day-length model and its latitude, longitude, accuracy, and dependency contracts.
 
-## Decisions
-
-### Implemented
-
-- [ADR-0001: Approximate sun events with the cosine day-length model](../decisions/0001-approximate-sun-events-with-the-cosine-day-length-model.md)
-
-### Abandoned
-
-- [ADR-0003: Cache almanac tables per location](../decisions/0003-cache-almanac-tables-per-location.md)
-

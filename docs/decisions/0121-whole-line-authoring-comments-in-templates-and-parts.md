@@ -232,3 +232,7 @@ carve-out minimal.
 | Hardcode `-->` handling for HTML-comment markers | Leaves the `*/`-family note wart and breaks the marker-is-an-opaque-literal principle; the generic `close` token is the same size. |
 | Fence-aware invariant scanner | Pushes markdown-specific fence logic into the deliberately language-agnostic scanner for a demo-only edge the dangling-marker advisory already nets. |
 | Keep `parts-raw` under a narrower reading (0057/0072 precedent) | Those substitutions splice in author-requested content; removing author-written lines makes the invariant's verbatim clause false in kind, not degree - an honest retirement with a successor slug is owed. |
+
+## Migration history
+
+- 2026-07-16: retired invariant `ADR-0034#parts-raw`; basis: encoded

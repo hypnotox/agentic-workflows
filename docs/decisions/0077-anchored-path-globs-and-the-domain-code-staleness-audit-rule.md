@@ -178,3 +178,7 @@ Grounding facts that shaped the decision (verified against source):
 | `paths` in the current-state part's frontmatter | Machine config inside a prose part: a new pattern nothing else uses, and the audit would parse part files. |
 | Fold the trigger into ADR-0019's `domain-doc-staleness` rule | Muddies that rule's precisely-stated invariant and shared toggle; an adopter could not keep the low-noise ADR trigger while silencing the chattier churn trigger. |
 | Repo-wide staleness scan (age thresholds, commit counts since last part touch) | Not range-scoped; ADR-0019 already rejected repo-state scanning for the audit, and this rule stays within the in-range co-change model. |
+
+## Migration history
+
+- 2026-07-08: retired invariant `ADR-0008#invariants-glob-basename`; basis: encoded

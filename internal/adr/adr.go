@@ -100,6 +100,7 @@ func ParseDir(dir string) ([]ADR, error) {
 
 // adrFrontmatter holds the YAML fields we care about.
 type adrFrontmatter struct {
+	Format  string   `yaml:"format"`
 	Status  string   `yaml:"status"`
 	Date    string   `yaml:"date"`
 	Domains []string `yaml:"domains"`
@@ -126,6 +127,9 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 	}
 	parsed := sections(string(body), len(data)-len(body))
 	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Sections: parsed.bodies}
+	if fm.Format == V1FormatMarker {
+		a.Format = CurrentStateV1
+	}
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
 	}

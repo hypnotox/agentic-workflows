@@ -23,18 +23,16 @@ by this repository's own checks (ADR-0090).
 - `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or a nameless singleton (`bootstrap`, `hooks`, `runner`, given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
-- `awf context <path>...`: report the committed context awf holds for a set of repo-relative paths, namely the owning domain(s), the invariant slugs backed under those paths, related ADRs, and each domain's current-state doc. Read-only; `--json` for machine output, `--staged`/`--range <a>..<b>` to resolve paths from git.
+- `awf context <path>...`: report the current-state context awf holds for a set of repo-relative paths, namely the owning domain(s), the applicable topic claims (rules and invariants), and any Accepted-ADR pending changes. Read-only; `--json` for machine output, `--staged`/`--range <a>..<b>` to resolve paths from git, `--uncovered` to report paths no scoped topic covers.
 - `awf topic <domain>/<topic>[:<claim>]`: query one active current-state topic or claim. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR provenance with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR.
 - `awf new topic <domain> "<title>"`: scaffold paired current-state metadata and authored inputs without syncing. Edit the path placeholder and prose, then add reviewed claims manually before relying on coverage.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"`: scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
 - `awf new doc <name> "<description>"`: scaffold a project-local doc (rendered from awf's base doc template plus a `content` part you author). The name may be nested, e.g. `guides/ci`, rendering under the docs directory at that path.
-- `awf upgrade`: migrate the config tree after upgrading the awf binary.
-- `awf upgrade --check [--json]`: report exhaustive current-state migration readiness without changing the worktree, index, config, lock, approval input, or generated output.
-- `awf upgrade --attest-current-state`: with readiness passing and a clean HEAD, seal the prepared tree through a recoverable journal and commit the attested lock last; obtain and verify the matching current-state binary first. The project then refuses ordinary commands until a later current-state release consumes the attestation.
-- `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted attestation back or clean up a committed one). The only mode a present journal permits.
-- `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory). The range is required and has no default, so an audit never reports over commits nobody named.
-- `awf invariants`: report Implemented-ADR `invariant:` slugs that lack a backing proof comment in source.
+- `awf upgrade`: migrate the config tree after upgrading the awf binary. When the lock carries a bridge attestation, plain upgrade instead performs the final current-state cutover, verifying the sealed HEAD and tree digest, journaling the migration approval-file deletion and permanent lock, and promoting the sealed format cutoff and gaps.
+- `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
+- `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
+- `awf invariants`: report the current-state topic invariant claims and their backing state.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
 - `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
 - `awf changelog`: query the changelog by version or range.
@@ -49,12 +47,12 @@ domain: the signal for where to configure a new domain.
 ## Config and overrides
 
 Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable arrays, targets,
-audit, invariants), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
+audit, currentState), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
 field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
 vars are set, what consumes them, and what enabling would activate.
 
-**Unreleased current-state topic inputs.** A prepared topic is exactly one strict sidecar at
+**Current-state topic inputs.** A topic is exactly one strict sidecar at
 `.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at
 `.awf/topics/parts/<domain>/<topic>/current-state.md`. Identity comes from lowercase kebab-case path
 components. Metadata contains only a nonempty `title`, one-line `summary`, and exactly one
@@ -72,39 +70,19 @@ zero-claim shell renders but does not satisfy scoped coverage. Query an active t
 `awf topic <domain>/<topic>` or one claim as `awf topic <domain>/<topic>:<claim>`. Defaults hide
 provenance and reference edges; `--history`, `--references`, and `--coverage` independently add direct
 detail, and `--json` emits the same deterministic result model. Queries are read-only, active-only,
-and never traverse references transitively. Removed identities and migration history are not yet
-available in this unreleased tranche.
+and never traverse references transitively. A removed identity resolves only under `--history`, which
+reads its operations from the ADRs; its exact former prose stays in Git rather than an active tombstone.
 
-**Bridge readiness.** Author `.awf/current-state-migration.yaml` with exactly `version: 1` and an
-`invariantApprovals` sequence. Every entry has only nonempty string `key: ADR-NNNN#slug` and
-`destination: domain/topic:slug`; zero live mappings requires the exact `invariantApprovals: []`.
-Repository and commit review establish approval attribution; the file carries no reviewer, timestamp,
-signature, or `approved` field. `awf upgrade --check` independently derives one mapping per live
-legacy invariant from local slug, declaring Origin, and unchanged test/unbacked class before matching
-that evidence. Approval cannot choose among candidates. Retired keys forbid approval entries and are
-approved only by valid encoded history or reviewed migration rationale.
-
-The check converts config, normalizes migration bookkeeping, qualifies proof/touches markers, checks
-strict topic/domain coverage and terminal output deletion planning entirely in memory, and writes
-nothing. Human output and `--json` share one sorted model. JSON fields are `ready`, `findings`,
-`invariantAdjudications`, and `plannedMutations`; image records include presence, octal-mode value,
-and SHA-256, with absent content using mode 0 and the empty-byte digest. The unchanged approval file
-is retained and omitted from mutations. Legacy context and invariant enforcement remain authoritative.
-
-**Attestation and recovery.** With readiness passing, obtain and verify the matching current-state
-binary, ensure a clean HEAD (no staged, unstaged, or untracked change), and run
-`awf upgrade --attest-current-state`. It records the clean HEAD, a digest over the post-normalization
-config, domains, ADRs, topics, marker sources, and approval file, and the ADR cutoff and gaps in an
-optional `bridgeAttestation` lock block, then journals every normalization, marker, status, and
-terminal legacy-index deletion at `.awf/current-state-upgrade.journal`, applies them, and commits the
-attested lock last. It runs no project tests or gate. Because the terminal projection prunes
-`docs/decisions/ACTIVE.md` and the domain ADR indexes without regenerating them, the attested project
-is deliberately index-pruned and refuses every ordinary command: with a journal present only
-`awf upgrade --recover` proceeds, with an attested lock only `awf upgrade --check` inspects it, and a
-malformed journal refuses every mode with guidance to restore the working tree from Git and reinstall
-the bridge release. `awf upgrade --recover` rolls an interrupted attestation back to its prior images
-or cleans up a committed one, idempotently. The authority switch and INDEX.md arrive in a later
-current-state release.
+**Migrating to current-state authority.** A project adopting this release from an older awf crosses
+over once through the preceding bridge release, which reviews a `.awf/current-state-migration.yaml`
+approval inventory of legacy invariant mappings and seals the prepared tree into a `bridgeAttestation`
+lock block. This binary then consumes that seal: plain `awf upgrade` verifies only the sealed facts
+(the prepared HEAD and a digest over the post-normalization config, domains, ADRs, topics, and marker
+sources), journals the deletion of the approval file and the permanent lock at
+`.awf/current-state-upgrade.journal`, and promotes the sealed ADR format cutoff and gaps. This binary
+consumes seals; it never produces them. While a journal is present only `awf upgrade --recover`
+proceeds, rolling an interrupted cutover back or cleaning up a committed one. After the cutover the
+decision index is `INDEX.md` and topic claims are the sole current authority.
 
 To change one section of a
 rendered artifact, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
@@ -125,15 +103,15 @@ that way; delete the marker line once the part is real.
 
 **Authoring comments.** A whole line that is exactly an `awf:comment` HTML comment is
 stripped at render and never reaches output - from template defaults and convention parts
-alike - so parts can carry internal notes and `touches-invariant: <slug>` tags that must
+alike - so parts can carry internal notes and `touches-state: <domain>/<topic>:<slug>` tags that must
 not ship:
 
 ```
 <!-- awf:comment an internal note that never renders -->
 ```
 
-A tag rides the same form: the comment text `touches-invariant: <slug> - <note>` makes
-the line a scannable invariant tag (kept out of the fenced example above deliberately -
+A tag rides the same form: the comment text `touches-state: <domain>/<topic>:<slug> - <note>` makes
+the line a scannable relevance tag (kept out of the fenced example above deliberately -
 a fenced demo carrying real tag grammar would be recorded by the fence-unaware scanner).
 The rule is whole-line and exact-literal: the line must open with `<!-- awf:comment` and
 end with `-->`. A mid-line occurrence and a whitespace variant render verbatim; a
@@ -141,7 +119,7 @@ whole-line opener that does not end with `-->` is a hard render error naming the
 template. Fenced code blocks are preserved, so examples like the one above are safe. A
 part whose only content is authoring comments strips to an empty body and renders its
 section empty (the pointer stays) rather than falling back to the default. To scan such
-tags, point an `invariants.sources` entry at your parts with
+tags, point a `currentState.sources` entry at your parts with
 `marker: '<!-- awf:comment'` and `close: '-->'`; in a fenced demo, break the tag token so
 the fence-unaware scanner does not record it. Inside an include partial, comment text must
 avoid the `awf:include`/`awf:section`/`awf:end` substrings, and comment text is ordinary
@@ -193,7 +171,7 @@ extension files are `awf check` drift; run `awf sync` to repair them.
 
 ### Path globs and domain territories
 
-Every glob in awf (`invariants.sources[].globs`, `audit.dependencyManifests`, and domain
+Every glob in awf (`currentState.sources[].globs`, `audit.dependencyManifests`, and domain
 `paths`) uses one anchored dialect: a pattern matches a file's slash-separated repo-relative
 path in full. `*.ts` matches only top-level `.ts` files; write `**/*.ts` for any depth
 (this deliberately differs from gitignore, where a slash-free pattern floats). `src/**` covers
@@ -225,8 +203,6 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `commitScopeList` | the allowed commit-scope names, comma-separated |
 | `commitScopeTable` | a markdown table of scope names and meanings |
 | `commitScopeSentence` | a one-sentence statement of the allowed scopes |
-| `invariantMarkerSentence` | a sentence naming the invariant comment markers by file type |
-| `invariantMarkerTable` | a markdown table of file globs and their invariant comment markers |
 | `gatedCommands` | the backticked, comma-separated list of binary-version-gated commands |
 | `prefix` | the project's artifact prefix |
 | `gateCmd` | the configured pre-commit gate command |

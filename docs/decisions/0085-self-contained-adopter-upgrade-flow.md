@@ -188,3 +188,8 @@ Forces and observations shaping the design:
 | Resolve latest via the GitHub releases API (JSON) | Needs JSON parsing with no guaranteed `jq` on adopter machines; the redirect probe needs only the `curl` already required, and fails loudly on shape drift. |
 | Collision-proof override name (`AWF_BOOTSTRAP_VERSION`) | An exported `AWF_VERSION` plausibly means "use this awf version"; honoring it is the intuitive contract; the gates bound the risk. |
 | Interactive confirm before upgrading to latest | Breaks unattended use unless flagged around; the resolved target is printed to stderr before anything happens, and `$1` pins explicitly. |
+
+## Migration history
+
+- 2026-07-10: retired invariant `ADR-0040#bootstrap-pin`; basis: encoded
+- 2026-07-10: retired invariant `ADR-0082#residue-exemptions-pinned`; basis: encoded

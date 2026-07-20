@@ -97,10 +97,21 @@ func TestCheckOperationHistory(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			// Provide claims so backward/forward do not add unrelated noise we do not assert on.
-			if f := currentstate.Check(tc.records, nil, 137); !strings.Contains(messages(f), tc.want) {
+			if f := currentstate.Check(tc.records, nil, 0); !strings.Contains(messages(f), tc.want) {
 				t.Errorf("want %q in:\n%s", tc.want, messages(f))
 			}
 		})
+	}
+}
+
+func TestCheckOperationHistoryAllowsMigratedBaseline(t *testing.T) {
+	records := []adr.ADR{
+		rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:legacy")),
+		rec("0138", "Implemented", 2, op(adr.OpRemove, "d/t:retired")),
+	}
+	tp := topics(claim("d/t:legacy", "0100", "0137"))
+	if f := currentstate.Check(records, tp, 137); len(f) != 0 {
+		t.Fatalf("migrated baseline update/remove rejected:\n%s", messages(f))
 	}
 }
 

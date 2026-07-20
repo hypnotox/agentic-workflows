@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 type Entry struct {
@@ -38,7 +39,8 @@ type Lock struct {
 	ADRFormatV1From int `json:"adrFormatV1From,omitempty"`
 	// LegacyADRGaps is the sorted set of absent lower ADR numbers the final
 	// upgrade promotes alongside the cutoff, closing the migration-time identity
-	// set so a listed gap can never be backfilled as legacy. Omitted when empty.
+	// set so a listed gap can never be backfilled as legacy. It is absent before
+	// cutover and serialized as an explicit array, including [], after cutover.
 	LegacyADRGaps []int `json:"legacyAdrGaps,omitempty"`
 }
 
@@ -86,8 +88,26 @@ func (l *Lock) Save(path string) error {
 // with a trailing newline. Attestation reuses it so the sealed lock bytes match
 // what a subsequent Load/Save round-trips.
 func (l *Lock) Marshal() ([]byte, error) {
-	b, err := json.MarshalIndent(l, "", "  ")
-	if err != nil { // coverage-ignore: Lock holds only strings, ints, an int slice, a string-keyed map of string fields, and an optional attestation of the same; MarshalIndent has no unsupported type to fail on
+	// A pointer distinguishes the permanent post-cutover empty gap set ([])
+	// from the pre-cutover absence of gap authority (field omitted).
+	var gaps *[]int
+	if l.ADRFormatV1From != 0 {
+		value := slices.Clone(l.LegacyADRGaps)
+		if value == nil {
+			value = []int{}
+		}
+		gaps = &value
+	}
+	canonical := struct {
+		AWFVersion        string             `json:"awfVersion"`
+		SchemaVersion     int                `json:"schemaVersion"`
+		Files             map[string]Entry   `json:"files"`
+		BridgeAttestation *BridgeAttestation `json:"bridgeAttestation,omitempty"`
+		ADRFormatV1From   int                `json:"adrFormatV1From,omitempty"`
+		LegacyADRGaps     *[]int             `json:"legacyAdrGaps,omitempty"`
+	}{l.AWFVersion, l.SchemaVersion, l.Files, l.BridgeAttestation, l.ADRFormatV1From, gaps}
+	b, err := json.MarshalIndent(canonical, "", "  ")
+	if err != nil { // coverage-ignore: the canonical lock holds only JSON-supported scalar, slice, map, and struct fields
 		return nil, err
 	}
 	return append(b, '\n'), nil

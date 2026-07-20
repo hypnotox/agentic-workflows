@@ -273,3 +273,9 @@ renders no such thing. That drift is repaired by making the claim true rather th
 | Same-anchor conflict as an `awf audit` rule | Audit rules are pure over the commit range (ADR-0025); the conflict needs corpus state, which `awf check` already has. |
 | Hard error on tokens into later-superseded targets | Tokens are immutable prose; the error would be permanently red with no legal fix. |
 | Anchor Decision items by content hash instead of number | Robust to renumbering that cannot happen (bodies are frozen); unreadable in prose and hostile to authors. |
+
+## Migration history
+
+- 2026-07-16: retired invariant `ADR-0031#inv-retirement-dangling-errors`; basis: encoded
+- 2026-07-16: retired invariant `ADR-0031#inv-retirement-drops-slug`; basis: encoded
+- 2026-07-16: retired invariant `ADR-0031#inv-retirement-implemented-only`; basis: encoded

@@ -1,8 +1,12 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
@@ -146,6 +150,57 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	}
 	if (OutputPolicy{}).ScanReferences {
 		t.Fatal("zero policy must not scan")
+	}
+}
+
+func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
+	root := filepath.Clean(filepath.Join("..", ".."))
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	migrationPath := ".awf/current-state-migration.yaml"
+	seenTopics, seenDomains := 0, 0
+	for _, n := range op.Nodes {
+		if n.Path == migrationPath {
+			t.Fatal("permanent output plan still claims the deleted migration approval file")
+		}
+		if n.Reservation || n.file == nil {
+			continue
+		}
+		switch {
+		case strings.HasPrefix(n.Path, "docs/topics/"):
+			seenTopics++
+		case strings.HasPrefix(n.Path, "docs/domains/"):
+			seenDomains++
+		default:
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(n.Path)))
+		if err != nil {
+			t.Errorf("planned current-state output %s is absent: %v", n.Path, err)
+			continue
+		}
+		if string(raw) != n.file.Content {
+			t.Errorf("planned current-state output %s does not match the tree", n.Path)
+		}
+	}
+	if seenTopics == 0 || seenDomains != len(p.Cfg.Domains) {
+		t.Fatalf("current-state output coverage: topics=%d domains=%d want-domains=%d", seenTopics, seenDomains, len(p.Cfg.Domains))
+	}
+	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lock.Files[migrationPath]; ok {
+		t.Fatal("permanent lock still claims the deleted migration approval file")
+	}
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(migrationPath))); !os.IsNotExist(err) {
+		t.Fatalf("migration approval file survives cutover: %v", err)
 	}
 }
 

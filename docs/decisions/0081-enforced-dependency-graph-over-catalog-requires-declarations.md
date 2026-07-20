@@ -245,3 +245,7 @@ invariant, so folding docs into the graph reaches that ADR too.
 | Keep the ADR-0046 trim-with-overrides escape hatch | Requires render-aware validation (edges conditioned on part overrides): complex, fragile, and a second source of truth beside the catalog; `local: true` ownership covers the deliberate-trim case. |
 | Init keeps the all-agents scaffold under a trim | plan-reviewer's skill edge would closure-complete any planning-core trim right back; the trim dimension would be decorative. |
 | Validation-lenient open for add/remove (self-repair) | A second Open mode weakens the single validation choke point for one rare, hand-induced state that `awf upgrade` or a hand edit already repairs. |
+
+## Migration history
+
+- 2026-07-09: retired invariant `ADR-0013#doc-gated-skill-suppressed`; basis: encoded

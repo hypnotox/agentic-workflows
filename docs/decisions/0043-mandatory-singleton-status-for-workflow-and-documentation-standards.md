@@ -206,3 +206,7 @@ this change.
 | Extract a dedicated `internal/singleton` package to own rendering | Would need `internal/project`'s `renderTarget`/`Layout`/`Sidecar` machinery, creating an import cycle back to `project`, or duplicating that machinery for no benefit over reusing the `renderKind` generalization already in `internal/project` |
 | Two independently-maintained singleton kind-name lists (config, project), guarded only by a parity test | Superseded once grounding confirmed `internal/catalog` has zero internal dependencies and can be safely imported by `internal/config`: a genuine single source of truth is achievable, so a tested-but-duplicated pair would be needlessly weaker |
 | No `local: true` escape hatch for these three (fully un-escapable) | Needless special-casing relative to the existing singleton family; "not togglable" means "cannot disappear," not "can never be hand-maintained" |
+
+## Migration history
+
+- 2026-07-01: retired invariant `ADR-0013#workflow-ref-fallback`; basis: encoded

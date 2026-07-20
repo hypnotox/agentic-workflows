@@ -122,10 +122,12 @@ func HeadHash(repoRoot string) (string, error) {
 }
 
 // WorkingPaths returns tracked HEAD paths that still exist plus nonignored
-// untracked paths. Deleted, ignored, and nested-repository files are excluded
-// by go-git's worktree status semantics.
+// untracked paths, rerooted to repoRoot. repoRoot may be an adopted project
+// nested inside a containing monorepo; paths outside that project are excluded.
+// Deleted, ignored, and nested-repository files are excluded by go-git's
+// worktree status semantics.
 func WorkingPaths(repoRoot string) ([]string, error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, prefix, err := openContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -142,7 +144,12 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 		return nil, err
 	}
 	set := map[string]bool{}
-	if err := tree.Files().ForEach(func(f *object.File) error { set[f.Name] = true; return nil }); err != nil { // coverage-ignore: collector callback never errors
+	if err := tree.Files().ForEach(func(f *object.File) error {
+		if path, ok := rerootPath(f.Name, prefix); ok {
+			set[path] = true
+		}
+		return nil
+	}); err != nil { // coverage-ignore: collector callback never errors
 		return nil, err
 	}
 	wt, err := repo.Worktree()
@@ -154,6 +161,10 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 		return nil, err
 	}
 	for path, state := range status {
+		path, ok := rerootPath(path, prefix)
+		if !ok {
+			continue
+		}
 		if state.Worktree == gogit.Deleted || state.Staging == gogit.Deleted {
 			delete(set, path)
 		} else {
@@ -166,6 +177,37 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
+}
+
+func openContainingRepo(projectRoot string) (*gogit.Repository, string, error) {
+	projectRoot, err := filepath.Abs(projectRoot)
+	if err != nil { // coverage-ignore: Abs fails only when the process working directory is unavailable
+		return nil, "", err
+	}
+	for candidate := projectRoot; ; candidate = filepath.Dir(candidate) {
+		repo, openErr := OpenRepo(candidate)
+		if openErr == nil {
+			prefix, relErr := filepath.Rel(candidate, projectRoot)
+			if relErr != nil { // coverage-ignore: both paths are absolute and share the same volume
+				return nil, "", relErr
+			}
+			if prefix == "." {
+				prefix = ""
+			}
+			return repo, filepath.ToSlash(prefix), nil
+		}
+		parent := filepath.Dir(candidate)
+		if parent == candidate {
+			return nil, "", openErr
+		}
+	}
+}
+
+func rerootPath(path, prefix string) (string, bool) {
+	if prefix == "" {
+		return path, true
+	}
+	return strings.CutPrefix(path, prefix+"/")
 }
 
 // ErrIndexUnmerged reports an index that has multiple merge stages and cannot

@@ -1,5 +1,5 @@
 ---
-status: Superseded
+status: Implemented
 date: 2026-07-15
 tags: [template-residue, doc-standard]
 related: [82, 112, 115, 117]

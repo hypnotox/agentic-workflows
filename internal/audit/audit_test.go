@@ -5,6 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -108,26 +109,44 @@ func TestCheckPlannedSubject(t *testing.T) {
 var proposedADR = testsupport.ADR("Proposed")
 var acceptedADR = testsupport.ADR("Accepted")
 
+func auditV1(t *testing.T, status string) string {
+	t.Helper()
+	doc := func(history string) string {
+		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-20\n---\n" +
+			"# ADR-0137: Audit\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n" +
+			"## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n" +
+			"## Alternatives Considered\n\nNone.\n\n## Status history\n\n" + history + "\n"
+	}
+	if status == "Proposed" {
+		return doc("- 2026-07-20: Proposed")
+	}
+	proposedText := strings.Replace(doc("- 2026-07-20: Proposed"), "status: "+status, "status: Proposed", 1)
+	proposed, err := adr.ParseV1("0137-audit.md", []byte(proposedText))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return doc("- 2026-07-20: Proposed\n- 2026-07-20: Accepted; content-sha256: " + adr.ContentDigest(proposed.Sections))
+}
+
 // invariant: tooling/audit-and-snapshots:audit-adr-status-cochange
 func TestRuleADRStatusCochange(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md"}
-	adr := "docs/decisions/0001-x.md"
-	active := "docs/decisions/ACTIVE.md"
+	in := Inputs{ADRDir: "docs/decisions", IndexMd: "docs/decisions/INDEX.md"}
+	adrPath := "docs/decisions/0137-x.md"
+	index := "docs/decisions/INDEX.md"
+	proposedV1, acceptedV1 := auditV1(t, "Proposed"), auditV1(t, "Accepted")
 	cases := []struct {
 		name    string
 		commit  Commit
 		wantErr int
 	}{
-		{"added without ACTIVE", Commit{Changes: []FileChange{{Path: adr, Action: Added, NewText: proposedADR}}}, 1},
-		{"flip without ACTIVE", Commit{Changes: []FileChange{{Path: adr, Action: Modified, OldText: proposedADR, NewText: acceptedADR}}}, 1},
-		{"flip with ACTIVE", Commit{Changes: []FileChange{
-			{Path: adr, Action: Modified, OldText: proposedADR, NewText: acceptedADR},
-			{Path: active, Action: Modified},
-		}}, 0},
-		{"context edit same status", Commit{Changes: []FileChange{{Path: adr, Action: Modified, OldText: proposedADR, NewText: proposedADR}}}, 0},
-		{"non-ADR md", Commit{Changes: []FileChange{{Path: "docs/foo.md", Action: Modified, OldText: proposedADR, NewText: acceptedADR}}}, 0},
-		{"deleted ADR", Commit{Changes: []FileChange{{Path: adr, Action: Deleted}}}, 0},
-		{"added without frontmatter", Commit{Changes: []FileChange{{Path: adr, Action: Added, NewText: "# no frontmatter"}}}, 0},
+		{"v1 added without INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Added, NewText: proposedV1}}}, 1},
+		{"v1 flip without INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV1, NewText: acceptedV1}}}, 1},
+		{"v1 flip with INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV1, NewText: acceptedV1}, {Path: index, Action: Modified}}}, 0},
+		{"legacy added is outside current-state rule", Commit{Changes: []FileChange{{Path: "docs/decisions/0001-x.md", Action: Added, NewText: proposedADR}}}, 0},
+		{"context edit same status", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV1, NewText: proposedV1}}}, 0},
+		{"non-ADR md", Commit{Changes: []FileChange{{Path: "docs/foo.md", Action: Modified, OldText: proposedV1, NewText: acceptedV1}}}, 0},
+		{"deleted ADR", Commit{Changes: []FileChange{{Path: adrPath, Action: Deleted}}}, 0},
+		{"added without frontmatter", Commit{Changes: []FileChange{{Path: adrPath, Action: Added, NewText: "# no frontmatter"}}}, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -143,7 +162,7 @@ func TestRuleADRStatusCochange(t *testing.T) {
 // disabling the status rules (unparseable new text) or falsely firing them
 // (unparseable old text reading as a status change).
 func TestRuleADRFrontmatterUnparseable(t *testing.T) {
-	in := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md"}
+	in := Inputs{ADRDir: "docs/decisions", IndexMd: "docs/decisions/INDEX.md"}
 	adr := "docs/decisions/0001-x.md"
 	bad := "---\nstatus: [unclosed\n---\n# X\n"
 
@@ -160,38 +179,6 @@ func TestRuleADRFrontmatterUnparseable(t *testing.T) {
 	fs = evaluate([]Commit{oldBad}, in)
 	if got := countRule(fs, "adr-status-cochange", Error); got != 0 {
 		t.Errorf("unparseable old frontmatter must not read as a status change: %v", fs)
-	}
-}
-
-// invariant: tooling/audit-and-snapshots:audit-adr-domain-cochange
-func TestRuleADRDomainCochange(t *testing.T) {
-	active := FileChange{Path: "docs/decisions/ACTIVE.md", Action: Modified}
-	toolingIdx := FileChange{Path: "docs/domains/tooling.md", Action: Modified}
-	in := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md",
-		DomainsIndexDir: "docs/domains", ConfiguredDomains: []string{"tooling", "rendering"}}
-	noIdxDir := Inputs{ADRDir: "docs/decisions", ActiveMd: "docs/decisions/ACTIVE.md",
-		ConfiguredDomains: []string{"tooling"}}
-	cases := []struct {
-		name    string
-		in      Inputs
-		commit  Commit
-		wantErr int
-	}{
-		{"added, index missing", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active}}, 1},
-		{"added, index present", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active, toolingIdx}}, 0},
-		{"two domains, one missing", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, rendering"), active, toolingIdx}}, 1},
-		{"status flip, index missing", in, Commit{Changes: []FileChange{adrChange(Modified, "Implemented", "tooling"), active}}, 1},
-		{"unconfigured domain not required", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "payments"), active}}, 0},
-		{"duplicate domain yields one finding", in, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling, tooling"), active}}, 1},
-		{"no DomainsIndexDir inert", noIdxDir, Commit{Changes: []FileChange{adrChange(Added, "Proposed", "tooling"), active}}, 0},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(ruleADRStatusCochange([]Commit{tc.commit}, tc.in), "adr-domain-cochange", Error)
-			if got != tc.wantErr {
-				t.Errorf("got %d adr-domain-cochange errors, want %d", got, tc.wantErr)
-			}
-		})
 	}
 }
 
@@ -465,7 +452,7 @@ func TestRuleDomainCodeStaleness(t *testing.T) {
 
 func TestRulePlainPunctuation(t *testing.T) {
 	in := Inputs{DocsDir: "docs", Settings: Settings{PlainPunctuation: true},
-		GeneratedPaths: map[string]bool{"docs/decisions/ACTIVE.md": true}}
+		GeneratedPaths: map[string]bool{"docs/decisions/INDEX.md": true}}
 	change := func(path, oldText, newText string) []Commit {
 		return []Commit{{Hash: "abc1234", Subject: "docs(adr): x",
 			Changes: []FileChange{{Path: path, Action: Modified, OldText: oldText, NewText: newText}}}}
@@ -504,7 +491,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 		t.Fatalf("want 1 warning naming the ellipsis on an added file, got %v", f)
 	}
 	// A generated path is skipped: its glyphs are its source's fault.
-	if f := rulePlainPunctuation(change("docs/decisions/ACTIVE.md", "", "a"+dash+"b"), in); len(f) != 0 {
+	if f := rulePlainPunctuation(change("docs/decisions/INDEX.md", "", "a"+dash+"b"), in); len(f) != 0 {
 		t.Errorf("generated path should be skipped, got %v", f)
 	}
 	// Outside docsDir is skipped.

@@ -244,3 +244,7 @@ prose/banner sweep, and the dogfood `awf upgrade` port, with tests at each step.
 | Symlink a canonical rendered tree into adapter dirs | OS-portability footgun (Windows), special-cases the file-hash drift model, and centralises edits that never happen (rendered output is generated, not hand-edited). Copy/placement strictly dominates. |
 | CLAUDE.md as an awf-managed marker section inside a possibly-existing file | The user chose whole-file ownership ("awf always owns what it manages"); the standard bridge is a one-line `@AGENTS.md` import, so a full owned file is simpler than an overlay section. |
 | Split the `init` collision guard into its own ADR | It is a general safety feature, but it is motivated by this ADR's growth of the write surface (root `CLAUDE.md`) and was raised as part of the same decision; bundling keeps the adapter model safe by construction. |
+
+## Migration history
+
+- 2026-06-26: retired invariant `ADR-0009#config-root`; basis: encoded

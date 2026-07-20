@@ -88,3 +88,19 @@ Topic overlap can be legitimate because several aspects may govern one file. awf
 | Register every topic in `.awf/config.yaml` | A central registry would duplicate file discovery and create another drift edge. |
 | Let source markers expand topic coverage | Distributed annotations would conceal incomplete metadata and make `--uncovered` unreliable. |
 | Encode claims as YAML records rendered to prose | It would improve parsing at the cost of making canonical state unpleasant to author and read. |
+
+## Migration history
+
+- 2026-07-19: retired invariant `ADR-0007#invariants-implemented-only`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0064#invariant-markers-derived`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0064#invariant-markers-in-confighash`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0104#context-surfaces-tiered-pitfalls`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0104#context-surfaces-tiered-plans`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0104#context-tier3-collapsed`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0105#absent-testglobs-source-fallback`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0105#bare-touches-note`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0105#dangling-marker-advisory`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0106#context-invariant-backed-labeled`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0106#context-surfaces-marker-notes`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0106#context-tier1-marker-union`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0109#context-tier2-precise-tag`; basis: encoded

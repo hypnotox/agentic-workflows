@@ -130,3 +130,8 @@ Doc-currency obligations the implementing commit(s) must satisfy:
 | Also scan ADRs and plans | Hand-authored append-only historical records (ADR-0019); not awf-rendered, and may intentionally reference since-moved files. |
 | Repo-root-relative resolution | Would let root-relative `.layout` links pass, but breaks genuinely file-relative links (domain docs' `../decisions/*`). File-relative is correct markdown semantics, and the `workflow.md` link is genuinely broken. |
 | A separate `awf lint-docs` subcommand | Rendered-output integrity is what `awf check` already owns; a separate command duplicates the render-and-iterate. |
+
+## Migration history
+
+- 2026-06-27: retired invariant `ADR-0005#sync-generates-active-md`; basis: encoded
+- 2026-06-27: retired invariant `ADR-0006#render-active-md`; basis: encoded

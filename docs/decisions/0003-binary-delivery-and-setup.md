@@ -1,5 +1,5 @@
 ---
-status: Superseded
+status: Implemented
 date: 2026-06-24
 tags: [git-hooks, cli-dispatch]
 related: [2, 30, 32]

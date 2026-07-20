@@ -16,23 +16,27 @@ problem space? Include any measurements or observations that are verifiable.
 
 ## Decision
 
-The chosen approach. Be precise enough that a reader can implement it correctly without
+The chosen approach, as column-zero numbered items sequential from 1, each a discrete,
+actionable commitment. Be precise enough that a reader can implement it correctly without
 further consultation.
 
-## Invariants
+1. ...
+2. ...
 
-Checkable constraints that must hold as long as this decision stands: conditions that
-should trigger a new ADR if violated. Declare each machine-enforceable bullet with a slug in one of
-two forms and, for a backed one, add a proof marker (`<your marker> invariant: <slug>`, e.g.
-`// invariant: <slug>` or `# invariant: <slug>`) on a test file matching your `.awf/config.yaml`
-`invariants.testGlobs`, or, when `testGlobs` is unset, any source file matching `invariants.sources`.
-An advisory `<your marker> touches-invariant: <slug> (<note>)` marker records a related code site and
-never backs. `awf check` enforces declared slugs once the ADR is `Implemented`; untagged bullets are
-textual contracts.
+## State changes
 
-- `` `invariant: <slug>` ``: a property a test is declared to back. Requires a proof marker.
-- `` `unbacked-invariant: <slug>` ``: a reasoned contract with no automatic test. **Verify:** how to
-  confirm it by hand.
+The current-state claims this decision creates, changes, or retires, as the authoritative
+link between this ADR and the topics it governs. Either the single word `None.` when the
+decision touches no claim, or a list whose entries each name one claim by its qualified
+`<domain>/<topic>:<slug>` id in an inline code span:
+
+- add `<domain>/<topic>:<slug>`
+- update `<domain>/<topic>:<slug>`
+- remove `<domain>/<topic>:<slug>`
+
+`None.` and a list are mutually exclusive, and one id appears at most once. A rename is a
+remove plus an add; a split is one remove plus several adds; a merge is several removes plus
+one add. A removed id is never reused.
 
 ## Consequences
 
@@ -45,3 +49,10 @@ Include known risks and how they are mitigated.
 |---|---|
 | Option A | ... |
 | Option B | ... |
+
+## Status history
+
+Append-only bookkeeping, one line per status. Scaffolding writes the Proposed line; each
+later transition appends its own with the content digest awf reports:
+
+- YYYY-MM-DD: Proposed

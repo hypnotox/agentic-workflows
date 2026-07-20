@@ -240,3 +240,7 @@ record rather than an in-place edit.
 | Let the child widen beyond the requested breadth | May find more evidence, but removes caller control and makes cost and absence semantics unpredictable. |
 | Return a rigid JSON result | Easier to parse mechanically, but less useful to a parent consuming paths, summaries, and evidence-grounded analysis of different shapes. |
 | Treat ignored files and external dependencies as part of every broad search | Expands cost and environment sensitivity while weakening the meaning of the project-owned search boundary. |
+
+## Migration history
+
+- 2026-07-19: retired invariant `ADR-0125#pi-subagent-four-tool-contract`; basis: encoded

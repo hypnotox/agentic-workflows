@@ -190,3 +190,7 @@ commit.
 | Require ≥2 shared tags / a Jaccard threshold in Tier 2 | A fuzzy relevance mechanic layered over a mis-curated currency; once tags are narrow, a single shared tag is already a strong signal, with no magic number to tune. |
 | Make tag frequency a hard gate | The threshold is a judgment call and adopter corpora differ wildly; only the exact `tag = domain name` floor is crisp enough to gate; the rest belongs in the advisory tier. |
 | Split the historically "mixed" early ADRs into single-concern records | ADRs are append-only; accurate narrow multi-tagging captures a mixed ADR's concerns without rewriting a settled decision. |
+
+## Migration history
+
+- 2026-07-13: retired invariant `ADR-0104#context-tier2-topical`; basis: encoded

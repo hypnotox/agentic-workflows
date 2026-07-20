@@ -93,7 +93,11 @@ func domainPathsFromTree(tree *snapshot.Tree, domain string) ([]string, error) {
 func markerIndexFromTreeFiles(files []snapshot.File, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerIndex, error) {
 	idx := MarkerIndex{sites: map[string][]MarkerSite{}}
 	if cfg != nil {
+		nested := nestedProjectRoots(files)
 		for _, f := range files {
+			if belowAnyRoot(f.Path, nested) {
+				continue
+			}
 			sources := matchingSources(cfg, f.Path)
 			if len(sources) == 0 {
 				continue
@@ -107,4 +111,29 @@ func markerIndexFromTreeFiles(files []snapshot.File, corpus Corpus, cfg *config.
 		return MarkerIndex{}, err
 	}
 	return idx, nil
+}
+
+// nestedProjectRoots returns every non-root directory that carries its own awf
+// config. A Git snapshot of a monorepo includes nested adopted projects even
+// though they are not nested Git repositories, so snapshot marker scans must
+// reproduce the filesystem scanner's .awf boundary explicitly.
+func nestedProjectRoots(files []snapshot.File) []string {
+	const suffix = "/" + config.DirName + "/config.yaml"
+	var roots []string
+	for _, f := range files {
+		if strings.HasSuffix(f.Path, suffix) {
+			roots = append(roots, strings.TrimSuffix(f.Path, suffix))
+		}
+	}
+	slices.Sort(roots)
+	return roots
+}
+
+func belowAnyRoot(path string, roots []string) bool {
+	for _, root := range roots {
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
 }

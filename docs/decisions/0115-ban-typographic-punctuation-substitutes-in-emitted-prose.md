@@ -266,3 +266,7 @@ continued to declare it. Do not "repair" this ADR by populating `retires_invaria
 | Leave `changelog/CHANGELOG.md` out of scope | Would avoid rewriting released entries and keep the repository's changelog matching published release notes. Rejected because `awf changelog` prints the embedded file verbatim, so the banned glyph would still reach every adopter through awf's own voice, leaving the invariant's name a lie. |
 | Fold the authored-prose rule into this ADR | Two decisions with different rationales (publication safety here, house style there), different boundaries (awf's voice vs the adopter's), and different severities (gate vs advisory). Split so neither blocks the other; the follow-up ADR carries Tier 2. |
 | Extend the residue guard (ADR-0082) instead of a new test | The residue guard's invariant is about ADR citations and repo identity. ADR-0113 already reasoned that a separate slug keeps each guard's meaning clean, and that reasoning survives supersession. |
+
+## Migration history
+
+- 2026-07-15: retired invariant `ADR-0113#template-em-dash-free`; basis: encoded

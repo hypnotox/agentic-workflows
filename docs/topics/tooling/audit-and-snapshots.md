@@ -9,16 +9,11 @@ These packages read git history, build immutable tree snapshots, and audit workf
 
 ## Claims
 
-### `invariant: audit-adr-domain-cochange`
-
-A commit that adds an ADR or changes its status without also changing the `docs/domains/<domain>.md` index for each of the ADR's configured domains yields one adr-domain-cochange error per missing index; co-changing those indexes yields none, and when no domains-index directory or configured domain is supplied the rule emits nothing.
-Origin: ADR-0033
-Backing: test
-
 ### `invariant: audit-adr-status-cochange`
 
-awf audit raises an Error finding when a range commit changes an ADR file's status frontmatter without also changing the generated ADR status index, and raises none when the same status change co-changes the index.
+awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.
 Origin: ADR-0017
+Revised-by: ADR-0137
 Backing: test
 
 ### `invariant: audit-conventional-commits`

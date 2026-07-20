@@ -1,7 +1,7 @@
 ---
 date: 2026-07-19
 adrs: [133, 134, 135, 136]
-status: Proposed
+status: Implemented
 ---
 # Plan: Current-State Authority Runtime
 
@@ -251,3 +251,7 @@ Plan 4 must name literal worktrees/commands and execute this approved order:
 ## Notes
 
 - This plan deliberately has no independent closing commit after Phase 1; Plan 4 owns the shared close.
+- Implemented in the coupled preparation and cutover commits. Final upgrade consumes only the sealed
+  approval file and lock; the following current-runtime sync renders INDEX and topic outputs.
+- Cutover verification found and fixed a lock-regeneration gap: sync now preserves the permanent
+  ADR format cutoff and legacy-gap facts written by final upgrade.

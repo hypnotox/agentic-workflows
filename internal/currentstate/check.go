@@ -57,7 +57,7 @@ func Check(records []adr.ADR, topics []topic.Topic, cutoff int) []Finding {
 
 	var findings []Finding
 	findings = append(findings, checkSequences(v1)...)
-	findings = append(findings, checkOperationHistory(v1)...)
+	findings = append(findings, checkOperationHistory(v1, cutoff)...)
 	findings = append(findings, checkForward(v1, claims, removed)...)
 	findings = append(findings, checkBackward(records, claims, cutoff)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
@@ -123,7 +123,7 @@ func checkSequences(v1 []adr.ADR) []Finding {
 // operation, that its sequence-ordered history is exactly one add, then ordered
 // updates, then at most one terminal remove, with nothing after the remove
 // (ADR-0135 items 3 and 7).
-func checkOperationHistory(v1 []adr.ADR) []Finding {
+func checkOperationHistory(v1 []adr.ADR, cutoff int) []Finding {
 	type opAt struct {
 		seq  int
 		verb adr.OpVerb
@@ -160,10 +160,14 @@ func checkOperationHistory(v1 []adr.ADR) []Finding {
 				// the sequence, so an update imposes no additional constraint here.
 			}
 		}
-		if adds != 1 {
+		// A post-cutover identity may begin with update/remove because its add
+		// predates current-state-v1 and was sealed into the migration baseline.
+		// With no permanent cutoff there is no such bootstrap exemption.
+		legacyBaseline := cutoff > 0 && adds == 0 && ops[0].verb != adr.OpAdd
+		if adds != 1 && !legacyBaseline {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s has %d add operations; require exactly one", id, adds)})
 		}
-		if ops[0].verb != adr.OpAdd {
+		if ops[0].verb != adr.OpAdd && !legacyBaseline {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s history does not begin with an add", id)})
 		}
 		if removeIdx >= 0 && removeIdx != len(ops)-1 {

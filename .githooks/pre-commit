@@ -11,6 +11,16 @@ set -euo pipefail
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git checkout-index --prefix="$tmp/" -a
+# Hooks inherit GIT_DIR/GIT_WORK_TREE for the caller. Clear those before using
+# Git inside the foreign temporary repository; later commands rediscover this
+# linked worktree from its .git file.
+unset $(git rev-parse --local-env-vars)
+# Current-state checks read one Git snapshot. Give the exact staged slice its
+# own temporary identity so both the root project and nested Sundial can resolve
+# a HEAD without observing the caller's unstaged worktree.
+git -C "$tmp" init -q
+git -C "$tmp" add -f .
+git -C "$tmp" -c core.hooksPath=/dev/null -c user.name=awf-hook -c user.email=awf-hook@localhost commit -q -m staged-slice
 if ! (cd "$tmp" && go build ./... >/dev/null); then
   echo "pre-commit: the staged slice does not build on its own - a foreign or missing hunk is staged" >&2
   exit 1

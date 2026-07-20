@@ -120,3 +120,7 @@ once this ADR is `Implemented`; the retired slug's marker is removed in the same
 | Amend `context-tier1-governs` in place (keep the slug) | Its meaning changes (two marker kinds, two glob sets); redeclaring a union-aware successor via the retirement mechanism mirrors ADR-0104's own handling of its predecessors and keeps one slug = one meaning. |
 | A separate "touches" context tier below Tier-1 | The backed/unbacked label already carries the strength distinction within Tier-1; a fourth tier duplicates that and fragments the governing set the agent needs in one place. |
 | Fold this into ADR-0105 | Couples a context-relevance decision to the backing-model decision; kept separate, one decision per ADR, per the brainstorm's two-ADR split. |
+
+## Migration history
+
+- 2026-07-13: retired invariant `ADR-0104#context-tier1-governs`; basis: encoded

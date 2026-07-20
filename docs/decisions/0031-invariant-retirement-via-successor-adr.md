@@ -1,5 +1,5 @@
 ---
-status: Superseded
+status: Implemented
 date: 2026-06-29
 tags: [invariant-retirement]
 related: [8, 120]

@@ -108,3 +108,36 @@ Old ADRs remain readable legacy-format history. The migration decision owns thei
 | Keep Superseded and partial anchor coverage for history | Historical ADRs need no computed currentness once claims own active authority. |
 | Leave Accepted ADRs out of normal context | In-flight implementation instructions would become undiscoverable to agents working in the affected topic. |
 | Permit removed claim IDs to be reused | History lookup and operation validation could no longer identify one continuous claim lifecycle unambiguously. |
+
+## Migration history
+
+- 2026-07-19: retired invariant `ADR-0120#context-annotates-superseded-anchors`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0120#retires-invariants-key-refused`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0120#supersession-token-ref-validity`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0120#token-retirement-dangling-errors`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0120#token-retirement-implemented-only`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#active-md-annotates-superseded-anchors`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#refines-token-never-covers`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#supersession-backpointer-any-status`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#supersession-contested-anchor-advisory`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#supersession-coverage-derives-status`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#supersession-coverage-implemented-only`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0128#supersession-keys-refused`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0129#active-md-chains-one-to-many`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0129#domain-index-surfaces-partial`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0129#supersession-graph-acyclic`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0129#supersession-model-anchor-nodes`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0129#supersession-model-derives-state`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-decision-scoped`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-exempts-code-spans`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-exempts-proposed-target`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-exempts-self-citation`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-exempts-unslugged-bullet`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-item-shapes`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-slug-claims-per-carrier`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-slug-spellings`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#citation-check-verb-forms`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#cites-token-suppresses-citation-check`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#cites-token-uncounted`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#cites-token-unrendered`; basis: encoded
+- 2026-07-19: retired invariant `ADR-0131#render-active-md-grouped-or-placeholder`; basis: encoded

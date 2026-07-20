@@ -6,12 +6,17 @@ An ADR captures a significant decision made about the design of this project: wh
 why, and what the consequences are. Write one when the decision is hard to reverse, affects
 multiple components, or would otherwise be rediscovered from scratch months later.
 
+An ADR carries a decision through adoption and then becomes history. The active rules, invariants,
+and gated information it establishes live as current-state topic claims, not in the ADR corpus:
+an ADR's `## State changes` section declares which claims it creates, changes, or retires, and a
+later decision updates those claims directly through a new ADR rather than rewriting this one.
+
 <!-- awf:edit when: default; create .awf/parts/adr-readme/when.md to override -->
 ## When to write an ADR
 
 - Choosing between two technically viable approaches
-- Establishing a constraint that binds future work (an "invariant")
-- Superseding an existing decision with a changed one
+- Establishing a constraint that binds future work (an invariant claim)
+- Changing or retiring a current-state claim an earlier decision established
 - Recording why something was explicitly *not* done
 
 <!-- awf:edit naming: default; create .awf/parts/adr-readme/naming.md to override -->
@@ -29,84 +34,70 @@ where `NNNN` is a zero-padded sequence number (next available). Example:
 <!-- awf:edit frontmatter: default; create .awf/parts/adr-readme/frontmatter.md to override -->
 ## Frontmatter
 
-Every ADR starts with YAML frontmatter:
+Every ADR starts with closed YAML frontmatter of exactly three keys:
 
 ```yaml
 ---
-status: Proposed | Accepted | Implemented | Superseded
+format: current-state-v1
+status: Proposed
 date: YYYY-MM-DD
-tags: [tooling]
-related: []           # related ADR numbers
-domains: [area]       # coarse domain keys driving the per-domain decision indexes
 ---
 # ADR-NNNN: Title
 ```
 
-`domains:` lists the coarse domains this decision belongs to; each one's generated
-`## Decisions` index under `docs/domains/` is built from this field. Fill it on every
-ADR when the project configures domain docs (use the existing domain names); otherwise
-leave it `[]`.
+The number and title come from the filename and the `# ` heading, never duplicated in
+frontmatter. There are no `tags`, `related`, or `domains` keys: the affected topics and
+domains are derived from the `## State changes` operations. Any other key fails `awf check`.
 
-<!-- awf:edit invariants: default; create .awf/parts/adr-readme/invariants.md to override -->
-## Invariant tagging
+<!-- awf:edit lifecycle: default; create .awf/parts/adr-readme/lifecycle.md to override -->
+## Status and lifecycle
 
-Declare each machine-enforceable Invariants bullet with an explicit slug in one of two forms: a
-backed ``- `invariant: <slug>`: ...`` for a property a test is declared to back, or an
-``- `unbacked-invariant: <slug>`: ... **Verify:** ...`` for a reasoned contract with no automatic test.
-Back a backed slug with a matching `` `invariant: <slug>` `` proof comment, prefixed with your project's comment marker, on a test that
-exercises it (scoped to `invariants.testGlobs` when configured, else any `invariants.sources` file); a
-`` `touches-invariant: <slug> (<note>)` `` marker records a related production site and never backs.
-`awf check` and the standalone `awf invariants` fail when an **Implemented** ADR declares a backed slug
-with no proof, an unbacked slug that a proof marker contradicts, or an unbacked slug with no `Verify:`
-note. Proposed/Accepted ADRs are not yet enforced (tests land with implementation); Superseded ADRs are
-skipped. Bullets without a slug are textual contracts, not machine-checked.
+`status` is one of four values, and only these transitions are legal:
 
-<!-- awf:edit supersession: default; create .awf/parts/adr-readme/supersession.md to override -->
-## Supersession and the Decision format
+- `Proposed`: editable and non-authoritative. May go to `Accepted`, `Implemented`, or `Abandoned`.
+- `Accepted`: the body is frozen; the decision is normative only as the instruction for
+  executing its pending change, and never overrides the claims describing current reality. May
+  go to `Implemented` or `Abandoned`.
+- `Implemented`: terminal. The decision's claim operations have been applied.
+- `Abandoned`: terminal. The decision will not be implemented; its intended operations remain
+  recorded but unapplied, and its `Status history` line ends with a rationale.
 
-Every ADR's Decision section consists of column-0 numbered items, sequential from 1 - the
-format `awf check` enforces on every ADR regardless of status, because item numbers are the
-stable anchors partial supersession points at (indented numbered sub-lists do not count).
+There is no `Superseded` status: an ADR is never active authority, so nothing supersedes it.
 
-Supersession has one encoding: an inline code token in the successor's Decision section, at
-the citation site, one per claimed anchor. An **anchor** is a Decision item or a declared
-invariant slug - the addressable units a later ADR can claim. There are three token
-grammars:
+The `## Status history` section is append-only bookkeeping, one line per status. The first
+line is the `- YYYY-MM-DD: Proposed` scaffold. Each later transition appends
+`- YYYY-MM-DD: <status>; content-sha256: <digest>`, an Abandoned line adding `; rationale: <text>`
+and an Implemented line with operations adding `; state-sequence: <n>`. The digest covers the
+frozen body sections; `awf check` recomputes it and reports the exact expected value.
 
-- `` `supersedes: ADR-NNNN#<item>` `` **retires** one Decision item of ADR-NNNN.
-- `` `supersedes-invariant: ADR-NNNN#<slug>` `` retires (and, once the carrier is
-  Implemented, drops the backing obligation for) one declared invariant of ADR-NNNN.
-- `` `refines: ADR-NNNN#<item>` `` **adapts** one Decision item without retiring it.
+<!-- awf:edit state-changes: default; create .awf/parts/adr-readme/state-changes.md to override -->
+## The Decision and State changes sections
 
-The retirement/refinement split is what keeps supersession honest. A refinement counts
-toward nothing: an ADR whose items have only ever been refined is still live guidance, and
-adapting a decision is far more common than replacing it. Slug anchors have no refinement
-form, because a slug is atomic.
+The `## Decision` section is column-zero numbered items sequential from 1, each a discrete,
+readable commitment. Item numbers order the decision for the reader; no machine treats them as
+anchors.
 
-**Full supersession is derived, never declared.** An ADR is `Superseded` exactly when every
-one of its Decision items and every one of its declared invariant slugs carries a retirement
-token from an `Implemented` ADR. There is no frontmatter key asserting it and no shorthand
-token for "supersedes everything": each decision must be retired explicitly, with the
-rationale sitting in the Decision item that carries the token. The status is hand-written and
-`awf check` refuses drift in both directions, naming the exact edit.
+The `## State changes` section is the authoritative relationship between the ADR and the topic
+claims it governs. It is either the single word `None.` or a nonempty list, mutually exclusive.
+Each list entry names one claim by its qualified `<domain>/<topic>:<slug>` id, written as one
+inline code span:
 
-The status is bare `Superseded`, naming no successor: coverage may split across several
-successors, so a scalar would lie. The claimants are recoverable from the predecessor's
-`related:` back-pointers, which every token owes regardless of the target's status.
+- `- add ` `` `<domain>/<topic>:<slug>` `` introduces a claim (a rule or an invariant).
+- `- update ` `` `<domain>/<topic>:<slug>` `` changes an existing claim.
+- `- remove ` `` `<domain>/<topic>:<slug>` `` retires an existing claim.
 
-`awf check` validates every token: the target must exist and not be `Proposed` (a Proposed
-body is still mutable), the cited item or slug must exist, and the target's `related:` must
-back-point at the carrier. It also refuses a token claiming an anchor of its own carrier, and
-a retirement cycle among fully covered ADRs.
+One ADR may touch several topics and domains but names each id at most once. A rename or move
+is a remove plus an add; a split is one remove plus several adds; a merge is several removes
+plus one add. A removed id is never added again. When the ADR reaches `Implemented`, `awf check`
+verifies each declared operation against the matching change to the topic claim (its provenance,
+its content, and its presence or absence), so the intention and the current-state claim stay in
+lockstep.
 
-What `awf check` deliberately does **not** judge is rationale *quality*. It guarantees that a
-rationale *site* exists for every claim - the Decision item the token sits in - and no more.
-Whether that prose actually justifies the claim is the ADR reviewer's job.
+<!-- awf:edit index: default; create .awf/parts/adr-readme/index.md to override -->
+## INDEX.md
 
-<!-- awf:edit active-md: default; create .awf/parts/adr-readme/active-md.md to override -->
-## ACTIVE.md
-
-`ACTIVE.md` is a generated index; **do not edit it by hand**. It is regenerated by `awf sync` from
-the ADR frontmatter, and `awf check` (run by the pre-commit hook) fails if it is stale. After
-adding an ADR or changing a `status:` field, run `awf sync` and stage the regenerated `ACTIVE.md`
-alongside your change.
+`INDEX.md` is a generated index; **do not edit it by hand**. It is regenerated by `awf sync`
+from the ADRs, and `awf check` (run by the pre-commit hook) fails if it is stale. It lists
+Proposed and Accepted ADRs under *In flight* and Implemented and Abandoned ADRs under a compact
+*History* by number, title, and status. After adding an ADR or changing a `status:` field, run
+`awf sync` and stage the regenerated `INDEX.md` alongside your change.
