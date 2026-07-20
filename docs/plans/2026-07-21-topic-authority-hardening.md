@@ -156,24 +156,35 @@ proof markers, generated outputs, and terminal status land together in the final
   type InitAuthority struct {
       InitializedWithVersion string
   }
-  func (p *Project) InitializeReport(seed InitAuthority) ([]string, []Backup, []Advisory, error)
+  func (p *Project) InitializeReport(seed InitAuthority) ([]Backup, []Change, []string, error)
   ```
 
-  `InitializeReport` calls `adr.AdoptionBoundary(p.layout().DecisionsDir)` before its first output
-  write, then seeds the returned cutoff/gaps with the supplied version. It is the only call that may
-  seed a lock with no predecessor. `runInit` selects it with exactly:
+  `InitializeReport` has the same result contract as `SyncReport`; both delegate to one private
+  `syncReport(seed *InitAuthority)` implementation. `InitializeReport` calls
+  `adr.AdoptionBoundary(p.layout().DecisionsDir)` before its first output write, then seeds the
+  returned cutoff/gaps with the supplied version. It is the only project call that may seed a lock
+  with no predecessor.
+
+  In `/home/hypno/Projects/agentic-workflows/cmd/awf/sync.go`, add
+  `runSyncInitialized(root string, seed project.InitAuthority, stdout io.Writer) error` beside
+  `runSync`; both delegate to one private printing helper that preserves the existing backup/change/
+  prune output. `runInit` records `configExisted` and `lockExisted` before scaffolding, then selects:
 
   ```go
-  firstAdoption := !configExisted && !lockExisted
-  if firstAdoption {
-      return p.InitializeReport(project.InitAuthority{
+  var syncErr error
+  if !configExisted && !lockExisted {
+      syncErr = runSyncInitialized(root, project.InitAuthority{
           InitializedWithVersion: project.Version,
-      })
+      }, stdout)
+  } else {
+      syncErr = runSync(root, stdout)
   }
-  return p.SyncReport()
+  if syncErr != nil { return syncErr }
   ```
 
-  The ordinary sync path requires a Permanent prior lock and copies all three fields. Re-init and
+  This selection replaces only the existing chained `runSync` call after collision checking and
+  gating; `runInit` continues its orientation/advisory output after the selected sync returns. The
+  ordinary sync path requires a Permanent prior lock and copies all three fields. Re-init and
   `--force` call the preserve path when config or lock pre-existed. Update
   `/home/hypno/Projects/agentic-workflows/internal/project/project_test.go` for present and absent
   provenance preservation.
