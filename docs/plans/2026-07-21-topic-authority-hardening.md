@@ -1,13 +1,16 @@
 ---
 date: 2026-07-21
-adrs: [139]
+adrs: [134, 135, 136, 139]
 status: Proposed
 ---
 # Plan: Topic Authority Hardening
 
 ## Goal
 
-Close every confirmed correctness and integration defect from the topic-authority audit and implement
+Close every confirmed correctness and integration defect from the topic-authority audit under
+[ADR-0134](../decisions/0134-domain-owned-current-state-topic-and-claim-schema.md),
+[ADR-0135](../decisions/0135-adr-lifecycle-and-checked-current-state-impacts.md),
+[ADR-0136](../decisions/0136-project-atomic-migration-to-current-state-authority.md), and
 [ADR-0139](../decisions/0139-explicit-current-state-authority-provenance.md), with regression-backed
 fresh and brownfield adoption, immutable ADR history, complete queries/context, explicit agent gates,
 and current documentation. Non-goals are changing marker scan-universe semantics or redesigning
@@ -55,7 +58,7 @@ proof markers, generated outputs, and terminal status land together in the final
   | bridge | valid `bridgeAttestation` | Bridge |
   | permanent-migrated | `adrFormatV1From:4, legacyAdrGaps:[2]` | Permanent |
   | permanent-initialized | previous plus `initializedWithVersion:"0.20.0"` | Permanent |
-  | pre-tracking | none | PreTracking |
+  | pre-tracking | none, including missing lock beside existing config | PreTracking |
   | mixed | bridge plus cutoff/gaps | error |
   | init-without-cutoff | `initializedWithVersion:"0.20.0"` | error |
   | gaps-without-cutoff | `legacyAdrGaps:[]` | error |
@@ -116,7 +119,8 @@ proof markers, generated outputs, and terminal status land together in the final
     without modifying those ADR files.
   - Malformed or ambiguous brownfield ADR identity fails before any init output is written.
   - `init --force` over a Permanent project preserves init version, cutoff, and gaps byte-semantically.
-  - `init --force` over existing config with missing authority refuses rather than inventing it.
+  - `init --force` over existing config with missing lock or authority refuses without mutation and
+    prints bridge guidance for Pre-tracking, or restoration/recovery guidance for Invalid state.
   - A created ADR after empty and brownfield init is at the cutoff, uses current-state-v1, and passes
     `awf check` after the fixture commits initialization.
 
@@ -200,14 +204,17 @@ proof markers, generated outputs, and terminal status land together in the final
   case manifest.AuthorityPermanent:
       // ordinary operation
   case manifest.AuthorityPreTracking:
-      return preTrackingRecoveryError
+      return fmt.Errorf("pre-tracking authority: use the bridge release to attest before upgrading")
   }
   ```
 
-  Post-check: `go test ./internal/manifest ./internal/project ./internal/upgrade ./cmd/awf -run
-  'Test.*(Authority|Upgrade|StagedLock)' -count=1` passes, and `rg -n 'AuthorityState\(' cmd/awf
-  internal/project internal/upgrade --glob '*.go' --glob '!*_test.go'` returns only the exhaustive
-  consumer sites.
+  Every Pre-tracking refusal contains `use the bridge release to attest`; every Invalid refusal
+  contains `restore .awf/awf.lock from version control` and names `awf upgrade --recover` when a
+  journal/attestation recovery path exists. The missing-lock-plus-existing-config integration asserts
+  bridge guidance and a byte-identical tree after refusal. Post-check: `go test ./internal/manifest
+  ./internal/project ./internal/upgrade ./cmd/awf -run 'Test.*(Authority|Upgrade|StagedLock)' -count=1`
+  passes, and `rg -n 'AuthorityState\(' cmd/awf internal/project internal/upgrade --glob '*.go'
+  --glob '!*_test.go'` returns only the exhaustive consumer sites.
 
 - [ ] **Task 1.7: Update adoption documentation and commit.** Update
   `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md`,
@@ -656,8 +663,9 @@ proof markers, generated outputs, and terminal status land together in the final
     `invariant: abandoned-remove-pair-attributed`, stating final absence is not static attribution and
     pair validation requires the actual Implemented removal.
   - `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/tooling/cli/current-state.md`:
-    `invariant: init-unborn-head-supported`, stating init/check use an empty baseline only for unborn
-    HEAD and retain other Git errors.
+    `invariant: init-unborn-head-supported`, stating working-state assembly uses an empty committed
+    baseline only for a specifically unborn HEAD, with init/check as consumers, while every other
+    repository, reference, and object error remains a failure.
 
   Each claim ends with exactly:
 
