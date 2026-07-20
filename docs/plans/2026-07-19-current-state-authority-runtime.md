@@ -57,10 +57,13 @@ verification commands and affected sets remain exact.
   `index.go` using `internal/git.OpenRepo` and stage-0 index blobs, preserving executable mode and
   rejecting unmerged indexes. Do not add working, commit, range, or unused subtree APIs yet.
 
-- [ ] **Task 1.2: Route an existing production caller.** Replace `cmd/awf/context.go`'s legacy staged
-  path-byte assembly with the index Tree while preserving current legacy output. Test staged additions,
-  deletions, executable modes, unstaged isolation, unmerged refusal, linked worktrees, byte copying,
-  and deterministic order in `internal/snapshot/{snapshot,index}_test.go` and context tests.
+- [ ] **Task 1.2: Route an existing production caller.** Replace `cmd/awf/prosegate.go`'s legacy staged
+  path-byte assembly (its direct `git.IndexBlobs` consumption) with the index Tree while preserving
+  current legacy output. Test staged additions, deletions, executable modes, unstaged isolation,
+  unmerged refusal, linked worktrees, byte copying, and deterministic order in
+  `internal/snapshot/{snapshot,index}_test.go` and prose-gate tests. (Amended during execution: the
+  original text named `cmd/awf/context.go`, but after Plan 1 that command resolves changed-path names
+  through `git.ChangedPaths`, not path-bytes; the sole byte-assembly index caller is `prosegate.go`.)
 
 - [ ] **Task 1.3: Document and commit.** Update `.awf/docs/parts/architecture/components.md` and
   `data-flow.md` with the neutral snapshot seam, then run:
