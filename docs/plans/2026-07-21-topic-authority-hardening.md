@@ -47,6 +47,22 @@ proof markers, generated outputs, and terminal status land together in the final
     missing top-level gaps with a cutoff, malformed/descending/duplicate/out-of-range gaps, malformed
     init semver, and init version later than `awfVersion`.
 
+  Implement `TestAuthorityStateMatrix` with this exact table (each JSON also carries
+  `awfVersion:"0.20.0"`, `schemaVersion:14`, and `files:{}`):
+
+  | name | additional JSON fields | result |
+  |---|---|---|
+  | bridge | valid `bridgeAttestation` | Bridge |
+  | permanent-migrated | `adrFormatV1From:4, legacyAdrGaps:[2]` | Permanent |
+  | permanent-initialized | previous plus `initializedWithVersion:"0.20.0"` | Permanent |
+  | pre-tracking | none | PreTracking |
+  | mixed | bridge plus cutoff/gaps | error |
+  | init-without-cutoff | `initializedWithVersion:"0.20.0"` | error |
+  | gaps-without-cutoff | `legacyAdrGaps:[]` | error |
+  | cutoff-without-gaps | `adrFormatV1From:1` | error |
+  | bad-gaps | cutoff `4`, gaps `[2,2]`, `[3,2]`, `[0]`, or `[4]` | error |
+  | bad-init-version | initialized version `nope` or `0.21.0` | error |
+
   Assert canonical round trips retain `"legacyAdrGaps": []` for a Permanent empty set and omit
   `initializedWithVersion` for old locks. Run:
 
@@ -90,7 +106,11 @@ proof markers, generated outputs, and terminal status land together in the final
   `/home/hypno/Projects/agentic-workflows/internal/manifest/manifest_test.go` until Task 1.1 passes.
 
 - [ ] **Task 1.3: Add failing first-adoption and force-preservation tests.** Extend
-  `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go` and `/home/hypno/Projects/agentic-workflows/cmd/awf/initrender_test.go` with temp-repository integrations that assert:
+  `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go` and
+  `/home/hypno/Projects/agentic-workflows/cmd/awf/initrender_test.go` with these named temp-repository
+  integrations: `TestInitSeedsEmptyAuthority`, `TestInitSealsBrownfieldAuthority`,
+  `TestInitRejectsAmbiguousBrownfieldAuthority`, `TestInitForcePreservesAuthority`,
+  `TestInitForceRefusesMissingAuthority`, and `TestInitFirstADRChecksClean`. They assert:
   - Empty first adoption writes the running `project.Version`, cutoff `1`, and explicit empty gaps.
   - Brownfield first adoption with ADR identities `0001` and `0003` writes cutoff `4` and gap `[2]`
     without modifying those ADR files.
@@ -131,15 +151,26 @@ proof markers, generated outputs, and terminal status land together in the final
   ```go
   type InitAuthority struct {
       InitializedWithVersion string
-      ADRFormatV1From int
-      LegacyADRGaps []int
   }
   func (p *Project) InitializeReport(seed InitAuthority) ([]string, []Backup, []Advisory, error)
   ```
 
-  `InitializeReport` is the only call that may seed a lock with no predecessor; the ordinary sync
-  path requires a Permanent prior lock and copies all three fields. Re-init and `--force` call the
-  preserve path when config or lock pre-existed. Update
+  `InitializeReport` calls `adr.AdoptionBoundary(p.layout().DecisionsDir)` before its first output
+  write, then seeds the returned cutoff/gaps with the supplied version. It is the only call that may
+  seed a lock with no predecessor. `runInit` selects it with exactly:
+
+  ```go
+  firstAdoption := !configExisted && !lockExisted
+  if firstAdoption {
+      return p.InitializeReport(project.InitAuthority{
+          InitializedWithVersion: project.Version,
+      })
+  }
+  return p.SyncReport()
+  ```
+
+  The ordinary sync path requires a Permanent prior lock and copies all three fields. Re-init and
+  `--force` call the preserve path when config or lock pre-existed. Update
   `/home/hypno/Projects/agentic-workflows/internal/project/project_test.go` for present and absent
   provenance preservation.
 
@@ -152,10 +183,13 @@ proof markers, generated outputs, and terminal status land together in the final
   - `/home/hypno/Projects/agentic-workflows/internal/project/currentstate.go` to compare `InitializedWithVersion`, cutoff, and gaps as one
     immutable staged authority and rely on `manifest.Parse` for state validity.
 
-  Extend `/home/hypno/Projects/agentic-workflows/cmd/awf/upgrade_test.go`, `/home/hypno/Projects/agentic-workflows/internal/upgrade/upgrade_test.go`, and
-  `/home/hypno/Projects/agentic-workflows/internal/project/staged_test.go`. Snapshot the tree before each refused upgrade and assert no diff
-  afterward. Convert operational zero-cutoff test fixtures to explicit Permanent locks rather than
-  weakening validation. Each consumer uses the same exact shape:
+  Extend `/home/hypno/Projects/agentic-workflows/cmd/awf/upgrade_test.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/upgrade/upgrade_test.go`, and
+  `/home/hypno/Projects/agentic-workflows/internal/project/staged_test.go`. This consumer batch's
+  representative is `runUpgrade`; its edge is `validatePermanentLockTransition`, which additionally
+  compares before/after initialization versions. The exhaustive production site set is the four files
+  listed above. Snapshot the tree before each refused upgrade and assert no diff afterward. Convert
+  operational zero-cutoff fixtures to explicit Permanent locks. Each consumer uses this shape:
 
   ```go
   state, err := lock.AuthorityState()
@@ -170,12 +204,21 @@ proof markers, generated outputs, and terminal status land together in the final
   }
   ```
 
+  Post-check: `go test ./internal/manifest ./internal/project ./internal/upgrade ./cmd/awf -run
+  'Test.*(Authority|Upgrade|StagedLock)' -count=1` passes, and `rg -n 'AuthorityState\(' cmd/awf
+  internal/project internal/upgrade --glob '*.go' --glob '!*_test.go'` returns only the exhaustive
+  consumer sites.
+
 - [ ] **Task 1.7: Update adoption documentation and commit.** Update
-  `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md`, `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/upgrade-runtime/current-state.md`
-  explanatory prose, `/home/hypno/Projects/agentic-workflows/docs/architecture.md`'s authored source under `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/`,
-  `/home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl`, and lock comments in `/home/hypno/Projects/agentic-workflows/internal/manifest/manifest.go`
-  and `/home/hypno/Projects/agentic-workflows/internal/project/currentstate.go` to describe the state matrix and brownfield seal. Do not add
-  ADR-0139 claims yet. Run:
+  `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/config/current-state.md`,
+  `/home/hypno/Projects/agentic-workflows/.awf/domains/parts/tooling/current-state.md`,
+  `/home/hypno/Projects/agentic-workflows/.awf/docs/parts/architecture/data-flow.md`,
+  `/home/hypno/Projects/agentic-workflows/templates/docs/working-with-awf.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/internal/manifest/manifest.go`, and
+  `/home/hypno/Projects/agentic-workflows/internal/project/currentstate.go`. This exhaustive
+  documentation batch adds the representative sentence `First adoption seals
+  initializedWithVersion plus the next ADR identity and gaps`; the working-with-awf edge says older
+  migrated adopters legitimately omit initialization provenance. Do not add ADR-0139 claims yet. Run:
 
   ```sh
   ./x sync
@@ -240,74 +283,90 @@ proof markers, generated outputs, and terminal status land together in the final
   fix(tooling): support unborn repository snapshots
   ```
 
-## Phase 3: Enforce ADR lifecycle transactions completely
+## Phase 3A: Enforce frozen ADR content and history
 
-- [ ] **Task 3.1: Add failing ADR immutability pair tests.** Extend
-  `/home/hypno/Projects/agentic-workflows/internal/currentstate/transition_test.go` with table cases for same-status Accepted, Implemented,
-  and Abandoned semantic rewrites; recomputed-digest rewrites; history truncation/replacement; a legal
-  transition that rewrites an earlier history entry; Proposed-to-Proposed body edit with unchanged
-  history; and legal one-entry transitions. Each failing case must assert the finding names the ADR
-  and violated frozen-content or history-prefix rule.
+- [ ] **Task 3A.1: Add failing ADR immutability pair tests.** Extend
+  `/home/hypno/Projects/agentic-workflows/internal/currentstate/transition_test.go` with table cases
+  for same-status Accepted, Implemented, and Abandoned semantic rewrites; recomputed-digest rewrites;
+  history truncation/replacement; a legal transition that rewrites an earlier history entry;
+  Proposed-to-Proposed body edit with unchanged history; and legal one-entry transitions. Each
+  failing case asserts the ADR number and frozen-content or history-prefix rule.
 
-- [ ] **Task 3.2: Add ADR-owned comparison helpers.** In `/home/hypno/Projects/agentic-workflows/internal/adr`, add methods/functions that
-  answer frozen semantic equality and exact history-prefix/one-entry append without exposing
-  `ADR.Sections` reads to `/home/hypno/Projects/agentic-workflows/internal/currentstate`. Use canonical `ContentDigest`, parsed `StatusEntry`,
-  and status helpers. Unit-test them in `/home/hypno/Projects/agentic-workflows/internal/adr/format_test.go` or a focused ADR test. Update
-  `/home/hypno/Projects/agentic-workflows/internal/currentstate/transition.go` to call them before mutation matching. Add exactly:
+- [ ] **Task 3A.2: Add ADR-owned comparison helpers.** In
+  `/home/hypno/Projects/agentic-workflows/internal/adr/format.go`, add exactly:
 
   ```go
   func FrozenContentEqual(before, after ADR) bool
   func HistoryTransitionValid(before, after ADR) bool
   ```
 
-  `FrozenContentEqual` compares canonical content digests when `before` is not Proposed.
+  `FrozenContentEqual` compares canonical content digests only when `before` is not Proposed.
   `HistoryTransitionValid` requires equal history for same-status records and an exact before-prefix
-  plus one entry for a legal status edge. Preserve Proposed body mutability while forbidding history
-  rewrite.
+  plus one entry for a legal edge. Unit-test both in
+  `/home/hypno/Projects/agentic-workflows/internal/adr/format_test.go`; update
+  `/home/hypno/Projects/agentic-workflows/internal/currentstate/transition.go` to call them before
+  mutation matching. No file outside `internal/adr` reads `ADR.Sections`.
 
-- [ ] **Task 3.3: Add failing destination-topic tests.** In `/home/hypno/Projects/agentic-workflows/internal/currentstate/check_test.go`, add
-  Accepted add/update/remove operations whose destination topic metadata is absent and matching cases
-  where an empty topic shell exists. Also cover Implemented/direct transitions and a Proposed operation
-  that is allowed to name a not-yet-created topic. Expected: only the states that reached Accepted and
-  Implemented require metadata.
+- [ ] **Task 3A.3: Verify and commit.** Run `go test ./internal/adr ./internal/currentstate -run
+  'Test.*(Frozen|History|Pair)' -count=1`, `./x check`, and `./x gate`. Expected: tests pass, check is
+  clean, and gate is green. Commit:
 
-- [ ] **Task 3.4: Validate metadata identities separately from claims.** Change
-  `/home/hypno/Projects/agentic-workflows/internal/currentstate/check.go` to build/pass a topic-ID set from the corpus and validate operation
-  destinations independently of active claim presence. Change the internal signature to:
+  ```commit
+  fix(adr-system): enforce frozen decision history
+  ```
+
+## Phase 3B: Require destination topic metadata
+
+- [ ] **Task 3B.1: Add failing destination-topic tests.** In
+  `/home/hypno/Projects/agentic-workflows/internal/currentstate/check_test.go`, add Accepted
+  add/update/remove operations whose destination metadata is absent and matching empty-shell cases.
+  Cover Implemented/direct transitions and a Proposed operation allowed to name a not-yet-created
+  topic.
+
+- [ ] **Task 3B.2: Validate metadata identities separately from claims.** In
+  `/home/hypno/Projects/agentic-workflows/internal/currentstate/check.go`, change the internal API to:
 
   ```go
   func checkForward(v1 []adr.ADR, claims map[string]topic.Claim,
       topics map[string]bool, removed map[string]bool) []Finding
   ```
 
-  Populate `topics` from `Corpus.Topics` using `Topic.ID.String()`. Reuse `topic.TopicID`
-  parsing/helpers; do not infer topic existence from a claim map.
+  Populate `topics` from `Corpus.Topics` using `Topic.ID.String()` and validate every state that
+  reached Accepted plus every Implemented operation. Proposed-only operations remain exempt. Never
+  infer topic existence from active claims.
 
-- [ ] **Task 3.5: Correct Abandoned remove attribution.** Replace the obsolete static
-  `OpRemove && !present` failure in `/home/hypno/Projects/agentic-workflows/internal/currentstate/check.go` with no final-tree attribution.
-  Keep add/update provenance checks. The exact switch change deletes only:
+- [ ] **Task 3B.3: Verify and commit.** Run `go test ./internal/currentstate -run
+  'Test.*DestinationTopic' -count=1`, `./x check`, and `./x gate`. Expected: tests pass, check is
+  clean, and gate is green. Commit:
+
+  ```commit
+  fix(adr-system): require operation destination topics
+  ```
+
+## Phase 3C: Attribute Abandoned removals temporally
+
+- [ ] **Task 3C.1: Add the failing attribution regression.** In
+  `/home/hypno/Projects/agentic-workflows/internal/currentstate/check_test.go`, add one test that
+  statically accepts an absent claim when an Abandoned remove and a distinct Implemented remove
+  exist; in `/home/hypno/Projects/agentic-workflows/internal/currentstate/transition_test.go`, retain
+  pair rejection for an unmatched removal.
+
+- [ ] **Task 3C.2: Remove only final-tree removal attribution.** In
+  `/home/hypno/Projects/agentic-workflows/internal/currentstate/check.go`, delete exactly:
 
   ```go
   case adr.OpRemove:
       if !present { return abandonedRemoveAppliedFinding }
   ```
 
-  and leaves `OpRemove` with no static finding. Add a regression with an Abandoned remove and a
-  distinct valid Implemented remove whose final claim is absent; pair tests must still reject any
-  unmatched removal.
+  Leave Abandoned add/update provenance checks unchanged and add no replacement static heuristic.
 
-- [ ] **Task 3.6: Verify and commit.** Run:
-
-  ```sh
-  go test ./internal/adr ./internal/currentstate -count=1
-  ./x check
-  ./x gate
-  ```
-
-  Expected: all lifecycle tests pass, check is clean, and the gate is green. Commit:
+- [ ] **Task 3C.3: Verify and commit.** Run `go test ./internal/currentstate -run
+  'Test.*Abandoned.*Remove' -count=1`, `./x check`, and `./x gate`. Expected: tests pass, check is
+  clean, and gate is green. Commit:
 
   ```commit
-  fix(adr-system): enforce frozen decision transactions
+  fix(adr-system): attribute abandoned removals by pair
   ```
 
 ## Phase 4: Resolve removed claim history
@@ -321,10 +380,26 @@ proof markers, generated outputs, and terminal status land together in the final
 - [ ] **Task 4.2: Load query input from one cutoff-aware working snapshot.** Change
   `/home/hypno/Projects/agentic-workflows/internal/project/topics.go` so `QueryTopic` uses the same working current-state loader as context,
   including permanent cutoff and v1 `Operations`/`History`, rather than legacy-only `Project.Corpus()`.
-  In `/home/hypno/Projects/agentic-workflows/internal/adr/corpus.go`, add `OperationHistory(claimID string) []OperationRecord`, where
-  `OperationRecord` contains ADR number, title, status, state sequence, and verb; filter the already
-  parsed corpus in ADR order and return a defensive slice. `/home/hypno/Projects/agentic-workflows/internal/topic/query.go` maps those
-  records into its presentation model, keeping operation interpretation under `/home/hypno/Projects/agentic-workflows/internal/adr`.
+  In `/home/hypno/Projects/agentic-workflows/internal/adr/corpus.go`, add the exact semantic API:
+
+  ```go
+  type OperationRecord struct {
+      Number string
+      Title string
+      Status Status
+      StateSequence int
+  }
+  type ClaimOperationHistory struct {
+      Origin *OperationRecord
+      RevisedBy []OperationRecord
+      RemovedBy *OperationRecord
+  }
+  func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bool)
+  ```
+
+  The method interprets add/update/remove verbs over the already validated corpus, returns `false`
+  when the ID has no operations, and returns defensive revision slices. The topic package maps the
+  semantic Origin/RevisedBy/RemovedBy values into presentation types and never interprets verbs.
 
 - [ ] **Task 4.3: Return an explicit historical-only result.** In `/home/hypno/Projects/agentic-workflows/internal/topic/query.go`, retain
   active-first behavior. Only when a qualified claim selector is present, its active claim is absent,
@@ -454,7 +529,7 @@ proof markers, generated outputs, and terminal status land together in the final
 ## Phase 7: Require staged authority validation in agent workflows
 
 - [ ] **Task 7.1: Add failing template/eval assertions.** In `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go` and the
-  appropriate `/home/hypno/Projects/agentic-workflows/internal/evals/*_test.go`, assert lifecycle, inline-plan execution, subagent execution,
+  `/home/hypno/Projects/agentic-workflows/internal/evals/chain_test.go`, assert lifecycle, inline-plan execution, subagent execution,
   and AGENTS guidance contain an executable sequence: stage transaction, run `awf check --staged`,
   run the configured gate, commit. Assert empty command variables render generic safe commands and no
   unresolved/no-value token.
@@ -548,15 +623,18 @@ proof markers, generated outputs, and terminal status land together in the final
   historical ADRs, completed plans, or research documents. Use:
 
   ```sh
-  rg -n 'ACTIVE\.md|per-domain ADR index|touches-invariant|invariants\.sources' \
-    .awf/docs .awf/parts .awf/domains templates README.md examples/sundial/README.md \
-    internal/adr internal/catalog internal/manifest internal/project \
-    --glob '!**/*_test.go'
+  ! rg -n 'touches-invariant:|invariants\.sources' .awf/docs/glossary.yaml
+  ! rg -n "domains:.*generated ADR index|generated ADR index.*domains:" .awf/docs/pitfalls.yaml
+  ! rg -n '\(`ACTIVE\.md` is generated\)' examples/sundial/README.md
+  ! rg -n 'Package adr.*ACTIVE\.md|ACTIVE\.md section|Generated by awf sync.*ACTIVE\.md' \
+    internal/adr/adr.go internal/adr/status.go internal/adr/index.go
+  ! rg -n 'regeneration-checked like ACTIVE\.md|generated indexes \(ACTIVE\.md' \
+    internal/catalog/catalog.go internal/manifest/manifest.go
   ```
 
-  Expected: no output from the enumerated active authored/production surfaces. Compatibility test
-  literals and frozen history are outside this search; inspect any deliberately retained fixture with
-  a separate targeted `rg` before committing.
+  Expected: every negated search exits successfully with no output. Legitimate explanatory prose
+  saying INDEX/topic navigation replaced retired outputs, compatibility fixtures, and frozen history
+  are intentionally outside these forbidden-string checks.
 
 - [ ] **Task 8.3: Regenerate, verify, and commit.** Run `./x sync`, `./x check`, the search above, and
   `./x gate`; expect clean/green. Commit authored sources, generated outputs, comments, and locks:
