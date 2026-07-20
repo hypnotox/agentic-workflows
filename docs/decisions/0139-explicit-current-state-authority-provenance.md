@@ -1,0 +1,108 @@
+---
+format: current-state-v1
+status: Proposed
+date: 2026-07-21
+---
+# ADR-0139: Explicit Current-State Authority Provenance
+
+
+## Context
+
+The current-state cutover established an attestation-derived ADR format cutoff for migrated
+projects, but fresh adoption reused the ordinary sync path. A new lock therefore omitted
+`adrFormatV1From`, whose zero value means that every ADR is legacy, while the scaffolded ADR
+template required `format: current-state-v1`. The first ADR created in a fresh project could
+not pass `awf check`.
+
+Treating every missing cutoff as fresh would be unsafe. A missing cutoff can also identify a
+pre-cutover or unattested adopter, and schema migration removes the retired invariant config
+without synthesizing topic authority. Ordinary sync likewise cannot distinguish a genuinely
+new adoption from deliberate no-lock re-adoption. The lock needs explicit, immutable
+provenance recording when the workflow was first adopted.
+
+The same audit found another inference error at the transaction boundary. Static checking
+interpreted an absent claim as proof that an Abandoned remove had been applied, even when a
+separate later Implemented transaction legitimately removed it. Final absence cannot encode
+which historical operation caused a removal; the HEAD-to-index comparison can.
+
+Fresh repositories also have no resolvable `HEAD` before their first commit. That state is a
+valid empty baseline for initialization checks, not a malformed repository.
+
+## Decision
+
+1. The lock carries an optional `initializedWithVersion` field containing the exact awf
+   semantic version that completed the repository's first successful `awf init`. The field is
+   immutable repository provenance: sync, upgrade, and `awf init --force` preserve it unchanged,
+   and no command infers or backfills it for an adopter whose lock predates the field.
+
+2. Fresh initialization writes `initializedWithVersion` from the running binary and creates
+   permanent current-state ADR identity authority in the same init-specific operation. With no
+   pre-existing decisions, `adrFormatV1From` is `1` and `legacyAdrGaps` is the explicit empty
+   set. Ordinary sync never creates or repairs these authority fields.
+
+3. `awf init --force` may replace scaffold and managed output surfaces, but it preserves any
+   existing initialization version, permanent ADR cutoff, and legacy gap set. An absent
+   initialization version remains absent.
+
+4. Lock validation and upgrade routing distinguish four states. A bridge attestation follows
+   the sealed final-cutover path. A permanent nonzero cutoff is already-cut-over authority and
+   remains valid whether or not the older adopter has initialization-version provenance. A
+   present initialization version with the fresh permanent cutoff is new-adopter authority. A
+   project with neither permanent cutoff nor attestation is legacy or unattested and is refused
+   before any destructive migration or sync; a present initialization version paired with
+   missing or inconsistent permanent authority is corruption and is also refused.
+
+5. A present initialization version is valid semantic-version syntax, is not later than the
+   lock's current `awfVersion`, and cannot change across a HEAD-to-index transaction. Missing
+   provenance remains the supported encoding for adopters initialized before this field existed.
+
+6. In a Git repository whose `HEAD` is specifically unborn, working-state assembly uses an
+   empty committed baseline and continues to include eligible working files. Other reference,
+   object, or repository failures remain errors.
+
+7. Static current-state checking does not use final claim absence to attribute an Abandoned
+   remove. Claim removals are attributed by the snapshot-pair transaction check, which already
+   requires every mutation to match exactly one ADR becoming Implemented. Static checking keeps
+   the provenance-based rejection of Abandoned adds and updates.
+
+8. Focused integration and snapshot tests back the initialization provenance, fresh cutoff,
+   unborn-HEAD, refusal-before-mutation, immutable-lock, and removal-attribution contracts. The
+   rendered agent workflow explicitly runs `awf check --staged` before its project gate; hook
+   execution remains a second enforcement layer rather than the only transaction check.
+
+## State changes
+
+- add `tooling/upgrade-runtime:initial-adoption-version-immutable`
+- add `adr-system/adr-lifecycle:fresh-adoption-v1-cutoff`
+- add `invariants/current-state-authority:abandoned-remove-pair-attributed`
+- add `tooling/cli:init-unborn-head-supported`
+
+## Consequences
+
+Fresh adopters can create a first v1 ADR immediately, and future awf versions can tell when a
+repository first adopted the workflow without treating the most recent sync version as origin
+provenance. Older migrated adopters remain valid without fabricated history. Unsafe legacy and
+unattested states fail before mutation instead of being guessed from an absent field.
+
+The lock gains another immutable authority field and init needs a distinct seeding path rather
+than being only config scaffolding followed by ordinary sync. Forced initialization becomes less
+absolute: it can rebuild managed surfaces but cannot reset repository identity. A project created
+by the defective cutoff-zero implementation cannot be silently repaired because its origin is
+ambiguous; it receives explicit recovery guidance.
+
+Static checking intentionally reports less about an Abandoned remove from a final tree alone.
+Atomic staged checking and range audit provide the stronger temporal evidence, so agents must run
+the staged check explicitly even where Git hook activation is absent.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Infer freshness from a missing cutoff or empty ADR directory | The same shape can belong to a legacy, unattested, or deliberately re-adopted project. |
+| Store the initial version in authored config | Repository origin is runtime lock provenance, not adopter-authored workflow policy, and config edits would make it mutable. |
+| Put adoption provenance in a separate file | A second authority file would complicate atomic writes, staged comparison, recovery, and project-state gating without adding information. |
+| Keep rejecting every absent claim for an Abandoned remove | Final absence cannot distinguish that operation from a separately checked later Implemented removal. |
+
+## Status history
+
+- 2026-07-21: Proposed
