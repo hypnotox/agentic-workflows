@@ -66,7 +66,7 @@ func RenderTopic(model TopicRenderModel) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return executeRaw("topics/topic.md.tmpl", map[string]any{"Title": model.Title, "Summary": model.Summary, "Applicability": model.Applicability}, stripped)
+	return executeRaw("topics/topic.md.tmpl", map[string]any{"Title": model.Title, "Summary": model.Summary, "Applicability": model.Applicability}, strings.TrimSuffix(stripped, "\n"))
 }
 func RenderIndex(model IndexRenderModel) (string, error) {
 	return execute("topics/index.md.tmpl", map[string]any{"Domain": model.Domain, "Topics": model.Topics})

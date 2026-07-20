@@ -115,4 +115,3 @@ Backing: test
 Parsing a claim declared with unbacked backing fails when it carries no Verify note.
 Origin: ADR-0105
 Backing: test
-

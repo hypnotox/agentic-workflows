@@ -23,7 +23,7 @@ by this repository's own checks (ADR-0090).
 - `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or a nameless singleton (`bootstrap`, `hooks`, `runner`, given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
-- `awf context <path>...`: report the current-state context awf holds for a set of repo-relative paths, namely the owning domain(s), the applicable topic claims (rules and invariants), and any Accepted-ADR pending changes. Read-only; `--json` for machine output, `--staged`/`--range <a>..<b>` to resolve paths from git, `--uncovered` to report paths no scoped topic covers.
+- `awf context <path>...`: report the current-state context awf holds for a set of repo-relative paths, namely the owning domain(s), the applicable topic claims (rules and invariants), and any Accepted-ADR pending changes. Read-only; `--json` for machine output, `--staged` to query the immutable index universe, `--range <a>..<b>` to resolve paths from git, and `--uncovered` to report unowned paths plus paths no scoped topic covers (`--uncovered --staged` uses the index universe).
 - `awf topic <domain>/<topic>[:<claim>]`: query one active current-state topic or claim. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR provenance with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR.
 - `awf new topic <domain> "<title>"`: scaffold paired current-state metadata and authored inputs without syncing. Edit the path placeholder and prose, then add reviewed claims manually before relying on coverage.
@@ -39,8 +39,9 @@ by this repository's own checks (ADR-0090).
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.
 - `awf version`: print the binary's version.
 
-`awf context --uncovered [<scan-root>...]` reports git-tracked paths owned by no
-domain: the signal for where to configure a new domain.
+`awf context --uncovered [<scan-root>...]` reports eligible paths that are
+unowned or covered by no scoped topic. Add `--staged` to evaluate the immutable
+index universe with the same eligibility and coverage model as staged check.
 
 
 <!-- awf:edit config-and-overrides: default; create .awf/parts/working-with-awf/config-and-overrides.md to override -->

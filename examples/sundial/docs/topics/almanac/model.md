@@ -46,4 +46,3 @@ Latitude is clamped to the range -90 to 90 before the day-length model runs, so 
 degrades to the pole rather than leaving the domain of the model and producing an error.
 Origin: ADR-0001
 Backing: test
-

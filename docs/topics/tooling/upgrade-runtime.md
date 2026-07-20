@@ -78,4 +78,3 @@ After the new lock lands, normal context and invariant reporting cannot consume 
 Origin: ADR-0136
 Backing: unbacked
 Verify: A migrated fixture retaining contradictory legacy metadata affects output and enforcement only through its topic claims.
-

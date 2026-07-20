@@ -453,4 +453,3 @@ Backing: test
 The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds, and is suppressible only by a local: true sidecar.
 Origin: ADR-0059
 Backing: test
-

@@ -99,4 +99,3 @@ Backing: test
 The generation-12 upgrade migration strips supersedes and superseded_by from every ADR under the configured docs directory, appends to each former full-supersession carrier one bookkeeping Decision item whose supersedes tokens claim each predecessor anchor, inserts the carrier number into each target's related list when absent, rewrites each predecessor's status to bare Superseded, and rewrites every pre-existing inline item token to refines while leaving slug tokens untouched.
 Origin: ADR-0128
 Backing: test
-

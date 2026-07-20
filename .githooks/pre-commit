@@ -31,45 +31,12 @@ if ! (cd "$tmp" && go build ./... >/dev/null); then
   echo "pre-commit: the staged slice does not build on its own - a foreign or missing hunk is staged" >&2
   exit 1
 fi
-# Sanctioned current-state cutover boundary (Plan 4): when a verified external
-# pinned bridge binary is supplied, drift-check the staged slice with it instead
-# of the from-source binary, because the staged 0.19.0 runtime no longer renders
-# the 0.18.0 bridge-era outputs. This branch is removed or made inert after
-# cutover; the from-source path below is otherwise retained exactly.
-if [ -n "${AWF_PREP_BRIDGE:-}" ] && [ -n "${AWF_PREP_BRIDGE_SHA256:-}" ]; then
-  if ! printf '%s  %s\n' "$AWF_PREP_BRIDGE_SHA256" "$AWF_PREP_BRIDGE" | sha256sum -c - >/dev/null 2>&1; then
-    echo "pre-commit: AWF_PREP_BRIDGE hash does not match AWF_PREP_BRIDGE_SHA256 - refusing an unverified bridge binary" >&2
-    exit 1
-  fi
-  awf_slice="$AWF_PREP_BRIDGE"
-  prep=1
-else
-  (cd "$tmp" && go build -o awf-slice ./cmd/awf)
-  awf_slice="$tmp/awf-slice"
-  prep=0
-fi
-# check_slice validates rendered-output drift in a slice directory. In the
-# from-source path (prep=0) any non-zero check refuses. In the pinned-bridge prep
-# path (prep=1) the 0.18.0 bridge's legacy invariant backing check cannot pass on
-# a current-state-migrated tree (invariants: became currentState:, markers became
-# qualified), so gate on the rendered-output drift count alone - which is what the
-# pinned bridge validates here - and ignore its expected legacy-invariant lines.
+(cd "$tmp" && go build -o awf-slice ./cmd/awf)
+awf_slice="$tmp/awf-slice"
 check_slice() {
   dir="$1"; label="$2"
-  if [ "$prep" = 0 ]; then
-    if ! (cd "$dir" && "$awf_slice" check >/dev/null); then
-      echo "pre-commit: the staged slice has drift in $label - run ./x sync and stage the result" >&2
-      exit 1
-    fi
-    return 0
-  fi
-  rc=0
-  out="$(cd "$dir" && "$awf_slice" check 2>&1)" || rc=$?
-  [ "$rc" -eq 0 ] && return 0
-  n="$(printf '%s\n' "$out" | sed -n 's/^awf: awf check: \([0-9][0-9]*\) drift.*/\1/p')"
-  if [ -z "$n" ] || [ "$n" -ne 0 ]; then
-    echo "pre-commit: the staged slice has rendered-output drift in $label (run the pinned bridge sync and stage the result):" >&2
-    printf '%s\n' "$out" | grep -vE '^  invariant |^note:' >&2
+  if ! (cd "$dir" && "$awf_slice" check >/dev/null); then
+    echo "pre-commit: the staged slice has drift in $label - run ./x sync and stage the result" >&2
     exit 1
   fi
 }
@@ -78,11 +45,5 @@ check_slice "$tmp" "the repository"
 # sundial re-render is left unstaged committed clean three times (a85bd6a, the
 # ADR-0080 flip, the ADR-0121 phase 1) before this check existed.
 check_slice "$tmp/examples/sundial" "examples/sundial"
-# In the pinned-bridge preparation commit the rendered payload's `./x check` runs
-# the staged 0.19.0 runtime against bridge-rendered outputs, which necessarily
-# disagree until the final cutover sync; the pinned-bridge drift checks above are
-# the authority here. The from-source path keeps the normal rendered payload.
-if [ "$prep" != 1 ]; then
-  bash "$staged_helper" "$repo_root" "$awf_slice"
-  exec bash .awf/hooks/pre-commit.sh "$@"
-fi
+bash "$staged_helper" "$repo_root" "$awf_slice"
+exec bash .awf/hooks/pre-commit.sh "$@"

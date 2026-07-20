@@ -272,4 +272,3 @@ Backing: test
 The rendered workflow chain names the plan-to-ADR resync step explicitly rather than hiding it from the high-level chain.
 Origin: ADR-0028
 Backing: test
-

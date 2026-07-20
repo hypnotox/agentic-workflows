@@ -93,4 +93,3 @@ Backing: test
 The repo-local audit tool exits non-zero only when it reports at least one error finding. An infrastructure failure such as a failing merge-base lookup produces an error finding and exit code 1, while warning-only and clean runs exit zero.
 Origin: ADR-0073
 Backing: test
-

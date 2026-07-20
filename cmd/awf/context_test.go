@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -187,6 +188,7 @@ func TestRunContextStaged(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.Stage(t, repo, root, map[string]string{
+		".awf/awf.lock":                                string(func() []byte { b, _ := lock.Marshal(); return b }()),
 		".awf/config.yaml":                             ctxCmdYAML,
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
 		".awf/domains/core.yaml":                       "paths: []\n",
@@ -196,12 +198,32 @@ func TestRunContextStaged(t *testing.T) {
 			testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n")),
 		"internal/foo/x.go": "package foo\n",
 	})
+	// Dirty, corrupt working project files cannot contaminate the valid index.
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "not: [valid")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), "{not json")
 	var out bytes.Buffer
 	if err := runContext(root, []string{"internal/foo/x.go"}, true, "", false, false, &out); err != nil {
 		t.Fatalf("staged context: %v", err)
 	}
 	if !strings.Contains(out.String(), "alpha/one") {
 		t.Errorf("staged context missing the staged topic:\n%s", out.String())
+	}
+}
+
+func TestRunContextStagedErrors(t *testing.T) {
+	// The staged gate fails before project loading when no index lock exists.
+	if err := runContext(t.TempDir(), []string{"x"}, true, "", false, false, io.Discard); err == nil {
+		t.Fatal("staged context accepted a non-repository")
+	}
+	// A valid staged lock passes the gate, then malformed staged config fails the
+	// staged-root loader without consulting valid working bytes.
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	b, _ := lock.Marshal()
+	gitfixture.Stage(t, repo, root, map[string]string{".awf/awf.lock": string(b), ".awf/config.yaml": "not: [valid"})
+	if err := runContext(root, []string{"x"}, true, "", false, false, io.Discard); err == nil {
+		t.Fatal("staged context accepted malformed index config")
 	}
 }
 
@@ -451,10 +473,57 @@ func TestRunContextUncoveredJSONParity(t *testing.T) {
 	}
 }
 
-// --uncovered rejects the --staged/--range selectors (a different intent).
-func TestRunContextUncoveredRejectsSelectors(t *testing.T) {
-	if err := runContext(t.TempDir(), nil, true, "", false, true, io.Discard); err == nil || !strings.Contains(err.Error(), "--staged/--range") {
-		t.Errorf("--uncovered with --staged must be a usage error, got: %v", err)
+func TestRunContextUncoveredStagedHumanAndJSON(t *testing.T) {
+	root := uncoveredCmdFixture(t)
+	repo, err := gogit.PlainOpen(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	b, _ := lock.Marshal()
+	gitfixture.Stage(t, repo, root, map[string]string{
+		".awf/awf.lock": string(b), ".awf/config.yaml": uncoveredCmdYAML,
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\n",
+		"docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25")),
+		"internal/foo/x.go":                            "package foo\n", "internal/bar.go": "package internalx\n", "stray.txt": "stray\n",
+	})
+	_ = os.Remove(filepath.Join(root, ".awf", "config.yaml"))
+	_ = os.Remove(filepath.Join(root, ".awf", "awf.lock"))
+	var human, j bytes.Buffer
+	if err := runContext(root, nil, true, "", false, true, &human); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContext(root, nil, true, "", true, true, &j); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(human.String(), "internal/bar.go") {
+		t.Fatalf("staged human = %s", human.String())
+	}
+	var res project.UncoveredResult
+	if err := json.Unmarshal(j.Bytes(), &res); err != nil || len(res.Uncovered) != 1 {
+		t.Fatalf("staged json = %s (%v)", j.String(), err)
+	}
+}
+
+func TestRunContextUncoveredStagedErrors(t *testing.T) {
+	if err := runContext(t.TempDir(), nil, true, "", false, true, io.Discard); err == nil {
+		t.Fatal("staged uncovered accepted a non-repository")
+	}
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	b, _ := lock.Marshal()
+	gitfixture.Stage(t, repo, root, map[string]string{".awf/awf.lock": string(b), ".awf/config.yaml": "not: [valid"})
+	if err := runContext(root, nil, true, "", false, true, io.Discard); err == nil {
+		t.Fatal("staged uncovered accepted malformed index config")
+	}
+}
+
+func TestRunContextUncoveredRejectsRange(t *testing.T) {
+	if err := runContext(t.TempDir(), nil, false, "a..b", false, true, io.Discard); err == nil || !strings.Contains(err.Error(), "--range") {
+		t.Errorf("--uncovered with --range must be a usage error, got: %v", err)
 	}
 }
 

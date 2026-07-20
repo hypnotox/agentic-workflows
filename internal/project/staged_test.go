@@ -32,13 +32,9 @@ func stagedHeadFiles() map[string]string {
 	}
 }
 
-// attestedLock returns a lock whose bridge attestation seals a format cutoff of
-// 2, so the topic claim's ADR-0001 Origin is the bootstrap exemption.
+// attestedLock returns the permanent cutoff used by staged fixtures.
 func attestedLock() *manifest.Lock {
-	return &manifest.Lock{
-		AWFVersion: "0.18.0", SchemaVersion: 14,
-		BridgeAttestation: &manifest.BridgeAttestation{Version: 1, PreparedHead: "x", TreeDigest: "sha256:x", ADRFormatV1From: 2},
-	}
+	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2}
 }
 
 // writeLock writes and stages the project's awf.lock.
@@ -86,6 +82,41 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	findings := report.Findings()
 	if len(findings) != 1 || !strings.Contains(findings[0], "internal/bar.go") {
 		t.Fatalf("findings = %#v; want exactly the uncovered internal/bar.go", findings)
+	}
+}
+
+func TestCheckStagedRejectsPermanentFormatAuthorityMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		cutoff int
+		gaps   []int
+	}{
+		{"raise cutoff", 3, nil},
+		{"alter gaps", 2, []int{1}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo, dir := gitfixture.InitRepo(t)
+			gitfixture.Stage(t, repo, dir, stagedHeadFiles())
+			gitfixture.Commit(t, repo, dir, "head", nil)
+			p := openStaged(t, dir)
+			writeLock(t, p, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: tc.cutoff, LegacyADRGaps: tc.gaps})
+			if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "immutable") {
+				t.Fatalf("CheckStaged mutation error = %v", err)
+			}
+		})
+	}
+}
+
+func TestCheckStagedAllowsSealedBridgePromotion(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":2,"legacyADRGaps":[]}}`
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "bridge", nil)
+	p := openStaged(t, dir)
+	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2})
+	if _, err := p.CheckStaged(); err != nil {
+		t.Fatalf("sealed promotion: %v", err)
 	}
 }
 
@@ -234,6 +265,19 @@ func TestCheckStagedLockError(t *testing.T) {
 	}
 }
 
+func TestCheckStagedRejectsCorruptHeadLock(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	files[".awf/awf.lock"] = "{not json"
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "head", nil)
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "snapshot lock") {
+		t.Fatalf("corrupt HEAD lock error = %v", err)
+	}
+}
+
 // TestCheckStagedHeadLoadError covers a load failure on the HEAD (before) side: a
 // committed ADR whose frontmatter does not parse.
 func TestCheckStagedHeadLoadError(t *testing.T) {
@@ -245,6 +289,18 @@ func TestCheckStagedHeadLoadError(t *testing.T) {
 	p := openStaged(t, dir)
 	if _, err := p.CheckStaged(); err == nil {
 		t.Fatal("expected a HEAD-side corpus load error")
+	}
+}
+
+func TestCheckStagedIndexConfigValidationError(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, dir, stagedHeadFiles())
+	gitfixture.Commit(t, repo, dir, "head", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{".awf/config.yaml": "prefix: \"\"\n"})
+	testsupport.WriteFile(t, filepath.Join(dir, ".awf/config.yaml"), csYAML)
+	p := openStaged(t, dir)
+	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "prefix") {
+		t.Fatalf("validation error = %v", err)
 	}
 }
 

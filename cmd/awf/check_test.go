@@ -368,6 +368,22 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 
 // TestRunCheckStagedError covers the error return of the staged route: the index
 // carries no config, so CheckStaged fails.
+func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
+	hook, err := os.ReadFile(filepath.Join("..", "..", ".githooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := string(hook)
+	if strings.Contains(body, "AWF_PREP_BRIDGE") || strings.Contains(body, "prep=") {
+		t.Fatal("pre-commit still carries preparation-only bridge behavior")
+	}
+	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "check_slice \"$tmp/examples/sundial\"", "bash \"$staged_helper\"", "exec bash .awf/hooks/pre-commit.sh"} {
+		if !strings.Contains(body, required) {
+			t.Errorf("pre-commit missing permanent step %q", required)
+		}
+	}
+}
+
 func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Stage(t, repo, dir, map[string]string{"README.md": "staged\n"})
@@ -447,7 +463,7 @@ chmod +x "$out"
 	}
 	cmd := exec.Command("bash", hook)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "AWF_PREP_BRIDGE=/removed", "AWF_PREP_BRIDGE_SHA256=removed", "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		t.Fatalf("pre-commit accepted an unmatched nested claim removal: %s", out)

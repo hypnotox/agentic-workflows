@@ -77,41 +77,67 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	if err != nil {
 		return ContextResult{}, err
 	}
-	return p.assembleContext(ws.Loaded, paths), nil
+	expanded := expandContextPaths(paths, eligiblePaths(ws.Tree, ws.Lock, p.Cfg.ContextIgnore))
+	return p.assembleContext(ws.Loaded, expanded), nil
 }
 
-// StagedContextFor assembles the context over the index universe: the staged
-// tree, with config re-parsed from that same tree so the load is single-universe
-// (working reuse of p.Cfg does not hold for the index - ADR-0135).
-func (p *Project) StagedContextFor(paths []string) (ContextResult, error) {
-	loaded, err := p.indexCurrentState()
+// StagedContextRoot assembles context without opening working configuration.
+// Config, lock, topics, markers, path eligibility, and project presence all
+// come from one immutable index snapshot.
+func StagedContextRoot(root string, paths []string) (ContextResult, error) {
+	p := &Project{Root: root}
+	state, err := p.indexCurrentState()
 	if err != nil {
 		return ContextResult{}, err
 	}
-	return p.assembleContext(loaded, paths), nil
+	p.Cfg = state.Cfg
+	expanded := expandContextPaths(paths, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore))
+	return p.assembleContext(state.Loaded, expanded), nil
 }
 
-// indexCurrentState loads the current-state view from the staged index tree,
-// parsing config from the same tree. The cutoff/gaps still come from the
-// on-disk lock's attestation, which is a working-tree bookkeeping artifact.
-func (p *Project) indexCurrentState() (currentstate.Loaded, error) {
+type indexState struct {
+	Loaded currentstate.Loaded
+	Tree   *snapshot.Tree
+	Lock   *manifest.Lock
+	Cfg    *config.Config
+}
+
+func (p *Project) indexCurrentState() (indexState, error) {
 	tree, err := snapshot.IndexTree(p.Root)
 	if err != nil {
-		return currentstate.Loaded{}, err
+		return indexState{}, err
 	}
-	lock, _, err := manifest.LoadOptional(p.lockPath())
+	lock, err := lockFromTree(tree)
 	if err != nil {
-		return currentstate.Loaded{}, err
+		return indexState{}, err
 	}
 	cutoff, gaps := attestationCutoff(lock)
 	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, cutoff, gaps)
 	if err != nil {
-		return currentstate.Loaded{}, err
+		return indexState{}, err
 	}
 	if cfg == nil {
-		return currentstate.Loaded{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
+		return indexState{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	return loaded, nil
+	return indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
+}
+
+func expandContextPaths(paths, eligible []string) []string {
+	clean := NormalizeContextPaths(paths)
+	var expanded []string
+	for _, query := range clean {
+		found := false
+		for _, path := range eligible {
+			if strings.HasPrefix(path, query+"/") {
+				expanded = append(expanded, path)
+				found = true
+			}
+		}
+		if !found {
+			expanded = append(expanded, query)
+		}
+	}
+	return NormalizeContextPaths(expanded)
 }
 
 // assembleContext performs the pure topic-centric selection over one loaded
@@ -281,9 +307,21 @@ func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
 	if err != nil {
 		return UncoveredResult{}, err
 	}
+	return assembleUncovered(ws.Loaded.Topics, p.eligibleCoveragePaths(ws.Tree, ws.Lock), scanRoots), nil
+}
+
+// StagedUncoveredRoot reports coverage entirely from the index universe.
+func StagedUncoveredRoot(root string, scanRoots []string) (UncoveredResult, error) {
+	state, err := (&Project{Root: root}).indexCurrentState()
+	if err != nil {
+		return UncoveredResult{}, err
+	}
+	return assembleUncovered(state.Loaded.Topics, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore), scanRoots), nil
+}
+
+func assembleUncovered(corpus topic.Corpus, eligible, scanRoots []string) UncoveredResult {
 	roots := NormalizeContextPaths(scanRoots)
 	res := UncoveredResult{ScanRoots: roots}
-	corpus := ws.Loaded.Topics
 	inScope := func(path string) bool {
 		if len(roots) == 0 {
 			return true
@@ -300,7 +338,7 @@ func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
 	// with no claim-bearing scoped topic is reported regardless of the project's
 	// configured strictness (the report shows gaps; the gate applies severity).
 	var scoped []string
-	for _, path := range p.eligibleCoveragePaths(ws.Tree, ws.Lock) {
+	for _, path := range eligible {
 		if inScope(path) {
 			scoped = append(scoped, path)
 		}
@@ -328,7 +366,7 @@ func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
 		}
 	}
 	var unowned []string
-	for _, path := range p.eligibleCoveragePaths(ws.Tree, ws.Lock) {
+	for _, path := range eligible {
 		if !inScope(path) {
 			continue
 		}
@@ -359,7 +397,7 @@ func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
 		res.Unowned = append(res.Unowned, e)
 	}
 	sort.Strings(res.Unowned)
-	return res, nil
+	return res
 }
 
 // ancestors returns path's directory ancestors from the top down - "." then each

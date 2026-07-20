@@ -2,6 +2,8 @@ package upgrade
 
 import (
 	"bytes"
+	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -100,6 +102,46 @@ func TestTreeDigestBranches(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(full, "sub/internal/y.go"), "package y\n")
 	if _, err := treeDigest(full); err != nil {
 		t.Fatalf("full digest: %v", err)
+	}
+}
+
+func TestCollectMarkerSourcesPrunesNestedGitRoots(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		gitPath string
+		body    string
+	}{
+		{"git directory", "internal/nested-dir/.git/config", "repo\n"},
+		{"gitdir pointer", "internal/nested-file/.git", "gitdir: /tmp/elsewhere\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			testsupport.WriteFile(t, filepath.Join(root, tc.gitPath), tc.body)
+			base := filepath.Dir(filepath.Join(root, tc.gitPath))
+			if filepath.Base(tc.gitPath) != ".git" {
+				base = filepath.Dir(base)
+			}
+			testsupport.WriteFile(t, filepath.Join(base, "x.go"), "package nested\n")
+			universe := map[string]bool{}
+			sources := []config.CurrentStateSource{{Globs: []string{"internal/**"}}}
+			if err := collectMarkerSources(root, sources, universe); err != nil {
+				t.Fatal(err)
+			}
+			for path := range universe {
+				if strings.HasSuffix(path, "/x.go") {
+					t.Fatalf("nested repository source included: %s", path)
+				}
+			}
+		})
+	}
+}
+
+func TestCollectMarkerSourcesPropagatesGitBoundaryStatError(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, "internal/x.go"), "package x\n")
+	testsupport.SwapVar(t, &lstat, func(string) (fs.FileInfo, error) { return nil, errors.New("stat fault") })
+	if err := collectMarkerSources(root, nil, map[string]bool{}); err == nil || !strings.Contains(err.Error(), "stat fault") {
+		t.Fatalf("boundary stat error = %v", err)
 	}
 }
 

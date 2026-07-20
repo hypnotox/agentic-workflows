@@ -116,4 +116,3 @@ Backing: test
 A stub-marked convention part renders byte-for-byte verbatim with its marker included; stub detection never mutates part bodies.
 Origin: ADR-0070
 Backing: test
-

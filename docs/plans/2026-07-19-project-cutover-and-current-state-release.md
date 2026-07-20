@@ -427,6 +427,9 @@ No commit is legal between these phases: an attested bridge lock intentionally p
   ADR-0137 records the forward v1 removal and narrows status-index co-change auditing to v1 ADRs and
   INDEX.md. Verification also fixed permanent lock-field preservation across sync and explicit empty
   gap serialization; no consumed preparation history was rewritten.
+- Post-cutover review removed the preparation-only hook branch, made promoted cutoff/gap authority
+  immutable across staged transitions, removed permanent ownership of the consumed approval file,
+  and completed staged context/uncovered snapshot isolation and directory expansion.
 - If a journal exists, run the matching binary's `upgrade --recover` in that project before any other
   command; if only one project upgraded, recover/restore it before touching the other. Before the
   cutover commit, discard the integration worktree and recreate it at `prep_head`. After a successful

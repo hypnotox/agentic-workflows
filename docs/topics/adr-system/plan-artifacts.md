@@ -62,4 +62,3 @@ Backing: test
 The rendered plans template at docs/plans/template.md carries the date, adrs, and status frontmatter block and the plan section taxonomy: the # Plan: title, the four narrative header fields, at least one phase, and the optional Verification and Notes tails.
 Origin: ADR-0098
 Backing: test
-

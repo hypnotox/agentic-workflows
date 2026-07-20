@@ -56,4 +56,3 @@ Backing: test
 The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version` and passes it to GoReleaser through --release-notes before the GoReleaser step runs, and .goreleaser.yaml disables GoReleaser's own commit-derived changelog, so a commit subject can never reach the release notes.
 Origin: ADR-0096
 Backing: test
-

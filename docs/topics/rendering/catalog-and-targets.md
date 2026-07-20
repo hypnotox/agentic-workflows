@@ -141,4 +141,3 @@ Backing: test
 The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, proseGateCmd, testCmd, commitScopes, activeMdRegenCmd, invariantTestPath), and the only multiselect descriptors are the two catalog trims docs and skills.
 Origin: ADR-0084
 Backing: test
-

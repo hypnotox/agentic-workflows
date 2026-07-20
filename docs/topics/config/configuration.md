@@ -176,4 +176,3 @@ Backing: test
 Config validation rejects a testGlobs pattern that is malformed or contains no path separator, applying the same anchored-glob rule used for the invariant marker source globs.
 Origin: ADR-0105
 Backing: test
-

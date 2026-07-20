@@ -39,6 +39,16 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		}
 		paths = resolved
 	}
+	if staged {
+		if err := gateStaged(cwd); err != nil {
+			return err
+		}
+		res, err := project.StagedContextRoot(cwd, paths)
+		if err != nil {
+			return err
+		}
+		return printContext(stdout, res, asJSON, "context: staged state for this project")
+	}
 	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
@@ -53,28 +63,29 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 	if err != nil {
 		return err
 	}
-	res, err := contextFor(p, paths, staged)
+	res, err := p.ContextFor(paths)
 	if err != nil {
 		return err
 	}
 	return printContext(stdout, res, asJSON, "context: live state for this project")
 }
 
-// contextFor routes to the index universe under --staged and the working
-// universe otherwise, so the two universes are never mixed in one query.
-func contextFor(p *project.Project, paths []string, staged bool) (project.ContextResult, error) {
-	if staged {
-		return p.StagedContextFor(paths)
-	}
-	return p.ContextFor(paths)
-}
-
 // runUncovered serves `awf context --uncovered`: the whole-tree coverage report.
-// Positional args are optional scan roots; --staged and --range are rejected. It
-// mirrors runContext's read-only + static-fallback shape.
+// Positional args are optional scan roots; --range is rejected. With --staged,
+// every input comes from the immutable index universe.
 func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
-	if staged || rng != "" {
-		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --staged/--range"}
+	if rng != "" {
+		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --range"}
+	}
+	if staged {
+		if err := gateStaged(cwd); err != nil {
+			return err
+		}
+		res, err := project.StagedUncoveredRoot(cwd, scanRoots)
+		if err != nil {
+			return err
+		}
+		return printUncovered(stdout, res, asJSON, "context --uncovered: staged coverage gaps for this project")
 	}
 	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {

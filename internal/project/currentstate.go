@@ -1,8 +1,11 @@
 package project
 
 import (
+	"errors"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -151,25 +154,28 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	lock, err := lockFromTree(afterTree)
+	afterLock, err := lockFromTree(afterTree)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	cutoff, gaps := attestationCutoff(lock)
-	before, err := p.headCurrentState(cutoff, gaps)
+	before, beforeLock, err := p.headCurrentState()
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, cutoff, gaps)
+	if err := validatePermanentLockTransition(beforeLock, afterLock); err != nil {
+		return CurrentStateReport{}, err
+	}
+	afterCutoff, afterGaps := attestationCutoff(afterLock)
+	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterCutoff, afterGaps)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
 	if afterCfg == nil {
 		return CurrentStateReport{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), cutoff)}
+	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), afterCutoff)}
 	if afterCfg.CurrentState != nil {
-		report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, lock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
+		report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	}
 	return report, nil
 }
@@ -186,23 +192,66 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 	return lock, nil
 }
 
-// headCurrentState loads the HEAD commit universe, or the empty universe when
-// the repository has no commit yet or its HEAD predates awf adoption. It reads
-// only committed content, never the working tree.
-func (p *Project) headCurrentState(cutoff int, gaps []int) (currentstate.Loaded, error) {
+// headTreeAndLock loads HEAD and its own lock, or an empty tree and nil lock for
+// an unborn or pre-adoption repository. It never consults the working tree or
+// applies index lock authority to committed bytes.
+func (p *Project) headTreeAndLock() (*snapshot.Tree, *manifest.Lock, error) {
 	has, err := git.HeadExists(p.Root)
 	if err != nil { // coverage-ignore: IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here
-		return currentstate.Loaded{}, err
+		return nil, nil, err
 	}
 	if !has {
-		return currentstate.Loaded{}, nil
+		tree, err := snapshot.NewTree(nil)
+		return tree, nil, err
 	}
 	tree, err := snapshot.CommitTree(p.Root, "HEAD")
 	if err != nil { // coverage-ignore: HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault
-		return currentstate.Loaded{}, err
+		return nil, nil, err
 	}
+	lock, _, err := optionalLockFromTree(tree)
+	return tree, lock, err
+}
+
+func (p *Project) headCurrentState() (currentstate.Loaded, *manifest.Lock, error) {
+	tree, lock, err := p.headTreeAndLock()
+	if err != nil {
+		return currentstate.Loaded{}, nil, err
+	}
+	cutoff, gaps := attestationCutoff(lock)
 	loaded, _, err := loadTreeCurrentState(p.Root, tree, cutoff, gaps)
-	return loaded, err
+	return loaded, lock, err
+}
+
+func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
+	file, ok := tree.Lookup(config.DirName + "/awf.lock")
+	if !ok {
+		return nil, false, nil
+	}
+	lock, err := manifest.Parse(file.Bytes)
+	if err != nil {
+		return nil, true, fmt.Errorf("parse snapshot lock: %w", err)
+	}
+	return lock, true, nil
+}
+
+// validatePermanentLockTransition makes the promoted format identity immutable.
+// The sole non-identical edge consumes a HEAD bridge attestation into exactly
+// those same permanent values. Initial adoption has no before lock and remains
+// valid.
+func validatePermanentLockTransition(before, after *manifest.Lock) error {
+	if before == nil {
+		return nil
+	}
+	if before.ADRFormatV1From == after.ADRFormatV1From && slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+		return nil
+	}
+	if before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
+		after.BridgeAttestation == nil &&
+		after.ADRFormatV1From == before.BridgeAttestation.ADRFormatV1From &&
+		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
+		return nil
+	}
+	return errors.New("staged .awf/awf.lock changes immutable adrFormatV1From/legacyAdrGaps authority")
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config
@@ -216,6 +265,9 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, cutoff int, gaps []i
 	}
 	cfg, err := config.Parse(config.RootDir(root), cfgFile.Bytes)
 	if err != nil {
+		return currentstate.Loaded{}, nil, err
+	}
+	if err := cfg.Validate(); err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
 	loaded, err := currentstate.LoadFromTree(tree, cfg, cutoff, gaps)
@@ -343,9 +395,24 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 			generated[path] = true
 		}
 	}
+	files := tree.List()
+	var nested []string
+	for _, f := range files {
+		const suffix = "/" + config.DirName + "/config.yaml"
+		if strings.HasSuffix(f.Path, suffix) {
+			nested = append(nested, strings.TrimSuffix(f.Path, suffix))
+		}
+	}
 	var out []string
-	for _, f := range tree.List() {
-		if generated[f.Path] || pathMatchesAny(ignores, f.Path) {
+	for _, f := range files {
+		insideNested := false
+		for _, root := range nested {
+			if f.Path == root || strings.HasPrefix(f.Path, root+"/") {
+				insideNested = true
+				break
+			}
+		}
+		if insideNested || generated[f.Path] || pathMatchesAny(ignores, f.Path) {
 			continue
 		}
 		out = append(out, f.Path)

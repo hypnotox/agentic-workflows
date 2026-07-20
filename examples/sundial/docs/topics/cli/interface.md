@@ -27,4 +27,3 @@ Origin: ADR-0002
 The command accepts no degrees-minutes-seconds notation, cardinal suffixes, or named coordinate
 flags; decimal degrees are the only accepted input form.
 Origin: ADR-0002
-

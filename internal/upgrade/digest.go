@@ -21,6 +21,8 @@ import (
 // journal its one deletion.
 const approvalPath = config.DirName + "/current-state-migration.yaml"
 
+var lstat = os.Lstat
+
 // digestRecord is one (slash-relative path, permission mode, content) triple in
 // the attestation tree digest.
 type digestRecord struct {
@@ -143,6 +145,11 @@ func collectMarkerSources(root string, sources []config.CurrentStateSource, univ
 				return filepath.SkipDir
 			}
 			if path != root {
+				if _, statErr := lstat(filepath.Join(path, ".git")); statErr == nil {
+					return filepath.SkipDir
+				} else if !os.IsNotExist(statErr) {
+					return statErr
+				}
 				if _, statErr := os.Stat(filepath.Join(path, config.DirName)); statErr == nil {
 					return filepath.SkipDir
 				}

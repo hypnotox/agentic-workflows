@@ -76,4 +76,3 @@ An update preserves Origin and prior revision history, appends its ADR once, and
 Origin: ADR-0135
 Backing: unbacked
 Verify: Staged fixtures with Origin edits, revision deletion or reordering, whitespace-only, provenance-only, and substantive prose, reference, or backing changes satisfy an update only in the prefix-preserving substantive cases.
-

@@ -24,7 +24,7 @@ const unclaimedDetail = "unclaimed file or directory: not part of the .awf confi
 const bakDetail = "stale awf-bak backup: review and delete"
 const localPartsDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 
-func TestSweepClaimsBridgeTransactionInputs(t *testing.T) {
+func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ntargets: [claude]\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
 	p, err := Open(root)
 	if err != nil {
@@ -39,8 +39,11 @@ func TestSweepClaimsBridgeTransactionInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	orphans := orphanedByPath(drift)
-	if orphans[".awf/current-state-migration.yaml"] != "" || orphans[".awf/current-state-upgrade.journal"] != "" {
-		t.Fatalf("bridge inputs orphaned: %#v", orphans)
+	if orphans[".awf/current-state-migration.yaml"] != unclaimedDetail {
+		t.Fatalf("reintroduced migration approval was not unclaimed: %#v", orphans)
+	}
+	if orphans[".awf/current-state-upgrade.journal"] != "" {
+		t.Fatalf("upgrade journal must remain transaction-owned: %#v", orphans)
 	}
 }
 

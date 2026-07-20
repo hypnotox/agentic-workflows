@@ -88,6 +88,30 @@ func TestContextForAssembles(t *testing.T) {
 	}
 }
 
+func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
+	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/foo/ignored.go\ncurrentState:", 1)
+	files := ctxFiles()
+	files["internal/foo/ignored.go"] = "package foo\n"
+	files["internal/foo/nested/.awf/config.yaml"] = "prefix: nested\n"
+	files["internal/foo/nested/z.go"] = "package nested\n"
+	p := csRepo(t, cfg, files)
+	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"internal/foo/y.go": {}}}
+	if err := lock.Save(lockFile(p.Root)); err != nil {
+		t.Fatal(err)
+	}
+	res, err := p.ContextFor([]string{"internal/foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(res.Paths, ","); got != "internal/foo/x.go" {
+		t.Fatalf("expanded paths = %s; want only eligible x.go", got)
+	}
+	one, _ := topicByID(res, "alpha/one")
+	if got := claimIDs(one); got != "alpha/one:order" {
+		t.Fatalf("directory marker narrowing = %s", got)
+	}
+}
+
 // TestContextForStateMarkerNarrows proves a state marker under the exact queried
 // path narrows its already-applicable topic to the marked claim, while a topic
 // with no marker at that path keeps its whole claim set.
@@ -239,6 +263,7 @@ func TestStagedContextFor(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	staged := map[string]string{
+		".awf/awf.lock":                                `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`,
 		".awf/config.yaml":                             ctxConfig,
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
 		".awf/domains/core.yaml":                       "paths: []\n",
@@ -254,7 +279,7 @@ func TestStagedContextFor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := p.StagedContextFor([]string{"internal/foo/x.go"})
+	res, err := StagedContextRoot(p.Root, []string{"internal/foo/x.go"})
 	if err != nil {
 		t.Fatalf("StagedContextFor: %v", err)
 	}
@@ -264,13 +289,53 @@ func TestStagedContextFor(t *testing.T) {
 	}
 }
 
+func TestStagedContextDirectoryExpandsIndexDescendants(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/foo/ignored.go\ncurrentState:", 1)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/awf.lock":                                `{"awfVersion":"0.19.0","schemaVersion":14,"files":{"internal/foo/y.go":{"templateId":"x"}}}`,
+		".awf/config.yaml":                             cfg,
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
+		".awf/domains/core.yaml":                       "paths: []\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\n\n### `rule: other`\nOther.\nOrigin: ADR-0001\n",
+		"docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25")),
+		"internal/foo/x.go":                            "package foo\n// state: alpha/one:order\n",
+		"internal/foo/y.go":                            "package foo\n",
+		"internal/foo/ignored.go":                      "package foo\n",
+		"internal/foo/nested/.awf/config.yaml":         "prefix: nested\n",
+		"internal/foo/nested/z.go":                     "package nested\n",
+	})
+	res, err := StagedContextRoot(dir, []string{"internal/foo"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(res.Paths, ","); got != "internal/foo/x.go" {
+		t.Fatalf("staged expanded paths = %s", got)
+	}
+	one, _ := topicByID(res, "alpha/one")
+	if got := claimIDs(one); got != "alpha/one:order" {
+		t.Fatalf("staged marker narrowing = %s", got)
+	}
+}
+
+func TestStagedContextForNoLock(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Stage(t, repo, dir, map[string]string{".awf/config.yaml": ctxConfig})
+	if _, err := StagedContextRoot(dir, []string{"internal/foo"}); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
+		t.Fatalf("missing lock error = %v", err)
+	}
+}
+
 // TestStagedContextForNoConfig covers the missing-staged-config branch: a repo
 // whose index carries no .awf/config.yaml.
 func TestStagedContextForNoConfig(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
-	// csRepo commits only README.md; the .awf tree stays untracked, so the index
-	// holds no staged config.
-	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14})
+	// The index holds a lock but no staged config.
+	if _, err := StagedContextRoot(p.Root, []string{"internal/foo"}); err == nil {
 		t.Fatal("expected a no-staged-config error")
 	}
 }
@@ -282,17 +347,18 @@ func TestStagedContextForOutsideRepo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+	if _, err := StagedContextRoot(p.Root, []string{"internal/foo"}); err == nil {
 		t.Fatal("expected an index-tree error outside a git repository")
 	}
 }
 
-// TestStagedContextForCorruptLock covers the on-disk lock read failure in the
-// index loader, which still consults the working-tree lock for the cutoff.
+// TestStagedContextForCorruptLock proves a corrupt working lock is irrelevant
+// when the index lock is valid.
 func TestStagedContextForCorruptLock(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/awf.lock":           `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`,
 		".awf/config.yaml":        ctxConfig,
 		".awf/domains/alpha.yaml": "paths:\n  - internal/foo/**\n",
 		".awf/domains/core.yaml":  "paths: []\n",
@@ -302,8 +368,8 @@ func TestStagedContextForCorruptLock(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
-	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
-		t.Fatal("expected a lock parse error")
+	if _, err := StagedContextRoot(p.Root, []string{"internal/foo"}); err != nil {
+		t.Fatalf("staged context consulted corrupt working lock: %v", err)
 	}
 }
 
@@ -313,6 +379,7 @@ func TestStagedContextForCorpusError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/awf.lock":                `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`,
 		".awf/config.yaml":             ctxConfig,
 		".awf/domains/core.yaml":       "paths: []\n",
 		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
@@ -321,7 +388,7 @@ func TestStagedContextForCorpusError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.StagedContextFor([]string{"internal/foo"}); err == nil {
+	if _, err := StagedContextRoot(p.Root, []string{"internal/foo"}); err == nil {
 		t.Fatal("expected a corpus load error from the staged tree")
 	}
 }
@@ -437,6 +504,12 @@ func TestUncoveredScanRoot(t *testing.T) {
 	}
 	if strings.Join(res.ScanRoots, ",") != "internal" {
 		t.Errorf("scanRoots = %v", res.ScanRoots)
+	}
+}
+
+func TestStagedUncoveredOutsideRepo(t *testing.T) {
+	if _, err := StagedUncoveredRoot(t.TempDir(), nil); err == nil {
+		t.Fatal("expected staged uncovered to reject a non-repository")
 	}
 }
 

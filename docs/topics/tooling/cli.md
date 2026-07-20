@@ -243,4 +243,3 @@ Backing: test
 Every gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted.
 Origin: ADR-0039
 Backing: test
-

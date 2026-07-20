@@ -2,12 +2,12 @@ package currentstate_test
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -41,7 +41,6 @@ var legacyContextFields = []string{"Governing", "Related", "Background", "Pitfal
 // exactly what current-state authority forbids after cutover.
 var migrationApprovalSeams = []string{
 	"internal/upgrade/digest.go",
-	"internal/project/sweep.go",
 }
 
 // bridgeImportPath is the deleted cross-schema bridge package; no production file
@@ -73,26 +72,14 @@ func bannedWholeWords(body string, banned []string) []string {
 func productionGoSources(t *testing.T, fn func(path, body string)) int {
 	t.Helper()
 	seen := 0
-	for _, root := range []string{filepath.Join("..", "..", "internal"), filepath.Join("..", "..", "cmd")} {
-		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-				return nil
-			}
-			b, rerr := os.ReadFile(path)
-			if rerr != nil {
-				return rerr
-			}
-			seen++
-			fn(filepath.ToSlash(path), string(b))
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
+	repoRoot := filepath.Join("..", "..")
+	testsupport.WalkRepoSources(t, repoRoot, func(path string, body []byte) {
+		if !strings.HasPrefix(path, "internal/") && !strings.HasPrefix(path, "cmd/") {
+			return
 		}
-	}
+		seen++
+		fn(path, string(body))
+	})
 	return seen
 }
 

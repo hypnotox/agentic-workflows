@@ -158,16 +158,15 @@ Provide paths explicitly, or resolve them from git with --staged (the staged
 changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
 take precedence over the git selectors.
 
-With --uncovered, ignore the path lookup and instead report git-tracked-at-HEAD
-paths matched by no configured domain glob: the coverage-gap signal for where to
-add a domain. Positional args become optional scan roots (a directory subtree);
---staged/--range are not accepted in this mode.
+With --uncovered, report eligible paths that are unowned or owned by a domain
+but covered by no scoped topic. Positional args become optional scan roots.
+Combine with --staged to read the index universe; --range is not accepted.
 
 Flags:
   --json               emit the context as JSON
-  --staged             use the staged changed paths
+  --staged             use the staged index universe
   --range <a>..<b>     use the paths changed between revisions a and b
-  --uncovered          report tracked paths owned by no domain (scan roots optional)
+  --uncovered          report unowned and uncovered paths (scan roots optional)
 `,
 	},
 	{

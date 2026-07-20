@@ -50,7 +50,6 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 		files: map[string]bool{
 			config.DirName + "/config.yaml":                   true,
 			config.DirName + "/awf.lock":                      true,
-			config.DirName + "/current-state-migration.yaml":  true,
 			config.DirName + "/current-state-upgrade.journal": true,
 		},
 		dirs: map[string]bool{

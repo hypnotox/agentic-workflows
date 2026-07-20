@@ -14,4 +14,3 @@ The frontmatter package splits and validates YAML frontmatter for authored docum
 Split on content with no leading triple-dash delimiter returns found == false and the original content as the body; on well-formed frontmatter it returns the YAML block and the body following the closing delimiter line.
 Origin: ADR-0006
 Backing: test
-

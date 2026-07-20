@@ -92,4 +92,3 @@ Backing: test
 The pincheck gate exits non-zero when any remote uses: reference under .github/workflows is not pinned to a full 40-hex commit SHA (repo-local ./ refs exempt, docker:// refs digest-pinned) or when a goreleaser-action version input is not an exact semver version.
 Origin: ADR-0079
 Backing: test
-

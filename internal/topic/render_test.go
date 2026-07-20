@@ -31,6 +31,9 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 	if strings.Contains(out, "awf:comment") || !strings.Contains(out, "Authored {{ .raw }}.") || !strings.Contains(out, "within domain") {
 		t.Fatalf("%s", out)
 	}
+	if strings.HasSuffix(out, "\n\n") || !strings.HasSuffix(out, "\n") {
+		t.Fatalf("topic output must end in exactly one newline: %q", out)
+	}
 	global := BuildTopicModel(topics[1], nil, MarkerIndex{})
 	if !strings.Contains(global.Applicability, "Global") {
 		t.Fatal(global.Applicability)

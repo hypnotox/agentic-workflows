@@ -110,4 +110,3 @@ Verify: Fixtures rendered in every legal status produce the exact INDEX.md secti
 Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart).
 Origin: ADR-0120
 Backing: test
-
