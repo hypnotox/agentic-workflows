@@ -30,16 +30,19 @@ func TestCheckPairValidAdd(t *testing.T) {
 // TestCheckPairValidUpdate accepts an Accepted->Implemented update that preserves
 // Origin, appends the updating ADR to Revised-by, and changes the prose.
 func TestCheckPairValidUpdate(t *testing.T) {
+	accepted := rec("0138", "Accepted", 0, op(adr.OpUpdate, "d/t:x"))
+	implemented := rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x"))
+	implemented.History = append(append([]adr.StatusEntry(nil), accepted.History...), implemented.History[len(implemented.History)-1])
 	before := uni(
 		[]adr.ADR{
 			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-			rec("0138", "Accepted", 0, op(adr.OpUpdate, "d/t:x")),
+			accepted,
 		},
 		prosed(claim("d/t:x", "0137"), "old"))
 	after := uni(
 		[]adr.ADR{
 			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-			rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+			implemented,
 		},
 		prosed(claim("d/t:x", "0137", "0138"), "new"))
 	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
@@ -50,15 +53,18 @@ func TestCheckPairValidUpdate(t *testing.T) {
 // TestCheckPairValidRemove accepts an Accepted->Implemented remove that retires
 // the claim.
 func TestCheckPairValidRemove(t *testing.T) {
+	accepted := rec("0139", "Accepted", 0, op(adr.OpRemove, "d/t:x"))
+	implemented := rec("0139", "Implemented", 2, op(adr.OpRemove, "d/t:x"))
+	implemented.History = append(append([]adr.StatusEntry(nil), accepted.History...), implemented.History[len(implemented.History)-1])
 	before := uni(
 		[]adr.ADR{
 			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-			rec("0139", "Accepted", 0, op(adr.OpRemove, "d/t:x")),
+			accepted,
 		},
 		claim("d/t:x", "0137"))
 	after := uni([]adr.ADR{
 		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-		rec("0139", "Implemented", 2, op(adr.OpRemove, "d/t:x")),
+		implemented,
 	})
 	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
 		t.Fatalf("expected no findings, got:\n%s", messages(f))
@@ -100,6 +106,83 @@ func TestCheckPairIllegalTransition(t *testing.T) {
 	after := uni([]adr.ADR{rec("0137", "Abandoned", 0)})
 	if f := currentstate.CheckPair(before, after, 137); !strings.Contains(messages(f), "ADR-0137 changed status from Implemented to Abandoned, which is not a legal") {
 		t.Fatalf("illegal transition not reported:\n%s", messages(f))
+	}
+}
+
+// TestCheckPairFrozenAndHistoryRules rejects content rewrites after Proposed and
+// any Status history change other than the one-entry append of a legal edge.
+func TestCheckPairFrozenAndHistoryRules(t *testing.T) {
+	entry := func(status, digest string) adr.StatusEntry {
+		return adr.StatusEntry{Date: "2026-01-02", Status: status, Digest: digest}
+	}
+	record := func(status, body string, history ...adr.StatusEntry) adr.ADR {
+		return adr.ADR{
+			Number:   "0137",
+			Format:   adr.CurrentStateV1,
+			Status:   status,
+			Sections: map[string]string{"Decision": body},
+			History:  history,
+		}
+	}
+	proposed := adr.StatusEntry{Date: "2026-01-01", Status: "Proposed"}
+
+	cases := []struct {
+		name          string
+		before, after adr.ADR
+		want          string
+	}{
+		{"same-status Accepted semantic rewrite", record("Accepted", "old", proposed, entry("Accepted", "old-digest")), record("Accepted", "new", proposed, entry("Accepted", "old-digest")), "frozen-content rule"},
+		{"same-status Implemented semantic rewrite", record("Implemented", "old", proposed, entry("Implemented", "old-digest")), record("Implemented", "new", proposed, entry("Implemented", "old-digest")), "frozen-content rule"},
+		{"same-status Abandoned semantic rewrite", record("Abandoned", "old", proposed, entry("Abandoned", "old-digest")), record("Abandoned", "new", proposed, entry("Abandoned", "old-digest")), "frozen-content rule"},
+		{"recomputed digest rewrite", record("Accepted", "old", proposed, entry("Accepted", "old-digest")), record("Accepted", "new", proposed, entry("Accepted", "new-digest")), "frozen-content rule"},
+		{"history truncation", record("Implemented", "same", proposed, entry("Accepted", "digest"), entry("Implemented", "digest")), record("Implemented", "same", proposed, entry("Implemented", "digest")), "history-prefix rule"},
+		{"history replacement", record("Accepted", "same", proposed, entry("Accepted", "digest")), record("Accepted", "same", proposed, adr.StatusEntry{Date: "2026-01-09", Status: "Proposed"}, entry("Accepted", "digest")), "history-prefix rule"},
+		{"legal transition rewrites earlier entry", record("Accepted", "same", proposed, entry("Accepted", "digest")), record("Implemented", "same", adr.StatusEntry{Date: "2026-01-03", Status: "Proposed"}, entry("Accepted", "digest"), entry("Implemented", "digest")), "history-prefix rule"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := messages(currentstate.CheckPair(uni([]adr.ADR{tc.before}), uni([]adr.ADR{tc.after}), 137))
+			if !strings.Contains(got, "ADR-0137") || !strings.Contains(got, tc.want) {
+				t.Fatalf("want ADR number and %q in:\n%s", tc.want, got)
+			}
+		})
+	}
+}
+
+// TestCheckPairHistoryValid accepts Proposed edits before freezing and every
+// legal edge when Status history appends exactly one entry.
+func TestCheckPairHistoryValid(t *testing.T) {
+	proposed := adr.StatusEntry{Date: "2026-01-01", Status: "Proposed"}
+	cases := []struct {
+		name, from, to string
+	}{
+		{"Proposed body edit", "Proposed", "Proposed"},
+		{"Proposed to Accepted", "Proposed", "Accepted"},
+		{"Proposed to Implemented", "Proposed", "Implemented"},
+		{"Proposed to Abandoned", "Proposed", "Abandoned"},
+		{"Accepted to Implemented", "Accepted", "Implemented"},
+		{"Accepted to Abandoned", "Accepted", "Abandoned"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			beforeHistory := []adr.StatusEntry{proposed}
+			if tc.from == "Accepted" {
+				beforeHistory = append(beforeHistory, adr.StatusEntry{Date: "2026-01-02", Status: "Accepted"})
+			}
+			afterHistory := append([]adr.StatusEntry(nil), beforeHistory...)
+			if tc.to != tc.from {
+				afterHistory = append(afterHistory, adr.StatusEntry{Date: "2026-01-03", Status: tc.to})
+			}
+			before := adr.ADR{Number: "0137", Format: adr.CurrentStateV1, Status: tc.from, Sections: map[string]string{"Decision": "before"}, History: beforeHistory}
+			afterDecision := "before"
+			if tc.from == "Proposed" {
+				afterDecision = "after"
+			}
+			after := adr.ADR{Number: "0137", Format: adr.CurrentStateV1, Status: tc.to, Sections: map[string]string{"Decision": afterDecision}, History: afterHistory}
+			if f := currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), 137); len(f) != 0 {
+				t.Fatalf("expected no findings, got:\n%s", messages(f))
+			}
+		})
 	}
 }
 

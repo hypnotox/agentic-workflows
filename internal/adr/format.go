@@ -77,6 +77,25 @@ func ParseV1(name string, data []byte) (ADR, error) {
 	return a, nil
 }
 
+// FrozenContentEqual reports whether a pair preserves canonical ADR content.
+// Proposed records remain editable; every later status freezes the five
+// content-sha256 sections at their before-state digest.
+func FrozenContentEqual(before, after ADR) bool {
+	return before.Status == statusProposed || ContentDigest(before.Sections) == ContentDigest(after.Sections)
+}
+
+// HistoryTransitionValid reports whether a pair preserves append-only Status
+// history: equal histories at the same status, or an exact before prefix plus
+// one entry when the status follows a legal lifecycle edge.
+func HistoryTransitionValid(before, after ADR) bool {
+	if before.Status == after.Status {
+		return slices.Equal(before.History, after.History)
+	}
+	return v1TransitionLegal(before.Status, after.Status) &&
+		len(after.History) == len(before.History)+1 &&
+		slices.Equal(before.History, after.History[:len(before.History)])
+}
+
 // ParseRecord parses one ADR, routing by its filename number against cutoff
 // (the lock's adrFormatV1From). A number at or above cutoff must be
 // current-state-v1; a lower number is legacy identity-only and must not declare

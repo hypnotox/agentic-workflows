@@ -49,10 +49,11 @@ func CheckPair(before, after Universe, cutoff int) []Finding {
 }
 
 // checkTransitions requires every current-state-v1 ADR present in both universes
-// whose status changed to follow a legal lifecycle edge. A newly added ADR has
-// no before-state to compare against; its internal Status history is already
-// validated when it parses. A terminal ADR that changed at all is rejected,
-// since no edge leaves Implemented or Abandoned.
+// to preserve frozen content and append-only Status history, and every status
+// change to follow a legal lifecycle edge. A newly added ADR has no before-state
+// to compare against; its internal Status history is already validated when it
+// parses. A terminal ADR that changed at all is rejected, since no edge leaves
+// Implemented or Abandoned.
 func checkTransitions(before, after []adr.ADR) []Finding {
 	beforeByNum := byNumber(before)
 	afterByNum := byNumber(after)
@@ -69,10 +70,16 @@ func checkTransitions(before, after []adr.ADR) []Finding {
 			continue
 		}
 		b, ok := beforeByNum[a.Number]
-		if !ok || b.HasSameStatus(a) {
+		if !ok || !b.IsV1() {
 			continue
 		}
-		if !adr.TransitionLegal(b.Status, a.Status) {
+		if !adr.FrozenContentEqual(b, a) {
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after Proposed", a.Number)})
+		}
+		if !adr.HistoryTransitionValid(b, a) {
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the history-prefix rule: Status history must remain equal at the same status or append exactly one entry for a legal transition", a.Number)})
+		}
+		if !b.HasSameStatus(a) && !adr.TransitionLegal(b.Status, a.Status) {
 			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal current-state-v1 transition", a.Number, b.Status, a.Status)})
 		}
 	}

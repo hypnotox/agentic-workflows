@@ -23,6 +23,63 @@ func build(status, date, decision, stateChanges, history string) string {
 
 const oneDecision = "1. The only decision."
 
+// TestFrozenContentEqual permits Proposed drafting and freezes canonical
+// decision content at every later status.
+func TestFrozenContentEqual(t *testing.T) {
+	record := func(status, decision string) adr.ADR {
+		return adr.ADR{Status: status, Sections: map[string]string{"Decision": decision}}
+	}
+	cases := []struct {
+		name          string
+		before, after adr.ADR
+		want          bool
+	}{
+		{"Proposed rewrite", record("Proposed", "old"), record("Proposed", "new"), true},
+		{"Accepted unchanged", record("Accepted", "same"), record("Accepted", "same"), true},
+		{"Accepted rewrite", record("Accepted", "old"), record("Accepted", "new"), false},
+		{"Implemented rewrite", record("Implemented", "old"), record("Implemented", "new"), false},
+		{"Abandoned rewrite", record("Abandoned", "old"), record("Abandoned", "new"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := adr.FrozenContentEqual(tc.before, tc.after); got != tc.want {
+				t.Fatalf("FrozenContentEqual = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestHistoryTransitionValid requires equality without a status change and an
+// exact one-entry extension for every legal status edge.
+func TestHistoryTransitionValid(t *testing.T) {
+	p := adr.StatusEntry{Date: "2026-01-01", Status: "Proposed"}
+	a := adr.StatusEntry{Date: "2026-01-02", Status: "Accepted", Digest: "digest"}
+	i := adr.StatusEntry{Date: "2026-01-03", Status: "Implemented", Digest: "digest"}
+	record := func(status string, history ...adr.StatusEntry) adr.ADR {
+		return adr.ADR{Status: status, History: history}
+	}
+	cases := []struct {
+		name          string
+		before, after adr.ADR
+		want          bool
+	}{
+		{"same status equal", record("Accepted", p, a), record("Accepted", p, a), true},
+		{"same status replacement", record("Accepted", p, a), record("Accepted", p, adr.StatusEntry{Date: "2026-01-09", Status: "Accepted"}), false},
+		{"legal exact append", record("Accepted", p, a), record("Implemented", p, a, i), true},
+		{"legal append after rewritten prefix", record("Accepted", p, a), record("Implemented", adr.StatusEntry{Date: "2026-01-09", Status: "Proposed"}, a, i), false},
+		{"legal edge missing append", record("Accepted", p, a), record("Implemented", p, a), false},
+		{"legal edge two appends", record("Proposed", p), record("Implemented", p, a, i), false},
+		{"illegal edge", record("Implemented", p, i), record("Abandoned", p, i, adr.StatusEntry{Date: "2026-01-04", Status: "Abandoned"}), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := adr.HistoryTransitionValid(tc.before, tc.after); got != tc.want {
+				t.Fatalf("HistoryTransitionValid = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
 // digestFor returns the content-sha256 an ADR with these Decision and State
 // changes bodies must record, computed from a Proposed scaffold that shares the
 // five canonical sections byte-for-byte.
