@@ -44,6 +44,22 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 		t.Fatal(model.Applicability)
 	}
 }
+func TestRenderTopicTrimsTrailingNewlineFraming(t *testing.T) {
+	out, err := RenderTopic(TopicRenderModel{
+		Title:         "Title",
+		Summary:       "Summary.",
+		Applicability: "Scope.",
+		Part:          "Body.\r\n\r\n\n",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "# Title\n\nSummary.\n\n**Applicability:** Scope.\n\nBody.\n"
+	if out != want {
+		t.Fatalf("RenderTopic bytes = %q, want %q", out, want)
+	}
+}
+
 func TestRenderErrors(t *testing.T) {
 	if _, err := RenderTopic(TopicRenderModel{Part: "<!-- awf:comment no close\n"}); err == nil {
 		t.Fatal("malformed comment accepted")

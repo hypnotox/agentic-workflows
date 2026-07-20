@@ -77,7 +77,7 @@ func (p *Project) ContextFor(paths []string) (ContextResult, error) {
 	if err != nil {
 		return ContextResult{}, err
 	}
-	expanded := expandContextPaths(paths, eligiblePaths(ws.Tree, ws.Lock, p.Cfg.ContextIgnore))
+	expanded := expandContextPaths(paths, eligiblePaths(ws.Tree, ws.Lock, p.Cfg.ContextIgnore), ws.Tree)
 	return p.assembleContext(ws.Loaded, expanded), nil
 }
 
@@ -91,7 +91,7 @@ func StagedContextRoot(root string, paths []string) (ContextResult, error) {
 		return ContextResult{}, err
 	}
 	p.Cfg = state.Cfg
-	expanded := expandContextPaths(paths, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore))
+	expanded := expandContextPaths(paths, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore), state.Tree)
 	return p.assembleContext(state.Loaded, expanded), nil
 }
 
@@ -122,19 +122,36 @@ func (p *Project) indexCurrentState() (indexState, error) {
 	return indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
 }
 
-func expandContextPaths(paths, eligible []string) []string {
+func expandContextPaths(paths, eligible []string, tree *snapshot.Tree) []string {
 	clean := NormalizeContextPaths(paths)
+	files := tree.List()
 	var expanded []string
 	for _, query := range clean {
-		found := false
-		for _, path := range eligible {
-			if strings.HasPrefix(path, query+"/") {
-				expanded = append(expanded, path)
-				found = true
+		if _, exists := tree.Lookup(query); exists {
+			expanded = append(expanded, query)
+			continue
+		}
+		prefix := query + "/"
+		if query == "." {
+			prefix = ""
+		}
+		isDir := query == "."
+		if !isDir {
+			for _, file := range files {
+				if strings.HasPrefix(file.Path, prefix) {
+					isDir = true
+					break
+				}
 			}
 		}
-		if !found {
+		if !isDir {
 			expanded = append(expanded, query)
+			continue
+		}
+		for _, path := range eligible {
+			if strings.HasPrefix(path, prefix) {
+				expanded = append(expanded, path)
+			}
 		}
 	}
 	return NormalizeContextPaths(expanded)
@@ -327,7 +344,7 @@ func assembleUncovered(corpus topic.Corpus, eligible, scanRoots []string) Uncove
 			return true
 		}
 		for _, r := range roots {
-			if path == r || strings.HasPrefix(path, r+"/") {
+			if r == "." || path == r || strings.HasPrefix(path, r+"/") {
 				return true
 			}
 		}
@@ -417,8 +434,11 @@ func NormalizeContextPaths(paths []string) []string {
 	seen := map[string]bool{}
 	var out []string
 	for _, p := range paths {
+		if p == "" {
+			continue
+		}
 		c := filepath.ToSlash(filepath.Clean(p))
-		if c == "" || c == "." || seen[c] {
+		if seen[c] {
 			continue
 		}
 		seen[c] = true

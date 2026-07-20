@@ -88,6 +88,48 @@ func TestContextForAssembles(t *testing.T) {
 	}
 }
 
+func TestContextForRootExpandsEligibleDescendants(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	res, err := p.ContextFor([]string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := "," + strings.Join(res.Paths, ",") + ","
+	for _, want := range []string{"README.md", "internal/foo/x.go", "internal/foo/y.go"} {
+		if !strings.Contains(got, ","+want+",") {
+			t.Errorf("root-expanded paths = %v; missing %s", res.Paths, want)
+		}
+	}
+	if strings.Contains(got, ",.,") {
+		t.Errorf("root-expanded paths retained directory literal: %v", res.Paths)
+	}
+}
+
+func TestContextForNonexistentPathRemainsLiteral(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	res, err := p.ContextFor([]string{"missing/path.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(res.Paths, ",") != "missing/path.go" || strings.Join(res.Unowned, ",") != "missing/path.go" {
+		t.Fatalf("nonexistent literal result = paths %v, unowned %v", res.Paths, res.Unowned)
+	}
+}
+
+func TestContextForAllIneligibleDirectoryExpandsToNothing(t *testing.T) {
+	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/ignored/**\ncurrentState:", 1)
+	files := ctxFiles()
+	files["internal/ignored/x.go"] = "package ignored\n"
+	p := csRepo(t, cfg, files)
+	res, err := p.ContextFor([]string{"internal/ignored"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Paths) != 0 || len(res.Unowned) != 0 {
+		t.Fatalf("all-ineligible directory result = paths %v, unowned %v; want neither", res.Paths, res.Unowned)
+	}
+}
+
 func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
 	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/foo/ignored.go\ncurrentState:", 1)
 	files := ctxFiles()
@@ -234,12 +276,12 @@ func TestAttestationCutoffPermanentLockFields(t *testing.T) {
 	}
 }
 
-// TestNormalizeContextPaths covers the drop rules: "." and paths cleaning to ".",
-// duplicates, and slash normalization into a sorted set.
+// TestNormalizeContextPaths covers root preservation, duplicates, and slash
+// normalization into a sorted set.
 func TestNormalizeContextPaths(t *testing.T) {
-	got := NormalizeContextPaths([]string{".", "./", "b/../b", "a", "a", "c"})
-	if strings.Join(got, ",") != "a,b,c" {
-		t.Errorf("NormalizeContextPaths = %v, want [a b c]", got)
+	got := NormalizeContextPaths([]string{"", ".", "./", "b/../b", "a", "a", "c"})
+	if strings.Join(got, ",") != ".,a,b,c" {
+		t.Errorf("NormalizeContextPaths = %v, want [. a b c]", got)
 	}
 }
 
@@ -286,6 +328,48 @@ func TestStagedContextFor(t *testing.T) {
 	one, ok := topicByID(res, "alpha/one")
 	if !ok || claimIDs(one) != "alpha/one:order" {
 		t.Fatalf("staged topics = %#v; want alpha/one from the index", res.Topics)
+	}
+}
+
+func TestStagedContextRootExpandsEligibleDescendants(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	files := ctxFiles()
+	files[".awf/awf.lock"] = `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`
+	files[".awf/config.yaml"] = ctxConfig
+	files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"))
+	gitfixture.Stage(t, repo, dir, files)
+	res, err := StagedContextRoot(dir, []string{"."})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := "," + strings.Join(res.Paths, ",") + ","
+	for _, want := range []string{"README.md", "internal/foo/x.go", "internal/foo/y.go"} {
+		if !strings.Contains(got, ","+want+",") {
+			t.Errorf("staged root-expanded paths = %v; missing %s", res.Paths, want)
+		}
+	}
+	if strings.Contains(got, ",.,") {
+		t.Errorf("staged root-expanded paths retained directory literal: %v", res.Paths)
+	}
+}
+
+func TestStagedContextAllIneligibleDirectoryExpandsToNothing(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/ignored/**\ncurrentState:", 1)
+	files := ctxFiles()
+	files[".awf/awf.lock"] = `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`
+	files[".awf/config.yaml"] = cfg
+	files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"))
+	files["internal/ignored/x.go"] = "package ignored\n"
+	gitfixture.Stage(t, repo, dir, files)
+	res, err := StagedContextRoot(dir, []string{"internal/ignored"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Paths) != 0 || len(res.Unowned) != 0 {
+		t.Fatalf("staged all-ineligible directory result = paths %v, unowned %v; want neither", res.Paths, res.Unowned)
 	}
 }
 
