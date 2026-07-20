@@ -8,13 +8,15 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-07-20
+
 ### Breaking changes
 - Version 0.18.0 introduces schema generation 14, `current-state-topic-substrate`, and the optional
   strict `currentState` bridge-preparation config beside unchanged legacy `invariants`. The new keys
   describe marker sources, proof test globs, topic coverage and fan-out severities, and a positive
   per-path topic budget (default 8), but they do not switch normal context or invariant authority.
-  This is not migration readiness: Plans 1 and 2 are one unreleased bridge tranche and must both
-  land before any bridge release; the release check refuses publication in the interim.
+  0.18.0 ships the current-state bridge (the topic substrate and the migration tooling) as one
+  tranche; the authority switch and adopter cutover follow in a later current-state release.
 - Pi's `subagent_explore` now requires `{task, breadth, detail}` (ADR-0132). Breadth is
   `targeted`, `bounded`, or `broad`; detail is `paths`, `summary`, or `analysis`. Hand-authored
   calls that pass only `task` must add both fields.
@@ -167,8 +169,7 @@ query a single version or a range.
   commands non-operational: with a journal present only `awf upgrade --recover` proceeds, with an
   attested lock only `awf upgrade --check` inspects it, a malformed journal refuses every mode
   (recovery included) with deterministic Git-restoration-and-bridge-reinstallation guidance, and
-  `awf version`/`awf changelog`/`awf help` always bypass the transaction state. This is still one
-  unreleased bridge tranche; no intermediate release may be cut.
+  `awf version`/`awf changelog`/`awf help` always bypass the transaction state.
 - `cmd/releasecheck` carries the `project.BridgeTrancheComplete` release sentinel. Plans 1 and 2 of
   the current-state bridge are one unreleased v0.18.0 tranche, so the check refuses publication from
   any intermediate commit while the const is `false`. The sentinel gates publication until both plans
@@ -178,25 +179,24 @@ query a single version or a range.
   backing while hiding provenance and references. Independent `--history`, `--references`, and
   `--coverage` flags add direct ADR details, direct incoming/outgoing claim IDs, and declared/effective
   scope plus marker sites; no option traverses transitively or resolves removed history. Outside an
-  adopted tree the command prints a static reference without gating. This remains unreleased bridge
-  preparation until the bridge-migration tranche lands.
+  adopted tree the command prints a static reference without gating. This is bridge preparation and
+  does not switch context or invariant authority.
 - `awf new topic <domain> "<title>"` scaffolds exactly the paired current-state metadata and authored
   part without syncing or mutating config, lock, or rendered docs. It allocates a collision-free
   kebab slug, protects the reserved `index` and either orphaned half, rolls back the first file if the
   second write fails, and prints both repository-relative paths. The scaffold contains a valid path
   placeholder, generic prose, and no invented claims; adopters must edit and author it manually. A
-  zero-claim shell renders but does not satisfy scoped coverage. This is still unreleased bridge
-  preparation, not migration readiness or runtime authority, and no intermediate release is allowed.
-- The unreleased current-state topic producer strictly pairs
+  zero-claim shell renders but does not satisfy scoped coverage. This is bridge preparation, not
+  runtime authority: it scaffolds topics without switching context or invariant enforcement.
+- The current-state topic producer strictly pairs
   `.awf/topics/metadata/<domain>/<topic>.yaml` with
   `.awf/topics/parts/<domain>/<topic>/current-state.md`, parses canonical rule and invariant claims,
   resolves Implemented-ADR provenance and direct references, and validates qualified configured
   state, touches, and proof markers. It renders managed topic pages and sorted per-domain indexes,
   adds compact domain navigation without removing Decisions, and joins ordinary output-plan,
   manifest, brownfield backup, drift, collision, and prune behavior. This is preparation substrate,
-  not migration readiness or shadow authority: legacy context and invariant enforcement remain
-  unchanged, and no release may occur before the following bridge-migration plan adds readiness,
-  attestation, and ordinary-command refusal.
+  not shadow authority: legacy context and invariant enforcement remain unchanged, and the authority
+  switch follows in a later current-state release.
 - **`awf check` reports a supersession claim stated in prose and never encoded** (ADR-0131). The
   new `adr-unencoded-claim` finding fires when an override verb occurs in the same Decision item
   as a citation of another ADR's anchor and that item carries no relation token for it, naming the
