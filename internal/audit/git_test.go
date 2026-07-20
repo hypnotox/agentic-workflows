@@ -3,6 +3,7 @@ package audit
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
@@ -115,6 +116,41 @@ func TestCollectNormalRange(t *testing.T) {
 // A merge commit's first-parent diff is the *other* side's work (typically
 // main merged into the branch); attributing it to the branch makes every
 // file-based rule fire on foreign changes. Merges must carry no Changes.
+func TestCollectNestedAdopterFiltersAndReroots(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	if err := os.MkdirAll(filepath.Join(dir, "nested", "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{
+		"nested/docs/old.md": "old\n",
+		"outside.txt":        "old\n",
+	})
+	gitfixture.Commit(t, repo, dir, "feat(awf): outside only", map[string]string{"outside.txt": "new\n"})
+	gitfixture.Commit(t, repo, dir, "feat(awf): nested change", map[string]string{
+		"nested/docs/old.md": "new\n",
+		"nested/new.txt":     "new\n",
+	})
+
+	commits, err := Collect(filepath.Join(dir, "nested"), base.String(), "HEAD")
+	if err != nil {
+		t.Fatalf("Collect nested: %v", err)
+	}
+	if len(commits) != 1 || commits[0].Subject != "feat(awf): nested change" {
+		t.Fatalf("nested commits = %+v; want only the in-scope commit", commits)
+	}
+	if _, ok := findChange(commits[0].Changes, "docs/old.md"); !ok {
+		t.Fatalf("nested changes not rerooted: %+v", commits[0].Changes)
+	}
+	if _, ok := findChange(commits[0].Changes, "new.txt"); !ok {
+		t.Fatalf("nested added path missing: %+v", commits[0].Changes)
+	}
+	for _, ch := range commits[0].Changes {
+		if strings.HasPrefix(ch.Path, "nested/") || strings.HasPrefix(ch.Path, "outside") {
+			t.Fatalf("unfiltered/unrerooted nested change: %+v", ch)
+		}
+	}
+}
+
 func TestCollectMergeCommitCarriesNoChanges(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	c0 := gitfixture.Commit(t, repo, dir, "chore: base\n", map[string]string{"README.md": "base\n"})
@@ -244,7 +280,7 @@ func TestToCommitRootAndFileText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	nc, err := toCommit(rc)
+	nc, err := toCommit(rc, "")
 	if err != nil {
 		t.Fatalf("toCommit root: %v", err)
 	}

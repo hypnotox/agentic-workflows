@@ -295,10 +295,20 @@ func checkBackward(records []adr.ADR, claims map[string]topic.Claim, cutoff int)
 				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation", id, claim.Origin)})
 			}
 		}
+		lastSequence := 0
+		if origin, ok := byNum[claim.Origin]; ok && origin.IsV1() {
+			lastSequence = stateSequence(origin)
+		}
 		for _, rev := range claim.RevisedBy {
 			if !hasOperation(byNum, rev, adr.OpUpdate, id) {
 				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Revised-by ADR-%s, which has no matching update operation", id, rev)})
+				continue
 			}
+			sequence := stateSequence(byNum[rev])
+			if sequence <= lastSequence {
+				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s Revised-by entries are not in increasing State-sequence order at ADR-%s", id, rev)})
+			}
+			lastSequence = sequence
 		}
 	}
 	return findings
@@ -306,6 +316,16 @@ func checkBackward(records []adr.ADR, claims map[string]topic.Claim, cutoff int)
 
 // hasOperation reports whether the named ADR is an Implemented v1 ADR carrying
 // the given verb over id.
+func stateSequence(a adr.ADR) int {
+	sequence := 0
+	for _, entry := range a.History {
+		if entry.HasSequence {
+			sequence = entry.Sequence
+		}
+	}
+	return sequence
+}
+
 func hasOperation(byNum map[string]adr.ADR, num string, verb adr.OpVerb, id string) bool {
 	a, ok := byNum[num]
 	if !ok || !a.IsV1() || !a.IsImplemented() {

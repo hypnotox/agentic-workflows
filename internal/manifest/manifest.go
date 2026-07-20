@@ -69,6 +69,11 @@ func Load(path string) (*Lock, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read lock: %w", err)
 	}
+	return Parse(b)
+}
+
+// Parse decodes lock bytes from any snapshot universe.
+func Parse(b []byte) (*Lock, error) {
 	var l Lock
 	if err := json.Unmarshal(b, &l); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)

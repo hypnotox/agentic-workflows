@@ -162,6 +162,28 @@ func TestCheckBackward(t *testing.T) {
 	if !strings.Contains(messages(noUpdate), "Revised-by ADR-0199, which has no matching update") {
 		t.Errorf("missing update operation not reported:\n%s", messages(noUpdate))
 	}
+	outOfOrder := currentstate.Check(
+		[]adr.ADR{
+			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
+			rec("0138", "Implemented", 3, op(adr.OpUpdate, "d/t:x")),
+			rec("0139", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+		},
+		topics(claim("d/t:x", "0137", "0138", "0139")),
+		137)
+	if !strings.Contains(messages(outOfOrder), "not in increasing State-sequence order at ADR-0139") {
+		t.Errorf("out-of-order Revised-by not reported:\n%s", messages(outOfOrder))
+	}
+	beforeOrigin := currentstate.Check(
+		[]adr.ADR{
+			rec("0136", "Implemented", 1, op(adr.OpAdd, "d/t:other")),
+			rec("0137", "Implemented", 3, op(adr.OpAdd, "d/t:x")),
+			rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+		},
+		topics(claim("d/t:other", "0136"), claim("d/t:x", "0137", "0138")),
+		136)
+	if !strings.Contains(messages(beforeOrigin), "not in increasing State-sequence order at ADR-0138") {
+		t.Errorf("Revised-by before Origin sequence not reported:\n%s", messages(beforeOrigin))
+	}
 }
 
 // TestSeverityString covers both severities.

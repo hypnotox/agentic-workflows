@@ -301,7 +301,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:9443d0033cb5e9564bf469a3e8c182dc8ac90263ad7a76b119a6d051eb100caf",
+      "outputHash": "sha256:e5a40c32ac2cc6c419e4cc8dae7e8a2cc6e8fa4f76763b1cf1e44aae058a5cd4",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -408,8 +408,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:6933a1096b3469990cbdf742676057e0f1707886eb4e74a21d3582c11d125ad3",
-      "outputHash": "sha256:efd67f4abe4d5dcee293230dbceb8dce792b545f9c4c64214a9e7c78d774517c"
+      "configHash": "sha256:413d42481dd11ff3e0430104aba3eb2450810fa81187ae059d9e0c95ef9d5c88",
+      "outputHash": "sha256:af8a83977c0a15aafac2990c419221b8fe135476ae9bfefd0f357e458b04584a"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",

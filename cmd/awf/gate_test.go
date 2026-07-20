@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // gateFixture writes a .awf/ tree with a minimal config.yaml and a hand-written
@@ -26,6 +27,24 @@ func gateFixture(t *testing.T, awfVersion string, schema int) string {
 		}
 	}
 	return root
+}
+
+func TestGateStagedLoadErrors(t *testing.T) {
+	nonRepo := t.TempDir()
+	if err := gateStaged(nonRepo); err == nil {
+		t.Fatal("gateStaged accepted a non-repository")
+	}
+	if _, _, _, err := checkLockVsBinary(nonRepo, true); err == nil {
+		t.Fatal("staged ahead-note loader accepted a non-repository")
+	}
+	repo, dir := gitfixture.InitRepo(t)
+	if _, err := stagedLock(dir); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
+		t.Fatalf("missing staged lock error = %v", err)
+	}
+	gitfixture.Stage(t, repo, dir, map[string]string{".awf/awf.lock": "{not json"})
+	if err := gateStaged(dir); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
+		t.Fatalf("gateStaged malformed lock error = %v", err)
+	}
 }
 
 func TestGateAheadSchemaErrors(t *testing.T) {

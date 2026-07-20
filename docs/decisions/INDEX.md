@@ -142,3 +142,4 @@ _No decisions are in flight._
 - [ADR-0135: ADR Lifecycle and Checked Current-State Impacts](0135-adr-lifecycle-and-checked-current-state-impacts.md) (Implemented)
 - [ADR-0136: Project-Atomic Migration to Current-State Authority](0136-project-atomic-migration-to-current-state-authority.md) (Implemented)
 - [ADR-0137: Retire domain ADR index co-change audit](0137-retire-domain-adr-index-co-change-audit.md) (Implemented)
+- [ADR-0138: Retire residual anchor coverage authority](0138-retire-residual-anchor-coverage-authority.md) (Implemented)

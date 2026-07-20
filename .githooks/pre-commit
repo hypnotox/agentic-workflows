@@ -8,9 +8,15 @@
 # failed while the worktree was clean). Build AND drift-check the exact staged
 # slice in a throwaway checkout so a non-hermetic or drifted commit refuses here.
 set -euo pipefail
+repo_root=$(pwd -P)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 git checkout-index --prefix="$tmp/" -a
+staged_helper="$tmp/.githooks/check-nested-staged"
+if [ ! -f "$staged_helper" ]; then
+  echo "pre-commit: the staged slice is missing .githooks/check-nested-staged" >&2
+  exit 1
+fi
 # Hooks inherit GIT_DIR/GIT_WORK_TREE for the caller. Clear those before using
 # Git inside the foreign temporary repository; later commands rediscover this
 # linked worktree from its .git file.
@@ -77,5 +83,6 @@ check_slice "$tmp/examples/sundial" "examples/sundial"
 # disagree until the final cutover sync; the pinned-bridge drift checks above are
 # the authority here. The from-source path keeps the normal rendered payload.
 if [ "$prep" != 1 ]; then
+  bash "$staged_helper" "$repo_root" "$awf_slice"
   exec bash .awf/hooks/pre-commit.sh "$@"
 fi

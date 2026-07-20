@@ -67,6 +67,32 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	if got := strings.Join(paths, ","); got != want {
 		t.Fatalf("nested project paths = %q, want %q", got, want)
 	}
+	if exists, err := awfgit.HeadExists(filepath.Join(dir, "nested")); err != nil || !exists {
+		t.Fatalf("nested HeadExists = %v, %v", exists, err)
+	}
+	if hash, err := awfgit.HeadHash(filepath.Join(dir, "nested")); err != nil || hash == "" {
+		t.Fatalf("nested HeadHash = %q, %v", hash, err)
+	}
+	for name, load := range map[string]func() ([]awfgit.IndexBlob, error){
+		"index":  func() ([]awfgit.IndexBlob, error) { return awfgit.IndexBlobs(filepath.Join(dir, "nested")) },
+		"commit": func() ([]awfgit.IndexBlob, error) { return awfgit.CommitBlobs(filepath.Join(dir, "nested"), "HEAD") },
+	} {
+		blobs, err := load()
+		if err != nil {
+			t.Fatalf("nested %s blobs: %v", name, err)
+		}
+		var got []string
+		for _, b := range blobs {
+			got = append(got, b.Path)
+		}
+		if joined := strings.Join(got, ","); joined != ".awf/config.yaml,tracked.txt" {
+			t.Fatalf("nested %s blobs = %q", name, joined)
+		}
+	}
+	before, after, err := awfgit.RangeBlobs(filepath.Join(dir, "nested"), "HEAD")
+	if err != nil || before != nil || len(after) != 2 {
+		t.Fatalf("nested range blobs: before=%v after=%v err=%v", before, after, err)
+	}
 }
 
 func TestWorkingPathsErrors(t *testing.T) {
@@ -152,6 +178,42 @@ func TestChangedPathsStaged(t *testing.T) {
 	}
 	if strings.Join(got, ",") != "staged.txt" {
 		t.Errorf("staged: got %v want [staged.txt] (untracked excluded)", got)
+	}
+}
+
+func TestChangedPathsNestedAdopter(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	if err := os.MkdirAll(filepath.Join(dir, "nested"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{
+		"nested/inside.txt": "old\n",
+		"outside.txt":       "old\n",
+	})
+	gitfixture.Commit(t, repo, dir, "range changes", map[string]string{
+		"nested/inside.txt": "new\n",
+		"nested/added.txt":  "new\n",
+		"outside.txt":       "new\n",
+	})
+	root := filepath.Join(dir, "nested")
+	got, err := awfgit.ChangedPaths(root, false, base.String()+"..HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if joined := strings.Join(got, ","); joined != "added.txt,inside.txt" {
+		t.Fatalf("nested range paths = %q, want %q", joined, "added.txt,inside.txt")
+	}
+
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		"nested/staged.txt":  "staged\n",
+		"outside-staged.txt": "outside\n",
+	})
+	got, err = awfgit.ChangedPaths(root, true, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if joined := strings.Join(got, ","); joined != "staged.txt" {
+		t.Fatalf("nested staged paths = %q, want staged.txt", joined)
 	}
 }
 

@@ -55,7 +55,15 @@ func CheckPair(before, after Universe, cutoff int) []Finding {
 // since no edge leaves Implemented or Abandoned.
 func checkTransitions(before, after []adr.ADR) []Finding {
 	beforeByNum := byNumber(before)
+	afterByNum := byNumber(after)
 	var findings []Finding
+	for _, b := range before {
+		if b.IsV1() {
+			if _, ok := afterByNum[b.Number]; !ok {
+				findings = append(findings, Finding{Error, fmt.Sprintf("current-state-v1 ADR-%s was deleted across this transition", b.Number)})
+			}
+		}
+	}
 	for _, a := range after {
 		if !a.IsV1() {
 			continue
@@ -179,7 +187,7 @@ func checkUnmatchedMutation(id string, before, after topic.Claim, hasBefore, has
 		return []Finding{{Error, fmt.Sprintf("claim %s was added with no ADR add operation in this transition", id)}}
 	case hasBefore && !hasAfter:
 		return []Finding{{Error, fmt.Sprintf("claim %s was removed with no ADR remove operation in this transition", id)}}
-	case hasBefore && hasAfter && !claimMateriallyEqual(before, after):
+	case hasBefore && hasAfter && (!claimMateriallyEqual(before, after) || before.Origin != after.Origin || !slices.Equal(before.RevisedBy, after.RevisedBy)):
 		return []Finding{{Error, fmt.Sprintf("claim %s was changed with no ADR update operation in this transition", id)}}
 	}
 	return nil

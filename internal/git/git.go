@@ -33,7 +33,7 @@ import (
 // this. A malformed range or an unresolvable revision is a clear error. It
 // reads the repository only.
 func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -48,7 +48,7 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 			return nil, err
 		}
 		for path, st := range status {
-			if st.Staging != gogit.Unmodified && st.Staging != gogit.Untracked {
+			if path, ok := rerootPath(path, prefix); ok && st.Staging != gogit.Unmodified && st.Staging != gogit.Untracked {
 				set[path] = true
 			}
 		}
@@ -70,11 +70,11 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 			return nil, err
 		}
 		for _, ch := range changes {
-			if ch.From.Name != "" {
-				set[ch.From.Name] = true
+			if path, ok := rerootPath(ch.From.Name, prefix); ok && ch.From.Name != "" {
+				set[path] = true
 			}
-			if ch.To.Name != "" {
-				set[ch.To.Name] = true
+			if path, ok := rerootPath(ch.To.Name, prefix); ok && ch.To.Name != "" {
+				set[path] = true
 			}
 		}
 	}
@@ -92,7 +92,7 @@ func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, err
 // empty universe rather than failing to resolve HEAD. It reads the repository
 // only.
 func HeadExists(repoRoot string) (bool, error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, _, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return false, fmt.Errorf("open repo: %w", err)
 	}
@@ -110,7 +110,7 @@ func HeadExists(repoRoot string) (bool, error) {
 // that carries the applied but uncommitted attestation patches, so it compares
 // HEAD identity against the sealed PreparedHead without a cleanliness check.
 func HeadHash(repoRoot string) (string, error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, _, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return "", fmt.Errorf("open repo: %w", err)
 	}
@@ -127,7 +127,7 @@ func HeadHash(repoRoot string) (string, error) {
 // Deleted, ignored, and nested-repository files are excluded by go-git's
 // worktree status semantics.
 func WorkingPaths(repoRoot string) ([]string, error) {
-	repo, prefix, err := openContainingRepo(repoRoot)
+	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -165,9 +165,13 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 		if !ok {
 			continue
 		}
-		if state.Worktree == gogit.Deleted || state.Staging == gogit.Deleted {
+		_, diskErr := os.Lstat(filepath.Join(repoRoot, filepath.FromSlash(path)))
+		switch {
+		case state.Worktree == gogit.Deleted || os.IsNotExist(diskErr):
 			delete(set, path)
-		} else {
+		case diskErr != nil: // coverage-ignore: status returned the path; only a concurrent filesystem fault can make Lstat fail otherwise
+			return nil, diskErr
+		default:
 			set[path] = true
 		}
 	}
@@ -179,7 +183,10 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 	return out, nil
 }
 
-func openContainingRepo(projectRoot string) (*gogit.Repository, string, error) {
+// OpenContainingRepo opens the Git repository containing projectRoot and
+// returns the repository-relative slash-separated prefix of projectRoot. The
+// prefix is empty when projectRoot itself is the repository root.
+func OpenContainingRepo(projectRoot string) (*gogit.Repository, string, error) {
 	projectRoot, err := filepath.Abs(projectRoot)
 	if err != nil { // coverage-ignore: Abs fails only when the process working directory is unavailable
 		return nil, "", err
@@ -232,7 +239,7 @@ type IndexBlob struct {
 // index. Symlinks and gitlinks have no regular-file content to scan and are
 // ignored. An unmerged or unreadable regular entry makes the snapshot unsafe.
 func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -244,6 +251,10 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	out := make([]IndexBlob, 0, len(entries))
 	for _, e := range entries {
+		path, ok := rerootPath(e.Name, prefix)
+		if !ok {
+			continue
+		}
 		if e.Stage != 0 {
 			return nil, fmt.Errorf("%w: %s", ErrIndexUnmerged, e.Name)
 		}
@@ -266,7 +277,7 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 		if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
 			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, closeErr)
 		}
-		out = append(out, IndexBlob{Path: e.Name, Bytes: b, Executable: e.Mode == filemode.Executable})
+		out = append(out, IndexBlob{Path: path, Bytes: b, Executable: e.Mode == filemode.Executable})
 	}
 	return out, nil
 }
@@ -275,7 +286,7 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 // rev resolves to. Symlinks and gitlinks carry no regular-file content to scan
 // and are skipped. It reads the repository only.
 func CommitBlobs(repoRoot, rev string) ([]IndexBlob, error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -283,7 +294,7 @@ func CommitBlobs(repoRoot, rev string) ([]IndexBlob, error) {
 	if err != nil {
 		return nil, err
 	}
-	return blobsOfTree(tree)
+	return blobsOfTree(tree, prefix)
 }
 
 // RangeBlobs returns the before/after regular-blob sets for the transition into
@@ -292,7 +303,7 @@ func CommitBlobs(repoRoot, rev string) ([]IndexBlob, error) {
 // only, so an ADR status change committed on a branch and merged is still
 // observed at the merge. It reads the repository only.
 func RangeBlobs(repoRoot, rev string) (before, after []IndexBlob, err error) {
-	repo, err := OpenRepo(repoRoot)
+	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -308,7 +319,7 @@ func RangeBlobs(repoRoot, rev string) (before, after []IndexBlob, err error) {
 	if err != nil { // coverage-ignore: a resolved commit always yields its tree
 		return nil, nil, err
 	}
-	if after, err = blobsOfTree(curTree); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+	if after, err = blobsOfTree(curTree, prefix); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
 		return nil, nil, err
 	}
 	if c.NumParents() > 0 {
@@ -320,7 +331,7 @@ func RangeBlobs(repoRoot, rev string) (before, after []IndexBlob, err error) {
 		if perr != nil { // coverage-ignore: a valid parent commit's tree resolves
 			return nil, nil, perr
 		}
-		if before, perr = blobsOfTree(parentTree); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+		if before, perr = blobsOfTree(parentTree, prefix); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
 			return nil, nil, perr
 		}
 	}
@@ -329,10 +340,11 @@ func RangeBlobs(repoRoot, rev string) (before, after []IndexBlob, err error) {
 
 // blobsOfTree collects the sorted regular and executable blobs of a resolved
 // tree. Symlinks and gitlinks are skipped; the executable mode is preserved.
-func blobsOfTree(tree *object.Tree) ([]IndexBlob, error) {
+func blobsOfTree(tree *object.Tree, prefix string) ([]IndexBlob, error) {
 	var out []IndexBlob
 	err := tree.Files().ForEach(func(f *object.File) error {
-		if f.Mode != filemode.Regular && f.Mode != filemode.Executable {
+		path, ok := rerootPath(f.Name, prefix)
+		if !ok || f.Mode != filemode.Regular && f.Mode != filemode.Executable {
 			return nil
 		}
 		reader, err := f.Reader()
@@ -347,7 +359,7 @@ func blobsOfTree(tree *object.Tree) ([]IndexBlob, error) {
 		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
 			return closeErr
 		}
-		out = append(out, IndexBlob{Path: f.Name, Bytes: data, Executable: f.Mode == filemode.Executable})
+		out = append(out, IndexBlob{Path: path, Bytes: data, Executable: f.Mode == filemode.Executable})
 		return nil
 	})
 	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above

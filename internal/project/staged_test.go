@@ -1,11 +1,16 @@
 package project
 
 import (
+	"errors"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -16,6 +21,7 @@ import (
 // internal/foo/**, and the Implemented ADR the claim cites.
 func stagedHeadFiles() map[string]string {
 	return map[string]string{
+		".awf/awf.lock":                                `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2}`,
 		".awf/config.yaml":                             csYAML,
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/foo/**\n",
@@ -35,7 +41,7 @@ func attestedLock() *manifest.Lock {
 	}
 }
 
-// writeLock writes lock to the project's on-disk awf.lock (untracked).
+// writeLock writes and stages the project's awf.lock.
 func writeLock(t *testing.T, p *Project, lock *manifest.Lock) {
 	t.Helper()
 	b, err := lock.Marshal()
@@ -43,6 +49,17 @@ func writeLock(t *testing.T, p *Project, lock *manifest.Lock) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, lockFile(p.Root), string(b))
+	repo, err := gogit.PlainOpen(p.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add(".awf/awf.lock"); err != nil {
+		t.Fatal(err)
+	}
 }
 
 // TestCheckStagedCleanWithCoverage stages a new owned-but-unscoped file over an
@@ -56,6 +73,8 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	gitfixture.Stage(t, repo, dir, map[string]string{"internal/bar.go": "package internalx\n"})
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
+	// A different working lock must not contaminate the staged universe.
+	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
 
 	report, err := p.CheckStaged()
 	if err != nil {
@@ -87,6 +106,54 @@ func TestCheckStagedTransitionFinding(t *testing.T) {
 	}
 	if len(report.Static) == 0 || !strings.Contains(report.Static[0].Message, "was removed with no ADR remove operation") {
 		t.Fatalf("static = %#v; want the unmatched-removal finding", report.Static)
+	}
+}
+
+// TestCheckStagedNestedAdopter validates HEAD/index snapshots through a project
+// rooted inside a containing monorepo.
+func TestCheckStagedNestedAdopter(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := map[string]string{}
+	for path, body := range stagedHeadFiles() {
+		files["examples/sundial/"+path] = body
+	}
+	lockBytes, err := attestedLock().Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	files["examples/sundial/.awf/awf.lock"] = string(lockBytes)
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "nested head", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		"examples/sundial/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
+	})
+	p := openStaged(t, filepath.Join(dir, "examples", "sundial"))
+	report, err := p.CheckStaged()
+	if err != nil {
+		t.Fatalf("nested CheckStaged: %v", err)
+	}
+	if !strings.Contains(strings.Join(report.Findings(), "\n"), "was removed with no ADR remove operation") {
+		t.Fatalf("nested findings = %#v; want staged transition finding", report.Findings())
+	}
+}
+
+// TestCheckStagedUnmergedIndex rejects a conflicted index at the staged-check
+// boundary rather than attempting to construct a partial after universe.
+func TestCheckStagedUnmergedIndex(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, dir, stagedHeadFiles())
+	gitfixture.Commit(t, repo, dir, "head", nil)
+	idx, err := repo.Storer.Index()
+	if err != nil {
+		t.Fatal(err)
+	}
+	idx.Entries = append(idx.Entries, &index.Entry{Name: "conflict.md", Mode: filemode.Regular, Stage: index.OurMode})
+	if err := repo.Storer.SetIndex(idx); err != nil {
+		t.Fatal(err)
+	}
+	p := openStaged(t, dir)
+	if _, err := p.CheckStaged(); !errors.Is(err, awfgit.ErrIndexUnmerged) {
+		t.Fatalf("CheckStaged unmerged index: got %v, want ErrIndexUnmerged", err)
 	}
 }
 
@@ -122,13 +189,46 @@ func TestCheckStagedNoStagedConfig(t *testing.T) {
 	}
 }
 
+// TestCheckStagedRequiresStagedLock proves an adopted staged universe cannot
+// silently fall back to cutoff zero when its lock is deleted. The same staged
+// slice also deletes a governed current-state-v1 ADR, which cutoff zero would
+// misroute as legacy and fail to diagnose.
+func TestCheckStagedRequiresStagedLock(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	files["docs/decisions/0002-v1.md"] = "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-20\n---\n" +
+		"# ADR-0002: V1\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n" +
+		"## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n" +
+		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n"
+	lockBytes, err := attestedLock().Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	files[".awf/awf.lock"] = string(lockBytes)
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "head", nil)
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{".awf/awf.lock", "docs/decisions/0002-v1.md"} {
+		if _, err := wt.Remove(path); err != nil {
+			t.Fatalf("stage deletion of %s: %v", path, err)
+		}
+	}
+	p := openStaged(t, dir)
+	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
+		t.Fatalf("CheckStaged err = %v; want required staged-lock diagnostic", err)
+	}
+}
+
 // TestCheckStagedLockError covers the lock-read failure in the staged check.
 func TestCheckStagedLockError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Stage(t, repo, dir, stagedHeadFiles())
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	p := openStaged(t, dir)
-	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
+	gitfixture.Stage(t, repo, dir, map[string]string{".awf/awf.lock": "{not json"})
 	if _, err := p.CheckStaged(); err == nil {
 		t.Fatal("expected a lock parse error")
 	}

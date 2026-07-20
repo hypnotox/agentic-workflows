@@ -173,15 +173,13 @@ func RepoRoot(t *testing.T) string {
 	}
 }
 
-// WalkRepoSources calls fn(relPath, contents) for every production Go file in
-// the repository, and is the single definition of awf's repo-walk boundary.
-// A hand-rolled walker must state that boundary or it silently reads foreign
-// source as its own: hidden trees (notably .claude/worktrees/, which holds
-// session checkouts of this very repo) and any nested checkout (a directory
-// carrying its own .git entry, whether a directory or a gitdir-pointer file)
-// are pruned, as are _test.go files. Two independent scanners drifted on this
-// before it was stated once here.
-func WalkRepoSources(t *testing.T, root string, fn func(rel string, body []byte)) {
+// WalkRepoFiles calls fn(relPath, contents) for each repository-owned file for
+// which include returns true. It is the single definition of awf's repo-walk
+// boundary: hidden trees (notably .claude/worktrees/) and nested checkouts (a
+// directory carrying its own .git directory or gitdir-pointer file) are pruned.
+// The caller owns file selection, so the same boundary can scan Go, Markdown,
+// or any other repository surface without duplicating traversal rules.
+func WalkRepoFiles(t *testing.T, root string, include func(rel string) bool, fn func(rel string, body []byte)) {
 	t.Helper()
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, werr error) error {
 		if werr != nil { // coverage-ignore: walking a readable checkout does not fault
@@ -198,22 +196,33 @@ func WalkRepoSources(t *testing.T, root string, fn func(rel string, body []byte)
 			if strings.HasPrefix(d.Name(), ".") {
 				return filepath.SkipDir
 			}
-			if _, serr := os.Stat(filepath.Join(path, ".git")); serr == nil {
-				return filepath.SkipDir // a nested checkout owns its own sources
+			if _, serr := os.Lstat(filepath.Join(path, ".git")); serr == nil {
+				return filepath.SkipDir // a nested checkout owns its own files
+			} else if !os.IsNotExist(serr) { // coverage-ignore: repository paths remain statable during a test scan
+				return serr
 			}
 			return nil
 		}
-		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") {
+		rel = filepath.ToSlash(rel)
+		if !include(rel) {
 			return nil
 		}
 		body, rerr := os.ReadFile(path)
 		if rerr != nil { // coverage-ignore: the walk just listed this regular file
 			return rerr
 		}
-		fn(filepath.ToSlash(rel), body)
+		fn(rel, body)
 		return nil
 	})
-	if err != nil { // coverage-ignore: the callback never errors and the walk cannot fault
+	if err != nil { // coverage-ignore: callbacks do not error and the walk cannot fault
 		t.Fatal(err)
 	}
+}
+
+// WalkRepoSources preserves the production-Go scanner API over WalkRepoFiles.
+func WalkRepoSources(t *testing.T, root string, fn func(rel string, body []byte)) {
+	t.Helper()
+	WalkRepoFiles(t, root, func(rel string) bool {
+		return strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go")
+	}, fn)
 }

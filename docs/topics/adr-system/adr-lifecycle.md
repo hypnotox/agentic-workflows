@@ -65,16 +65,11 @@ internal/audit parses ADR frontmatter through internal/adr's exported bytes-leve
 Origin: ADR-0130
 Backing: test
 
-### `invariant: corpus-model-not-rebuilt`
-
-The anchor-coverage model is constructed in exactly one place inside internal/adr; no other package builds it or reimplements its derivation.
-Origin: ADR-0130
-Backing: test
-
 ### `invariant: corpus-owns-field-reads`
 
-No file outside internal/adr reads ADR.Refs or ADR.Sections directly; the supersession and declared-invariant questions those fields answer are asked of the corpus view instead.
+No file outside internal/adr reads ADR.Sections directly; parsed section questions are answered through internal/adr methods rather than re-derived by consumers.
 Origin: ADR-0130
+Revised-by: ADR-0138
 Backing: test
 
 ### `invariant: corpus-owns-status-literals`
@@ -85,14 +80,16 @@ Backing: test
 
 ### `invariant: corpus-parsed-once`
 
-adr.ParseDir has no production call site outside internal/adr, and inside internal/adr only the corpus construction seam and NextNumber call it; every consumer, including the domain-index and active-md renderers, takes a corpus rather than parsing the decisions directory itself.
+adr.ParseDir has no production call site outside internal/adr, and inside internal/adr only the corpus construction seam and NextNumber call it; consumers do not independently parse the decisions directory.
 Origin: ADR-0130
+Revised-by: ADR-0138
 Backing: test
 
 ### `invariant: corpus-raw-access-enumerated`
 
-internal/migrate and internal/project/supersession.go are the only two call sites of the corpus view's raw-bytes accessor, and no file outside internal/adr calls os.ReadFile on an ADR.Path.
+The two ordered schema migrations in internal/migrate are the only call sites of the corpus view's raw-bytes accessor, and no file outside internal/adr calls os.ReadFile on an ADR.Path.
 Origin: ADR-0130
+Revised-by: ADR-0138
 Backing: test
 
 ### `invariant: corpus-single-identity-key`
@@ -112,11 +109,5 @@ Verify: Fixtures rendered in every legal status produce the exact INDEX.md secti
 
 Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart).
 Origin: ADR-0120
-Backing: test
-
-### `invariant: supersession-model-single-source`
-
-The identifiers SupersessionIndex, Override, and Label appear nowhere as code in the tree, and the supersession coverage model is built by exactly one call inside internal/adr.
-Origin: ADR-0129
 Backing: test
 

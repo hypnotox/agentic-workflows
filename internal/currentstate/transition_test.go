@@ -86,6 +86,14 @@ func TestCheckPairUnchangedClaim(t *testing.T) {
 	}
 }
 
+// TestCheckPairDeletedV1ADR rejects removal of a governed ADR record.
+func TestCheckPairDeletedV1ADR(t *testing.T) {
+	before := uni([]adr.ADR{rec("0137", "Implemented", 1)})
+	if f := currentstate.CheckPair(before, uni(nil), 137); !strings.Contains(messages(f), "current-state-v1 ADR-0137 was deleted") {
+		t.Fatalf("deleted ADR not reported:\n%s", messages(f))
+	}
+}
+
 // TestCheckPairIllegalTransition rejects an edge out of a terminal state.
 func TestCheckPairIllegalTransition(t *testing.T) {
 	before := uni([]adr.ADR{rec("0137", "Implemented", 0)})
@@ -215,6 +223,20 @@ func TestCheckPairMismatches(t *testing.T) {
 			after: uni([]adr.ADR{{Number: "0100", Format: adr.Legacy, Status: "Implemented"}},
 				prosed(claim("d/t:x", "0100"), "new")),
 			cutoff: 137,
+			want:   "claim d/t:x was changed with no ADR update operation in this transition",
+		},
+		{
+			name:   "origin-only change with no operation",
+			before: uni(nil, claim("d/t:x", "0100")),
+			after:  uni(nil, claim("d/t:x", "0101")),
+			cutoff: 200,
+			want:   "claim d/t:x was changed with no ADR update operation in this transition",
+		},
+		{
+			name:   "revised-by-only change with no operation",
+			before: uni(nil, claim("d/t:x", "0100")),
+			after:  uni(nil, claim("d/t:x", "0100", "0101")),
+			cutoff: 200,
 			want:   "claim d/t:x was changed with no ADR update operation in this transition",
 		},
 		{

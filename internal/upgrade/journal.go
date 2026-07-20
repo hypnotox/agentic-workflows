@@ -213,6 +213,13 @@ func LoadJournal(root string) (Journal, error) {
 	if err != nil {
 		return Journal{}, err
 	}
+	return ParseJournal(b)
+}
+
+// ParseJournal validates a journal captured from an immutable snapshot. It is
+// the staged-check counterpart of LoadJournal, sharing the exact journal
+// contract without materializing index bytes into the working tree.
+func ParseJournal(b []byte) (Journal, error) {
 	var j Journal
 	dec := json.NewDecoder(strings.NewReader(string(b)))
 	dec.DisallowUnknownFields()

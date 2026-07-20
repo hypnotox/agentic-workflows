@@ -1,60 +1,340 @@
 package adr_test
 
 import (
-	"io/fs"
+	"fmt"
+	"go/ast"
+	"go/token"
+	"go/types"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"golang.org/x/tools/go/packages"
 )
 
-// goSources walks the repo's production Go files (no tests, no vendored trees)
-// and hands each one's path and contents to fn. Shared by the corpus source
-// scans, which enforce structural rules no unit test can reach.
-func goSources(t *testing.T, fn func(path, body string)) {
+var (
+	productionPackagesOnce sync.Once
+	productionPackages     []*packages.Package
+	productionPackagesErr  error
+)
+
+func loadProductionPackages(t *testing.T) []*packages.Package {
 	t.Helper()
-	seen := 0
-	for _, root := range []string{filepath.Join("..", "..", "internal"), filepath.Join("..", "..", "cmd")} {
-		err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
+	productionPackagesOnce.Do(func() {
+		productionPackages, productionPackagesErr = packages.Load(&packages.Config{
+			Dir:  filepath.Join("..", ".."),
+			Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+		}, "./...")
+		if productionPackagesErr == nil {
+			seen := map[string]bool{}
+			for _, pkg := range productionPackages {
+				if len(pkg.Errors) != 0 {
+					productionPackagesErr = pkg.Errors[0]
+					break
+				}
+				seen[pkg.PkgPath] = true
 			}
-			if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-				return nil
+			for _, path := range []string{"github.com/hypnotox/agentic-workflows/changelog", "github.com/hypnotox/agentic-workflows/templates"} {
+				if productionPackagesErr == nil && !seen[path] {
+					productionPackagesErr = fmt.Errorf("production package scan omitted %s", path)
+				}
 			}
-			data, rerr := os.ReadFile(path)
-			if rerr != nil {
-				return rerr
-			}
-			seen++
-			fn(filepath.ToSlash(path), string(data))
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
+		}
+	})
+	if productionPackagesErr != nil {
+		t.Fatal(productionPackagesErr)
+	}
+	return productionPackages
+}
+
+func sourcePath(pos token.Position) string {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		return filepath.ToSlash(pos.Filename)
+	}
+	rel, err := filepath.Rel(root, pos.Filename)
+	if err != nil {
+		return filepath.ToSlash(pos.Filename)
+	}
+	return filepath.ToSlash(rel)
+}
+
+func objectIs(obj types.Object, pkgPath, name string) bool {
+	return obj != nil && obj.Pkg() != nil && obj.Pkg().Path() == pkgPath && obj.Name() == name
+}
+
+func structFieldIs(obj types.Object, pkgPath, typeName, fieldName string) bool {
+	field, ok := obj.(*types.Var)
+	if !ok || !field.IsField() || !objectIs(field, pkgPath, fieldName) {
+		return false
+	}
+	typeObj, ok := field.Pkg().Scope().Lookup(typeName).(*types.TypeName)
+	if !ok {
+		return false
+	}
+	named, ok := typeObj.Type().(*types.Named)
+	if !ok {
+		return false
+	}
+	strct, ok := named.Underlying().(*types.Struct)
+	if !ok {
+		return false
+	}
+	for i := range strct.NumFields() {
+		if strct.Field(i) == field {
+			return true
 		}
 	}
-	if seen < 20 {
-		t.Fatalf("inspected only %d production source file(s); the scan is not reaching the tree", seen)
+	return false
+}
+
+const adrPackagePath = "github.com/hypnotox/agentic-workflows/internal/adr"
+
+type callOwner struct {
+	path string
+	name string
+}
+
+type functionRegion struct {
+	start token.Pos
+	end   token.Pos
+	name  string
+}
+
+func expressionObject(info *types.Info, expr ast.Expr) types.Object {
+	switch expr := expr.(type) {
+	case *ast.Ident:
+		if obj := info.Uses[expr]; obj != nil {
+			return obj
+		}
+		return info.Defs[expr]
+	case *ast.SelectorExpr:
+		if selection := info.Selections[expr]; selection != nil {
+			return selection.Obj()
+		}
+		return info.Uses[expr.Sel]
+	case *ast.ParenExpr:
+		return expressionObject(info, expr.X)
+	default:
+		return nil
 	}
 }
 
-// codeLines yields the file's lines with whole-line comments dropped, so a rule
-// about call sites is not tripped by prose that merely names the function.
-func codeLines(body string) []string {
-	var out []string
-	for _, line := range strings.Split(body, "\n") {
-		if strings.HasPrefix(strings.TrimSpace(line), "//") {
+func assignedObject(info *types.Info, expr ast.Expr) types.Object {
+	ident, ok := expr.(*ast.Ident)
+	if !ok || ident.Name == "_" {
+		return nil
+	}
+	if obj := info.Defs[ident]; obj != nil {
+		return obj
+	}
+	return info.Uses[ident]
+}
+
+// aliasesOf computes a bounded, flow-insensitive intra-file alias closure. Go
+// objects are function-scoped, so local aliases cannot leak into another
+// function; package-level aliases and aliases captured by closures still work.
+func aliasesOf(file *ast.File, info *types.Info, target func(types.Object) bool) map[types.Object]bool {
+	aliases := map[types.Object]bool{}
+	for changed := true; changed; {
+		changed = false
+		ast.Inspect(file, func(n ast.Node) bool {
+			add := func(lhs ast.Expr, rhs ast.Expr) {
+				obj := assignedObject(info, lhs)
+				rhsObj := expressionObject(info, rhs)
+				if obj != nil && !aliases[obj] && (target(rhsObj) || aliases[rhsObj]) {
+					aliases[obj] = true
+					changed = true
+				}
+			}
+			switch n := n.(type) {
+			case *ast.AssignStmt:
+				if len(n.Lhs) == len(n.Rhs) {
+					for i := range n.Lhs {
+						add(n.Lhs[i], n.Rhs[i])
+					}
+				}
+			case *ast.ValueSpec:
+				if len(n.Names) == len(n.Values) {
+					for i := range n.Names {
+						add(n.Names[i], n.Values[i])
+					}
+				}
+			}
+			return true
+		})
+	}
+	return aliases
+}
+
+func expressionMatches(info *types.Info, aliases map[types.Object]bool, target func(types.Object) bool, expr ast.Expr) bool {
+	obj := expressionObject(info, expr)
+	return target(obj) || aliases[obj]
+}
+
+func functionRegions(file *ast.File, fset *token.FileSet) []functionRegion {
+	var regions []functionRegion
+	ast.Inspect(file, func(n ast.Node) bool {
+		switch n := n.(type) {
+		case *ast.FuncDecl:
+			regions = append(regions, functionRegion{start: n.Pos(), end: n.End(), name: n.Name.Name})
+		case *ast.FuncLit:
+			pos := fset.Position(n.Pos())
+			regions = append(regions, functionRegion{start: n.Pos(), end: n.End(), name: "<func literal at line " + strconv.Itoa(pos.Line) + ">"})
+		}
+		return true
+	})
+	return regions
+}
+
+func enclosingFunction(regions []functionRegion, pos token.Pos) string {
+	name := "<package scope>"
+	var width token.Pos
+	for _, region := range regions {
+		if region.start <= pos && pos < region.end && (width == 0 || region.end-region.start < width) {
+			name = region.name
+			width = region.end - region.start
+		}
+	}
+	return name
+}
+
+func isParseDir(obj types.Object) bool {
+	return objectIs(obj, adrPackagePath, "ParseDir")
+}
+
+func isCorpusRaw(obj types.Object) bool {
+	fn, ok := obj.(*types.Func)
+	if !ok || !objectIs(fn, adrPackagePath, "Raw") {
+		return false
+	}
+	sig, ok := fn.Type().(*types.Signature)
+	return ok && sig.Recv() != nil && namedTypeIs(sig.Recv().Type(), adrPackagePath, "Corpus")
+}
+
+func namedTypeIs(typ types.Type, pkgPath, name string) bool {
+	if ptr, ok := typ.(*types.Pointer); ok {
+		typ = ptr.Elem()
+	}
+	named, ok := typ.(*types.Named)
+	return ok && objectIs(named.Obj(), pkgPath, name)
+}
+
+// parseDirCallFindings is the one type-aware ParseDir caller detector used by
+// both the production scan and mutation overlays. Calls are attributed to the
+// innermost enclosing function, and local or package-level aliases count.
+func parseDirCallFindings(pkgs []*packages.Package) map[callOwner][]string {
+	calls := map[callOwner][]string{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			path := sourcePath(pkg.Fset.Position(file.Pos()))
+			aliases := aliasesOf(file, pkg.TypesInfo, isParseDir)
+			regions := functionRegions(file, pkg.Fset)
+			ast.Inspect(file, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok || !expressionMatches(pkg.TypesInfo, aliases, isParseDir, call.Fun) {
+					return true
+				}
+				pos := pkg.Fset.Position(call.Pos())
+				owner := callOwner{path: path, name: enclosingFunction(regions, call.Pos())}
+				calls[owner] = append(calls[owner], fromLine(path, pos.Line-1, "ParseDir call"))
+				return true
+			})
+		}
+	}
+	return calls
+}
+
+// sectionReadFindings is the type-aware detector used for both the production
+// corpus scan and its mutation fixtures. Selection.Obj is the field declaration
+// itself, so promoted selections through an embedded ADR are covered too.
+func sectionReadFindings(pkgs []*packages.Package) []string {
+	var bad []string
+	for _, pkg := range pkgs {
+		if pkg.PkgPath == adrPackagePath {
 			continue
 		}
-		out = append(out, line)
+		for _, file := range pkg.Syntax {
+			ast.Inspect(file, func(n ast.Node) bool {
+				sel, ok := n.(*ast.SelectorExpr)
+				if !ok {
+					return true
+				}
+				selection := pkg.TypesInfo.Selections[sel]
+				if selection != nil && structFieldIs(selection.Obj(), adrPackagePath, "ADR", "Sections") {
+					pos := pkg.Fset.Position(sel.Pos())
+					bad = append(bad, fromLine(sourcePath(pos), pos.Line-1, "ADR.Sections"))
+				}
+				return true
+			})
+		}
 	}
-	return out
+	return bad
+}
+
+// rawAccessFindings is likewise the one type-aware detector for Corpus.Raw and
+// os.ReadFile values derived from ADR.Path, shared by production and mutations.
+func rawAccessFindings(pkgs []*packages.Package) (map[string][]string, []string) {
+	raw := map[string][]string{}
+	var pathReads []string
+	isADRPath := func(obj types.Object) bool { return structFieldIs(obj, adrPackagePath, "ADR", "Path") }
+	isReadFile := func(obj types.Object) bool { return objectIs(obj, "os", "ReadFile") }
+	for _, pkg := range pkgs {
+		if pkg.PkgPath == adrPackagePath {
+			continue
+		}
+		for _, file := range pkg.Syntax {
+			path := sourcePath(pkg.Fset.Position(file.Pos()))
+			rawAliases := aliasesOf(file, pkg.TypesInfo, isCorpusRaw)
+			pathAliases := aliasesOf(file, pkg.TypesInfo, isADRPath)
+			readFileAliases := aliasesOf(file, pkg.TypesInfo, isReadFile)
+			ast.Inspect(file, func(n ast.Node) bool {
+				call, ok := n.(*ast.CallExpr)
+				if !ok {
+					return true
+				}
+				if expressionMatches(pkg.TypesInfo, rawAliases, isCorpusRaw, call.Fun) {
+					pos := pkg.Fset.Position(call.Pos())
+					raw[path] = append(raw[path], fromLine(path, pos.Line-1, "Corpus.Raw call"))
+				}
+				if len(call.Args) != 0 && expressionMatches(pkg.TypesInfo, readFileAliases, isReadFile, call.Fun) &&
+					expressionMatches(pkg.TypesInfo, pathAliases, isADRPath, call.Args[0]) {
+					pos := pkg.Fset.Position(call.Pos())
+					pathReads = append(pathReads, fromLine(path, pos.Line-1, "os.ReadFile(ADR.Path-derived value)"))
+				}
+				return true
+			})
+		}
+	}
+	return raw, pathReads
+}
+
+func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Package {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	filename := filepath.Join(root, filepath.FromSlash(rel))
+	pkgs, err := packages.Load(&packages.Config{
+		Dir:     root,
+		Mode:    packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo,
+		Overlay: map[string][]byte{filename: []byte(body)},
+	}, pattern)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, pkg := range pkgs {
+		if len(pkg.Errors) != 0 {
+			t.Fatal(pkg.Errors[0])
+		}
+	}
+	return pkgs
 }
 
 // TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
@@ -63,43 +343,101 @@ func codeLines(body string) []string {
 // and NextNumber call it. NextNumber is the enumerated exception: it runs on
 // the awf new adr path, which holds no corpus.
 // invariant: adr-system/adr-lifecycle:corpus-parsed-once
-func TestCorpusParsedOnce(t *testing.T) {
-	var outside []string
-	goSources(t, func(path, body string) {
-		if strings.HasPrefix(path, "../../internal/adr/") {
-			return
+func parseDirProblems(callers map[callOwner][]string) []string {
+	want := map[callOwner]bool{
+		{path: "internal/adr/corpus.go", name: "LoadCorpus"}: true,
+		{path: "internal/adr/adr.go", name: "NextNumber"}:    true,
+	}
+	var problems []string
+	for owner, positions := range callers {
+		if !want[owner] {
+			problems = append(problems, owner.path+":"+owner.name+" calls ParseDir outside LoadCorpus or NextNumber: "+strings.Join(positions, ", "))
 		}
-		for i, line := range codeLines(body) {
-			if strings.Contains(line, "adr.ParseDir(") {
-				outside = append(outside, fromLine(path, i, line))
+	}
+	for owner := range want {
+		if len(callers[owner]) != 1 {
+			problems = append(problems, owner.path+":"+owner.name+" must call ParseDir exactly once; found "+strconv.Itoa(len(callers[owner])))
+		}
+	}
+	return problems
+}
+
+func replaceMutationSource(t *testing.T, rel, old, replacement string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(testsupport.RepoRoot(t), filepath.FromSlash(rel)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(string(body), old) != 1 {
+		t.Fatalf("mutation target %q occurs %d times in %s, want 1", old, strings.Count(string(body), old), rel)
+	}
+	return strings.Replace(string(body), old, replacement, 1)
+}
+
+func TestCorpusParsedOnce(t *testing.T) {
+	pkgs := loadProductionPackages(t)
+	callers := parseDirCallFindings(pkgs)
+	inspectedADRFiles := map[string]bool{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			path := sourcePath(pkg.Fset.Position(file.Pos()))
+			if strings.HasPrefix(path, "internal/adr/") {
+				inspectedADRFiles[path] = true
 			}
+		}
+	}
+	testsupport.WalkRepoFiles(t, testsupport.RepoRoot(t), func(rel string) bool {
+		return strings.HasPrefix(rel, "internal/adr/") && strings.HasSuffix(rel, ".go") && !strings.HasSuffix(rel, "_test.go")
+	}, func(rel string, _ []byte) {
+		if !inspectedADRFiles[rel] {
+			t.Errorf("production ADR source %s was not inspected", rel)
 		}
 	})
-	if len(outside) != 0 {
-		t.Errorf("adr.ParseDir must have no production call site outside internal/adr; construct a Corpus instead (ADR-0130 item 1):\n\t%s",
-			strings.Join(outside, "\n\t"))
+	if problems := parseDirProblems(callers); len(problems) != 0 {
+		t.Errorf("ParseDir call set differs from the single LoadCorpus and NextNumber calls:\n\t%s", strings.Join(problems, "\n\t"))
 	}
 
-	// In-package: only the construction seam and the enumerated NextNumber.
-	callers := map[string]bool{}
-	for _, f := range []string{"corpus.go", "adr.go", "status.go", "declarations.go"} {
-		data, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, line := range codeLines(string(data)) {
-			if strings.Contains(line, "ParseDir(") && !strings.Contains(line, "func ParseDir") {
-				callers[f] = true
-			}
-		}
+	aliasMutation := loadMutationPackage(t, "internal/currentstate/corpus_mutation_fixture.go", "./internal/currentstate", `package currentstate
+
+import "github.com/hypnotox/agentic-workflows/internal/adr"
+
+func mutationParseDir() {
+	parse := adr.ParseDir
+	_, _ = parse("docs/decisions")
+}
+`)
+	aliasOwner := callOwner{path: "internal/currentstate/corpus_mutation_fixture.go", name: "mutationParseDir"}
+	if got := parseDirCallFindings(aliasMutation)[aliasOwner]; len(got) != 1 {
+		t.Fatalf("aliased ParseDir invocation escaped the production detector: %#v", got)
 	}
-	for f := range callers {
-		if f != "corpus.go" && f != "adr.go" {
-			t.Errorf("%s calls ParseDir; only Corpus construction (corpus.go) and NextNumber (adr.go) may", f)
-		}
+
+	const parseCall = "\tadrs, err := ParseDir(dir)\n"
+	withoutNext := replaceMutationSource(t, "internal/adr/adr.go", parseCall, "\tvar adrs []ADR\n\tvar err error\n")
+	withoutNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutNext)
+	if problems := parseDirProblems(parseDirCallFindings(withoutNextPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once") {
+		// LoadCorpus is in corpus.go and remains visible, so only the missing
+		// call should be reported.
+		t.Fatalf("removed NextNumber call escaped cardinality proof: %#v", problems)
 	}
-	if !callers["corpus.go"] {
-		t.Error("corpus.go no longer calls ParseDir - has the construction seam moved?")
+
+	extraFunction := replaceMutationSource(t, "internal/adr/adr.go", "\nfunc NextNumber(dir string)", `
+func mutationOtherParseDir(dir string) {
+	_, _ = ParseDir(dir)
+}
+
+func NextNumber(dir string)`)
+	extraFunctionPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", extraFunction)
+	if problems := parseDirProblems(parseDirCallFindings(extraFunctionPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "adr.go:mutationOtherParseDir calls ParseDir outside") {
+		t.Fatalf("additional adr.go function call escaped enclosing-function proof: %#v", problems)
+	}
+
+	duplicateNext := replaceMutationSource(t, "internal/adr/adr.go", parseCall, parseCall+"\t_, _ = ParseDir(dir)\n")
+	duplicateNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateNext)
+	if problems := parseDirProblems(parseDirCallFindings(duplicateNextPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once; found 2") {
+		t.Fatalf("duplicate NextNumber ParseDir call escaped cardinality proof: %#v", problems)
 	}
 }
 
@@ -108,21 +446,45 @@ func TestCorpusParsedOnce(t *testing.T) {
 // from the field.
 // invariant: adr-system/adr-lifecycle:corpus-owns-field-reads
 func TestCorpusOwnsFieldReads(t *testing.T) {
-	var bad []string
-	goSources(t, func(path, body string) {
-		if strings.HasPrefix(path, "../../internal/adr/") {
-			return
-		}
-		for i, line := range codeLines(body) {
-			if strings.Contains(line, ".Sections[") {
-				bad = append(bad, fromLine(path, i, line))
-			}
-		}
-	})
+	bad := sectionReadFindings(loadProductionPackages(t))
 	if len(bad) != 0 {
-		t.Errorf("ADR.Sections is read outside internal/adr; ask the view instead (ADR-0130 item 2):\n\t%s",
-			strings.Join(bad, "\n\t"))
+		t.Errorf("ADR.Sections is read outside internal/adr; ask the view instead (ADR-0130 item 2):\n\t%s", strings.Join(bad, "\n\t"))
 	}
+	mutation := loadMutationPackage(t, "internal/currentstate/corpus_mutation_fixture.go", "./internal/currentstate", `package currentstate
+
+import "github.com/hypnotox/agentic-workflows/internal/adr"
+
+type mutationEmbeddedADR struct {
+	adr.ADR
+}
+
+func mutationSections(rec adr.ADR, embedded mutationEmbeddedADR) {
+	x := rec.Sections
+	_ = x
+	for range rec.Sections {
+	}
+	_ = embedded.Sections
+}
+`)
+	if findings := sectionReadFindings(mutation); len(findings) != 3 {
+		t.Fatalf("Sections direct/embedded mutation fixtures: detected %d, want 3: %#v", len(findings), findings)
+	}
+}
+
+func rawAccessProblems(raw map[string][]string, allowed map[string]bool) []string {
+	var problems []string
+	for path, positions := range raw {
+		if !allowed[path] {
+			problems = append(problems, path+" accesses Corpus.Raw outside the enumerated migration seams: "+strings.Join(positions, ", "))
+		}
+	}
+	for path := range allowed {
+		positions := raw[path]
+		if len(positions) != 1 {
+			problems = append(problems, path+" must contain exactly one Corpus.Raw call; found "+strconv.Itoa(len(positions))+": "+strings.Join(positions, ", "))
+		}
+	}
+	return problems
 }
 
 // TestCorpusRawAccessEnumerated enforces the closed raw-byte seams: the ordered
@@ -130,43 +492,47 @@ func TestCorpusOwnsFieldReads(t *testing.T) {
 // named accessor rather than re-reading the file.
 // invariant: adr-system/adr-lifecycle:corpus-raw-access-enumerated
 func TestCorpusRawAccessEnumerated(t *testing.T) {
-	raw := map[string]bool{}
-	var pathReads []string
-	goSources(t, func(path, body string) {
-		if strings.HasPrefix(path, "../../internal/adr/") {
-			return
-		}
-		importsADR := strings.Contains(body, `"github.com/hypnotox/agentic-workflows/internal/adr"`)
-		for i, line := range codeLines(body) {
-			if strings.Contains(line, ".Raw(") {
-				raw[path] = true
-			}
-			// Scoped to files that actually handle ADR records: a .Path read in
-			// a package that does not import internal/adr is some other type's.
-			if importsADR && strings.Contains(line, "os.ReadFile(") && strings.Contains(line, ".Path") {
-				pathReads = append(pathReads, fromLine(path, i, line))
-			}
-		}
-	})
-	// internal/migrate appears twice because each ordered schema migration that
-	// performs offset surgery is its own file.
+	raw, pathReads := rawAccessFindings(loadProductionPackages(t))
 	want := map[string]bool{
-		"../../internal/migrate/retirementtokens.go": true,
-		"../../internal/migrate/supersessionkeys.go": true,
+		"internal/migrate/retirementtokens.go": true,
+		"internal/migrate/supersessionkeys.go": true,
 	}
-	for path := range raw {
-		if !want[path] {
-			t.Errorf("%s calls the raw-bytes accessor; only the enumerated migration seams and retired-key scan may. Another consumer means the view is missing a question.", path)
-		}
-	}
-	for path := range want {
-		if !raw[path] {
-			t.Errorf("%s no longer calls the raw-bytes accessor - has the enumerated set changed?", path)
-		}
+	if problems := rawAccessProblems(raw, want); len(problems) != 0 {
+		t.Errorf("Corpus.Raw call set differs from the two single-call migration seams:\n\t%s", strings.Join(problems, "\n\t"))
 	}
 	if len(pathReads) != 0 {
-		t.Errorf("an ADR file is read directly rather than through the view's accessor:\n\t%s",
-			strings.Join(pathReads, "\n\t"))
+		t.Errorf("an ADR file is read directly rather than through the view's accessor:\n\t%s", strings.Join(pathReads, "\n\t"))
+	}
+	mutation := loadMutationPackage(t, "internal/migrate/corpus_mutation_fixture.go", "./internal/migrate", `package migrate
+
+import (
+	"os"
+
+	"github.com/hypnotox/agentic-workflows/internal/adr"
+)
+
+func mutationRaw(c adr.Corpus, rec adr.ADR) {
+	_, _ = c.Raw("0001")
+	_, _ = c.Raw("0002")
+	raw := c.Raw
+	_, _ = raw("0003")
+	_, _ = os.ReadFile(rec.Path)
+	path := rec.Path
+	_, _ = os.ReadFile(path)
+}
+`)
+	mutationRaw, mutationReads := rawAccessFindings(mutation)
+	mutationPath := "internal/migrate/corpus_mutation_fixture.go"
+	if len(mutationRaw[mutationPath]) != 3 || len(mutationReads) != 2 {
+		t.Fatalf("raw-access direct/method-value mutation fixtures: Raw=%#v ReadFile(ADR.Path)=%#v, want three typed calls and two typed reads", mutationRaw, mutationReads)
+	}
+	mutationAllowed := map[string]bool{
+		"internal/migrate/retirementtokens.go": true,
+		"internal/migrate/supersessionkeys.go": true,
+		mutationPath:                           true,
+	}
+	if problems := rawAccessProblems(mutationRaw, mutationAllowed); len(problems) != 1 || !strings.Contains(problems[0], "exactly one") {
+		t.Fatalf("extra Raw call in an allowed file escaped the cardinality check: %#v", problems)
 	}
 }
 
@@ -195,19 +561,12 @@ func TestCorpusAbsentADR(t *testing.T) {
 	if c.Has("9999") {
 		t.Error("Has reported an absent ADR present")
 	}
-	if got := c.Anchors("9999"); got != nil {
-		t.Errorf("Anchors on an absent ADR = %v, want nil", got)
-	}
 	if _, err := c.Raw("9999"); err == nil {
 		t.Error("Raw on an absent ADR returned no error")
 	}
 
 	// The present ADR answers for real, so the guards above are not passing
-	// vacuously over an empty corpus. Its one Decision item and one declared
-	// slug are both anchors.
-	if got := c.Anchors("0001"); len(got) != 2 || got[0].Item != 1 || got[1].Slug != "only-slug" {
-		t.Errorf("Anchors(0001) = %v, want [item 1, slug only-slug]", got)
-	}
+	// vacuously over an empty corpus.
 	if _, err := c.Raw("0001"); err != nil {
 		t.Errorf("Raw(0001): %v", err)
 	}
@@ -231,71 +590,5 @@ func TestAuditSharesADRParser(t *testing.T) {
 	}
 	if !strings.Contains(body, "adr.ParseBytes(") {
 		t.Error("internal/audit no longer calls adr.ParseBytes - has the shared seam moved?")
-	}
-}
-
-// TestSupersessionModelSingleSource enforces ADR-0129's
-// supersession-model-single-source and ADR-0130's corpus-model-not-rebuilt: the
-// anchor-coverage model is constructed in exactly one place, inside
-// internal/adr, and no other package derives the supersession relation for
-// itself. Before this, the relation was derived twice differently - once in
-// the render index and once in the symmetry check - and read a third way off
-// the frontmatter scalar.
-// invariant: adr-system/adr-lifecycle:supersession-model-single-source
-// invariant: adr-system/adr-lifecycle:corpus-model-not-rebuilt
-func TestSupersessionModelSingleSource(t *testing.T) {
-	// The model is built by exactly one call, in Corpus construction.
-	var builders []string
-	for _, f := range []string{"corpus.go", "coverage.go", "adr.go", "status.go", "declarations.go"} {
-		data, err := os.ReadFile(f)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for i, line := range codeLines(string(data)) {
-			if strings.Contains(line, "buildCoverage(") && !strings.Contains(line, "func buildCoverage") {
-				builders = append(builders, fromLine(f, i, line))
-			}
-		}
-	}
-	if len(builders) != 1 {
-		t.Errorf("the coverage model must be built exactly once, in Corpus construction; found %d call(s):\n\t%s",
-			len(builders), strings.Join(builders, "\n\t"))
-	}
-
-	// The retired render index is really gone: ADR-0129 requires the
-	// identifiers SupersessionIndex, Override, and Label to appear nowhere as
-	// code. A new method reusing one of those names would defeat this grep
-	// while looking innocent.
-	var revived []string
-	goSources(t, func(path, body string) {
-		for i, line := range codeLines(body) {
-			for _, ident := range []string{"SupersessionIndex", "Override", "Label"} {
-				if regexp.MustCompile(`\b` + ident + `\b`).MatchString(line) {
-					revived = append(revived, fromLine(path, i, line))
-				}
-			}
-		}
-	})
-	if len(revived) != 0 {
-		t.Errorf("a retired supersession-index identifier is back in the tree (ADR-0129):\n\t%s",
-			strings.Join(revived, "\n\t"))
-	}
-
-	// No package outside internal/adr reconstructs the relation. The model's
-	// derivation identifiers are greppable on purpose.
-	var outside []string
-	goSources(t, func(path, body string) {
-		if strings.HasPrefix(path, "../../internal/adr/") {
-			return
-		}
-		for i, line := range codeLines(body) {
-			if strings.Contains(line, "buildCoverage(") {
-				outside = append(outside, fromLine(path, i, line))
-			}
-		}
-	})
-	if len(outside) != 0 {
-		t.Errorf("the anchor-coverage model is derived outside internal/adr; ask the corpus instead (ADR-0129):\n\t%s",
-			strings.Join(outside, "\n\t"))
 	}
 }

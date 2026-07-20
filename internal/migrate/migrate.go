@@ -116,12 +116,21 @@ func Generation(root string) (int, error) {
 // distinction Generation cannot express, since "nothing present" reports
 // Current() (ADR-0076 Decision 4).
 func ProjectPresent(root string) bool {
-	for _, p := range []string{
-		config.ConfigPath(root),
-		filepath.Join(root, ".claude", "awf", "config.yaml"),
-		filepath.Join(root, ".claude", "awf.yaml"),
+	return ProjectPresentFromFiles(func(path string) bool {
+		return fileExists(filepath.Join(root, filepath.FromSlash(path)))
+	})
+}
+
+// ProjectPresentFromFiles reports project presence through a repository-relative
+// file lookup. Snapshot consumers use it so current and legacy layout knowledge
+// remains owned by the migration package rather than being duplicated.
+func ProjectPresentFromFiles(has func(string) bool) bool {
+	for _, path := range []string{
+		config.DirName + "/config.yaml",
+		".claude/awf/config.yaml",
+		".claude/awf.yaml",
 	} {
-		if fileExists(p) {
+		if has(path) {
 			return true
 		}
 	}
@@ -172,6 +181,14 @@ func gateStateFor(gen, current int, tos []int) string {
 	return "autobump"
 }
 
+// GateStateForGeneration classifies an already-loaded schema generation with
+// the same migration-registry semantics as GateState. Snapshot-aware callers
+// use it after loading a lock from their own universe instead of rereading the
+// working tree.
+func GateStateForGeneration(gen int) string {
+	return gateStateFor(gen, Current(), registryTos())
+}
+
 // GateState classifies a project ("ok" | "gate" | "autobump" | "ahead") and
 // returns the generation it classified, so callers need only one Generation
 // call for both the state and their messages.
@@ -180,7 +197,7 @@ func GateState(root string) (string, int, error) {
 	if err != nil {
 		return "", 0, err
 	}
-	return gateStateFor(gen, Current(), registryTos()), gen, nil
+	return GateStateForGeneration(gen), gen, nil
 }
 
 // Upgrade applies every registered migration with To > Generation(root), in

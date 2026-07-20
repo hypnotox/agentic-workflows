@@ -24,14 +24,15 @@ func WorkingTree(repoRoot string) (*Tree, error) {
 	for _, p := range paths {
 		full := filepath.Join(repoRoot, filepath.FromSlash(p))
 		info, statErr := os.Lstat(full)
-		if statErr != nil || !info.Mode().IsRegular() {
-			// A symlink (not followed), directory, or a path that vanished after
-			// git.WorkingPaths read live state: no regular content to capture.
-			continue
+		if statErr != nil { // coverage-ignore: git just enumerated this path; only a concurrent filesystem mutation can make Lstat fail
+			return nil, fmt.Errorf("snapshot working stat %s: %w", p, statErr)
+		}
+		if !info.Mode().IsRegular() {
+			continue // symlinks and directories have no snapshot content
 		}
 		data, readErr := os.ReadFile(full)
-		if readErr != nil { // coverage-ignore: a regular file just Lstat'd in our own worktree reads back
-			continue
+		if readErr != nil {
+			return nil, fmt.Errorf("snapshot working read %s: %w", p, readErr)
 		}
 		mode := Regular
 		if info.Mode().Perm()&0o111 != 0 {

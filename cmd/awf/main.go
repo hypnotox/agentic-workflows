@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
@@ -98,7 +99,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// group's children never set Gating, so a future Gated group must gate from
 	// its top-level node rather than silently inherit a child's Ungated zero value.
 	if top.Gating == clispec.Gated {
-		if err := gate(cwd); err != nil {
+		gateFn := gate
+		if top.Name == "check" && inv.bools["--staged"] {
+			gateFn = gateStaged
+		}
+		if err := gateFn(cwd); err != nil {
 			return dispatchErr(stderr, err)
 		}
 	}
@@ -128,14 +133,24 @@ func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	case "version", "changelog":
 		return nil
 	}
-	if !migrate.ProjectPresent(root) {
+	staged := top.Name == "check" && inv.bools["--staged"]
+	present, journal, journalFound, lock, found, loadErr, err := projectGuardState(root, staged)
+	if err != nil {
+		return err
+	}
+	if !present {
 		return nil
 	}
 	isUpgrade := top.Name == "upgrade"
 	isRecover := isUpgrade && inv.bools["--recover"]
 	isPlainUpgrade := isUpgrade && !isRecover
-	if upgrade.JournalPresent(root) {
-		if _, err := upgrade.LoadJournal(root); err != nil {
+	if journalFound {
+		if staged {
+			_, err = upgrade.ParseJournal(journal)
+		} else {
+			_, err = upgrade.LoadJournal(root)
+		}
+		if err != nil {
 			return err // malformed journal: refuse every mode, recovery included
 		}
 		if isRecover {
@@ -144,9 +159,8 @@ func guardProjectState(root string, top clispec.Command, inv invocation) error {
 		return errors.New("a current-state upgrade journal is present; run `awf upgrade --recover` before any other command")
 	}
 	// No journal: consult the lock for a committed attestation. A corrupt lock
-	// (LoadOptional error) is left to the existing ADR-0076 refusal downstream, so
-	// only a cleanly loaded attested lock drives the guard here.
-	lock, found, loadErr := manifest.LoadOptional(config.LockPath(root))
+	// (loadErr) is left to the existing ADR-0076 refusal downstream, so only a
+	// cleanly loaded attested lock drives the guard here.
 	if loadErr == nil && found && lock.BridgeAttestation != nil {
 		if isPlainUpgrade {
 			return nil
@@ -157,6 +171,37 @@ func guardProjectState(root string, top clispec.Command, inv invocation) error {
 		return errors.New("no current-state upgrade journal to recover")
 	}
 	return nil
+}
+
+// projectGuardState captures the presence, journal, and lock used by the
+// command-state guard. A staged check derives all three from the index snapshot;
+// every other command derives all three from the working project.
+func projectGuardState(root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound bool, loadErr, err error) {
+	if !staged {
+		present = migrate.ProjectPresent(root)
+		journalFound = upgrade.JournalPresent(root)
+		lock, lockFound, loadErr = manifest.LoadOptional(config.LockPath(root))
+		return
+	}
+	tree, err := snapshot.IndexTree(root)
+	if err != nil {
+		return false, nil, false, nil, false, nil, err
+	}
+	present = migrate.ProjectPresentFromFiles(func(path string) bool {
+		_, ok := tree.Lookup(path)
+		return ok
+	})
+	if file, ok := tree.Lookup(config.DirName + "/current-state-upgrade.journal"); ok {
+		journal, journalFound = file.Bytes, true
+	}
+	if file, ok := tree.Lookup(config.DirName + "/awf.lock"); ok {
+		lockFound = true
+		lock, loadErr = manifest.Parse(file.Bytes)
+		if loadErr != nil {
+			loadErr = fmt.Errorf("parse staged lock: %w", loadErr)
+		}
+	}
+	return
 }
 
 // dispatchErr prints err and maps it to an exit code: a usageErr (CLI misuse)

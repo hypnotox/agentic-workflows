@@ -10,7 +10,7 @@ import (
 )
 
 func runCheck(root string, staged bool, stdout io.Writer) error {
-	lockV, binV, ok, err := lockVsBinary(root)
+	lockV, binV, ok, err := checkLockVsBinary(root, staged)
 	if err != nil { // coverage-ignore: the driver pre-gates check (Gated) so a corrupt lock hard-errors before runCheck (ADR-0076), and no direct caller passes one; the branch stays so the ahead-note never silently swallows a lock error
 		return err
 	}
@@ -18,12 +18,12 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf sync to re-pin\n",
 			strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
 	}
+	if staged {
+		return runCheckStaged(root, stdout)
+	}
 	p, err := project.Open(root)
 	if err != nil {
 		return err
-	}
-	if staged {
-		return runCheckStaged(p, stdout)
 	}
 	notes, err := p.AdvisoryNotes()
 	if err != nil {
@@ -61,11 +61,23 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 	return fmt.Errorf("awf check: %d drift(s), %d current-state issue(s)", len(drift), len(current))
 }
 
+func checkLockVsBinary(root string, staged bool) (lockV, binV string, ok bool, err error) {
+	if !staged {
+		return lockVsBinary(root)
+	}
+	lock, err := stagedLock(root)
+	if err != nil {
+		return "", "", false, err
+	}
+	lockV, binV, ok = lockVsBinaryLock(lock)
+	return lockV, binV, ok, nil
+}
+
 // runCheckStaged validates the staged HEAD-to-index current-state transition and
 // the index coverage (ADR-0135). It skips the working-tree drift oracle: a
 // pre-commit hook validates the exact slice about to land, not the working tree.
-func runCheckStaged(p *project.Project, stdout io.Writer) error {
-	report, err := p.CheckStaged()
+func runCheckStaged(root string, stdout io.Writer) error {
+	report, err := project.CheckStagedRoot(root)
 	if err != nil {
 		return err
 	}

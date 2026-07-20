@@ -14,6 +14,19 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
+type migrationAnchor struct {
+	adr  string
+	item int
+	slug string
+}
+
+func (a migrationAnchor) String() string {
+	if a.slug != "" {
+		return "ADR-" + a.adr + "#" + a.slug
+	}
+	return fmt.Sprintf("ADR-%s#%d", a.adr, a.item)
+}
+
 var (
 	// supersedesLineRe and supersededByLineRe match the two column-0
 	// frontmatter lines ADR-0128 item 1 removes, newline included so stripping
@@ -130,30 +143,25 @@ func applySupersessionKeys(root string, out io.Writer) error {
 		}
 	}
 
-	// pendingAnchors is a target's anchor set as it will stand AFTER the
-	// migration: its parsed anchors plus the bookkeeping item it is about to
-	// gain, if any.
-	pendingAnchors := func(target adr.ADR) []adr.Anchor {
-		anchors := corpus.Anchors(target.Number)
-		if !carriesBookkeeping[target.Number] {
-			return anchors
-		}
+	// pendingAnchors is a migration-local compatibility calculation, not a
+	// permanent ADR coverage model. Preserve the historical order: parsed
+	// Decision items, a pending synthetic bookkeeping item when this target is
+	// itself a carrier, then declared invariant slugs.
+	pendingAnchors := func(target adr.ADR) []migrationAnchor {
 		items := target.DecisionItems()
-		next := 1
-		if len(items) > 0 {
-			next = items[len(items)-1] + 1
+		out := make([]migrationAnchor, 0, len(items)+len(target.DeclaredSlugs())+1)
+		for _, item := range items {
+			out = append(out, migrationAnchor{adr: target.Number, item: item})
 		}
-		// Slot the pending item with the other items rather than after the
-		// slugs, so the emitted token list reads in anchor order.
-		out := make([]adr.Anchor, 0, len(anchors)+1)
-		for _, a := range anchors {
-			if a.Slug != "" && len(out) == len(items) {
-				out = append(out, adr.Anchor{ADR: target.Number, Item: next})
+		if carriesBookkeeping[target.Number] {
+			next := 1
+			if len(items) > 0 {
+				next = items[len(items)-1] + 1
 			}
-			out = append(out, a)
+			out = append(out, migrationAnchor{adr: target.Number, item: next})
 		}
-		if len(out) == len(items) { // no slugs: the pending item goes last
-			out = append(out, adr.Anchor{ADR: target.Number, Item: next})
+		for _, slug := range target.DeclaredSlugs() {
+			out = append(out, migrationAnchor{adr: target.Number, slug: slug})
 		}
 		return out
 	}
@@ -216,7 +224,7 @@ func applySupersessionKeys(root string, out io.Writer) error {
 					// supersedes-invariant:, and emitting the item key for one
 					// would write a token the grammar does not recognise.
 					key := "supersedes: "
-					if anchor.Slug != "" {
+					if anchor.slug != "" {
 						key = "supersedes-invariant: "
 					}
 					tokens = append(tokens, "`"+key+anchor.String()+"`")

@@ -131,6 +131,13 @@ func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 	return report, nil
 }
 
+// CheckStagedRoot validates the staged current-state transition without opening
+// working-tree project configuration. The staged command must remain operable
+// when a valid adopted index deliberately deletes or lacks the working config.
+func CheckStagedRoot(root string) (CurrentStateReport, error) {
+	return (&Project{Root: root}).CheckStaged()
+}
+
 // CheckStaged loads the HEAD (before) and staged index (after) current-state
 // universes and runs the snapshot-diff transition check between them plus the
 // coverage/fan-out evaluator over the index (ADR-0135, ADR-0134). Both sides are
@@ -140,17 +147,17 @@ func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 // the staged check reads one universe. Coverage runs only when the staged config
 // declares a currentState policy.
 func (p *Project) CheckStaged() (CurrentStateReport, error) {
-	lock, _, err := manifest.LoadOptional(p.lockPath())
+	afterTree, err := snapshot.IndexTree(p.Root)
+	if err != nil {
+		return CurrentStateReport{}, err
+	}
+	lock, err := lockFromTree(afterTree)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
 	cutoff, gaps := attestationCutoff(lock)
 	before, err := p.headCurrentState(cutoff, gaps)
 	if err != nil {
-		return CurrentStateReport{}, err
-	}
-	afterTree, err := snapshot.IndexTree(p.Root)
-	if err != nil { // coverage-ignore: IndexTree fails only on an unmerged index; headCurrentState's OpenRepo above already succeeded, and building a conflicted index is beyond a unit fixture
 		return CurrentStateReport{}, err
 	}
 	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, cutoff, gaps)
@@ -167,12 +174,24 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	return report, nil
 }
 
+func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
+	file, ok := tree.Lookup(config.DirName + "/awf.lock")
+	if !ok {
+		return nil, fmt.Errorf("no staged %s/awf.lock", config.DirName)
+	}
+	lock, err := manifest.Parse(file.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse staged lock: %w", err)
+	}
+	return lock, nil
+}
+
 // headCurrentState loads the HEAD commit universe, or the empty universe when
 // the repository has no commit yet or its HEAD predates awf adoption. It reads
 // only committed content, never the working tree.
 func (p *Project) headCurrentState(cutoff int, gaps []int) (currentstate.Loaded, error) {
 	has, err := git.HeadExists(p.Root)
-	if err != nil {
+	if err != nil { // coverage-ignore: IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here
 		return currentstate.Loaded{}, err
 	}
 	if !has {

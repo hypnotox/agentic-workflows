@@ -2,13 +2,17 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -160,7 +164,19 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) string {
 	t.Helper()
 	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Stage(t, repo, dir, commit)
+	committed := map[string]string{}
+	for path, body := range commit {
+		committed[path] = body
+	}
+	if _, ok := committed[".awf/awf.lock"]; !ok {
+		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+		b, err := lock.Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		committed[".awf/awf.lock"] = string(b)
+	}
+	gitfixture.Stage(t, repo, dir, committed)
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	if len(stageOnly) > 0 {
 		gitfixture.Stage(t, repo, dir, stageOnly)
@@ -202,13 +218,279 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 	}
 }
 
+func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
+	lockText := func(version string, generation int) string {
+		t.Helper()
+		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}}
+		b, err := lock.Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+
+	t.Run("working lock cannot fail staged gate or suppress staged ahead note", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml": configText,
+			".awf/awf.lock":    lockText("0.3.0", migrate.Current()),
+		}, nil)
+		// Diverge only the working lock: both its schema and release version would
+		// refuse the command if either gate consulted it.
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), lockText("99.0.0", migrate.Current()+1))
+		t.Chdir(root)
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 0 {
+			t.Fatalf("staged check exit = %d, stderr=%q", code, errOut.String())
+		}
+		if !strings.Contains(out.String(), "rendered by 0.3.0") {
+			t.Fatalf("ahead note did not use staged lock: %q", out.String())
+		}
+	})
+
+	t.Run("staged schema ahead fails despite current working lock", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml": configText,
+			".awf/awf.lock":    lockText(project.Version, migrate.Current()),
+		}, map[string]string{".awf/awf.lock": lockText(project.Version, migrate.Current()+1)})
+		// Restore a current working lock without changing the index.
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "awf.lock"), lockText(project.Version, migrate.Current()))
+		t.Chdir(root)
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 1 {
+			t.Fatalf("staged ahead-schema exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(errOut.String(), "schema generation") || !strings.Contains(errOut.String(), strconv.Itoa(migrate.Current()+1)) {
+			t.Fatalf("staged schema diagnostic = %q", errOut.String())
+		}
+	})
+}
+
+func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *testing.T) {
+	lockText := func(attested bool) string {
+		t.Helper()
+		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+		if attested {
+			lock.BridgeAttestation = &manifest.BridgeAttestation{Version: 1, PreparedHead: "head", TreeDigest: "sha256:x", ADRFormatV1From: 2}
+		}
+		b, err := lock.Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return string(b)
+	}
+	configText := "prefix: example\nskills: [tdd]\nagents: []\n"
+
+	t.Run("missing repository refuses", func(t *testing.T) {
+		t.Chdir(t.TempDir())
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 1 {
+			t.Fatalf("non-repository staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(errOut.String(), "repository") {
+			t.Fatalf("non-repository diagnostic = %q", errOut.String())
+		}
+	})
+
+	t.Run("valid staged project runs", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml": configText,
+			".awf/awf.lock":    lockText(false),
+		}, nil)
+		if err := os.Remove(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(root)
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 0 {
+			t.Fatalf("staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(out.String(), "awf check --staged: clean") {
+			t.Fatalf("staged check output = %q", out.String())
+		}
+	})
+
+	t.Run("malformed staged lock refuses", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml": configText,
+			".awf/awf.lock":    "{not json",
+		}, nil)
+		if err := os.Remove(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(root)
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 1 {
+			t.Fatalf("malformed-lock staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(errOut.String(), "parse staged lock") {
+			t.Fatalf("malformed-lock diagnostic = %q", errOut.String())
+		}
+	})
+
+	t.Run("staged attestation still refuses", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml": configText,
+			".awf/awf.lock":    lockText(true),
+		}, nil)
+		if err := os.Remove(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(root)
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 1 {
+			t.Fatalf("attested staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(errOut.String(), "committed current-state attestation") {
+			t.Fatalf("attestation diagnostic = %q", errOut.String())
+		}
+	})
+
+	t.Run("staged journal still refuses", func(t *testing.T) {
+		root := stagedCheckProject(t, map[string]string{
+			".awf/config.yaml":                   configText,
+			".awf/awf.lock":                      lockText(false),
+			".awf/current-state-upgrade.journal": `{"version":1,"phase":"prepared","finalLockSHA256":"sha256:x","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":false,"mode":0,"content":null}}]}`,
+		}, nil)
+		if err := os.Remove(filepath.Join(root, ".awf", "config.yaml")); err != nil {
+			t.Fatal(err)
+		}
+		t.Chdir(root)
+		var out, errOut bytes.Buffer
+		if code := run([]string{"awf", "check", "--staged"}, &out, &errOut); code != 1 {
+			t.Fatalf("journaled staged check exit = %d, stdout=%q stderr=%q", code, out.String(), errOut.String())
+		}
+		if !strings.Contains(errOut.String(), "upgrade journal is present") {
+			t.Fatalf("journal diagnostic = %q", errOut.String())
+		}
+	})
+}
+
+// TestRunCheckStagedError covers the error return of the staged route: the index
+// carries no config, so CheckStaged fails.
+func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, dir, map[string]string{"README.md": "staged\n"})
+	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", hook)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("pre-commit accepted a staged slice missing its nested helper: %s", out)
+	}
+	if !strings.Contains(string(out), "staged slice is missing .githooks/check-nested-staged") {
+		t.Fatalf("missing-helper diagnostic = %q", out)
+	}
+}
+
+func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2}
+	lockBytes, err := lock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prefix := "examples/sundial/"
+	helperPath, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "check-nested-staged"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	helperBody, err := os.ReadFile(helperPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := map[string]string{
+		".githooks/check-nested-staged":                         string(helperBody),
+		prefix + ".awf/awf.lock":                                string(lockBytes),
+		prefix + ".awf/config.yaml":                             "prefix: sundial\nskills: []\nagents: []\ndomains: [alpha]\n",
+		prefix + ".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		prefix + ".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
+		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
+		prefix + "docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First")),
+	}
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "nested head", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n",
+	})
+
+	testBinary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tools := t.TempDir()
+	wrapper := filepath.Join(tools, "awf-helper")
+	wrapperBody := "#!/bin/sh\nif [ \"$#\" -eq 1 ] && [ \"$1\" = check ]; then exit 0; fi\nAWF_HOOK_COMMAND_HELPER=1 exec \"" + testBinary + "\" -test.run=TestHookCommandHelper -- \"$@\"\n"
+	if err := os.WriteFile(wrapper, []byte(wrapperBody), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fakeGo := filepath.Join(tools, "go")
+	fakeGoBody := `#!/bin/sh
+out=
+while [ "$#" -gt 0 ]; do
+	if [ "$1" = -o ]; then out="$2"; shift 2; continue; fi
+	shift
+done
+if [ -z "$out" ]; then exit 0; fi
+cp "$AWF_HOOK_WRAPPER" "$out"
+chmod +x "$out"
+`
+	if err := os.WriteFile(fakeGo, []byte(fakeGoBody), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("bash", hook)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "AWF_HOOK_WRAPPER="+wrapper, "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		t.Fatalf("pre-commit accepted an unmatched nested claim removal: %s", out)
+	}
+	text := string(out)
+	if !strings.Contains(text, "was removed with no ADR remove operation") ||
+		!strings.Contains(text, "pre-commit: the staged slice fails examples/sundial's HEAD-to-index current-state transition check") {
+		t.Fatalf("pre-commit nested staged diagnostic = %q", text)
+	}
+}
+
+func TestHookCommandHelper(_ *testing.T) {
+	if os.Getenv("AWF_HOOK_COMMAND_HELPER") == "" {
+		return
+	}
+	var err error
+	if len(os.Args) < 3 || os.Args[len(os.Args)-2] != "check" || os.Args[len(os.Args)-1] != "--staged" {
+		err = fmt.Errorf("unexpected helper arguments: %v", os.Args)
+	} else if err = gateStaged("."); err == nil {
+		err = runCheck(".", true, os.Stdout)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "awf:", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
 // TestRunCheckStagedError covers the error return of the staged route: the index
 // carries no config, so CheckStaged fails.
 func TestRunCheckStagedError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
-	gitfixture.Stage(t, repo, dir, map[string]string{"internal/x.go": "package x\n"})
+	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lockBytes, err := lock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/awf.lock": string(lockBytes),
+		"internal/x.go": "package x\n",
+	})
 	if err := runCheck(dir, true, io.Discard); err == nil {
 		t.Fatal("expected the staged check to fail with no staged config")
 	}

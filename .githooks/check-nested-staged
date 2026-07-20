@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Run the repository pre-commit hook's nested-adopter transition check through a
+# small seam that can be exercised without the hook's build and full-gate work.
+set -euo pipefail
+repo_root="$1"
+awf_bin="$2"
+if ! (cd "$repo_root/examples/sundial" && "$awf_bin" check --staged); then
+  echo "pre-commit: the staged slice fails examples/sundial's HEAD-to-index current-state transition check" >&2
+  exit 1
+fi

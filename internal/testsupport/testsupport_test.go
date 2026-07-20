@@ -139,4 +139,14 @@ func TestWalkRepoSourcesBoundary(t *testing.T) {
 			t.Errorf("%q must be outside the repo-walk boundary", skipped)
 		}
 	}
+
+	var markdown []string
+	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
+		return filepath.Ext(rel) == ".md"
+	}, func(rel string, _ []byte) {
+		markdown = append(markdown, rel)
+	})
+	if got := strings.Join(markdown, ","); got != "notes.md" {
+		t.Fatalf("repository Markdown = %q, want notes.md", got)
+	}
 }

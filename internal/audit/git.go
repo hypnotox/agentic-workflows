@@ -66,7 +66,7 @@ func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 // default and no configured base. Empty range -> nil. Not-a-repo, an
 // unresolvable base or head, and unrelated histories are errors.
 func Collect(repoRoot, base, head string) ([]Commit, error) {
-	repo, err := awfgit.OpenRepo(repoRoot)
+	repo, prefix, err := awfgit.OpenContainingRepo(repoRoot)
 	if err != nil {
 		return nil, fmt.Errorf("open repo: %w", err)
 	}
@@ -104,11 +104,16 @@ func Collect(repoRoot, base, head string) ([]Commit, error) {
 	}
 	var commits []Commit
 	err = object.NewCommitPreorderIter(headCommit, seen, nil).ForEach(func(c *object.Commit) error {
-		nc, cerr := toCommit(c)
+		nc, cerr := toCommit(c, prefix)
 		if cerr != nil { // coverage-ignore: toCommit fails only on a corrupt object (see its own ignored branches)
 			return cerr
 		}
-		commits = append(commits, nc)
+		// A nested adopter audits only commits that changed its own subtree. A
+		// containing-repository commit with no in-scope change is deliberately
+		// absent rather than contributing foreign commit metadata to the rules.
+		if prefix == "" || len(nc.Changes) != 0 {
+			commits = append(commits, nc)
+		}
 		return nil
 	})
 	if err != nil { // coverage-ignore: mirrors the toCommit failure above; unreachable for valid commits
@@ -117,7 +122,7 @@ func Collect(repoRoot, base, head string) ([]Commit, error) {
 	return commits, nil
 }
 
-func toCommit(c *object.Commit) (Commit, error) {
+func toCommit(c *object.Commit, prefix string) (Commit, error) {
 	subject, body := splitMessage(c.Message)
 	nc := Commit{
 		Hash:    c.Hash.String()[:8],
@@ -159,32 +164,43 @@ func toCommit(c *object.Commit) (Commit, error) {
 		stats[s.Name] = s
 	}
 	for _, ch := range changes {
-		fc, ferr := toFileChange(ch, parentTree, curTree, stats)
+		fc, include, ferr := toFileChange(ch, parentTree, curTree, stats, prefix)
 		if ferr != nil { // coverage-ignore: toFileChange fails only on a malformed change (see its own ignored branch)
 			return Commit{}, ferr
 		}
-		nc.Changes = append(nc.Changes, fc)
+		if include {
+			nc.Changes = append(nc.Changes, fc)
+		}
 	}
 	return nc, nil
 }
 
-func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat) (FileChange, error) {
+func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat, prefix string) (FileChange, bool, error) {
 	action, err := ch.Action()
 	if err != nil { // coverage-ignore: Action() fails only on a malformed change entry
-		return FileChange{}, err
+		return FileChange{}, false, err
 	}
-	fc := FileChange{OldPath: ch.From.Name, Path: ch.To.Name}
-	switch action.String() {
-	case "Insert":
+	oldPath, oldInside := scopedPath(ch.From.Name, prefix)
+	newPath, newInside := scopedPath(ch.To.Name, prefix)
+	if !oldInside && !newInside {
+		return FileChange{}, false, nil
+	}
+	fc := FileChange{OldPath: oldPath, Path: newPath}
+	switch {
+	case action.String() == "Insert" || !oldInside:
 		fc.Action = Added
-		fc.Path = ch.To.Name
-	case "Delete":
+		fc.OldPath = ""
+	case action.String() == "Delete" || !newInside:
 		fc.Action = Deleted
-		fc.Path = ch.From.Name
+		fc.Path = oldPath
 	default:
 		fc.Action = Modified
 	}
-	if s, ok := stats[fc.Path]; ok {
+	statPath := ch.To.Name
+	if fc.Action == Deleted {
+		statPath = ch.From.Name
+	}
+	if s, ok := stats[statPath]; ok {
 		fc.Added, fc.Deleted = s.Addition, s.Deletion
 	}
 	if strings.HasSuffix(fc.Path, ".md") {
@@ -195,7 +211,17 @@ func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map
 			fc.NewText = fileText(curTree, ch.To.Name)
 		}
 	}
-	return fc, nil
+	return fc, true, nil
+}
+
+func scopedPath(path, prefix string) (string, bool) {
+	if path == "" {
+		return "", false
+	}
+	if prefix == "" {
+		return path, true
+	}
+	return strings.CutPrefix(path, prefix+"/")
 }
 
 func fileText(tree *object.Tree, name string) string {

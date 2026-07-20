@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // invariant: rendering/project-output-plan:output-plan-complete
@@ -165,6 +165,7 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	}
 	migrationPath := ".awf/current-state-migration.yaml"
 	seenTopics, seenDomains := 0, 0
+	planned := map[string]bool{}
 	for _, n := range op.Nodes {
 		if n.Path == migrationPath {
 			t.Fatal("permanent output plan still claims the deleted migration approval file")
@@ -175,8 +176,10 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 		switch {
 		case strings.HasPrefix(n.Path, "docs/topics/"):
 			seenTopics++
+			planned[n.Path] = true
 		case strings.HasPrefix(n.Path, "docs/domains/"):
 			seenDomains++
+			planned[n.Path] = true
 		default:
 			continue
 		}
@@ -192,6 +195,14 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	if seenTopics == 0 || seenDomains != len(p.Cfg.Domains) {
 		t.Fatalf("current-state output coverage: topics=%d domains=%d want-domains=%d", seenTopics, seenDomains, len(p.Cfg.Domains))
 	}
+	testsupport.WalkRepoFiles(t, root, func(rel string) bool {
+		return filepath.Ext(rel) == ".md" &&
+			(strings.HasPrefix(rel, "docs/topics/") || strings.HasPrefix(rel, "docs/domains/"))
+	}, func(rel string, _ []byte) {
+		if !planned[rel] {
+			t.Errorf("current-state output %s exists but is absent from the output plan", rel)
+		}
+	})
 	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
 	if err != nil {
 		t.Fatal(err)

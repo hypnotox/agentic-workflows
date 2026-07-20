@@ -25,6 +25,7 @@ func TestWorkingTree(t *testing.T) {
 	writeStage(t, wt, dir, "tracked.txt", "orig\n", 0o644)
 	writeStage(t, wt, dir, "run.sh", "run\n", 0o755)
 	writeStage(t, wt, dir, "gone.txt", "gone\n", 0o644)
+	writeStage(t, wt, dir, "recreated.txt", "old\n", 0o644)
 	writeStage(t, wt, dir, ".gitignore", "ignored.txt\n", 0o644)
 	if _, err := wt.Commit("base", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
 		t.Fatal(err)
@@ -45,6 +46,12 @@ func TestWorkingTree(t *testing.T) {
 	if err := os.Remove(filepath.Join(dir, "gone.txt")); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := wt.Remove("recreated.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "recreated.txt"), []byte("new\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	tree, err := snapshot.WorkingTree(dir)
 	if err != nil {
@@ -59,6 +66,9 @@ func TestWorkingTree(t *testing.T) {
 	if f, ok := tree.Lookup("untracked.txt"); !ok || string(f.Bytes) != "fresh\n" {
 		t.Errorf("untracked.txt = %q, %v; want included", f.Bytes, ok)
 	}
+	if f, ok := tree.Lookup("recreated.txt"); !ok || string(f.Bytes) != "new\n" {
+		t.Errorf("recreated.txt = %q, %v; want recreated working bytes", f.Bytes, ok)
+	}
 	for _, absent := range []string{"gone.txt", "ignored.txt", "link"} {
 		if _, ok := tree.Lookup(absent); ok {
 			t.Errorf("%s should be absent from the working Tree", absent)
@@ -69,6 +79,17 @@ func TestWorkingTree(t *testing.T) {
 		if again, _ := tree.Lookup("tracked.txt"); again.Bytes[0] == 'X' {
 			t.Errorf("Lookup result aliases the Tree")
 		}
+	}
+	if err := os.Chmod(filepath.Join(dir, "tracked.txt"), 0); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Chmod(filepath.Join(dir, "tracked.txt"), 0o644); err != nil {
+			t.Errorf("restore tracked.txt permissions: %v", err)
+		}
+	})
+	if _, err := snapshot.WorkingTree(dir); err == nil {
+		t.Fatal("expected unreadable working file to fail the snapshot")
 	}
 }
 

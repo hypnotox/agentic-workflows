@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"golang.org/x/mod/semver"
 )
 
@@ -38,12 +39,8 @@ func gate(root string) error {
 	if err != nil {
 		return err
 	}
-	switch state {
-	case "gate":
-		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade",
-			gen, migrate.Current())
-	case "ahead":
-		return schemaAheadError(gen)
+	if err := gateGeneration(state, gen); err != nil {
+		return err
 	}
 	lockV, binV, ok, err := lockVsBinary(root)
 	if err != nil {
@@ -52,14 +49,59 @@ func gate(root string) error {
 		// version sub-check is the first reader to hit it (ADR-0076).
 		return err
 	}
+	return gateLockVersion(lockV, binV, ok)
+}
+
+// gateStaged applies the normal schema and release-version classifications to
+// the index lock. It never consults a divergent working lock.
+func gateStaged(root string) error {
+	lock, err := stagedLock(root)
+	if err != nil {
+		return err
+	}
+	gen := lock.SchemaVersion
+	if err := gateGeneration(migrate.GateStateForGeneration(gen), gen); err != nil {
+		return err
+	}
+	lockV, binV, ok := lockVsBinaryLock(lock)
+	return gateLockVersion(lockV, binV, ok)
+}
+
+func gateGeneration(state string, gen int) error {
+	switch state {
+	case "gate":
+		return fmt.Errorf("config schema is behind (generation %d < %d); run awf upgrade", gen, migrate.Current())
+	case "ahead":
+		return schemaAheadError(gen)
+	}
+	return nil
+}
+
+func gateLockVersion(lockV, binV string, ok bool) error {
 	if !ok {
-		return nil // version sub-check not computable; schema check already applied
+		return nil
 	}
 	if semver.Compare(lockV, binV) > 0 {
 		return fmt.Errorf("awf %s is behind this project (rendered by %s); update your pinned awf",
 			awfVersion(), strings.TrimPrefix(lockV, "v"))
 	}
 	return nil
+}
+
+func stagedLock(root string) (*manifest.Lock, error) {
+	tree, err := snapshot.IndexTree(root)
+	if err != nil {
+		return nil, err
+	}
+	file, ok := tree.Lookup(config.DirName + "/awf.lock")
+	if !ok {
+		return nil, fmt.Errorf("no staged %s/awf.lock", config.DirName)
+	}
+	lock, err := manifest.Parse(file.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parse staged lock: %w", err)
+	}
+	return lock, nil
 }
 
 // schemaAheadError is the single "config schema ahead of this binary" message,
@@ -81,13 +123,21 @@ func lockVsBinary(root string) (lockV, binV string, ok bool, err error) {
 	if err != nil {
 		return "", "", false, err
 	}
-	if !found || l.AWFVersion == "" {
+	if !found {
 		return "", "", false, nil
+	}
+	lockV, binV, ok = lockVsBinaryLock(l)
+	return lockV, binV, ok, nil
+}
+
+func lockVsBinaryLock(l *manifest.Lock) (lockV, binV string, ok bool) {
+	if l == nil || l.AWFVersion == "" {
+		return "", "", false
 	}
 	lockV, lok := normalizeSemver(l.AWFVersion)
 	binV, bok := normalizeSemver(awfVersion())
 	if !lok || !bok {
-		return "", "", false, nil
+		return "", "", false
 	}
-	return lockV, binV, true, nil
+	return lockV, binV, true
 }
