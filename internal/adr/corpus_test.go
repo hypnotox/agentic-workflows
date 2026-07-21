@@ -511,8 +511,12 @@ func TestClaimOperationHistorySemanticProjection(t *testing.T) {
 	if len(got.RevisedBy) != 1 || got.RevisedBy[0].Number != "0003" || got.RevisedBy[0].StateSequence != 2 {
 		t.Fatalf("revisions = %#v", got.RevisedBy)
 	}
-	if got.RemovedBy == nil || got.RemovedBy.Number != "0005" || got.RemovedBy.StateSequence != 3 {
-		t.Fatalf("removal = %#v", got.RemovedBy)
+	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Number != "0005" || got.RemovedBy.StateSequence != 3 {
+		t.Fatalf("history = %#v", got)
+	}
+	legacy, ok := adr.NewCorpus([]adr.ADR{record("0006", "Remove legacy claim", "Implemented", "remove", 1)}).ClaimOperationHistory(claimID)
+	if !ok || !legacy.LegacyBaseline || legacy.Origin != nil || legacy.RemovedBy == nil || legacy.RemovedBy.Number != "0006" {
+		t.Fatalf("legacy baseline history = %#v, found %v", legacy, ok)
 	}
 	got.RevisedBy[0].Number = "mutated"
 	again, _ := corpus.ClaimOperationHistory(claimID)

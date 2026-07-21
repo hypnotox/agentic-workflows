@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -24,6 +25,14 @@ func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.Qu
 	ws, err := p.workingCurrentState()
 	if err != nil {
 		return topic.QueryResult{}, err
+	}
+	findings := currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All(), ws.Cutoff)
+	if len(findings) > 0 {
+		messages := make([]string, len(findings))
+		for i, finding := range findings {
+			messages[i] = finding.Message
+		}
+		return topic.QueryResult{}, fmt.Errorf("current-state validation failed: %s", strings.Join(messages, "; "))
 	}
 	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts)
 }

@@ -107,6 +107,8 @@ brownfield backup, and prune lifecycle, and add compact topic navigation to the 
 `--history`, `--references`, and `--coverage` independently add direct ADR operations, claim edges, and
 scope/marker sites. A removed claim identity resolves only with `--history`, as historical-only
 Origin/Revised-by/Removed-by operations without active prose, references, coverage, or a tombstone.
+A legacy-baseline removal reports that its origin is not retained (`legacyBaseline: true` in JSON)
+rather than guessing one.
 
 ADRs carry decisions through adoption and then become history. A current-state-v1 ADR has closed
 `format`/`status`/`date` frontmatter, a `## State changes` section listing `add`, `update`, and

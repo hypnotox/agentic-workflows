@@ -43,8 +43,8 @@ currentState:
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-scheduling.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: Scheduling origin"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Scheduling.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-revision.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0002: Scheduling revision"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Revise scheduling.\n")))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-add-removed.md"), topicV1ADR(t, "0003", "Add removed claim", "- add `schedule/contracts:removed`", 1))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove old claim", "- remove `schedule/contracts:removed`", 2))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-update-active.md"), topicV1ADR(t, "0003", "Update active claim", "- update `schedule/contracts:deterministic-order`", 1))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove legacy claim", "- remove `schedule/contracts:removed`", 2))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md"), `Scheduling contracts.
 
@@ -53,7 +53,7 @@ currentState:
 ### `+"`rule: deterministic-order`"+`
 Jobs use deterministic order.
 Origin: ADR-0001
-Revised-by: ADR-0002
+Revised-by: ADR-0003
 References: schedule/related:direct
 
 ### `+"`invariant: stable-output`"+`
@@ -107,8 +107,8 @@ func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
 	for _, want := range []string{
 		"claim " + claimID,
 		"historical only - no active claim",
-		"Origin: ADR-0003 (Implemented) Add removed claim",
-		"Removed-by: ADR-0004 (Implemented) Remove old claim",
+		"origin: legacy baseline (not retained in active authority)",
+		"Removed-by: ADR-0004 (Implemented) Remove legacy claim",
 	} {
 		if !strings.Contains(human.String(), want) {
 			t.Errorf("historical human output missing %q:\n%s", want, human.String())
@@ -128,15 +128,15 @@ func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
 	if err := json.Unmarshal(encoded.Bytes(), &result); err != nil {
 		t.Fatalf("JSON: %v\n%s", err, encoded.String())
 	}
-	if !result.HistoricalOnly || result.Kind != "claim" || result.ID != claimID || result.Title != "" || result.Summary != "" || result.Claims == nil || len(result.Claims) != 0 || len(result.History) != 1 || result.History[0].RemovedBy == nil {
+	if !result.HistoricalOnly || result.Kind != "claim" || result.ID != claimID || result.Title != "" || result.Summary != "" || result.Claims == nil || len(result.Claims) != 0 || len(result.History) != 1 || !result.History[0].LegacyBaseline || result.History[0].Origin != nil || result.History[0].RemovedBy == nil {
 		t.Fatalf("historical JSON projection = %#v", result)
 	}
-	for _, want := range []string{`"historicalOnly": true`, `"claims": []`, `"removedBy": {`} {
+	for _, want := range []string{`"historicalOnly": true`, `"claims": []`, `"legacyBaseline": true`, `"removedBy": {`} {
 		if !strings.Contains(encoded.String(), want) {
 			t.Errorf("historical JSON missing %q:\n%s", want, encoded.String())
 		}
 	}
-	for _, fabricated := range []string{`"references"`, `"coverage"`, `"summary"`} {
+	for _, fabricated := range []string{`"references"`, `"coverage"`, `"summary"`, `"origin"`} {
 		if strings.Contains(encoded.String(), fabricated) {
 			t.Errorf("historical JSON fabricated %q:\n%s", fabricated, encoded.String())
 		}
@@ -164,7 +164,7 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 		history, references, coverage bool
 		want                          string
 	}{
-		{"history", true, false, false, "ADR-0002 (Implemented) Scheduling revision"},
+		{"history", true, false, false, "ADR-0003 (Implemented) Update active claim"},
 		{"references", false, true, false, "Outgoing: [schedule/related:direct]"},
 		{"coverage", false, false, true, "Marker: internal/schedule_test.go:2 [invariant]"},
 		{"combined", true, true, true, "Effective: domain internal/** + topic internal/**"},
@@ -232,7 +232,7 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 	base := topic.QueryResult{
 		Kind: "topic", ID: "schedule/contracts", Title: "Scheduling", Summary: "Summary.",
 		Claims:     []topic.QueryClaim{{ID: "schedule/contracts:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect."}},
-		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
+		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: &topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
 		References: []topic.ClaimReferences{{ClaimID: "schedule/contracts:stable", Incoming: []string{}, Outgoing: []string{"schedule/other:claim"}}},
 		Coverage:   &topic.QueryCoverage{DeclaredPaths: []string{"internal/**"}, EffectiveSelectors: []topic.EffectiveSelector{{DomainPath: "internal/**", TopicPath: "internal/schedule*"}}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}},
 	}

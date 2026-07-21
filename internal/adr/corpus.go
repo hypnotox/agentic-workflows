@@ -34,9 +34,10 @@ type OperationRecord struct {
 // ClaimOperationHistory is the implemented add/update/remove history for one
 // qualified claim identity.
 type ClaimOperationHistory struct {
-	Origin    *OperationRecord
-	RevisedBy []OperationRecord
-	RemovedBy *OperationRecord
+	Origin         *OperationRecord
+	LegacyBaseline bool
+	RevisedBy      []OperationRecord
+	RemovedBy      *OperationRecord
 }
 
 // NewCorpus builds the view over an already-parsed slice.
@@ -116,6 +117,7 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 			history.RemovedBy = &record
 		}
 	}
+	history.LegacyBaseline = history.Origin == nil && history.RemovedBy != nil
 	history.RevisedBy = append([]OperationRecord(nil), history.RevisedBy...)
 	return history, true
 }

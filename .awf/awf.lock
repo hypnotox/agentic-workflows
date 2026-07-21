@@ -360,7 +360,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:a0ae58067743ef2a2a9ecb5ff35c070dcf0f4a05264664736cd4118ce4a02b20",
+      "outputHash": "sha256:40d287656d79f833d218ad6f1c9a2ef754b52420ee4a674c66324644428cb9b2",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -545,9 +545,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:51787a5f1371ee91d7bbee943f77be682b693f2928665c81e8f8aa8aa872a02c",
+      "templateHash": "sha256:09daf88e31ff66696c334da00c4e1abc8dbf7011fb8f04aba6eb4885470121f3",
       "configHash": "sha256:d6553594cd9923482a9785afb9e7ee44e2672a04c09b4d00f53d912c9848658d",
-      "outputHash": "sha256:588c38d6b2ae22aa63cac24b7c457cf6e8b6ed5bbb58406688b35c5cd85f5013"
+      "outputHash": "sha256:4f8d5d15359eee503990f02eed03a432fd0a68c449850d1cad3798cdb624cf87"
     }
   },
   "adrFormatV1From": 137,

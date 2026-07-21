@@ -43,7 +43,9 @@ while hiding provenance and references. Independent `--history`, `--references`,
 flags add only direct ADR operations, direct incoming/outgoing edges, and declared/effective scope plus
 configured marker sites. A removed claim identity resolves only with `--history` as historical-only
 Origin/Revised-by/Removed-by operations, an empty active-claim projection, and no former prose,
-references, coverage, or tombstone object. Queries never traverse references or write the worktree,
+references, coverage, or tombstone object. A valid legacy-baseline removal explicitly reports that
+its origin is not retained in active authority (`legacyBaseline: true` in JSON, with no guessed
+`origin`). Queries never traverse references or write the worktree,
 index, config, or lock; outside an adopted tree the command prints a static reference before gating.
 `awf upgrade` migrates the config tree to the current schema and syncs; when the lock carries a bridge
 attestation it instead performs the final current-state cutover. It verifies only the sealed facts (the

@@ -64,8 +64,10 @@ active state and hide provenance and reference edges; `--history`, `--references
 independently add direct detail, and `--json` emits the same deterministic result model. Queries are
 read-only and never traverse references transitively. A removed identity resolves only under
 `--history`, which returns ordered Origin/Revised-by/Removed-by operations, labels the result
-historical-only, and leaves active claims empty. Former prose stays in Git; references, coverage, and
-an active tombstone are not fabricated.
+historical-only, and leaves active claims empty. For a valid legacy-baseline removal whose origin is
+not retained in active authority, human output labels that baseline explicitly and JSON emits
+`legacyBaseline: true` while omitting `origin`; awf never guesses an origin. Former prose stays in Git;
+references, coverage, and an active tombstone are not fabricated.
 
 **Migrating to current-state authority.** A project adopting this release from an older awf crosses
 over once through the preceding bridge release, which reviews a `.awf/current-state-migration.yaml`

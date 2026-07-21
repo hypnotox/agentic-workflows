@@ -293,10 +293,9 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 		".awf/domains/rendering.yaml":                            "paths: [\"internal/**\"]\n",
 		".awf/topics/metadata/rendering/contracts.yaml":          "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
-		"docs/decisions/0001-first.md":                           queryV1ADR(t, "0001", "Add removed claim", "- add `"+claimID+"`", 1),
-		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove old claim", "- remove `"+claimID+"`", 2),
+		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`", 1),
 	})
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 1, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(lockFile(p.Root)); err != nil {
 		t.Fatal(err)
 	}
@@ -308,11 +307,54 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !got.HistoricalOnly || got.ID != claimID || got.Claims == nil || len(got.Claims) != 0 || len(got.History) != 1 || got.History[0].RemovedBy == nil {
+	if !got.HistoricalOnly || got.ID != claimID || got.Claims == nil || len(got.Claims) != 0 || len(got.History) != 1 || !got.History[0].LegacyBaseline || got.History[0].Origin != nil || got.History[0].RemovedBy == nil {
 		t.Fatalf("historical-only query = %#v", got)
 	}
 	if got.References != nil || got.Coverage != nil {
 		t.Fatalf("historical-only query fabricated details = %#v", got)
+	}
+}
+
+func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
+	claimID := "rendering/contracts:removed"
+	for _, tc := range []struct {
+		name string
+		adrs map[string]string
+		want string
+	}{
+		{
+			name: "absent add-only",
+			adrs: map[string]string{"docs/decisions/0002-add.md": queryV1ADR(t, "0002", "Add absent claim", "- add `"+claimID+"`", 1)},
+			want: "has no active claim",
+		},
+		{
+			name: "operation after remove",
+			adrs: map[string]string{
+				"docs/decisions/0002-add.md":    queryV1ADR(t, "0002", "Add claim", "- add `"+claimID+"`", 1),
+				"docs/decisions/0003-remove.md": queryV1ADR(t, "0003", "Remove claim", "- remove `"+claimID+"`", 2),
+				"docs/decisions/0004-update.md": queryV1ADR(t, "0004", "Update removed claim", "- update `"+claimID+"`", 3),
+			},
+			want: "operation after its remove",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string{
+				".awf/domains/rendering.yaml":                            "paths: [\"internal/**\"]\n",
+				".awf/topics/metadata/rendering/contracts.yaml":          "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
+				".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
+			}
+			for path, content := range tc.adrs {
+				files[path] = content
+			}
+			p := csRepo(t, topicProjectConfig, files)
+			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
+			if err := lock.Save(lockFile(p.Root)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := p.QueryTopic(claimID, topic.QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("QueryTopic error = %v; want %q", err, tc.want)
+			}
+		})
 	}
 }
 

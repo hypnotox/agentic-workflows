@@ -43,10 +43,11 @@ type ADRHistory struct {
 }
 
 type ClaimHistory struct {
-	ClaimID   string       `json:"claimId"`
-	Origin    ADRHistory   `json:"origin"`
-	RevisedBy []ADRHistory `json:"revisedBy"`
-	RemovedBy *ADRHistory  `json:"removedBy,omitempty"`
+	ClaimID        string       `json:"claimId"`
+	Origin         *ADRHistory  `json:"origin,omitempty"`
+	LegacyBaseline bool         `json:"legacyBaseline,omitempty"`
+	RevisedBy      []ADRHistory `json:"revisedBy"`
+	RemovedBy      *ADRHistory  `json:"removedBy,omitempty"`
 }
 
 type ClaimReferences struct {
@@ -113,7 +114,8 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (Query
 				}
 			}
 			origin, _ := adrs.ByNumber(claim.Origin)
-			h := ClaimHistory{ClaimID: claim.ID, Origin: historyADR(origin), RevisedBy: []ADRHistory{}}
+			originHistory := historyADR(origin)
+			h := ClaimHistory{ClaimID: claim.ID, Origin: &originHistory, RevisedBy: []ADRHistory{}}
 			for _, number := range claim.RevisedBy {
 				revision, _ := adrs.ByNumber(number)
 				h.RevisedBy = append(h.RevisedBy, historyADR(revision))
@@ -164,10 +166,13 @@ func historyADR(a adr.ADR) ADRHistory {
 }
 
 func presentationHistory(claimID string, history adr.ClaimOperationHistory) (ClaimHistory, bool) {
-	if history.Origin == nil {
+	result := ClaimHistory{ClaimID: claimID, LegacyBaseline: history.LegacyBaseline, RevisedBy: []ADRHistory{}}
+	if history.Origin != nil {
+		origin := operationADR(*history.Origin)
+		result.Origin = &origin
+	} else if !history.LegacyBaseline {
 		return ClaimHistory{}, false
 	}
-	result := ClaimHistory{ClaimID: claimID, Origin: operationADR(*history.Origin), RevisedBy: []ADRHistory{}}
 	for _, revision := range history.RevisedBy {
 		result.RevisedBy = append(result.RevisedBy, operationADR(revision))
 	}

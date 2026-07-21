@@ -84,7 +84,12 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 	if result.History != nil {
 		write("history heading", "\n## History\n")
 		for _, history := range result.History {
-			write("claim history", "%s\n  Origin: ADR-%s (%s) %s\n", history.ClaimID, history.Origin.Number, history.Origin.Status, history.Origin.Title)
+			write("claim history", "%s\n", history.ClaimID)
+			if history.LegacyBaseline {
+				write("legacy baseline origin", "  origin: legacy baseline (not retained in active authority)\n")
+			} else if history.Origin != nil {
+				write("claim origin", "  Origin: ADR-%s (%s) %s\n", history.Origin.Number, history.Origin.Status, history.Origin.Title)
+			}
 			for _, revision := range history.RevisedBy {
 				write("claim revision", "  Revised-by: ADR-%s (%s) %s\n", revision.Number, revision.Status, revision.Title)
 			}
