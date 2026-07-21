@@ -301,7 +301,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:3523c238d0f06af3e32f40158720a6630600d723a9fe402ccd7b28c98e5fe7f8",
+      "outputHash": "sha256:c7ee5ade13e79b38908797a8a5670acef16f3ce51389ec2eed3b9ad9c348682a",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -353,14 +353,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:d3b9add8692ade8e487919069b68468268779da9d87551f13ef53babadd69fcb",
+      "outputHash": "sha256:56251dcb14331400ae15a9a83cba76fa936a9d6068f3a53c43c725e6fe83356f",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:376193dccbb74cad2132958dd51a9db9c732ef6c21a4b3d51e5ae9b2a0a99d52",
+      "outputHash": "sha256:a617f28d079463802c094d234d34db3e248ba173827c09111c01a4d8cc36b50f",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -465,6 +465,12 @@
       "configHash": "sha256:34effb0816bca282e23ac4990ea5db461db3cf7b6acb3293e822b485650cc243",
       "outputHash": "sha256:8195c7727f84d212cab0934fe0241c56c1249b4741f0f8d26deab0488162a6ce"
     },
+    "docs/topics/rendering/adapter-outputs.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:1911582fb823396c6ae32d0debf15e5c47425018e8eb7d4a1420c9dcf6677c8f",
+      "outputHash": "sha256:f2c0251fe7b438d00ffe6c60153cad11531a0354c6d4d86a21132a91d93274e3"
+    },
     "docs/topics/rendering/catalog-and-targets.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
@@ -474,8 +480,8 @@
     "docs/topics/rendering/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:a1138bf5b98db02c9a10aa3c88f302db7ecda79dcb608283fb80d3d01323b97a",
-      "outputHash": "sha256:b040b0fa995ff0d8bd4dfddbcdd88eda3d4325516504faf0e3b1fecd87227cc1"
+      "configHash": "sha256:5403e85bd2fb3d5d7d284bf3afd22059c7c1441815ebea1b00a43172c2e53393",
+      "outputHash": "sha256:ece51e748a9c916aaa83067b91dab1fac889d1ece8b24588af0123569b2e34be"
     },
     "docs/topics/rendering/project-output-plan.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -522,14 +528,20 @@
     "docs/topics/tooling/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:fb1118259bf2b9e4502b2e941f75efd96c98abb952ff37073a0730d7d1bbdcfe",
-      "outputHash": "sha256:dc77157a22a9e552be44692d6cb16e46bb40b19f6d1c9e3d2d2872623823d7c3"
+      "configHash": "sha256:36f5a61bd902d989762c8991b7bfe68083deb427f0ffedfadf894b73aaaf445c",
+      "outputHash": "sha256:526efb7c7039130cdccb6854f537fad05614f01f9e02097f695a7edbd25c6e0d"
     },
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
       "configHash": "sha256:306189179dcdbd756829a580c5f2560ff659919c3a230c22625b38040b0f998d",
       "outputHash": "sha256:0205ad47410f0d41bc66ea6cc8c4c2dad20137440c60ff2cce00ed17e70e4a89"
+    },
+    "docs/topics/tooling/test-infrastructure.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:9afef279ff902280069c7eb311b96966f060111a6fc431546ef65ef344b63dc6",
+      "outputHash": "sha256:8946c2c91d82a1487eff185e4d1ac92a9243069f56058031cbac621cc88fb757"
     },
     "docs/topics/tooling/upgrade-runtime.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-21
 ---
 # ADR-0144: Agent-Oriented Current-State Context and CLI Navigation
@@ -119,3 +119,4 @@ Incremental Applied batches allow the command model, artifact attribution, query
 ## Status history
 
 - 2026-07-21: Proposed
+- 2026-07-21: Accepted; content-sha256: 54790f4b71b1942a86ac60d3f6768cbe29a90c87d072376d470c6cad465c83f2

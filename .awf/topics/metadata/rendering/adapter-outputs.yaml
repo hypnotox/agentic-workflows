@@ -1,0 +1,4 @@
+title: Adapter outputs
+summary: Generated executable adapter-runtime outputs and their ownership boundary.
+paths:
+  - .pi/extensions/**

@@ -90,5 +90,6 @@ ADR-0090 adds the committed example adopter `examples/sundial/` (its own Go modu
 - [Changelog and release](../topics/tooling/changelog-and-release.md): The changelog pipeline and release-notes contracts.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, and the command-runner gate machinery.
+- [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.
 

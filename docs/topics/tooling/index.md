@@ -6,4 +6,5 @@
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
 - [Quality gates](quality-gates.md): Coverage, prose, and the command-runner gate machinery.
+- [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.

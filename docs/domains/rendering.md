@@ -40,6 +40,7 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 
 [All topics](../topics/rendering/index.md)
 
+- [Adapter outputs](../topics/rendering/adapter-outputs.md): Generated executable adapter-runtime outputs and their ownership boundary.
 - [Catalog and targets](../topics/rendering/catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.
