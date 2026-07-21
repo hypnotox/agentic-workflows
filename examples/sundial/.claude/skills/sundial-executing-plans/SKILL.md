@@ -33,7 +33,7 @@ If no plan exists, implement directly without a chain skill, then invoke `sundia
 3. **Per task, execute, validate, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
    - **Validate.** Stage the complete transaction, run `awf check --staged`, then run `./x gate` (fast tier). Commit only after both commands pass. The hook repeats the staged check as defense in depth. See `docs/workflow.md` for the tier split and when to run the full tier.
-   - **Commit.** Use Conventional Commits (`<type>(<scope>): <subject>`), keep the subject under 72 chars, and explain the *why* in the body. Auto-commit when green (tests pass + lint clean).
+   - **Commit.** Use Conventional Commits (`<type>(<scope>): <subject>`), keep the subject under 72 chars, and explain the *why* in the body. When this task applies some frozen V2 ADR operations, append the next Applied event and stage exactly the matching claim mutations in this same checked commit; do not wait for one final all-operation commit. Auto-commit when green (tests pass + lint clean).
 
 <!-- awf:edit tdd-opt-in: default; create .awf/skills/parts/executing-plans/tdd-opt-in.md to override -->
 
@@ -42,7 +42,7 @@ If no plan exists, implement directly without a chain skill, then invoke `sundia
 
 
 <!-- awf:edit procedure-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-adr-final-commit.md to override -->
-4. **Final commit for ADR-driven plans.** In the same commit: (a) flip the plan's own `status:` frontmatter from `Proposed → Implemented`, recording any implementation findings (a wrong diff, an unsliceable phase, a bad estimate) in the plan's Notes section alongside the freeze; and (b) flip the ADR `status:` frontmatter from `Proposed → Accepted` (design finalised, implementation may continue in further commits) or `Proposed → Implemented` (direct flip when no separate Accepted phase is needed) and append its `## Status history` line. A `Proposed → Implemented` or `Accepted → Implemented` flip also applies the ADR's declared `State changes`: stage each claim add/update/remove under `.awf/topics/parts/` in this same commit so the staged check sees the ADR and its claim mutations as one transaction. Then run `./x sync` to regenerate `docs/decisions/INDEX.md` and stage it; the commit touches the decisions directory, so the gate's drift test must pass.
+4. **Final commit for ADR-driven plans.** Flip the plan's own `status:` from Proposed to Implemented and record implementation findings. For a V2 ADR, append its final Applied batch and matching claim mutations before the Implemented event, or use the direct implicit transition when all operations land together; if execution stops, append Abandoned and leave prior Applied effects intact while the remainder becomes Canceled. A plan may instead leave a reviewed ADR Accepted when implementation has not started. Then run `./x sync` to regenerate `docs/decisions/INDEX.md` and stage it; the commit touches the decisions directory, so the gate's drift test must pass.
 
 <!-- awf:edit procedure-non-adr-final-commit: default; create .awf/skills/parts/executing-plans/procedure-non-adr-final-commit.md to override -->
 5. **Final commit for non-ADR plans.** Flip the plan's own `status:` frontmatter from `Proposed → Implemented`, recording any implementation findings in the plan's Notes section, the same freeze as ADR-driven plans, keyed on the plan's own status.

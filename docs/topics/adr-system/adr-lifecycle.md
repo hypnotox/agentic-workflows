@@ -11,8 +11,9 @@ The adr package parses decision records, derives their identity, and validates t
 
 ### `invariant: fresh-adoption-v1-cutoff`
 
-Empty first adoption seals ADR cutoff 1, brownfield first adoption seals highest existing identity plus one with every lower gap explicit, and every ADR created at or above that cutoff uses current-state-v1.
+Empty first adoption seals both ADR format cutoffs at 1; brownfield first adoption seals both at the highest existing identity plus one with every lower gap explicit; upgrading an existing V1 adopter preserves its V1 cutoff and seals the V2 cutoff at the highest identity plus one; every ADR is legacy below V1, V1 from that cutoff to before V2, and V2 at or above the V2 cutoff.
 Origin: ADR-0139
+Revised-by: ADR-0143
 Backing: test
 
 ### `invariant: adr-new-heading-matches-file`
@@ -60,10 +61,16 @@ Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
-Every ADR at or above the lock's format boundary uses the new encoding, has a recognized status, and follows one of the five legal transition edges.
+Every governed ADR is routed by the two immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 recognizes Proposed, Accepted, Implementing, Implemented, and Abandoned and accepts only the format-specific status, history-event, digest, and application-cardinality transitions.
 Origin: ADR-0135
-Backing: unbacked
-Verify: Static and snapshot fixtures exercising missing format markers around the cutoff and every status pair accept only legacy numbers and the declared transition matrix.
+Revised-by: ADR-0143
+Backing: test
+
+### `invariant: applied-history-events-append-only`
+
+Stable V2 Status history is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations with one positive state sequence, and a checked pair refuses deletion or mutation of any prior event.
+Origin: ADR-0143
+Backing: test
 
 ### `invariant: audit-shares-adr-parser`
 

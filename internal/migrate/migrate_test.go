@@ -166,8 +166,8 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
 	// (a no-op here - tree-layout already ports replaceWith parts), then
 	// awf-dir-relocation, which moves the finished tree to .awf/.
-	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate" {
-		t.Errorf("first Upgrade applied = %v, want [tree-layout drop-replacewith awf-dir-relocation drop-hooks enable-bootstrap singleton-standard-docs anchored-globs close-enabled-set pitfalls-data retirement-tokens drop-audit-base supersession-keys exploring-skill-closure current-state-topic-substrate]", applied)
+	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff" {
+		t.Errorf("first Upgrade applied = %v, want all migrations through adr-format-v2-cutoff", applied)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 		t.Errorf("tree not produced at .awf: %v", err)
@@ -607,9 +607,9 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 	}
 }
 
-func TestCurrentIsFourteen(t *testing.T) {
-	if Current() != 14 {
-		t.Errorf("Current() = %d, want 14", Current())
+func TestCurrentIsFifteen(t *testing.T) {
+	if Current() != 15 {
+		t.Errorf("Current() = %d, want 15", Current())
 	}
 }
 
@@ -880,6 +880,32 @@ func TestDropReplaceWithMissingPart(t *testing.T) {
 
 // A tree→tree upgrade keeps its lock; Upgrade must restamp it to Current() so the
 // terminal sync's schema gate passes.
+func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) {
+	if err := stampLockSchema(t.TempDir()); err != nil {
+		t.Fatalf("missing-lock stamp: %v", err)
+	}
+	root := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), "prefix: ex\n")
+	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current())
+	original := registry
+	registry = append(append([]Migration(nil), registry...), Migration{To: 16, Name: "test-fallback-stamp", Apply: func(string, io.Writer) error { return nil }})
+	t.Cleanup(func() { registry = original })
+	applied, err := Upgrade(root, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(applied) != 1 || applied[0] != "test-fallback-stamp" {
+		t.Fatalf("applied = %v", applied)
+	}
+	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lock.SchemaVersion != 16 {
+		t.Fatalf("fallback schema = %d, want 16", lock.SchemaVersion)
+	}
+}
+
 func TestUpgradeStampsTreeLock(t *testing.T) {
 	root := t.TempDir()
 	awfFile(t, root, "config.yaml", "prefix: ex\n")
@@ -888,8 +914,8 @@ func TestUpgradeStampsTreeLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate" {
-		t.Errorf("applied = %v, want [drop-replacewith awf-dir-relocation drop-hooks enable-bootstrap singleton-standard-docs anchored-globs close-enabled-set pitfalls-data retirement-tokens drop-audit-base supersession-keys exploring-skill-closure current-state-topic-substrate]", applied)
+	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff" {
+		t.Errorf("applied = %v, want all migrations through adr-format-v2-cutoff", applied)
 	}
 	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
 	if err != nil {

@@ -50,7 +50,7 @@ Load-bearing triggers include:
    - **Status history:** leave the scaffolded `- <date>: Proposed` line; later transitions append their own.
 
 <!-- awf:edit state-doc-update: default; create .awf/skills/parts/proposing-adr/state-doc-update.md to override -->
-3. **Prepare the destination topics.** Every claim a `State changes` operation names must have somewhere to land: for a pending `add`, the topic metadata (`.awf/topics/metadata/<domain>/<topic>.yaml`) must exist before the ADR can be Accepted, an empty topic shell if the claim itself lands later. Create it with `awf new topic <domain> "<Title>"` if it is missing. The claim prose and its `Origin`/`Revised-by` are authored when the operation is applied (at `Implemented`), not now.
+3. **Prepare the destination topics.** Every claim a `State changes` operation names must have somewhere to land: for a pending `add`, the topic metadata (`.awf/topics/metadata/<domain>/<topic>.yaml`) must exist before the ADR can be Accepted, an empty topic shell if the claim itself lands later. Create it with `awf new topic <domain> "<Title>"` if it is missing. The claim prose and its `Origin`/`Revised-by` are authored when the operation is Applied, either in an incremental Implementing batch or a direct Implemented transaction, not now.
 
 <!-- awf:edit procedure-state-changes: default; create .awf/skills/parts/proposing-adr/procedure-state-changes.md to override -->
 4. **Declare the State changes.** In the `## State changes` section, either write `None.` or list one `- add`, `- update`, or `- remove` entry per affected claim, each naming the claim by its qualified `<domain>/<topic>:<slug>` id in an inline code span. This is the authoritative link between the ADR and the topics it governs; awf derives the affected domains from it. A rule and an invariant are declared the same way; an invariant claim additionally carries `Backing:` (and a proof marker or `Verify:`) when its prose is authored at implementation time. A rename is remove plus add; a removed id is never reused.
@@ -72,7 +72,7 @@ Load-bearing triggers include:
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/proposing-adr/notes.md to override -->
-- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `sundial-adr-lifecycle`, not this skill. The claim operations apply only in the `Implemented` transaction.
+- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `sundial-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.
 - `docs/decisions/INDEX.md` is never hand-edited; it is always regenerated via `./x sync`.
 - The `State changes` operations, not any frontmatter relation, are how a later ADR changes what an earlier one established: it updates or removes the affected claim directly.
 - For the full ADR lifecycle, see `docs/workflow.md`.

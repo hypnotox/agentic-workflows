@@ -358,8 +358,8 @@ func TestExecutingPlansTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to executing-plans
 	loadBearing := []string{
 		"one commit per task",
-		"Proposed → Accepted",
-		"recording any implementation findings",
+		"final Applied batch",
+		"record implementation findings",
 		"example-reviewing-impl",
 	}
 	for _, phrase := range loadBearing {
@@ -397,7 +397,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 		"example-executing-plans",
 		"DONE_WITH_CONCERNS",
 		"dispatch one review subagent",
-		"Proposed → Accepted",
+		"final Applied batch",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -960,6 +960,10 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 // set) replaces the layout docs map - used by RequiresDoc-gated templates
 // whose doc path must resolve. TestConditionalTemplatesHaveFallbackCases
 // requires an entry per conditional catalog template (ADR-0080).
+func TestV2ADRTemplateEmptyDataFallback(t *testing.T) {
+	assertV2ADRTemplatePublicationSafe(t)
+}
+
 type fallbackCase struct {
 	tmpl string
 	docs map[string]any

@@ -1,6 +1,6 @@
 ## Data flow
 
-First adoption seals `initializedWithVersion` plus the next ADR identity and gaps before rendering: cutoff 1 for an empty decision corpus, or highest-plus-one and explicit lower gaps for validated brownfield history. The init-only seed is immutable; ordinary sync accepts only permanent authority, and forced init preserves existing provenance rather than inventing or replacing it. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
+First adoption seals `initializedWithVersion`, both ADR format cutoffs, and gaps before rendering: both cutoffs are 1 for an empty corpus, or highest-plus-one with explicit lower gaps for brownfield history. Schema-15 upgrade preserves an existing V1 cutoff and computes V2 as highest-plus-one, writing schema, version, and cutoff in one atomic save without rewriting ADRs. The init-only seed is immutable; ordinary sync accepts only permanent authority, and forced init preserves existing provenance rather than inventing or replacing it. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
 
 A `sync` loads the config tree, resolves each enabled target's sections (sidecar `drop` and
 convention parts layered over template defaults, precedence
@@ -16,7 +16,7 @@ in TypeScript and otherwise follow ordinary planned-output, drift, sync-repair, 
 The topic producer discovers paired
 `.awf/topics/metadata/<domain>/<topic>.yaml` and
 `.awf/topics/parts/<domain>/<topic>/current-state.md` inputs, validates their path-derived identity,
-claim grammar, Implemented-ADR provenance, direct references, backing, and configured markers, then
+claim grammar, applied-operation provenance, direct references, backing, and configured markers, then
 loads one corpus per invocation. It renders topic pages and per-domain indexes under
 `<docsDir>/topics/<domain>/`, and injects compact topic navigation into domain docs in place of a
 per-domain ADR index. These files are ordinary output-plan nodes: exact metadata, part, and template
@@ -27,9 +27,10 @@ only provenance and history.
 A `check --staged` loads the HEAD tree (before) and the staged index tree (after), builds each side's
 ADR and topic corpora from that one snapshot, runs the static current-state checks over the after tree,
 and compares the two universes for the claim-transition handshake: frozen ADR content cannot change,
-Status history is append-only, every operation that reaches Accepted has destination topic metadata,
-and each Implemented ADR's declared `State changes` must match exactly one staged claim add, update,
-or remove, with `Origin` and the prior `Revised-by` prefix preserved. It also runs the topic-coverage
+Status history is prefix-append-only, every pending operation has destination topic metadata, and
+each newly appended implicit or explicit application batch must match exactly its staged claim adds,
+updates, or removes, with `Origin` and the prior `Revised-by` prefix preserved. First, middle, final,
+direct, and abandonment pairs use this same validator; range audit checks every intermediate pair. It also runs the topic-coverage
 evaluator over the index. `awf audit`
 applies the same pair check to every parent-to-commit snapshot in a range.
 

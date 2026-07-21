@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -250,6 +251,20 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		return nil
 	}
+	if before.SchemaVersion == 14 && before.ADRFormatV2From == 0 &&
+		after.SchemaVersion == 15 && after.ADRFormatV2From > 0 &&
+		before.InitializedWithVersion == after.InitializedWithVersion &&
+		before.ADRFormatV1From == after.ADRFormatV1From &&
+		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+		next, err := nextADRIdentityFromTree(beforeTree)
+		if err != nil {
+			return err
+		}
+		if after.ADRFormatV2From == next {
+			return nil
+		}
+		return fmt.Errorf("staged .awf/awf.lock adrFormatV2From is %d, want computed cutoff %d", after.ADRFormatV2From, next)
+	}
 	if before.InitializedWithVersion == "" && after.InitializedWithVersion == "" &&
 		before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
 		after.BridgeAttestation == nil && after.ADRFormatV2From == 0 &&
@@ -258,6 +273,40 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 		return nil
 	}
 	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/adrFormatV2From/legacyAdrGaps authority")
+}
+
+func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
+	file, ok := tree.Lookup(config.DirName + "/config.yaml")
+	if !ok {
+		return 0, errors.New("compute ADR V2 cutoff: snapshot has no .awf/config.yaml")
+	}
+	cfg, err := config.Parse(".", file.Bytes)
+	if err != nil {
+		return 0, fmt.Errorf("compute ADR V2 cutoff: %w", err)
+	}
+	prefix := strings.Trim(cfg.DocsDir, "/") + "/decisions/"
+	max := 0
+	for _, f := range tree.List() {
+		if !strings.HasPrefix(f.Path, prefix) {
+			continue
+		}
+		name := strings.TrimPrefix(f.Path, prefix)
+		if strings.Contains(name, "/") {
+			continue
+		}
+		match := adr.FilenameRe.FindStringSubmatch(name)
+		if match == nil {
+			continue
+		}
+		n, err := strconv.Atoi(match[1])
+		if err != nil { // coverage-ignore: FilenameRe captures exactly four decimal digits
+			return 0, err
+		}
+		if n > max {
+			max = n
+		}
+	}
+	return max + 1, nil
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config

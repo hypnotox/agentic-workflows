@@ -192,6 +192,8 @@ func TestCheckPairHistoryValid(t *testing.T) {
 	}
 }
 
+// invariant: invariants/current-state-authority:state-impact-transition-atomic
+// invariant: invariants/current-state-authority:implemented-impact-bidirectional
 func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
 	updateX := op(adr.OpUpdate, "d/t:x")
@@ -222,6 +224,36 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	if f := currentstate.CheckPair(middleAfter, doneAfter); len(f) != 0 {
 		t.Fatalf("final batch pair rejected:\n%s", messages(f))
 	}
+
+	assertSplit := func(name string, before, after currentstate.Universe) {
+		t.Helper()
+		eventOnly := currentstate.Universe{ADRs: after.ADRs, Topics: before.Topics}
+		if got := messages(currentstate.CheckPair(before, eventOnly)); got == "" || strings.Contains(got, "with no ADR") {
+			t.Fatalf("%s event-without-mutation was not operation-attributed:\n%s", name, got)
+		}
+		mutationOnly := currentstate.Universe{ADRs: before.ADRs, Topics: after.Topics}
+		if got := messages(currentstate.CheckPair(before, mutationOnly)); !strings.Contains(got, "with no ADR") {
+			t.Fatalf("%s mutation-without-event was accepted:\n%s", name, got)
+		}
+	}
+	assertSplit("first", before, after)
+	assertSplit("middle", after, middleAfter)
+	assertSplit("final", middleAfter, doneAfter)
+
+	removeD := op(adr.OpRemove, "d/t:d")
+	baseD := rec("0140", "Implemented", 1, op(adr.OpAdd, "d/t:d"))
+	directBeforeADR := v2rec("0141", "Accepted", []adr.Operation{removeD}, v2status("Proposed"), v2status("Accepted"))
+	directAfterADR := directBeforeADR
+	directAfterADR.Status = "Implemented"
+	directTerminal := v2status("Implemented")
+	directTerminal.Sequence, directTerminal.HasSequence = 2, true
+	directAfterADR.History = append(append([]adr.HistoryEvent(nil), directBeforeADR.History...), directTerminal)
+	directBefore := uni([]adr.ADR{baseD, directBeforeADR}, claim("d/t:d", "0140"))
+	directAfter := uni([]adr.ADR{baseD, directAfterADR})
+	if f := currentstate.CheckPair(directBefore, directAfter); len(f) != 0 {
+		t.Fatalf("direct batch pair rejected:\n%s", messages(f))
+	}
+	assertSplit("direct", directBefore, directAfter)
 
 	abandoned := middle
 	abandoned.Status = "Abandoned"

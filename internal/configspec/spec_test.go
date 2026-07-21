@@ -88,6 +88,25 @@ func TestNoAuditBaseConfigSurface(t *testing.T) {
 	}
 }
 
+func TestADRStatesV2DescriptionAndEmptyOverride(t *testing.T) {
+	const want = "The decision-record lifecycle states (list of {name, meaning, mutability}) the skill's state table renders; the default is the five-state current-state-v2 lifecycle."
+	var found bool
+	for _, entry := range DataKeys() {
+		if entry.Kind == "skills" && entry.Artifact == "adr-lifecycle" && entry.Key == "adrStates" {
+			found = true
+			if entry.Description != want {
+				t.Fatalf("adrStates description = %q", entry.Description)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("adrStates configspec entry missing")
+	}
+	if empty := (map[string]any{})["adrStates"]; empty != nil {
+		t.Fatalf("empty data override unexpectedly supplies adrStates: %#v", empty)
+	}
+}
+
 // TestConfigspecKeyParity keeps the hand-authored key table bidirectionally
 // matched to the config structs, every entry fully described.
 // invariant: config/configuration:configspec-key-parity

@@ -101,7 +101,8 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 				lock.InitializedWithVersion = "0.17.0"
 			}
 		}},
-		{"adrFormatV1From", func(lock *manifest.Lock) { lock.ADRFormatV1From++ }},
+		{"adrFormatV1From", func(lock *manifest.Lock) { lock.ADRFormatV1From++; lock.ADRFormatV2From++ }},
+		{"adrFormatV2From", func(lock *manifest.Lock) { lock.ADRFormatV2From++ }},
 		{"legacyAdrGaps", func(lock *manifest.Lock) { lock.LegacyADRGaps = []int{1} }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -137,8 +138,8 @@ func TestInitSeedsEmptyAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lock.InitializedWithVersion != project.Version || lock.ADRFormatV1From != 1 || lock.LegacyADRGaps == nil || len(lock.LegacyADRGaps) != 0 {
-		t.Fatalf("authority = version %q cutoff %d gaps %v", lock.InitializedWithVersion, lock.ADRFormatV1From, lock.LegacyADRGaps)
+	if lock.InitializedWithVersion != project.Version || lock.ADRFormatV1From != 1 || lock.ADRFormatV2From != 1 || lock.LegacyADRGaps == nil || len(lock.LegacyADRGaps) != 0 {
+		t.Fatalf("authority = version %q cutoffs %d/%d gaps %v", lock.InitializedWithVersion, lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps)
 	}
 }
 
@@ -158,8 +159,8 @@ func TestInitSealsBrownfieldAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lock.ADRFormatV1From != 4 || len(lock.LegacyADRGaps) != 1 || lock.LegacyADRGaps[0] != 2 {
-		t.Fatalf("cutoff/gaps = %d/%v", lock.ADRFormatV1From, lock.LegacyADRGaps)
+	if lock.ADRFormatV1From != 4 || lock.ADRFormatV2From != 4 || len(lock.LegacyADRGaps) != 1 || lock.LegacyADRGaps[0] != 2 {
+		t.Fatalf("cutoffs/gaps = %d/%d/%v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps)
 	}
 	for path, want := range map[string]string{onePath: one, threePath: three} {
 		got, err := os.ReadFile(path)
@@ -275,8 +276,8 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if lock.ADRFormatV1From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
-				t.Fatalf("initial authority = cutoff %d gaps %v, want cutoff %d gaps %v", lock.ADRFormatV1From, lock.LegacyADRGaps, tc.cutoff, tc.gaps)
+			if lock.ADRFormatV1From != tc.cutoff || lock.ADRFormatV2From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
+				t.Fatalf("initial authority = cutoffs %d/%d gaps %v, want %d/%d gaps %v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps, tc.cutoff, tc.cutoff, tc.gaps)
 			}
 			wt, err := repo.Worktree()
 			if err != nil {
@@ -310,8 +311,8 @@ func testInitFirstADRChecksClean(t *testing.T) {
 				t.Fatal(err)
 			}
 			text := string(body)
-			if !strings.Contains(text, "format: current-state-v1\n") {
-				t.Fatalf("new ADR at cutoff %d is not current-state-v1", tc.cutoff)
+			if !strings.Contains(text, "format: current-state-v2\n") {
+				t.Fatalf("new ADR at cutoff %d is not current-state-v2", tc.cutoff)
 			}
 			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
 			if start < 0 || end < 0 || end <= start {
@@ -361,8 +362,8 @@ func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgradedLock.SchemaVersion != 14 {
-		t.Errorf("lock schema = %d, want 14", upgradedLock.SchemaVersion)
+	if upgradedLock.SchemaVersion != 15 {
+		t.Errorf("lock schema = %d, want 15", upgradedLock.SchemaVersion)
 	}
 	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
@@ -1043,7 +1044,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

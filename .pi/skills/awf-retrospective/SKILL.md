@@ -57,5 +57,6 @@ The main thread controls the promotion effort, never an unverified auto-promotio
 <!-- awf:edit notes: default; create .awf/skills/parts/retrospective/notes.md to override -->
 ## Notes
 
+- When an ADR used incremental application, compare the declared, Applied, Remaining, and Canceled partitions and note any recurring pair-atomicity or sequence-order failure worth promoting.
 - Reflection is cheap; promotion is deliberate. Most sessions record a thing or two and promote nothing; that is the expected steady state.
 - The aim is to move a recurring issue *down* into a deterministic check, not to accumulate more prose the next agent must remember. The canonical chain lives in `docs/workflow.md`.

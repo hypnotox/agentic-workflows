@@ -77,9 +77,10 @@ var Standard = &Catalog{
 			Data: map[string]any{
 				"adrStates": []any{
 					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
-					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet complete", "mutability": "Status and the append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Implemented", "meaning": "Design and implementation have both landed; the declared claim operations are applied", "mutability": "Terminal; status and the append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Abandoned", "meaning": "The decision will not be implemented; its intended claim operations stay recorded but unapplied", "mutability": "Terminal; status and the append-only Status history only (the final entry carries a rationale); the body is frozen"},
+					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet started", "mutability": "Status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
+					map[string]any{"name": "Implementing", "meaning": "Design is frozen; a nonempty strict subset of declared operations is applied", "mutability": "Status and append-only Status history only; Applied events may append while operations remain"},
+					map[string]any{"name": "Implemented", "meaning": "All declared claim operations are applied", "mutability": "Terminal; status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
+					map[string]any{"name": "Abandoned", "meaning": "Execution stopped; applied operations remain historical and unapplied operations are canceled", "mutability": "Terminal; status and append-only Status history only; the final entry carries a rationale; the body is frozen"},
 				},
 			},
 		},

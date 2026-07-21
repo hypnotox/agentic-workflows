@@ -2,6 +2,12 @@ These packages migrate the config tree across schema generations and read and wr
 
 ## Claims
 
+### `invariant: adr-v2-cutoff-atomic-immutable`
+
+Schema-15 upgrade writes the schema generation and computed ADR V2 cutoff in one atomic lock save without rewriting authored ADRs, and every later staged transition preserves both permanent format cutoffs exactly.
+Origin: ADR-0143
+Backing: test
+
 ### `invariant: audit-migration-announces-removal`
 
 The schema-11 config migration prints the removed audit.baseBranch key when it strips one from an adopter's config, rather than removing it silently.

@@ -1,6 +1,6 @@
 ---
 format: current-state-v1
-status: Proposed
+status: Implemented
 date: 2026-07-21
 ---
 # ADR-0143: Incremental ADR State Operation Application
@@ -104,3 +104,4 @@ The later context/topic UX effort can use incremental batches for its larger cla
 ## Status history
 
 - 2026-07-21: Proposed
+- 2026-07-21: Implemented; content-sha256: 27c4b3e02dba87904d8b1f9a52cad6909342e3dd1fb4da34fc72a1804313eda8; state-sequence: 7

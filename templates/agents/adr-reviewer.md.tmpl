@@ -18,6 +18,8 @@ Apply all five lenses to every ADR:
 1. **consequences-honesty**: tradeoffs and negative consequences must appear; a Consequences section listing only upsides is dishonest; migration cost, coupling cost, and coverage gaps must be acknowledged when the Decision implies them.
 
 1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
+
+1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration and global sequence order; each batch and its current-claim truth are one checked pair.
 <!-- awf:end -->
 
 ## Project-specific focus items

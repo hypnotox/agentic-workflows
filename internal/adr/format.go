@@ -119,6 +119,9 @@ func HistoryTransitionValid(before, after ADR) bool {
 	}
 	added := after.History[len(before.History):]
 	if before.Status == after.Status {
+		if len(added) == 0 {
+			return true
+		}
 		return before.Status == statusImplementing && len(added) == 1 && added[0].Kind == HistoryApplied
 	}
 	if !v2TransitionLegal(before.Status, after.Status) {
@@ -170,12 +173,12 @@ func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, er
 	if err != nil {
 		return ADR{}, err
 	}
-	if block, _, found := frontmatter.Split(data); found {
-		for _, marker := range []string{V1FormatMarker, V2FormatMarker} {
-			if bytes.Contains(block, []byte("format: "+marker)) {
-				return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, boundaries.V1From, marker)
-			}
+	if a.IsGoverned() {
+		marker := V1FormatMarker
+		if a.IsV2() {
+			marker = V2FormatMarker
 		}
+		return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, boundaries.V1From, marker)
 	}
 	a.Format = Legacy
 	return a, nil

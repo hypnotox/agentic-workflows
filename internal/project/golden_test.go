@@ -12,6 +12,7 @@ import (
 )
 
 func TestEndToEndGolden(t *testing.T) {
+	assertV2ADRTemplatePublicationSafe(t)
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
 	if err != nil {
@@ -80,6 +81,28 @@ func TestEndToEndGolden(t *testing.T) {
 	drift, err := p.Check()
 	if err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
+	}
+}
+
+func assertV2ADRTemplatePublicationSafe(t *testing.T) {
+	t.Helper()
+	out := renderGolden(t, "adr-template/template.md.tmpl", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout(),
+	})
+	implementing := strings.Index(out, "Implementing; content-sha256")
+	applied := strings.Index(out, "Applied; state-sequence")
+	history := strings.Index(out, "## Status history\n")
+	if !strings.Contains(out, "format: current-state-v2") || implementing < 0 || applied < implementing || history < applied {
+		t.Fatalf("V2 lifecycle example is not publication-safe:\n%s", out)
+	}
+	tail := out[history:]
+	if strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
+		t.Fatalf("fresh Proposed Status history contains non-Proposed events:\n%s", tail)
+	}
+	for _, residue := range []string{"<no value>", "{{", "format: current-state-v1"} {
+		if strings.Contains(out, residue) {
+			t.Fatalf("empty-data V2 template contains %q:\n%s", residue, out)
+		}
 	}
 }
 

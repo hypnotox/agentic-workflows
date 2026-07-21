@@ -25,7 +25,7 @@ import (
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.19.0"
+const Version = "0.20.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -46,6 +46,7 @@ var minVersionBySchema = map[int]string{
 	12: "0.17.0",
 	13: "0.17.0",
 	14: "0.18.0",
+	15: "0.20.0",
 }
 
 type Project struct {
@@ -199,6 +200,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	} else {
 		lock.InitializedWithVersion = seed.InitializedWithVersion
 		lock.ADRFormatV1From = initCutoff
+		lock.ADRFormatV2From = initCutoff
 		lock.LegacyADRGaps = slices.Clone(initGaps)
 	}
 	want := map[string]bool{}

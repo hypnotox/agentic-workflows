@@ -55,4 +55,5 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-adr/notes.md to override -->
 - If the user asks to skip review, comply but warn that a chain step is being skipped.
 - See `docs/workflow.md` for full ADR lifecycle rules and the canonical workflow chain.
+- Review the declared operation set and the legal Applied, Remaining, and Canceled partitions; every planned batch must preserve declaration order and pair atomicity.
 - The `adr-reviewer` is one lens-diverse subagent; this skill does not fan out per-lens subagents or specify per-lens model routing.

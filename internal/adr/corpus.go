@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strconv"
 )
 
 // Corpus is the parsed decisions directory: one parse, threaded to every
@@ -88,6 +89,23 @@ func LoadCorpus(dir string) (Corpus, error) {
 
 // All returns every parsed ADR in directory order.
 func (c Corpus) All() []ADR { return c.all }
+
+// NextIdentity returns one more than the highest ADR identity, or 1 for an
+// empty corpus. Migration code uses this semantic query rather than adding a
+// raw decisions-directory reader.
+func (c Corpus) NextIdentity() (int, error) {
+	max := 0
+	for _, a := range c.all {
+		n, err := strconv.Atoi(a.Number)
+		if err != nil { // coverage-ignore: parsed ADR numbers always match FilenameRe
+			return 0, err
+		}
+		if n > max {
+			max = n
+		}
+	}
+	return max + 1, nil
+}
 
 // ByNumber returns the ADR with the given four-digit number. The ADR number is
 // the sole identity key (ADR-0130 item 4).

@@ -123,14 +123,20 @@ func checkSequences(projected []projectedADR) []Finding {
 	}
 	var findings []Finding
 	seqs := make([]int, 0, len(bySeq))
-	for seq, nums := range bySeq {
+	for seq := range bySeq {
 		seqs = append(seqs, seq)
-		if len(nums) > 1 {
-			sort.Strings(nums)
-			findings = append(findings, Finding{Error, fmt.Sprintf("state-sequence %d is used by more than one ADR batch: %v", seq, nums)})
-		}
 	}
 	sort.Ints(seqs)
+	next := 1
+	if len(seqs) > 0 {
+		next = seqs[len(seqs)-1] + 1
+	}
+	for seq, nums := range bySeq {
+		if len(nums) > 1 {
+			sort.Strings(nums)
+			findings = append(findings, Finding{Error, fmt.Sprintf("state-sequence %d is used by more than one ADR batch: %v; next available state-sequence is %d", seq, nums, next)})
+		}
+	}
 	for i, seq := range seqs {
 		if seq != i+1 {
 			findings = append(findings, Finding{Error, fmt.Sprintf("state-sequence values are not contiguous from 1: expected %d, found %d", i+1, seq)})

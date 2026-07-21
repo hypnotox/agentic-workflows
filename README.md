@@ -113,14 +113,13 @@ Origin/Revised-by/Removed-by operations without active prose, references, covera
 A legacy-baseline removal reports that its origin is not retained (`legacyBaseline: true` in JSON)
 rather than guessing one.
 
-ADRs carry decisions through adoption and then become history. A current-state-v1 ADR has closed
-`format`/`status`/`date` frontmatter, a `## State changes` section listing `add`, `update`, and
-`remove` operations over qualified `<domain>/<topic>:<slug>` claim ids, and a four-state lifecycle
-(Proposed, Accepted, Implemented, Abandoned; there is no Superseded status). When an ADR reaches
-Implemented, `awf check --staged` verifies each declared operation against the matching claim mutation
-in one Git transaction, and the generated `docs/decisions/INDEX.md` lists in-flight and historical
-ADRs. `awf context <paths>` reports applicable topic summaries and claims, including invariant backing
-and unbacked `Verify` instructions, plus any Accepted-ADR pending changes. Rules carry no backing.
+ADRs carry decisions through adoption and then become history. Immutable V1 and V2 lock cutoffs route
+legacy, four-state V1, and five-state V2 records. V2 adds Implementing and declaration-ordered Applied
+events so frozen operations can land across individually checked commits. Every batch and exactly its
+claim mutations form one HEAD-to-index transaction; Applied effects remain authoritative after partial
+Abandonment, while Remaining operations become Canceled. The generated index keeps Proposed, Accepted,
+and Implementing records in flight. `awf context <paths>` reports current claims plus Accepted pending
+operations or Implementing remaining operations and applied-to-total progress. Rules carry no backing.
 `contextIgnore` excludes matching paths from working and staged directory expansion and coverage;
 `awf context --uncovered` reports eligible paths no scoped topic covers.
 
@@ -216,7 +215,7 @@ disk.
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
-| `awf context <paths>` | Report owning domains, topic summaries, applicable rules and invariants with backing contracts, and Accepted-ADR pending changes. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits the same data. `--uncovered` reports eligible unowned and uncovered paths. |
+| `awf context <paths>` | Report owning domains, topic summaries, applicable rules and invariants with backing contracts, and Accepted or Implementing pending changes and progress. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits the same data. `--uncovered` reports eligible unowned and uncovered paths. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |

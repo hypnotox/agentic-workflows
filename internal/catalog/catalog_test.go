@@ -31,6 +31,20 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 // invariant: rendering/catalog-and-targets:catalog-defaults-generic-denylist
 func TestCatalogDefaultDataIsGeneric(t *testing.T) {
 	cat := Standard
+	states, ok := cat.Skills["adr-lifecycle"].Data["adrStates"].([]any)
+	if !ok || len(states) != 5 {
+		t.Fatalf("representative V2 adrStates = %#v", cat.Skills["adr-lifecycle"].Data["adrStates"])
+	}
+	wantStates := []string{"Proposed", "Accepted", "Implementing", "Implemented", "Abandoned"}
+	for i, state := range states {
+		fields, ok := state.(map[string]any)
+		if !ok || fields["name"] != wantStates[i] || fields["meaning"] == "" || fields["mutability"] == "" {
+			t.Fatalf("V2 adrStates[%d] = %#v", i, state)
+		}
+	}
+	if empty := (map[string]any{})["adrStates"]; empty != nil {
+		t.Fatalf("empty catalog override unexpectedly supplies V2 data: %#v", empty)
+	}
 	denylist := []string{"./x", "hypnotox/agentic-workflows"}
 	var walk func(t *testing.T, path string, v any)
 	walk = func(t *testing.T, path string, v any) {

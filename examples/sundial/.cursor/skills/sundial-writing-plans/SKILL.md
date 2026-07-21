@@ -65,6 +65,7 @@ Start from the canonical skeleton rather than a blank file: run `sundial new pla
 ## Notes
 
 <!-- awf:edit plan-lifecycle: default; create .awf/skills/parts/writing-plans/plan-lifecycle.md to override -->
+- For a V2 ADR, assign each operation to an explicit direct, first, middle, or final application transaction; name exact sequences, claim mutations, and the Abandoned cancellation result where relevant. Do not defer all operations to one final commit unless the direct path is intentional.
 - A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** (through review and through implementation, where findings are noted as they surface) and **freezes at `status: Implemented`**, flipped in the implementation's final commit (the same flip for ADR-driven and non-ADR plans). In sundial's usual flow a plan and its ADR(s) co-flip in that final commit, but the plan's freeze keys off its own status, not the ADR's.
 
 <!-- awf:edit plan-resync: default; create .awf/skills/parts/writing-plans/plan-resync.md to override -->

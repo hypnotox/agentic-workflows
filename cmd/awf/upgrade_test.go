@@ -17,6 +17,95 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
+// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff
+// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
+func TestRunUpgradeExistingV1ToSchema15IsAtomicAndIdempotent(t *testing.T) {
+	root := scaffoldProject(t)
+	onePath := filepath.Join(root, "docs/decisions/0001-one.md")
+	threePath := filepath.Join(root, "docs/decisions/0003-three.md")
+	one := testsupport.ADR("Proposed", testsupport.WithTitle("0001: One"))
+	three := testsupport.ADR("Proposed", testsupport.WithTitle("0003: Three"))
+	testsupport.WriteFile(t, onePath, one)
+	testsupport.WriteFile(t, threePath, three)
+	lock, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock = &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: lock.Files, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+
+	var out bytes.Buffer
+	if err := runUpgrade(root, &out); err != nil {
+		t.Fatalf("upgrade existing V1 adopter: %v\n%s", err, out.String())
+	}
+	got, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.SchemaVersion != 15 || got.AWFVersion != "0.20.0" || got.ADRFormatV1From != 1 || got.ADRFormatV2From != 4 {
+		t.Fatalf("upgraded authority = %#v", got)
+	}
+	for path, want := range map[string]string{onePath: one, threePath: three} {
+		body, err := os.ReadFile(path)
+		if err != nil || string(body) != want {
+			t.Fatalf("upgrade changed V1 ADR %s: err=%v", path, err)
+		}
+	}
+	first := snapshotTree(t, root)
+	out.Reset()
+	if err := runUpgrade(root, &out); err != nil {
+		t.Fatalf("idempotent upgrade: %v", err)
+	}
+	if second := snapshotTree(t, root); second != first {
+		t.Fatal("same-schema upgrade changed the synchronized tree")
+	}
+	if !strings.Contains(out.String(), "already at schema 15") {
+		t.Fatalf("idempotent output = %q", out.String())
+	}
+}
+
+func TestRunUpgradeSchema15FailureAndAheadAreAtomic(t *testing.T) {
+	t.Run("scan failure", func(t *testing.T) {
+		root := scaffoldProject(t)
+		lock, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock = &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: lock.Files, ADRFormatV1From: lock.ADRFormatV1From, LegacyADRGaps: lock.LegacyADRGaps}
+		if err := lock.Save(config.LockPath(root)); err != nil {
+			t.Fatal(err)
+		}
+		testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-bad.md"), "---\nformat: current-state-v1\nstatus: [bad\n---\n")
+		before := snapshotTree(t, root)
+		if err := runUpgrade(root, io.Discard); err == nil {
+			t.Fatal("malformed V1 corpus upgraded")
+		}
+		if after := snapshotTree(t, root); after != before {
+			t.Fatal("failed schema-15 upgrade mutated the tree")
+		}
+	})
+	t.Run("schema ahead", func(t *testing.T) {
+		root := scaffoldProject(t)
+		lock, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		lock.SchemaVersion = 16
+		if err := lock.Save(config.LockPath(root)); err != nil {
+			t.Fatal(err)
+		}
+		before := snapshotTree(t, root)
+		if err := runUpgrade(root, io.Discard); err == nil || !strings.Contains(err.Error(), "update your pinned awf") {
+			t.Fatalf("schema-ahead error = %v", err)
+		}
+		if after := snapshotTree(t, root); after != before {
+			t.Fatal("schema-ahead refusal mutated the tree")
+		}
+	})
+}
+
 func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
 	for _, tc := range []struct{ name, lock, want string }{
 		{"missing", "", "use the bridge release to attest"},

@@ -51,6 +51,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-plan-resync/notes.md to override -->
 - Resync fixes never edit the repository beyond the plan file; ADR-implicating findings route through the ADR amendment + review skills instead (return edge, step 2).
+- Scope completeness includes every declared V2 operation and its intended direct, first, middle, final, or cancellation outcome; resync any batch partition or sequence ordering changed by ADR review.
 - The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The other three ran during `awf-reviewing-plan` and need not re-run.
 - The `plan-reviewer` is report-only, one lens-diverse subagent; this skill owns fix application and the single verify pass, and does not fan out per-lens subagents or specify per-lens model routing.
 - If the user asks to skip resync review, comply but warn that a chain step is being skipped.

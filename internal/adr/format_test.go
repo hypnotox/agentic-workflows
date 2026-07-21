@@ -209,6 +209,7 @@ func v2DigestFor(t *testing.T, stateChanges string) string {
 	return adr.ContentDigest(a.Sections)
 }
 
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
 func TestParseV2LifecycleAndApplications(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
 	digest := v2DigestFor(t, changes)
@@ -254,6 +255,7 @@ func TestParseV2LifecycleAndApplications(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/adr-lifecycle:applied-history-events-append-only
 func TestParseV2RejectsInvalidHistory(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`"
 	digest := v2DigestFor(t, changes)
@@ -319,26 +321,42 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 	}
 }
 
-func TestV2TransitionMatrix(t *testing.T) {
-	legal := map[string]bool{
-		"Proposed>Accepted": true, "Proposed>Implementing": true, "Proposed>Implemented": true, "Proposed>Abandoned": true,
-		"Accepted>Implementing": true, "Accepted>Implemented": true, "Accepted>Abandoned": true,
-		"Implementing>Implemented": true, "Implementing>Abandoned": true,
-	}
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+func TestFormatSpecificTransitionMatrices(t *testing.T) {
 	statuses := []string{"Proposed", "Accepted", "Implementing", "Implemented", "Abandoned"}
-	for _, from := range statuses {
-		for _, to := range statuses {
-			key := from + ">" + to
-			if got := adr.TransitionLegal(from, to, adr.CurrentStateV2); got != legal[key] {
-				t.Errorf("%s = %v, want %v", key, got, legal[key])
+	for _, tc := range []struct {
+		name   string
+		format adr.Format
+		legal  map[string]bool
+	}{
+		{"v1", adr.CurrentStateV1, map[string]bool{
+			"Proposed>Accepted": true, "Proposed>Implemented": true, "Proposed>Abandoned": true,
+			"Accepted>Implemented": true, "Accepted>Abandoned": true,
+		}},
+		{"v2", adr.CurrentStateV2, map[string]bool{
+			"Proposed>Accepted": true, "Proposed>Implementing": true, "Proposed>Implemented": true, "Proposed>Abandoned": true,
+			"Accepted>Implementing": true, "Accepted>Implemented": true, "Accepted>Abandoned": true,
+			"Implementing>Implemented": true, "Implementing>Abandoned": true,
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, from := range statuses {
+				for _, to := range statuses {
+					key := from + ">" + to
+					if got := adr.TransitionLegal(from, to, tc.format); got != tc.legal[key] {
+						t.Errorf("%s %s = %v, want %v", tc.name, key, got, tc.legal[key])
+					}
+				}
 			}
-		}
+		})
 	}
 }
 
+// invariant: adr-system/adr-lifecycle:applied-history-events-append-only
 func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
 	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 1, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:c", Slug: "c"}}}
+	appliedNext := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 2, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: "a/b:d", Slug: "d"}}}
 	record := func(front string, events ...adr.HistoryEvent) adr.ADR {
 		return adr.ADR{Format: adr.CurrentStateV2, Status: front, History: events}
 	}
@@ -351,8 +369,8 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 		{"accept", record("Proposed", p), record("Accepted", p, accepted), true},
 		{"direct implementation", record("Accepted", p, accepted), record("Implemented", p, accepted, done), true},
 		{"enter implementing", record("Proposed", p), record("Implementing", p, i, applied), true},
-		{"middle batch", record("Implementing", p, i, applied), record("Implementing", p, i, applied, applied), true},
-		{"finish", record("Implementing", p, i, applied), record("Implemented", p, i, applied, applied, done), true},
+		{"middle batch", record("Implementing", p, i, applied), record("Implementing", p, i, applied, appliedNext), true},
+		{"finish", record("Implementing", p, i, applied), record("Implemented", p, i, applied, appliedNext, done), true},
 		{"direct implementation with crossed applied shape", record("Accepted", p, accepted), record("Implemented", p, accepted, applied, done), false},
 		{"implementing finish with crossed terminal-only shape", record("Implementing", p, i, applied), record("Implemented", p, i, applied, done), false},
 		{"abandon", record("Implementing", p, i, applied), record("Abandoned", p, i, applied, abandoned), true},

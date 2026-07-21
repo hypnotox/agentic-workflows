@@ -68,6 +68,14 @@ func TestParseRecordRoutesV1AndV2Cutoffs(t *testing.T) {
 	if _, err := adr.ParseRecord("0004-stray.md", []byte(strings.Replace(v2, "ADR-0005", "ADR-0004", 1)), adr.FormatBoundaries{V1From: 5, V2From: 8}); err == nil || !strings.Contains(err.Error(), "current-state-v2") {
 		t.Fatalf("stray V2 below cutoff error=%v", err)
 	}
+	for _, marker := range []string{adr.V1FormatMarker, adr.V2FormatMarker} {
+		t.Run("quoted "+marker+" below cutoff", func(t *testing.T) {
+			doc := "---\nformat: \"" + marker + "\"\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0004: Stray\n"
+			if _, err := adr.ParseRecord("0004-stray.md", []byte(doc), adr.FormatBoundaries{V1From: 5, V2From: 8}); err == nil || !strings.Contains(err.Error(), marker) {
+				t.Fatalf("quoted %s below cutoff error=%v", marker, err)
+			}
+		})
+	}
 }
 
 func TestParseBytesRecognizesV2Marker(t *testing.T) {
@@ -333,13 +341,22 @@ func TestAdoptionBoundary(t *testing.T) {
 			t.Fatalf("error=%v", err)
 		}
 	})
-	t.Run("v1 below cutoff", func(t *testing.T) {
-		dir := t.TempDir()
-		testsupport.WriteFile(t, filepath.Join(dir, "0001-v1.md"), "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0001: V1\n")
-		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "current-state-v1") {
-			t.Fatalf("error=%v", err)
-		}
-	})
+	_, governedBody, found := strings.Cut(adrTemplateFixture, "---\n")
+	if !found {
+		t.Fatal("fixture frontmatter delimiter missing")
+	}
+	for _, marker := range []string{adr.V1FormatMarker, adr.V2FormatMarker} {
+		t.Run(marker+" below cutoff", func(t *testing.T) {
+			dir := t.TempDir()
+			doc := strings.Replace("---\n"+governedBody, adr.V1FormatMarker, marker, 1)
+			doc = strings.Replace(doc, "YYYY-MM-DD", "2026-07-21", 2)
+			doc = strings.Replace(doc, "ADR-NNNN", "ADR-0001", 1)
+			testsupport.WriteFile(t, filepath.Join(dir, "0001-governed.md"), doc)
+			if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "inside the brownfield legacy set") || !strings.Contains(err.Error(), marker) {
+				t.Fatalf("error=%v", err)
+			}
+		})
+	}
 }
 
 func TestNextNumberEmptyDir(t *testing.T) {

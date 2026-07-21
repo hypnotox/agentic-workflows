@@ -45,6 +45,7 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
+   - **Apply V2 batches atomically.** A task applying frozen operations appends one Applied event and stages exactly its matching claim mutations; first, middle, and final pairs are independently checked.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
 
 <!-- awf:edit procedure-status-handling: default; create .awf/skills/parts/subagent-driven-development/procedure-status-handling.md to override -->
@@ -59,7 +60,7 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
 
 
 <!-- awf:edit final-task-adr-flip: default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
-7. **Final task: plan freeze and/or ADR status flip.** The final subagent's commit flips the plan's own `status:` frontmatter from `Proposed → Implemented` and records any implementation findings in the plan's Notes section (named explicitly in the dispatched task prompt), the same freeze for ADR-driven and non-ADR plans. For an ADR-driven plan the commit also includes the ADR `Proposed → Accepted`/`Implemented` flip with its appended `## Status history` line, and an `Implemented` flip stages the ADR's declared `State changes` (the claim add/update/remove edits under `.awf/topics/parts/`) in the same commit so the staged check sees them as one transaction; the prompt must then instruct running `./x sync` to regenerate `docs/decisions/INDEX.md` and stage it; the ADR commit runs the gate, so the drift test must pass.
+7. **Final task: freeze the plan and complete ADR progress.** Flip the plan to Implemented and record findings. For a V2 ADR, append the final Applied batch with exactly its claim mutations before the Implemented status event, or use a direct implicit transition when all operations land together. If execution stops, Abandoned preserves Applied effects and cancels Remaining operations. The prompt must then instruct running `./x sync` to regenerate `docs/decisions/INDEX.md` and stage it; the ADR commit runs the gate, so the drift test must pass.
 
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
 8. **Terminal step: invoke `sundial-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.

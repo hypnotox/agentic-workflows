@@ -46,7 +46,9 @@ Apply all five lenses to every implementation diff:
 
 1. **testing-discipline**: every behaviour-changing change has a regression test; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` claim must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
 
-1. **doc-currency (impl-level)**: ADR status flips (Accepted→Implemented) with the declared `State changes` applied as claim mutations in the same transaction; current-state topic and domain-doc updates when a domain shifts; workflow/convention doc updates when a rule changes; the rendered agent guide kept current.
+1. **doc-currency (impl-level)**: every newly appended Applied event travels with exactly its matching claim mutations; current-state topic and domain-doc updates land when a domain shifts; workflow/convention docs and the rendered agent guide stay current.
+
+1. **application-pair-correctness**: review first, middle, final, direct, and abandonment pairs for immutable event prefixes, consecutive sequences, truthful Applied/Remaining/Canceled partitions, and current-claim truth.
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
 

@@ -52,6 +52,8 @@ Apply all five lenses to every ADR:
 
 1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 
+1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration and global sequence order; each batch and its current-claim truth are one checked pair.
+
 ## Project-specific focus items
 
 <!-- awf:edit project-focus: default; create .awf/agents/parts/adr-reviewer/project-focus.md to override -->

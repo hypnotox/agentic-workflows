@@ -101,6 +101,18 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
 		t.Errorf("curated init render has dead skill references:\n%s", checkOut.String())
 	}
+	template, err := os.ReadFile(filepath.Join(root, "docs/decisions/template.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(template)
+	history := strings.Index(text, "## Status history\n")
+	if !strings.Contains(text, "format: current-state-v2") || history < 0 || strings.Index(text, "Implementing; content-sha256") > strings.Index(text, "Applied; state-sequence") {
+		t.Fatalf("empty-init V2 ADR template is not lifecycle-safe:\n%s", text)
+	}
+	if tail := text[history:]; strings.Count(tail, "- YYYY-MM-DD:") != 1 || !strings.Contains(tail, "- YYYY-MM-DD: Proposed") {
+		t.Fatalf("fresh Proposed scaffold includes later events:\n%s", tail)
+	}
 }
 
 // unpairedDoubleBacktickRun reports whether the line holds an odd number of

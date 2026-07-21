@@ -67,5 +67,5 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- The ADR status flip (`Proposed` → `Accepted`/`Implemented`) is made by `sundial-executing-plans` / `sundial-subagent-driven-development` in the final implementation commit; the `code-reviewer`'s doc-currency lens confirms it landed; this skill does not flip it.
+- ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; this skill does not alter lifecycle history.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

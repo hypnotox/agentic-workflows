@@ -86,9 +86,16 @@ func runUpgrade(root string, stdout io.Writer) error {
 		fmt.Fprintf(stdout, "awf upgrade: applied %s\n", name)
 	}
 	if authorityPath != config.LockPath(root) {
-		lock.SchemaVersion = migrate.Current()
-		if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: migration just created the writable current config directory
+		if _, found, err := manifest.LoadOptional(config.LockPath(root)); err != nil { // coverage-ignore: migrations either leave this path absent or write it through validated manifest serialization
 			return err
+		} else if !found {
+			lock.SchemaVersion = 14
+			if err := lock.Save(config.LockPath(root)); err != nil { // coverage-ignore: migration just created the writable current config directory
+				return err
+			}
+			if _, err := migrate.Upgrade(root, stdout); err != nil { // coverage-ignore: the first migration pass validated the same migrated config and ADR corpus before this relocated-lock completion pass
+				return err
+			}
 		}
 	}
 	// Gate before the terminal sync: migration brings the schema current, but a

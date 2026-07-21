@@ -87,7 +87,7 @@ declined; the generic prose renders).
 - `skill brainstorming` · `data.errorBoundaries`: The error-handling boundaries the design-sections step walks (list); unset, the section keeps its generic boundary prose.
 - `skill brainstorming` · `data.loadBearingExamples`: Project-specific examples of load-bearing decisions for the definitions section (list); unset, the generic examples render.
 - `skill tdd` · `data.testSurfaces` (overridden): The project's test surfaces (list of {name, kind, location}) the skill routes new tests to; the default names generic unit/integration/e2e surfaces.
-- `skill adr-lifecycle` · `data.adrStates` (catalog default): The decision-record lifecycle states (list of {name, meaning, mutability}) the skill's state table renders; the default is the four-state lifecycle.
+- `skill adr-lifecycle` · `data.adrStates` (catalog default): The decision-record lifecycle states (list of {name, meaning, mutability}) the skill's state table renders; the default is the five-state current-state-v2 lifecycle.
 - `skill proposing-adr` · `data.adrSections` (catalog default): The required decision-record section names, in order (list); the default is Context through Alternatives Considered.
 - `skill proposing-adr` · `data.adrTriggers` (overridden): The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers.
 - `skill executing-plans` · `data.e2eSuitePaths`: Where the project's end-to-end suites live (prose or list) for the gate-tier guidance; unset, the generic tier prose renders.

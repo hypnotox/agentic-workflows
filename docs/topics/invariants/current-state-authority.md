@@ -11,8 +11,9 @@ The currentstate package is the active authority engine: it loads topic claims a
 
 ### `invariant: abandoned-remove-pair-attributed`
 
-Final claim absence is not static attribution of an Abandoned remove; snapshot-pair validation requires the actual Implemented removal that caused the claim to disappear.
+An applied V2 remove continues to attribute claim absence after its ADR becomes Abandoned, while a remaining operation canceled by abandonment never attributes absence; snapshot-pair validation proves the Applied event and actual removal together.
 Origin: ADR-0139
+Revised-by: ADR-0143
 Backing: test
 
 ### `invariant: accepted-authority-is-pending-only`
@@ -45,10 +46,10 @@ Verify: Over the same fixture, normal context omits Implemented provenance while
 
 ### `invariant: implemented-impact-bidirectional`
 
-Every Implemented state operation has its required current or removed result, and every active claim Origin or revision has the inverse ADR operation.
+Every applied governed state operation has its required current or removed result, and every active claim Origin or revision has the inverse applied ADR operation; Remaining and Canceled operations provide no authority.
 Origin: ADR-0135
-Backing: unbacked
-Verify: Corpus tests with missing, extra, duplicate, and mismatched add, update, and remove operations against claim provenance pass only when both directions agree.
+Revised-by: ADR-0143
+Backing: test
 
 ### `invariant: invariants-zero-slugs-clean`
 
@@ -58,17 +59,23 @@ Backing: test
 
 ### `invariant: removed-claim-id-not-reused`
 
-Once an Implemented remove records a qualified claim ID, no later add may reuse it.
+Once any applied remove records a qualified claim ID, no later add may reuse it, regardless of whether the removing ADR later ends Implemented or partially Abandoned.
 Origin: ADR-0135
-Backing: unbacked
-Verify: Add-update-remove-add operation histories fail the final add whether or not an active claim file exists.
+Revised-by: ADR-0143
+Backing: test
 
 ### `invariant: state-impact-transition-atomic`
 
-A staged claim mutation and the ADR transition implementing it occur in one HEAD-to-index transaction.
+Every newly appended application batch and exactly its matching claim mutations occur in one HEAD-to-index transaction; staged validation refuses an operation record or mutation split across snapshot pairs.
 Origin: ADR-0135
-Backing: unbacked
-Verify: awf check --staged refuses each partial state split across snapshot fixtures and passes only the combined transition.
+Revised-by: ADR-0143
+Backing: test
+
+### `invariant: application-batch-sequence-order`
+
+V1 implicit batches and V2 implicit or explicit batches share one unique contiguous global state-sequence namespace, and every applied claim operation inherits its batch sequence for provenance and history ordering.
+Origin: ADR-0143
+Backing: test
 
 ### `invariant: uncovered-lists-unowned-unignored`
 

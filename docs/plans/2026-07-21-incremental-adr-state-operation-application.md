@@ -1,7 +1,7 @@
 ---
 date: 2026-07-21
 adrs: [143]
-status: Proposed
+status: Implemented
 ---
 # Plan: Incremental ADR State Operation Application
 

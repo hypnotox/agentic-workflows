@@ -229,13 +229,32 @@ func TestV2CutoffCanonicalRoundTrip(t *testing.T) {
 	}
 }
 
-func TestSchema15PermanentAuthorityRequiresV2Cutoff(t *testing.T) {
+func TestSchema15PermanentAuthorityV2BoundaryMatrix(t *testing.T) {
 	fields := `"awfVersion":"0.20.0","files":{},"adrFormatV1From":4,"legacyAdrGaps":[]`
 	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":14}`)); err != nil {
 		t.Fatalf("schema 14 omission must remain compatible: %v", err)
 	}
-	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":15}`)); err == nil || !strings.Contains(err.Error(), "requires adrFormatV2From") {
-		t.Fatalf("schema 15 omission error = %v", err)
+	for _, tc := range []struct {
+		name, v2, want string
+	}{
+		{"missing", "", "requires adrFormatV2From"},
+		{"explicit zero", `,"adrFormatV2From":0`, "must be positive"},
+		{"below V1", `,"adrFormatV2From":3`, "greater than or equal"},
+		{"equal cutoffs", `,"adrFormatV2From":4`, ""},
+		{"later V2 cutoff", `,"adrFormatV2From":9`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Parse([]byte(`{` + fields + `,"schemaVersion":15` + tc.v2 + `}`))
+			if tc.want == "" {
+				if err != nil || got.ADRFormatV2From < got.ADRFormatV1From {
+					t.Fatalf("valid schema-15 authority = %#v, %v", got, err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
 	}
 }
 
