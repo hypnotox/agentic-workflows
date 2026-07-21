@@ -26,6 +26,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 	if uncovered {
 		return runUncovered(cwd, paths, staged, rng, asJSON, stdout)
 	}
+	gitSelected := len(paths) == 0
 	if len(paths) == 0 {
 		if !staged && rng == "" {
 			return &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
@@ -43,7 +44,13 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		if err := gateStaged(cwd); err != nil {
 			return err
 		}
-		res, err := project.StagedContextRoot(cwd, paths)
+		var res project.ContextResult
+		var err error
+		if gitSelected {
+			res, err = project.StagedContextRootGitSelection(cwd, paths)
+		} else {
+			res, err = project.StagedContextRoot(cwd, paths)
+		}
 		if err != nil {
 			return err
 		}
@@ -53,8 +60,8 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		return printContext(stdout, project.ContextResult{Paths: paths}, asJSON,
-			"context (static: not inside an awf project; live context appears inside one)")
+		return printContext(stdout, project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{}}, asJSON,
+			"context (static: not inside an awf project; live classification and authority require an adopted project)")
 	}
 	if err := gate(cwd); err != nil {
 		return err
@@ -63,7 +70,12 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 	if err != nil {
 		return err
 	}
-	res, err := p.ContextFor(paths)
+	var res project.ContextResult
+	if gitSelected {
+		res, err = p.ContextForGitSelection(paths)
+	} else {
+		res, err = p.ContextFor(paths)
+	}
 	if err != nil {
 		return err
 	}
@@ -148,47 +160,32 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		return enc.Encode(res)
 	}
 	fmt.Fprintln(stdout, header)
-	fmt.Fprintf(stdout, "\npaths: %v\n", res.Paths)
-	fmt.Fprintln(stdout, "\n## Domains")
-	for _, d := range res.Domains {
-		fmt.Fprintf(stdout, "  %s: %s\n", d.Name, d.CurrentState)
+	fmt.Fprintf(stdout, "Projection: %s\n", res.Projection)
+	fmt.Fprintln(stdout, "\n## Requests")
+	for _, r := range res.Requests {
+		fmt.Fprintf(stdout, "  %s [%s]: %v\n", r.Query, r.Status, r.EffectivePaths)
 	}
-	fmt.Fprintln(stdout, "\n## Topics")
-	for _, t := range res.Topics {
-		label := t.ID
-		if t.Global {
-			label += " (global)"
+	fmt.Fprintln(stdout, "\n## Effective paths")
+	for _, p := range res.Paths {
+		fmt.Fprintf(stdout, "\n%s [%s] (requests: %v)\n", p.Path, p.Classification, p.Requests)
+		if p.NestedRoot != "" {
+			fmt.Fprintf(stdout, "  Nested root: %s/.awf/config.yaml\n", p.NestedRoot)
 		}
-		if t.Title != "" {
-			fmt.Fprintf(stdout, "  %s - %s\n", label, t.Title)
-		} else {
-			fmt.Fprintf(stdout, "  %s\n", label)
+		if p.TargetInsideRepository != nil {
+			fmt.Fprintf(stdout, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
 		}
-		fmt.Fprintf(stdout, "    %s\n", t.Summary)
-		for _, c := range t.Claims {
-			fmt.Fprintf(stdout, "    [%s] %s: %s\n", c.Type, c.ID, c.Prose)
-			if c.Backing != "" {
-				fmt.Fprintf(stdout, "      Backing: %s\n", c.Backing)
-			}
-			if c.Verify != "" {
-				fmt.Fprintf(stdout, "      Verify: %s\n", c.Verify)
+		for _, d := range p.Domains {
+			fmt.Fprintf(stdout, "  Domain: %s (%s)\n", d.Name, d.CurrentState)
+		}
+		for _, t := range p.Topics {
+			fmt.Fprintf(stdout, "  Topic: %s - %s\n", t.ID, t.Title)
+			fmt.Fprintf(stdout, "    Domain paths: %v\n    Topic paths: %v\n    Both domain and topic selectors must match.\n    Matched paths: %v\n", t.Applicability.DomainPaths, t.Applicability.TopicPaths, t.Applicability.MatchedPaths)
+			for _, site := range t.Applicability.MarkerSites {
+				fmt.Fprintf(stdout, "    Marker: %s:%d [%s] %s\n", site.Path, site.Line, site.Kind, site.ClaimID)
 			}
 		}
-	}
-	if len(res.Pending) > 0 {
-		fmt.Fprintln(stdout, "\n## Pending changes (not yet current)")
-		for _, pc := range res.Pending {
-			if pc.Applied > 0 {
-				fmt.Fprintf(stdout, "  ADR-%s (%s; %s; %d/%d applied) %s %s\n", pc.ADR, pc.Title, pc.Status, pc.Applied, pc.Declared, pc.Op, pc.Claim)
-			} else {
-				fmt.Fprintf(stdout, "  ADR-%s (%s; %s) %s %s\n", pc.ADR, pc.Title, pc.Status, pc.Op, pc.Claim)
-			}
-		}
-	}
-	if len(res.Unowned) > 0 {
-		fmt.Fprintln(stdout, "\n## Unowned paths (no configured domain)")
-		for _, u := range res.Unowned {
-			fmt.Fprintf(stdout, "  %s\n", u)
+		for _, a := range p.Artifacts {
+			fmt.Fprintf(stdout, "  Artifact: %s %s\n", a.Role, a.Identity)
 		}
 	}
 	return nil

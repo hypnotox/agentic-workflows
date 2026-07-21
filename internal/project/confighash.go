@@ -2,7 +2,6 @@ package project
 
 import (
 	"maps"
-	"os"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -11,7 +10,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
-
 	"gopkg.in/yaml.v3"
 )
 
@@ -69,7 +67,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	sort.Strings(partPaths)
 	parts := map[string]string{}
 	for _, pp := range partPaths {
-		b, err := os.ReadFile(pp)
+		b, err := p.Cfg.ReadPartPath(pp)
 		if err != nil {
 			return "", err
 		}

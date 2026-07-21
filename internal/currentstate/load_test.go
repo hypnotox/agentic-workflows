@@ -65,6 +65,20 @@ const loadCfgBody = "prefix: test\ndomains: [alpha]\n"
 // from a single tree, proving the ADR walk, the v1 route, and topic assembly all
 // read the same universe. It also proves non-ADR and nested decision files are
 // skipped.
+func TestLoadFromTreeSkipsSymlinkADR(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: "docs/decisions/0001-first.md", Mode: snapshot.Regular, Bytes: []byte(legacyADR())}, {Path: "docs/decisions/0002-link.md", Mode: snapshot.Symlink, Bytes: []byte("../bad")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.ADRs) != 1 || loaded.ADRs[0].Number != "0001" {
+		t.Fatalf("ADRs=%#v", loaded.ADRs)
+	}
+}
+
 func TestLoadFromTreeAssembles(t *testing.T) {
 	tree := treeFrom(t, map[string]string{
 		"docs/decisions/0001-first.md":                 legacyADR(),

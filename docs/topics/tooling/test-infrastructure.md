@@ -3,7 +3,7 @@
 
 Shared internal test-support infrastructure and its dependency boundary.
 
-**Applicability:** `internal/testsupport/**` within domain `cmd/**`, `internal/testsupport/**` within domain `internal/audit/**`, `internal/testsupport/**` within domain `internal/coverage/**`, `internal/testsupport/**` within domain `internal/changelog/**`, `internal/testsupport/**` within domain `internal/evals/**`, `internal/testsupport/**` within domain `internal/clispec/**`, `internal/testsupport/**` within domain `internal/initspec/**`, `internal/testsupport/**` within domain `internal/git/**`, `internal/testsupport/**` within domain `internal/snapshot/**`, `internal/testsupport/**` within domain `internal/upgrade/**`, `internal/testsupport/**` within domain `internal/prosegate/**`, `internal/testsupport/**` within domain `tools/**`, `internal/testsupport/**` within domain `x`.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/testsupport/**`. Both domain and topic selectors must match. Current matched paths: ``. Marker sites: ``.
 
 This topic records the current ownership contract for shared internal test-support infrastructure.
 

@@ -106,27 +106,17 @@ func TestClaimBudgetNotes(t *testing.T) {
 	}
 }
 
-func TestCoverageForTopic(t *testing.T) {
+// invariant: tooling/cli:context-applicability-navigation
+func TestApplicabilityForTopic(t *testing.T) {
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/t:c": {{Path: "z", Line: 2, ClaimID: "d/t:c"}, {Path: "a", Line: 1, ClaimID: "d/t:c"}}}}
 	topic := Topic{ID: TopicID{"d", "t"}, Metadata: Metadata{Paths: []string{"internal/**"}}, Claims: []Claim{{ID: "d/t:c"}}}
-	c := CoverageForTopic(topic, []string{"internal/pkg/**"}, markers)
-	if !c.HasClaims || !c.SatisfiesScopedCoverage || len(c.EffectiveSelectors) != 1 || c.MarkerSites[0].Path != "a" {
-		t.Fatalf("%#v", c)
-	}
-	topic.Claims = nil
-	c = CoverageForTopic(topic, []string{"internal/**"}, markers)
-	if c.SatisfiesScopedCoverage {
-		t.Fatalf("empty %#v", c)
+	a := ApplicabilityForTopic(topic, []string{"internal/pkg/**"}, markers, []string{"other.go", "internal/pkg/a.go"})
+	if !reflect.DeepEqual(a.DomainPaths, []string{"internal/pkg/**"}) || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || !reflect.DeepEqual(a.MatchedPaths, []string{"internal/pkg/a.go"}) || a.MarkerSites[0].Path != "a" {
+		t.Fatalf("%#v", a)
 	}
 	topic.Metadata = Metadata{Applies: "global"}
-	c = CoverageForTopic(topic, nil, markers)
-	if !c.DeclaredGlobal || c.SatisfiesScopedCoverage {
-		t.Fatalf("global %#v", c)
-	}
-	topic.Metadata = Metadata{Paths: []string{"x/**"}}
-	topic.Claims = []Claim{{ID: "d/t:c"}}
-	c = CoverageForTopic(topic, nil, markers)
-	if c.SatisfiesScopedCoverage {
-		t.Fatalf("unowned %#v", c)
+	a = ApplicabilityForTopic(topic, []string{"internal/**"}, markers, []string{"internal/a.go", "other.go"})
+	if !a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{}) || !reflect.DeepEqual(a.MatchedPaths, []string{"internal/a.go"}) {
+		t.Fatalf("global %#v", a)
 	}
 }

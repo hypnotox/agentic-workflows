@@ -49,6 +49,7 @@ func TestCommitTree(t *testing.T) {
 	}{
 		{"a/exec.sh", snapshot.Executable, "run\n"},
 		{"b.txt", snapshot.Regular, "bee\n"},
+		{"link", snapshot.Symlink, "b.txt"},
 	}
 	if len(got) != len(want) {
 		t.Fatalf("CommitTree returned %d files, want %d: %+v", len(got), len(want), got)
@@ -58,8 +59,8 @@ func TestCommitTree(t *testing.T) {
 			t.Errorf("file %d = {%q, %d, %q}, want {%q, %d, %q}", i, got[i].Path, got[i].Mode, got[i].Bytes, w.path, w.mode, w.body)
 		}
 	}
-	if _, ok := tree.Lookup("link"); ok {
-		t.Errorf("symlink leaked into the commit Tree")
+	if f, ok := tree.Lookup("link"); !ok || f.Scannable() {
+		t.Errorf("symlink not retained as inert bytes: %#v", f)
 	}
 	got[0].Bytes[0] = 'X'
 	if again := tree.List(); string(again[0].Bytes) != "run\n" {

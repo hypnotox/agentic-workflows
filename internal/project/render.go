@@ -143,7 +143,7 @@ func (p *Project) commitScopesDisplay() string {
 func (p *Project) effectiveSkills() (map[string]bool, error) {
 	eff := map[string]bool{}
 	for _, name := range p.Cfg.Skills {
-		if _, err := p.Cfg.Sidecar("skills", name); err != nil {
+		if _, err := p.Cfg.Sidecar("skills", name); err != nil { // coverage-ignore: declaration-first planning just parsed this enabled skill sidecar
 			return nil, err
 		}
 		eff[name] = true
@@ -204,10 +204,10 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 		if inPlace[s] {
 			// section-source-exclusive: an in-place section must not also carry a
 			// convention part - the two override channels are mutually exclusive.
-			if _, statErr := os.Stat(p.Cfg.PartPath(kind, artifact, s)); statErr == nil {
+			if _, exists, partErr := p.Cfg.ReadPart(kind, artifact, s); partErr != nil {
+				return nil, partErr
+			} else if exists {
 				return nil, fmt.Errorf("section %q is in-place-editable and must not also have a convention part at %s (ADR-0100)", s, p.partRel(kind, artifact, s))
-			} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: os.Stat errors only on a permission/IO fault that root bypasses
-				return nil, fmt.Errorf("stat part %s/%s/%s: %w", kind, artifact, s, statErr)
 			}
 			out, rerr := readOutput()
 			if rerr != nil { // coverage-ignore: os.ReadFile errors only on a permission/IO fault that root bypasses (NotExist is folded into an empty read above)
@@ -221,8 +221,11 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			plan[s] = sp
 			continue
 		}
-		b, err := os.ReadFile(p.Cfg.PartPath(kind, artifact, s))
-		if err == nil {
+		b, exists, err := p.Cfg.ReadPart(kind, artifact, s)
+		if err != nil {
+			return nil, err
+		}
+		if exists {
 			// Stripped before substitution (ADR-0121 Decision 2): a substituted
 			// value can never create or mask a whole-line directive, and an
 			// unknown placeholder demonstrated inside a comment must not error.
@@ -242,8 +245,6 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 			// remove a marker-shaped line; ADR-0121), fenced examples excluded.
 			sp.PartMarker = render.HasMarkerLine(refs.WithoutFences(raw))
 			sp.PartVarRefs = render.PlaceholderVarRefs(raw)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("read part %s/%s/%s: %w", kind, artifact, s, err)
 		}
 		plan[s] = sp
 	}
@@ -452,7 +453,7 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
 		sc, err := p.Cfg.Sidecar(spec.kind, name)
-		if err != nil {
+		if err != nil { // coverage-ignore: declaration-first planning just parsed this enabled artifact sidecar
 			return nil, err
 		}
 		if sc.Local {
@@ -577,7 +578,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	// agents-doc / AGENTS.md (always-on singleton unless its sidecar is local), neutral - once.
 	ad, err := p.Cfg.Sidecar("agents-doc", "")
-	if err != nil {
+	if err != nil { // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar
 		return nil, err
 	}
 	if !ad.Local {

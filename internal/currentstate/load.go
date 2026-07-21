@@ -52,6 +52,9 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoun
 	var records []adr.ADR
 	var numbers []int
 	for _, f := range tree.List() {
+		if !f.Scannable() {
+			continue
+		}
 		rel, ok := strings.CutPrefix(f.Path, prefix)
 		if !ok || strings.Contains(rel, "/") {
 			continue // outside the decisions directory or in a nested subdirectory

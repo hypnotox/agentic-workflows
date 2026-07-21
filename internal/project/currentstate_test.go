@@ -5,12 +5,60 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
+	lockTree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/awf.lock", Mode: snapshot.Symlink, Bytes: []byte("target")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lockFromTree(lockTree); err == nil {
+		t.Fatal("staged symlink lock accepted")
+	}
+	if _, found, err := optionalLockFromTree(lockTree); !found || err == nil {
+		t.Fatal("optional symlink lock accepted")
+	}
+	configTree, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Symlink, Bytes: []byte("target")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadTreeCurrentState(".", configTree, adr.FormatBoundaries{}, nil); err == nil {
+		t.Fatal("symlink config accepted")
+	}
+	if _, err := nextADRIdentityFromTree(configTree); err == nil {
+		t.Fatal("symlink cutoff config accepted")
+	}
+	ordinary, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\n")}, {Path: "docs/decisions/0001-link.md", Mode: snapshot.Symlink, Bytes: []byte("bad")}})
+	if next, err := nextADRIdentityFromTree(ordinary); err != nil || next != 1 {
+		t.Fatalf("next=%d err=%v", next, err)
+	}
+	if got := eligiblePaths(configTree, nil, nil); len(got) != 0 {
+		t.Fatalf("eligible symlink=%v", got)
+	}
+	reader := configSnapshotReader{tree: ordinary}
+	b, ok := reader.ReadFile("config.yaml")
+	if !ok || len(b) == 0 {
+		t.Fatal("snapshot config read")
+	}
+	b[0] = 'X'
+	again, _ := reader.ReadFile("config.yaml")
+	if again[0] == 'X' {
+		t.Fatal("snapshot config alias")
+	}
+	if _, ok := reader.ReadFile("missing"); ok {
+		t.Fatal("missing config read")
+	}
+	if got := reader.Paths(""); len(got) != 1 || got[0] != "config.yaml" {
+		t.Fatalf("snapshot config paths=%v", got)
+	}
+}
 
 // TestCurrentStateReportRouting proves the report splits into blocking findings
 // (every static handshake message plus each error-severity coverage line) and

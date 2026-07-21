@@ -58,16 +58,13 @@ type ClaimReferences struct {
 }
 
 type QueryCoverage struct {
-	DeclaredGlobal     bool                `json:"declaredGlobal"`
-	DeclaredPaths      []string            `json:"declaredPaths"`
-	EffectiveSelectors []EffectiveSelector `json:"effectiveSelectors"`
-	MarkerSites        []MarkerSite        `json:"markerSites"`
+	Applicability TopicApplicability `json:"applicability"`
 }
 
 // Query resolves one active topic or claim and assembles only the requested
 // direct detail. A qualified removed claim resolves only when History is set;
 // it never traverses references or constructs tombstone state.
-func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (QueryResult, error) {
+func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions, currentPaths []string) (QueryResult, error) {
 	topicID, claimID, err := ParseSelector(selector)
 	if err != nil {
 		return QueryResult{}, err
@@ -138,15 +135,11 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (Query
 		}
 	}
 	if opts.Coverage {
-		coverage := CoverageForTopic(t, c.DomainPaths[t.ID.Domain], c.Markers)
-		markerSites := coverage.MarkerSites
+		applicability := ApplicabilityForTopic(t, c.DomainPaths[t.ID.Domain], c.Markers, currentPaths)
 		if claimID != "" {
-			markerSites = c.Markers.ForClaim(claimID)
+			applicability.MarkerSites = nonNil(c.Markers.ForClaim(claimID))
 		}
-		result.Coverage = &QueryCoverage{
-			DeclaredGlobal: coverage.DeclaredGlobal, DeclaredPaths: nonNil(coverage.DeclaredPaths),
-			EffectiveSelectors: nonNil(coverage.EffectiveSelectors), MarkerSites: nonNil(markerSites),
-		}
+		result.Coverage = &QueryCoverage{Applicability: applicability}
 	}
 	return result, nil
 }

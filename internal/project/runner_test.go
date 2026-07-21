@@ -184,6 +184,21 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 // A convention part authored for an awf-owned runner section (as its
 // `create ... to override` pointer invites) is claimed by the closed-tree sweep, so
 // override renders and `awf check` does not flag `.awf/runner` as unclaimed.
+func TestRunnerInPlacePartReadError(t *testing.T) {
+	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part := filepath.Join(root, ".awf/runner/parts/runner-setup.md")
+	if err := os.MkdirAll(part, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.RenderAll(); err == nil {
+		t.Fatal("in-place part read error accepted")
+	}
+}
+
 func TestRunnerPartOverrideClaimed(t *testing.T) {
 	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
 	p, err := Open(root)

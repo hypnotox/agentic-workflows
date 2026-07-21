@@ -106,15 +106,15 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 	}
 	if result.Coverage != nil {
 		write("coverage heading", "\n## Coverage\n")
-		if result.Coverage.DeclaredGlobal {
+		a := result.Coverage.Applicability
+		if a.DeclaredGlobal {
 			write("global coverage", "Declared: global\n")
-		} else {
-			write("declared coverage paths", "Declared paths: %v\n", result.Coverage.DeclaredPaths)
 		}
-		for _, selector := range result.Coverage.EffectiveSelectors {
-			write("effective coverage selector", "Effective: domain %s + topic %s\n", selector.DomainPath, selector.TopicPath)
-		}
-		for _, site := range result.Coverage.MarkerSites {
+		write("domain selectors", "Domain paths: %v\n", a.DomainPaths)
+		write("topic selectors", "Topic paths: %v\n", a.TopicPaths)
+		write("selector rule", "Both domain and topic selectors must match.\n")
+		write("matched paths", "Matched paths: %v\n", a.MatchedPaths)
+		for _, site := range a.MarkerSites {
 			write("coverage marker", "Marker: %s:%d [%s] %s", site.Path, site.Line, site.Kind, site.ClaimID)
 			if site.Note != "" {
 				write("coverage marker note", " - %s", site.Note)

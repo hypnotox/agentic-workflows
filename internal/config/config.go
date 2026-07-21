@@ -59,7 +59,27 @@ type Config struct {
 	ProseGate     *ProseGateConfig    `yaml:"proseGate"`
 	root          string              // <project>/.awf, for sidecar/part resolution
 	raw           []byte              // the exact config.yaml bytes Load read, for in-place byte edits
+	read          TreeReader          // selected filesystem or immutable snapshot universe
+	filesystem    bool
 }
+
+// TreeReader supplies canonical config-tree-relative bytes without exposing a
+// filesystem. Implementations return defensive copies.
+type TreeReader interface {
+	ReadFile(path string) ([]byte, bool)
+	Paths(prefix string) []string
+}
+
+type filesystemTreeReader struct{ root string }
+
+func (r filesystemTreeReader) ReadFile(path string) ([]byte, bool) {
+	b, err := os.ReadFile(filepath.Join(r.root, filepath.FromSlash(path)))
+	if err != nil {
+		return nil, false
+	}
+	return slices.Clone(b), true
+}
+func (r filesystemTreeReader) Paths(prefix string) []string { return []string{} }
 
 // Source returns the exact config.yaml bytes Load read. A byte-level editor
 // (SetArrayMember, SetArray, SetMappingScalar) reuses these instead of re-reading
@@ -305,12 +325,25 @@ func Load(awfDir string) (*Config, error) {
 		}
 		return nil, fmt.Errorf("read config: %w", err)
 	}
-	return Parse(awfDir, b)
+	cfg, err := ParseTree(awfDir, b, filesystemTreeReader{root: awfDir})
+	if cfg != nil {
+		cfg.filesystem = true
+	}
+	return cfg, err
 }
 
 // Parse strictly decodes config.yaml bytes, records awfDir as the sidecar/part
 // resolution root, and applies defaults.
 func Parse(awfDir string, b []byte) (*Config, error) {
+	cfg, err := ParseTree(awfDir, b, filesystemTreeReader{root: awfDir})
+	if cfg != nil {
+		cfg.filesystem = true
+	}
+	return cfg, err
+}
+
+// ParseTree decodes config bytes and injects the selected config-tree reader.
+func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	var c Config
 	dec := yaml.NewDecoder(bytes.NewReader(b))
 	dec.KnownFields(true)
@@ -318,7 +351,8 @@ func Parse(awfDir string, b []byte) (*Config, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 	c.root = awfDir
-	c.raw = b
+	c.raw = slices.Clone(b)
+	c.read = read
 	if c.DocsDir == "" {
 		c.DocsDir = "docs"
 	}
@@ -349,12 +383,22 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 	} else {
 		rel = filepath.Join(kind, name+".yaml")
 	}
-	b, err := os.ReadFile(filepath.Join(c.root, rel))
-	if errors.Is(err, os.ErrNotExist) {
-		return Sidecar{}, nil
-	}
-	if err != nil {
-		return Sidecar{}, fmt.Errorf("read sidecar %s: %w", rel, err)
+	var b []byte
+	if c.filesystem {
+		var err error
+		b, err = os.ReadFile(filepath.Join(c.root, rel))
+		if errors.Is(err, os.ErrNotExist) {
+			return Sidecar{}, nil
+		}
+		if err != nil {
+			return Sidecar{}, fmt.Errorf("read sidecar %s: %w", rel, err)
+		}
+	} else {
+		var ok bool
+		b, ok = c.ReadSidecar(rel)
+		if !ok {
+			return Sidecar{}, nil
+		}
 	}
 	var s Sidecar
 	dec := yaml.NewDecoder(bytes.NewReader(b))
@@ -363,6 +407,54 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 		return Sidecar{}, fmt.Errorf("parse sidecar %s: %w", rel, err)
 	}
 	return s, nil
+}
+
+// ReadSidecar returns selected-universe sidecar bytes by config-relative path.
+func (c *Config) ReadSidecar(rel string) ([]byte, bool) {
+	if c.read == nil {
+		return nil, false
+	}
+	return c.read.ReadFile(filepath.ToSlash(rel))
+}
+
+// ReadPart returns selected-universe convention-part bytes.
+func (c *Config) ReadPart(kind, artifact, section string) ([]byte, bool, error) {
+	if c.read == nil {
+		return nil, false, nil
+	}
+	var rel string
+	if IsSingletonKind(kind) {
+		rel = filepath.Join("parts", kind, section+".md")
+	} else {
+		rel = filepath.Join(kind, "parts", artifact, section+".md")
+	}
+	if c.filesystem {
+		b, err := os.ReadFile(filepath.Join(c.root, rel))
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, false, nil
+		}
+		if err != nil {
+			return nil, false, fmt.Errorf("read part %s: %w", rel, err)
+		}
+		return slices.Clone(b), true, nil
+	}
+	b, ok := c.read.ReadFile(filepath.ToSlash(rel))
+	return b, ok, nil
+}
+
+// ReadPartPath reads a consumed absolute part path through the selected reader.
+func (c *Config) ReadPartPath(full string) ([]byte, error) {
+	rel, err := filepath.Rel(c.root, full)
+	if err != nil { // coverage-ignore: selected config root and consumed part paths are absolute paths on the same volume
+		return nil, err
+	}
+	if c.filesystem {
+		return os.ReadFile(full)
+	}
+	if b, ok := c.read.ReadFile(filepath.ToSlash(rel)); ok {
+		return b, nil
+	}
+	return nil, os.ErrNotExist
 }
 
 // HasSidecar reports whether a declaring sidecar file exists for an artifact -
@@ -375,14 +467,8 @@ func (c *Config) HasSidecar(kind, name string) (bool, error) {
 	} else {
 		rel = filepath.Join(kind, name+".yaml")
 	}
-	_, err := os.Stat(filepath.Join(c.root, rel))
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	return false, fmt.Errorf("stat sidecar %s: %w", rel, err) // coverage-ignore: Stat fails here only on a permission fault a test cannot trigger
+	_, ok := c.ReadSidecar(filepath.ToSlash(rel))
+	return ok, nil
 }
 
 // IsSingletonKind reports whether kind is an always-on singleton whose sidecar lives at

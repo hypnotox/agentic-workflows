@@ -28,7 +28,13 @@ const (
 // scan/validate core with the filesystem LoadCorpus, so both loaders enforce
 // identical rules over identically shaped bytes.
 func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
-	files := tree.List()
+	allFiles := tree.List()
+	files := make([]snapshot.File, 0, len(allFiles))
+	for _, f := range allFiles {
+		if f.Scannable() {
+			files = append(files, f)
+		}
+	}
 	metadata := map[string]metaEntry{}
 	parts := map[string]partEntry{}
 	for _, f := range files {
@@ -38,7 +44,7 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 			if err != nil {
 				return Corpus{}, err
 			}
-			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil { // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta's duplicate branch is proven by TestRecordMetaRejectsDuplicateID
+			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil { // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta duplicate is unit-tested directly
 				return Corpus{}, err
 			}
 		case strings.HasPrefix(f.Path, treePartsPrefix) && strings.HasSuffix(f.Path, treePartSuffix):
@@ -74,7 +80,7 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 // domain without a sidecar owns no paths rather than failing.
 func domainPathsFromTree(tree *snapshot.Tree, domain string) ([]string, error) {
 	f, ok := tree.Lookup(config.DirName + "/domains/" + domain + ".yaml")
-	if !ok {
+	if !ok || !f.Scannable() {
 		return nil, nil
 	}
 	var sc config.Sidecar

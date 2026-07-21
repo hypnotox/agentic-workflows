@@ -9,11 +9,272 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
+
+// ProjectTreeReader is the read-only input authority for output declarations.
+type ProjectTreeReader interface {
+	ReadFile(path string) ([]byte, bool)
+	Paths(prefix string) []string
+}
+
+type OutputInput struct {
+	Path string
+	Role ArtifactRole
+}
+type OutputDeclaration struct {
+	Path        string
+	TemplateID  string
+	Declarers   []string
+	Inputs      []OutputInput
+	Reservation bool
+}
+
+type snapshotTreeReader struct{ tree *snapshot.Tree }
+
+func (r snapshotTreeReader) ReadFile(path string) ([]byte, bool) {
+	f, ok := r.tree.Lookup(filepath.ToSlash(path))
+	if !ok || !f.Scannable() {
+		return nil, false
+	}
+	return slices.Clone(f.Bytes), true
+}
+func (r snapshotTreeReader) Paths(prefix string) []string {
+	out := []string{}
+	prefix = filepath.ToSlash(prefix)
+	for _, f := range r.tree.List() {
+		if f.Scannable() && strings.HasPrefix(f.Path, prefix) {
+			out = append(out, f.Path)
+		}
+	}
+	return out
+}
+
+type filesystemProjectReader struct{ root string }
+
+func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool) {
+	b, err := os.ReadFile(filepath.Join(r.root, filepath.FromSlash(path)))
+	if err != nil {
+		return nil, false
+	}
+	return slices.Clone(b), true
+}
+func (r filesystemProjectReader) Paths(prefix string) []string {
+	out := []string{}
+	_ = filepath.WalkDir(filepath.Join(r.root, filepath.FromSlash(prefix)), func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fs.SkipAll
+		}
+		if !d.IsDir() {
+			if rel, e := filepath.Rel(r.root, p); e == nil {
+				out = append(out, filepath.ToSlash(rel))
+			}
+		}
+		return nil
+	})
+	slices.Sort(out)
+	return out
+}
+
+// BuildOutputDeclarations enumerates deterministic producer declarations without
+// rendering or materializing the selected tree.
+func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader) ([]OutputDeclaration, error) {
+	decls := []OutputDeclaration{}
+	add := func(path, tid, who string, inputs []OutputInput, reservation bool) {
+		if path == "" {
+			return
+		}
+		for i := range decls {
+			if decls[i].Path == path && decls[i].TemplateID == tid && decls[i].Reservation == reservation {
+				decls[i].Declarers = append(decls[i].Declarers, who)
+				decls[i].Inputs = append(decls[i].Inputs, inputs...)
+				return
+			}
+		}
+		decls = append(decls, OutputDeclaration{Path: filepath.ToSlash(path), TemplateID: tid, Declarers: []string{who}, Inputs: inputs, Reservation: reservation})
+	}
+	configInput := []OutputInput{{Path: ".awf/config.yaml", Role: ArtifactConfig}}
+	inputs := func(tid string, authored ...OutputInput) []OutputInput {
+		out := slices.Clone(configInput)
+		if tid != "" {
+			out = append(out, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
+		}
+		for _, in := range authored {
+			if _, ok := read.ReadFile(in.Path); ok {
+				out = append(out, in)
+			}
+		}
+		return out
+	}
+	partInputs := func(kind, name string, sections []string) []OutputInput {
+		out := []OutputInput{}
+		for _, section := range sections {
+			var p string
+			if config.IsSingletonKind(kind) {
+				p = ".awf/parts/" + kind + "/" + section + ".md"
+			} else {
+				p = ".awf/" + kind + "/parts/" + name + "/" + section + ".md"
+			}
+			if _, ok := read.ReadFile(p); ok {
+				out = append(out, OutputInput{Path: p, Role: ArtifactConventionPart})
+			}
+		}
+		return out
+	}
+	agentsDoc, err := cfg.Sidecar("agents-doc", "")
+	if err != nil {
+		return nil, err
+	}
+	for _, t := range targets {
+		for _, name := range cfg.Skills {
+			sc, err := cfg.Sidecar("skills", name)
+			if err != nil {
+				return nil, err
+			}
+			tid := "skills/" + name + "/SKILL.md.tmpl"
+			sections := []string{"content"}
+			if spec, ok := cat.Skills[name]; ok {
+				sections = spec.Sections
+				if spec.Base {
+					tid = "skills/_base/SKILL.md.tmpl"
+				}
+			}
+			input := inputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections)...)...)
+			declarer := t.Name
+			if sc.Local {
+				declarer = "skills:" + name
+			}
+			add(t.SkillPath(cfg.Prefix, name), tid, declarer, input, sc.Local)
+		}
+		for _, name := range cfg.Agents {
+			sc, err := cfg.Sidecar("agents", name)
+			if err != nil {
+				return nil, err
+			}
+			tid := "agents/" + name + ".md.tmpl"
+			sections := []string{"content"}
+			if spec, ok := cat.Agents[name]; ok {
+				sections = spec.Sections
+				if spec.Base {
+					tid = "agents/_base.md.tmpl"
+				}
+			}
+			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections)...)...)
+			declarer := t.Name
+			if sc.Local {
+				declarer = "agents:" + name
+			}
+			add(t.AgentPath(name), tid, declarer, input, sc.Local)
+		}
+		if !agentsDoc.Local {
+			add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate), false)
+		}
+		for _, o := range t.Outputs {
+			add(o.Path, o.TemplateID, t.Name, inputs(o.TemplateID), false)
+		}
+	}
+	for name, e := range cat.Docs {
+		if !e.Mandatory && !slices.Contains(cfg.Docs, name) {
+			continue
+		}
+		sc, err := cfg.Sidecar(func() string {
+			if e.Mandatory {
+				return name
+			}
+			return "docs"
+		}(), name)
+		if err != nil {
+			return nil, err
+		}
+		if _, standard := catalog.Standard.Docs[name]; standard && sc.Local {
+			continue
+		}
+		out := e.Path
+		if !e.Mandatory && out == "" {
+			out = name + ".md"
+		}
+		if e.AgentsDoc {
+			out = "AGENTS.md"
+		} else if out != "" {
+			out = strings.TrimRight(cfg.DocsDir, "/") + "/" + out
+		}
+		sidecarPath := ".awf/" + name + ".yaml"
+		if !e.Mandatory {
+			sidecarPath = ".awf/docs/" + name + ".yaml"
+		}
+		authored := []OutputInput{{Path: sidecarPath, Role: ArtifactAuthoredData}}
+		authored = append(authored, partInputs(func() string {
+			if e.Mandatory {
+				return name
+			}
+			return "docs"
+		}(), name, e.Sections)...)
+		declarer := e.TID
+		if e.Generated {
+			declarer = "generated-config-reference"
+		}
+		add(out, e.TID, declarer, inputs(e.TID, authored...), false)
+	}
+	for _, d := range cfg.Domains {
+		add(strings.TrimRight(cfg.DocsDir, "/")+"/domains/"+d+".md", "domains/domain.md.tmpl", "generated-domain", inputs("domains/domain.md.tmpl", OutputInput{Path: ".awf/domains/" + d + ".yaml", Role: ArtifactAuthoredData}, OutputInput{Path: ".awf/domains/parts/" + d + "/current-state.md", Role: ArtifactConventionPart}), false)
+	}
+	for _, p := range read.Paths(".awf/topics/metadata/") {
+		if !strings.HasSuffix(p, ".yaml") {
+			continue
+		}
+		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
+		add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+id+".md", "topics/topic.md.tmpl", "topic:"+id, inputs("topics/topic.md.tmpl", OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}), false)
+	}
+	for _, d := range cfg.Domains {
+		topicInputs := []OutputInput{}
+		for _, p := range read.Paths(".awf/topics/metadata/" + d + "/") {
+			if strings.HasSuffix(p, ".yaml") {
+				topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata})
+			}
+		}
+		if len(topicInputs) > 0 {
+			add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+d+"/index.md", "topics/index.md.tmpl", "topic-index:"+d, inputs("topics/index.md.tmpl", topicInputs...), false)
+		}
+	}
+	decisionInputs := []OutputInput{}
+	for _, p := range read.Paths(strings.TrimRight(cfg.DocsDir, "/") + "/decisions/") {
+		if strings.HasSuffix(p, ".md") {
+			decisionInputs = append(decisionInputs, OutputInput{Path: p, Role: ArtifactDecisionRecord})
+		}
+	}
+	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "decisions/index.md.tmpl", "generated-index", inputs("decisions/index.md.tmpl", decisionInputs...), false)
+	if cfg.Runner != nil && cfg.Runner.Enabled {
+		add("x", "runner/x.tmpl", "runner/x.tmpl", inputs("runner/x.tmpl", OutputInput{Path: "x", Role: ArtifactManagedOutput}), false)
+	}
+	if cfg.Bootstrap != nil && cfg.Bootstrap.Enabled {
+		add(".awf/bootstrap.sh", "bootstrap/awf-bootstrap.sh.tmpl", "bootstrap/awf-bootstrap.sh.tmpl", inputs("bootstrap/awf-bootstrap.sh.tmpl"), false)
+		add(".awf/upgrade.sh", "bootstrap/awf-upgrade.sh.tmpl", "bootstrap/awf-upgrade.sh.tmpl", inputs("bootstrap/awf-upgrade.sh.tmpl"), false)
+	}
+	if cfg.Hooks != nil && cfg.Hooks.Enabled {
+		for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
+			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
+		}
+	}
+	add(".awf/memory/.gitignore", "memory/gitignore.tmpl", "memory/gitignore.tmpl", inputs("memory/gitignore.tmpl"), false)
+	for i := range decls {
+		slices.Sort(decls[i].Declarers)
+		decls[i].Declarers = slices.Compact(decls[i].Declarers)
+		slices.SortFunc(decls[i].Inputs, func(a, b OutputInput) int {
+			if a.Path != b.Path {
+				return strings.Compare(a.Path, b.Path)
+			}
+			return strings.Compare(string(a.Role), string(b.Role))
+		})
+		decls[i].Inputs = slices.Compact(decls[i].Inputs)
+	}
+	slices.SortFunc(decls, func(a, b OutputDeclaration) int { return strings.Compare(a.Path, b.Path) })
+	return decls, nil
+}
 
 // OutputPolicy declares lifecycle behavior for a planned path. It is data on the
 // node, not an inference made by sync or check from a template name or suffix.
@@ -89,7 +350,7 @@ type targetOutputDeclaration struct {
 // Thus a collision is reported before any producer renders its output.
 func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration, error) {
 	eff, err := p.effectiveSkills()
-	if err != nil {
+	if err != nil { // coverage-ignore: OutputPlan's declaration-first pass just parsed every enabled skill sidecar
 		return nil, err
 	}
 	p.effSkills = eff
@@ -141,6 +402,10 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 // deliberately excluded from its own input.
 func (p *Project) OutputPlan() (*OutputPlan, error) {
 	p.beginInvocation()
+	outputDeclarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root})
+	if err != nil {
+		return nil, err
+	}
 	declarations, err := p.targetOutputDeclarations()
 	if err != nil {
 		return nil, err
@@ -273,7 +538,38 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 			plan.Nodes[i].file.ConfigHash = manifest.Hash([]byte(plan.Nodes[i].Recipe.ConfigHash + "\\x00" + strings.Join(plan.Nodes[i].DeclarerProjections, "\\x00")))
 		}
 	}
+	if err := validateDeclarationPlanParity(plan.Nodes, outputDeclarations); err != nil { // coverage-ignore: parity unit tests own mismatch diagnostics; every producer test requires equality
+		return nil, err
+	}
 	return plan, nil
+}
+
+func validateDeclarationPlanParity(nodes []OutputNode, declarations []OutputDeclaration) error {
+	if len(nodes) != len(declarations) {
+		np, dp := []string{}, []string{}
+		for _, n := range nodes {
+			np = append(np, n.Path)
+		}
+		for _, d := range declarations {
+			dp = append(dp, d.Path)
+		}
+		return fmt.Errorf("output declaration parity: declarations-only %v, plan-only %v", difference(dp, np), difference(np, dp))
+	}
+	for i := range nodes {
+		if nodes[i].Path != declarations[i].Path || nodes[i].Reservation != declarations[i].Reservation || !slices.Equal(nodes[i].Declarers, declarations[i].Declarers) {
+			return fmt.Errorf("output declaration parity at %q: plan %v declaration %v", nodes[i].Path, nodes[i].Declarers, declarations[i].Declarers)
+		}
+	}
+	return nil
+}
+func difference(a, b []string) []string {
+	out := []string{}
+	for _, x := range a {
+		if !slices.Contains(b, x) {
+			out = append(out, x)
+		}
+	}
+	return out
 }
 
 // RenderAll renders only plan write nodes in deterministic path order.

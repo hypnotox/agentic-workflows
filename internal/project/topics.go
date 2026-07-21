@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 	"gopkg.in/yaml.v3"
@@ -34,7 +35,7 @@ func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.Qu
 		}
 		return topic.QueryResult{}, fmt.Errorf("current-state validation failed: %s", strings.Join(messages, "; "))
 	}
-	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts)
+	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts, safelyMatchablePaths(ws.Tree))
 }
 
 func (p *Project) Topics() (topic.Corpus, error) {
@@ -67,6 +68,14 @@ func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]s
 	if err != nil { // coverage-ignore: the topic index template is compile-time embedded
 		return nil, nil, err
 	}
+	var currentPaths []string
+	if workingTree, snapErr := snapshot.WorkingTree(p.Root); snapErr == nil {
+		currentPaths = safelyMatchablePaths(workingTree)
+	} else {
+		// Init and isolated renderer tests can render before a Git repository
+		// exists; use the same canonical filesystem paths in that pre-adoption case.
+		currentPaths = filesystemProjectReader{root: p.Root}.Paths("")
+	}
 	base := strings.TrimRight(p.Cfg.DocsDir, "/") + "/topics"
 	for _, discovered := range corpus.All() {
 		t, _ := corpus.ByTopicID(discovered.ID.String())
@@ -75,7 +84,7 @@ func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]s
 			claim, _ := corpus.ByClaimID(parsed.ID)
 			referenceProjection = append(referenceProjection, claim.ID+"<"+strings.Join(corpus.Incoming(claim.ID), ",")+">"+strings.Join(corpus.Outgoing(claim.ID), ","))
 		}
-		model := topic.BuildTopicModel(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers)
+		model := topic.BuildTopicModel(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers, currentPaths)
 		content, err := topic.RenderTopic(model)
 		if err != nil { // coverage-ignore: ParsePart already validated authoring comments and the typed model is always executable
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)

@@ -123,3 +123,4 @@ Incremental Applied batches allow the command model, artifact attribution, query
 - 2026-07-21: Implementing; content-sha256: 54790f4b71b1942a86ac60d3f6768cbe29a90c87d072376d470c6cad465c83f2
 - 2026-07-21: Applied; state-sequence: 8; operations: update `tooling/cli:cli-command-spec-single-source`, add `tooling/cli:managed-runner-command-parity`, update `rendering/templates:runner-awf-verbs-owned`
 - 2026-07-21: Applied; state-sequence: 9; operations: add `tooling/cli:topic-claim-budget-advisory`, update `config/configuration:config-serialization-owned`, add `config/configuration:topic-claim-budget-configured`
+- 2026-07-21: Applied; state-sequence: 10; operations: update `tooling/cli:context-read-only`, add `tooling/cli:context-path-attribution`, add `tooling/cli:context-path-classification`, add `tooling/cli:context-known-artifact-navigation`, add `tooling/cli:context-applicability-navigation`, add `rendering/project-output-plan:managed-output-attribution`

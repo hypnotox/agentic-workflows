@@ -57,6 +57,7 @@ func TestIndexTree(t *testing.T) {
 		body string
 	}{
 		{"base.txt", snapshot.Regular, "base"},
+		{"link", snapshot.Symlink, "ordinary.txt"},
 		{"ordinary.txt", snapshot.Regular, "ordinary\n"},
 		{"sub/exec.sh", snapshot.Executable, "exec\n"},
 	}

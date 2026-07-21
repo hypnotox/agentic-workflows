@@ -21,8 +21,8 @@ type NavigationModel struct {
 	Topics    []TopicListItem
 }
 
-func BuildTopicModel(t Topic, domainPaths []string, markers MarkerIndex) TopicRenderModel {
-	return TopicRenderModel{Title: t.Metadata.Title, Summary: t.Metadata.Summary, Applicability: coverageSummary(CoverageForTopic(t, domainPaths, markers)), Part: t.Part}
+func BuildTopicModel(t Topic, domainPaths []string, markers MarkerIndex, currentPaths []string) TopicRenderModel {
+	return TopicRenderModel{Title: t.Metadata.Title, Summary: t.Metadata.Summary, Applicability: applicabilitySummary(ApplicabilityForTopic(t, domainPaths, markers, currentPaths)), Part: t.Part}
 }
 func BuildIndexModel(domain string, topics []Topic) IndexRenderModel {
 	items := topicItems(topics, "")
@@ -47,18 +47,16 @@ func topicItems(topics []Topic, prefix string) []TopicListItem {
 	})
 	return items
 }
-func coverageSummary(c TopicCoverage) string {
-	if c.DeclaredGlobal {
-		return "Global applicability (does not satisfy scoped topic coverage)."
+func applicabilitySummary(a TopicApplicability) string {
+	markers := make([]string, 0, len(a.MarkerSites))
+	for _, s := range a.MarkerSites {
+		markers = append(markers, fmt.Sprintf("%s:%d [%s] %s", s.Path, s.Line, s.Kind, s.ClaimID))
 	}
-	if len(c.EffectiveSelectors) == 0 {
-		return "No effective path scope inside the owning domain."
+	evidence := fmt.Sprintf("Current matched paths: `%s`. Marker sites: `%s`.", strings.Join(a.MatchedPaths, "`, `"), strings.Join(markers, "`, `"))
+	if a.DeclaredGlobal {
+		return fmt.Sprintf("Global topic within owning domain selectors `%s`. %s", strings.Join(a.DomainPaths, "`, `"), evidence)
 	}
-	parts := make([]string, len(c.EffectiveSelectors))
-	for i, s := range c.EffectiveSelectors {
-		parts[i] = "`" + s.TopicPath + "` within domain `" + s.DomainPath + "`"
-	}
-	return strings.Join(parts, ", ") + "."
+	return fmt.Sprintf("Owning domain selectors: `%s`. Topic selectors: `%s`. Both domain and topic selectors must match. %s", strings.Join(a.DomainPaths, "`, `"), strings.Join(a.TopicPaths, "`, `"), evidence)
 }
 
 func RenderTopic(model TopicRenderModel) (string, error) {

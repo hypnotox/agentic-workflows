@@ -7,29 +7,37 @@ import (
 	"strings"
 )
 
-type EffectiveSelector struct {
-	DomainPath string `json:"domainPath"`
-	TopicPath  string `json:"topicPath"`
-}
-type TopicCoverage struct {
-	DeclaredGlobal          bool
-	DeclaredPaths           []string
-	EffectiveSelectors      []EffectiveSelector
-	HasClaims               bool
-	SatisfiesScopedCoverage bool
-	MarkerSites             []MarkerSite
+// TopicApplicability is honest, concrete applicability evidence. DomainPaths
+// and TopicPaths are separate selectors and both must match for a scoped topic;
+// MatchedPaths are witnesses from the caller's selected universe, not a
+// symbolic glob-intersection proof.
+type TopicApplicability struct {
+	DeclaredGlobal bool         `json:"declaredGlobal"`
+	DomainPaths    []string     `json:"domainPaths"`
+	TopicPaths     []string     `json:"topicPaths"`
+	MatchedPaths   []string     `json:"matchedPaths"`
+	MarkerSites    []MarkerSite `json:"markerSites"`
 }
 
-func CoverageForTopic(t Topic, domainPaths []string, markers MarkerIndex) TopicCoverage {
-	out := TopicCoverage{DeclaredGlobal: t.Metadata.Applies == "global", DeclaredPaths: slices.Clone(t.Metadata.Paths), HasClaims: len(t.Claims) > 0}
-	if !out.DeclaredGlobal {
-		for _, d := range domainPaths {
-			for _, p := range t.Metadata.Paths {
-				out.EffectiveSelectors = append(out.EffectiveSelectors, EffectiveSelector{DomainPath: d, TopicPath: p})
-			}
-		}
-		out.SatisfiesScopedCoverage = out.HasClaims && len(out.EffectiveSelectors) > 0
+func ApplicabilityForTopic(t Topic, domainPaths []string, markers MarkerIndex, currentPaths []string) TopicApplicability {
+	out := TopicApplicability{
+		DeclaredGlobal: t.Metadata.Applies == "global",
+		DomainPaths:    nonNil(slices.Clone(domainPaths)), TopicPaths: nonNil(slices.Clone(t.Metadata.Paths)),
+		MatchedPaths: []string{}, MarkerSites: []MarkerSite{},
 	}
+	slices.Sort(out.DomainPaths)
+	slices.Sort(out.TopicPaths)
+	for _, p := range currentPaths {
+		if out.DeclaredGlobal {
+			if matchesAny(out.DomainPaths, p) {
+				out.MatchedPaths = append(out.MatchedPaths, p)
+			}
+		} else if matchesAny(out.DomainPaths, p) && matchesAny(out.TopicPaths, p) {
+			out.MatchedPaths = append(out.MatchedPaths, p)
+		}
+	}
+	slices.Sort(out.MatchedPaths)
+	out.MatchedPaths = slices.Compact(out.MatchedPaths)
 	claimIDs := map[string]bool{}
 	for _, cl := range t.Claims {
 		claimIDs[cl.ID] = true

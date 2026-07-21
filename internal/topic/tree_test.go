@@ -46,6 +46,29 @@ func oneImplementedADR() adr.Corpus {
 // TestLoadCorpusFromTreeValidWithoutCurrentState covers the snapshot loader's
 // nil-currentState marker path, a configured domain whose sidecar is absent
 // (owning no paths), and the happy assembly path.
+func TestLoadCorpusFromTreeSkipsSymlinkInputs(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/topics/metadata/alpha/link.yaml", Mode: snapshot.Symlink, Bytes: []byte("bad")},
+		{Path: ".awf/topics/parts/alpha/link/current-state.md", Mode: snapshot.Symlink, Bytes: []byte("bad")},
+		{Path: ".awf/domains/alpha.yaml", Mode: snapshot.Symlink, Bytes: []byte("bad")},
+		{Path: "marker.go", Mode: snapshot.Symlink, Bytes: []byte("// state: alpha/link:x")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Parse(".awf", []byte("prefix: x\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**']\n      marker: //\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := LoadCorpusFromTree(tree, cfg, adr.Corpus{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(corpus.All()) != 0 || len(corpus.DomainPaths["alpha"]) != 0 || len(corpus.Markers.All()) != 0 {
+		t.Fatalf("corpus=%#v", corpus)
+	}
+}
+
 func TestLoadCorpusFromTreeValidWithoutCurrentState(t *testing.T) {
 	tree := treeFrom(t, map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",

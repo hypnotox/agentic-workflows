@@ -23,24 +23,24 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 	if err != nil || !strings.Contains(empty, "No current-state topics") {
 		t.Fatalf("%s %v", empty, err)
 	}
-	model := BuildTopicModel(topics[0], []string{"x/pkg/**"}, MarkerIndex{})
+	model := BuildTopicModel(topics[0], []string{"x/pkg/**"}, MarkerIndex{}, []string{"x/pkg/a.go"})
 	out, err = RenderTopic(model)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out, "awf:comment") || !strings.Contains(out, "Authored {{ .raw }}.") || !strings.Contains(out, "within domain") {
+	if strings.Contains(out, "awf:comment") || !strings.Contains(out, "Authored {{ .raw }}.") || !strings.Contains(out, "Both domain and topic selectors must match") {
 		t.Fatalf("%s", out)
 	}
 	if strings.HasSuffix(out, "\n\n") || !strings.HasSuffix(out, "\n") {
 		t.Fatalf("topic output must end in exactly one newline: %q", out)
 	}
-	global := BuildTopicModel(topics[1], nil, MarkerIndex{})
+	global := BuildTopicModel(topics[1], nil, MarkerIndex{}, nil)
 	if !strings.Contains(global.Applicability, "Global") {
 		t.Fatal(global.Applicability)
 	}
 	shell := topics[0]
-	model = BuildTopicModel(shell, nil, MarkerIndex{})
-	if !strings.Contains(model.Applicability, "No effective") {
+	model = BuildTopicModel(shell, nil, MarkerIndex{}, nil)
+	if !strings.Contains(model.Applicability, "Both domain and topic selectors must match") {
 		t.Fatal(model.Applicability)
 	}
 }

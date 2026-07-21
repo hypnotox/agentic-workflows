@@ -3,7 +3,7 @@
 
 How implementation plan documents are parsed and validated.
 
-**Applicability:** `internal/plan/**` within domain `internal/adr/**`, `internal/plan/**` within domain `internal/plan/**`, `internal/plan/**` within domain `internal/frontmatter/**`.
+**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`. Topic selectors: `internal/plan/**`. Both domain and topic selectors must match. Current matched paths: `internal/plan/export_test.go`, `internal/plan/plan.go`, `internal/plan/plan_test.go`. Marker sites: `internal/plan/plan.go:152 [touches-state] adr-system/plan-artifacts:plan-new-unnumbered`, `internal/plan/plan_test.go:65 [invariant] adr-system/plan-artifacts:plan-commit-subject-marker-scoped`, `internal/plan/plan_test.go:66 [invariant] adr-system/plan-artifacts:plan-commit-subject-optout-honored`, `internal/plan/plan_test.go:170 [invariant] adr-system/plan-artifacts:plan-new-unnumbered`, `internal/project/check_test.go:302 [invariant] adr-system/plan-artifacts:plan-frontmatter-validated`, `internal/project/check_test.go:303 [invariant] adr-system/plan-artifacts:plan-adr-link-resolved`, `internal/project/check_test.go:361 [invariant] adr-system/plan-artifacts:plan-commit-subject-length-checked`, `internal/project/check_test.go:362 [invariant] adr-system/plan-artifacts:plan-commit-subject-shape-checked`, `internal/project/check_test.go:406 [invariant] adr-system/plan-artifacts:plan-commit-subject-scope-advisory`, `internal/project/golden_test.go:52 [invariant] adr-system/plan-artifacts:plans-template-taxonomy`.
 
 The plan package parses and validates implementation plan documents. The claims below capture the current plan-artifact contracts.
 

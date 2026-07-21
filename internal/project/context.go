@@ -17,20 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// ContextResult is the read-only current-state context awf holds for a set of
-// repo-relative paths (ADR-0134): their owning domains (each with the rendered
-// current-state pointer), the applicable topics with their current claims, a
-// separate section of Accepted-ADR pending changes targeting those topics, and
-// any queried path matching no configured domain. Authority is the topic claim
-// set alone: no ADR, tag, relation, plan, or pitfall is expanded here.
-type ContextResult struct {
-	Paths   []string        `json:"paths"`
-	Domains []DomainRef     `json:"domains"`
-	Topics  []TopicContext  `json:"topics"`
-	Pending []PendingChange `json:"pending"`
-	Unowned []string        `json:"unowned"`
-}
-
 // DomainRef is an owning domain and its rendered current-state doc path, derived
 // by convention (never a sidecar field - ADR-0086).
 type DomainRef struct {
@@ -77,26 +63,67 @@ type PendingChange struct {
 // so the selection never mixes a working and an index universe, and it writes
 // nothing.
 func (p *Project) ContextFor(paths []string) (ContextResult, error) {
+	return p.contextFor(paths, false)
+}
+
+// ContextForGitSelection preserves Git-selected request status while resolving
+// authority against the same single working universe.
+func (p *Project) ContextForGitSelection(paths []string) (ContextResult, error) {
+	return p.contextFor(paths, true)
+}
+
+func (p *Project) contextFor(paths []string, gitSelected bool) (ContextResult, error) {
 	ws, err := p.workingCurrentState()
 	if err != nil {
 		return ContextResult{}, err
 	}
-	expanded := expandContextPaths(paths, eligiblePaths(ws.Tree, ws.Lock, p.Cfg.ContextIgnore), ws.Tree)
-	return p.assembleContext(ws.Loaded, expanded), nil
+	universe := &Project{Root: p.Root, Cfg: ws.Cfg}
+	universe.Targets, err = resolveTargets(ws.Cfg.Targets)
+	if err != nil {
+		return ContextResult{}, err
+	}
+	universe.Cat, err = universe.effectiveCatalog()
+	if err != nil {
+		return ContextResult{}, err
+	}
+	decls, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree})
+	if err != nil {
+		return ContextResult{}, err
+	}
+	return universe.assembleContextUniverse(ws.Loaded, ws.Tree, ws.Lock, ws.Cfg, decls, paths, gitSelected), nil
 }
 
-// StagedContextRoot assembles context without opening working configuration.
-// Config, lock, topics, markers, path eligibility, and project presence all
-// come from one immutable index snapshot.
+// StagedContextRoot assembles every result from one immutable index universe.
 func StagedContextRoot(root string, paths []string) (ContextResult, error) {
+	return stagedContextRoot(root, paths, false)
+}
+
+// StagedContextRootGitSelection preserves Git-selected request status in the
+// immutable index universe.
+func StagedContextRootGitSelection(root string, paths []string) (ContextResult, error) {
+	return stagedContextRoot(root, paths, true)
+}
+
+func stagedContextRoot(root string, paths []string, gitSelected bool) (ContextResult, error) {
 	p := &Project{Root: root}
 	state, err := p.indexCurrentState()
 	if err != nil {
 		return ContextResult{}, err
 	}
 	p.Cfg = state.Cfg
-	expanded := expandContextPaths(paths, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore), state.Tree)
-	return p.assembleContext(state.Loaded, expanded), nil
+	p.Targets, err = resolveTargets(state.Cfg.Targets)
+	if err != nil {
+		return ContextResult{}, err
+	}
+	p.Cat, err = p.effectiveCatalog()
+	if err != nil {
+		return ContextResult{}, err
+	}
+	decls, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, snapshotTreeReader{tree: state.Tree})
+	if err != nil { // coverage-ignore: effectiveCatalog just parsed the same selected sidecars and declaration enumeration has no other error source
+		return ContextResult{}, err
+	}
+	return p.assembleContextUniverse(state.Loaded, state.Tree, state.Lock, state.Cfg, decls, paths, gitSelected), nil
 }
 
 type indexState struct {
@@ -126,112 +153,90 @@ func (p *Project) indexCurrentState() (indexState, error) {
 	return indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
 }
 
-func expandContextPaths(paths, eligible []string, tree *snapshot.Tree) []string {
-	clean := NormalizeContextPaths(paths)
+// assembleContextUniverse classifies requests and resolves authority from one
+// selected snapshot independently of coverage eligibility.
+func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snapshot.Tree, lock *manifest.Lock, cfg *config.Config, declarations []OutputDeclaration, queries []string, gitSelected bool) ContextResult {
+	outputs := map[string]bool{}
+	for _, d := range declarations {
+		if !d.Reservation {
+			outputs[d.Path] = true
+		}
+	}
 	files := tree.List()
-	var expanded []string
-	for _, query := range clean {
-		if _, exists := tree.Lookup(query); exists {
-			expanded = append(expanded, query)
-			continue
+	nested := []string{}
+	for _, f := range files {
+		if f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
+			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
-		prefix := query + "/"
-		if query == "." {
-			prefix = ""
+	}
+	slices.Sort(nested)
+	set := contextPathSet{tree: tree, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore), nested: nested, outputs: outputs, ignores: cfg.ContextIgnore, domainPaths: loaded.Topics.DomainPaths}
+	requests, attribution := buildContextRequests(queries, gitSelected, set)
+	res := ContextResult{Projection: ContextConcise, Requests: requests, Paths: []ContextPath{}}
+	lay := p.layout()
+	currentPaths := safelyMatchablePaths(tree)
+	for _, path := range slices.Sorted(maps.Keys(attribution)) {
+		class, nestedRoot, targetInside := classifyContextPath(path, set)
+		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: artifactRecords(path, declarations, lay.ADRDir)}
+		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
+		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
+		matchedTopics := map[string]bool{}
+		if safe {
+			for _, d := range slices.Sorted(maps.Keys(loaded.Topics.DomainPaths)) {
+				if pathMatchesAny(loaded.Topics.DomainPaths[d], path) {
+					cp.Domains = append(cp.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
+				}
+			}
+			for _, t := range topic.TopicsForPath(loaded.Topics, path) {
+				id := t.ID.String()
+				matchedTopics[id] = true
+				cp.Topics = append(cp.Topics, PathTopicContext{ID: id, Title: t.Metadata.Title, Summary: t.Metadata.Summary, Applicability: topic.ApplicabilityForTopic(t, loaded.Topics.DomainPaths[t.ID.Domain], loaded.Topics.Markers, currentPaths), DirectClaims: []ClaimDetail{}, TopicCommand: "awf topic " + id})
+			}
+			cp.Pending = pendingChanges(loaded.ADRs, matchedTopics)
 		}
-		isDir := query == "."
-		if !isDir {
-			for _, file := range files {
-				if strings.HasPrefix(file.Path, prefix) {
-					isDir = true
+		res.Paths = append(res.Paths, cp)
+		for _, d := range cp.Domains {
+			if !slices.Contains(res.Domains, d) {
+				res.Domains = append(res.Domains, d)
+			}
+		}
+		if class == PathEligibleUnowned || class == PathNotFound {
+			res.Unowned = append(res.Unowned, path)
+		}
+		for _, pt := range cp.Topics {
+			idx := -1
+			for i := range res.Topics {
+				if res.Topics[i].ID == pt.ID {
+					idx = i
+					break
+				}
+			}
+			if idx < 0 {
+				res.Topics = append(res.Topics, TopicContext{ID: pt.ID, Title: pt.Title, Summary: pt.Summary})
+				idx = len(res.Topics) - 1
+			}
+			for _, t := range topic.TopicsForPath(loaded.Topics, path) {
+				if t.ID.String() == pt.ID {
+					res.Topics[idx].Global = t.Metadata.Applies == "global"
+					selected := applicableClaims(t, loaded.Topics.Markers, path)
+					for _, cl := range t.Claims {
+						if slices.Contains(selected, cl.ID) {
+							ref := ClaimRef{ID: cl.ID, Type: string(cl.Type), Prose: cl.Prose, Backing: string(cl.Backing), Verify: cl.Verify}
+							if !slices.Contains(res.Topics[idx].Claims, ref) {
+								res.Topics[idx].Claims = append(res.Topics[idx].Claims, ref)
+							}
+						}
+					}
 					break
 				}
 			}
 		}
-		if !isDir {
-			expanded = append(expanded, query)
-			continue
-		}
-		for _, path := range eligible {
-			if strings.HasPrefix(path, prefix) {
-				expanded = append(expanded, path)
+		for _, pending := range cp.Pending {
+			if !slices.Contains(res.Pending, pending) {
+				res.Pending = append(res.Pending, pending)
 			}
 		}
 	}
-	return NormalizeContextPaths(expanded)
-}
-
-// assembleContext performs the pure topic-centric selection over one loaded
-// universe: owning domains, applicable topics with state-marker-narrowed claims,
-// Accepted pending changes on matched topics, and unowned queried paths.
-func (p *Project) assembleContext(loaded currentstate.Loaded, paths []string) ContextResult {
-	clean := NormalizeContextPaths(paths)
-	lay := p.layout()
-	res := ContextResult{Paths: clean}
-	corpus := loaded.Topics
-	domains := slices.Sorted(maps.Keys(corpus.DomainPaths))
-
-	// Owning domains and the unowned queried paths.
-	owners := map[string]bool{}
-	matched := map[string]bool{}
-	for _, d := range domains {
-		for _, path := range clean {
-			if pathMatchesAny(corpus.DomainPaths[d], path) {
-				owners[d] = true
-				matched[path] = true
-			}
-		}
-	}
-	for _, d := range domains {
-		if owners[d] {
-			res.Domains = append(res.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
-		}
-	}
-	for _, path := range clean {
-		if !matched[path] {
-			res.Unowned = append(res.Unowned, path)
-		}
-	}
-
-	// Applicable topics with narrowed claims, unioned across the queried files.
-	type acc struct {
-		topic  topic.Topic
-		claims map[string]bool
-	}
-	accs := map[string]*acc{}
-	for _, path := range clean {
-		for _, t := range topic.TopicsForPath(corpus, path) {
-			id := t.ID.String()
-			a := accs[id]
-			if a == nil {
-				a = &acc{topic: t, claims: map[string]bool{}}
-				accs[id] = a
-			}
-			for _, cl := range applicableClaims(t, corpus.Markers, path) {
-				a.claims[cl] = true
-			}
-		}
-	}
-	for _, id := range slices.Sorted(maps.Keys(accs)) {
-		a := accs[id]
-		tc := TopicContext{ID: id, Title: a.topic.Metadata.Title, Summary: a.topic.Metadata.Summary, Global: a.topic.Metadata.Applies == "global"}
-		for _, cl := range a.topic.Claims {
-			if a.claims[cl.ID] {
-				tc.Claims = append(tc.Claims, ClaimRef{
-					ID: cl.ID, Type: string(cl.Type), Prose: cl.Prose,
-					Backing: string(cl.Backing), Verify: cl.Verify,
-				})
-			}
-		}
-		res.Topics = append(res.Topics, tc)
-	}
-
-	// Accepted pending changes targeting a matched topic.
-	matchedTopics := map[string]bool{}
-	for id := range accs {
-		matchedTopics[id] = true
-	}
-	res.Pending = pendingChanges(loaded.ADRs, matchedTopics)
 	return res
 }
 

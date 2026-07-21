@@ -96,8 +96,33 @@ Backing: test
 
 ### `invariant: context-read-only`
 
-The `awf context` command only reads committed state: file modification times and the lock bytes are byte-identical before and after every branch of the command, so it never writes to disk or mutates config or the lock.
+The `awf context` command assembles each query from one selected working-tree or immutable index universe and writes no config, lock, output, or cache; staged config, lock, topic, marker, path, and artifact inputs never mix with dirty working bytes.
 Origin: ADR-0092
+Revised-by: ADR-0144
+Backing: test
+
+### `invariant: context-path-attribution`
+
+Context preserves normalized request queries separately from sorted effective paths, records directory expansion status, and emits each unique effective path once with every sorted request that selected it and non-null result collections.
+Origin: ADR-0144
+Backing: test
+
+### `invariant: context-path-classification`
+
+Each effective path receives exactly one precedence-ordered classification: outside repository, nested adopter, generated output, symlink, context ignored, not found, covered, or eligible unowned; symlinks remain inert and report only lexical target containment.
+Origin: ADR-0144
+Backing: test
+
+### `invariant: context-known-artifact-navigation`
+
+Known config, lock, manifest, template, convention-part, authored-data, topic-metadata, claim-part, decision-record, and managed-output artifacts receive deterministic role, source, output, and navigation attribution from loaded authorities rather than path-lookalike heuristics.
+Origin: ADR-0144
+Backing: test
+
+### `invariant: context-applicability-navigation`
+
+Topic and context applicability share one evidence model that lists owning-domain selectors and topic selectors separately, states that both must match, and reports sorted current matched paths and marker sites without claiming symbolic glob intersection.
+Origin: ADR-0144
 Backing: test
 
 ### `invariant: context-static-fallback`

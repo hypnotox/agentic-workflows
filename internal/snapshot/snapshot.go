@@ -15,8 +15,7 @@ import (
 	"strings"
 )
 
-// Mode is the file mode a Tree preserves. Only regular and executable files
-// carry scannable content, so those are the only representable modes.
+// Mode is the file mode a Tree preserves. Symlink bytes are inert targets.
 type Mode uint8
 
 const (
@@ -24,13 +23,14 @@ const (
 	Regular Mode = iota
 	// Executable is a file with the executable bit set.
 	Executable
+	// Symlink is an inert symbolic link whose bytes are its target.
+	Symlink
 )
 
 // Construction faults. NewTree returns one of these when a File would make the
 // snapshot ambiguous or unsafe to address by path.
 var (
-	// ErrUnsupportedMode reports a File whose Mode is neither Regular nor
-	// Executable.
+	// ErrUnsupportedMode reports a File whose Mode is not representable.
 	ErrUnsupportedMode = errors.New("snapshot: unsupported file mode")
 	// ErrUnsafePath reports a File whose path is empty, absolute, or escapes
 	// the tree root through traversal or a non-canonical form.
@@ -39,13 +39,16 @@ var (
 	ErrDuplicatePath = errors.New("snapshot: duplicate path")
 )
 
-// File is one regular file in a Tree: a repo-relative slash path, its Mode, and
-// a private copy of its bytes.
+// File is one file in a Tree: a repo-relative slash path, its Mode, and a
+// private copy of its bytes.
 type File struct {
 	Path  string
 	Mode  Mode
 	Bytes []byte
 }
+
+// Scannable reports whether authority parsers may inspect this file's bytes.
+func (f File) Scannable() bool { return f.Mode == Regular || f.Mode == Executable }
 
 // clone returns a copy of f whose Bytes cannot alias the receiver's.
 func (f File) clone() File {
@@ -66,7 +69,7 @@ func NewTree(files []File) (*Tree, error) {
 	out := make([]File, 0, len(files))
 	seen := make(map[string]bool, len(files))
 	for _, f := range files {
-		if f.Mode != Regular && f.Mode != Executable {
+		if f.Mode != Regular && f.Mode != Executable && f.Mode != Symlink {
 			return nil, fmt.Errorf("%w: %q has mode %d", ErrUnsupportedMode, f.Path, f.Mode)
 		}
 		if !safePath(f.Path) {

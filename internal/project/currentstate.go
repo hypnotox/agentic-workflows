@@ -3,6 +3,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"sort"
 	"strconv"
@@ -81,6 +82,7 @@ type workingState struct {
 	Loaded     currentstate.Loaded
 	Tree       *snapshot.Tree
 	Lock       *manifest.Lock
+	Cfg        *config.Config
 	Boundaries adr.FormatBoundaries
 }
 
@@ -92,16 +94,19 @@ func (p *Project) workingCurrentState() (workingState, error) {
 	if err != nil {
 		return workingState{}, err
 	}
-	lock, _, err := manifest.LoadOptional(p.lockPath())
+	lock, _, err := optionalLockFromTree(tree)
 	if err != nil {
 		return workingState{}, err
 	}
 	boundaries, gaps := attestationBoundaries(lock)
-	loaded, err := currentstate.LoadFromTree(tree, p.Cfg, boundaries, gaps)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, boundaries, gaps)
 	if err != nil {
 		return workingState{}, err
 	}
-	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Boundaries: boundaries}, nil
+	if cfg == nil { // coverage-ignore: Project.Open already required config; only a concurrent deletion after path enumeration can remove it
+		return workingState{}, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
+	}
+	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg, Boundaries: boundaries}, nil
 }
 
 // attestationBoundaries returns the format boundaries and recorded legacy gaps
@@ -133,10 +138,10 @@ func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 	}
 	report := CurrentStateReport{
 		Static:     currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
-		Advisories: topic.ClaimBudgetNotes(ws.Loaded.Topics, p.Cfg.CurrentState.EffectiveMaxClaimsPerTopic()),
+		Advisories: topic.ClaimBudgetNotes(ws.Loaded.Topics, ws.Cfg.CurrentState.EffectiveMaxClaimsPerTopic()),
 	}
-	if p.Cfg.CurrentState != nil {
-		report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, p.eligibleCoveragePaths(ws.Tree, ws.Lock), coveragePolicy(p.Cfg.CurrentState))
+	if ws.Cfg.CurrentState != nil {
+		report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore), coveragePolicy(ws.Cfg.CurrentState))
 	}
 	return report, nil
 }
@@ -197,6 +202,9 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 	if !ok {
 		return nil, fmt.Errorf("no staged %s/awf.lock", config.DirName)
 	}
+	if !file.Scannable() {
+		return nil, fmt.Errorf("staged %s/awf.lock is not a scannable file", config.DirName)
+	}
 	lock, err := manifest.Parse(file.Bytes)
 	if err != nil {
 		return nil, fmt.Errorf("parse staged lock: %w", err)
@@ -231,6 +239,9 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	file, ok := tree.Lookup(config.DirName + "/awf.lock")
 	if !ok {
 		return nil, false, nil
+	}
+	if !file.Scannable() {
+		return nil, true, fmt.Errorf("snapshot %s/awf.lock is not a scannable file", config.DirName)
 	}
 	lock, err := manifest.Parse(file.Bytes)
 	if err != nil {
@@ -287,6 +298,9 @@ func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
 	if !ok {
 		return 0, errors.New("compute ADR V2 cutoff: snapshot has no .awf/config.yaml")
 	}
+	if !file.Scannable() {
+		return 0, errors.New("compute ADR V2 cutoff: snapshot .awf/config.yaml is not scannable")
+	}
 	cfg, err := config.Parse(".", file.Bytes)
 	if err != nil {
 		return 0, fmt.Errorf("compute ADR V2 cutoff: %w", err)
@@ -294,7 +308,7 @@ func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
 	prefix := strings.Trim(cfg.DocsDir, "/") + "/decisions/"
 	max := 0
 	for _, f := range tree.List() {
-		if !strings.HasPrefix(f.Path, prefix) {
+		if !f.Scannable() || !strings.HasPrefix(f.Path, prefix) {
 			continue
 		}
 		name := strings.TrimPrefix(f.Path, prefix)
@@ -325,7 +339,10 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, boundaries adr.Forma
 	if !ok {
 		return currentstate.Loaded{}, nil, nil
 	}
-	cfg, err := config.Parse(config.RootDir(root), cfgFile.Bytes)
+	if !cfgFile.Scannable() {
+		return currentstate.Loaded{}, nil, fmt.Errorf("snapshot %s/config.yaml is not a scannable file", config.DirName)
+	}
+	cfg, err := config.ParseTree(config.RootDir(root), cfgFile.Bytes, configSnapshotReader{tree: tree})
 	if err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
@@ -337,6 +354,26 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, boundaries adr.Forma
 		return currentstate.Loaded{}, nil, err
 	}
 	return loaded, cfg, nil
+}
+
+type configSnapshotReader struct{ tree *snapshot.Tree }
+
+func (r configSnapshotReader) ReadFile(path string) ([]byte, bool) {
+	f, ok := r.tree.Lookup(config.DirName + "/" + filepath.ToSlash(path))
+	if !ok || !f.Scannable() {
+		return nil, false
+	}
+	return slices.Clone(f.Bytes), true
+}
+func (r configSnapshotReader) Paths(prefix string) []string {
+	full := config.DirName + "/" + filepath.ToSlash(prefix)
+	out := []string{}
+	for _, f := range r.tree.List() {
+		if f.Scannable() && strings.HasPrefix(f.Path, full) {
+			out = append(out, strings.TrimPrefix(f.Path, config.DirName+"/"))
+		}
+	}
+	return out
 }
 
 // auditTransitions runs the snapshot-diff transition check over every commit in
@@ -469,6 +506,9 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	files := tree.List()
 	var nested []string
 	for _, f := range files {
+		if !f.Scannable() {
+			continue
+		}
 		const suffix = "/" + config.DirName + "/config.yaml"
 		if strings.HasSuffix(f.Path, suffix) {
 			nested = append(nested, strings.TrimSuffix(f.Path, suffix))
@@ -476,6 +516,9 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	}
 	var out []string
 	for _, f := range files {
+		if !f.Scannable() {
+			continue
+		}
 		insideNested := false
 		for _, root := range nested {
 			if f.Path == root || strings.HasPrefix(f.Path, root+"/") {

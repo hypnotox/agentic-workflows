@@ -167,7 +167,7 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 		{"history", true, false, false, "ADR-0003 (Implemented) Update active claim"},
 		{"references", false, true, false, "Outgoing: [schedule/related:direct]"},
 		{"coverage", false, false, true, "Marker: internal/schedule_test.go:2 [invariant]"},
-		{"combined", true, true, true, "Effective: domain internal/** + topic internal/**"},
+		{"combined", true, true, true, "Both domain and topic selectors must match."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
@@ -197,7 +197,7 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	if !strings.Contains(encoded.String(), `"backing": "none"`) || !strings.Contains(defaults.String(), "[backing: none]") {
 		t.Fatalf("rule backing differs across JSON and human projections:\nJSON: %s\nhuman: %s", encoded.String(), defaults.String())
 	}
-	for _, semantic := range []string{result.Title, result.Claims[0].ID, result.History[0].Origin.Title, result.References[0].Outgoing[0], result.Coverage.MarkerSites[0].Path} {
+	for _, semantic := range []string{result.Title, result.Claims[0].ID, result.History[0].Origin.Title, result.References[0].Outgoing[0], result.Coverage.Applicability.MarkerSites[0].Path} {
 		if !strings.Contains(runTopicHuman(t, root), semantic) {
 			t.Errorf("human/JSON parity missing %q", semantic)
 		}
@@ -261,11 +261,11 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 		Claims:     []topic.QueryClaim{{ID: "schedule/contracts:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect."}},
 		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: &topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
 		References: []topic.ClaimReferences{{ClaimID: "schedule/contracts:stable", Incoming: []string{}, Outgoing: []string{"schedule/other:claim"}}},
-		Coverage:   &topic.QueryCoverage{DeclaredPaths: []string{"internal/**"}, EffectiveSelectors: []topic.EffectiveSelector{{DomainPath: "internal/**", TopicPath: "internal/schedule*"}}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}},
+		Coverage:   &topic.QueryCoverage{Applicability: topic.TopicApplicability{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/schedule*"}, MatchedPaths: []string{"internal/schedule.go"}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}}},
 	}
 	for _, result := range []topic.QueryResult{base, func() topic.QueryResult {
 		global := base
-		global.Coverage = &topic.QueryCoverage{DeclaredGlobal: true}
+		global.Coverage = &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}}
 		return global
 	}()} {
 		counter := &failOnWrite{failAt: -1, err: sentinel}
@@ -287,9 +287,9 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 		Kind: "claim", ID: "schedule/global:stable", Claims: []topic.QueryClaim{{
 			ID: "schedule/global:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect output.",
 		}},
-		Coverage: &topic.QueryCoverage{DeclaredGlobal: true, MarkerSites: []topic.MarkerSite{{
+		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{{
 			Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/global:stable", Note: "entry point",
-		}}},
+		}}}},
 	}
 	var out bytes.Buffer
 	if err := printTopic(&out, result, false); err != nil {

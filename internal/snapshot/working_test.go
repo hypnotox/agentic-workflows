@@ -69,10 +69,13 @@ func TestWorkingTree(t *testing.T) {
 	if f, ok := tree.Lookup("recreated.txt"); !ok || string(f.Bytes) != "new\n" {
 		t.Errorf("recreated.txt = %q, %v; want recreated working bytes", f.Bytes, ok)
 	}
-	for _, absent := range []string{"gone.txt", "ignored.txt", "link"} {
+	for _, absent := range []string{"gone.txt", "ignored.txt"} {
 		if _, ok := tree.Lookup(absent); ok {
 			t.Errorf("%s should be absent from the working Tree", absent)
 		}
+	}
+	if f, ok := tree.Lookup("link"); !ok || f.Mode != snapshot.Symlink || string(f.Bytes) != "tracked.txt" || f.Scannable() {
+		t.Errorf("link = %#v, %v; want inert symlink target", f, ok)
 	}
 	if f, _ := tree.Lookup("tracked.txt"); len(f.Bytes) > 0 {
 		f.Bytes[0] = 'X'

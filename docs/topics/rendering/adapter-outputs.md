@@ -3,7 +3,7 @@
 
 Generated executable adapter-runtime outputs and their ownership boundary.
 
-**Applicability:** `.pi/extensions/**` within domain `internal/render/**`, `.pi/extensions/**` within domain `internal/catalog/**`, `.pi/extensions/**` within domain `internal/project/**`, `.pi/extensions/**` within domain `internal/refs/**`, `.pi/extensions/**` within domain `templates/**`.
+**Applicability:** Owning domain selectors: `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Current matched paths: ``. Marker sites: ``.
 
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 

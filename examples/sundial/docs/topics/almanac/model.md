@@ -3,7 +3,7 @@
 
 The cosine day-length model and its latitude, longitude, accuracy, and dependency contracts.
 
-**Applicability:** `internal/almanac/**` within domain `internal/almanac/**`.
+**Applicability:** Owning domain selectors: `internal/almanac/**`. Topic selectors: `internal/almanac/**`. Both domain and topic selectors must match. Current matched paths: `internal/almanac/almanac.go`, `internal/almanac/almanac_test.go`. Marker sites: `internal/almanac/almanac_test.go:8 [invariant] almanac/model:almanac-clamped-latitude`.
 
 The almanac package approximates sunrise and sunset times with a lightweight cosine model. It
 deliberately trades ephemeris-grade precision for a small, instant, dependency-free computation. The

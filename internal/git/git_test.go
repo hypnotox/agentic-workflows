@@ -520,21 +520,21 @@ func TestIndexBlobs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("IndexBlobs: %v", err)
 	}
-	if len(got) != 3 { // base.txt plus the two regular staged files
-		t.Fatalf("IndexBlobs returned %d blobs, want 3: %+v", len(got), got)
+	if len(got) != 4 { // base, two ordinary/executable files, and inert symlink
+		t.Fatalf("IndexBlobs returned %d blobs, want 4: %+v", len(got), got)
 	}
 	for _, want := range []struct {
 		path, bytes string
-		executable  bool
-	}{{"base.txt", "base", false}, {"executable.sh", "executable bytes\n", true}, {"ordinary.txt", "ordinary bytes\n", false}} {
+		mode        awfgit.BlobMode
+	}{{"base.txt", "base", awfgit.BlobRegular}, {"executable.sh", "executable bytes\n", awfgit.BlobExecutable}, {"link", "ordinary.txt", awfgit.BlobSymlink}, {"ordinary.txt", "ordinary bytes\n", awfgit.BlobRegular}} {
 		found := false
 		for _, blob := range got {
-			if blob.Path == want.path && string(blob.Bytes) == want.bytes && blob.Executable == want.executable {
+			if blob.Path == want.path && string(blob.Bytes) == want.bytes && blob.Mode == want.mode {
 				found = true
 			}
 		}
 		if !found {
-			t.Errorf("missing exact staged blob %q (%q, executable=%v): %+v", want.path, want.bytes, want.executable, got)
+			t.Errorf("missing exact staged blob %q (%q, mode=%v): %+v", want.path, want.bytes, want.mode, got)
 		}
 	}
 

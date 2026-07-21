@@ -1,6 +1,8 @@
 package project
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -9,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // ctxConfig configures two domains (alpha owns internal/foo/**, core owns
@@ -67,6 +70,69 @@ func topicByID(res ContextResult, id string) (TopicContext, bool) {
 // TestContextForAssembles proves the topic-centric assembly over the working
 // universe: owning domains, the applicable scoped and global topics with their
 // current claims, and no false unowned/pending.
+func TestContextForUniverseSetupErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, cfg string
+		sidecar   bool
+	}{{"unknown-target", ctxConfig + "targets: [unknown]\n", false}, {"malformed-local", strings.Replace(ctxConfig, "  - tdd", "  - mine", 1), true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := csRepo(t, ctxConfig, ctxFiles())
+			if err := os.WriteFile(filepath.Join(p.Root, ".awf", "config.yaml"), []byte(tc.cfg), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if tc.sidecar {
+				path := filepath.Join(p.Root, ".awf", "skills", "mine.yaml")
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte("local: [bad"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := p.ContextFor([]string{"README.md"}); err == nil {
+				t.Fatal("context accepted invalid selected universe")
+			}
+		})
+	}
+}
+
+func TestContextForDeclarationReadError(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	path := filepath.Join(p.Root, ".awf", "skills", "tdd.yaml")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("local: [bad"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.ContextFor([]string{"README.md"}); err == nil {
+		t.Fatal("context accepted unreadable declaration sidecar")
+	}
+}
+
+func TestContextAndTopicShareApplicability(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	ctx, err := p.ContextFor([]string{"internal/foo/y.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	query, err := p.QueryTopic("alpha/one", topic.QueryOptions{Coverage: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got topic.TopicApplicability
+	for _, path := range ctx.Paths {
+		for _, pt := range path.Topics {
+			if pt.ID == "alpha/one" {
+				got = pt.Applicability
+			}
+		}
+	}
+	if !reflect.DeepEqual(got, query.Coverage.Applicability) {
+		t.Fatalf("context=%#v topic=%#v", got, query.Coverage.Applicability)
+	}
+}
+
 func TestContextForAssembles(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
 	res, err := p.ContextFor([]string{"internal/foo"})
@@ -110,7 +176,7 @@ func TestContextForRootExpandsEligibleDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := "," + strings.Join(res.Paths, ",") + ","
+	got := "," + strings.Join(contextPathNames(res.Paths), ",") + ","
 	for _, want := range []string{"README.md", "internal/foo/x.go", "internal/foo/y.go"} {
 		if !strings.Contains(got, ","+want+",") {
 			t.Errorf("root-expanded paths = %v; missing %s", res.Paths, want)
@@ -127,7 +193,7 @@ func TestContextForNonexistentPathRemainsLiteral(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(res.Paths, ",") != "missing/path.go" || strings.Join(res.Unowned, ",") != "missing/path.go" {
+	if strings.Join(contextPathNames(res.Paths), ",") != "missing/path.go" || strings.Join(res.Unowned, ",") != "missing/path.go" {
 		t.Fatalf("nonexistent literal result = paths %v, unowned %v", res.Paths, res.Unowned)
 	}
 }
@@ -161,7 +227,7 @@ func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(res.Paths, ","); got != "internal/foo/x.go" {
+	if got := strings.Join(contextPathNames(res.Paths), ","); got != "internal/foo/x.go" {
 		t.Fatalf("expanded paths = %s; want only eligible x.go", got)
 	}
 	one, _ := topicByID(res, "alpha/one")
@@ -380,7 +446,7 @@ func TestStagedContextRootExpandsEligibleDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := "," + strings.Join(res.Paths, ",") + ","
+	got := "," + strings.Join(contextPathNames(res.Paths), ",") + ","
 	for _, want := range []string{"README.md", "internal/foo/x.go", "internal/foo/y.go"} {
 		if !strings.Contains(got, ","+want+",") {
 			t.Errorf("staged root-expanded paths = %v; missing %s", res.Paths, want)
@@ -432,12 +498,32 @@ func TestStagedContextDirectoryExpandsIndexDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(res.Paths, ","); got != "internal/foo/x.go" {
+	if got := strings.Join(contextPathNames(res.Paths), ","); got != "internal/foo/x.go" {
 		t.Fatalf("staged expanded paths = %s", got)
 	}
 	one, _ := topicByID(res, "alpha/one")
 	if got := claimIDs(one); got != "alpha/one:order" {
 		t.Fatalf("staged marker narrowing = %s", got)
+	}
+}
+
+func TestStagedContextRootDeclarationSetupErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, cfg string
+		extra     map[string]string
+	}{{"unknown-target", "prefix: x\ntargets: [unknown]\n", nil}, {"malformed-local", "prefix: x\nskills: [mine]\ntargets: [claude]\n", map[string]string{".awf/skills/mine.yaml": "local: [bad"}}} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo, dir := gitfixture.InitRepo(t)
+			gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+			files := map[string]string{".awf/awf.lock": `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`, ".awf/config.yaml": tc.cfg}
+			for p, b := range tc.extra {
+				files[p] = b
+			}
+			gitfixture.Stage(t, repo, dir, files)
+			if _, err := StagedContextRoot(dir, []string{"README.md"}); err == nil {
+				t.Fatal("staged setup error accepted")
+			}
+		})
 	}
 }
 
@@ -644,4 +730,12 @@ func TestUncoveredOutsideRepo(t *testing.T) {
 	if _, err := p.Uncovered(nil); err == nil {
 		t.Fatal("expected a working-tree error outside a git repository")
 	}
+}
+
+func contextPathNames(paths []ContextPath) []string {
+	out := make([]string, len(paths))
+	for i := range paths {
+		out[i] = paths[i].Path
+	}
+	return out
 }

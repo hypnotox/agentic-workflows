@@ -72,9 +72,9 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "docs/topics/rendering/prepared-shell.md")); err != nil {
 		t.Fatal(err)
 	}
-	coverage := topic.CoverageForTopic(shell, corpus.DomainPaths["rendering"], corpus.Markers)
-	if coverage.HasClaims || coverage.SatisfiesScopedCoverage || len(coverage.EffectiveSelectors) == 0 {
-		t.Fatalf("zero-claim coverage = %#v", coverage)
+	applicability := topic.ApplicabilityForTopic(shell, corpus.DomainPaths["rendering"], corpus.Markers, []string{"internal/project/x.go"})
+	if len(applicability.DomainPaths) == 0 || len(applicability.TopicPaths) == 0 {
+		t.Fatalf("zero-claim coverage = %#v", applicability)
 	}
 }
 
@@ -488,7 +488,7 @@ Backing: test
 	if err := json.Unmarshal([]byte(encoded), &result); err != nil {
 		t.Fatalf("query JSON: %v: %s", err, encoded)
 	}
-	for _, value := range []string{result.Title, result.Summary, result.Claims[0].ID, result.Claims[1].Prose, result.History[0].Origin.Title, result.Coverage.MarkerSites[0].Path} {
+	for _, value := range []string{result.Title, result.Summary, result.Claims[0].ID, result.Claims[1].Prose, result.History[0].Origin.Title, result.Coverage.Applicability.MarkerSites[0].Path} {
 		if !strings.Contains(human, value) {
 			t.Errorf("human/JSON query parity missing %q:\n%s", value, human)
 		}

@@ -236,6 +236,12 @@ The single deterministic output plan contains every producer class: catalog and 
 Origin: ADR-0124
 Backing: test
 
+### `invariant: managed-output-attribution`
+
+A reader-injected declaration builder enumerates managed writes and local reservations before rendering, retains their sorted declarers and exact config, sidecar, convention-part, topic, and generated inputs, and supplies context artifact source/output edges; only non-reservation declarations classify a path as generated.
+Origin: ADR-0144
+Backing: test
+
 ### `invariant: output-policy-explicit`
 
 Post-processing of each output, frontmatter validation, link scanning, and skill-reference scanning, is selected by that output's declared policy rather than its file suffix. A non-Markdown path with a Markdown policy is still validated and scanned, a Markdown-looking path with a plain policy is not, and the zero-value policy scans nothing.

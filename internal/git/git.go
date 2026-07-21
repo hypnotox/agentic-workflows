@@ -264,14 +264,21 @@ var ErrIndexUnmerged = errors.New("index contains unmerged entries")
 // read from the object store.
 var ErrIndexBlob = errors.New("read index blob")
 
-// IndexBlob is one regular file's exact bytes from a stage-0 index or a
-// resolved commit tree. Executable reports whether the entry carries the
-// executable file mode, so a caller can preserve mode without re-reading the
-// source.
+// BlobMode is the closed set of Git blob modes preserved by snapshots.
+type BlobMode uint8
+
+const (
+	BlobRegular BlobMode = iota
+	BlobExecutable
+	BlobSymlink
+)
+
+// IndexBlob is one file's exact bytes and mode from a stage-0 index or a
+// resolved commit tree. Symlink bytes are the inert link target.
 type IndexBlob struct {
-	Path       string
-	Bytes      []byte
-	Executable bool
+	Path  string
+	Bytes []byte
+	Mode  BlobMode
 }
 
 // IndexBlobs returns sorted stage-0 ordinary and executable blobs from the
@@ -297,7 +304,7 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 		if e.Stage != 0 {
 			return nil, fmt.Errorf("%w: %s", ErrIndexUnmerged, e.Name)
 		}
-		if e.Mode != filemode.Regular && e.Mode != filemode.Executable {
+		if e.Mode != filemode.Regular && e.Mode != filemode.Executable && e.Mode != filemode.Symlink {
 			continue
 		}
 		blob, err := repo.BlobObject(e.Hash)
@@ -316,7 +323,16 @@ func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
 		if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
 			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, closeErr)
 		}
-		out = append(out, IndexBlob{Path: path, Bytes: b, Executable: e.Mode == filemode.Executable})
+		mode := BlobRegular
+		switch e.Mode {
+		case filemode.Regular:
+		case filemode.Executable:
+			mode = BlobExecutable
+		case filemode.Symlink:
+			mode = BlobSymlink
+		default: // coverage-ignore: the mode filter above admits exactly the three handled blob modes
+		}
+		out = append(out, IndexBlob{Path: path, Bytes: b, Mode: mode})
 	}
 	return out, nil
 }
@@ -383,7 +399,7 @@ func blobsOfTree(tree *object.Tree, prefix string) ([]IndexBlob, error) {
 	var out []IndexBlob
 	err := tree.Files().ForEach(func(f *object.File) error {
 		path, ok := rerootPath(f.Name, prefix)
-		if !ok || f.Mode != filemode.Regular && f.Mode != filemode.Executable {
+		if !ok || f.Mode != filemode.Regular && f.Mode != filemode.Executable && f.Mode != filemode.Symlink {
 			return nil
 		}
 		reader, err := f.Reader()
@@ -398,7 +414,16 @@ func blobsOfTree(tree *object.Tree, prefix string) ([]IndexBlob, error) {
 		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
 			return closeErr
 		}
-		out = append(out, IndexBlob{Path: path, Bytes: data, Executable: f.Mode == filemode.Executable})
+		mode := BlobRegular
+		switch f.Mode {
+		case filemode.Regular:
+		case filemode.Executable:
+			mode = BlobExecutable
+		case filemode.Symlink:
+			mode = BlobSymlink
+		default: // coverage-ignore: the mode filter above admits exactly the three handled blob modes
+		}
+		out = append(out, IndexBlob{Path: path, Bytes: data, Mode: mode})
 		return nil
 	})
 	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above

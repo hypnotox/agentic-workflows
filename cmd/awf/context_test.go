@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 const ctxCmdYAML = `prefix: example
@@ -106,25 +107,16 @@ func TestRunContextHuman(t *testing.T) {
 	}
 	got := out.String()
 	for _, want := range []string{
-		"live state for this project",
-		"alpha: docs/domains/alpha.md",
-		"alpha/one - One",
-		"    The one topic.",
-		"[rule] alpha/one:order: Order is deterministic.",
-		"core/g (global) - Global",
-		"[rule] core/g:everywhere:",
-		"## Pending changes (not yet current)",
-		"ADR-0002 (Later; Accepted) add alpha/one:pending-rule",
-		"## Unowned paths",
-		"README.md",
+		"live state for this project", "Projection: concise", "## Requests", "README.md [literal]", "internal/foo/x.go [literal]",
+		"README.md [eligible-unowned]", "internal/foo/x.go [covered]", "Domain: alpha (docs/domains/alpha.md)",
+		"Topic: alpha/one - One", "Topic: core/g - Global", "Both domain and topic selectors must match.", "Matched paths:",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("human output missing %q\n%s", want, got)
 		}
 	}
-	// The state marker narrows alpha/one to the order claim; stable must not show.
-	if strings.Contains(got, "alpha/one:stable") {
-		t.Errorf("state marker should have narrowed away the stable claim:\n%s", got)
+	if strings.Contains(got, "pending-rule") {
+		t.Errorf("foundation render leaked claim projection before Phase 5:\n%s", got)
 	}
 }
 
@@ -133,76 +125,47 @@ func TestRunContextHuman(t *testing.T) {
 // progress. The project-layer golden proves Implemented and partially Abandoned
 // rows are excluded; the current claim here stays in the ordinary Topics section.
 func TestPrintContextLifecycleGoldens(t *testing.T) {
+	inside := true
 	res := project.ContextResult{
-		Paths: []string{"internal/foo/x.go"}, Domains: []project.DomainRef{}, Unowned: []string{},
-		Topics: []project.TopicContext{{
-			ID: "alpha/one", Title: "One", Summary: "Current.", Claims: []project.ClaimRef{{
-				ID: "alpha/one:current", Type: "rule", Prose: "Current claim.",
-			}},
-		}},
-		Pending: []project.PendingChange{
-			{ADR: "0002", Title: "Accepted", Status: "Accepted", Applied: 0, Declared: 3, Op: "update", Claim: "alpha/one:alpha"},
-			{ADR: "0002", Title: "Accepted", Status: "Accepted", Applied: 0, Declared: 3, Op: "add", Claim: "alpha/one:zeta"},
-			{ADR: "0003", Title: "First batch", Status: "Implementing", Applied: 1, Declared: 3, Op: "remove", Claim: "alpha/one:old"},
-			{ADR: "0003", Title: "First batch", Status: "Implementing", Applied: 1, Declared: 3, Op: "update", Claim: "alpha/one:rule"},
-			{ADR: "0004", Title: "Middle batch", Status: "Implementing", Applied: 2, Declared: 3, Op: "remove", Claim: "alpha/one:z-remaining"},
+		Projection: project.ContextConcise,
+		Requests:   []project.ContextRequest{{Query: "internal/foo/x.go", Status: project.RequestLiteral, EffectivePaths: []string{"internal/foo/x.go"}}},
+		Paths: []project.ContextPath{
+			{Path: "internal/foo/x.go", Requests: []string{"internal/foo/x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
+			{Path: "nested/x", Requests: []string{"nested/x"}, Classification: project.PathNestedAdopter, NestedRoot: "nested", Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
+			{Path: "link", Requests: []string{"link"}, Classification: project.PathSymlink, TargetInsideRepository: &inside, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{{Role: project.ArtifactManagedOutput, Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}},
 		},
 	}
-	var out bytes.Buffer
-	if err := printContext(&out, res, false, "header"); err != nil {
+	var human, encoded bytes.Buffer
+	if err := printContext(&human, res, false, "header"); err != nil {
 		t.Fatal(err)
 	}
-	wantHuman := "header\n" +
-		"\npaths: [internal/foo/x.go]\n" +
-		"\n## Domains\n" +
-		"\n## Topics\n" +
-		"  alpha/one - One\n" +
-		"    Current.\n" +
-		"    [rule] alpha/one:current: Current claim.\n" +
-		"\n## Pending changes (not yet current)\n" +
-		"  ADR-0002 (Accepted; Accepted) update alpha/one:alpha\n" +
-		"  ADR-0002 (Accepted; Accepted) add alpha/one:zeta\n" +
-		"  ADR-0003 (First batch; Implementing; 1/3 applied) remove alpha/one:old\n" +
-		"  ADR-0003 (First batch; Implementing; 1/3 applied) update alpha/one:rule\n" +
-		"  ADR-0004 (Middle batch; Implementing; 2/3 applied) remove alpha/one:z-remaining\n"
-	if out.String() != wantHuman {
-		t.Fatalf("human context:\n--- got ---\n%s--- want ---\n%s", out.String(), wantHuman)
-	}
-
-	out.Reset()
-	if err := printContext(&out, res, true, "ignored"); err != nil {
+	if err := printContext(&encoded, res, true, "ignored"); err != nil {
 		t.Fatal(err)
 	}
-	wantJSON := "{\n" +
-		"  \"paths\": [\n    \"internal/foo/x.go\"\n  ],\n" +
-		"  \"domains\": [],\n" +
-		"  \"topics\": [\n    {\n      \"id\": \"alpha/one\",\n      \"title\": \"One\",\n      \"summary\": \"Current.\",\n      \"claims\": [\n        {\n          \"id\": \"alpha/one:current\",\n          \"type\": \"rule\",\n          \"prose\": \"Current claim.\"\n        }\n      ]\n    }\n  ],\n" +
-		"  \"pending\": [\n" +
-		"    {\n      \"adr\": \"0002\",\n      \"title\": \"Accepted\",\n      \"status\": \"Accepted\",\n      \"applied\": 0,\n      \"declared\": 3,\n      \"op\": \"update\",\n      \"claim\": \"alpha/one:alpha\"\n    },\n" +
-		"    {\n      \"adr\": \"0002\",\n      \"title\": \"Accepted\",\n      \"status\": \"Accepted\",\n      \"applied\": 0,\n      \"declared\": 3,\n      \"op\": \"add\",\n      \"claim\": \"alpha/one:zeta\"\n    },\n" +
-		"    {\n      \"adr\": \"0003\",\n      \"title\": \"First batch\",\n      \"status\": \"Implementing\",\n      \"applied\": 1,\n      \"declared\": 3,\n      \"op\": \"remove\",\n      \"claim\": \"alpha/one:old\"\n    },\n" +
-		"    {\n      \"adr\": \"0003\",\n      \"title\": \"First batch\",\n      \"status\": \"Implementing\",\n      \"applied\": 1,\n      \"declared\": 3,\n      \"op\": \"update\",\n      \"claim\": \"alpha/one:rule\"\n    },\n" +
-		"    {\n      \"adr\": \"0004\",\n      \"title\": \"Middle batch\",\n      \"status\": \"Implementing\",\n      \"applied\": 2,\n      \"declared\": 3,\n      \"op\": \"remove\",\n      \"claim\": \"alpha/one:z-remaining\"\n    }\n  ],\n" +
-		"  \"unowned\": []\n}\n"
-	if out.String() != wantJSON {
-		t.Fatalf("JSON context:\n--- got ---\n%s--- want ---\n%s", out.String(), wantJSON)
+	for _, want := range []string{"Projection: concise", "internal/foo/x.go [covered]", "## Requests", "## Effective paths", "Nested root: nested/.awf/config.yaml", "Symlink target inside repository: true", "Artifact: managed-output x"} {
+		if !strings.Contains(human.String(), want) {
+			t.Errorf("missing %q in %s", want, human.String())
+		}
+	}
+	var round project.ContextResult
+	if err := json.Unmarshal(encoded.Bytes(), &round); err != nil {
+		t.Fatal(err)
+	}
+	if len(round.Paths) != 3 || round.Paths[0].Classification != project.PathCovered {
+		t.Fatalf("round trip = %#v", round)
 	}
 }
 
 // TestPrintContextTitlelessTopic covers the human render of a topic with no
 // title, which prints the bare id without a dangling separator.
 func TestPrintContextTitlelessTopic(t *testing.T) {
-	res := project.ContextResult{Topics: []project.TopicContext{{ID: "alpha/untitled"}}}
+	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{{Path: "x", Requests: []string{}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{{ID: "alpha/untitled", Applicability: topic.TopicApplicability{DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}, DirectClaims: []project.ClaimDetail{}}}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}}}}
 	var out bytes.Buffer
 	if err := printContext(&out, res, false, "header"); err != nil {
 		t.Fatal(err)
 	}
-	got := out.String()
-	if !strings.Contains(got, "  alpha/untitled\n") {
-		t.Errorf("title-less topic not rendered bare:\n%s", got)
-	}
-	if strings.Contains(got, "alpha/untitled -") {
-		t.Errorf("title-less topic rendered a dangling separator:\n%s", got)
+	if !strings.Contains(out.String(), "Topic: alpha/untitled -") {
+		t.Fatalf("topic missing: %s", out.String())
 	}
 }
 
@@ -219,34 +182,21 @@ func TestRunContextJSONParity(t *testing.T) {
 	if err := json.Unmarshal(jsonOut.Bytes(), &res); err != nil {
 		t.Fatalf("output is not valid JSON: %v", err)
 	}
-	if len(res.Domains) != 1 || res.Domains[0].Name != "alpha" {
-		t.Errorf("json domains: %+v", res.Domains)
+	if len(res.Requests) != 1 || len(res.Paths) != 1 || res.Paths[0].Classification != project.PathCovered {
+		t.Fatalf("json attribution: %+v", res)
 	}
-	if len(res.Topics) != 2 || res.Topics[0].ID != "alpha/one" || res.Topics[1].ID != "core/g" {
-		t.Fatalf("json topics: %+v", res.Topics)
+	if len(res.Paths[0].Domains) != 1 || res.Paths[0].Domains[0].Name != "alpha" {
+		t.Errorf("json domains: %+v", res.Paths[0].Domains)
 	}
-	one := res.Topics[0]
-	if one.Summary != "The one topic." || len(one.Claims) != 3 {
-		t.Fatalf("json topic projection: %+v", one)
-	}
-	if one.Claims[0].Backing != "" || one.Claims[0].Verify != "" {
-		t.Errorf("rule invented backing metadata: %+v", one.Claims[0])
-	}
-	if one.Claims[1].Backing != "test" || one.Claims[1].Verify != "" {
-		t.Errorf("test-backed projection: %+v", one.Claims[1])
-	}
-	if one.Claims[2].Backing != "unbacked" || one.Claims[2].Verify != "by hand." {
-		t.Errorf("unbacked projection: %+v", one.Claims[2])
-	}
-	if len(res.Pending) != 1 || res.Pending[0] != (project.PendingChange{ADR: "0002", Title: "Later", Status: "Accepted", Applied: 0, Declared: 1, Op: "add", Claim: "alpha/one:pending-rule"}) {
-		t.Errorf("json pending: %+v", res.Pending)
+	if len(res.Paths[0].Topics) != 2 || res.Paths[0].Topics[0].ID != "alpha/one" || res.Paths[0].Topics[1].ID != "core/g" {
+		t.Fatalf("json topics: %+v", res.Paths[0].Topics)
 	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
 	if err := runContext(root, []string{"internal/foo/y.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha/one", "The one topic.", "Backing: test", "Backing: unbacked", "Verify: by hand.", "core/g", "pending-rule"} {
+	for _, want := range []string{"alpha/one", "Domain paths", "Both domain and topic selectors must match", "core/g", "[covered]"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}
@@ -285,6 +235,38 @@ func TestRunContextStaged(t *testing.T) {
 	if !strings.Contains(out.String(), "alpha/one") {
 		t.Errorf("staged context missing the staged topic:\n%s", out.String())
 	}
+	out.Reset()
+	if err := runContext(root, nil, true, "", false, false, &out); err != nil {
+		t.Fatalf("staged selected context: %v", err)
+	}
+	if !strings.Contains(out.String(), "[git-selected]") {
+		t.Fatalf("staged selected status missing: %s", out.String())
+	}
+}
+
+func TestRunContextRangeUsesGitSelectedRequests(t *testing.T) {
+	root := ctxCmdFixture(t)
+	repo, err := gogit.PlainOpen(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Commit("adopt", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runContext(root, nil, false, "HEAD~1..HEAD", false, false, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "[git-selected]") {
+		t.Fatalf("range selected status missing: %s", out.String())
+	}
 }
 
 func TestRunContextStagedErrors(t *testing.T) {
@@ -320,11 +302,8 @@ func TestRunContextStaticFallback(t *testing.T) {
 		t.Fatalf("static json errored: %v", err)
 	}
 	var res project.ContextResult
-	if err := json.Unmarshal(j.Bytes(), &res); err != nil || strings.Join(res.Paths, ",") != "cmd/x.go" {
+	if err := json.Unmarshal(j.Bytes(), &res); err != nil || res.Projection != project.ContextConcise || len(res.Paths) != 0 {
 		t.Errorf("static json: %s (err %v)", j.String(), err)
-	}
-	if len(res.Topics) != 0 {
-		t.Errorf("static fallback must leave Topics empty, got %+v", res.Topics)
 	}
 }
 

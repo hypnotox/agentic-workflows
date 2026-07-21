@@ -58,7 +58,7 @@ Verify: compare snapshots.
 
 func TestQueryDefaultTopicAndClaim(t *testing.T) {
 	corpus, adrs := loadedQueryFixture(t)
-	topicResult, err := Query(corpus, adrs, "alpha/contracts", QueryOptions{})
+	topicResult, err := Query(corpus, adrs, "alpha/contracts", QueryOptions{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestQueryDefaultTopicAndClaim(t *testing.T) {
 	if topicResult.History != nil || topicResult.References != nil || topicResult.Coverage != nil {
 		t.Fatalf("default leaked detail = %#v", topicResult)
 	}
-	claimResult, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{})
+	claimResult, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := Query(corpus, adrs, "alpha/contracts", tc.opts)
+			got, err := Query(corpus, adrs, "alpha/contracts", tc.opts, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -103,7 +103,8 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 			}
 		})
 	}
-	combined, _ := Query(corpus, adrs, "alpha/contracts", QueryOptions{History: true, References: true, Coverage: true})
+	currentPaths := []string{"internal/schedule.go", "internal/stable_test.go", "pkg/global.go"}
+	combined, _ := Query(corpus, adrs, "alpha/contracts", QueryOptions{History: true, References: true, Coverage: true}, currentPaths)
 	if len(combined.History) != 2 || combined.History[0].Origin.Number != "0001" || len(combined.History[0].RevisedBy) != 1 || combined.History[0].RevisedBy[0].Number != "0002" {
 		t.Fatalf("history = %#v", combined.History)
 	}
@@ -113,21 +114,21 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 	if got := combined.References[0].Incoming; len(got) != 0 {
 		t.Fatalf("query traversed references: %v", got)
 	}
-	if combined.Coverage.DeclaredGlobal || !reflect.DeepEqual(combined.Coverage.DeclaredPaths, []string{"internal/**"}) || len(combined.Coverage.EffectiveSelectors) != 1 || len(combined.Coverage.MarkerSites) != 2 {
+	if a := combined.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.MatchedPaths) != 2 || len(a.MarkerSites) != 2 {
 		t.Fatalf("coverage = %#v", combined.Coverage)
 	}
-	claim, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{Coverage: true})
+	claim, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{Coverage: true}, currentPaths)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if claim.Coverage.DeclaredGlobal || !reflect.DeepEqual(claim.Coverage.DeclaredPaths, []string{"internal/**"}) || len(claim.Coverage.EffectiveSelectors) != 1 || len(claim.Coverage.MarkerSites) != 1 || claim.Coverage.MarkerSites[0].ClaimID != "alpha/contracts:stable" {
+	if a := claim.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.MarkerSites) != 1 || a.MarkerSites[0].ClaimID != "alpha/contracts:stable" {
 		t.Fatalf("claim coverage included sibling markers or lost topic scope = %#v", claim.Coverage)
 	}
-	global, err := Query(corpus, adrs, "beta/global", QueryOptions{Coverage: true, References: true})
+	global, err := Query(corpus, adrs, "beta/global", QueryOptions{Coverage: true, References: true}, currentPaths)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !global.Coverage.DeclaredGlobal || len(global.Coverage.EffectiveSelectors) != 0 || global.Coverage.MarkerSites[0].Path != "pkg/global.go" {
+	if a := global.Coverage.Applicability; !a.DeclaredGlobal || len(a.TopicPaths) != 0 || a.MarkerSites[0].Path != "pkg/global.go" {
 		t.Fatalf("global coverage = %#v", global.Coverage)
 	}
 	if got := global.References[0].Incoming; !reflect.DeepEqual(got, []string{"alpha/contracts:order"}) {
@@ -145,10 +146,10 @@ func TestQueryHistoricalOnlyRemovedClaim(t *testing.T) {
 			Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented", Sequence: 2, HasSequence: true}}},
 	))
 
-	if _, err := Query(corpus, adrs, claimID, QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
+	if _, err := Query(corpus, adrs, claimID, QueryOptions{}, nil); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("default removed-claim query = %v", err)
 	}
-	got, err := Query(corpus, adrs, claimID, QueryOptions{History: true, References: true, Coverage: true})
+	got, err := Query(corpus, adrs, claimID, QueryOptions{History: true, References: true, Coverage: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +162,7 @@ func TestQueryHistoricalOnlyRemovedClaim(t *testing.T) {
 	if got.References != nil || got.Coverage != nil || got.Title != "" || got.Summary != "" {
 		t.Fatalf("historical-only query fabricated active detail = %#v", got)
 	}
-	if _, err := Query(corpus, adrs, "alpha/contracts:unknown", QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), "not found") {
+	if _, err := Query(corpus, adrs, "alpha/contracts:unknown", QueryOptions{History: true}, nil); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("unknown historical query = %v", err)
 	}
 }
@@ -174,7 +175,7 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 			Operations: []adr.Operation{{Verb: verb, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented", Sequence: sequence, HasSequence: true}}}
 	}
 	operations := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd, 1), record("0004", adr.OpUpdate, 2)))
-	got, err := Query(corpus, operations, claimID, QueryOptions{History: true})
+	got, err := Query(corpus, operations, claimID, QueryOptions{History: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,13 +192,13 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 		},
 	}
 	operations = adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd, 1), incremental))
-	got, err = Query(corpus, operations, claimID, QueryOptions{History: true})
+	got, err = Query(corpus, operations, claimID, QueryOptions{History: true}, nil)
 	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" || got.History[0].RevisedBy[0].StateSequence != 2 {
 		t.Fatalf("immediate incremental operation history = %#v, err=%v", got.History, err)
 	}
 
 	incomplete := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0004", adr.OpUpdate, 1)))
-	got, err = Query(corpus, incomplete, claimID, QueryOptions{History: true})
+	got, err = Query(corpus, incomplete, claimID, QueryOptions{History: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +213,7 @@ func TestQuerySelectorsMissingAndStableJSON(t *testing.T) {
 			t.Errorf("ParseSelector(%q) accepted", selector)
 		}
 	}
-	if _, err := Query(Corpus{}, adr.Corpus{}, "bad", QueryOptions{}); err == nil || !strings.Contains(err.Error(), "invalid topic selector") {
+	if _, err := Query(Corpus{}, adr.Corpus{}, "bad", QueryOptions{}, nil); err == nil || !strings.Contains(err.Error(), "invalid topic selector") {
 		t.Fatalf("Query malformed selector = %v", err)
 	}
 	if topicID, claimID, err := ParseSelector("alpha/contracts"); err != nil || topicID != "alpha/contracts" || claimID != "" {
@@ -223,11 +224,11 @@ func TestQuerySelectorsMissingAndStableJSON(t *testing.T) {
 	}
 	corpus, adrs := loadedQueryFixture(t)
 	for _, selector := range []string{"alpha/missing", "alpha/contracts:missing"} {
-		if _, err := Query(corpus, adrs, selector, QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), "not found") {
+		if _, err := Query(corpus, adrs, selector, QueryOptions{History: true}, nil); err == nil || !strings.Contains(err.Error(), "not found") {
 			t.Fatalf("Query(%q) = %v", selector, err)
 		}
 	}
-	result, err := Query(corpus, adrs, "alpha/contracts", QueryOptions{History: true, References: true, Coverage: true})
+	result, err := Query(corpus, adrs, "alpha/contracts", QueryOptions{History: true, References: true, Coverage: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
