@@ -47,8 +47,9 @@ Backing: test
 
 ### `invariant: bounded-exploration-reporting`
 
-The rendered exploration guidance and Pi's fixed prompt both define an adaptive-maximum breadth ordering, the project search universe of tracked plus non-ignored untracked files, grounded file and line detail contracts, explicit not-found versus inconclusive-or-unverified outcome distinctions, and parent-driven sequential refinement through a new fresh-context call.
+The rendered exploration guidance and Pi's fixed prompt define adaptive breadth and grounded reporting, keep refinement sequential, permit independent information needs to run concurrently, and make Pi queue above ten active children in FIFO and abort-aware order.
 Origin: ADR-0132
+Revised-by: ADR-0141
 Backing: test
 
 ### `invariant: catalog-template-sweep`
@@ -167,8 +168,21 @@ Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
 
-The generated Pi extension exposes exactly four tools: grounding, exploration, governed review, and serialized implementation. The exploration tool requires a closed schema of task, breadth, and detail and receives the selected structured policy, without altering the other roles' schemas or process boundaries.
+The generated Pi extension exposes exactly four closed-schema roles, each with optional exact model routing; exploration retains required task, breadth, and detail and runs through the ten-active FIFO limiter without changing the other process boundaries.
 Origin: ADR-0132
+Revised-by: ADR-0141
+Backing: test
+
+### `invariant: pi-subagent-model-routing`
+
+Every Pi subagent role accepts an optional exact provider/model-id, inherits the parent on omission, rejects unknown or unauthenticated explicit choices without fallback before queueing, inherits thinking for child clamping, and reports requested and actual models.
+Origin: ADR-0141
+Backing: test
+
+### `invariant: pi-implementation-batch-exclusivity`
+
+Pi correlates each tool preflight with the current leaf assistant tool-call id, blocks every member of a reconstructable batch that mixes implementation with siblings, and blocks only implementation when trustworthy batch context is unavailable.
+Origin: ADR-0141
 Backing: test
 
 ### `invariant: pi-subagent-failure-details`

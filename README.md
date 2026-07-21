@@ -76,12 +76,15 @@ paths and dialect: Codex agents are TOML profiles, while Claude Code and Gemini 
 bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your team
 uses.
 
-Pi 0.80.9+ automatically receives a trusted project extension with `subagent_grounding`, `subagent_explore`,
-`subagent_review`, and `subagent_implement`. Exploration requires `{task, breadth, detail}`: breadth is
-`targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`. Grounding, exploration, and review are no-mutation
-prompt policy, not an OS sandbox; implementation shares the checkout, runs alone and sequentially,
-and commits only when its orchestrator sets `allowCommits`. Every role shows bounded inline child
-progress while intermediate activity stays outside parent model content.
+Pi 0.80.9+ automatically receives a trusted project extension with `subagent_grounding`,
+`subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
+`model` selection and otherwise inherits the parent. Exploration requires `{task, breadth, detail}`:
+breadth is `targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`;
+independent calls run through a ten-active FIFO queue. Grounding, exploration, and review are a
+no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
+sequentially, and mixed parent batches are mechanically blocked; it commits only when its
+orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
+activity stays outside parent model content.
 
 ## How it works
 

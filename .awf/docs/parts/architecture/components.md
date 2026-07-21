@@ -141,9 +141,13 @@
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
   language. Exploration requires task, breadth, and detail, which feed Pi's dynamic fixed prompt;
-  the unchanged runner remains the process and context-isolation boundary. Bounded structured
-  details drive one shared inline renderer for all four tools, while
-  only final report or failure-summary content reaches the parent model. The catalog itself is the
+  every role resolves an optional exact model through Pi's registry and authentication state before
+  any queue or side effect. A session-local limiter admits at most ten exploration children and
+  schedules excess calls FIFO with abort-aware removal, while implementation retains its own queue.
+  A current-leaf and tool-call-id-correlated preflight blocks mixed implementation batches at Pi's
+  real tool-call event seam. The unchanged runner remains the process and context-isolation boundary.
+  Bounded structured details drive one shared inline renderer for all four tools, while only final
+  report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
   the dogfooded generated extension. Its repo-keyed persistent container snapshots current source

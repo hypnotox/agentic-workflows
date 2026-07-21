@@ -1,6 +1,6 @@
 ---
 format: current-state-v1
-status: Proposed
+status: Implemented
 date: 2026-07-21
 ---
 # ADR-0141: Govern Pi Parallel Exploration and Implementation Batch Exclusivity
@@ -163,3 +163,4 @@ cross-runtime model routing or a concurrency limit.
 ## Status history
 
 - 2026-07-21: Proposed
+- 2026-07-21: Implemented; content-sha256: 491bea170ed2a1679d38079a37241eb9e95b2c5e8ddc1ffb435155c7e03c9975; state-sequence: 5

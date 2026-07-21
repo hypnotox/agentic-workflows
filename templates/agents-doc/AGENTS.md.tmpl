@@ -62,7 +62,7 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 **Chain skills** (invoke in order): `{{ .prefix }}-brainstorming`, `{{ .prefix }}-proposing-adr`, `{{ .prefix }}-reviewing-adr`, `{{ .prefix }}-writing-plans`, `{{ .prefix }}-reviewing-plan`, `{{ .prefix }}-reviewing-plan-resync`, `{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, `{{ .prefix }}-reviewing-impl`, `{{ .prefix }}-retrospective`.{{ with .taskSkills }} **Task skills** (as needed): {{ . }}.{{ end }}
 
-Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline.
+Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline. Independent fresh-context exploration may run concurrently where supported, but refinement of an earlier result stays sequential. Select a lower-cost child model deliberately when the runtime supports it; shared-checkout implementation stays alone.
 
 {{ end }}Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}{{ with .vars.gateCmdFull }} (`{{ . }}` is the full tier){{ end }}. Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
 <!-- awf:end -->

@@ -153,19 +153,22 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 		"implement": registrationBlock(t, index, "subagent_implement", "export default async function"),
 	}
 	schemas := map[string]string{
-		"grounding": `parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false })`,
+		"grounding": `parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(Type.String()) }, { additionalProperties: false })`,
 		"explore": `parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       breadth: StringEnum(["targeted", "bounded", "broad"] as const),
       detail: StringEnum(["paths", "summary", "analysis"] as const),
+      model: Type.Optional(Type.String()),
     }, { additionalProperties: false })`,
 		"review": `parameters: Type.Object({
       kind: StringEnum(["adr", "plan", "code"] as const),
       task: Type.String({ minLength: 1 }),
+      model: Type.Optional(Type.String()),
     }, { additionalProperties: false })`,
 		"implement": `parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       allowCommits: Type.Boolean(),
+      model: Type.Optional(Type.String()),
     }, { additionalProperties: false })`,
 	}
 	for role, schema := range schemas {
@@ -176,7 +179,8 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 	for _, want := range []string{
 		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
 		`rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`,
-		`model: { provider: ctx.model.provider, id: ctx.model.id }`,
+		`MAX_EXPLORATION_CONCURRENCY = 10`, `createLimiter(MAX_EXPLORATION_CONCURRENCY)`,
+		`const release = await explorationLimiter.acquire(signal)`,
 		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
 		`content: [{ type: "text", text: "(running...)" }]`,
 		`events: update.events`, `result.output`,
@@ -204,6 +208,28 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 		if !strings.Contains(runner, want) {
 			t.Errorf("Pi runner missing exploration process or bound %q", want)
 		}
+	}
+}
+
+// invariant: rendering/templates:pi-subagent-model-routing
+func TestPiSubagentModelRouting(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{
+		`model: Type.Optional(Type.String())`, `requested.indexOf("/")`,
+		`ctx.modelRegistry.find(provider, id)`, `ctx.modelRegistry.hasConfiguredAuth(found)`,
+		`return { model: { provider: found.provider, id: found.id }, requested }`,
+		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
+		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`, `requestedModel`, `requested:${requestedModel}`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("Pi extension missing model-routing contract %q", want)
+		}
+	}
+	if strings.Contains(content, "fuzzy") || strings.Contains(content, "fallbackModel") {
+		t.Fatal("Pi model routing contains a silent fallback path")
+	}
+	if got := strings.Count(content, `model: Type.Optional(Type.String())`); got != 4 {
+		t.Fatalf("optional model schema count = %d, want 4", got)
 	}
 }
 
@@ -259,7 +285,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				}
 			}
 			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "required task, breadth, and detail"} {
+				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "provider/model-id", "omission inherits the parent"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("Pi exploring skill missing %q", want)
 					}
@@ -270,8 +296,21 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 						t.Errorf("%s exploring skill missing %q", target, want)
 					}
 				}
-				if strings.Contains(exploring, "subagent_explore") {
-					t.Errorf("%s exploring skill leaks Pi tool name", target)
+				for _, absent := range []string{"subagent_explore", "provider/model-id", "ten exploration children", "queues the rest FIFO"} {
+					if strings.Contains(exploring, absent) {
+						t.Errorf("%s exploring skill leaks Pi guidance %q", target, absent)
+					}
+				}
+			}
+			modelGuidanceSkills := []string{"brainstorming", "exploring", "reviewing-adr", "reviewing-impl", "reviewing-plan-resync", "reviewing-plan", "subagent-driven-development"}
+			for _, skill := range modelGuidanceSkills {
+				body := files[base+skill+"/SKILL.md"]
+				if target == "pi" {
+					if !strings.Contains(body, "provider/model-id") || !strings.Contains(body, "inherits the parent") {
+						t.Errorf("Pi/%s missing optional model guidance", skill)
+					}
+				} else if strings.Contains(body, "provider/model-id") || strings.Contains(body, "subagent_") {
+					t.Errorf("%s/%s leaks Pi model or tool syntax", target, skill)
 				}
 			}
 			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
@@ -296,6 +335,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 		wants []string
 	}{
 		"rendered exploring guidance": {guidance, []string{
+			"Independent information needs may be sibling-dispatched", "at most ten exploration children", "queues the rest FIFO", "Refinement stays sequential",
 			"targeted < bounded < broad", "`targeted` locates one declaration, implementation, file, or exact fact", "`bounded` investigates within a named symbol, package, component, or subsystem", "`broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
 			"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires it", "never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
 			"tracked files plus non-ignored untracked working-tree files under the repository root", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
@@ -304,6 +344,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 			"new fresh-context call to correct the task, change report detail, or widen breadth",
 		}},
 		"Pi fixed prompt": {prompt, []string{
+			"independent information needs concurrently", "refinement of an earlier result stays sequential", "at most ten active exploration children", "queues the rest FIFO with abort-aware removal",
 			"Breadth is ordered targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
 			"adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
 			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
@@ -382,13 +423,35 @@ func TestPiSubagentProgressBounds(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-child-tool-boundaries
 func TestPiSubagentToolBoundaries(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "index.ts") + renderPiExtensionFile(t, "runner.ts")
 	for _, want := range []string{
 		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
 		`IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]`,
+		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
+		`return { model: { provider: found.provider, id: found.id }, requested }`,
+		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
+		"MAX_OUTPUT_BYTES = 50 * 1024", "MAX_OUTPUT_LINES = 2000", "MAX_DISPLAY_EVENTS = 20",
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("extension missing boundary %q", want)
+		}
+	}
+}
+
+// invariant: rendering/templates:pi-implementation-batch-exclusivity
+func TestPiImplementationBatchExclusivity(t *testing.T) {
+	content := renderPiExtensionFile(t, "index.ts")
+	for _, want := range []string{
+		`pi.on("tool_call"`, `ctx.sessionManager.getLeafEntry()`,
+		`leaf.message?.role === "assistant"`, `Array.isArray(leaf.message.content)`,
+		`call.id === event.toolCallId && call.name === event.toolName`,
+		`calls.length > 1 && calls.some((call: any) => call.name === "subagent_implement")`,
+		"A batch containing subagent_implement cannot contain siblings; retry subagent_implement alone.",
+		"Cannot verify the current tool batch; retry subagent_implement alone.",
+		`return event.toolName === "subagent_implement"`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("extension missing implementation-batch contract %q", want)
 		}
 	}
 }

@@ -98,12 +98,15 @@ files carry a `// @ts-nocheck` directive (ADR-0126) that keeps adopter IDEs quie
 resolvable `@types/node`; the container strips that line from its snapshot before `tsc` runs, so the
 type-check still covers the real extension code. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
-in-memory Pi 0.80.9 `AgentSession` proves that partial details and result-middleware error patches
-survive the real runtime seam without entering model-visible content. Grounding schema/prompt tests
-and shared-renderer tests cover every role and state at narrow and normal widths, including
-omissions, diagnostics, usage, malformed details, and configurable expansion hints. TypeScript
-owns Pi's exact exploration schema and fixed-prompt behavior; Go owns catalog closure, migration,
-and cross-target render behavior. These tests prove schemas and instruction contracts, not
+in-memory Pi 0.80.9 `AgentSession` proves that partial details, result-middleware error patches, and
+current-leaf mixed-implementation blocking survive the real runtime event seam without entering
+model-visible content. Unit tests cover exact all-role model routing and rejection, inherited
+thinking, and the ten-active FIFO limiter's abort and release lifecycle including runner setup
+failure. Grounding schema/prompt tests and shared-renderer tests cover every role and state at narrow
+and normal widths, including omissions, diagnostics, usage, malformed details, and configurable
+expansion hints. TypeScript owns Pi's exact exploration schema and fixed-prompt behavior; Go owns
+catalog closure, migration, and cross-target publication safety so Pi-only model and concurrency
+syntax never leaks to another target. These tests prove schemas and instruction contracts, not
 arbitrary model compliance.
 `./x pi-test stop|reset` controls the container lifecycle.
 

@@ -27,7 +27,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 2. **Path detection detail.** When no explicit path is given: list `docs/plans/YYYY-MM-DD-*.md` sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-plan/dispatch-subagent.md to override -->
-3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; it must include:
+3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The affected context (collect the created/modified paths from the plan's file-structure header and paste the output of `awf context <those paths>`) so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs.

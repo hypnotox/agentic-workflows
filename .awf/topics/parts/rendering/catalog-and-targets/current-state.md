@@ -59,8 +59,9 @@ Backing: test
 
 ### `invariant: pi-child-tool-boundaries`
 
-Pi subagent children inherit the parent's model and thinking level, receive exactly their fixed role tool allowlists that exclude every extension tool so they cannot recursively delegate, and enforce the fixed retained-output limits with explicit truncation diagnostics.
+Pi subagent children use an explicitly selected validated model or inherit the parent, inherit the parent's thinking level, receive fixed role allowlists excluding extension tools, and enforce fixed retained-output limits with explicit truncation diagnostics.
 Origin: ADR-0123
+Revised-by: ADR-0141
 Backing: test
 
 ### `invariant: pi-extension-target-render`

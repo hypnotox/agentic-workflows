@@ -153,17 +153,30 @@ required `task` for the workflow's premise and altitude check; `subagent_explore
 `{task, breadth, detail}`, where breadth is `targeted`, `bounded`, or `broad` and independently
 selected detail is `paths`, `summary`, or `analysis`; `subagent_review` takes required `kind`
 (`adr`, `plan`, or `code`) and `task`; and `subagent_implement` takes required `task` and
-`allowCommits`. Exploration treats breadth as an adaptive maximum. Not-found is successful
-execution; broad absence names the project search universe and searched surfaces. After not-found,
-inconclusive, unverified, or insufficient output, the parent may make a new fresh-context call to
-correct the task, change detail, or widen breadth. Grounding, exploration, and review follow a
-no-mutation prompt policy and can use `bash`; they are not OS-sandboxed. Implementation shares the
-parent checkout, must run alone in its parent tool batch and sequentially, and may commit only when
-the orchestrator sets `allowCommits: true`.
+`allowCommits`. Every closed schema also accepts optional canonical `model` as
+`provider/model-id`. Omission inherits the active parent model, while an explicit value is resolved
+exactly through Pi's model registry and must have configured authentication. Unknown,
+unauthenticated, or malformed selections fail before role queueing with no fallback. The parent's
+thinking level is forwarded unchanged so child Pi can clamp it for the selected model, and details
+report both the requested and actual model.
+
+Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
+names the project search universe and searched surfaces. After not-found, inconclusive, unverified,
+or insufficient output, the parent may make a new fresh-context call to correct the task, change
+detail, or widen breadth. Independent exploration calls may execute concurrently, with at most ten
+active children per extension instance; excess calls queue FIFO, queued aborts are removed without
+starting a child, and every child exit releases its slot. Refinement of a prior result remains
+sequential. Grounding, exploration, and review follow a no-mutation prompt policy and can use `bash`;
+they are not OS-sandboxed. Implementation shares the parent checkout, must run alone in its parent
+tool batch and sequentially, and may commit only when the orchestrator sets `allowCommits: true`.
+Pi's current-leaf, tool-call-id-correlated preflight blocks every member of a reconstructable mixed
+implementation batch. When trustworthy batch context is unavailable, only implementation fails
+closed with an actionable retry-alone error.
 
 All four tools render bounded recent activity inline. The expanded tool view shows the retained
-task, events, report, present diagnostics, and available usage. Intermediate activity remains in
-tool details; only the final report or bounded failure summary enters parent model content.
+task, events, report, present diagnostics, requested and actual models, and available usage.
+Intermediate activity remains in tool details; only the final report or bounded failure summary
+enters parent model content.
 Brainstorming uses grounding, while brainstorming, debugging, and coupling audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
 extension files are `awf check` drift; run `awf sync` to repair them.
 

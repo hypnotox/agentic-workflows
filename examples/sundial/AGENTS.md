@@ -59,7 +59,7 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 **Chain skills** (invoke in order): `sundial-brainstorming`, `sundial-proposing-adr`, `sundial-reviewing-adr`, `sundial-writing-plans`, `sundial-reviewing-plan`, `sundial-reviewing-plan-resync`, `sundial-executing-plans` / `sundial-subagent-driven-development`, `sundial-reviewing-impl`, `sundial-retrospective`. **Task skills** (as needed): `sundial-adr-lifecycle`, `sundial-bugfix`, `sundial-debugging`, `sundial-exploring`, `sundial-refactor-coupling-audit`, `sundial-roadmap-graduation`, `sundial-tdd`.
 
-Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline.
+Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline. Independent fresh-context exploration may run concurrently where supported, but refinement of an earlier result stays sequential. Select a lower-cost child model deliberately when the runtime supports it; shared-checkout implementation stays alone.
 
 Stage the complete transaction, run `awf check --staged`, then run `./x gate` (`./x gate full` is the full tier). Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 

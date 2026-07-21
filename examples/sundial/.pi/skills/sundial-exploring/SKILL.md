@@ -26,7 +26,7 @@ Report detail is ordered `paths < summary < analysis` independently of breadth. 
 <!-- awf:edit dispatch: default; create .awf/skills/parts/exploring/dispatch.md to override -->
 ## Dispatch
 
-Construct one self-contained task. Call `subagent_explore` exactly once with required task, breadth, and detail.
+Construct one self-contained task. Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Optionally set exact `model` as `provider/model-id`; omission inherits the parent.
 
 <!-- awf:edit results: default; create .awf/skills/parts/exploring/results.md to override -->
 ## Results

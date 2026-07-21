@@ -1,7 +1,7 @@
 ---
 date: 2026-07-21
 adrs: [141]
-status: Proposed
+status: Implemented
 ---
 # Plan: Pi Subagent Concurrency and Model Routing
 
@@ -170,3 +170,5 @@ Then invoke `awf-reviewing-impl` against the implementation commit and finish wi
 ## Notes
 
 The user explicitly approved applicable pseudocode in Tasks 1.1-1.6 as sufficiently exact when it can be applied correctly; implementation must preserve every named branch and acceptance assertion. The session dashboard, fresh-session handoff command, and phase-sensitive tool activation remain roadmap candidates. The fixed concurrency ceiling is ten and is not a new config key. Explicit model selection is per call and Pi-only; omission preserves current parent-model behavior.
+
+- No implementation deviations from ADR-0141 or this plan.

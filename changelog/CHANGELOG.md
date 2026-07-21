@@ -33,6 +33,11 @@ query a single version or a range.
   `--attest-current-state` modes live only in that preceding release; this binary consumes seals and
   never produces them.
 
+### Features
+- Pi's four governed subagent roles now accept strict optional exact model routing, independent
+  exploration runs through an abort-aware ten-active FIFO queue, and mixed implementation batches
+  are mechanically blocked before any member executes.
+
 ### Bug fixes
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:
   cutoff 1 for an empty corpus, or highest-plus-one with explicit gaps for validated brownfield

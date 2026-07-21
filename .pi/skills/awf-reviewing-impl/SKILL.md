@@ -28,7 +28,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; it must include:
+3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
 
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.

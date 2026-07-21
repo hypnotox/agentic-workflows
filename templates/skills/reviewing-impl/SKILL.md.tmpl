@@ -30,7 +30,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; it must include:
+{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
 {{ else }}3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
 {{ end }}
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).

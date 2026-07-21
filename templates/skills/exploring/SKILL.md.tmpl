@@ -28,7 +28,7 @@ Report detail is ordered `paths < summary < analysis` independently of breadth. 
 <!-- awf:section dispatch -->
 ## Dispatch
 
-Construct one self-contained task. {{ if .targetSubagentTools }}Call `subagent_explore` exactly once with required task, breadth, and detail.{{ else }}Dispatch one target-native fresh-context exploration subagent with task, breadth, detail, boundary, outcome, and report contracts in its brief.{{ end }}
+Construct one self-contained task. {{ if .targetSubagentTools }}Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Optionally set exact `model` as `provider/model-id`; omission inherits the parent.{{ else }}Dispatch one target-native fresh-context exploration subagent with task, breadth, detail, boundary, outcome, and report contracts in its brief.{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section results -->

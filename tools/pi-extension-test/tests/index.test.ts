@@ -7,6 +7,7 @@ import defaultExtension, {
   MIN_PI_VERSION,
   REVIEWER_PATHS,
   REVIEW_TOOLS,
+  createLimiter,
   registerSubagentTools,
   versionSupported,
   type ExtensionDependencies,
@@ -24,33 +25,78 @@ const result: RunResult = {
   usage: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 },
 };
 
-function harness(options: { version?: string; reviewer?: string; git?: Array<{ code: number; stdout: string }> } = {}) {
+function harness(options: {
+  version?: string;
+  reviewer?: string;
+  git?: Array<{ code: number; stdout: string }>;
+  run?: (request: RunRequest) => Promise<RunResult>;
+  leaf?: any;
+} = {}) {
   const tools = new Map<string, any>();
   const handlers = new Map<string, any>();
   const requests: RunRequest[] = [];
   const notifications: unknown[][] = [];
   const git = [...(options.git ?? [])];
+  let reviewerReads = 0;
+  let gitCalls = 0;
+  let leaf = options.leaf;
   const pi: any = {
     registerTool: (tool: any) => tools.set(tool.name, tool),
     on: (name: string, handler: any) => handlers.set(name, handler),
     getThinkingLevel: () => "high",
-    exec: async () => git.shift() ?? { code: 1, stdout: "", stderr: "" },
+    exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
   };
   const deps: ExtensionDependencies = {
-    readFile: async () => options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully.",
-    runner: { run: async (request) => { requests.push(request); request.onUpdate?.({ events: [event], omittedEvents: 0 }); return result; } },
+    readFile: async () => { reviewerReads++; return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully."; },
+    runner: { run: async (request) => {
+      requests.push(request);
+      request.onUpdate?.({ events: [event], omittedEvents: 0 });
+      return options.run ? options.run(request) : result;
+    } },
     packageVersion: options.version ?? MIN_PI_VERSION,
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
   };
   registerSubagentTools(pi, deps);
-  const ctx: any = { cwd: "/repo/subdirectory", model: { provider: "test", id: "parent" }, ui: { notify: (...args: unknown[]) => notifications.push(args) } };
-  return { pi, deps, tools, handlers, requests, notifications, ctx };
+  const models = new Map([
+    ["cheap/model/with/slash", { provider: "cheap", id: "model/with/slash" }],
+    ["locked/model", { provider: "locked", id: "model" }],
+  ]);
+  const ctx: any = {
+    cwd: "/repo/subdirectory",
+    model: { provider: "test", id: "parent" },
+    modelRegistry: {
+      find: (provider: string, id: string) => models.get(`${provider}/${id}`),
+      hasConfiguredAuth: (model: any) => model.provider !== "locked",
+    },
+    sessionManager: { getLeafEntry: () => leaf },
+    ui: { notify: (...args: unknown[]) => notifications.push(args) },
+  };
+  return {
+    pi, deps, tools, handlers, requests, notifications, ctx,
+    setLeaf: (value: any) => { leaf = value; },
+    reviewerReads: () => reviewerReads,
+    gitCalls: () => gitCalls,
+  };
 }
 
-async function execute(tool: any, params: any, ctx: any, signal?: AbortSignal) {
+async function execute(tool: any, params: any, ctx: any, signal?: AbortSignal, id = "id") {
   const updates: any[] = [];
-  const value = await tool.execute("id", params, signal, (update: unknown) => updates.push(update), ctx);
+  const value = await tool.execute(id, params, signal, (update: unknown) => updates.push(update), ctx);
   return { value, updates };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+
+function assistantLeaf(calls: Array<{ id: string; name: string }>) {
+  return {
+    type: "message",
+    message: { role: "assistant", content: calls.map((call) => ({ type: "toolCall", ...call, arguments: {} })) },
+  };
 }
 
 test("default factory registers against the installed minimum Pi package", async () => {
@@ -112,6 +158,185 @@ test("registers exactly four governed public tools with structured exploration s
   assert.deepEqual(REVIEWER_PATHS, { adr: ".pi/skills/adr-reviewer.md", plan: ".pi/skills/plan-reviewer.md", code: ".pi/skills/code-reviewer.md" });
 });
 
+test("all role schemas accept optional exact model while preserving closed required fields", () => {
+  const h = harness();
+  const cases = [
+    ["subagent_grounding", { task: "ground" }, ["task"]],
+    ["subagent_explore", { task: "inspect", breadth: "bounded", detail: "analysis" }, ["task", "breadth", "detail"]],
+    ["subagent_review", { kind: "code", task: "review" }, ["kind", "task"]],
+    ["subagent_implement", { task: "change", allowCommits: false }, ["task", "allowCommits"]],
+  ] as const;
+  for (const [name, params, required] of cases) {
+    const schema = h.tools.get(name).parameters;
+    assert.equal(Value.Check(schema, params), true, `${name} rejects old shape`);
+    assert.equal(Value.Check(schema, { ...params, model: "cheap/model/with/slash" }), true, `${name} rejects model`);
+    assert.equal(Value.Check(schema, { ...params, extra: true }), false, `${name} accepts unknown field`);
+    for (const field of required) {
+      const missing = { ...params } as any;
+      delete missing[field];
+      assert.equal(Value.Check(schema, missing), false, `${name} no longer requires ${field}`);
+    }
+    assert.deepEqual(schema.required, required);
+  }
+});
+
+test("all roles route omitted and exact selected models with inherited thinking and diagnostics", async () => {
+  const cases = [
+    ["subagent_grounding", { task: "ground" }],
+    ["subagent_explore", { task: "inspect", breadth: "bounded", detail: "analysis" }],
+    ["subagent_review", { kind: "code", task: "review" }],
+    ["subagent_implement", { task: "change", allowCommits: false }],
+  ] as const;
+  for (const [name, params] of cases) {
+    const inherited = harness({ git: Array(4).fill({ code: 1, stdout: "" }) });
+    const inheritedValue = await execute(inherited.tools.get(name), params, inherited.ctx);
+    assert.deepEqual(inherited.requests[0].model, { provider: "test", id: "parent" });
+    assert.equal(inherited.requests[0].thinkingLevel, "high");
+    assert.equal(inheritedValue.value.details.requestedModel, undefined);
+    assert.equal(inheritedValue.value.details.model, undefined);
+
+    const selected = harness({
+      git: Array(4).fill({ code: 1, stdout: "" }),
+      run: async () => ({ ...result, model: "cheap/model/with/slash" }),
+    });
+    const selectedValue = await execute(selected.tools.get(name), { ...params, model: "cheap/model/with/slash" }, selected.ctx);
+    assert.deepEqual(selected.requests[0].model, { provider: "cheap", id: "model/with/slash" });
+    assert.equal(selected.requests[0].thinkingLevel, "high");
+    assert.equal(selectedValue.value.details.requestedModel, "cheap/model/with/slash");
+    assert.equal(selectedValue.value.details.model, "cheap/model/with/slash");
+  }
+});
+
+test("invalid explicit models reject before every role side effect", async () => {
+  const invalid = [
+    ["", /exact provider\/model-id/], ["provider", /exact provider\/model-id/], ["/model", /exact provider\/model-id/],
+    ["provider/", /exact provider\/model-id/], ["unknown/model", /not registered/], ["locked/model", /no configured authentication/],
+  ] as const;
+  const cases = [
+    ["subagent_grounding", { task: "ground" }],
+    ["subagent_explore", { task: "inspect", breadth: "bounded", detail: "analysis" }],
+    ["subagent_review", { kind: "code", task: "review" }],
+    ["subagent_implement", { task: "change", allowCommits: false }],
+  ] as const;
+  for (const [name, params] of cases) {
+    for (const [model, pattern] of invalid) {
+      const h = harness();
+      await assert.rejects(execute(h.tools.get(name), { ...params, model }, h.ctx), pattern);
+      assert.equal(h.requests.length, 0);
+      assert.equal(h.reviewerReads(), 0);
+      assert.equal(h.gitCalls(), 0);
+    }
+  }
+  const noParent = harness();
+  await assert.rejects(execute(noParent.tools.get("subagent_grounding"), { task: "ground" }, { ...noParent.ctx, model: undefined }), /active parent model/);
+});
+
+test("exploration limiter starts ten, queues FIFO, removes aborts, and releases on every exit", async () => {
+  const pending: Array<ReturnType<typeof deferred<RunResult>>> = [];
+  const h = harness({ run: async () => {
+    const next = deferred<RunResult>();
+    pending.push(next);
+    return next.promise;
+  } });
+  const tool = h.tools.get("subagent_explore");
+  const call = (task: string, signal?: AbortSignal) => execute(tool, { task, breadth: "bounded", detail: "summary" }, h.ctx, signal);
+  const calls = Array.from({ length: 14 }, (_, index) => call(String(index)));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(h.requests.map((request) => request.task), Array.from({ length: 10 }, (_, index) => String(index)));
+  await assert.rejects(
+    execute(tool, { task: "invalid-before-slot", breadth: "bounded", detail: "summary", model: "unknown/model" }, h.ctx),
+    /not registered/,
+  );
+  assert.equal(h.requests.length, 10);
+
+  pending[0].resolve(result);
+  await calls[0];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests[10].task, "10");
+
+  const aborted = new AbortController();
+  const queuedAbort = call("aborted", aborted.signal);
+  aborted.abort();
+  await assert.rejects(queuedAbort, /aborted while queued/);
+  assert.equal(h.requests.some((request) => request.task === "aborted"), false);
+
+  pending[1].resolve({ ...result, failed: true, failureMessage: "child failed", stopReason: "error" });
+  await calls[1];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests[11].task, "11");
+
+  const activeAbort = new AbortController();
+  const activeCall = call("active-abort", activeAbort.signal);
+  pending[2].resolve(result);
+  await calls[2];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests[12].task, "12");
+  pending[12].resolve(result);
+  await calls[12];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests[13].task, "13");
+  pending[13].resolve(result);
+  await calls[13];
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests.at(-1)?.task, "active-abort");
+  activeAbort.abort();
+  pending.at(-1)!.resolve({ ...result, failed: true, failureMessage: "aborted", stopReason: "aborted" });
+  const abortedValue = await activeCall;
+  assert.equal(abortedValue.value.details.state, "aborted");
+
+  const setupFailure = call("setup-failure");
+  pending[3].reject(new Error("runner setup rejected"));
+  await assert.rejects(calls[3], /runner setup rejected/);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests.at(-1)?.task, "setup-failure");
+  pending.at(-1)!.resolve(result);
+  await setupFailure;
+
+  for (let index = 4; index < pending.length; index++) pending[index].resolve(result);
+  await Promise.all(calls.slice(4, 12));
+});
+
+test("limiter release is idempotent and pre-aborted acquisition does not consume capacity", async () => {
+  const limiter = createLimiter(1);
+  const release = await limiter.acquire(undefined);
+  release();
+  release();
+  const controller = new AbortController();
+  controller.abort();
+  await assert.rejects(limiter.acquire(controller.signal), /aborted while queued/);
+  const next = await limiter.acquire(undefined);
+  next();
+});
+
+test("tool preflight classifies singleton, mixed, stale, and malformed current leaves", async () => {
+  const h = harness();
+  const handler = h.handlers.get("tool_call");
+  h.setLeaf(assistantLeaf([{ id: "impl", name: "subagent_implement" }]));
+  assert.equal(await handler({ toolCallId: "impl", toolName: "subagent_implement" }, h.ctx), undefined);
+
+  h.setLeaf(assistantLeaf([{ id: "impl", name: "subagent_implement" }, { id: "read", name: "read" }]));
+  for (const event of [{ toolCallId: "impl", toolName: "subagent_implement" }, { toolCallId: "read", toolName: "read" }]) {
+    assert.deepEqual(await handler(event, h.ctx), {
+      block: true,
+      reason: "A batch containing subagent_implement cannot contain siblings; retry subagent_implement alone.",
+    });
+  }
+
+  h.setLeaf(assistantLeaf([{ id: "old", name: "subagent_implement" }]));
+  assert.deepEqual(await handler({ toolCallId: "new", toolName: "subagent_implement" }, h.ctx), {
+    block: true,
+    reason: "Cannot verify the current tool batch; retry subagent_implement alone.",
+  });
+  assert.equal(await handler({ toolCallId: "new", toolName: "read" }, h.ctx), undefined);
+  for (const leaf of [undefined, { type: "custom" }, { type: "message", message: { role: "user", content: [] } }, { type: "message", message: { role: "assistant", content: "bad" } }]) {
+    h.setLeaf(leaf);
+    assert.deepEqual(await handler({ toolCallId: "impl", toolName: "subagent_implement" }, h.ctx), {
+      block: true,
+      reason: "Cannot verify the current tool batch; retry subagent_implement alone.",
+    });
+  }
+});
+
 test("grounding uses the fixed read-only confidence-classified role", async () => {
   const h = harness();
   const { value } = await execute(h.tools.get("subagent_grounding"), { task: "ground design" }, h.ctx);
@@ -154,7 +379,7 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
     assert.match(call, /task\s+truncated/);
     const collapsed = rendered(tool.renderResult({
       content: [{ type: "text", text: "report" }],
-      details: { role, task: "task", state: "completed", events, omittedEvents: 7, usage, model: "child" },
+      details: { role, task: "task", state: "completed", events, omittedEvents: 7, usage, requestedModel: "cheap/model", model: "child" },
     }, { expanded: false, isPartial: false }, theme, {}), 24).join("\n");
     assert.match(collapsed, /completed/);
     assert.match(collapsed, /earlier retained\s+events/);
@@ -175,6 +400,8 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
     ];
     assert.ok(orderedActivity.every((position, index) => position >= 0 && (index === 0 || orderedActivity[index - 1] < position)), "collapsed activity is not chronological");
     assert.match(collapsed, /2 turns/);
+    assert.match(collapsed, /requested:cheap\/model/);
+    assert.match(collapsed, /child/);
     assert.match(collapsed, /to expand/);
   }
   const emptyCall = rendered(h.tools.get("subagent_explore").renderCall({}, theme, {}), 120).join("\n");

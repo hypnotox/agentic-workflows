@@ -29,7 +29,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; it must include:
+{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
 {{ else }}3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
 {{ end }}   - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).

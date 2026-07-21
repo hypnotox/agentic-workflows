@@ -36,6 +36,7 @@ export const REVIEWER_PATHS = {
 
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
 const COLLAPSED_EVENT_COUNT = 10;
+export const MAX_EXPLORATION_CONCURRENCY = 10;
 const MAX_TASK_PREVIEW_BYTES = 512;
 const MAX_FALLBACK_BYTES = 2 * 1024;
 const TASK_TRUNCATION = "[task truncated]";
@@ -54,6 +55,7 @@ export interface SubagentDetails {
   stderr?: string;
   usage?: Usage;
   model?: string;
+  requestedModel?: string;
   stopReason?: string;
   awfFailure?: true;
   [roleSpecific: string]: unknown;
@@ -92,6 +94,68 @@ function projectRoot(extensionFile: string): string {
   return resolve(dirname(extensionFile), "../../..");
 }
 
+export function resolveChildModel(ctx: any, requested: string | undefined): { model: { provider: string; id: string }; requested: string | undefined } {
+  if (requested === undefined) {
+    if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
+    return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined };
+  }
+  const slash = requested.indexOf("/");
+  if (slash <= 0 || slash === requested.length - 1) throw new Error("Subagent model must be an exact provider/model-id reference");
+  const provider = requested.slice(0, slash);
+  const id = requested.slice(slash + 1);
+  const found = ctx.modelRegistry.find(provider, id);
+  if (!found) throw new Error(`Subagent model ${requested} is not registered`);
+  if (!ctx.modelRegistry.hasConfiguredAuth(found)) throw new Error(`Subagent model ${requested} has no configured authentication`);
+  return { model: { provider: found.provider, id: found.id }, requested };
+}
+
+export function createLimiter(limit: number) {
+  let active = 0;
+  const waiters: Array<{
+    signal: AbortSignal | undefined;
+    onAbort: () => void;
+    resolve: (release: () => void) => void;
+    reject: (reason: Error) => void;
+  }> = [];
+  const makeRelease = () => {
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      active--;
+      const waiter = waiters.shift();
+      if (!waiter) return;
+      waiter.signal?.removeEventListener("abort", waiter.onAbort);
+      active++;
+      waiter.resolve(makeRelease());
+    };
+  };
+  return {
+    acquire(signal: AbortSignal | undefined): Promise<() => void> {
+      if (signal?.aborted) return Promise.reject(new Error("Exploration subagent was aborted while queued"));
+      if (active < limit) {
+        active++;
+        return Promise.resolve(makeRelease());
+      }
+      return new Promise((resolve, reject) => {
+        const waiter = {
+          signal,
+          resolve,
+          reject,
+          onAbort: () => {
+            const index = waiters.indexOf(waiter);
+            if (index >= 0) waiters.splice(index, 1);
+            signal?.removeEventListener("abort", waiter.onAbort);
+            reject(new Error("Exploration subagent was aborted while queued"));
+          },
+        };
+        waiters.push(waiter);
+        signal?.addEventListener("abort", waiter.onAbort, { once: true });
+      });
+    },
+  };
+}
+
 function rolePrompt(role: "grounding" | "explore" | "implement", options: { allowCommits?: boolean; breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string {
   if (role === "grounding") {
     return [
@@ -105,6 +169,7 @@ function rolePrompt(role: "grounding" | "explore" | "implement", options: { allo
     return [
       "You are a fresh-context exploration subagent. Read files and run evidence-producing commands only. This is report-only: do not edit files or commit.",
       "Handle exactly one information need. Do not bundle unrelated questions and do not recursively delegate.",
+      "The parent may run independent information needs concurrently as separate calls, but refinement of an earlier result stays sequential. Pi admits at most ten active exploration children and queues the rest FIFO with abort-aware removal.",
       `Selected breadth maximum: ${options.breadth}`,
       "Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.",
       "Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.",
@@ -172,8 +237,8 @@ function contentText(result: any): string {
   return utf8Bound(String(part?.text ?? "(no output)"), MAX_FALLBACK_BYTES, DISPLAY_TRUNCATION);
 }
 
-function usageText(usage: Usage | undefined, model: string | undefined): string {
-  if (!usage && !model) return "";
+function usageText(usage: Usage | undefined, model: string | undefined, requestedModel: string | undefined): string {
+  if (!usage && !model && !requestedModel) return "";
   const parts: string[] = [];
   if (usage?.turns) parts.push(`${usage.turns} turn${usage.turns === 1 ? "" : "s"}`);
   if (usage?.input) parts.push(`in:${usage.input}`);
@@ -181,6 +246,7 @@ function usageText(usage: Usage | undefined, model: string | undefined): string 
   if (usage?.cacheRead) parts.push(`cache-read:${usage.cacheRead}`);
   if (usage?.cacheWrite) parts.push(`cache-write:${usage.cacheWrite}`);
   if (usage?.cost) parts.push(`$${usage.cost.toFixed(4)}`);
+  if (requestedModel) parts.push(`requested:${requestedModel}`);
   if (model) parts.push(model);
   return parts.join(" ");
 }
@@ -204,7 +270,7 @@ function renderSubagentResult(role: RunRequest["role"], result: any, options: { 
   const state = options.isPartial ? "running" : details.state;
   const statusColor = state === "completed" ? "success" : state === "running" ? "warning" : "error";
   const header = `${theme.fg(statusColor, state)} ${theme.fg("toolTitle", theme.bold(`${role} subagent`))}`;
-  const usage = usageText(details.usage, details.model);
+  const usage = usageText(details.usage, details.model, details.requestedModel);
   const omission = details.omittedEvents > 0 ? `${details.omittedEvents} older events omitted` : "no omitted events";
 
   if (!options.expanded) {
@@ -260,24 +326,39 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   }
 
   const root = projectRoot(deps.extensionFile);
+  const explorationLimiter = createLimiter(MAX_EXPLORATION_CONCURRENCY);
   let implementationTail: Promise<void> = Promise.resolve();
   const run = async (
     role: RunRequest["role"], task: string, tools: readonly string[], systemPrompt: string,
-    signal: AbortSignal | undefined, onUpdate: ((value: any) => void) | undefined, ctx: any,
+    model: { provider: string; id: string }, requestedModel: string | undefined,
+    signal: AbortSignal | undefined, onUpdate: ((value: any) => void) | undefined,
   ) => {
     if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
-    if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
     return deps.runner.run({
-      role, task, cwd: root,
-      model: { provider: ctx.model.provider, id: ctx.model.id },
+      role, task, cwd: root, model,
       thinkingLevel: pi.getThinkingLevel() as ThinkingLevel,
       tools, systemPrompt, signal,
       onUpdate: (update) => onUpdate?.({
         content: [{ type: "text", text: "(running...)" }],
-        details: { role, task, state: "running", events: update.events, omittedEvents: update.omittedEvents },
+        details: { role, task, state: "running", events: update.events, omittedEvents: update.omittedEvents, requestedModel },
       }),
     });
   };
+
+  pi.on("tool_call", (event, ctx) => {
+    const leaf = ctx.sessionManager.getLeafEntry();
+    const content = leaf?.type === "message" && leaf.message?.role === "assistant" && Array.isArray(leaf.message.content)
+      ? leaf.message.content
+      : [];
+    const calls = content.filter((item: any) => item?.type === "toolCall");
+    const correlated = calls.some((call: any) => call.id === event.toolCallId && call.name === event.toolName);
+    if (!correlated) return event.toolName === "subagent_implement"
+      ? { block: true, reason: "Cannot verify the current tool batch; retry subagent_implement alone." }
+      : undefined;
+    if (calls.length > 1 && calls.some((call: any) => call.name === "subagent_implement"))
+      return { block: true, reason: "A batch containing subagent_implement cannot contain siblings; retry subagent_implement alone." };
+    return undefined;
+  });
 
   pi.on("tool_result", (event) => {
     const details = event.details as SubagentDetails | undefined;
@@ -287,12 +368,13 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_grounding",
     label: "Grounding Subagent",
-    description: "Run one fresh-context, no-mutation grounding check.",
+    description: "Run one fresh-context, no-mutation grounding check. Optional model uses exact provider/model-id; omission inherits the parent.",
     promptSnippet: "Ground an agreed design against source and project constraints",
-    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task."],
-    parameters: Type.Object({ task: Type.String({ minLength: 1 }) }, { additionalProperties: false }),
+    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. model is optional and omission inherits the parent."],
+    parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(Type.String()) }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
-      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), signal, onUpdate, ctx));
+      const selected = resolveChildModel(ctx, params.model);
+      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });
     },
     ...renderers("grounding"),
   });
@@ -300,16 +382,23 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_explore",
     label: "Explore Subagent",
-    description: "Run one fresh-context, no-mutation exploration child.",
+    description: "Run one fresh-context, no-mutation exploration child. Optional model uses exact provider/model-id; omission inherits the parent.",
     promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context",
-    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task."],
+    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. model is optional and omission inherits the parent."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       breadth: StringEnum(["targeted", "bounded", "broad"] as const),
       detail: StringEnum(["paths", "summary", "analysis"] as const),
+      model: Type.Optional(Type.String()),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
-      return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), signal, onUpdate, ctx));
+      const selected = resolveChildModel(ctx, params.model);
+      const release = await explorationLimiter.acquire(signal);
+      try {
+        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });
+      } finally {
+        release();
+      }
     },
     ...renderers("explore"),
   });
@@ -317,16 +406,18 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_review",
     label: "Review Subagent",
-    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context.",
+    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context. Optional model uses exact provider/model-id; omission inherits the parent.",
     promptSnippet: "Delegate governed ADR, plan, or code review to fresh context",
-    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief."],
+    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief. model is optional and omission inherits the parent."],
     parameters: Type.Object({
       kind: StringEnum(["adr", "plan", "code"] as const),
       task: Type.String({ minLength: 1 }),
+      model: Type.Optional(Type.String()),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
+      const selected = resolveChildModel(ctx, params.model);
       const prompt = await loadReviewer(deps, root, params.kind);
-      return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, signal, onUpdate, ctx), { kind: params.kind });
+      return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, selected.requested, signal, onUpdate), { kind: params.kind, requestedModel: selected.requested });
     },
     ...renderers("review"),
   });
@@ -334,14 +425,16 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_implement",
     label: "Implementation Subagent",
-    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch.",
+    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch. Optional model uses exact provider/model-id; omission inherits the parent.",
     promptSnippet: "Delegate one sequential implementation task to fresh context",
-    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly."],
+    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. model is optional and omission inherits the parent."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       allowCommits: Type.Boolean(),
+      model: Type.Optional(Type.String()),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
+      const selected = resolveChildModel(ctx, params.model);
       let release!: () => void;
       const previous = implementationTail;
       implementationTail = new Promise<void>((resolve) => { release = resolve; });
@@ -349,10 +442,10 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
         const before = await snapshot(pi, root);
-        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), signal, onUpdate, ctx);
+        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, selected.requested, signal, onUpdate);
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
-        const gitDetails = { allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
+        const gitDetails = { allowCommits: params.allowCommits, requestedModel: selected.requested, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
         if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, gitDetails);
         return toolResult("implement", params.task, result, gitDetails);
       } finally { release(); }

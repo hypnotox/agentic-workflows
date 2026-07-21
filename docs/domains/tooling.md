@@ -15,7 +15,7 @@ repo/dependency-keyed persistent container snapshot the read-only checkout, type
 dogfooded TypeScript, and enforce 100% statement/branch/function/line coverage through c8 without
 host Node/npm state; `./x pi-test run|stop|reset` owns its lifecycle. The lane runs an in-memory Pi
 0.80.9 session to prove partial details and result middleware on the minimum runtime, alongside
-bounded event, failure-diagnostic, cancellation, and cleanup tests. ADR-0125 adds exact four-tool
+bounded event, failure-diagnostic, cancellation, and cleanup tests. The runtime lane covers exact model routing, limiter lifecycle including setup failure, and whole-batch enforcement through an in-memory Pi session. ADR-0125 adds exact four-tool
 schema and role checks plus context-isolation and shared-renderer state/width coverage at the same
 minimum Pi version. ADR-0126 has the lane strip the `// @ts-nocheck` directive from its checkout
 snapshot before `tsc`, so the type-check still covers the real extension code while adopter IDEs stay

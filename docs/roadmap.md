@@ -4,7 +4,9 @@
 <!-- awf:edit ideas: from .awf/docs/parts/roadmap/ideas.md -->
 ## Ideas
 
-No other roadmap ideas are recorded.
+- Add a session dashboard for active and queued governed child work.
+- Add a fresh-session handoff command that carries bounded workflow context forward.
+- Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->

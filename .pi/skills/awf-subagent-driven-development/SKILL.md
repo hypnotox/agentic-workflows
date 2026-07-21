@@ -40,7 +40,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
    - The project conventions the subagent must follow (see next step).
 
 <!-- awf:edit dispatch-conventions: default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
-4. **Per task, call `subagent_implement` alone in its parent tool batch.** Put the complete fresh-context task in `task`, set `allowCommits` explicitly according to whether this task is authorized to create its planned commit, and wait for it before any other tool call or delegation. Never dispatch tasks in parallel. Bake these conventions into `task` verbatim:
+4. **Per task, call `subagent_implement` alone in its parent tool batch.** Put the complete fresh-context task in `task`, set `allowCommits` explicitly, optionally set exact `model` as `provider/model-id` (omission inherits the parent), and wait for it before any other tool call or delegation. Never dispatch implementation tasks in parallel. Bake these conventions into `task` verbatim:
    - **Validate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth. Use the fast tier by default; use `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `docs/workflow.md`.
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **No amending prior commits.** Fixes land as new commits on top.

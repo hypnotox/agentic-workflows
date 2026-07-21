@@ -20,7 +20,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 ## Procedure
 
 <!-- awf:edit dispatch-subagent-narrowed: default; create .awf/skills/parts/reviewing-plan-resync/dispatch-subagent-narrowed.md to override -->
-1. **Call `subagent_review` with `kind: "plan"` in resync mode.** Put the complete resync brief below in `task`.
+1. **Call `subagent_review` with `kind: "plan"` in resync mode.** Put the complete resync brief below in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent.
 
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
