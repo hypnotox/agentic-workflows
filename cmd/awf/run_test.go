@@ -230,16 +230,31 @@ func TestInitForceRefusesMissingAuthority(t *testing.T) {
 }
 
 func testInitFirstADRChecksClean(t *testing.T) {
-	for _, brownfield := range []bool{false, true} {
-		t.Run(fmt.Sprintf("brownfield-%t", brownfield), func(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		legacy []string
+		cutoff int
+		gaps   []int
+	}{
+		{name: "fresh", cutoff: 1, gaps: []int{}},
+		{name: "brownfield", legacy: []string{"0001-old.md", "0003-old.md"}, cutoff: 4, gaps: []int{2}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			repo, root := gitfixture.InitRepo(t)
 			gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
-			if brownfield {
-				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-old.md"), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Old")))
+			for _, name := range tc.legacy {
+				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(name[:4]+": Old")))
 			}
 			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 			if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
 				t.Fatal(err)
+			}
+			lock, err := manifest.Load(config.LockPath(root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if lock.ADRFormatV1From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
+				t.Fatalf("initial authority = cutoff %d gaps %v, want cutoff %d gaps %v", lock.ADRFormatV1From, lock.LegacyADRGaps, tc.cutoff, tc.gaps)
 			}
 			wt, err := repo.Worktree()
 			if err != nil {
@@ -254,11 +269,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err := runNew(root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
 				t.Fatal(err)
 			}
-			lock, err := manifest.Load(config.LockPath(root))
-			if err != nil {
-				t.Fatal(err)
-			}
-			want := fmt.Sprintf("%04d-", lock.ADRFormatV1From)
+			want := fmt.Sprintf("%04d-", tc.cutoff)
 			entries, err := os.ReadDir(filepath.Join(root, "docs/decisions"))
 			if err != nil {
 				t.Fatal(err)
@@ -270,13 +281,16 @@ func testInitFirstADRChecksClean(t *testing.T) {
 				}
 			}
 			if created == "" {
-				t.Fatalf("new ADR not created at cutoff %d", lock.ADRFormatV1From)
+				t.Fatalf("new ADR not created at cutoff %d", tc.cutoff)
 			}
 			body, err := os.ReadFile(created)
 			if err != nil {
 				t.Fatal(err)
 			}
 			text := string(body)
+			if !strings.Contains(text, "format: current-state-v1\n") {
+				t.Fatalf("new ADR at cutoff %d is not current-state-v1", tc.cutoff)
+			}
 			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
 			if start < 0 || end < 0 || end <= start {
 				t.Fatal("scaffold lacks state-change section")

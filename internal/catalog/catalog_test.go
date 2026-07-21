@@ -4,10 +4,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
+	"gopkg.in/yaml.v3"
 )
 
 // invariant: rendering/catalog-and-targets:catalog-go-single-source
@@ -145,4 +150,31 @@ func TestNoSingleMarkerInitDescriptor(t *testing.T) {
 			t.Errorf("catalog still declares removed descriptor target %q", d.Target)
 		}
 	}
+
+	var live struct {
+		CurrentState struct {
+			Sources []struct {
+				Globs  []string `yaml:"globs"`
+				Marker string   `yaml:"marker"`
+			} `yaml:"sources"`
+		} `yaml:"currentState"`
+	}
+	configPath := filepath.Join(testsupport.RepoRoot(t), ".awf", "config.yaml")
+	body, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := yaml.Unmarshal(body, &live); err != nil {
+		t.Fatal(err)
+	}
+	const testPath = "internal/catalog/catalog_test.go"
+	const qualified = "invariant: rendering/catalog-and-targets:no-single-marker-init-descriptor"
+	for _, source := range live.CurrentState.Sources {
+		for _, glob := range source.Globs {
+			if pathglob.Match(glob, testPath) && source.Marker+" "+qualified == "// "+qualified {
+				return
+			}
+		}
+	}
+	t.Fatalf("currentState.sources has no configuration route from %s to qualified marker %q", testPath, "// "+qualified)
 }

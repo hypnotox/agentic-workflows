@@ -160,6 +160,15 @@ func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 	if f := currentstate.Check(records, topics(), 137); len(f) != 0 {
 		t.Fatalf("final absence statically attributed to Abandoned removal:\n%s", messages(f))
 	}
+	withoutImplemented := currentstate.CheckPair(
+		uni([]adr.ADR{abandoned}, claim("d/t:x", "0100")),
+		uni([]adr.ADR{abandoned}),
+		137,
+	)
+	if got := messages(withoutImplemented); !strings.Contains(got, "claim d/t:x was removed with no ADR remove operation in this transition") {
+		t.Fatalf("disappearance without an actual Implemented remover was accepted:\n%s", got)
+	}
+
 	before := uni([]adr.ADR{abandoned, accepted}, claim("d/t:x", "0100"))
 	after := uni(records)
 	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {

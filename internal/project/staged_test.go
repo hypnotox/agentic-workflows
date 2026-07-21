@@ -85,38 +85,30 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	}
 }
 
-func TestCheckStagedRejectsPermanentFormatAuthorityMutation(t *testing.T) {
+func TestCheckStagedRejectsPermanentAuthorityMutation(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		cutoff int
-		gaps   []int
+		mutate func(*manifest.Lock)
+		field  string
 	}{
-		{"raise cutoff", 3, []int{}},
-		{"alter gaps", 2, []int{1}},
+		{"initializedWithVersion", func(lock *manifest.Lock) { lock.InitializedWithVersion = "0.17.0" }, "initializedWithVersion"},
+		{"adrFormatV1From", func(lock *manifest.Lock) { lock.ADRFormatV1From = 3 }, "adrFormatV1From"},
+		{"legacyAdrGaps", func(lock *manifest.Lock) { lock.LegacyADRGaps = []int{1} }, "legacyAdrGaps"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo, dir := gitfixture.InitRepo(t)
-			gitfixture.Stage(t, repo, dir, stagedHeadFiles())
+			files := stagedHeadFiles()
+			files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2,"legacyAdrGaps":[],"initializedWithVersion":"0.18.0"}`
+			gitfixture.Stage(t, repo, dir, files)
 			gitfixture.Commit(t, repo, dir, "head", nil)
 			p := openStaged(t, dir)
-			writeLock(t, p, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: tc.cutoff, LegacyADRGaps: tc.gaps})
-			if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "immutable") {
-				t.Fatalf("CheckStaged mutation error = %v", err)
+			staged := &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, InitializedWithVersion: "0.18.0"}
+			tc.mutate(staged)
+			writeLock(t, p, staged)
+			if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.field) {
+				t.Fatalf("CheckStaged %s mutation error = %v", tc.field, err)
 			}
 		})
-	}
-}
-
-func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"adrFormatV1From":2,"legacyAdrGaps":[],"initializedWithVersion":"0.18.0"}`
-	gitfixture.Stage(t, repo, dir, files)
-	gitfixture.Commit(t, repo, dir, "head", nil)
-	p := openStaged(t, dir)
-	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, InitializedWithVersion: "0.19.0"})
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
-		t.Fatalf("CheckStaged init-version mutation error = %v", err)
 	}
 }
 
