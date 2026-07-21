@@ -28,13 +28,13 @@ Pi session replacement is not fully transactional. Validation and countdown canc
 
 4. The extension registers `handoff_session` with exactly two required string arguments: `memoryPath` and `kickoff`. `memoryPath` is an exact repository-relative path confined beneath `.awf/memory/`. Absolute paths, traversal, the memory directory itself, directories, missing files, paths outside that root, and any path containing a symlink component are rejected. The extension resolves the repository and validates the path without reading or interpreting the memory file's content.
 
-5. `kickoff` is trimmed for validation, must contain non-whitespace content, and has a TypeBox `maxLength` of 1,000 JavaScript UTF-16 code units. The original accepted string is carried into the kickoff wrapper. The wrapper names the exact memory path and kickoff, instructs the new agent to read that memory file first, and states that repository sources and current-state documentation are authoritative over the checkpoint.
+5. `kickoff` is trimmed for validation and must contain non-whitespace content. Its public TypeBox schema carries `maxLength: 1000`, and execution additionally requires JavaScript `kickoff.length <= 1000` so the effective boundary is exactly 1,000 UTF-16 code units even though JSON Schema length counts Unicode code points. The original accepted string is carried into the kickoff wrapper. The wrapper names the exact memory path and kickoff, instructs the new agent to read that memory file first, and states that repository sources and current-state documentation are authoritative over the checkpoint.
 
 6. The working-memory update must finish before `handoff_session` is invoked, and `handoff_session` must be the only tool call in its assistant tool-call batch. Pi's tool preflight correlates the call with the current leaf assistant message and fails closed when it cannot establish exclusivity. Checkpoint freshness and content quality remain instructional because the extension intentionally has no dependency on the memory file's prose.
 
 7. Initial support is limited to an interactive Pi TUI with a persisted session capable of parent-linked replacement. Print, JSON, RPC, ephemeral, and no-session invocations reject before queuing and do not change session state. The public tool remains registered in supported TUI sessions so it is available at intermediate safe checkpoints, not only at terminal skill handoffs.
 
-8. A valid tool call creates one pending request and queues a correlated private continuation command through `pi.queueCommand`. Pending requests are single-use. A second tool call cannot replace an existing request, and the continuation command rejects invocation without the matching validated request. Queue failure clears the request and returns an error without changing sessions.
+8. A valid tool call creates one pending request and queues a correlated private continuation command through `pi.queueCommand`. Pending requests are single-use. A second tool call cannot replace an existing request, and the continuation command rejects invocation without the matching validated request. Queue failure clears the request and returns an error without changing sessions. A successfully queued `handoff_session` result sets `terminate: true`, preventing another model turn before the agent settles and the command starts.
 
 9. The continuation command begins only after the calling agent has fully settled. It presents a visible five-second countdown with a documented cancellation control. Cancellation consumes the request and leaves the old session active. Immediately before replacement, the command repeats repository confinement, existence, file-type, and all-component no-symlink validation so a change during the pending window fails closed.
 
@@ -46,13 +46,14 @@ Pi session replacement is not fully transactional. Validation and countdown canc
 
 13. The Pi output descriptor, output plan, manifest, cleanup, drift check, and target-sensitive render hash govern all three extension files: the two existing `awf-subagents` files and the new `awf-handoff` file. A target set without Pi renders none of them. The generated awf checkout and Sundial example carry the same governed extension output after sync.
 
-14. Deterministic tests cover strict schema and path boundaries, symlink and pending-window revalidation, batch exclusivity, the single-use pending state machine, unsupported modes, countdown cancellation, replacement and parent lineage against the pinned Pi API, pre- and post-replacement failure behavior, editor fallback, output planning and cleanup, generated awf and Sundial files, and target-specific workflow guidance. The Pi container lane copies and type-checks every governed Pi extension file rather than retaining a hard-coded two-file assumption.
+14. Deterministic tests cover strict schema and path boundaries, the explicit UTF-16 kickoff limit, symlink and pending-window revalidation, batch exclusivity, the single-use pending state machine, unsupported modes, countdown cancellation, termination without an intervening model turn, replacement and parent lineage against the pinned Pi API, pre- and post-replacement failure behavior, editor fallback, output planning and cleanup, generated awf and Sundial files, and target-specific workflow guidance. The Pi container lane copies and type-checks every governed Pi extension file rather than retaining a hard-coded two-file assumption.
 
-15. Implementation updates the workflow and working-memory guidance, architecture, working-with-awf and testing documentation, generated agent guide, target and template claims, and relevant examples in the same checked batches as their behavior. Templates remain publication-safe for non-Pi targets and for unset project variables.
+15. Implementation updates the workflow and working-memory guidance, architecture, working-with-awf and testing documentation, generated agent guide, target and template claims, and relevant examples in the same checked batches as their behavior. Templates remain publication-safe for non-Pi targets and for unset project variables. Every ADR lifecycle transition runs `./x sync` and stages the regenerated `docs/decisions/INDEX.md` in the same commit.
 
 ## State changes
 
 - update `rendering/templates:memory-checkpoint-chain-coverage`
+- update `rendering/templates:pi-extension-editor-quiet-strip`
 - add `rendering/templates:pi-session-handoff-public-contract`
 - add `rendering/templates:pi-session-handoff-workflow`
 - update `rendering/catalog-and-targets:pi-extension-target-render`
@@ -63,6 +64,8 @@ Pi session replacement is not fully transactional. Validation and countdown canc
 ## Consequences
 
 Each completed workflow phase can begin its successor with a small context based on durable working memory and current repository authority. The user sees the checkpoint before replacement, can cancel during a predictable window, and retains the old session as navigable history. Intermediate checkpoints extend the same cost control to long implementation work.
+
+Default handoffs add five seconds of latency at every completed checkpoint that is not canceled. They also accumulate persisted parent-linked sessions, increasing storage use and session-navigation clutter. History cleanup remains a deliberate manual action because automatic deletion would weaken recovery and auditability.
 
 Pi receives another executable generated extension and a higher minimum runtime. Output planning, example wiring, container fixtures, documentation, and release smoke checks all widen accordingly. Non-Pi adapters gain clearer visible checkpoints without pretending their harnesses can replace sessions.
 
@@ -83,6 +86,7 @@ The upstream queued-command API becomes a real awf runtime dependency. Pinning t
 | Send a slash command through `sendUserMessage` | Pi deliberately disables command expansion for extension-sent messages, and changing that security boundary would expose a broader, less controlled mechanism. |
 | Reach into Pi command-queue internals | Couples generated project code to undocumented implementation details and cannot support a stable minimum-version contract. |
 | Add replacement directly to `awf-subagents` | Mixes main-session lifecycle with isolated child-process orchestration and expands the runner's permission and failure surface. |
+| Expose handoff only as an opt-in model tool | Reduces interruption, session creation, and runtime coupling, but leaves the normal phase chain accumulating context unless the user or agent repeatedly elects the optimization; the visible checkpoint and cancellation window make default automation controllable. |
 | Make handoff instantaneous | Removes the visible opportunity to stop an automatic replacement after the checkpoint summary. |
 | Promise transactional rollback for every replacement failure | Pi can fail after old-session disposal begins; such a promise would not match the pinned runtime's real lifecycle. |
 
