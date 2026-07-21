@@ -79,6 +79,7 @@ ADR-0143 removes the former requirement that all of this decision's claim operat
 - add `tooling/cli:context-applicability-navigation`
 - add `tooling/cli:topic-claim-budget-advisory`
 - add `tooling/cli:managed-runner-command-parity`
+- update `config/configuration:config-serialization-owned`
 - add `config/configuration:topic-claim-budget-configured`
 - add `rendering/project-output-plan:managed-output-attribution`
 - add `rendering/adapter-outputs:generated-adapter-runtime-ownership`
