@@ -19,7 +19,7 @@ import (
 
 // invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff
 // invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
-func TestRunUpgradeExistingV1ToSchema15IsAtomicAndIdempotent(t *testing.T) {
+func TestRunUpgradeExistingV1ToCurrentIsAtomicAndIdempotent(t *testing.T) {
 	root := scaffoldProject(t)
 	onePath := filepath.Join(root, "docs/decisions/0001-one.md")
 	threePath := filepath.Join(root, "docs/decisions/0003-three.md")
@@ -44,7 +44,7 @@ func TestRunUpgradeExistingV1ToSchema15IsAtomicAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != 15 || got.AWFVersion != "0.20.0" || got.ADRFormatV1From != 1 || got.ADRFormatV2From != 4 {
+	if got.SchemaVersion != 16 || got.AWFVersion != "0.21.0" || got.ADRFormatV1From != 1 || got.ADRFormatV2From != 4 {
 		t.Fatalf("upgraded authority = %#v", got)
 	}
 	for path, want := range map[string]string{onePath: one, threePath: three} {
@@ -61,7 +61,7 @@ func TestRunUpgradeExistingV1ToSchema15IsAtomicAndIdempotent(t *testing.T) {
 	if second := snapshotTree(t, root); second != first {
 		t.Fatal("same-schema upgrade changed the synchronized tree")
 	}
-	if !strings.Contains(out.String(), "already at schema 15") {
+	if !strings.Contains(out.String(), "already at schema 16") {
 		t.Fatalf("idempotent output = %q", out.String())
 	}
 }
@@ -92,7 +92,7 @@ func TestRunUpgradeSchema15FailureAndAheadAreAtomic(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		lock.SchemaVersion = 16
+		lock.SchemaVersion = 17
 		if err := lock.Save(config.LockPath(root)); err != nil {
 			t.Fatal(err)
 		}

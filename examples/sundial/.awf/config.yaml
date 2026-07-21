@@ -69,3 +69,4 @@ currentState:
   topicCoverage: error
   topicFanout: warn
   maxTopicsPerPath: 8
+  maxClaimsPerTopic: 20

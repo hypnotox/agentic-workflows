@@ -164,6 +164,11 @@ var keys = []Entry{
 		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
+		Path: "currentState.maxClaimsPerTopic", Type: "positive integer", Default: "20",
+		Description:  "Advisory maximum number of current-state claims in one topic before awf check emits a non-failing split note; it never truncates query output.",
+		Availability: "Consumed by the working-tree current-state check; the staged check does not emit this advisory.",
+	},
+	{
 		Path: "audit.allowedTypes", Type: "string list", Default: "the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test)",
 		Description:  "Commit types `awf commit-gate` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.)",
 		Availability: "Read by `awf commit-gate` and `awf audit`.",

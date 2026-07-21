@@ -40,8 +40,9 @@ Backing: test
 
 ### `invariant: config-serialization-owned`
 
-The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton and SetArrayMember, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
+The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, SetMappingScalar, and the typed nested-integer SetMappingInteger editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
+Revised-by: ADR-0144
 Backing: test
 
 ### `invariant: configspec-data-parity`
@@ -96,6 +97,12 @@ Backing: test
 
 AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs and audit.dependencyManifests to a leading double-star form, leaves already-slashed patterns untouched, and is idempotent.
 Origin: ADR-0077
+Backing: test
+
+### `invariant: topic-claim-budget-configured`
+
+The positive currentState.maxClaimsPerTopic setting has an effective default of 20, is explicitly serialized by scaffold and schema migration, and is exposed consistently through strict config parsing, configspec, generated reference state, render hashing, and lock inputs.
+Origin: ADR-0144
 Backing: test
 
 ### `invariant: local-doc-name-path-validated`

@@ -159,6 +159,27 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:topic-claim-budget-advisory
+func TestRunCheckClaimBudgetNote(t *testing.T) {
+	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  topicCoverage: off\n  topicFanout: off\n  maxClaimsPerTopic: 1\n"
+	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
+	root := syncedGitProjectFiles(t, cfg, map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": part,
+		"docs/decisions/0001-one.md":                   testsupport.ADR("Implemented", testsupport.WithTitle("0001: One")),
+	})
+	var out bytes.Buffer
+	if err := runCheck(root, false, &out); err != nil {
+		t.Fatalf("advisory must not fail check: %v", err)
+	}
+	for _, want := range []string{"note: topic alpha/one has 2 claims", "maxClaimsPerTopic limit 1", ".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "awf check: clean"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output missing %q: %s", want, out.String())
+		}
+	}
+}
+
 // stagedCheckProject builds a git repo whose HEAD holds the given committed files
 // and whose index additionally holds stageOnly, so `awf check --staged` sees a
 // HEAD-to-index delta. The config lives in commit, so Open resolves it.
@@ -216,6 +237,25 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "awf check --staged: clean") {
 		t.Errorf("expected the clean staged status, got: %q", out.String())
+	}
+}
+
+func TestRunCheckStagedSuppressesClaimBudgetNote(t *testing.T) {
+	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  topicCoverage: off\n  topicFanout: off\n  maxClaimsPerTopic: 1\n"
+	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
+	root := stagedCheckProject(t, map[string]string{
+		".awf/config.yaml":                             cfg,
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": part,
+		"docs/decisions/0001-one.md":                   testsupport.ADR("Implemented", testsupport.WithTitle("0001: One")),
+	}, nil)
+	var out bytes.Buffer
+	if err := runCheck(root, true, &out); err != nil {
+		t.Fatalf("staged oversized topic must stay clean: %v\n%s", err, out.String())
+	}
+	if strings.Contains(out.String(), "maxClaimsPerTopic") || strings.Contains(out.String(), "topic alpha/one has") {
+		t.Fatalf("staged check emitted working-tree advisory: %s", out.String())
 	}
 }
 

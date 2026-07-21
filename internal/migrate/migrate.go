@@ -47,6 +47,7 @@ var registry = []Migration{
 	{To: 13, Name: "exploring-skill-closure", Apply: applyCloseEnabledSet},
 	{To: 14, Name: "current-state-topic-substrate", Apply: applyCurrentStateTopicSubstrate},
 	{To: 15, Name: "adr-format-v2-cutoff", Apply: applyADRFormatV2Cutoff, OwnsSchemaStamp: true},
+	{To: 16, Name: "topic-claim-budget", Apply: applyTopicClaimBudget},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -158,7 +159,7 @@ func ProjectPresentFromFiles(has func(string) bool) bool {
 // stampLockSchema sets an existing tree lock's SchemaVersion to Current(). A
 // missing lock (e.g. just after the legacy tree-layout port, before the first
 // sync) is a no-op - Generation's no-lock branch already reports Current().
-func stampLockSchema(root string) error { // coverage-ignore: schema 15 owns the stamp and is the highest registered migration, so every currently reachable applied set ends in an owning migration
+func stampLockSchema(root string) error {
 	lockPath := config.LockPath(root)
 	if !fileExists(lockPath) {
 		return nil // no lock yet; the terminal sync stamps it

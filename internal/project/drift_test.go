@@ -86,6 +86,16 @@ func configHashOf(t *testing.T, root, rel string) string {
 	return ""
 }
 
+func TestClaimBudgetChangesConfigHash(t *testing.T) {
+	const rel = ".claude/skills/example-tdd/SKILL.md"
+	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxClaimsPerTopic: 20\n")
+	before := configHashOf(t, root, rel)
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxClaimsPerTopic: 21\n")
+	if after := configHashOf(t, root, rel); after == before {
+		t.Fatal("maxClaimsPerTopic change did not change render config hash")
+	}
+}
+
 // invariant: rendering/project-output-plan:drift-source-set
 func TestPerTargetDriftProjection(t *testing.T) {
 	const (

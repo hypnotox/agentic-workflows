@@ -49,6 +49,7 @@ currentState:
   topicCoverage: error
   topicFanout: warn
   maxTopicsPerPath: 8
+  maxClaimsPerTopic: 20
 prefix: awf
 skills:
   - adr-lifecycle

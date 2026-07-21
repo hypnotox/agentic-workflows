@@ -4,7 +4,7 @@
 <!-- awf:edit current-state: from .awf/domains/parts/tooling/current-state.md -->
 ## Current state
 
-ADR-0132 raises the config schema to generation 13, expands the curated default to twelve core skills, and gives Pi's exploration lane the exact required `{task, breadth, detail}` contract while retaining four public roles and the unchanged runner boundary.
+ADR-0132 raises the config schema to generation 13, expands the curated default to twelve core skills, and gives Pi's exploration lane the exact required `{task, breadth, detail}` contract while retaining four public roles and the unchanged runner boundary. Schema generation 16 and awf 0.21.0 add the positive default-20 `currentState.maxClaimsPerTopic` setting; working-tree `awf check` emits one sorted, non-failing split note per topic strictly above it, while equality is quiet and `awf check --staged` suppresses the advisory.
 
 Prose-gate evaluates staged configuration and regular staged blobs.
 

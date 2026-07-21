@@ -70,13 +70,14 @@ func (c *Config) Source() []byte { return c.raw }
 // current-state topics. It is deliberately separate from the legacy invariant
 // authority, which remains active throughout the bridge tranche.
 type CurrentStateConfig struct {
-	Sources          []CurrentStateSource `yaml:"sources"`
-	TestGlobs        []string             `yaml:"testGlobs"`
-	TopicCoverage    string               `yaml:"topicCoverage"`
-	TopicFanout      string               `yaml:"topicFanout"`
-	MaxTopicsPerPath *int                 `yaml:"maxTopicsPerPath"`
-	coverageSet      bool
-	fanoutSet        bool
+	Sources           []CurrentStateSource `yaml:"sources"`
+	TestGlobs         []string             `yaml:"testGlobs"`
+	TopicCoverage     string               `yaml:"topicCoverage"`
+	TopicFanout       string               `yaml:"topicFanout"`
+	MaxTopicsPerPath  *int                 `yaml:"maxTopicsPerPath"`
+	MaxClaimsPerTopic *int                 `yaml:"maxClaimsPerTopic"`
+	coverageSet       bool
+	fanoutSet         bool
 }
 
 // UnmarshalYAML retains severity presence while preserving strict nested field
@@ -112,14 +113,17 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 				return err
 			}
 		case "maxTopicsPerPath":
-			if value.Kind != yaml.ScalarNode || value.Tag != "!!int" {
-				return errors.New("currentState.maxTopicsPerPath must be an integer scalar")
-			}
-			var maximum int
-			if err := value.Decode(&maximum); err != nil {
-				return fmt.Errorf("currentState.maxTopicsPerPath must be an integer scalar: %w", err)
+			maximum, err := decodeIntegerScalar(value, "currentState.maxTopicsPerPath")
+			if err != nil {
+				return err
 			}
 			c.MaxTopicsPerPath = &maximum
+		case "maxClaimsPerTopic":
+			maximum, err := decodeIntegerScalar(value, "currentState.maxClaimsPerTopic")
+			if err != nil {
+				return err
+			}
+			c.MaxClaimsPerTopic = &maximum
 		default:
 			return fmt.Errorf("field %s not found in type config.CurrentStateConfig", key)
 		}
@@ -134,6 +138,26 @@ func (c *CurrentStateConfig) EffectiveMaxTopicsPerPath() int {
 		return 8
 	}
 	return *c.MaxTopicsPerPath
+}
+
+// EffectiveMaxClaimsPerTopic returns the configured topic claim-count advisory
+// threshold, defaulting to 20 without materializing it into decoded config.
+func (c *CurrentStateConfig) EffectiveMaxClaimsPerTopic() int {
+	if c == nil || c.MaxClaimsPerTopic == nil {
+		return 20
+	}
+	return *c.MaxClaimsPerTopic
+}
+
+func decodeIntegerScalar(node *yaml.Node, field string) (int, error) {
+	if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
+		return 0, fmt.Errorf("%s must be an integer scalar", field)
+	}
+	var value int
+	if err := node.Decode(&value); err != nil {
+		return 0, fmt.Errorf("%s must be an integer scalar: %w", field, err)
+	}
+	return value, nil
 }
 
 // CurrentStateSource describes one marker-bearing source family. closeSet
@@ -406,8 +430,16 @@ func (c *Config) Validate() error {
 				return fmt.Errorf("currentState.%s must be error, warn, or off; got %q", name, severity)
 			}
 		}
-		if c.CurrentState.MaxTopicsPerPath != nil && *c.CurrentState.MaxTopicsPerPath <= 0 {
-			return fmt.Errorf("currentState.maxTopicsPerPath must be positive; got %d", *c.CurrentState.MaxTopicsPerPath)
+		for _, maximum := range []struct {
+			name  string
+			value *int
+		}{
+			{"maxTopicsPerPath", c.CurrentState.MaxTopicsPerPath},
+			{"maxClaimsPerTopic", c.CurrentState.MaxClaimsPerTopic},
+		} {
+			if maximum.value != nil && *maximum.value <= 0 {
+				return fmt.Errorf("currentState.%s must be positive; got %d", maximum.name, *maximum.value)
+			}
 		}
 		for i, src := range c.CurrentState.Sources {
 			if len(src.Globs) == 0 {

@@ -122,6 +122,27 @@ func TestCheckCurrentState(t *testing.T) {
 	}
 }
 
+func TestCheckCurrentStateClaimBudgetAdvisory(t *testing.T) {
+	cfg := csYAML + "  maxClaimsPerTopic: 1\n"
+	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
+	p := csRepo(t, cfg, map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": part,
+	})
+	report, err := p.CheckCurrentState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(report.Findings()) != 0 {
+		t.Fatalf("advisory changed success status: %#v", report.Findings())
+	}
+	want := "topic alpha/one has 2 claims, above maxClaimsPerTopic limit 1; consider splitting .awf/topics/metadata/alpha/one.yaml and .awf/topics/parts/alpha/one/current-state.md"
+	if notes := report.Notes(); len(notes) != 1 || notes[0] != want {
+		t.Fatalf("notes = %#v, want %q", notes, want)
+	}
+}
+
 // TestCheckCurrentStateNoPolicy proves coverage is skipped when the project
 // configures no currentState policy: the report carries static findings only.
 func TestCheckCurrentStateNoPolicy(t *testing.T) {

@@ -137,6 +137,7 @@ func TestConfigspecKeyParity(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:topic-claim-budget-configured
 func TestCurrentStateKeysPublished(t *testing.T) {
 	got := map[string]Entry{}
 	for _, entry := range Keys() {
@@ -151,6 +152,7 @@ func TestCurrentStateKeysPublished(t *testing.T) {
 		"currentState.topicCoverage",
 		"currentState.topicFanout",
 		"currentState.maxTopicsPerPath",
+		"currentState.maxClaimsPerTopic",
 	} {
 		entry, ok := got[path]
 		if !ok {

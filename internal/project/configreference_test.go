@@ -51,6 +51,7 @@ func TestConfigReferenceGolden(t *testing.T) {
 		"| 400 (default) |",
 		"`bootstrap.enabled`",
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 8 (default) |",
+		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 20 (default) |",
 		"`currentState.topicCoverage` | severity (error, warn, or off) | error | error (default) |",
 		"State: set (`make gate`). Consumed by: agents-doc, doc workflow, plans-template, skill tdd.",
 		"`checkCmd`",
@@ -240,6 +241,7 @@ currentState:
   topicCoverage: off
   topicFanout: error
   maxTopicsPerPath: 5
+  maxClaimsPerTopic: 12
 proseGate:
   enabled: true
   exemptions:
@@ -263,6 +265,7 @@ proseGate:
 		"`currentState.topicCoverage` | severity (error, warn, or off) | error | off |",
 		"`currentState.topicFanout` | severity (error, warn, or off) | warn | error |",
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
+		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 12 |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)

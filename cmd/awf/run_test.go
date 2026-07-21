@@ -362,8 +362,8 @@ func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgradedLock.SchemaVersion != 15 {
-		t.Errorf("lock schema = %d, want 15", upgradedLock.SchemaVersion)
+	if upgradedLock.SchemaVersion != 16 {
+		t.Errorf("lock schema = %d, want 16", upgradedLock.SchemaVersion)
 	}
 	cfg, err := config.Load(config.RootDir(root))
 	if err != nil {
@@ -1044,7 +1044,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: 16, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

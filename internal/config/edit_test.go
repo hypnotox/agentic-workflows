@@ -8,11 +8,12 @@ import (
 
 func TestMarshalSkeleton(t *testing.T) {
 	out, err := MarshalSkeleton(Skeleton{
-		Prefix: "awf",
-		Vars:   map[string]string{"b": "", "a": ""},
-		Skills: []string{"tdd"},
-		Agents: []string{},
-		Docs:   []string{"workflow"},
+		Prefix:       "awf",
+		Vars:         map[string]string{"b": "", "a": ""},
+		Skills:       []string{"tdd"},
+		Agents:       []string{},
+		Docs:         []string{"workflow"},
+		CurrentState: &SkeletonCurrentState{MaxClaimsPerTopic: 20},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -21,7 +22,8 @@ func TestMarshalSkeleton(t *testing.T) {
 		"vars:\n  a: \"\"\n  b: \"\"\n" +
 		"skills:\n  - tdd\n" +
 		"agents: []\n" +
-		"docs:\n  - workflow\n"
+		"docs:\n  - workflow\n" +
+		"currentState:\n  maxClaimsPerTopic: 20\n"
 	// invariant: config/configuration:config-serialization-owned
 	if string(out) != want {
 		t.Errorf("MarshalSkeleton:\n got: %q\nwant: %q", out, want)
@@ -130,6 +132,37 @@ func TestRemoveKey(t *testing.T) {
 			}
 			if string(got) != tc.want {
 				t.Errorf("RemoveKey:\n got: %q\nwant: %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// invariant: config/configuration:topic-claim-budget-configured
+func TestSetMappingInteger(t *testing.T) {
+	for _, tc := range []struct {
+		name, src, want string
+		wantErr         bool
+	}{
+		{"creates mapping", "# top\nprefix: x\n", "# top\nprefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n", false},
+		{"adds child preserving comment", "currentState:\n  topicCoverage: warn # keep\n", "currentState:\n  topicCoverage: warn # keep\n  maxClaimsPerTopic: 20\n", false},
+		{"preserves existing integer", "currentState:\n  maxClaimsPerTopic: 7 # explicit\n", "currentState:\n  maxClaimsPerTopic: 7 # explicit\n", false},
+		{"rejects non-mapping", "currentState: nope\n", "", true},
+		{"rejects wrong existing kind", "currentState:\n  maxClaimsPerTopic: nope\n", "", true},
+		{"rejects malformed", "currentState: [bad\n", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := SetMappingInteger([]byte(tc.src), "currentState", "maxClaimsPerTopic", 20)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
 			}
 		})
 	}

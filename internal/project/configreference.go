@@ -150,6 +150,8 @@ func (p *Project) currentValue(path string) string {
 		return withDefault(p.Cfg.CurrentState.TopicFanout, p.Cfg.CurrentState.TopicFanout == "warn")
 	case "currentState.maxTopicsPerPath":
 		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
+	case "currentState.maxClaimsPerTopic":
+		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxClaimsPerTopic()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxClaimsPerTopic == nil)
 	case "audit.allowedTypes":
 		if len(res.AllowedTypes) == 0 {
 			return "accept any"

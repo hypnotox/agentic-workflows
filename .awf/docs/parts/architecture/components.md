@@ -18,10 +18,12 @@
   conformance audit (`./x audit-local`, ADR-0073: changelog-entry Errors plus
   coverage-ignore re-evaluation Warnings). Not part of the rendered standard.
 - **`internal/config/`**: owns `.awf/config.yaml`: the schema and strict load, its construction
-  (`MarshalSkeleton`) and mutation (`SetArrayMember`, a comment-preserving `yaml.Node` round-trip)
-  behind one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The
-  `currentState` block configures strict topic validation and is the authority the current-state model
-  reads; the legacy `invariants` block it replaced was dropped at the project-atomic cutover.
+  (`MarshalSkeleton`) and typed mutation (`SetArrayMember`, `SetArray`, `SetMappingScalar`, and
+  `SetMappingInteger`, comment-preserving `yaml.Node` round trips) behind one `encode` funnel
+  (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The `currentState` block configures
+  strict topic validation, coverage/fan-out policy, and the positive default-20 non-failing
+  `maxClaimsPerTopic` topic-size advisory; it is the authority the current-state model reads. The
+  legacy `invariants` block it replaced was dropped at the project-atomic cutover.
   `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).
 - **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Its core `exploring`

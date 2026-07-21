@@ -80,6 +80,32 @@ func TestEvaluateCoverage(t *testing.T) {
 	}
 }
 
+func TestClaimBudgetNotes(t *testing.T) {
+	claims := func(n int) []Claim {
+		out := make([]Claim, n)
+		for i := range out {
+			out[i].ID = "x"
+		}
+		return out
+	}
+	c := Corpus{all: []Topic{
+		{ID: TopicID{"zeta", "large"}, Claims: claims(3)},
+		{ID: TopicID{"alpha", "equal"}, Claims: claims(2)},
+		{ID: TopicID{"alpha", "large"}, Claims: claims(4)},
+	}}
+	got := ClaimBudgetNotes(c, 2)
+	want := []string{
+		"topic alpha/large has 4 claims, above maxClaimsPerTopic limit 2; consider splitting .awf/topics/metadata/alpha/large.yaml and .awf/topics/parts/alpha/large/current-state.md",
+		"topic zeta/large has 3 claims, above maxClaimsPerTopic limit 2; consider splitting .awf/topics/metadata/zeta/large.yaml and .awf/topics/parts/zeta/large/current-state.md",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("notes = %#v, want %#v", got, want)
+	}
+	if got := ClaimBudgetNotes(c, 4); len(got) != 0 {
+		t.Fatalf("equal or below threshold notes = %#v", got)
+	}
+}
+
 func TestCoverageForTopic(t *testing.T) {
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/t:c": {{Path: "z", Line: 2, ClaimID: "d/t:c"}, {Path: "a", Line: 1, ClaimID: "d/t:c"}}}}
 	topic := Topic{ID: TopicID{"d", "t"}, Metadata: Metadata{Paths: []string{"internal/**"}}, Claims: []Claim{{ID: "d/t:c"}}}

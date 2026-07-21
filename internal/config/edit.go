@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -16,14 +17,20 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix    string            `yaml:"prefix"`
-	Vars      map[string]string `yaml:"vars"`
-	Skills    []string          `yaml:"skills"`
-	Agents    []string          `yaml:"agents"`
-	Docs      []string          `yaml:"docs"`
-	Audit     *SkeletonAudit    `yaml:"audit,omitempty"`
-	Bootstrap *BootstrapConfig  `yaml:"bootstrap,omitempty"`
-	Hooks     *HooksConfig      `yaml:"hooks,omitempty"`
+	Prefix       string                `yaml:"prefix"`
+	Vars         map[string]string     `yaml:"vars"`
+	Skills       []string              `yaml:"skills"`
+	Agents       []string              `yaml:"agents"`
+	Docs         []string              `yaml:"docs"`
+	Audit        *SkeletonAudit        `yaml:"audit,omitempty"`
+	Bootstrap    *BootstrapConfig      `yaml:"bootstrap,omitempty"`
+	Hooks        *HooksConfig          `yaml:"hooks,omitempty"`
+	CurrentState *SkeletonCurrentState `yaml:"currentState,omitempty"`
+}
+
+// SkeletonCurrentState carries current-state defaults written by a fresh init.
+type SkeletonCurrentState struct {
+	MaxClaimsPerTopic int `yaml:"maxClaimsPerTopic"`
 }
 
 // SkeletonAudit is the audit block a scaffold can seed (ADR-0051): only
@@ -165,6 +172,32 @@ func SetMappingScalar(src []byte, key, child string, value bool) ([]byte, error)
 	} else {
 		val.Content = append(val.Content, strScalar(child), boolScalar(boolStr))
 	}
+	return encode(doc)
+}
+
+// SetMappingInteger sets child to an integer under a top-level mapping, creating
+// the mapping when absent while preserving comments and unrelated keys.
+func SetMappingInteger(src []byte, key, child string, value int) ([]byte, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
+	}
+	integer := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!int", Value: strconv.Itoa(value)}
+	val, _ := mapValue(root, key)
+	if val == nil {
+		root.Content = append(root.Content, strScalar(key), &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map", Content: []*yaml.Node{strScalar(child), integer}})
+		return encode(doc)
+	}
+	if val.Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("config: %s must be a mapping", key)
+	}
+	if current, _ := mapValue(val, child); current != nil {
+		if current.Kind != yaml.ScalarNode || current.Tag != "!!int" {
+			return nil, fmt.Errorf("config: %s.%s must be an integer scalar", key, child)
+		}
+		return src, nil
+	}
+	val.Content = append(val.Content, strScalar(child), integer)
 	return encode(doc)
 }
 

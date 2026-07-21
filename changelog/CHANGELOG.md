@@ -9,6 +9,9 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- Schema generation 16 adds strict `currentState.maxClaimsPerTopic` configuration. Existing adopters
+  must run `awf upgrade`; the migration writes the explicit default of 20 while preserving an explicit
+  positive value and the sealed ADR format cutoff.
 - Current-state topics are now awf's single active authority, replacing the ADR-derived context,
   supersession, and invariant-authority engines. Active rules and invariants live as individually
   identified claims in domain-owned topic documents under `.awf/topics/`, rendered to `docs/topics/`;

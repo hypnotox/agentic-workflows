@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"fmt"
 	"maps"
 	"slices"
 	"strings"
@@ -82,6 +83,22 @@ type CoverageFinding struct {
 type CoveragePolicy struct {
 	Coverage, Fanout CoverageSeverity
 	MaxTopicsPerPath int
+}
+
+// ClaimBudgetNotes returns one deterministic advisory for each topic whose
+// claim count is strictly above maxClaimsPerTopic.
+func ClaimBudgetNotes(c Corpus, maxClaimsPerTopic int) []string {
+	var notes []string
+	topics := c.All()
+	slices.SortFunc(topics, func(a, b Topic) int { return strings.Compare(a.ID.String(), b.ID.String()) })
+	for _, t := range topics {
+		if len(t.Claims) <= maxClaimsPerTopic {
+			continue
+		}
+		id := t.ID.String()
+		notes = append(notes, fmt.Sprintf("topic %s has %d claims, above maxClaimsPerTopic limit %d; consider splitting .awf/topics/metadata/%s.yaml and .awf/topics/parts/%s/current-state.md", id, len(t.Claims), maxClaimsPerTopic, id, id))
+	}
+	return notes
 }
 
 // EvaluateCoverage returns the sorted coverage and fan-out findings for the

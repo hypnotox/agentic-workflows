@@ -43,7 +43,10 @@ Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable a
 audit, currentState), per-artifact sidecar YAMLs, and convention parts. Every key, var, sidecar
 field, and per-artifact data key is described in the generated
 [configuration reference](config-reference.md), including this project's live state: which
-vars are set, what consumes them, and what enabling would activate.
+vars are set, what consumes them, and what enabling would activate. `currentState.maxClaimsPerTopic`
+is a positive topic-size advisory with an effective default of 20: working-tree `awf check` prints a
+non-failing note for a topic strictly above it, while equality is quiet, staged checks suppress the
+advisory, and no query output is truncated.
 
 **Current-state topic inputs.** A topic is exactly one strict sidecar at
 `.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at

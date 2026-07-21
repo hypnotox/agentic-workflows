@@ -69,10 +69,11 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	}
 
 	for key, want := range map[string]string{
-		"audit.diffThreshold": "current: 400 (default)",
-		"gateCmd":             "state: set (`make gate`)",
-		"sidecar.local":       "renders nothing",
-		"testSurfaces":        "skill tdd · data.testSurfaces",
+		"audit.diffThreshold":            "current: 400 (default)",
+		"currentState.maxClaimsPerTopic": "current: 20 (default)",
+		"gateCmd":                        "state: set (`make gate`)",
+		"sidecar.local":                  "renders nothing",
+		"testSurfaces":                   "skill tdd · data.testSurfaces",
 	} {
 		out.Reset()
 		if err := runConfig(root, key, &out); err != nil {
