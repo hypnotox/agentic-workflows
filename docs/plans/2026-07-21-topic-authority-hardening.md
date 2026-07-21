@@ -1,6 +1,6 @@
 ---
 date: 2026-07-21
-adrs: [134, 135, 136, 139]
+adrs: [134, 135, 136, 139, 140]
 status: Proposed
 ---
 # Plan: Topic Authority Hardening
@@ -661,9 +661,10 @@ proof markers, generated outputs, and terminal status land together in the final
   docs(rendering): remove retired authority terminology
   ```
 
-## Phase 9: Apply ADR-0139 authority and close the plan
+## Phase 9: Apply ADR-0139 and ADR-0140 authority and close the plan
 
-- [ ] **Task 9.1: Author the four test-backed claims.** In the existing final Claims sections add:
+- [ ] **Task 9.1: Author ADR-0139 claims and the ADR-0140 update.** In the existing final Claims
+  sections add:
   - `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/tooling/upgrade-runtime/current-state.md`:
     `invariant: initial-adoption-version-immutable`, stating first-adoption version/cutoff/gaps are
     sealed once and preserved by sync, upgrade, staged checks, and force.
@@ -678,14 +679,28 @@ proof markers, generated outputs, and terminal status land together in the final
     baseline only for a specifically unborn HEAD, with init/check as consumers, while every other
     repository, reference, and object error remains a failure.
 
-  Each claim ends with exactly:
+  Each new claim ends with exactly:
 
   ```text
   Origin: ADR-0139
   Backing: test
   ```
 
-- [ ] **Task 9.2: Add proof markers to already-passing focused tests.** Place one
+  In `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/catalog-and-targets/current-state.md`,
+  change `no-single-marker-init-descriptor` to say the comment-marker mapping reaches configuration
+  only through `currentState.sources`, preserve `Origin: ADR-0064`, and append exactly
+  `Revised-by: ADR-0140` before its existing `Backing: test`.
+
+- [ ] **Task 9.2: Complete proofs and the qualified embedded directive.** Change
+  `/home/hypno/Projects/agentic-workflows/internal/render/comment.go` to describe
+  `currentState.sources`; replace the active synthetic `touches-invariant:` fixture in
+  `/home/hypno/Projects/agentic-workflows/internal/project/render_test.go` with a qualified
+  `touches-state:` example. Add a static qualified `touches-state:` authoring comment to
+  `/home/hypno/Projects/agentic-workflows/templates/adr-readme/README.md.tmpl`, and make the embedded
+  strip regression prove that exact source directive is present before ingestion and absent after
+  rendering.
+
+  Place one
   `// invariant: <qualified-id>` marker on the test that proves each full claim:
   - `TestInitialAdoptionAuthorityImmutableAcrossCommands` in
     `/home/hypno/Projects/agentic-workflows/cmd/awf/run_test.go`; this single integration must perform
@@ -701,13 +716,14 @@ proof markers, generated outputs, and terminal status land together in the final
   Run `./x invariants`; expected: every new claim resolves an eligible proof and no invariant
   finding remains.
 
-- [ ] **Task 9.3: Transition ADR and plan atomically.** Change ADR-0139 frontmatter to `Implemented`
-  and stage that incomplete transition with the plan status changed to `Implemented`, the four topic
-  claims, and their proof markers. Run `./x check --staged`; expected: it fails only with diagnostics
-  containing the exact required `content-sha256` and next `state-sequence`. Append those reported
-  values as the single new Implemented Status-history entry, run `./x sync`, and restage ADR, plan,
-  topic parts, proof tests, generated topics/domain docs/INDEX/runtime outputs, and locks. Do not edit
-  frozen ADR body sections. Then run:
+- [ ] **Task 9.3: Transition both ADRs and the plan atomically.** Change ADR-0139 and ADR-0140
+  frontmatter to `Implemented` and stage that incomplete transition with the plan status changed to
+  `Implemented`, the four ADR-0139 claim adds, the ADR-0140 claim update, directive/comment fixtures,
+  and proof markers. Run `./x check --staged`; expected: it fails only with diagnostics containing
+  each ADR's exact required `content-sha256` and the next two contiguous `state-sequence` values.
+  Append each reported value as that ADR's single new Implemented Status-history entry, run
+  `./x sync`, and restage both ADRs, plan, topic parts, tests/template/comment, generated topics/domain
+  docs/INDEX/runtime outputs, and locks. Do not edit frozen ADR body sections. Then run:
 
   ```sh
   ./x check --staged

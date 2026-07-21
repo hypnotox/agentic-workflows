@@ -20,18 +20,22 @@ edit.
 
 ## Decision
 
-1. Authoring comments used for current-state marker configuration carry qualified `state:`,
-   `invariant:`, or `touches-state:` payloads and are discovered only through
-   `currentState.sources`. No active claim, production comment, template fixture, or agent guidance
-   describes `invariants.sources` or `touches-invariant:` as current behavior.
+1. Authoring comments used for current marker configuration carry qualified `state:`, `invariant:`,
+   or `touches-state:` payloads and are discovered only through `currentState.sources`. No active
+   claim, production comment, template fixture, or agent guidance describes `invariants.sources` or
+   `touches-invariant:` as current behavior. Claims and fixtures that explicitly govern historical
+   migrations or compatibility may retain the retired encoding they truthfully test.
 
-2. The embedded-template stripping regression uses a real qualified `touches-state:` authoring
-   comment in an awf-owned template source and asserts that the directive is present at ingestion but
-   absent after rendering. A synthetic fixture alone does not prove the embedded-template seam.
+2. The embedded-template stripping regression uses a real static qualified `touches-state:`
+   authoring comment in an awf-owned template source and asserts that the directive is present at
+   ingestion but absent after rendering. The directive is stripped before template execution, so it
+   preserves missingkey-zero behavior and cannot produce a no-value token under empty variables. A
+   synthetic fixture alone does not prove the embedded-template seam.
 
-3. The implementation updates the active claim with `Revised-by: ADR-0140`, changes the production
-   comment and active fixtures in the same transaction, regenerates managed outputs, and runs the
-   invariant, drift, and full project gates.
+3. The implementation updates the active claim while preserving `Origin: ADR-0064` and its empty
+   prior `Revised-by` prefix, then appending `Revised-by: ADR-0140`. It changes the production comment
+   and active fixtures in the same transaction, regenerates managed outputs and the decision index,
+   and runs the staged transition, invariant, drift, and full project gates.
 
 ## State changes
 
@@ -44,8 +48,9 @@ qualified marker vocabulary. The test now fails if a real embedded directive sto
 rather than remaining green through a synthetic-only path.
 
 The ADR adds a small revision transaction late in the topic-authority hardening plan. Historical ADRs,
-plans, changelog entries, and explicit compatibility fixtures retain retired terms where they describe
-past encodings.
+plans, changelog entries, migration claims, and explicit compatibility fixtures retain retired terms
+where they describe past encodings. The regression permanently couples a production template directive
+to its end-to-end test; they must move or retire together.
 
 ## Alternatives Considered
 
@@ -54,6 +59,7 @@ past encodings.
 | Edit the claim as documentation | Canonical claim changes require an ADR update operation and revision provenance. |
 | Delete every retired literal repository-wide | Frozen history and compatibility fixtures must remain truthful. |
 | Keep only the synthetic strip fixture | It does not prove that an embedded template actually carries and strips a directive. |
+| Add a dedicated embedded test-only template | It would prove embedding machinery but not that a real catalog-owned production template carries and strips the directive. |
 
 ## Status history
 
