@@ -247,12 +247,28 @@ func TestPiSubagentModelRouting(t *testing.T) {
 	}
 	contracts := map[string]struct {
 		sideEffects []string
-		forwarding  string
+		finalPath   []string
 	}{
-		"grounding": {[]string{`await run("grounding"`}, `selected.model, selected.requested, signal, onUpdate`},
-		"explore":   {[]string{`explorationLimiter.acquire(signal)`, `await run("explore"`}, `selected.model, selected.requested, signal, onUpdate`},
-		"review":    {[]string{`loadReviewer(deps, root, params.kind)`, `await run("review"`}, `selected.model, selected.requested, signal, onUpdate`},
-		"implement": {[]string{`implementationTail = new Promise`, `snapshot(pi, root)`, `await run("implement"`}, `selected.model, selected.requested, signal, onUpdate`},
+		"grounding": {
+			[]string{`await run("grounding"`},
+			[]string{`return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });`},
+		},
+		"explore": {
+			[]string{`explorationLimiter.acquire(signal)`, `await run("explore"`},
+			[]string{`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });`},
+		},
+		"review": {
+			[]string{`loadReviewer(deps, root, params.kind)`, `await run("review"`},
+			[]string{`return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, selected.requested, signal, onUpdate), { kind: params.kind, requestedModel: selected.requested });`},
+		},
+		"implement": {
+			[]string{`implementationTail = new Promise`, `snapshot(pi, root)`, `await run("implement"`},
+			[]string{
+				`const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, selected.requested, signal, onUpdate);`,
+				`const gitDetails = { allowCommits: params.allowCommits, requestedModel: selected.requested, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };`,
+				`return toolResult("implement", params.task, result, gitDetails);`,
+			},
+		},
 	}
 	for role, contract := range contracts {
 		block := blocks[role]
@@ -267,9 +283,16 @@ func TestPiSubagentModelRouting(t *testing.T) {
 				t.Errorf("%s registration does not resolve before side effect %q", role, sideEffect)
 			}
 		}
-		if !strings.Contains(block, contract.forwarding) || !strings.Contains(block, `requestedModel: selected.requested`) {
-			t.Errorf("%s registration does not forward selected and requested models", role)
+		for _, finalPath := range contract.finalPath {
+			if !strings.Contains(block, finalPath) {
+				t.Errorf("%s registration missing exact final model-result path %q", role, finalPath)
+			}
 		}
+	}
+	implement := blocks["implement"]
+	commitPolicyFailure := `if (violation) return failedToolResult("implement", params.task, ` + "`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`" + `, { ...gitDetails, model: result.model, usage: result.usage });`
+	if !strings.Contains(implement, commitPolicyFailure) {
+		t.Errorf("implementation registration missing model and usage on exact commit-policy failure path %q", commitPolicyFailure)
 	}
 }
 
@@ -508,12 +531,20 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
 		`return { model: { provider: found.provider, id: found.id }, requested }`,
 		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
+		`const MAX_TASK_PREVIEW_BYTES = 512;`,
+		`const MAX_FALLBACK_BYTES = 2 * 1024;`,
 	} {
 		if !strings.Contains(index, want) {
 			t.Errorf("extension missing boundary %q", want)
 		}
 	}
 	for _, want := range []string{
+		`export const MAX_OUTPUT_BYTES = 50 * 1024;`,
+		`export const MAX_OUTPUT_LINES = 2000;`,
+		`export const MAX_STDERR_BYTES = 50 * 1024;`,
+		`export const MAX_DISPLAY_EVENTS = 20;`,
+		`export const MAX_DISPLAY_EVENT_BYTES = 2 * 1024;`,
+		`export const MAX_FAILURE_BYTES = 2 * 1024;`,
 		`const lineLimited = lines.length > MAX_OUTPUT_LINES ? lines.slice(0, MAX_OUTPUT_LINES).join("\n") : value`,
 		`const content = utf8Prefix(lineLimited, MAX_OUTPUT_BYTES)`,
 		`[Output truncated: ${omittedBytes} bytes and ${omittedLines} lines omitted]`,
