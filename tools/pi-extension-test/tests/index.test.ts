@@ -546,13 +546,23 @@ test("implementation reports git state and commit policy", async () => {
   await execute(allowed.tools.get("subagent_implement"), { task: "change", allowCommits: true }, allowed.ctx);
   assert.match(allowed.requests[0].systemPrompt, /allowed/);
 
-  const violation = harness({ git: [
-    { code: 0, stdout: "aaa\n" }, { code: 0, stdout: "" },
-    { code: 0, stdout: "bbb\n" }, { code: 0, stdout: "" },
-  ] });
-  const violated = await execute(violation.tools.get("subagent_implement"), { task: "change", allowCommits: false }, violation.ctx);
+  const violationUsage = { input: 11, output: 12, cacheRead: 13, cacheWrite: 14, cost: 0.15, turns: 2 };
+  const violation = harness({
+    git: [
+      { code: 0, stdout: "aaa\n" }, { code: 0, stdout: "" },
+      { code: 0, stdout: "bbb\n" }, { code: 0, stdout: "" },
+    ],
+    run: async () => ({ ...result, model: "cheap/actual-model", usage: violationUsage }),
+  });
+  const violated = await execute(violation.tools.get("subagent_implement"), {
+    task: "change", allowCommits: false, model: "cheap/model/with/slash",
+  }, violation.ctx);
   assert.match(violated.value.content[0].text, /not reverted/);
+  assert.deepEqual(violation.requests[0].model, { provider: "cheap", id: "model/with/slash" });
   assert.equal(violated.value.details.awfFailure, true);
+  assert.equal(violated.value.details.requestedModel, "cheap/model/with/slash");
+  assert.equal(violated.value.details.model, "cheap/actual-model");
+  assert.deepEqual(violated.value.details.usage, violationUsage);
   assert.equal(violated.value.details.before.head, "aaa");
   assert.equal(violated.value.details.after.head, "bbb");
 

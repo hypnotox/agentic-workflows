@@ -180,7 +180,12 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
 		`rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`,
 		`MAX_EXPLORATION_CONCURRENCY = 10`, `createLimiter(MAX_EXPLORATION_CONCURRENCY)`,
-		`const release = await explorationLimiter.acquire(signal)`,
+		`const release = await explorationLimiter.acquire(signal);
+      try {
+        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });
+      } finally {
+        release();
+      }`,
 		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
 		`content: [{ type: "text", text: "(running...)" }]`,
 		`events: update.events`, `result.output`,
@@ -219,7 +224,9 @@ func TestPiSubagentModelRouting(t *testing.T) {
 		`ctx.modelRegistry.find(provider, id)`, `ctx.modelRegistry.hasConfiguredAuth(found)`,
 		`return { model: { provider: found.provider, id: found.id }, requested }`,
 		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
-		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`, `requestedModel`, `requested:${requestedModel}`,
+		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`, `requested:${requestedModel}`,
+		`usage: result.usage, model: result.model`,
+		`{ ...gitDetails, model: result.model, usage: result.usage }`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("Pi extension missing model-routing contract %q", want)
@@ -230,6 +237,39 @@ func TestPiSubagentModelRouting(t *testing.T) {
 	}
 	if got := strings.Count(content, `model: Type.Optional(Type.String())`); got != 4 {
 		t.Fatalf("optional model schema count = %d, want 4", got)
+	}
+
+	blocks := map[string]string{
+		"grounding": registrationBlock(t, content, "subagent_grounding", `name: "subagent_explore"`),
+		"explore":   registrationBlock(t, content, "subagent_explore", `name: "subagent_review"`),
+		"review":    registrationBlock(t, content, "subagent_review", `name: "subagent_implement"`),
+		"implement": registrationBlock(t, content, "subagent_implement", "export default async function"),
+	}
+	contracts := map[string]struct {
+		sideEffects []string
+		forwarding  string
+	}{
+		"grounding": {[]string{`await run("grounding"`}, `selected.model, selected.requested, signal, onUpdate`},
+		"explore":   {[]string{`explorationLimiter.acquire(signal)`, `await run("explore"`}, `selected.model, selected.requested, signal, onUpdate`},
+		"review":    {[]string{`loadReviewer(deps, root, params.kind)`, `await run("review"`}, `selected.model, selected.requested, signal, onUpdate`},
+		"implement": {[]string{`implementationTail = new Promise`, `snapshot(pi, root)`, `await run("implement"`}, `selected.model, selected.requested, signal, onUpdate`},
+	}
+	for role, contract := range contracts {
+		block := blocks[role]
+		resolvedAt := strings.Index(block, `const selected = resolveChildModel(ctx, params.model)`)
+		if resolvedAt < 0 {
+			t.Errorf("%s registration does not resolve its model", role)
+			continue
+		}
+		for _, sideEffect := range contract.sideEffects {
+			at := strings.Index(block, sideEffect)
+			if at < 0 || at < resolvedAt {
+				t.Errorf("%s registration does not resolve before side effect %q", role, sideEffect)
+			}
+		}
+		if !strings.Contains(block, contract.forwarding) || !strings.Contains(block, `requestedModel: selected.requested`) {
+			t.Errorf("%s registration does not forward selected and requested models", role)
+		}
 	}
 }
 
@@ -423,17 +463,71 @@ func TestPiSubagentProgressBounds(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-child-tool-boundaries
 func TestPiSubagentToolBoundaries(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts") + renderPiExtensionFile(t, "runner.ts")
+	index := renderPiExtensionFile(t, "index.ts")
+	runner := renderPiExtensionFile(t, "runner.ts")
+	allowlists := map[string]string{
+		"EXPLORE_TOOLS":   `export const EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;`,
+		"GROUNDING_TOOLS": `export const GROUNDING_TOOLS = EXPLORE_TOOLS;`,
+		"REVIEW_TOOLS":    `export const REVIEW_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;`,
+		"IMPLEMENT_TOOLS": `export const IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"] as const;`,
+	}
+	declarations := make(map[string]string, len(allowlists))
+	for _, line := range strings.Split(index, "\n") {
+		for name := range allowlists {
+			if strings.HasPrefix(line, "export const "+name+" = ") {
+				declarations[name] = line
+			}
+		}
+	}
+	for name, want := range allowlists {
+		if declarations[name] != want {
+			t.Errorf("%s declaration = %q, want exact role allowlist %q", name, declarations[name], want)
+		}
+	}
+	roleTools := map[string]string{
+		"subagent_grounding": "GROUNDING_TOOLS", "subagent_explore": "EXPLORE_TOOLS",
+		"subagent_review": "REVIEW_TOOLS", "subagent_implement": "IMPLEMENT_TOOLS",
+	}
+	for role, tools := range roleTools {
+		block := registrationBlock(t, index, role, map[string]string{
+			"subagent_grounding": `name: "subagent_explore"`, "subagent_explore": `name: "subagent_review"`,
+			"subagent_review": `name: "subagent_implement"`, "subagent_implement": "export default async function",
+		}[role])
+		if !strings.Contains(block, tools) {
+			t.Errorf("%s does not pass exact %s allowlist", role, tools)
+		}
+	}
+	for name, declaration := range declarations {
+		for _, extensionTool := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"} {
+			if strings.Contains(declaration, extensionTool) {
+				t.Errorf("%s declaration recursively includes %s", name, extensionTool)
+			}
+		}
+	}
 	for _, want := range []string{
-		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
-		`IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"]`,
 		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
 		`return { model: { provider: found.provider, id: found.id }, requested }`,
 		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
-		"MAX_OUTPUT_BYTES = 50 * 1024", "MAX_OUTPUT_LINES = 2000", "MAX_DISPLAY_EVENTS = 20",
 	} {
-		if !strings.Contains(content, want) {
+		if !strings.Contains(index, want) {
 			t.Errorf("extension missing boundary %q", want)
+		}
+	}
+	for _, want := range []string{
+		`const lineLimited = lines.length > MAX_OUTPUT_LINES ? lines.slice(0, MAX_OUTPUT_LINES).join("\n") : value`,
+		`const content = utf8Prefix(lineLimited, MAX_OUTPUT_BYTES)`,
+		`[Output truncated: ${omittedBytes} bytes and ${omittedLines} lines omitted]`,
+		`[stderr truncated: ${total - Buffer.byteLength(value.slice(start), "utf8")} bytes omitted]`,
+		`truncateField(value, MAX_FAILURE_BYTES, "\n[failure truncated]")`,
+		`const marker = "\n[event truncated]"`,
+		`omittedEvents += events.length - MAX_DISPLAY_EVENTS`,
+		`events.splice(0, events.length - MAX_DISPLAY_EVENTS)`,
+		`output: truncateOutput(output || "(no output)")`,
+		`stderr: truncateStderr(stderr)`,
+		`failureMessage: failureMessage ? truncateFailure(failureMessage) : undefined`,
+	} {
+		if !strings.Contains(runner, want) {
+			t.Errorf("runner missing concrete retained-output diagnostic path %q", want)
 		}
 	}
 }

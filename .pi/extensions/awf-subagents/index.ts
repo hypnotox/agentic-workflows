@@ -446,7 +446,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
         const gitDetails = { allowCommits: params.allowCommits, requestedModel: selected.requested, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
-        if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, gitDetails);
+        if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, { ...gitDetails, model: result.model, usage: result.usage });
         return toolResult("implement", params.task, result, gitDetails);
       } finally { release(); }
     },
