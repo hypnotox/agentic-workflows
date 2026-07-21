@@ -8,7 +8,35 @@ set -euo pipefail
 cmd="${1:-}"
 [ "$#" -gt 0 ] && shift || true
 case "$cmd" in
-sync | check | invariants | audit | context | commit-gate | new)
+sync)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+check)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+invariants)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+audit)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+commit-gate)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+prose-gate)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+list)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+config)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+context)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+topic)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+new)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+enable)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+disable)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+changelog)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+version)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
 # awf:edit-in-place runner-project-verbs: your edits below are preserved across syncs; awf owns the rest
 gate)
@@ -19,6 +47,6 @@ test)
 	go test ./... "$@" ;;
 # awf:edit runner-tail: default; create .awf/runner/parts/runner-tail.md to override
 *)
-	echo "usage: ./x {sync|check|invariants|audit|context|commit-gate|new|gate|test}" >&2
+	echo "usage: ./x {sync|check|invariants|audit|commit-gate|prose-gate|list|config|context|topic|new|enable|disable|changelog|version|gate|test}" >&2
 	exit 1 ;;
 esac

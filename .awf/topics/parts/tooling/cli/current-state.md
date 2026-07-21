@@ -58,8 +58,9 @@ Backing: test
 
 ### `invariant: cli-command-spec-single-source`
 
-The top-level usage line, the awf help command overview and order, and the generated gated-command list all derive by equality from the clispec command table, with no parallel command-order slice, hardcoded usage enumeration, or hand-written gated list.
+The top-level usage line, awf help overview and order, generated gated-command list, and managed-runner forwarding dispositions all derive from the clispec command table, with no parallel command-order, gated-command, or runner-availability list.
 Origin: ADR-0094
+Revised-by: ADR-0144
 Backing: test
 
 ### `invariant: cli-config-kinds`
@@ -163,6 +164,12 @@ Backing: test
 
 Running `awf check` evaluates the current-state topic corpus and exits non-zero, printing the finding, whenever that evaluation reports an error-severity issue, and stays clean when it reports none.
 Origin: ADR-0007
+Backing: test
+
+### `invariant: managed-runner-command-parity`
+
+Every clispec command declared runner-forwarded appears in the generated adopter runner and this repository's source runner, while each excluded command carries a reason and appears in neither; forwarded names cannot collide with adopter project verbs.
+Origin: ADR-0144
 Backing: test
 
 ### `invariant: mutants-missing-report-errors`

@@ -6,7 +6,10 @@
 // so it stays an importable leaf.
 package clispec
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // Gating classifies when a command runs the binary-version gate (ADR-0094 Decision 3).
 type Gating int
@@ -16,6 +19,14 @@ const (
 	Gated                        // the driver gates before the handler
 	GatedInHandler               // the handler gates itself (config/context/topic after their static-fallback check; new after name validation)
 )
+
+// RunnerDisposition declares whether a top-level awf command is forwarded by
+// the managed project runner. Excluded commands carry the reason users must
+// invoke them directly; children inherit their top-level command's disposition.
+type RunnerDisposition struct {
+	Forward bool
+	Reason  string
+}
 
 // Command is one CLI command (or subcommand). A command with Children is a group:
 // the driver dispatches on the next positional to a child; a leaf carries no
@@ -30,6 +41,7 @@ type Command struct {
 	MinPos     int
 	MaxPos     int
 	Gating     Gating
+	Runner     RunnerDisposition
 	Children   []Command
 }
 
@@ -38,7 +50,7 @@ type Command struct {
 // touches-state: tooling/cli:cli-command-spec-single-source - sole command-table source; proof in clispec_test.go
 var Commands = []Command{
 	{
-		Name: "init", Summary: "Scaffold .awf/ and render the workflow-core set",
+		Name: "init", Summary: "Scaffold .awf/ and render the workflow-core set", Runner: RunnerDisposition{Reason: "requires a pre-adoption invocation"},
 		BoolFlags: []string{"--force", "--describe"}, ValueFlags: []string{"--set", "--answers"},
 		Repeatable: []string{"--set"}, MaxPos: 0, Gating: Ungated,
 		HelpBody: `Usage: awf init [flags]
@@ -55,7 +67,7 @@ Flags:
 `,
 	},
 	{
-		Name: "sync", Summary: "Re-render after a template or config change",
+		Name: "sync", Summary: "Re-render after a template or config change", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 0, Gating: Gated,
 		HelpBody: `Usage: awf sync
 
@@ -63,7 +75,7 @@ Re-render every enabled target after a template or config change and update .awf
 `,
 	},
 	{
-		Name: "check", Summary: "Fail on stale or hand-edited rendered output",
+		Name: "check", Summary: "Fail on stale or hand-edited rendered output", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--staged"}, MaxPos: 0, Gating: Gated,
 		HelpBody: `Usage: awf check [--staged]
 
@@ -77,7 +89,7 @@ and staged content, never the working tree, so a pre-commit hook can invoke it.
 `,
 	},
 	{
-		Name: "invariants", Summary: "Report Implemented-ADR invariant slugs lacking a backing comment",
+		Name: "invariants", Summary: "Report Implemented-ADR invariant slugs lacking a backing comment", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 0, Gating: Gated,
 		HelpBody: `Usage: awf invariants
 
@@ -85,7 +97,7 @@ Report each Implemented-ADR ` + "`inv:`" + ` slug lacking a backing ` + "`<marke
 `,
 	},
 	{
-		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
+		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf audit <base>|<a>..<b>
 
@@ -95,7 +107,7 @@ There is no default range, so an audit never reports over commits nobody named.
 `,
 	},
 	{
-		Name: "commit-gate", Summary: "Validate one commit message (Conventional Commits), blocking",
+		Name: "commit-gate", Summary: "Validate one commit message (Conventional Commits), blocking", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 1, Gating: Ungated,
 		HelpBody: `Usage: awf commit-gate [FILE]
 
@@ -108,7 +120,7 @@ payload runs it when the hooks artifact is enabled).
 `,
 	},
 	{
-		Name: "prose-gate", Summary: "Scan tracked text files for typographic punctuation, blocking",
+		Name: "prose-gate", Summary: "Scan tracked text files for typographic punctuation, blocking", Runner: RunnerDisposition{Forward: true},
 		Gating: Ungated,
 		HelpBody: `Usage: awf prose-gate
 
@@ -123,7 +135,7 @@ artifact is enabled).
 `,
 	},
 	{
-		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
+		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf list [<kind>]
 
@@ -131,7 +143,7 @@ Show targets and their per-project enabled state, for all kinds or one (skill|ag
 `,
 	},
 	{
-		Name: "config", Summary: "Describe config keys and vars (live state inside a project)",
+		Name: "config", Summary: "Describe config keys and vars (live state inside a project)", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf config [<key-or-var>]
 
@@ -145,7 +157,7 @@ sidecar.local, or a data key name).
 `,
 	},
 	{
-		Name: "context", Summary: "Report owning domains, invariants, and ADRs for paths",
+		Name: "context", Summary: "Report owning domains, invariants, and ADRs for paths", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--json", "--staged", "--uncovered"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>] [--uncovered]
 
@@ -170,7 +182,7 @@ Flags:
 `,
 	},
 	{
-		Name: "topic", Summary: "Query a current-state topic or claim",
+		Name: "topic", Summary: "Query a current-state topic or claim", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--history", "--references", "--coverage", "--json"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf topic <domain>/<topic>[:<claim>] [flags]
 
@@ -188,7 +200,7 @@ Flags:
 `,
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc}",
+		Name: "new", Summary: "Scaffold a new artifact: kind ∈ {adr, plan, topic, skill, agent, doc}", Runner: RunnerDisposition{Forward: true},
 		MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf new <kind> <args>
 
@@ -254,7 +266,7 @@ part, the enable, and a re-render.
 		},
 	},
 	{
-		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}",
+		Name: "enable", Summary: "Enable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--dry-run"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf enable <kind> <name> [--dry-run]
 
@@ -267,7 +279,7 @@ Flags:
 `,
 	},
 	{
-		Name: "disable", Summary: "Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}",
+		Name: "disable", Summary: "Disable an artifact: kind ∈ {skill, agent, doc, domain, target, bootstrap, hooks, runner}", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--with-dependents", "--dry-run"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf disable <kind> <name> [--with-dependents] [--dry-run]
 
@@ -281,7 +293,7 @@ Flags:
 `,
 	},
 	{
-		Name: "upgrade", Summary: "Migrate the .awf/ config tree or consume a current-state attestation",
+		Name: "upgrade", Summary: "Migrate the .awf/ config tree or consume a current-state attestation", Runner: RunnerDisposition{Reason: "must cross the pinned bootstrap boundary"},
 		BoolFlags: []string{"--recover"}, MaxPos: 0, Gating: Ungated,
 		HelpBody: `Usage: awf upgrade [--recover]
 
@@ -300,7 +312,7 @@ consumes seals, it never produces them.
 `,
 	},
 	{
-		Name: "uninstall", Summary: "Remove awf's generated files (keeps .awf/)",
+		Name: "uninstall", Summary: "Remove awf's generated files (keeps .awf/)", Runner: RunnerDisposition{Reason: "runner-mediated self-removal is unsafe"},
 		MaxPos: 0, Gating: Ungated,
 		HelpBody: `Usage: awf uninstall
 
@@ -308,7 +320,7 @@ Remove every awf-generated file recorded in the lock (keeps your authored .awf/ 
 `,
 	},
 	{
-		Name: "changelog", Summary: "Print the embedded changelog, or one version/range of it",
+		Name: "changelog", Summary: "Print the embedded changelog, or one version/range of it", Runner: RunnerDisposition{Forward: true},
 		ValueFlags: []string{"--version", "--since", "--range"}, MaxPos: 0, Gating: Ungated,
 		HelpBody: `Usage: awf changelog [--version <v> | --since <v> | --range <from>..<to>]
 
@@ -322,7 +334,7 @@ Flags:
 `,
 	},
 	{
-		Name: "version", Summary: "Print the awf version",
+		Name: "version", Summary: "Print the awf version", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 0, Gating: Ungated,
 		HelpBody: `Usage: awf version
 
@@ -355,6 +367,46 @@ func (c Command) Child(name string) (Command, bool) {
 func Names() []string {
 	out := make([]string, len(Commands))
 	for i, c := range Commands {
+		out[i] = c.Name
+	}
+	return out
+}
+
+// ValidateRunnerDispositions rejects an unclassified or contradictory runner
+// disposition and any child-level declaration.
+func ValidateRunnerDispositions() error { return validateRunnerDispositions(Commands) }
+
+func validateRunnerDispositions(commands []Command) error {
+	for _, c := range commands {
+		if c.Runner.Forward == (c.Runner.Reason != "") {
+			return fmt.Errorf("command %q must be forwarded without a reason or excluded with a reason", c.Name)
+		}
+		for _, child := range c.Children {
+			if child.Runner.Forward || child.Runner.Reason != "" {
+				return fmt.Errorf("command %q child %q declares runner disposition; children inherit their top-level command", c.Name, child.Name)
+			}
+		}
+	}
+	return nil
+}
+
+// Forwarded returns the top-level commands the managed runner forwards, in CLI
+// table order.
+func Forwarded() []Command {
+	var out []Command
+	for _, c := range Commands {
+		if c.Runner.Forward {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// ForwardedNames returns the managed-runner command names in CLI table order.
+func ForwardedNames() []string {
+	commands := Forwarded()
+	out := make([]string, len(commands))
+	for i, c := range commands {
 		out[i] = c.Name
 	}
 	return out

@@ -8,8 +8,10 @@ set -euo pipefail
 cmd="${1:-}"
 [ "$#" -gt 0 ] && shift || true
 case "$cmd" in
-sync | check | invariants | audit | context | commit-gate | new)
+{{ range .runnerCommands -}}
+{{ . }})
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+{{ end -}}
 <!-- awf:end -->
 <!-- awf:section runner-project-verbs inplace -->
 gate)
@@ -21,7 +23,7 @@ test)
 <!-- awf:end -->
 <!-- awf:section runner-tail -->
 *)
-	echo "usage: ./x {sync|check|invariants|audit|context|commit-gate|new|gate|test}" >&2
+	echo "usage: ./x {{ print "{" .runnerUsage "|gate|test}" }}" >&2
 	exit 1 ;;
 esac
 <!-- awf:end -->

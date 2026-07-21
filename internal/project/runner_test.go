@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
 // runnerFile renders a project with the given config and returns the rendered
@@ -69,10 +70,21 @@ func TestRunnerStructure(t *testing.T) {
 	if !strings.HasPrefix(c, "#!/usr/bin/env bash\n") {
 		t.Errorf("runner must open with the bash shebang:\n%s", c)
 	}
-	// Each awf verb delegates directly to the pinned binary via the bootstrap,
-	// with no PATH fallback (ADR-0101 Decision 2/4).
-	if !strings.Contains(c, `sync | check | invariants | audit | context | commit-gate | new)`) {
-		t.Errorf("missing the awf-verb dispatch arm:\n%s", c)
+	// Each metadata-forwarded awf verb delegates directly to the pinned binary
+	// via the bootstrap, with no PATH fallback (ADR-0101 Decision 2/4).
+	// invariant: tooling/cli:managed-runner-command-parity
+	for _, name := range clispec.ForwardedNames() {
+		if strings.Count(c, "\n"+name+")\n") != 1 {
+			t.Errorf("forwarded command %q must have exactly one arm:\n%s", name, c)
+		}
+	}
+	for _, name := range []string{"init", "upgrade", "uninstall"} {
+		if strings.Contains(c, "\n"+name+")\n") {
+			t.Errorf("excluded command %q must not have a runner arm:\n%s", name, c)
+		}
+	}
+	if !strings.Contains(c, "usage: ./x {"+strings.Join(clispec.ForwardedNames(), "|")+"|gate|test}") {
+		t.Errorf("runner usage does not derive from forwarded metadata:\n%s", c)
 	}
 	if !strings.Contains(c, `"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;`) {
 		t.Errorf("awf arms must delegate directly to the pinned binary:\n%s", c)
@@ -96,6 +108,54 @@ func TestRunnerStructure(t *testing.T) {
 // The runner renders leak-free (no unresolved token, no stray section/marker
 // residue) - the publication-safety contract every awf template meets.
 // invariant: rendering/templates:runner-render-publication-safe
+func TestRunnerProjectVerbLabelsAndCollisions(t *testing.T) {
+	labels, err := runnerProjectVerbLabels("alpha | beta)\n\techo ok ;;\nz9)\n\techo z ;;\n")
+	if err != nil || strings.Join(labels, ",") != "alpha,beta,z9" {
+		t.Fatalf("labels = %v, err = %v", labels, err)
+	}
+	for _, body := range []string{")\n", "Bad)\n", "bad_name)\n"} {
+		if _, err := runnerProjectVerbLabels(body); err == nil {
+			t.Errorf("expected malformed label error for %q", body)
+		}
+	}
+	if err := validateRunnerProjectVerbs("Bad)\n"); err == nil || !strings.Contains(err.Error(), "malformed case label") {
+		t.Fatalf("malformed validation error = %v", err)
+	}
+	if err := validateRunnerProjectVerbs("sync)\n"); err == nil || !strings.Contains(err.Error(), `runner project verb "sync" collides`) {
+		t.Fatalf("collision error = %v", err)
+	}
+}
+
+func TestRunnerCollisionRefusesBeforeWrite(t *testing.T) {
+	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	xPath := filepath.Join(root, "x")
+	before, err := os.ReadFile(xPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	colliding := setRegion(t, string(before), "runner-project-verbs", "sync)\n\techo collision ;;\n")
+	if err := os.WriteFile(xPath, []byte(colliding), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err == nil || !strings.Contains(err.Error(), `runner project verb "sync" collides with metadata-forwarded awf command`) {
+		t.Fatalf("Sync collision error = %v", err)
+	}
+	after, err := os.ReadFile(xPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != colliding {
+		t.Fatal("collision refusal rewrote the runner")
+	}
+}
+
 func TestRunnerPublicationSafe(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {

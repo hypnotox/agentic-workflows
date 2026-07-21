@@ -72,6 +72,9 @@ case "$cmd" in
   audit)
     go run ./cmd/awf audit "$@"
     ;;
+  list | config | topic | enable | disable | changelog | version)
+    go run ./cmd/awf "$cmd" "$@"
+    ;;
   context)
     go run ./cmd/awf context "$@"
     ;;

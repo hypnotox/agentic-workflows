@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
@@ -128,6 +129,49 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 			t.Errorf("container manager lost contract %q", want)
 		}
 	}
+}
+
+// invariant: tooling/cli:managed-runner-command-parity
+func TestRepositoryRunnerForwardsEveryMetadataCommand(t *testing.T) {
+	raw, err := os.ReadFile("../../x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	arms := shellCaseArms(string(raw))
+	for _, name := range clispec.ForwardedNames() {
+		body, ok := arms[name]
+		if !ok {
+			t.Errorf("repository x has no case arm for forwarded command %q", name)
+			continue
+		}
+		if !strings.Contains(body, "go run ./cmd/awf") || !strings.Contains(body, name) && !strings.Contains(body, `"$cmd"`) {
+			t.Errorf("repository x arm %q does not delegate through go run ./cmd/awf: %s", name, body)
+		}
+	}
+	for _, name := range []string{"init", "upgrade", "uninstall"} {
+		if _, ok := arms[name]; ok {
+			t.Errorf("repository x must not forward excluded command %q", name)
+		}
+	}
+}
+
+func shellCaseArms(script string) map[string]string {
+	out := map[string]string{}
+	lines := strings.Split(script, "\n")
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimSpace(lines[i])
+		if !strings.HasSuffix(line, ")") || line == "*)" {
+			continue
+		}
+		var body []string
+		for i++; i < len(lines) && strings.TrimSpace(lines[i]) != ";;"; i++ {
+			body = append(body, strings.TrimSpace(lines[i]))
+		}
+		for _, raw := range strings.Split(strings.TrimSuffix(line, ")"), "|") {
+			out[strings.TrimSpace(raw)] = strings.Join(body, "\n")
+		}
+	}
+	return out
 }
 
 func TestExampleAdoptsRunner(t *testing.T) {

@@ -216,8 +216,9 @@ Backing: test
 
 ### `invariant: runner-awf-verbs-owned`
 
-In the rendered command runner, the awf-verb arms - sync, check, invariants, audit, context, commit-gate, and new - sit outside any editable in-place section and each delegates to the bootstrap-resolved pinned binary, so they regenerate on every sync and cannot drift.
+In the rendered command runner, every clispec command declared runner-forwarded has an awf-owned arm outside editable in-place sections and delegates to the bootstrap-resolved pinned binary; the usage tail derives from the same ordered metadata, so command additions cannot drift.
 Origin: ADR-0101
+Revised-by: ADR-0144
 Backing: test
 
 ### `invariant: runner-example-adopted`
