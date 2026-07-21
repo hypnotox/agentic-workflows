@@ -35,8 +35,9 @@ where the date is the day the plan is written (ISO-8601). Example:
   manifests, contract-bearing API/type/schema declarations, fixtures, golden output, commands,
   mechanical replacements, required literal prose, and batch-task representative and edge
   transformations. Non-contractual prose documentation may use qualifying instructions; a mixed
-  task may combine both forms.
-- For a transformation repeated across many sites, a *batch task* may be used instead of N
+  task may combine both forms. `TBD`, `implement later`, outcome-only summaries, and hidden design
+  choices are placeholders, never pseudocode.
+- For a transformation repeated across many sites, a specialized *batch task* may be used instead of N
   near-identical diffs: a representative site shown as an exact diff, an edge site (unless the shape
   is identical everywhere), the exhaustive affected-site set (a list or a command that reproduces
   it), and a deterministic post-check that fails if any site is missed.

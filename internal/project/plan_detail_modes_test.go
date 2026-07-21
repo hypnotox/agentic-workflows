@@ -26,6 +26,10 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	defaultReadme := renderGolden(t, "plans-readme/README.md.tmpl", map[string]any{
 		"layout": map[string]any{"plansDir": "docs/plans"},
 	})
+	defaultPlanTemplate := renderGolden(t, "plans-template/template.md.tmpl", map[string]any{
+		"vars":   map[string]any{},
+		"layout": testLayout(),
+	})
 	defaultAgentGuide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", map[string]any{
 		"prefix": "example",
 		"vars":   map[string]any{},
@@ -33,30 +37,15 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		"skills": map[string]bool{"brainstorming": true},
 		"data":   map[string]any{},
 	})
-	if !strings.Contains(defaultAgentGuide, "implementation-ready pseudocode") {
-		t.Errorf("default agent guide missing plan-detail summary:\n%s", defaultAgentGuide)
-	}
 
 	for name, output := range map[string]string{
 		"default writing skill": defaultWriter,
 		"default plan reviewer": defaultReviewer,
 		"default plans README":  defaultReadme,
+		"default plan template": defaultPlanTemplate,
+		"default agent guide":   defaultAgentGuide,
 	} {
-		for _, want := range []string{
-			"implementation-ready pseudocode",
-			"machine-consumed",
-			"fixtures",
-			"golden output",
-			"mechanical replacements",
-			"hidden design",
-		} {
-			if !strings.Contains(output, want) {
-				t.Errorf("%s missing plan-detail contract %q:\n%s", name, want, output)
-			}
-		}
-		if !strings.Contains(output, "batch task") {
-			t.Errorf("%s lost the batch-task form:\n%s", name, output)
-		}
+		assertPlanTaskDetailContract(t, name, output)
 	}
 
 	root := testsupport.RepoRoot(t)
@@ -64,14 +53,53 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		".pi/skills/awf-writing-plans/SKILL.md",
 		".pi/skills/plan-reviewer.md",
 		"docs/plans/README.md",
+		"docs/plans/template.md",
 		"AGENTS.md",
 	} {
 		body, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			t.Fatalf("read rendered policy surface %s: %v", rel, err)
 		}
-		if !strings.Contains(string(body), "implementation-ready pseudocode") {
-			t.Errorf("rendered policy surface %s does not sanction implementation-ready pseudocode", rel)
+		assertPlanTaskDetailContract(t, rel, string(body))
+	}
+}
+
+func assertPlanTaskDetailContract(t *testing.T, name, output string) {
+	t.Helper()
+	output = strings.Join(strings.Fields(output), " ")
+	for _, clause := range []string{
+		"exact content/diffs",
+		"implementation-ready pseudocode",
+		"exact file paths",
+		"relevant symbols",
+		"behavior, branches, ordering, failures",
+		"constraints",
+		"forbidden behavior",
+		"tests",
+		"acceptance assertions",
+		"deterministic verification",
+		"machine-consumed",
+		"configuration",
+		"manifests",
+		"contract-bearing",
+		"fixtures",
+		"golden output",
+		"commands",
+		"mechanical replacements",
+		"required literal prose",
+		"representative and edge",
+		"affected-site set",
+		"post-check",
+		"Non-contractual prose",
+		"mixed task",
+		"`TBD`",
+		"`implement later`",
+		"outcome-only summaries",
+		"hidden design choices",
+		"placeholders, never pseudocode",
+	} {
+		if !strings.Contains(output, clause) {
+			t.Errorf("%s missing plan-detail clause %q:\n%s", name, clause, output)
 		}
 	}
 }

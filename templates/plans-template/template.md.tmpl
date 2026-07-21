@@ -27,10 +27,16 @@ linked ADR).
 <!-- awf:section phases -->
 ## Phase 1: <name>
 
-- [ ] **Task 1.1: <what>.** Exact paths, the exact new-file content or diff, and the exact verify
-  command with its expected output. A task is one reviewable, logically-coherent change (a whole new
-  file is one task). For a transformation repeated across 3+ sites, use the batch form (a
-  representative diff, an edge diff, the affected-site set, and a post-check).
+- [ ] **Task 1.1: <what>.** Name exact file paths and relevant symbols, exact commands with expected
+  terminal states, and either exact content/diffs or implementation-ready pseudocode. Pseudocode
+  specifies behavior, branches, ordering, failures, constraints, forbidden behavior, tests,
+  acceptance assertions, and deterministic verification. Exact form remains mandatory for
+  machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden
+  output, commands, mechanical replacements, required literal prose, and the specialized batch
+  task's representative and edge. Non-contractual prose may use qualifying instructions; a mixed
+  task may combine both forms. The batch task retains its affected-site set and post-check. `TBD`,
+  `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
+  pseudocode. A task is one reviewable, logically-coherent change (a whole new file is one task).
 - [ ] **Task 1.2: Verify and commit.** Run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; `git add` the exact paths; commit with a
   Conventional-Commits subject, placed in a fenced code block tagged `commit` so `awf check`
   validates its length and type before you commit (tag a display-only example `commit awf-ignore`
