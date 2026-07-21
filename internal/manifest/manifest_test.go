@@ -229,6 +229,16 @@ func TestV2CutoffCanonicalRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSchema15PermanentAuthorityRequiresV2Cutoff(t *testing.T) {
+	fields := `"awfVersion":"0.20.0","files":{},"adrFormatV1From":4,"legacyAdrGaps":[]`
+	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":14}`)); err != nil {
+		t.Fatalf("schema 14 omission must remain compatible: %v", err)
+	}
+	if _, err := Parse([]byte(`{` + fields + `,"schemaVersion":15}`)); err == nil || !strings.Contains(err.Error(), "requires adrFormatV2From") {
+		t.Fatalf("schema 15 omission error = %v", err)
+	}
+}
+
 func TestAuthorityStateMatrix(t *testing.T) {
 	bridge := `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2]}`
 	tests := []struct {
@@ -242,6 +252,8 @@ func TestAuthorityStateMatrix(t *testing.T) {
 		{"permanent-v-prefixed", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"v0.20.0"`, AuthorityPermanent, false},
 		{"permanent-v2", `"adrFormatV1From":4,"adrFormatV2From":9,"legacyAdrGaps":[]`, AuthorityPermanent, false},
 		{"pre-tracking", "", AuthorityPreTracking, false},
+		{"v2-positive-only", `"adrFormatV2From":9`, 0, true},
+		{"v2-explicit-zero-only", `"adrFormatV2From":0`, 0, true},
 		{"mixed", bridge + `,"adrFormatV1From":4,"legacyAdrGaps":[]`, 0, true},
 		{"bridge-v2-mixing", bridge + `,"adrFormatV2From":9`, 0, true},
 		{"v2-zero", `"adrFormatV1From":4,"adrFormatV2From":0,"legacyAdrGaps":[]`, 0, true},

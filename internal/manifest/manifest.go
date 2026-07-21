@@ -86,11 +86,11 @@ func (l *Lock) AuthorityState() (AuthorityState, error) {
 		}
 		return AuthorityBridge, nil
 	}
-	if !hasCutoff && !gapsPresent && !hasInit {
+	if !hasCutoff && !hasV2 && !gapsPresent && !hasInit {
 		return AuthorityPreTracking, nil
 	}
 	if !hasCutoff {
-		return 0, errors.New("invalid lock authority: initializedWithVersion or legacyAdrGaps requires adrFormatV1From")
+		return 0, errors.New("invalid lock authority: adrFormatV2From, initializedWithVersion, or legacyAdrGaps requires adrFormatV1From")
 	}
 	if l.ADRFormatV1From < 1 {
 		return 0, errors.New("invalid lock authority: adrFormatV1From must be positive")
@@ -103,6 +103,9 @@ func (l *Lock) AuthorityState() (AuthorityState, error) {
 	}
 	if err := validateBoundary("lock authority", l.ADRFormatV1From, l.LegacyADRGaps); err != nil {
 		return 0, err
+	}
+	if l.SchemaVersion >= 15 && !hasV2 {
+		return 0, errors.New("invalid lock authority: schema 15 permanent authority requires adrFormatV2From")
 	}
 	if hasV2 {
 		if l.ADRFormatV2From < 1 {

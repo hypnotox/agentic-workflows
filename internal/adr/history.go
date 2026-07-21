@@ -55,6 +55,9 @@ func parseV2History(body string, declared []Operation) ([]HistoryEvent, error) {
 // digest, date, and cardinality rules are enforced by the format validator.
 func parseHistory(body string, format Format, declared []Operation) ([]HistoryEvent, error) {
 	lines := nonBlankLines(body)
+	if format == CurrentStateV2 {
+		lines = exactNonBlankLines(body)
+	}
 	if len(lines) == 0 {
 		return nil, errors.New("status history is empty")
 	}
@@ -63,8 +66,8 @@ func parseHistory(body string, format Format, declared []Operation) ([]HistoryEv
 		if format == CurrentStateV2 {
 			if m := appliedHeadRe.FindStringSubmatch(line); m != nil {
 				sequence, err := strconv.Atoi(m[2])
-				if err != nil { // coverage-ignore: regexp accepts only a positive decimal integer
-					return nil, err
+				if err != nil {
+					return nil, fmt.Errorf("parse Applied state-sequence %q: %w", m[2], err)
 				}
 				ops, err := parseAppliedOperations(m[3], declared)
 				if err != nil {
@@ -89,6 +92,16 @@ func parseHistory(body string, format Format, declared []Operation) ([]HistoryEv
 		entries = append(entries, entry)
 	}
 	return entries, nil
+}
+
+func exactNonBlankLines(body string) []string {
+	var lines []string
+	for _, line := range strings.Split(body, "\n") {
+		if strings.TrimSpace(line) != "" {
+			lines = append(lines, line)
+		}
+	}
+	return lines
 }
 
 func parseAppliedOperations(list string, declared []Operation) ([]Operation, error) {

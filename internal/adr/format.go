@@ -130,10 +130,10 @@ func HistoryTransitionValid(before, after ADR) bool {
 	case statusImplementing:
 		return len(added) == 2 && added[0].Kind == HistoryStatus && added[1].Kind == HistoryApplied
 	case statusImplemented:
-		if len(added) == 1 {
-			return added[0].Kind == HistoryStatus
+		if before.Status == statusImplementing {
+			return len(added) == 2 && added[0].Kind == HistoryApplied && added[1].Kind == HistoryStatus
 		}
-		return len(added) == 2 && added[0].Kind == HistoryApplied && added[1].Kind == HistoryStatus
+		return len(added) == 1 && added[0].Kind == HistoryStatus
 	}
 	return false // coverage-ignore: every legal V2 transition target is handled by the closed switch
 }

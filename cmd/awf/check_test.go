@@ -223,6 +223,9 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 	lockText := func(version string, generation int) string {
 		t.Helper()
 		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
+		if generation >= 15 {
+			lock.ADRFormatV2From = 1
+		}
 		b, err := lock.Marshal()
 		if err != nil {
 			t.Fatal(err)
