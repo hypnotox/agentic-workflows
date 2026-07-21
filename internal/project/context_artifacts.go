@@ -41,10 +41,31 @@ type ArtifactRecord struct {
 	Snapshot   *ArtifactSnapshot `json:"snapshot,omitempty"`
 }
 
-func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir string, adrs adr.Corpus) []ArtifactRecord {
+type artifactAuthorities struct {
+	Layout Layout
+	ADRs   adr.Corpus
+}
+
+func artifactRecords(path string, declarations []OutputDeclaration, authorities artifactAuthorities) []ArtifactRecord {
 	records := []ArtifactRecord{}
 	add := func(role ArtifactRole, identity string, sources, outputs []ArtifactLink) {
+		for i := range records {
+			if records[i].Role == role && records[i].Identity == identity {
+				records[i].Sources = mergeArtifactLinks(records[i].Sources, sources)
+				records[i].Outputs = mergeArtifactLinks(records[i].Outputs, outputs)
+				return
+			}
+		}
 		records = append(records, ArtifactRecord{Role: role, Identity: identity, Sources: nonNilLinks(sources), Outputs: nonNilLinks(outputs), Navigation: []ArtifactLink{}})
+	}
+	configReference := authorities.Layout.DocsDir + "/config-reference.md"
+	linkIfDeclared := func(path, label string) []ArtifactLink {
+		for _, declaration := range declarations {
+			if declaration.Path == path && !declaration.Reservation {
+				return []ArtifactLink{{Path: path, Label: label}}
+			}
+		}
+		return []ArtifactLink{}
 	}
 	switch {
 	case path == ".awf/config.yaml":
@@ -56,29 +77,68 @@ func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir
 		add(ArtifactTopicMetadata, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/metadata/"), ".yaml"), nil, declarationOutputs(path, declarations))
 	case strings.HasPrefix(path, ".awf/topics/parts/") && strings.HasSuffix(path, "/current-state.md"):
 		add(ArtifactClaimPart, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/parts/"), "/current-state.md"), nil, declarationOutputs(path, declarations))
-	case strings.HasPrefix(path, strings.TrimRight(decisionsDir, "/")+"/"):
-		base := strings.TrimPrefix(path, strings.TrimRight(decisionsDir, "/")+"/")
+	case strings.HasPrefix(path, strings.TrimRight(authorities.Layout.ADRDir, "/")+"/"):
+		base := strings.TrimPrefix(path, strings.TrimRight(authorities.Layout.ADRDir, "/")+"/")
 		if match := adr.FilenameRe.FindStringSubmatch(base); match != nil {
-			if record, ok := adrs.ByNumber(match[1]); ok && record.Filename == base {
-				add(ArtifactDecisionRecord, path, nil, declarationOutputs(path, declarations))
+			if record, ok := authorities.ADRs.ByNumber(match[1]); ok && record.Filename == base {
+				add(ArtifactDecisionRecord, record.Number, nil, declarationOutputs(path, declarations))
 			}
 		}
 	}
 	for _, d := range declarations {
 		if d.Path == path && !d.Reservation {
 			sources := make([]ArtifactLink, 0, len(d.Inputs))
+			outputs := []ArtifactLink{}
 			for _, in := range d.Inputs {
-				sources = append(sources, ArtifactLink{Path: in.Path, Label: string(in.Role)})
+				sources = append(sources, ArtifactLink{Path: in.Path, Label: artifactSourceLabel(in.Role)})
+				if in.Path == path && in.Role == ArtifactManagedOutput {
+					outputs = append(outputs, ArtifactLink{Path: d.Path, Label: "managed output"})
+				}
 			}
-			add(ArtifactManagedOutput, d.TemplateID, sources, nil)
+			identity := d.TemplateID
+			if identity == "" {
+				identity = strings.Join(d.Declarers, ",")
+			}
+			add(ArtifactManagedOutput, identity, sources, outputs)
 		}
 		if !d.Reservation {
 			for _, in := range d.Inputs {
-				if in.Path == path && !canonicalArtifactInputRole(in.Role) {
-					add(in.Role, d.TemplateID, nil, []ArtifactLink{{Path: d.Path, Label: "managed output"}})
+				if in.Path == path && !canonicalArtifactInputRole(in.Role) && in.Role != ArtifactManagedOutput {
+					identity := path
+					if in.Role == ArtifactTemplate {
+						identity = strings.TrimPrefix(path, "templates/")
+					}
+					add(in.Role, identity, nil, []ArtifactLink{{Path: d.Path, Label: "managed output"}})
 				}
 			}
 		}
+	}
+	for i := range records {
+		switch records[i].Role {
+		case ArtifactConfig:
+			records[i].Navigation = linkIfDeclared(configReference, "configuration reference")
+		case ArtifactLock:
+			records[i].Navigation = append([]ArtifactLink{{Path: ".awf/config.yaml", Label: "project config"}}, linkIfDeclared(configReference, "configuration reference")...)
+		case ArtifactManifest:
+			records[i].Navigation = linkIfDeclared(configReference, "configuration reference")
+		case ArtifactTemplate, ArtifactConventionPart, ArtifactAuthoredData:
+			records[i].Navigation = cloneArtifactLinks(records[i].Outputs)
+		case ArtifactTopicMetadata, ArtifactClaimPart:
+			id := records[i].Identity
+			domain := strings.SplitN(id, "/", 2)[0]
+			records[i].Navigation = append(linkIfDeclared(authorities.Layout.DocsDir+"/topics/"+id+".md", "topic document"), linkIfDeclared(authorities.Layout.DomainsDir+"/"+domain+".md", "domain document")...)
+		case ArtifactDecisionRecord:
+			records[i].Navigation = linkIfDeclared(authorities.Layout.IndexMd, "decision index")
+		case ArtifactManagedOutput:
+			for _, source := range records[i].Sources {
+				if source.Path != path && source.Label != "render template" {
+					records[i].Navigation = append(records[i].Navigation, source)
+				}
+			}
+		}
+		records[i].Sources = mergeArtifactLinks(nil, records[i].Sources)
+		records[i].Outputs = mergeArtifactLinks(nil, records[i].Outputs)
+		records[i].Navigation = mergeArtifactLinks(nil, records[i].Navigation)
 	}
 	roleOrder := map[ArtifactRole]int{ArtifactConfig: 0, ArtifactLock: 1, ArtifactManifest: 2, ArtifactTemplate: 3, ArtifactConventionPart: 4, ArtifactAuthoredData: 5, ArtifactTopicMetadata: 6, ArtifactClaimPart: 7, ArtifactDecisionRecord: 8, ArtifactManagedOutput: 9}
 	slices.SortFunc(records, func(a, b ArtifactRecord) int {
@@ -89,6 +149,30 @@ func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir
 	})
 	return records
 }
+
+func artifactSourceLabel(role ArtifactRole) string {
+	switch role {
+	case ArtifactConfig:
+		return "project config"
+	case ArtifactTemplate:
+		return "render template"
+	case ArtifactConventionPart:
+		return "convention part"
+	case ArtifactAuthoredData:
+		return "authored data"
+	case ArtifactTopicMetadata:
+		return "topic metadata"
+	case ArtifactClaimPart:
+		return "claim part"
+	case ArtifactDecisionRecord:
+		return "decision record"
+	case ArtifactManagedOutput:
+		return "in-place managed output"
+	default:
+		return string(role)
+	}
+}
+
 func canonicalArtifactInputRole(role ArtifactRole) bool {
 	return role == ArtifactConfig || role == ArtifactTopicMetadata || role == ArtifactClaimPart || role == ArtifactDecisionRecord
 }
@@ -96,13 +180,16 @@ func canonicalArtifactInputRole(role ArtifactRole) bool {
 func declarationOutputs(path string, declarations []OutputDeclaration) []ArtifactLink {
 	out := []ArtifactLink{}
 	for _, d := range declarations {
+		if d.Reservation {
+			continue
+		}
 		for _, in := range d.Inputs {
 			if in.Path == path {
 				out = append(out, ArtifactLink{Path: d.Path, Label: "managed output"})
 			}
 		}
 	}
-	return out
+	return mergeArtifactLinks(nil, out)
 }
 func applyArtifactSnapshots(records []ArtifactRecord, path string, tree *snapshot.Tree, lock *manifest.Lock) {
 	for i := range records {
@@ -123,6 +210,17 @@ func applyArtifactSnapshots(records []ArtifactRecord, path string, tree *snapsho
 	}
 }
 
+func cloneArtifactLinks(in []ArtifactLink) []ArtifactLink { return append([]ArtifactLink{}, in...) }
+func mergeArtifactLinks(a, b []ArtifactLink) []ArtifactLink {
+	out := append(cloneArtifactLinks(a), b...)
+	slices.SortFunc(out, func(a, b ArtifactLink) int {
+		if a.Path != b.Path {
+			return strings.Compare(a.Path, b.Path)
+		}
+		return strings.Compare(a.Label, b.Label)
+	})
+	return slices.Compact(out)
+}
 func nonNilLinks(in []ArtifactLink) []ArtifactLink {
 	if in == nil {
 		return []ArtifactLink{}

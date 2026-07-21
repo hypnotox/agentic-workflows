@@ -19,15 +19,15 @@ import (
 // invariant: rendering/project-output-plan:managed-output-attribution
 func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	decls := []OutputDeclaration{{Path: "docs/out.md", TemplateID: "docs/out.md.tmpl", Declarers: []string{"out"}, Inputs: []OutputInput{{Path: ".awf/docs/parts/out/content.md", Role: ArtifactConventionPart}}}}
-	generated := artifactRecords("docs/out.md", decls, "docs/decisions", adr.NewCorpus(nil))
+	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
 	if len(generated) != 1 || generated[0].Role != ArtifactManagedOutput || len(generated[0].Sources) != 1 {
 		t.Fatalf("generated=%#v", generated)
 	}
-	source := artifactRecords(".awf/docs/parts/out/content.md", decls, "docs/decisions", adr.NewCorpus(nil))
+	source := artifactRecords(".awf/docs/parts/out/content.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
 	if len(source) != 1 || source[0].Role != ArtifactConventionPart || len(source[0].Outputs) != 1 || source[0].Outputs[0].Path != "docs/out.md" {
 		t.Fatalf("source=%#v", source)
 	}
-	unmanaged := artifactRecords("docs/lookalike.md", decls, "docs/decisions", adr.NewCorpus(nil))
+	unmanaged := artifactRecords("docs/lookalike.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
 	if unmanaged == nil || len(unmanaged) != 0 {
 		t.Fatalf("unmanaged=%#v", unmanaged)
 	}
@@ -46,39 +46,91 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) {
 	parsed := adr.NewCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
 	decls := []OutputDeclaration{
+		{Path: "documentation/config-reference.md", TemplateID: "docs/config-reference.md.tmpl", Declarers: []string{"config-reference"}},
+		{Path: "documentation/domains/d.md", TemplateID: "domains/domain.md.tmpl", Declarers: []string{"generated-domain"}},
+		{Path: "documentation/topics/d/t.md", TemplateID: "topics/topic.md.tmpl", Declarers: []string{"topic:d/t"}},
+		{Path: "documentation/decisions/INDEX.md", Declarers: []string{"generated-index"}},
 		{Path: "generated.md", TemplateID: "docs/out.tmpl", Declarers: []string{"owner"}, Inputs: []OutputInput{
+			{Path: ".awf/config.yaml", Role: ArtifactConfig},
 			{Path: "templates/docs/out.tmpl", Role: ArtifactTemplate},
 			{Path: ".awf/docs/parts/out/content.md", Role: ArtifactConventionPart},
 			{Path: ".awf/docs/out.yaml", Role: ArtifactAuthoredData},
 			{Path: ".awf/topics/metadata/d/t.yaml", Role: ArtifactTopicMetadata},
 			{Path: ".awf/topics/parts/d/t/current-state.md", Role: ArtifactClaimPart},
-			{Path: "docs/decisions/0007-real.md", Role: ArtifactDecisionRecord},
+			{Path: "documentation/decisions/0007-real.md", Role: ArtifactDecisionRecord},
 		}},
 		{Path: "second.md", TemplateID: "docs/second.tmpl", Declarers: []string{"second"}, Inputs: []OutputInput{{Path: "templates/docs/out.tmpl", Role: ArtifactTemplate}}},
 		{Path: "local.md", TemplateID: "local", Declarers: []string{"local"}, Inputs: []OutputInput{{Path: ".awf/docs/local.yaml", Role: ArtifactAuthoredData}}, Reservation: true},
 	}
+	authorities := testArtifactAuthorities("documentation", parsed)
 	cases := []struct {
-		path string
-		role ArtifactRole
+		path       string
+		role       ArtifactRole
+		identity   string
+		navigation []ArtifactLink
 	}{
-		{".awf/config.yaml", ArtifactConfig}, {".awf/awf.lock", ArtifactLock},
-		{"templates/docs/out.tmpl", ArtifactTemplate}, {".awf/docs/parts/out/content.md", ArtifactConventionPart},
-		{".awf/docs/out.yaml", ArtifactAuthoredData}, {".awf/topics/metadata/d/t.yaml", ArtifactTopicMetadata},
-		{".awf/topics/parts/d/t/current-state.md", ArtifactClaimPart}, {"docs/decisions/0007-real.md", ArtifactDecisionRecord},
-		{"generated.md", ArtifactManagedOutput},
+		{".awf/config.yaml", ArtifactConfig, "project-config", []ArtifactLink{{Path: "documentation/config-reference.md", Label: "configuration reference"}}},
+		{".awf/awf.lock", ArtifactLock, "project-lock", []ArtifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: "documentation/config-reference.md", Label: "configuration reference"}}},
+		{".awf/awf.lock", ArtifactManifest, "output-manifest", []ArtifactLink{{Path: "documentation/config-reference.md", Label: "configuration reference"}}},
+		{"templates/docs/out.tmpl", ArtifactTemplate, "docs/out.tmpl", []ArtifactLink{{Path: "generated.md", Label: "managed output"}, {Path: "second.md", Label: "managed output"}}},
+		{".awf/docs/parts/out/content.md", ArtifactConventionPart, ".awf/docs/parts/out/content.md", []ArtifactLink{{Path: "generated.md", Label: "managed output"}}},
+		{".awf/docs/out.yaml", ArtifactAuthoredData, ".awf/docs/out.yaml", []ArtifactLink{{Path: "generated.md", Label: "managed output"}}},
+		{".awf/topics/metadata/d/t.yaml", ArtifactTopicMetadata, "d/t", []ArtifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
+		{".awf/topics/parts/d/t/current-state.md", ArtifactClaimPart, "d/t", []ArtifactLink{{Path: "documentation/domains/d.md", Label: "domain document"}, {Path: "documentation/topics/d/t.md", Label: "topic document"}}},
+		{"documentation/decisions/0007-real.md", ArtifactDecisionRecord, "0007", []ArtifactLink{{Path: "documentation/decisions/INDEX.md", Label: "decision index"}}},
+		{"generated.md", ArtifactManagedOutput, "docs/out.tmpl", []ArtifactLink{{Path: ".awf/config.yaml", Label: "project config"}, {Path: ".awf/docs/out.yaml", Label: "authored data"}, {Path: ".awf/docs/parts/out/content.md", Label: "convention part"}, {Path: ".awf/topics/metadata/d/t.yaml", Label: "topic metadata"}, {Path: ".awf/topics/parts/d/t/current-state.md", Label: "claim part"}, {Path: "documentation/decisions/0007-real.md", Label: "decision record"}}},
 	}
 	for _, tc := range cases {
-		records := artifactRecords(tc.path, decls, "docs/decisions", parsed)
-		if !slices.ContainsFunc(records, func(record ArtifactRecord) bool { return record.Role == tc.role }) {
-			t.Errorf("%s missing role %s: %#v", tc.path, tc.role, records)
+		records := artifactRecords(tc.path, decls, authorities)
+		idx := slices.IndexFunc(records, func(record ArtifactRecord) bool { return record.Role == tc.role })
+		if idx < 0 {
+			t.Fatalf("%s missing role %s: %#v", tc.path, tc.role, records)
+		}
+		record := records[idx]
+		if record.Identity != tc.identity || !reflect.DeepEqual(record.Navigation, tc.navigation) {
+			t.Errorf("%s %s = identity %q navigation %#v", tc.path, tc.role, record.Identity, record.Navigation)
+		}
+		if record.Sources == nil || record.Outputs == nil || record.Navigation == nil {
+			t.Errorf("%s %s has null collection: %#v", tc.path, tc.role, record)
 		}
 	}
-	lockRoles := artifactRecords(".awf/awf.lock", decls, "docs/decisions", parsed)
+	lockRoles := artifactRecords(".awf/awf.lock", decls, authorities)
 	if got := []ArtifactRole{lockRoles[0].Role, lockRoles[1].Role}; !reflect.DeepEqual(got, []ArtifactRole{ArtifactLock, ArtifactManifest}) {
 		t.Fatalf("lock role ordering = %v", got)
 	}
-	for _, path := range []string{"docs/decisions/INDEX.md", "docs/decisions/README.md", "docs/decisions/0007-lookalike.md", "docs/decisions/0008-malformed.md", "elsewhere/0007-real.md", "disabled.md", "local.md", ".awf/docs/local.yaml"} {
-		if records := artifactRecords(path, decls, "docs/decisions", parsed); len(records) != 0 {
+	managed := artifactRecords("generated.md", decls, authorities)[0]
+	if len(managed.Sources) != 7 || len(managed.Outputs) != 0 {
+		t.Fatalf("managed causal edges = sources %#v outputs %#v", managed.Sources, managed.Outputs)
+	}
+	template := artifactRecords("templates/docs/out.tmpl", decls, authorities)[0]
+	if !reflect.DeepEqual(template.Outputs, []ArtifactLink{{Path: "generated.md", Label: "managed output"}, {Path: "second.md", Label: "managed output"}}) {
+		t.Fatalf("template outputs = %#v", template.Outputs)
+	}
+	inPlaceDecl := []OutputDeclaration{{Path: "x", TemplateID: "runner/x.tmpl", Declarers: []string{"runner"}, Inputs: []OutputInput{{Path: "x", Role: ArtifactManagedOutput}}}}
+	inPlace := artifactRecords("x", inPlaceDecl, authorities)
+	if len(inPlace) != 1 || inPlace[0].Role != ArtifactManagedOutput || !reflect.DeepEqual(inPlace[0].Sources, []ArtifactLink{{Path: "x", Label: "in-place managed output"}}) || !reflect.DeepEqual(inPlace[0].Outputs, []ArtifactLink{{Path: "x", Label: "managed output"}}) || inPlace[0].Navigation == nil {
+		t.Fatalf("in-place source/output multiplicity = %#v", inPlace)
+	}
+	generatedIndex := artifactRecords("documentation/decisions/INDEX.md", decls, authorities)
+	if len(generatedIndex) != 1 || generatedIndex[0].Identity != "generated-index" {
+		t.Fatalf("template-free generated identity = %#v", generatedIndex)
+	}
+	withoutReference := artifactRecords(".awf/config.yaml", nil, authorities)
+	if withoutReference[0].Navigation == nil || len(withoutReference[0].Navigation) != 0 {
+		t.Fatalf("undeclared config-reference navigation = %#v", withoutReference)
+	}
+	duplicateRoles := artifactRecords("duplicate.md", []OutputDeclaration{{Path: "duplicate.md", TemplateID: "z"}, {Path: "duplicate.md", TemplateID: "a"}}, authorities)
+	if len(duplicateRoles) != 2 || duplicateRoles[0].Identity != "a" || duplicateRoles[1].Identity != "z" {
+		t.Fatalf("same-role identity ordering = %#v", duplicateRoles)
+	}
+	if got := artifactSourceLabel(ArtifactRole("future")); got != "future" {
+		t.Fatalf("unknown source label = %q", got)
+	}
+	if got := mergeArtifactLinks([]ArtifactLink{{Path: "same", Label: "z"}}, []ArtifactLink{{Path: "same", Label: "a"}}); !reflect.DeepEqual(got, []ArtifactLink{{Path: "same", Label: "a"}, {Path: "same", Label: "z"}}) {
+		t.Fatalf("same-path link ordering = %#v", got)
+	}
+	for _, path := range []string{"documentation/decisions/README.md", "documentation/decisions/0007-lookalike.md", "documentation/decisions/0008-malformed.md", "elsewhere/0007-real.md", "disabled.md", "local.md", ".awf/docs/local.yaml"} {
+		if records := artifactRecords(path, decls, authorities); len(records) != 0 {
 			t.Errorf("%s received disabled, reservation, or lookalike attribution: %#v", path, records)
 		}
 	}
@@ -162,6 +214,11 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, adr.NewCorpus(nil)); err == nil {
 		t.Fatal("malformed agent declaration accepted")
 	}
+	badDomainRead := memoryProjectReader{".awf/domains/d.yaml": []byte("paths: [bad")}
+	badDomainCfg, _ := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{badDomainRead})
+	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, adr.NewCorpus(nil)); err == nil {
+		t.Fatal("malformed domain declaration accepted")
+	}
 	if !byPath[".one/skills/p-local/SKILL.md"].Reservation || !reflect.DeepEqual(byPath["shared"].Declarers, []string{"one", "two"}) {
 		t.Fatalf("declarations=%#v", decls)
 	}
@@ -177,9 +234,38 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	}
 }
 
+func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\n"+debuggingVars+"skills: [debugging, exploring]\nagents: []\n", map[string]string{
+		"skills/debugging.yaml":                        "data: {}\n",
+		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := p.Targets[0].SkillPath(p.Cfg.Prefix, "debugging")
+	idx := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
+	if idx < 0 {
+		t.Fatalf("missing node %s", path)
+	}
+	want := normalizeOutputInputs([]OutputInput{
+		{Path: ".awf/config.yaml", Role: ArtifactConfig},
+		{Path: ".awf/skills/debugging.yaml", Role: ArtifactAuthoredData},
+		{Path: ".awf/skills/parts/debugging/debugging-surfaces.md", Role: ArtifactConventionPart},
+		{Path: "templates/skills/debugging/SKILL.md.tmpl", Role: ArtifactTemplate},
+	})
+	if !reflect.DeepEqual(plan.Nodes[idx].ConsumedInputs, want) {
+		t.Fatalf("consumed inputs = %#v, want %#v", plan.Nodes[idx].ConsumedInputs, want)
+	}
+}
+
 func TestDeclarationPlanParityDiagnostics(t *testing.T) {
 	input := OutputInput{Path: ".awf/config.yaml", Role: ArtifactConfig}
-	node := OutputNode{Path: "a", Recipe: OutputRecipe{TemplateID: "a.tmpl"}, Declarers: []string{"owner"}, DeclarationInputs: []OutputInput{input}}
+	node := OutputNode{Path: "a", Recipe: OutputRecipe{TemplateID: "a.tmpl"}, ObservedTemplateID: "a.tmpl", Declarers: []string{"owner"}, ConsumedInputs: []OutputInput{input}}
 	declaration := OutputDeclaration{Path: "a", TemplateID: "a.tmpl", Declarers: []string{"owner"}, Inputs: []OutputInput{input}}
 	if err := validateDeclarationPlanParity([]OutputNode{node}, []OutputDeclaration{declaration}); err != nil {
 		t.Fatalf("matching parity rejected: %v", err)
@@ -196,19 +282,39 @@ func TestDeclarationPlanParityDiagnostics(t *testing.T) {
 	}{
 		{"path", func(n *OutputNode) { n.Path = "b" }},
 		{"reservation", func(n *OutputNode) { n.Reservation = true }},
-		{"template", func(n *OutputNode) { n.Recipe.TemplateID = "other.tmpl" }},
+		{"template", func(n *OutputNode) { n.ObservedTemplateID = "other.tmpl" }},
 		{"declarers", func(n *OutputNode) { n.Declarers = []string{"other"} }},
-		{"inputs", func(n *OutputNode) { n.DeclarationInputs = []OutputInput{{Path: "other", Role: ArtifactAuthoredData}} }},
+		{"inputs", func(n *OutputNode) { n.ConsumedInputs = []OutputInput{{Path: "other", Role: ArtifactAuthoredData}} }},
 		{"dependencies", func(n *OutputNode) { n.DependsOn = []string{"other"} }},
 	}
 	for _, mutation := range mutations {
-		t.Run(mutation.name, func(t *testing.T) {
+		t.Run("node-"+mutation.name, func(t *testing.T) {
 			changed := node
 			mutation.edit(&changed)
 			if err := validateDeclarationPlanParity([]OutputNode{changed}, []OutputDeclaration{declaration}); err == nil {
 				t.Fatalf("%s mismatch accepted", mutation.name)
 			}
 		})
+	}
+	for _, mutation := range []struct {
+		name   string
+		inputs []OutputInput
+	}{
+		{"missing-declaration-input", []OutputInput{}},
+		{"extra-declaration-input", []OutputInput{input, {Path: "extra", Role: ArtifactAuthoredData}}},
+		{"role-misclassified-declaration-input", []OutputInput{{Path: input.Path, Role: ArtifactAuthoredData}}},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			changed := declaration
+			changed.Inputs = mutation.inputs
+			if err := validateDeclarationPlanParity([]OutputNode{node}, []OutputDeclaration{changed}); err == nil {
+				t.Fatal("declaration input mutation accepted")
+			}
+		})
+	}
+	rolesAtOnePath := normalizeOutputInputs([]OutputInput{{Path: "same", Role: ArtifactTemplate}, {Path: "same", Role: ArtifactConfig}})
+	if !reflect.DeepEqual(rolesAtOnePath, []OutputInput{{Path: "same", Role: ArtifactConfig}, {Path: "same", Role: ArtifactTemplate}}) {
+		t.Fatalf("same-path role ordering = %#v", rolesAtOnePath)
 	}
 	if got := difference([]string{"a", "b"}, []string{"b"}); !reflect.DeepEqual(got, []string{"a"}) {
 		t.Fatalf("difference=%v", got)
@@ -238,3 +344,7 @@ func (r configReaderAdapter) ReadFile(p string) ([]byte, bool) {
 	return r.memoryProjectReader.ReadFile(".awf/" + p)
 }
 func (r configReaderAdapter) Paths(prefix string) []string { return nil }
+
+func testArtifactAuthorities(docsDir string, corpus adr.Corpus) artifactAuthorities {
+	return artifactAuthorities{Layout: Layout{DocsDir: docsDir, ADRDir: docsDir + "/decisions", IndexMd: docsDir + "/decisions/INDEX.md", DomainsDir: docsDir + "/domains"}, ADRs: corpus}
+}

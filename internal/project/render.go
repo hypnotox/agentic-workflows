@@ -79,6 +79,11 @@ type RenderedFile struct {
 	// consumption the assembled source cannot show (both ADR-0086).
 	kind, artifact string
 	partVarRefs    []string
+	// ConsumedInputs is observed at the render seam. It is intentionally
+	// independent of BuildOutputDeclarations so declaration omissions and role
+	// mistakes fail output-plan parity.
+	ConsumedInputs     []OutputInput
+	ObservedTemplateID string
 }
 
 // data assembles the template data namespace for a target: the prefix, the
@@ -595,6 +600,14 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		if err != nil {
 			return nil, err
 		}
+		for _, name := range p.Cfg.Docs {
+			if ok, sidecarErr := p.Cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every enabled doc sidecar from the same filesystem invocation
+				return nil, sidecarErr
+			} else if ok {
+				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput{Path: config.DirName + "/docs/" + name + ".yaml", Role: ArtifactAuthoredData})
+			}
+		}
+		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 		out = append(out, rf)
 		// Bridge: each adapter that wants one imports AGENTS.md verbatim (ADR-0037).
 		// Gated on the agents-doc render above - a local (hand-maintained) AGENTS.md
@@ -715,6 +728,10 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
+	consumedInputs, err := p.observeRenderInputs(kind, artifact, tid, outPath, plan)
+	if err != nil { // coverage-ignore: the producer already parsed the same sidecar and planSections read the same parts in this invocation
+		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
+	}
 	if tid == runnerTID {
 		body := sectionDefault(segs, "runner-project-verbs")
 		if projectVerbs := plan["runner-project-verbs"]; projectVerbs.InPlaceFound {
@@ -777,7 +794,42 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		Policy:       declaredPolicy(kind, anyInPlace(plan)),
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
+		ConsumedInputs: consumedInputs, ObservedTemplateID: tid,
 	}, nil
+}
+
+func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error) {
+	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
+	if tid != "" {
+		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
+	}
+	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "memory" && kind != "runner" {
+		has, err := p.Cfg.HasSidecar(kind, artifact)
+		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
+			return nil, err
+		}
+		if has {
+			rel := kind + "/" + artifact + ".yaml"
+			if config.IsSingletonKind(kind) {
+				rel = kind + ".yaml"
+			}
+			inputs = append(inputs, OutputInput{Path: config.DirName + "/" + rel, Role: ArtifactAuthoredData})
+		}
+	}
+	inPlaceRead := false
+	for _, section := range slices.Sorted(maps.Keys(plan)) {
+		sp := plan[section]
+		if sp.HasPart {
+			inputs = append(inputs, OutputInput{Path: p.partRel(kind, artifact, section), Role: ArtifactConventionPart})
+		}
+		inPlaceRead = inPlaceRead || sp.InPlace
+	}
+	if inPlaceRead {
+		if _, ok := (filesystemProjectReader{root: p.Root}).ReadFile(outPath); ok {
+			inputs = append(inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
+		}
+	}
+	return normalizeOutputInputs(inputs), nil
 }
 
 // encodeAgent renders catalog metadata with normal template data and combines it
@@ -809,7 +861,11 @@ func (p *Project) generateIndexMD() (RenderedFile, error) {
 	}
 	content := adr.RenderIndexMD(corpus)
 	content = injectBanner(content, "")
-	return RenderedFile{Path: p.layout().IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}, nil
+	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
+	for _, record := range corpus.All() {
+		inputs = append(inputs, OutputInput{Path: p.layout().ADRDir + "/" + record.Filename, Role: ArtifactDecisionRecord})
+	}
+	return RenderedFile{Path: p.layout().IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: normalizeOutputInputs(inputs)}, nil
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -834,10 +890,16 @@ func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
 		if err != nil { // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
 			return nil, err
 		}
+		for _, currentTopic := range topics.ForDomain(name) {
+			rf.ConsumedInputs = append(rf.ConsumedInputs,
+				OutputInput{Path: relSlash(p.Root, currentTopic.MetadataPath), Role: ArtifactTopicMetadata},
+				OutputInput{Path: relSlash(p.Root, currentTopic.PartPath), Role: ArtifactClaimPart})
+		}
+		rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 		out = append(out, RenderedFile{Path: rf.Path, Content: rf.Content,
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
-			partVarRefs: rf.partVarRefs, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}})
+			partVarRefs: rf.partVarRefs, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID})
 	}
 	return out, nil
 }

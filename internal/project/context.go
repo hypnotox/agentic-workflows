@@ -200,7 +200,7 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 	for _, path := range slices.Sorted(maps.Keys(attribution)) {
 		class, nestedRoot, targetInside := classifyContextPath(path, set)
 		selectedADRs := adr.NewCorpus(loaded.ADRs)
-		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: artifactRecords(path, declarations, lay.ADRDir, selectedADRs)}
+		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: artifactRecords(path, declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})}
 		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
 		matchedTopics := map[string]bool{}

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -95,8 +96,10 @@ func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]s
 			return nil, nil, err
 		}
 		path := base + "/" + t.ID.Domain + "/" + t.ID.Slug + ".md"
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: "topics/topic.md.tmpl", TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment})
-		deps[path] = []string{relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)}
+		metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
+		observed := normalizeOutputInputs([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/topics/topic.md.tmpl", Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: "topics/topic.md.tmpl", TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: "topics/topic.md.tmpl"})
+		deps[path] = []string{metadataPath, partPath}
 	}
 	for _, domain := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
 		topics := corpus.ForDomain(domain)
@@ -111,10 +114,13 @@ func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]s
 		content = injectBanner(content, "topics/index.md.tmpl")
 		enc, _ := yaml.Marshal(model)
 		path := base + "/" + domain + "/index.md"
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: "topics/index.md.tmpl", TemplateHash: manifest.Hash(indexTemplate), ConfigHash: manifest.Hash(enc), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment})
+		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/topics/index.md.tmpl", Role: ArtifactTemplate}}
 		for _, t := range topics {
-			deps[path] = append(deps[path], relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath))
+			metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
+			deps[path] = append(deps[path], metadataPath, partPath)
+			observed = append(observed, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: ArtifactClaimPart})
 		}
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: "topics/index.md.tmpl", TemplateHash: manifest.Hash(indexTemplate), ConfigHash: manifest.Hash(enc), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(observed), ObservedTemplateID: "topics/index.md.tmpl"})
 	}
 	return files, deps, nil
 }
