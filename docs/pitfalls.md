@@ -422,6 +422,20 @@ partition exhaustively. Iterate everything, route each element to an asserted bu
 (pinned set, known-exempt set), and fail on any element that lands in neither, instead of
 filtering to the bucket you thought of first.
 
+## A proof marker does not prove every clause in its invariant claim
+
+_Domains: invariants_
+
+The backing checker proves that a test-scoped marker exists, not that the marked test
+exercises every clause of the claim. ADR-0143's first implementation had markers for all
+nine changed invariants, yet several tests covered only one lifecycle status or direction;
+one append-only test even repeated an operation in cases labeled valid. Per-task review had
+already asked for stronger proof coverage, but the terminal Phase 4 review still found the
+same pattern across cutoff routing, abandonment, bidirectionality, atomicity, and sequence
+ordering. When adding or moving a proof marker, read the claim as a conjunction and enumerate
+each status, direction, and failure branch it names. Include at least one refuting case per
+clause; marker presence and a green suite are not evidence of semantic completeness.
+
 ## A Proposed ADR's same-commit state-doc update must not speak in present tense
 
 _Domains: adr-system_

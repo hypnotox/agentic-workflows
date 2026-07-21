@@ -34,6 +34,10 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- New ADRs use `current-state-v2` after a metadata-only schema-15 cutoff upgrade. The new
+  `Implementing` state and append-only `Applied` events let one frozen decision apply claim operations
+  in independently checked batches across commits, including interleaved ADRs and partially Abandoned
+  execution, while context reports only the remaining operations as pending and preserves V1 history.
 - Implementation plans may use implementation-ready pseudocode for logic and non-contractual prose while keeping machine-consumed, contract-bearing, fixture, golden, command, mechanical, and literal-text portions exact; the writing skill, reviewer, scaffold, plan guide, and agent guide now enforce the same boundary.
 - Pi's four governed subagent roles now accept strict optional exact model routing, independent
   exploration runs through an abort-aware ten-active FIFO queue, and mixed implementation batches
