@@ -968,5 +968,20 @@ compare each ADR's Decision item list before and after (identical), and compare 
 whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
 pre-existing construct as a change and buries the real finding in false positives.
 
+## Record implementation deviations before the terminal artifact transaction
+
+_Domains: adr-system_
+
+A plan's Notes section is the last honest place to record an implementation deviation, but
+it becomes frozen history when the plan moves to Implemented. The topic-authority hardening
+effort added `LegacyBaseline` to an exact planned API after user approval and correctly
+implemented it, yet omitted the deviation from Notes before the terminal plan and ADR
+transaction. Terminal review caught the documentary gap only after the plan had frozen, when
+editing Notes or rewriting commits would have violated immutable-history rules. Before staging
+the final status transition, compare the implemented public shapes and named deviations against
+the plan one last time, update Notes while the plan is still active, then freeze it. If review
+finds an omission afterward, preserve history and record the miss in the retrospective rather
+than making the completed plan falsely look prescient.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
