@@ -157,15 +157,17 @@ sidecar.local, or a data key name).
 `,
 	},
 	{
-		Name: "context", Summary: "Report owning domains, invariants, and ADRs for paths", Runner: RunnerDisposition{Forward: true},
+		Name: "context", Summary: "Orient by path with concise or full current-state authority", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--json", "--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf context <path>... [--json] [--full] [--staged] [--range <a>..<b>] [--uncovered]
 
-Report concise, path-attributed current-state orientation for repo-relative paths.
-Use --full for every applicable current claim, backing and direct reference IDs.
+Report concise current-state orientation for normalized request paths and their
+classified effective paths. Direct state, touches, and proof markers select the
+default claims; omitted topic-wide claims carry drilldowns. Use --full for every
+applicable current claim, backing and direct reference IDs, without truncation.
 Explicit ADR paths report lifecycle operation progress without treating ADR prose
-as current authority. Read-only. Outside a project, both projections print the
-same static pre-adoption reference.
+as current authority. The command is read-only. Outside a project, both projections
+print the same static pre-adoption reference.
 
 Provide paths explicitly, or resolve them from git with --staged (the staged
 changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
@@ -184,7 +186,7 @@ Flags:
 `,
 	},
 	{
-		Name: "topic", Summary: "Query a current-state topic or claim", Runner: RunnerDisposition{Forward: true},
+		Name: "topic", Summary: "Query current claims, history, references, and applicability", Runner: RunnerDisposition{Forward: true},
 		BoolFlags: []string{"--history", "--references", "--coverage", "--json"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf topic <domain>/<topic>[:<claim>] [flags]
 
@@ -197,7 +199,7 @@ an awf project, a static command reference prints without version gating.
 Flags:
   --history       add direct Origin, Revised-by, and Removed-by ADR details
   --references    add sorted direct incoming and outgoing claim IDs
-  --coverage      add declared scope, effective scope, and marker sites
+  --coverage      add separate domain/topic scopes, current matches, and marker sites
   --json          emit the same query result as deterministic JSON
 `,
 	},

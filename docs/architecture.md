@@ -38,7 +38,9 @@ outputs: Pi automatically renders the project-local `.pi/extensions/awf-subagent
 delegation extension. awf's own config tree lives at `.awf/`, decoupled from any one runtime's
 directory.
 
-Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The reader-injected output declaration builder exposes producer paths and their exact authored inputs to both output planning and artifact navigation without a persisted attribution ledger.
+Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
+
+The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
 ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools capability), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
 
@@ -53,9 +55,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
-  positional bounds, three-valued gating classification, help text, and (for `new`) its
-  subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs to it, and
-  `internal/project` reads its gated set to generate the docs' gated-command list.
+  positional bounds, three-valued gating classification, runner-forwarding disposition, help text,
+  and (for `new`) its subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
+  to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
+  from the same metadata. Excluded runner commands carry their user-facing safety reason.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
@@ -123,7 +126,11 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.
 - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
-  `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
+  `Check()`; golden tests live here. Its read-only context path builds one working- or index-backed
+  universe, expands request paths to effective paths, applies the precedence-ordered primary
+  classification, resolves safe authority and applicability, derives artifact navigation from
+  reader-injected output declarations, and then selects the concise or full projection without
+  writing or reloading from another universe. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source; enable array, catalog pool, declared sections, output path, and labels
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
@@ -152,7 +159,9 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `// coverage-ignore: <reason>` contract for `cmd/covercheck` (ADR-0012). Repo-only, not part
   of the rendered standard.
 - **`internal/testsupport/`**: shared test helpers and the `gitfixture/` in-memory repo builder;
-  the dead-code gate's reachability rule names it explicitly, so a helper reachable only from here
+  a tooling-owned leaf boundary that may use the standard library and its own subpackages, with
+  go-git permitted in `gitfixture`, but may not import another repository internal package. The
+  dead-code gate's reachability rule names it explicitly, so a helper reachable only from here
   still counts as dead production code (ADR-0063). Repo-only, not part of the rendered standard.
 - **`internal/evals/`**: test-only chain and fixture evaluations over `internal/catalog`.
   Repo-only, not part of the rendered standard.
@@ -236,6 +245,8 @@ per-domain ADR index. These files are ordinary output-plan nodes: exact metadata
 inputs feed manifest, brownfield backup, regeneration, drift, and prune behavior. The topic claims are
 the active authority: `awf context`, `awf check`, and `awf topic` read them, and the ADR corpus supplies
 only provenance and history.
+
+A context request chooses one read-only universe before interpretation: the working tree by default or the immutable index under `--staged`. Literal and Git-selected request paths expand to unique effective paths inside that universe. Each effective path is classified before authority is projected; safe paths then receive domain/topic ownership, applicability evidence, direct or complete claims, pending operations, and declaration-derived artifact links. Concise and `--full` renderers consume the same semantic result. Reader injection keeps config parts and output declarations inside the selected snapshot, and context performs no config, lock, cache, or output writes.
 
 A `check --staged` loads the HEAD tree (before) and the staged index tree (after), builds each side's
 ADR and topic corpora from that one snapshot, runs the static current-state checks over the after tree,

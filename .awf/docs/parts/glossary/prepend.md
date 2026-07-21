@@ -2,6 +2,8 @@ Project jargon and what each term means; start here when a term is unfamiliar. S
 
 - **Applicability evidence:** Separate owning-domain and topic selectors, the rule that both must match, and concrete current matched paths and marker sites; it is not symbolic glob intersection.
 - **Artifact role:** One closed attribution kind assigned from loaded project authorities, with source, output, and navigation links.
+- **Concise context:** The default per-path orientation projection, containing directly marked claims and explicit omitted-claim counts and drilldowns rather than every topic-wide claim.
 - **Effective path:** One unique file path selected literally or by request-directory expansion and classified independently.
+- **Full authority packet:** The untruncated `awf context --full` projection containing every applicable current claim, backing, direct sites and references, scopes, matched paths, pending operations, and artifact navigation.
 - **Primary classification:** Exactly one precedence-ordered context status for an effective path, such as covered, generated output, symlink, or not found.
 - **Request path:** A normalized user or Git-selected query retained separately from the effective paths it selects.

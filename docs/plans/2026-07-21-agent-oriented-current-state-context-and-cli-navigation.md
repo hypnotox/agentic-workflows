@@ -1,7 +1,7 @@
 ---
 date: 2026-07-21
 adrs: [144]
-status: Proposed
+status: Implemented
 ---
 # Plan: Agent-Oriented Current-State Context and CLI Navigation
 
@@ -229,4 +229,5 @@ The implementation first freezes ADR-0144 after creating its two empty destinati
 ## Notes
 
 - ADR-0144 remains the design authority; this plan fixes implementation sequencing and verification only.
+- No implementation deviations from ADR-0144 or this plan.
 - State-sequence numbers and the frozen content digest are intentionally obtained from the staged checker at execution time rather than hard-coded measurements.

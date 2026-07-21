@@ -7,6 +7,8 @@ coverage, `go vet`, `golangci-lint`, a whole-program dead-code check (ADR-0063),
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan
 (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
 
+Current-state checks also emit a non-failing working-tree note for each topic strictly above `currentState.maxClaimsPerTopic`; equality is quiet, staged checks suppress the advisory, and the example adopter is required to produce no notes. Catalog-derived runner tests require every metadata-forwarded command in both managed and repository runners while preserving declared exclusions. Context parity tests require human and JSON output to consume the same concise/full model, complete-authority callers to use `--full`, and topic/context applicability evidence to agree.
+
 ### Coverage: statement gate vs line reporting
 
 `./x gate` is the **sole hard coverage gate**, and it measures **statement** coverage. CI

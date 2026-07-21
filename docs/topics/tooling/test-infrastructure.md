@@ -3,8 +3,14 @@
 
 Shared internal test-support infrastructure and its dependency boundary.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/testsupport/**`. Both domain and topic selectors must match. Current matched paths: ``. Marker sites: ``.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/testsupport/**`. Both domain and topic selectors must match. Current matched paths: `internal/testsupport/deps_test.go`, `internal/testsupport/gitfixture/gitfixture.go`, `internal/testsupport/gitfixture/gitfixture_test.go`, `internal/testsupport/testsupport.go`, `internal/testsupport/testsupport_test.go`. Marker sites: `internal/testsupport/deps_test.go:23 [invariant] tooling/test-infrastructure:test-support-leaf-boundary`.
 
 This topic records the current ownership contract for shared internal test-support infrastructure.
 
 ## Claims
+
+### `invariant: test-support-leaf-boundary`
+
+Non-test Go files under `internal/testsupport/**` may import the standard library and their own subpackages, with go-git additionally permitted only within `gitfixture`, but may not import another repository internal package.
+Origin: ADR-0144
+Backing: test

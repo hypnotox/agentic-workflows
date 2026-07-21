@@ -20,6 +20,7 @@ import (
 // check, and the seen-count guard fails the test rather than passing vacuously
 // if the source files are ever renamed or relocated out from under it.
 // invariant: tooling/quality-gates:testsupport-zero-internal-deps
+// invariant: tooling/test-infrastructure:test-support-leaf-boundary
 func TestZeroInternalDeps(t *testing.T) {
 	seen := 0
 	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {

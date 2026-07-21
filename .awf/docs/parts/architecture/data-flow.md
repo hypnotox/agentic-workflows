@@ -24,6 +24,8 @@ inputs feed manifest, brownfield backup, regeneration, drift, and prune behavior
 the active authority: `awf context`, `awf check`, and `awf topic` read them, and the ADR corpus supplies
 only provenance and history.
 
+A context request chooses one read-only universe before interpretation: the working tree by default or the immutable index under `--staged`. Literal and Git-selected request paths expand to unique effective paths inside that universe. Each effective path is classified before authority is projected; safe paths then receive domain/topic ownership, applicability evidence, direct or complete claims, pending operations, and declaration-derived artifact links. Concise and `--full` renderers consume the same semantic result. Reader injection keeps config parts and output declarations inside the selected snapshot, and context performs no config, lock, cache, or output writes.
+
 A `check --staged` loads the HEAD tree (before) and the staged index tree (after), builds each side's
 ADR and topic corpora from that one snapshot, runs the static current-state checks over the after tree,
 and compares the two universes for the claim-transition handshake: frozen ADR content cannot change,

@@ -9,9 +9,9 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
-- Schema generation 16 adds strict `currentState.maxClaimsPerTopic` configuration. Existing adopters
-  must run `awf upgrade`; the migration writes the explicit default of 20 while preserving an explicit
-  positive value and the sealed ADR format cutoff.
+- awf 0.21.0 advances to schema generation 16 with strict `currentState.maxClaimsPerTopic`
+  configuration. Existing adopters must run `awf upgrade`; the migration writes the explicit default
+  of 20 while preserving an explicit positive value and the sealed ADR format cutoff.
 - Current-state topics are now awf's single active authority, replacing the ADR-derived context,
   supersession, and invariant-authority engines. Active rules and invariants live as individually
   identified claims in domain-owned topic documents under `.awf/topics/`, rendered to `docs/topics/`;
@@ -37,6 +37,11 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- `awf context` now preserves request-to-effective-path attribution, reports one primary path
+  classification and known-artifact navigation, defaults to directly relevant concise claims, and
+  adds an untruncated `--full` authority packet plus lifecycle-aware explicit ADR navigation.
+  `awf topic --coverage` shares honest domain/topic applicability evidence, and managed runners derive
+  their forwarded commands and exclusions from the CLI command table.
 - New ADRs use `current-state-v2` after a metadata-only schema-15 cutoff upgrade. The new
   `Implementing` state and append-only `Applied` events let one frozen decision apply claim operations
   in independently checked batches across commits, including interleaved ADRs and partially Abandoned

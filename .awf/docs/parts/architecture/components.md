@@ -7,9 +7,10 @@
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
-  positional bounds, three-valued gating classification, help text, and (for `new`) its
-  subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs to it, and
-  `internal/project` reads its gated set to generate the docs' gated-command list.
+  positional bounds, three-valued gating classification, runner-forwarding disposition, help text,
+  and (for `new`) its subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
+  to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
+  from the same metadata. Excluded runner commands carry their user-facing safety reason.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
@@ -77,7 +78,11 @@
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.
 - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
-  `Check()`; golden tests live here. A single ordered kind-descriptor table (`kind.go`) is the sole
+  `Check()`; golden tests live here. Its read-only context path builds one working- or index-backed
+  universe, expands request paths to effective paths, applies the precedence-ordered primary
+  classification, resolves safe authority and applicability, derives artifact navigation from
+  reader-injected output declarations, and then selects the concise or full projection without
+  writing or reloading from another universe. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source; enable array, catalog pool, declared sections, output path, and labels
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
@@ -106,7 +111,9 @@
   `// coverage-ignore: <reason>` contract for `cmd/covercheck` (ADR-0012). Repo-only, not part
   of the rendered standard.
 - **`internal/testsupport/`**: shared test helpers and the `gitfixture/` in-memory repo builder;
-  the dead-code gate's reachability rule names it explicitly, so a helper reachable only from here
+  a tooling-owned leaf boundary that may use the standard library and its own subpackages, with
+  go-git permitted in `gitfixture`, but may not import another repository internal package. The
+  dead-code gate's reachability rule names it explicitly, so a helper reachable only from here
   still counts as dead production code (ADR-0063). Repo-only, not part of the rendered standard.
 - **`internal/evals/`**: test-only chain and fixture evaluations over `internal/catalog`.
   Repo-only, not part of the rendered standard.

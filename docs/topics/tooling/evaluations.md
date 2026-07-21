@@ -3,7 +3,7 @@
 
 The golden-task evaluation suite.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/evals/**`. Both domain and topic selectors must match. Current matched paths: `internal/evals/chain_test.go`, `internal/evals/fixture_test.go`. Marker sites: `internal/evals/fixture_test.go:99 [invariant] tooling/evaluations:evals-full-catalog-coverage`.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/evals/**`. Both domain and topic selectors must match. Current matched paths: `internal/evals/chain_test.go`, `internal/evals/fixture_test.go`. Marker sites: `internal/evals/fixture_test.go:99 [invariant] tooling/evaluations:evals-full-catalog-coverage`.
 
 The evals package holds the golden-task evaluation suite for the workflow artifacts. The claims below capture the current evaluation contracts.
 

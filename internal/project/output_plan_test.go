@@ -12,6 +12,7 @@ import (
 )
 
 // invariant: rendering/project-output-plan:output-plan-complete
+// invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(root)
