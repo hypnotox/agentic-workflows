@@ -147,19 +147,36 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 		}
 	})
 
-	t.Run("missing-object", func(t *testing.T) {
+	t.Run("missing-commit-object", func(t *testing.T) {
+		repo, dir := gitfixture.InitRepo(t)
+		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
+		commitObject := filepath.Join(dir, ".git", "objects", head.String()[:2], head.String()[2:])
+		if err := os.Remove(commitObject); err != nil {
+			t.Fatal(err)
+		}
+		_, err := awfgit.WorkingPaths(dir)
+		wantContext := "resolve working paths HEAD commit " + head.String() + ": "
+		if err == nil || !strings.HasPrefix(err.Error(), wantContext) {
+			t.Fatalf("missing commit error = %v, want prefix %q", err, wantContext)
+		}
+	})
+
+	t.Run("missing-tree-object", func(t *testing.T) {
 		repo, dir := gitfixture.InitRepo(t)
 		head := gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked\n"})
 		commit, err := repo.CommitObject(head)
 		if err != nil {
 			t.Fatal(err)
 		}
-		treeObject := filepath.Join(dir, ".git", "objects", commit.TreeHash.String()[:2], commit.TreeHash.String()[2:])
+		treeHash := commit.TreeHash.String()
+		treeObject := filepath.Join(dir, ".git", "objects", treeHash[:2], treeHash[2:])
 		if err := os.Remove(treeObject); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := awfgit.WorkingPaths(dir); err == nil {
-			t.Fatal("missing committed tree object accepted as unborn")
+		_, err = awfgit.WorkingPaths(dir)
+		wantContext := "resolve working paths HEAD tree " + treeHash + ": "
+		if err == nil || !strings.HasPrefix(err.Error(), wantContext) {
+			t.Fatalf("missing tree error = %v, want prefix %q", err, wantContext)
 		}
 	})
 }

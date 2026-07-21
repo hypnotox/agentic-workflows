@@ -252,10 +252,11 @@ var slugNonAlnumRe = regexp.MustCompile(`[^a-z0-9]+`)
 // Every existing decision is legacy at first adoption; current-state-v1 records
 // cannot appear below the newly established cutoff.
 func AdoptionBoundary(dir string) (cutoff int, gaps []int, err error) {
-	adrs, err := ParseDir(dir)
+	corpus, err := LoadCorpus(dir)
 	if err != nil {
 		return 0, nil, err
 	}
+	adrs := corpus.All()
 	if len(adrs) == 0 {
 		return 1, []int{}, nil
 	}

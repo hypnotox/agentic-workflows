@@ -157,11 +157,16 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	before, beforeLock, err := p.headCurrentState()
+	beforeTree, beforeLock, err := p.headTreeAndLock()
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	if err := validatePermanentLockTransition(beforeLock, afterLock); err != nil {
+	if err := validatePermanentLockTransition(beforeTree, beforeLock, afterLock); err != nil {
+		return CurrentStateReport{}, err
+	}
+	beforeCutoff, beforeGaps := attestationCutoff(beforeLock)
+	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeCutoff, beforeGaps)
+	if err != nil {
 		return CurrentStateReport{}, err
 	}
 	afterCutoff, afterGaps := attestationCutoff(afterLock)
@@ -211,16 +216,6 @@ func (p *Project) headTreeAndLock() (*snapshot.Tree, *manifest.Lock, error) {
 	return tree, lock, err
 }
 
-func (p *Project) headCurrentState() (currentstate.Loaded, *manifest.Lock, error) {
-	tree, lock, err := p.headTreeAndLock()
-	if err != nil {
-		return currentstate.Loaded{}, nil, err
-	}
-	cutoff, gaps := attestationCutoff(lock)
-	loaded, _, err := loadTreeCurrentState(p.Root, tree, cutoff, gaps)
-	return loaded, lock, err
-}
-
 func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	file, ok := tree.Lookup(config.DirName + "/awf.lock")
 	if !ok {
@@ -235,11 +230,16 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 
 // validatePermanentLockTransition makes the promoted format identity immutable.
 // The sole non-identical edge consumes a HEAD bridge attestation into exactly
-// those same permanent values. Initial adoption has no before lock and remains
-// valid.
-func validatePermanentLockTransition(before, after *manifest.Lock) error {
+// those same permanent values. Initial adoption is valid only when HEAD has
+// neither config nor lock; committed config without a lock is pre-tracking.
+func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *manifest.Lock) error {
 	if before == nil {
-		return nil
+		if _, hasConfig := beforeTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
+			if _, hasLock := beforeTree.Lookup(config.DirName + "/awf.lock"); !hasLock {
+				return nil
+			}
+		}
+		return errors.New("pre-tracking authority: staged permanent lock requires an empty pre-adoption HEAD without .awf/config.yaml or .awf/awf.lock")
 	}
 	if before.InitializedWithVersion == after.InitializedWithVersion &&
 		before.ADRFormatV1From == after.ADRFormatV1From &&

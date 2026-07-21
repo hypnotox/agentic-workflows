@@ -48,6 +48,8 @@ func scaffoldProject(t *testing.T) string {
 func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	repo, root := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	gitfixture.Stage(t, repo, root, map[string]string{"docs/decisions/0001-existing.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Existing"))})
+	gitfixture.Commit(t, repo, root, "existing ADR", nil)
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
 		t.Fatal(err)
@@ -89,19 +91,39 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	if _, err := wt.Commit("initialize", &git.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
 		t.Fatal(err)
 	}
-	mutated, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	mutated.InitializedWithVersion = "0.18.0"
-	if err := mutated.Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := wt.Add(".awf/awf.lock"); err != nil {
-		t.Fatal(err)
-	}
-	if err := runCheck(root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") {
-		t.Fatalf("staged authority mutation error = %v", err)
+	for _, tc := range []struct {
+		name   string
+		mutate func(*manifest.Lock)
+	}{
+		{"initializedWithVersion", func(lock *manifest.Lock) {
+			lock.InitializedWithVersion = "0.18.0"
+			if lock.InitializedWithVersion == initial.InitializedWithVersion {
+				lock.InitializedWithVersion = "0.17.0"
+			}
+		}},
+		{"adrFormatV1From", func(lock *manifest.Lock) { lock.ADRFormatV1From++ }},
+		{"legacyAdrGaps", func(lock *manifest.Lock) { lock.LegacyADRGaps = []int{1} }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mutated := *initial
+			mutated.LegacyADRGaps = slices.Clone(initial.LegacyADRGaps)
+			tc.mutate(&mutated)
+			if err := mutated.Save(config.LockPath(root)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := wt.Add(".awf/awf.lock"); err != nil {
+				t.Fatal(err)
+			}
+			if err := runCheck(root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.name) {
+				t.Fatalf("staged %s mutation error = %v", tc.name, err)
+			}
+			if err := initial.Save(config.LockPath(root)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := wt.Add(".awf/awf.lock"); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
 

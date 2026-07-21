@@ -112,6 +112,20 @@ func TestCheckStagedRejectsPermanentAuthorityMutation(t *testing.T) {
 	}
 }
 
+func TestCheckStagedRejectsPermanentLockOverCommittedConfigWithoutLock(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	delete(files, ".awf/awf.lock")
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "pre-tracking", nil)
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+
+	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "pre-tracking authority") {
+		t.Fatalf("staged permanent lock over committed config error = %v", err)
+	}
+}
+
 func TestCheckStagedAllowsSealedBridgePromotion(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	files := stagedHeadFiles()

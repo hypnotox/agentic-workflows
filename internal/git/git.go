@@ -176,11 +176,11 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 	if !head.unborn {
 		commit, err := repo.CommitObject(head.ref.Hash())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("resolve working paths HEAD commit %s: %w", head.ref.Hash(), err)
 		}
 		tree, err := commit.Tree()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("resolve working paths HEAD tree %s: %w", commit.TreeHash, err)
 		}
 		if err := tree.Files().ForEach(func(f *object.File) error {
 			if path, ok := rerootPath(f.Name, prefix); ok {
