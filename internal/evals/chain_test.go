@@ -311,11 +311,36 @@ var memoryCheckpointSkills = []string{
 func TestMemoryCheckpointCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)
-	const token = "**Working-memory checkpoint.**"
+	ordered := []string{
+		"**Working-memory checkpoint.**",
+		"Complete the memory update in its own tool batch",
+		"Display a concise checkpoint summary",
+		"completed phase",
+		"immediate next action",
+		"exact memory path",
+		"user's intervention point",
+		"continue to the successor step",
+	}
 	for _, name := range memoryCheckpointSkills {
-		if body := read(t, skillPath(root, name)); !strings.Contains(body, token) {
-			t.Errorf("skill %q missing the working-memory checkpoint", name)
+		body := read(t, skillPath(root, name))
+		position := 0
+		for _, phrase := range ordered {
+			next := strings.Index(body[position:], phrase)
+			if next < 0 {
+				t.Errorf("skill %q missing ordered checkpoint step %q", name, phrase)
+				break
+			}
+			position += next + len(phrase)
 		}
+		if strings.Contains(body, "Delete the effort's working-memory file") {
+			t.Errorf("non-terminal skill %q claims the retrospective's memory deletion", name)
+		}
+	}
+	if body := read(t, skillPath(root, "executing-plans")); !strings.Contains(body, "independently resumable committed task") {
+		t.Errorf("executing-plans missing its intermediate checkpoint")
+	}
+	if body := read(t, skillPath(root, "subagent-driven-development")); !strings.Contains(body, "implemented and reviewed task") {
+		t.Errorf("subagent-driven-development missing its intermediate checkpoint")
 	}
 	if body := read(t, skillPath(root, "retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
 		t.Errorf("retrospective missing the working-memory deletion step")

@@ -61,7 +61,10 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Invoke `sundial-retrospective` as the terminal step.** After the review settles, hand off to the main-thread retrospective, which reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.
 
-**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+**Working-memory checkpoint.** Before handing off:
+1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+3. Treat that summary as the user's intervention point, then continue to the successor step. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

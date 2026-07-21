@@ -144,8 +144,9 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Every non-terminal chain-node skill plus the bugfix and debugging task skills carry the working-memory checkpoint instruction in their rendered full-catalog output, and the retrospective skill carries the working-memory-file deletion step.
+Every non-terminal chain-node skill plus the bugfix and debugging task skills complete the working-memory update before displaying the completed phase, immediate next action, and exact memory path as an intervention point. The two implementation skills also checkpoint independently resumable tasks, and retrospective alone carries the memory-file deletion step.
 Origin: ADR-0069
+Revised-by: ADR-0145
 Backing: test
 
 ### `invariant: no-doc-path-vars`

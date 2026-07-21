@@ -57,7 +57,7 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 
 <!-- awf:edit per-task-review: default; create .awf/skills/parts/subagent-driven-development/per-task-review.md to override -->
 6. **After a `DONE` implementer reports, call `subagent_review` once with `kind: "code"`.** Put the task requirements, created SHA(s), enforced invariants, spec-adherence check, and code-quality check in `task` before marking the task done. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
-
+After each implemented and reviewed task, complete the working-memory checkpoint protocol and its visible summary before advancing.
 
 <!-- awf:edit final-task-adr-flip: default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
 7. **Final task: freeze the plan and complete ADR progress.** Flip the plan to Implemented and record findings. For a V2 ADR, append the final Applied batch with exactly its claim mutations before the Implemented status event, or use a direct implicit transition when all operations land together. If execution stops, Abandoned preserves Applied effects and cancels Remaining operations. The prompt must then instruct running `./x sync` to regenerate `docs/decisions/INDEX.md` and stage it; the ADR commit runs the gate, so the drift test must pass.
@@ -65,7 +65,10 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
 8. **Terminal step: invoke `awf-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
-**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+**Working-memory checkpoint.** Before handing off:
+1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+3. Treat that summary as the user's intervention point, then continue to the successor step. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

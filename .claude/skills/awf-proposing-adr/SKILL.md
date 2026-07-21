@@ -67,7 +67,10 @@ Load-bearing triggers include:
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
 8. **Terminal step: invoke `awf-reviewing-adr`** via the project's skill-invocation mechanism, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
-**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+**Working-memory checkpoint.** Before handing off:
+1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+3. Treat that summary as the user's intervention point, then continue to the successor step. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

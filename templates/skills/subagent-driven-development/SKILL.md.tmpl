@@ -66,7 +66,8 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:section per-task-review -->
 {{ if .targetSubagentTools }}6. **After a `DONE` implementer reports, call `subagent_review` once with `kind: "code"`.** Put the task requirements, created SHA(s), enforced invariants, spec-adherence check, and code-quality check in `task` before marking the task done. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 {{ else }}6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
-{{ end }}<!-- awf:end -->
+{{ end }}After each implemented and reviewed task, complete the working-memory checkpoint protocol and its visible summary before advancing.
+<!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
 7. **Final task: freeze the plan and complete ADR progress.** Flip the plan to Implemented and record findings. For a V2 ADR, append the final Applied batch with exactly its claim mutations before the Implemented status event, or use a direct implicit transition when all operations land together. If execution stops, Abandoned preserves Applied effects and cancels Remaining operations. The prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.indexMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.

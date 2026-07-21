@@ -48,7 +48,10 @@ Terminal step of `sundial-proposing-adr`. Invoked once the ADR file is written a
 <!-- awf:edit hand-off-to-resync: default; create .awf/skills/parts/reviewing-adr/hand-off-to-resync.md to override -->
 8. **Hand off to plan resync.** After the ADR review converges (the ADR remains `Proposed`), check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `sundial-reviewing-plan-resync` against that plan. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): invoke `sundial-writing-plans` when planning is warranted, else proceed directly to implementation.
 
-**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+**Working-memory checkpoint.** Before handing off:
+1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+3. Treat that summary as the user's intervention point, then continue to the successor step. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

@@ -52,7 +52,10 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    - If at least one linked ADR exists (named in the plan header or the session context), invoke `awf-reviewing-plan-resync` to catch plan-vs-finalised-ADR(s) drift.
    - If no ADR exists, the chain proceeds directly to implementation.
 
-**Working-memory checkpoint.** Before handing off, update the effort's working-memory file `.awf/memory/<effort-slug>.md` (create it if missing): set `Phase:` to the phase just completed, `Next:` to the successor step, append one line to `## Handoff log`, and refresh `Updated:`. The file skeleton and ground rules live in the agent guide's working-memory section.
+**Working-memory checkpoint.** Before handing off:
+1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+3. Treat that summary as the user's intervention point, then continue to the successor step. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 
