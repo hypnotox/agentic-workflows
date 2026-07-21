@@ -730,12 +730,12 @@ _Domains: config_
 
 `docs/config-reference.md`'s live-state column is projected per key by a switch in
 `internal/project/configreference.go` (`liveState`); a key with no `case` falls through to
-a `default` case that returns the `n/a` placeholder. `invariants.testGlobs` shipped its configspec entry and schema without a
+a `default` case that returns the `n/a` placeholder. `currentState.testGlobs` shipped its configspec entry and schema without a
 projection case, so the reference rendered the `n/a` placeholder (which reads as "unset") even once awf configured
 it, and `awf check` cannot catch this, because regeneration is idempotent, so the
 wrong-but-stable cell never drifts. The impl review caught it only by eye (2026-07-13). When
 adding a config field that carries a meaningful live value, add its `liveState` case (mirror the
-sibling, `invariants.testGlobs` mirrors `invariants.sources`) and assert the rendered value in a
+sibling, `currentState.testGlobs` mirrors `currentState.sources`) and assert the rendered value in a
 `configreference_test.go` case; an `n/a` placeholder for a set top-level field is the smell.
 
 ## Referencing a new var in an always-on template shifts that var's consumer set

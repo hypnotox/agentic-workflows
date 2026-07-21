@@ -53,8 +53,9 @@ Backing: test
 
 ### `invariant: no-single-marker-init-descriptor`
 
-The catalog exposes no invariants-marker or invariants-globs var descriptor; the comment-marker mapping reaches configuration only through invariants.sources.
+The catalog exposes no invariants-marker or invariants-globs var descriptor; the comment-marker mapping reaches configuration only through currentState.sources.
 Origin: ADR-0064
+Revised-by: ADR-0140
 Backing: test
 
 ### `invariant: pi-child-process-safety`

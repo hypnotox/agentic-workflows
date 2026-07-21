@@ -9,6 +9,12 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ## Claims
 
+### `invariant: init-unborn-head-supported`
+
+Working-state assembly uses an empty committed baseline only when HEAD is specifically unborn, allowing init and check to consume eligible working files while every other repository, reference, and object error remains a failure.
+Origin: ADR-0139
+Backing: test
+
 ### `invariant: add-applies-closure-plan`
 
 Adding an artifact enables its full missing forward requirement closure in a single config rewrite and prints one provenance plan line per enabled node, naming which requirement pulled each dependency in.

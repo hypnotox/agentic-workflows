@@ -149,13 +149,21 @@ func TestCheckForward(t *testing.T) {
 	}
 }
 
+// invariant: invariants/current-state-authority:abandoned-remove-pair-attributed
 func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
-	records := []adr.ADR{
-		rec("0137", "Abandoned", 0, op(adr.OpRemove, "d/t:x")),
-		rec("0138", "Implemented", 1, op(adr.OpRemove, "d/t:x")),
-	}
+	abandoned := rec("0137", "Abandoned", 0, op(adr.OpRemove, "d/t:x"))
+	accepted := rec("0138", "Accepted", 0, op(adr.OpRemove, "d/t:x"))
+	implemented := rec("0138", "Implemented", 1, op(adr.OpRemove, "d/t:x"))
+	implemented.History = append(append([]adr.StatusEntry(nil), accepted.History...), implemented.History[len(implemented.History)-1])
+
+	records := []adr.ADR{abandoned, implemented}
 	if f := currentstate.Check(records, topics(), 137); len(f) != 0 {
-		t.Fatalf("distinct Implemented removal rejected:\n%s", messages(f))
+		t.Fatalf("final absence statically attributed to Abandoned removal:\n%s", messages(f))
+	}
+	before := uni([]adr.ADR{abandoned, accepted}, claim("d/t:x", "0100"))
+	after := uni(records)
+	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+		t.Fatalf("actual Implemented removal rejected by pair validation:\n%s", messages(f))
 	}
 }
 

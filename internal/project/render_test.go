@@ -1,10 +1,13 @@
 package project
 
 import (
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // syncedWorkflowDoc scaffolds a minimal project whose commit-discipline part is
@@ -34,7 +37,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 // invariant: rendering/project-output-plan:authoring-comment-stripped
 func TestAuthoringCommentStrippedFromPart(t *testing.T) {
 	out := syncedWorkflowDoc(t,
-		"<!-- awf:comment touches-invariant: demo-slug - an internal tag -->\n"+
+		"<!-- awf:comment touches-state: demo/topic:demo-slug - an internal tag -->\n"+
 			"KEEP-TOP\n"+
 			"mid-line <!-- awf:comment inline note --> kept\n"+
 			"```\n<!-- awf:comment fenced demo -->\n```\n")
@@ -95,11 +98,20 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 }
 
 // The template seam end-to-end: the embedded adr-readme template carries a real
-// dogfooded touches-invariant authoring comment, so any regression in the
+// qualified touches-state authoring comment, so any regression in the
 // renderTarget strip wiring (which the render-layer unit tests cannot see)
 // leaks it into every scaffolded project's rendered README.
 // touches-state: rendering/project-output-plan:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
+	const directive = "<!-- awf:comment touches-state: rendering/templates:local-doc-base-publication-safe - the embedded ADR README directive is source-only -->"
+	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(src), directive) {
+		t.Fatalf("embedded ADR README source lacks qualified directive %q", directive)
+	}
+
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", nil)
 	p, err := Open(root)
 	if err != nil {
@@ -112,7 +124,7 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(b), "awf:comment") {
-		t.Errorf("the embedded template's authoring comment leaked into rendered output:\n%s", b)
+	if strings.Contains(string(b), directive) || strings.Contains(string(b), "awf:comment") {
+		t.Errorf("the embedded template's qualified authoring comment leaked into rendered output:\n%s", b)
 	}
 }

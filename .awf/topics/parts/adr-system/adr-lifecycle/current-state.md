@@ -2,6 +2,12 @@ The adr package parses decision records, derives their identity, and validates t
 
 ## Claims
 
+### `invariant: fresh-adoption-v1-cutoff`
+
+Empty first adoption seals ADR cutoff 1, brownfield first adoption seals highest existing identity plus one with every lower gap explicit, and every ADR created at or above that cutoff uses current-state-v1.
+Origin: ADR-0139
+Backing: test
+
 ### `invariant: adr-new-heading-matches-file`
 
 A file created by awf new adr carries a # ADR-NNNN: <title> heading whose number matches the NNNN prefix of its own filename, and the literal Title placeholder never survives into the written file.

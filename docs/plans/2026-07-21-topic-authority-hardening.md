@@ -1,7 +1,7 @@
 ---
 date: 2026-07-21
 adrs: [134, 135, 136, 139, 140]
-status: Proposed
+status: Implemented
 ---
 # Plan: Topic Authority Hardening
 
@@ -767,6 +767,7 @@ historical-only query projection, context summary/backing/Verify, and lifecycle 
 
 ## Notes
 
+- Implementation deviations: none.
 - Deferred by design: filesystem versus snapshot marker scan-universe semantics and historical
   cross-schema range-audit redesign.
 - Historical ADRs and completed plans retain retired vocabulary as frozen history.

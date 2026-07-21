@@ -6,7 +6,7 @@ import (
 )
 
 // commentOpen is the exact authoring-comment literal (ADR-0121). The strip and
-// the documented invariants.sources marker must stay byte-identical, so a
+// the documented currentState.sources marker must stay byte-identical, so a
 // comment that strips here is exactly a comment the scanner can read; a
 // whitespace variant is not the directive and passes through visibly.
 const commentOpen = "<!-- awf:comment"

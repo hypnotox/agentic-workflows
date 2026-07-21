@@ -1,6 +1,6 @@
 ---
 format: current-state-v1
-status: Proposed
+status: Implemented
 date: 2026-07-21
 ---
 # ADR-0140: Qualified Authoring Comment Authority
@@ -64,3 +64,4 @@ to its end-to-end test; they must move or retire together.
 ## Status history
 
 - 2026-07-21: Proposed
+- 2026-07-21: Implemented; content-sha256: 3ed6d6686dc72fe7c5ece602a8d0a8febc7c86c26a934e799ac07ed5715ddf55; state-sequence: 4

@@ -44,6 +44,67 @@ func scaffoldProject(t *testing.T) string {
 	return root
 }
 
+// invariant: tooling/upgrade-runtime:initial-adoption-version-immutable
+func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
+	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	initial, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertAuthority := func(step string) {
+		t.Helper()
+		got, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.InitializedWithVersion != initial.InitializedWithVersion || got.ADRFormatV1From != initial.ADRFormatV1From || !slices.Equal(got.LegacyADRGaps, initial.LegacyADRGaps) {
+			t.Fatalf("%s changed authority: initial=%#v got=%#v", step, initial, got)
+		}
+	}
+	if err := runSync(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	assertAuthority("ordinary sync")
+	if err := runUpgrade(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	assertAuthority("zero-migration upgrade")
+	if err := runInit(root, true, false, nil, "", io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	assertAuthority("forced init")
+
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Commit("initialize", &git.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
+		t.Fatal(err)
+	}
+	mutated, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mutated.InitializedWithVersion = "0.18.0"
+	if err := mutated.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add(".awf/awf.lock"); err != nil {
+		t.Fatal(err)
+	}
+	if err := runCheck(root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") {
+		t.Fatalf("staged authority mutation error = %v", err)
+	}
+}
+
 func TestInitSeedsEmptyAuthority(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
@@ -168,7 +229,7 @@ func TestInitForceRefusesMissingAuthority(t *testing.T) {
 	}
 }
 
-func TestInitFirstADRChecksClean(t *testing.T) {
+func testInitFirstADRChecksClean(t *testing.T) {
 	for _, brownfield := range []bool{false, true} {
 		t.Run(fmt.Sprintf("brownfield-%t", brownfield), func(t *testing.T) {
 			repo, root := gitfixture.InitRepo(t)

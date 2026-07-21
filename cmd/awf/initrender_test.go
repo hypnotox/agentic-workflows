@@ -33,6 +33,11 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	}
 }
 
+// invariant: adr-system/adr-lifecycle:fresh-adoption-v1-cutoff
+func TestInitFirstADRChecksClean(t *testing.T) {
+	testInitFirstADRChecksClean(t)
+}
+
 func TestEmptyInitRendersCoherently(t *testing.T) {
 	forceNonInteractive(t)
 	repo, root := gitfixture.InitRepo(t)

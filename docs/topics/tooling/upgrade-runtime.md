@@ -9,6 +9,12 @@ The upgrade package runs the current-state migration: it verifies the bridge sea
 
 ## Claims
 
+### `invariant: initial-adoption-version-immutable`
+
+The first-adoption version, ADR cutoff, and explicit gap set are sealed once and preserved unchanged by ordinary sync, zero-migration upgrade, staged authority checks, and forced initialization.
+Origin: ADR-0139
+Backing: test
+
 ### `invariant: current-state-cutover-is-atomic`
 
 Schema upgrade enables the topic authority engine only after every readiness predicate succeeds and never leaves a partial or compatibility state.

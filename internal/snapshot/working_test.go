@@ -93,6 +93,7 @@ func TestWorkingTree(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:init-unborn-head-supported
 func TestWorkingTreeUnborn(t *testing.T) {
 	_, dir := gitfixture.InitRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, "eligible.txt"), []byte("working\n"), 0o644); err != nil {
@@ -106,9 +107,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 	if file, ok := tree.Lookup("eligible.txt"); !ok || string(file.Bytes) != "working\n" {
 		t.Fatalf("eligible.txt = %q, %v; want unborn worktree bytes", file.Bytes, ok)
 	}
-}
 
-func TestWorkingTreeUnbornErrorControls(t *testing.T) {
 	t.Run("outside-repository", func(t *testing.T) {
 		if _, err := snapshot.WorkingTree(t.TempDir()); err == nil {
 			t.Fatal("expected an error outside a repository")

@@ -822,7 +822,7 @@
     },
     "docs/decisions/README.md": {
       "templateId": "adr-readme/README.md.tmpl",
-      "templateHash": "sha256:7f01bb4238a270da38f009c4130c70bd2b9fc0d45da541098ca1fec2a4f898c9",
+      "templateHash": "sha256:2f06fba7cbf61568150d2ec8f3e9cb12b7048f52100bae6a4ad6a7b78474f37d",
       "configHash": "sha256:37e078d59e56ba9faf1115ff0f7b0dba94d4876fd604cd13f42613ee837c786d",
       "outputHash": "sha256:397a1eab4e2923b2f696c447d7b329db733b8458bf1ac00ec5769ec42605b263"
     },

@@ -2,6 +2,12 @@ The currentstate package is the active authority engine: it loads topic claims a
 
 ## Claims
 
+### `invariant: abandoned-remove-pair-attributed`
+
+Final claim absence is not static attribution of an Abandoned remove; snapshot-pair validation requires the actual Implemented removal that caused the claim to disappear.
+Origin: ADR-0139
+Backing: test
+
 ### `invariant: accepted-authority-is-pending-only`
 
 An Accepted ADR appears as a pending implementation instruction and never replaces a current claim before its state-impact transaction completes.
