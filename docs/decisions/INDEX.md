@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0139: Explicit Current-State Authority Provenance](0139-explicit-current-state-authority-provenance.md) (Proposed)
+- [ADR-0140: Qualified Authoring Comment Authority](0140-qualified-authoring-comment-authority.md) (Proposed)
 
 ## History
 
