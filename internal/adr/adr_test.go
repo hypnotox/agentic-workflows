@@ -348,7 +348,11 @@ func TestNextNumberPropagatesParseDirError(t *testing.T) {
 func TestNewFileHappyPath(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
-	swapNow(t, fixedNow)
+	clockCalls := 0
+	swapNow(t, func() time.Time {
+		clockCalls++
+		return time.Date(2026, 7, clockCalls, 0, 0, 0, 0, time.UTC)
+	})
 
 	path, err := adr.NewFile(dir, "My Cool Title")
 	if err != nil {
@@ -376,6 +380,9 @@ func TestNewFileHappyPath(t *testing.T) {
 	}
 	if strings.Count(body, "- 2026-07-01: Proposed") != 1 {
 		t.Errorf("Proposed history date count = %d, want 1: %q", strings.Count(body, "- 2026-07-01: Proposed"), body)
+	}
+	if clockCalls != 1 {
+		t.Errorf("clock calls = %d, want 1", clockCalls)
 	}
 	if _, err := adr.ParseV1(filepath.Base(path), got); err != nil {
 		t.Fatalf("scaffolded ADR does not parse as current-state-v1: %v", err)
