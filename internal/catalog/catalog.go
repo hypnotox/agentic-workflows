@@ -80,7 +80,7 @@ type DocEntry struct {
 	AgentsDoc   bool
 	// Generated marks a Mandatory doc rendered outside RenderAll from computed
 	// project state (the config reference): excluded from plainSingletons and
-	// hash checking, regeneration-checked like ACTIVE.md and the domain docs.
+	// hash checking, regeneration-checked like INDEX.md and topic navigation.
 	Generated bool
 }
 

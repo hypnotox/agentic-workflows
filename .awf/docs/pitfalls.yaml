@@ -267,21 +267,20 @@ data:
         2026-07-09 while landing ADR-0080's sweep). In a doc-comment position, spell the construct out
         in words ("a double-backtick quoting span"); literal backtick pairs are only safe inside
         non-doc comments or raw strings.
-    - title: "An ADR's `domains:` list dictates which domain docs a flip commit stages"
+    - title: "Topic and decision edits regenerate navigation outside the authored file"
       domains: [adr-system]
-      tags: [domain-index, adr-lifecycle]
+      tags: [topic-navigation, adr-lifecycle]
       body: |
-        `./x sync` regenerates the generated ADR index of **every** domain doc named in an ADR's
-        `domains:` frontmatter, not just the one whose current-state part the effort edited. The
-        ADR-0080 flip commit staged `docs/domains/rendering.md` (its part changed) but missed the
-        index-only refresh of `docs/domains/tooling.md`, a gap the plan's file list and three review
-        passes also missed, caught only by `git status` after the commit (2026-07-09). After the sync
-        in a status-flip commit, stage from `git status`, not from a memorised file list; every
-        `domains:` entry implies its rendered doc. The class recurred in ADR-0121's phase 1
-        (2026-07-16: a configspec edit staged without the example adopter's regenerated config
-        reference), so the `.githooks/pre-commit` staged-slice validation now drift-checks
-        `examples/sundial` in the slice too - the deterministic net for every
-        rendered-file-left-unstaged variant, repo and example alike.
+        `./x sync` regenerates `docs/decisions/INDEX.md` from the ADR corpus and regenerates topic
+        indexes plus owning domain-doc navigation from topic metadata. Stage from `git status`, not
+        from a memorised authored-file list: a status transition can move the decision index, while
+        a topic add, rename, or metadata change can move both its topic index and domain doc. The
+        older per-domain ADR-index implementation exposed the same rendered-file staging class when
+        an ADR-0080 flip missed an index-only domain-doc refresh (2026-07-09). It recurred in
+        ADR-0121's phase 1 when a configspec edit omitted the example adopter's regenerated config
+        reference. The `.githooks/pre-commit` staged-slice validation now drift-checks
+        `examples/sundial` too, providing a deterministic net for repo and example outputs, but the
+        complete sync transaction must still be staged before the explicit staged check and gate.
     - title: "The atomic `.awf/awf.lock` forces multi-scope rendering work into one commit"
       domains: [rendering]
       tags: [lock-manifest, commit-gate]

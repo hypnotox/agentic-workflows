@@ -531,8 +531,8 @@ func TestInvariantDeclsBulletShapes(t *testing.T) {
 }
 
 // TestLegacyStatusPredicates exercises the live/superseded/proposed classifiers
-// and the ACTIVE.md Bucket grouping across each status shape, including the
-// suffixed superseded form the prefix test tolerates.
+// and legacy Bucket grouping across each status shape, including the suffixed
+// superseded form the prefix test tolerates.
 func TestLegacyStatusPredicates(t *testing.T) {
 	for _, tc := range []struct {
 		status                     string

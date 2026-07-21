@@ -201,7 +201,7 @@ disk.
 
 | Command | Purpose |
 |---|---|
-| `awf init` | Scaffold `.awf/` and render. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` overwrites colliding files, backing each up to `<path>.awf-bak`. |
+| `awf init` | Scaffold `.awf/`, seal first-adoption version and ADR cutoff authority, and render. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
 | `awf sync` | Re-render after a config or template change. |
 | `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
@@ -217,7 +217,7 @@ disk.
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
-| `awf upgrade` | Migrate the `.awf/` tree to the current schema. `--check [--json]` reports current-state readiness read-only; `--attest-current-state` seals a ready, clean-HEAD prepared tree through a recoverable journal; `--recover` replays the journal recovery table. The four modes are mutually exclusive. |
+| `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config). |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
 | `awf version` | Print the awf version. |
@@ -229,15 +229,19 @@ Run `awf help` for the full synopsis.
 `awf init` never silently clobbers your files. If a path it would write (say, an
 existing `AGENTS.md`) is present and not awf-managed, init refuses and lists the
 collisions; `awf init --force` overwrites them after backing each original up to
-`<path>.awf-bak`. Rendered skills are named `<prefix>-<skill>`, with the prefix derived
-from the repo directory's basename; change it via `prefix` in `.awf/config.yaml`. And
-you can back out anytime: `awf uninstall` removes everything awf generated, leaving your
-config in place.
+`<path>.awf-bak`. First adoption records the running awf version and seals ADR identity authority:
+cutoff 1 for an empty decision corpus, or highest-plus-one and explicit lower gaps for validated
+brownfield history. Forced init preserves existing authority instead of rewriting history, and an
+older project with neither permanent authority nor a bridge attestation is refused before mutation.
+Rendered skills are named `<prefix>-<skill>`, with the prefix derived from the repo directory's
+basename; change it via `prefix` in `.awf/config.yaml`. You can back out anytime: `awf uninstall`
+removes everything awf generated, leaving your config in place.
 
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
 yours. With the `hooks` artifact enabled (default on init), three inert payload scripts
-land under `.awf/hooks/`: `pre-commit.sh` (drift check, then your gate),
-`commit-msg.sh` (`awf commit-gate`), and `pre-push.sh`. Invoke them from wiring you own,
+land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
+project gate, then enabled prose gate), `commit-msg.sh` (`awf commit-gate`), and `pre-push.sh`.
+Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing
 `exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If
 you adopted an earlier awf that ran `awf setup`, your repo's `core.hooksPath` may still

@@ -21,7 +21,7 @@ see here is provably what awf produces.
 - `AGENTS.md`, `CLAUDE.md`, `.claude/`, most of `docs/`: rendered output. Never
   edit these; change `.awf/` and run `./x sync`.
 - `docs/decisions/`, `docs/plans/`: the fiction's hand-written workflow artifacts
-  (`ACTIVE.md` is generated).
+  (`INDEX.md` is generated).
 - `cmd/`, `internal/`: the fictional Go module (`example.com/sundial`),
   deliberately separate from the awf module.
 - `.githooks/`: illustrative hook wiring. This directory is not a git repository,

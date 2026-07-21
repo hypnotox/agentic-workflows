@@ -89,8 +89,8 @@ func productionGoSources(t *testing.T, fn func(path, body string)) int {
 // identifiers, confines the legacy context fields to the file they were removed
 // from, forbids the deleted bridge import, and holds the migration approval file
 // to its enumerated transient seams. The companion behavioral assertion that the
-// ADR-projected ACTIVE.md index is no longer a planned output lives in
-// internal/project, where the output plan is reachable without an import cycle.
+// retired decision output is no longer planned lives in internal/project, where
+// the output plan is reachable without an import cycle.
 func TestLegacyAuthorityAbsent(t *testing.T) {
 	seams := map[string]bool{}
 	sawContext := false

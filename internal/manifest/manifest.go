@@ -21,8 +21,9 @@ type Entry struct {
 	ConfigHash   string `json:"configHash"`
 	OutputHash   string `json:"outputHash"`
 	// RegenChecked marks an entry whose drift is checked by regeneration rather
-	// than by the frozen OutputHash - the generated indexes (ACTIVE.md, per-domain
-	// docs, the config reference) and in-place-editable files (ADR-0100). Omitted
+	// than by the frozen OutputHash - generated indexes and navigation (INDEX.md,
+	// topic and domain docs, the config reference) plus in-place-editable files
+	// (ADR-0100). Omitted
 	// when false so a plain entry's serialization is unchanged.
 	RegenChecked bool `json:"regenChecked,omitempty"`
 }

@@ -205,7 +205,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
 ## Data flow
 
-First adoption seals initializedWithVersion plus the next ADR identity and gaps before rendering: cutoff 1 for an empty decision corpus, or highest-plus-one and explicit lower gaps for validated brownfield history. The init-only seed is immutable; ordinary sync accepts only permanent authority and copies all three fields.
+First adoption seals `initializedWithVersion` plus the next ADR identity and gaps before rendering: cutoff 1 for an empty decision corpus, or highest-plus-one and explicit lower gaps for validated brownfield history. The init-only seed is immutable; ordinary sync accepts only permanent authority, and forced init preserves existing provenance rather than inventing or replacing it. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
 
 A `sync` loads the config tree, resolves each enabled target's sections (sidecar `drop` and
 convention parts layered over template defaults, precedence
@@ -231,9 +231,11 @@ only provenance and history.
 
 A `check --staged` loads the HEAD tree (before) and the staged index tree (after), builds each side's
 ADR and topic corpora from that one snapshot, runs the static current-state checks over the after tree,
-and compares the two universes for the claim-transition handshake: each Implemented ADR's declared
-`State changes` must match exactly one staged claim add, update, or remove, with `Origin` and the prior
-`Revised-by` prefix preserved. It also runs the topic-coverage evaluator over the index. `awf audit`
+and compares the two universes for the claim-transition handshake: frozen ADR content cannot change,
+Status history is append-only, every operation that reaches Accepted has destination topic metadata,
+and each Implemented ADR's declared `State changes` must match exactly one staged claim add, update,
+or remove, with `Origin` and the prior `Revised-by` prefix preserved. It also runs the topic-coverage
+evaluator over the index. `awf audit`
 applies the same pair check to every parent-to-commit snapshot in a range.
 
 `awf upgrade` consumes a sealed bridge attestation. When the lock carries one, it verifies only the

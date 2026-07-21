@@ -34,6 +34,20 @@ query a single version or a range.
   never produces them.
 
 ### Bug fixes
+- First adoption now records the executing awf version and seals ADR cutoff authority before render:
+  cutoff 1 for an empty corpus, or highest-plus-one with explicit gaps for validated brownfield
+  history. Sync and forced init preserve that provenance, while unattested older projects are refused
+  before destructive upgrade mutation.
+- Staged lifecycle validation now rejects changes to frozen ADR content, non-append-only Status
+  history, and Accepted or Implemented operations whose destination topic metadata is absent.
+  Abandoned removals are attributed from the actual snapshot pair rather than final absence alone.
+- `awf topic --history` now resolves removed claim identities, including legacy-baseline removals
+  whose origin is not retained, without fabricating active prose or tombstones. `awf context` now
+  includes topic summaries, invariant backing, and unbacked `Verify` instructions, and applies
+  `contextIgnore` consistently to directory expansion and coverage.
+- Topic scaffolding now replaces both date placeholders and validates its generated current-state-v1
+  ADR. Agent workflows explicitly stage the complete transaction and run `awf check --staged` before
+  the project gate instead of assuming hooks are installed.
 - Staged current-state checks and `awf context --staged` now read config, lock, topics, markers, and
   coverage from one index snapshot. Staged transitions reject changes to the permanent ADR format
   cutoff or legacy gaps, and `awf context --uncovered --staged` reports index-only coverage.

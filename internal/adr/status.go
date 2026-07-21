@@ -102,7 +102,7 @@ func (a ADR) HasSameStatus(other ADR) bool { return a.Status == other.Status }
 // and that tri-state is what the bytes seam carries (ADR-0130 item 3).
 func (a ADR) HasStatus() bool { return a.Status != "" }
 
-// Bucket is the ACTIVE.md section an ADR belongs to. Every superseded ADR folds
+// Bucket returns the legacy status group for an ADR. Every superseded ADR folds
 // into one group regardless of the successor its status names.
 func (a ADR) Bucket() string {
 	if a.IsSuperseded() {

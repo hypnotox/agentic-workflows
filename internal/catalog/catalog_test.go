@@ -134,8 +134,8 @@ func TestRequiresSkillsDeclarationsValid(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:no-single-marker-init-descriptor
 //
-// The catalog exposes no invariants-marker/globs var descriptor; the marker
-// reaches config only through invariants.sources (ADR-0064).
+// The catalog exposes no single marker/globs var descriptor; qualified markers
+// reach config only through currentState.sources.
 func TestNoSingleMarkerInitDescriptor(t *testing.T) {
 	for _, d := range Standard.Vars {
 		if d.Key == "invariantsMarker" || d.Key == "invariantsGlobs" {

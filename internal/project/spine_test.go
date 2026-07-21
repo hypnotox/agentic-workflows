@@ -150,10 +150,10 @@ func TestPlanReviewerAgent(t *testing.T) {
 				},
 			},
 			"docCurrencyItems": []map[string]any{
-				{"check": "docs/decisions/state/<domain>.md - update when plan shifts a tracked domain"},
+				{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when plan shifts current authority"},
 				{"check": "docs/workflow.md - update when plan changes a workflow rule"},
 				{"check": "AGENTS.md - update when plan changes chain, principles, or invariants"},
-				{"check": "docs/decisions/ACTIVE.md - regenerate when plan flips an ADR status"},
+				{"check": "docs/decisions/INDEX.md - regenerate when plan flips an ADR status"},
 			},
 		},
 	}
@@ -201,8 +201,8 @@ func TestCodeReviewerAgent(t *testing.T) {
 				{"description": "Flag nil pointer dereferences in struct methods where the receiver may be nil."},
 			},
 			"docCurrencyItems": []map[string]any{
-				{"check": "docs/decisions/state/<domain>.md - update when the implementation shifts a tracked domain"},
-				{"check": "docs/decisions/ACTIVE.md - regenerate when ADR status flips to Implemented"},
+				{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when the implementation shifts current authority"},
+				{"check": "docs/decisions/INDEX.md - regenerate when ADR status flips to Implemented"},
 			},
 		},
 	}

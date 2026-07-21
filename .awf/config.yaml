@@ -106,7 +106,8 @@ tags:
   doc-model: The unified compile-time doc model
   doc-singletons: Always-on singleton docs
   doc-standard: The documentation authoring standard
-  domain-index: The generated per-domain ADR index
+  domain-index: Retired per-domain ADR index history
+  topic-navigation: Generated topic and domain navigation
   domain-staleness: Domain code and doc staleness detection
   editable-sections: The awf:edit editable-section markers
   enable-closure: The enable/disable requirement closure
