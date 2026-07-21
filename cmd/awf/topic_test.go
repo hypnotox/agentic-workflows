@@ -204,6 +204,33 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	}
 }
 
+func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
+	result := topic.QueryResult{
+		Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{},
+		History: []topic.ClaimHistory{
+			{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented", StateSequence: 3}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing", StateSequence: 4}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned", StateSequence: 5}},
+			{ClaimID: "d/t:legacy", Origin: &topic.ADRHistory{Number: "0100", Title: "Legacy origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{}},
+		},
+	}
+	var human bytes.Buffer
+	if err := printTopic(&human, result, false); err != nil {
+		t.Fatal(err)
+	}
+	wantHuman := "topic d/t\n\n## Claims\n\n## History\nd/t:x\n  Origin: ADR-0001 (Implemented) Origin [state-sequence: 3]\n  Revised-by: ADR-0002 (Implementing) Revision [state-sequence: 4]\n  Removed-by: ADR-0003 (Abandoned) Removal [state-sequence: 5]\nd/t:legacy\n  Origin: ADR-0100 (Implemented) Legacy origin\n"
+	if human.String() != wantHuman {
+		t.Fatalf("human history:\n%s\nwant:\n%s", human.String(), wantHuman)
+	}
+
+	var encoded bytes.Buffer
+	if err := printTopic(&encoded, result, true); err != nil {
+		t.Fatal(err)
+	}
+	wantJSON := "{\n  \"kind\": \"topic\",\n  \"id\": \"d/t\",\n  \"claims\": [],\n  \"history\": [\n    {\n      \"claimId\": \"d/t:x\",\n      \"origin\": {\n        \"number\": \"0001\",\n        \"title\": \"Origin\",\n        \"status\": \"Implemented\",\n        \"stateSequence\": 3\n      },\n      \"revisedBy\": [\n        {\n          \"number\": \"0002\",\n          \"title\": \"Revision\",\n          \"status\": \"Implementing\",\n          \"stateSequence\": 4\n        }\n      ],\n      \"removedBy\": {\n        \"number\": \"0003\",\n        \"title\": \"Removal\",\n        \"status\": \"Abandoned\",\n        \"stateSequence\": 5\n      }\n    },\n    {\n      \"claimId\": \"d/t:legacy\",\n      \"origin\": {\n        \"number\": \"0100\",\n        \"title\": \"Legacy origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": []\n    }\n  ]\n}\n"
+	if encoded.String() != wantJSON {
+		t.Fatalf("JSON history:\n%s\nwant:\n%s", encoded.String(), wantJSON)
+	}
+}
+
 func runTopicHuman(t *testing.T, root string) string {
 	t.Helper()
 	var out bytes.Buffer

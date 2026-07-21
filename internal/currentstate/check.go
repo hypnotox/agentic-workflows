@@ -187,6 +187,9 @@ func checkForward(projected []projectedADR, claims map[string]topic.Claim, topic
 			findings = append(findings, checkAppliedOp(p.record, op, claim, present, removed[op.ID])...)
 		}
 		for _, op := range p.progress.Canceled {
+			if op.Verb == adr.OpAdd && removed[op.ID] {
+				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Number, op.ID)})
+			}
 			if p.record.IsV1() && p.record.IsAbandoned() {
 				claim, present := claims[op.ID]
 				findings = append(findings, checkAbandonedOp(p.record, op, claim, present)...)

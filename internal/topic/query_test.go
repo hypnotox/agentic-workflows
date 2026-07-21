@@ -178,7 +178,7 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.History) != 1 || got.History[0].Origin.Number != "0003" || len(got.History[0].RevisedBy) != 1 || got.History[0].RevisedBy[0].Number != "0004" {
+	if len(got.History) != 1 || got.History[0].Origin.Number != "0003" || got.History[0].Origin.StateSequence != 1 || len(got.History[0].RevisedBy) != 1 || got.History[0].RevisedBy[0].Number != "0004" || got.History[0].RevisedBy[0].StateSequence != 2 {
 		t.Fatalf("active operation history = %#v", got.History)
 	}
 
@@ -192,7 +192,7 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 	}
 	operations = adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd, 1), incremental))
 	got, err = Query(corpus, operations, claimID, QueryOptions{History: true})
-	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" {
+	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" || got.History[0].RevisedBy[0].StateSequence != 2 {
 		t.Fatalf("immediate incremental operation history = %#v, err=%v", got.History, err)
 	}
 
@@ -201,8 +201,8 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.History) != 1 || got.History[0].Origin.Number != "0001" {
-		t.Fatalf("incomplete operations did not fall back to active provenance: %#v", got.History)
+	if len(got.History) != 1 || got.History[0].Origin.Number != "0001" || got.History[0].Origin.StateSequence != 0 {
+		t.Fatalf("incomplete operations did not fall back to zero-sequence active provenance: %#v", got.History)
 	}
 }
 

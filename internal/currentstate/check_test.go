@@ -344,6 +344,28 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 	if got := messages(currentstate.Check([]adr.ADR{base, partialRemove, reuse}, topics(), 137)); !strings.Contains(got, "may never be reused") {
 		t.Fatalf("removed ID reuse not rejected:\n%s", got)
 	}
+	directlyAbandonedReuse := v2rec("0140", "Abandoned", []adr.Operation{addX}, v2status("Proposed"), v2status("Abandoned"))
+	if got := messages(currentstate.Check([]adr.ADR{base, partialRemove, directlyAbandonedReuse}, topics(), 137)); !strings.Contains(got, "may never be reused") {
+		t.Fatalf("directly Abandoned V2 removed ID reuse not rejected:\n%s", got)
+	}
+	v1AbandonedReuse := rec("0140", "Abandoned", 0, addX)
+	if got := messages(currentstate.Check([]adr.ADR{base, partialRemove, v1AbandonedReuse}, topics(), 137)); !strings.Contains(got, "may never be reused") {
+		t.Fatalf("Abandoned V1 removed ID reuse not rejected:\n%s", got)
+	}
+
+	canceledWithoutPreconditions := []adr.Operation{
+		op(adr.OpAdd, "d/t:active"),
+		op(adr.OpUpdate, "d/t:missing-update"),
+		op(adr.OpRemove, "d/t:missing-remove"),
+	}
+	directlyAbandoned := v2rec("0142", "Abandoned", canceledWithoutPreconditions, v2status("Proposed"), v2status("Abandoned"))
+	if f := currentstate.Check([]adr.ADR{directlyAbandoned}, topics(claim("d/t:active", "0100")), 137); len(f) != 0 {
+		t.Fatalf("directly Abandoned V2 operations imposed pending/result preconditions:\n%s", messages(f))
+	}
+	v1Abandoned := rec("0142", "Abandoned", 0, canceledWithoutPreconditions...)
+	if f := currentstate.Check([]adr.ADR{v1Abandoned}, topics(claim("d/t:active", "0100")), 137); len(f) != 0 {
+		t.Fatalf("Abandoned V1 operations changed equivalent canceled behavior:\n%s", messages(f))
+	}
 
 	remainingOrigin := v2rec("0141", "Proposed", []adr.Operation{op(adr.OpAdd, "d/t:new")}, v2status("Proposed"))
 	if got := messages(currentstate.Check([]adr.ADR{remainingOrigin}, topics(claim("d/t:new", "0141")), 137)); !strings.Contains(got, "no matching add operation applied") {
