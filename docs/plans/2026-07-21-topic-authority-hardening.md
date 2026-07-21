@@ -695,10 +695,13 @@ proof markers, generated outputs, and terminal status land together in the final
   `/home/hypno/Projects/agentic-workflows/internal/render/comment.go` to describe
   `currentState.sources`; replace the active synthetic `touches-invariant:` fixture in
   `/home/hypno/Projects/agentic-workflows/internal/project/render_test.go` with a qualified
-  `touches-state:` example. Add a static qualified `touches-state:` authoring comment to
-  `/home/hypno/Projects/agentic-workflows/templates/adr-readme/README.md.tmpl`, and make the embedded
-  strip regression prove that exact source directive is present before ingestion and absent after
-  rendering.
+  `touches-state:` example and change its stale `dogfooded touches-invariant authoring comment`
+  explanation to the qualified directive. Add a static qualified `touches-state:` authoring comment
+  to `/home/hypno/Projects/agentic-workflows/templates/adr-readme/README.md.tmpl`, and make the
+  embedded strip regression prove that exact source directive is present before ingestion and absent
+  after rendering. Update `/home/hypno/Projects/agentic-workflows/.awf/docs/pitfalls.yaml` guidance
+  that still recommends `invariants.testGlobs`/`invariants.sources` to
+  `currentState.testGlobs`/`currentState.sources`, then regenerate `docs/pitfalls.md`.
 
   Place one
   `// invariant: <qualified-id>` marker on the test that proves each full claim:
