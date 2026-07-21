@@ -285,6 +285,51 @@ func TestWritingPlansTemplate(t *testing.T) {
 	}
 }
 
+func assertOrderedPhrases(t *testing.T, out string, phrases ...string) {
+	t.Helper()
+	position := 0
+	for _, phrase := range phrases {
+		next := strings.Index(out[position:], phrase)
+		if next < 0 {
+			t.Fatalf("expected %q after byte %d:\n%s", phrase, position, out)
+		}
+		position += next + len(phrase)
+	}
+}
+
+func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
+	configured := map[string]any{
+		"prefix": "example",
+		"vars": map[string]any{
+			"gateCmd":          "./x gate",
+			"activeMdRegenCmd": "awf sync",
+		},
+		"layout": testLayout(),
+		"data": map[string]any{
+			"adrStates": []map[string]any{{"name": "Proposed", "meaning": "Mutable", "mutability": "Mutable"}},
+		},
+	}
+	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
+		t.Run(name, func(t *testing.T) {
+			out := renderSkillGolden(t, name, configured)
+			assertOrderedPhrases(t, out, "Stage the complete transaction", "`awf check --staged`", "`./x gate`", "Commit only after both commands pass", "defense in depth")
+		})
+	}
+
+	agents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", configured)
+	assertOrderedPhrases(t, agents, "Stage the complete transaction", "`awf check --staged`", "`./x gate`", "Commit only after both commands pass", "defense in depth")
+
+	fallback := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}}
+	for _, name := range []string{"adr-lifecycle", "executing-plans", "subagent-driven-development"} {
+		t.Run(name+"-fallback", func(t *testing.T) {
+			out := renderSkillGolden(t, name, fallback)
+			assertOrderedPhrases(t, out, "Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth")
+		})
+	}
+	fallbackAgents := renderGolden(t, "agents-doc/AGENTS.md.tmpl", fallback)
+	assertOrderedPhrases(t, fallbackAgents, "Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth")
+}
+
 func TestExecutingPlansTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -1073,7 +1118,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"**Gate per commit.** Fast tier by default.", "Sequential dispatch only, never parallel"},
+		want: []string{"**Validate before every commit.**", "run the project's gate", "defense in depth", "Sequential dispatch only, never parallel"},
 	},
 	{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",

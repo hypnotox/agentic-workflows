@@ -40,7 +40,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
-- **Green gate before every commit.** `./x gate` must pass before any commit lands.
+- **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
 - **Clamped latitude.** `almanac.Sun` clamps latitude to [-90, 90] before the day-length model; out-of-range input degrades to the pole, never to a domain error. (ADR-0001)
 - **Decimal degrees only.** The CLI accepts coordinates exclusively as decimal degrees; no DMS parsing exists. (ADR-0002)
 - **Conventional Commits, scopes `almanac`, `schedule`, `cli`, `docs`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
@@ -61,7 +61,7 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline.
 
-Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
+Stage the complete transaction, run `awf check --staged`, then run `./x gate` (`./x gate full` is the full tier). Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
 <!-- awf:edit working-memory: default; create .awf/parts/agents-doc/working-memory.md to override -->
 ## Working memory

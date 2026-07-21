@@ -30,10 +30,10 @@ If no plan exists, implement directly without a chain skill, then invoke `awf-re
 2. **Read the plan, raise concerns before starting.** Surface critical gaps to the user before touching code: missing file content, unclear commands, contradictory steps, or placeholders ("TBD", "similar to task N"). Do not guess.
 
 <!-- awf:edit procedure-per-task: default; create .awf/skills/parts/executing-plans/procedure-per-task.md to override -->
-3. **Per task, execute, verify, commit (one commit per task):**
+3. **Per task, execute, validate, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
-   - **Verify** with `./x gate` (fast tier). See `docs/workflow.md` for the tier split and when to run the full tier.
-   - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
+   - **Validate.** Stage the complete transaction, run `awf check --staged`, then run `./x gate` (fast tier). Commit only after both commands pass. The hook repeats the staged check as defense in depth. See `docs/workflow.md` for the tier split and when to run the full tier.
+   - **Commit.** Use Conventional Commits (`<type>(<scope>): <subject>`), keep the subject under 72 chars, and explain the *why* in the body. Auto-commit when green (tests pass + lint clean).
 
 <!-- awf:edit tdd-opt-in: default; create .awf/skills/parts/executing-plans/tdd-opt-in.md to override -->
 

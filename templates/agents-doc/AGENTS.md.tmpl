@@ -37,7 +37,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.indexMd }}` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
-- **Green gate before every commit.** {{ with .vars.gateCmd }}`{{ . }}` must pass before any commit lands.{{ else }}The gate must pass before any commit lands.{{ end }}
+- **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
 - **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes`{{ end }}.
@@ -64,7 +64,7 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline.
 
-{{ end }}{{ with .vars.gateCmd }}Run `{{ . }}` before every commit{{ with $.vars.gateCmdFull }}; `{{ . }}` is the full tier{{ end }}. {{ end }}Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
+{{ end }}Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}{{ with .vars.gateCmdFull }} (`{{ . }}` is the full tier){{ end }}. Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section working-memory -->

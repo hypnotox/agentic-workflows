@@ -37,7 +37,7 @@ Hard rules every change must respect:
 
 - **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
-- **Green gate before every commit.** `./x gate` must pass before any commit lands.
+- **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
 - **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.
 - **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
@@ -62,7 +62,7 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline.
 
-Run `./x gate` before every commit; `./x gate full` is the full tier. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
+Stage the complete transaction, run `awf check --staged`, then run `./x gate` (`./x gate full` is the full tier). Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
 <!-- awf:edit working-memory: default; create .awf/parts/agents-doc/working-memory.md to override -->
 ## Working memory
@@ -85,6 +85,10 @@ awf upgrade: migrate the config tree to the current schema after upgrading awf
 awf audit: report workflow-conformance findings over an explicit commit range (advisory)
 awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered plans template
 ```
+
+Before every commit, stage the complete transaction, run `awf check --staged`, then run `./x gate`.
+Commit only after both commands pass. The pre-commit hook repeats the staged check as defense in depth;
+it does not replace the agent's explicit validation.
 
 `awf new topic <domain> "<title>"` scaffolds paired current-state metadata and an empty-claim authored
 part without syncing. Replace the anchored path placeholder and generic prose, then author and review

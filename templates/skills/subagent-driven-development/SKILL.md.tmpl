@@ -47,8 +47,8 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
 <!-- awf:section dispatch-conventions -->
 {{ if .targetSubagentTools }}4. **Per task, call `subagent_implement` alone in its parent tool batch.** Put the complete fresh-context task in `task`, set `allowCommits` explicitly according to whether this task is authorized to create its planned commit, and wait for it before any other tool call or delegation. Never dispatch tasks in parallel. Bake these conventions into `task` verbatim:
 {{ else }}4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
-{{ end }}   - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
-   - **{{ with .vars.gateCmd }}`{{ . }}`{{ else }}Gate{{ end }} per commit.** Fast tier by default{{ with .vars.gateCmdFull }}; `{{ . }}` for the pre-push tier when a pre-push-only surface is involved{{ end }}. See `{{ .layout.workflowRef }}`.
+{{ end }}   - **Validate before every commit.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth. Use the fast tier by default{{ with .vars.gateCmdFull }}; use `{{ . }}` for the pre-push tier when a pre-push-only surface is involved{{ end }}. See `{{ .layout.workflowRef }}`.
+   - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **No amending prior commits.** Fixes land as new commits on top.
    - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
    - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.

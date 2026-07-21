@@ -33,10 +33,10 @@ If no plan exists, implement directly without a chain skill, then invoke `{{ .pr
 <!-- awf:end -->
 
 <!-- awf:section procedure-per-task -->
-3. **Per task, execute, verify, commit (one commit per task):**
+3. **Per task, execute, validate, commit (one commit per task):**
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
-   - **Verify** with {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} (fast tier). See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
-   - **Commit.** Conventional Commits (`<type>(<scope>): <subject>`), subject under 72 chars, body explains the *why*. Auto-commit when green (tests pass + lint clean).
+   - **Validate.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} (fast tier). Commit only after both commands pass. The hook repeats the staged check as defense in depth. See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
+   - **Commit.** Use Conventional Commits (`<type>(<scope>): <subject>`), keep the subject under 72 chars, and explain the *why* in the body. Auto-commit when green (tests pass + lint clean).
 <!-- awf:end -->
 
 <!-- awf:section tdd-opt-in -->

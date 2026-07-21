@@ -62,7 +62,7 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section procedure-gate -->
-5. **Run the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }}.** The gate's drift test validates that `INDEX.md` is in sync with the current ADRs, and `awf check --staged` validates the claim handshake. If either fails, fix the cause and re-stage before retrying.
+5. **Validate the staged transaction.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth. If either command fails, fix the cause and re-stage before retrying.
 <!-- awf:end -->
 
 <!-- awf:section commit-templates -->

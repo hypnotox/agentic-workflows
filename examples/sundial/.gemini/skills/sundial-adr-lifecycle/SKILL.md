@@ -58,7 +58,7 @@ Pick the status transition, then:
 4. **Regenerate INDEX.md.** Run `./x sync` to regenerate `docs/decisions/INDEX.md`. Stage the result. Do not hand-edit `INDEX.md`; always regenerate and commit it alongside any ADR status change.
 
 <!-- awf:edit procedure-gate: default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
-5. **Run the gate (`./x gate`).** The gate's drift test validates that `INDEX.md` is in sync with the current ADRs, and `awf check --staged` validates the claim handshake. If either fails, fix the cause and re-stage before retrying.
+5. **Validate the staged transaction.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth. If either command fails, fix the cause and re-stage before retrying.
 
 <!-- awf:edit commit-templates: default; create .awf/skills/parts/adr-lifecycle/commit-templates.md to override -->
 ## Commit subject templates

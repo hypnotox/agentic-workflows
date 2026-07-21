@@ -270,6 +270,30 @@ func TestChainConnectivity(t *testing.T) {
 	}
 }
 
+func TestStagedAuthorityExecutionOrder(t *testing.T) {
+	cat := loadCatalog(t)
+	root := syncFullCatalog(t, cat)
+	paths := map[string]string{
+		"adr-lifecycle":               skillPath(root, "adr-lifecycle"),
+		"executing-plans":             skillPath(root, "executing-plans"),
+		"subagent-driven-development": skillPath(root, "subagent-driven-development"),
+		"AGENTS":                      filepath.Join(root, "AGENTS.md"),
+	}
+	for name, path := range paths {
+		t.Run(name, func(t *testing.T) {
+			body := read(t, path)
+			position := 0
+			for _, phrase := range []string{"Stage the complete transaction", "`awf check --staged`", "the project's gate", "Commit only after both commands pass", "defense in depth"} {
+				next := strings.Index(body[position:], phrase)
+				if next < 0 {
+					t.Fatalf("%s missing ordered authority step %q after byte %d", name, phrase, position)
+				}
+				position += next + len(phrase)
+			}
+		})
+	}
+}
+
 // memoryCheckpointSkills are the templates that must carry the working-memory
 // checkpoint (ADR-0069): the nine non-terminal chain nodes plus the bugfix and
 // debugging task skills. The terminal retrospective instead carries the
