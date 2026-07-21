@@ -7,6 +7,7 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -487,6 +488,141 @@ func rawAccessProblems(raw map[string][]string, allowed map[string]bool) []strin
 	return problems
 }
 
+func TestApplicationProjectionContracts(t *testing.T) {
+	op := func(verb adr.OpVerb, id string) adr.Operation {
+		return adr.Operation{Verb: verb, ID: id, Slug: strings.Split(id, ":")[1]}
+	}
+	add := op(adr.OpAdd, "alpha/state:one")
+	update := op(adr.OpUpdate, "alpha/state:two")
+	status := func(value string, sequence int) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value, Sequence: sequence, HasSequence: sequence > 0}
+	}
+	applied := func(sequence int, operations ...adr.Operation) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: sequence, HasSequence: true, Operations: operations}
+	}
+
+	v1 := adr.ADR{Number: "0001", Format: adr.CurrentStateV1, Status: "Implemented", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{status("Proposed", 0), status("Implemented", 4)}}
+	batches, err := v1.ApplicationBatches()
+	if err != nil || len(batches) != 1 || !batches[0].Implicit || batches[0].Sequence != 4 || len(batches[0].Operations) != 2 {
+		t.Fatalf("V1 implicit batches = %#v, err=%v", batches, err)
+	}
+	legacy := adr.ADR{Number: "0000", Format: adr.Legacy, Status: "Implemented"}
+	if got, err := legacy.ApplicationBatches(); err != nil || len(got) != 0 {
+		t.Fatalf("legacy batches = %#v, err=%v", got, err)
+	}
+	batches[0].Operations[0].ID = "mutated"
+	again, _ := v1.ApplicationBatches()
+	if again[0].Operations[0].ID != add.ID {
+		t.Fatal("nested batch operation slice aliases the ADR")
+	}
+
+	implementing := adr.ADR{Number: "0002", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{status("Proposed", 0), status("Implementing", 0), applied(5, add)}}
+	progress, err := implementing.OperationProgress()
+	if err != nil || len(progress.Applied) != 1 || progress.Applied[0].Sequence != 5 || len(progress.Remaining) != 1 || len(progress.Canceled) != 0 {
+		t.Fatalf("Implementing progress = %#v, err=%v", progress, err)
+	}
+	abandoned := implementing
+	abandoned.Status = "Abandoned"
+	abandoned.History = append(slices.Clone(implementing.History), status("Abandoned", 0))
+	progress, err = abandoned.OperationProgress()
+	if err != nil || len(progress.Applied) != 1 || len(progress.Remaining) != 0 || len(progress.Canceled) != 1 {
+		t.Fatalf("Abandoned progress = %#v, err=%v", progress, err)
+	}
+	explicitDone := implementing
+	explicitDone.Status = "Implemented"
+	explicitDone.History = append(slices.Clone(implementing.History), applied(6, update), status("Implemented", 0))
+	progress, err = explicitDone.OperationProgress()
+	if err != nil || len(progress.Applied) != 2 || len(progress.Remaining) != 0 {
+		t.Fatalf("explicit Implemented progress = %#v, err=%v", progress, err)
+	}
+
+	for _, tc := range []struct {
+		name, status             string
+		format                   adr.Format
+		wantRemain, wantCanceled int
+	}{
+		{"legacy", "Implemented", adr.Legacy, 0, 0},
+		{"proposed", "Proposed", adr.CurrentStateV2, 2, 0},
+		{"accepted", "Accepted", adr.CurrentStateV1, 2, 0},
+		{"abandoned", "Abandoned", adr.CurrentStateV1, 0, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			record := adr.ADR{Number: "0003", Format: tc.format, Status: tc.status, Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{status(tc.status, 0)}}
+			got, err := record.OperationProgress()
+			if err != nil || len(got.Remaining) != tc.wantRemain || len(got.Canceled) != tc.wantCanceled {
+				t.Fatalf("progress = %#v, err=%v", got, err)
+			}
+		})
+	}
+	none := adr.ADR{Number: "0004", Format: adr.CurrentStateV2, Status: "Implemented", NoneState: true, History: []adr.HistoryEvent{status("Implemented", 0)}}
+	if got, err := none.OperationProgress(); err != nil || len(got.Applied)+len(got.Remaining)+len(got.Canceled) != 0 {
+		t.Fatalf("None progress = %#v, err=%v", got, err)
+	}
+
+	errors := []adr.ADR{
+		{Number: "0009", Format: adr.CurrentStateV1, Status: "Implemented", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{status("Implemented", 0)}},
+		{Number: "0010", Format: adr.CurrentStateV1, Status: "Implemented", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(1, add)}},
+		{Number: "0011", Format: adr.CurrentStateV2, Status: "Implemented", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(1, add), status("Implemented", 2)}},
+		{Number: "0012", Format: adr.CurrentStateV2, Status: "Implemented", Operations: []adr.Operation{add}},
+		{Number: "0013", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(0)}},
+		{Number: "0014", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(1, update)}},
+		{Number: "0015", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{applied(1, add), applied(2, add)}},
+		{Number: "0016", Format: adr.CurrentStateV2, Status: "Proposed", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{applied(1, add)}},
+		{Number: "0017", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{add}, History: []adr.HistoryEvent{applied(1, add)}},
+		{Number: "0018", Format: adr.CurrentStateV2, Status: "Implemented", Operations: []adr.Operation{add, update}, History: []adr.HistoryEvent{applied(1, add)}},
+		{Number: "0019", Format: adr.CurrentStateV2, Status: "Unknown", Operations: []adr.Operation{add}},
+	}
+	for _, record := range errors {
+		if _, err := record.OperationProgress(); err == nil {
+			t.Errorf("ADR-%s invalid projection succeeded", record.Number)
+		}
+	}
+
+	corpus := adr.NewCorpus([]adr.ADR{implementing, errors[3]})
+	got, found, err := corpus.OperationProgress("0002")
+	if err != nil || !found || len(got.Applied) != 1 {
+		t.Fatalf("corpus progress = %#v, found=%v err=%v", got, found, err)
+	}
+	got.Applied[0].Operation.ID = "mutated"
+	got.Remaining[0].ID = "mutated"
+	fresh, _, _ := corpus.OperationProgress("0002")
+	if fresh.Applied[0].Operation.ID != add.ID || fresh.Remaining[0].ID != update.ID {
+		t.Fatal("corpus progress aliases a prior result")
+	}
+	if _, found, err := corpus.OperationProgress("9999"); found || err != nil {
+		t.Fatalf("missing corpus progress: found=%v err=%v", found, err)
+	}
+	if _, found, err := corpus.OperationProgress("0012"); !found || err == nil {
+		t.Fatalf("invalid present corpus progress: found=%v err=%v", found, err)
+	}
+}
+
+func TestLoadCorpusHydratesGovernedRecords(t *testing.T) {
+	dir := t.TempDir()
+	stateChanges := "- add `alpha/state:one`"
+	testsupport.WriteFile(t, filepath.Join(dir, "0001-v2.md"), buildV2("Proposed", stateChanges, "- 2026-07-20: Proposed"))
+	corpus, err := adr.LoadCorpus(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, ok := corpus.ByNumber("0001")
+	if !ok || !record.IsV2() || len(record.Operations) != 1 || record.Path == "" {
+		t.Fatalf("hydrated V2 record = %#v, found=%v", record, ok)
+	}
+
+	v1Dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(v1Dir, "0001-v1.md"), build("Proposed", "2026-07-20", oneDecision, "None.", "- 2026-07-20: Proposed"))
+	if _, _, err := adr.AdoptionBoundary(v1Dir); err == nil || !strings.Contains(err.Error(), "declares current-state-v1") {
+		t.Fatalf("governed brownfield adoption error = %v", err)
+	}
+
+	badDir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(badDir, "0002-v2.md"), "---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0002: Broken\n")
+	if _, err := adr.LoadCorpus(badDir); err == nil || !strings.Contains(err.Error(), "as current-state-v2") {
+		t.Fatalf("malformed V2 corpus error = %v", err)
+	}
+}
+
 func TestClaimOperationHistorySemanticProjection(t *testing.T) {
 	claimID := "tooling/query:removed"
 	record := func(number, title, status, verb string, sequence int) adr.ADR {
@@ -496,7 +632,10 @@ func TestClaimOperationHistorySemanticProjection(t *testing.T) {
 			History:    []adr.StatusEntry{{Status: status, Sequence: sequence, HasSequence: status == "Implemented"}},
 		}
 	}
+	invalid := record("0007", "Invalid", "Implemented", "update", 0)
+	invalid.History = nil
 	corpus := adr.NewCorpus([]adr.ADR{
+		invalid,
 		record("0003", "Revise claim", "Implemented", "update", 2),
 		record("0004", "Ignored proposal", "Proposed", "remove", 0),
 		record("0001", "Add claim", "Implemented", "add", 1),
@@ -524,6 +663,23 @@ func TestClaimOperationHistorySemanticProjection(t *testing.T) {
 	}
 	if _, ok := corpus.ClaimOperationHistory("tooling/query:unknown"); ok {
 		t.Fatal("unknown claim returned operation history")
+	}
+
+	remove := adr.Operation{Verb: adr.OpRemove, ID: claimID}
+	canceled := adr.Operation{Verb: adr.OpAdd, ID: "tooling/query:canceled"}
+	partial := adr.ADR{Number: "0008", Title: "ADR-0008: Partial", Status: "Abandoned", Format: adr.CurrentStateV2,
+		Operations: []adr.Operation{remove, canceled}, History: []adr.HistoryEvent{
+			{Kind: adr.HistoryStatus, Status: "Proposed"},
+			{Kind: adr.HistoryStatus, Status: "Implementing"},
+			{Kind: adr.HistoryApplied, Sequence: 7, HasSequence: true, Operations: []adr.Operation{remove}},
+			{Kind: adr.HistoryStatus, Status: "Abandoned"},
+		},
+	}
+	pending := partial
+	pending.Number, pending.Status, pending.History = "0009", "Proposed", []adr.HistoryEvent{{Kind: adr.HistoryStatus, Status: "Proposed"}}
+	partialHistory, ok := adr.NewCorpus([]adr.ADR{partial, pending}).ClaimOperationHistory(claimID)
+	if !ok || partialHistory.RemovedBy == nil || partialHistory.RemovedBy.Number != "0008" || partialHistory.RemovedBy.Status != "Abandoned" {
+		t.Fatalf("partial abandonment operation history = %#v, found=%v", partialHistory, ok)
 	}
 }
 

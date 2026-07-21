@@ -48,39 +48,51 @@ func CheckPair(before, after Universe, cutoff int) []Finding {
 	return findings
 }
 
-// checkTransitions requires every current-state-v1 ADR present in both universes
-// to preserve frozen content and append-only Status history, and every status
-// change to follow a legal lifecycle edge. A newly added ADR has no before-state
-// to compare against; its internal Status history is already validated when it
-// parses. A terminal ADR that changed at all is rejected, since no edge leaves
-// Implemented or Abandoned.
+// checkTransitions enforces frozen content, stable-history prefix preservation,
+// and the format-specific event shape for every governed record pair.
 func checkTransitions(before, after []adr.ADR) []Finding {
 	beforeByNum := byNumber(before)
 	afterByNum := byNumber(after)
 	var findings []Finding
 	for _, b := range before {
-		if b.IsV1() {
+		if b.IsGoverned() {
 			if _, ok := afterByNum[b.Number]; !ok {
-				findings = append(findings, Finding{Error, fmt.Sprintf("current-state-v1 ADR-%s was deleted across this transition", b.Number)})
+				marker := "current-state-v1"
+				if b.IsV2() {
+					marker = "current-state-v2"
+				}
+				findings = append(findings, Finding{Error, fmt.Sprintf("%s ADR-%s was deleted across this transition", marker, b.Number)})
 			}
 		}
 	}
 	for _, a := range after {
-		if !a.IsV1() {
+		if !a.IsGoverned() {
 			continue
 		}
 		b, ok := beforeByNum[a.Number]
-		if !ok || !b.IsV1() {
+		if !ok || !b.IsGoverned() {
+			continue
+		}
+		if b.Format != a.Format {
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s changed governed format across this transition", a.Number)})
 			continue
 		}
 		if !adr.FrozenContentEqual(b, a) {
 			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after Proposed", a.Number)})
 		}
 		if !adr.HistoryTransitionValid(b, a) {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the history-prefix rule: Status history must remain equal at the same status or append exactly one entry for a legal transition", a.Number)})
+			shape := "Status history must remain equal at the same status or append exactly one entry for a legal transition"
+			if a.IsV2() {
+				shape = "prior events must remain an exact prefix and the transition must append the required status/Applied event shape"
+			}
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the history-prefix rule: %s", a.Number, shape)})
 		}
-		if !b.HasSameStatus(a) && !adr.TransitionLegal(b.Status, a.Status) {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal current-state-v1 transition", a.Number, b.Status, a.Status)})
+		if !b.HasSameStatus(a) && !adr.TransitionLegal(b.Status, a.Status, a.Format) {
+			marker := "current-state-v1"
+			if a.IsV2() {
+				marker = "current-state-v2"
+			}
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal %s transition", a.Number, b.Status, a.Status, marker)})
 		}
 	}
 	return findings
@@ -99,11 +111,11 @@ type pairOp struct {
 // classified once, so an operation with no mutation and a mutation with no
 // operation are both surfaced.
 func checkMutations(before, after Universe, cutoff int) []Finding {
-	ops, dups := pairOps(before.ADRs, after.ADRs)
+	ops, dups, batchFindings := pairOps(before.ADRs, after.ADRs)
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
 
-	var findings []Finding
+	findings := append([]Finding(nil), batchFindings...)
 	for _, id := range dups {
 		findings = append(findings, Finding{Error, fmt.Sprintf("claim %s is the target of more than one operation in this transition", id)})
 	}
@@ -129,27 +141,76 @@ func checkMutations(before, after Universe, cutoff int) []Finding {
 	return findings
 }
 
-// pairOps collects the operations of the current-state-v1 ADRs that reached
-// Implemented across the pair, keyed by claim ID, and the IDs a second operation
-// in the same transition also targets. An ADR already Implemented before the pair
-// applied its operations earlier and contributes no new mutation.
-func pairOps(before, after []adr.ADR) (map[string]pairOp, []string) {
+type appendedBatch struct {
+	adr      string
+	sequence int
+	ops      []adr.Operation
+}
+
+// pairOps derives only newly appended batches. It validates one batch per ADR,
+// cross-batch target uniqueness, and next-consecutive global sequencing.
+func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
 	beforeByNum := byNumber(before)
+	var batches []appendedBatch
+	var findings []Finding
+	maxBefore := 0
+	for _, b := range before {
+		if !b.IsGoverned() {
+			continue
+		}
+		projected, err := b.ApplicationBatches()
+		if err != nil {
+			continue
+		}
+		for _, batch := range projected {
+			if batch.Sequence > maxBefore {
+				maxBefore = batch.Sequence
+			}
+		}
+	}
+	for _, a := range after {
+		if !a.IsGoverned() {
+			continue
+		}
+		afterBatches, err := a.ApplicationBatches()
+		if err != nil {
+			continue
+		}
+		beforeCount := 0
+		if b, ok := beforeByNum[a.Number]; ok && b.IsGoverned() {
+			beforeBatches, beforeErr := b.ApplicationBatches()
+			if beforeErr == nil {
+				beforeCount = len(beforeBatches)
+			}
+		}
+		if len(afterBatches) < beforeCount {
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s deleted a previously applied batch", a.Number)})
+			continue
+		}
+		added := afterBatches[beforeCount:]
+		if len(added) > 1 {
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Number, len(added))})
+		}
+		for _, batch := range added {
+			batches = append(batches, appendedBatch{adr: a.Number, sequence: batch.Sequence, ops: batch.Operations})
+		}
+	}
+	sort.SliceStable(batches, func(i, j int) bool { return batches[i].sequence < batches[j].sequence })
+	for i, batch := range batches {
+		expected := maxBefore + i + 1
+		if batch.sequence != expected {
+			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s application batch has state-sequence %d; expected next sequence %d", batch.adr, batch.sequence, expected)})
+		}
+	}
 	ops := map[string]pairOp{}
 	dupSet := map[string]bool{}
-	for _, a := range after {
-		if !a.IsV1() || !a.IsImplemented() {
-			continue
-		}
-		if b, ok := beforeByNum[a.Number]; ok && b.IsImplemented() {
-			continue
-		}
-		for _, op := range a.Operations {
-			if _, exists := ops[op.ID]; exists {
-				dupSet[op.ID] = true
+	for _, batch := range batches {
+		for _, operation := range batch.ops {
+			if _, exists := ops[operation.ID]; exists {
+				dupSet[operation.ID] = true
 				continue
 			}
-			ops[op.ID] = pairOp{verb: op.Verb, adr: a.Number}
+			ops[operation.ID] = pairOp{verb: operation.Verb, adr: batch.adr}
 		}
 	}
 	dups := make([]string, 0, len(dupSet))
@@ -157,7 +218,7 @@ func pairOps(before, after []adr.ADR) (map[string]pairOp, []string) {
 		dups = append(dups, id)
 	}
 	sort.Strings(dups)
-	return ops, dups
+	return ops, dups, findings
 }
 
 // checkUpdate validates a declared update: the claim is present on both sides, a

@@ -135,6 +135,49 @@ func TestLoadCorpusRejected(t *testing.T) {
 	}
 }
 
+func TestOperationSpecificProvenance(t *testing.T) {
+	claimID := "alpha/x:x"
+	op := func(verb adr.OpVerb) adr.Operation { return adr.Operation{Verb: verb, ID: claimID, Slug: "x"} }
+	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
+	applied := func(sequence int, operation adr.Operation) adr.HistoryEvent {
+		return adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: sequence, HasSequence: true, Operations: []adr.Operation{operation}}
+	}
+	assemble := func(t *testing.T, records []adr.ADR, origin string, revised ...string) error {
+		t.Helper()
+		revisedLine := ""
+		if len(revised) != 0 {
+			revisedLine = "Revised-by: ADR-" + strings.Join(revised, ", ADR-") + "\n"
+		}
+		_, err := assembleCorpus(
+			map[string]metaEntry{"alpha/x": {meta: Metadata{Title: "X", Summary: "X.", Paths: []string{"x"}}, path: "meta"}},
+			map[string]partEntry{"alpha/x": {data: []byte("Intro.\n\n## Claims\n\n### `rule: x`\nRule.\nOrigin: ADR-" + origin + "\n" + revisedLine), path: "part"}},
+			[]string{"alpha"}, map[string][]string{"alpha": {"x"}}, adr.NewCorpus(records),
+		)
+		return err
+	}
+
+	legacy := adr.ADR{Number: "0001", Format: adr.Legacy, Status: "Implemented"}
+	updating := adr.ADR{Number: "0002", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{op(adr.OpUpdate), {Verb: adr.OpAdd, ID: "alpha/x:later", Slug: "later"}}, History: []adr.HistoryEvent{status("Proposed"), status("Implementing"), applied(1, op(adr.OpUpdate))}}
+	if err := assemble(t, []adr.ADR{legacy, updating}, "0001", "0002"); err != nil {
+		t.Fatalf("applied Implementing revision rejected: %v", err)
+	}
+	pending := updating
+	pending.Number, pending.Status, pending.History = "0003", "Proposed", []adr.HistoryEvent{status("Proposed")}
+	if err := assemble(t, []adr.ADR{legacy, pending}, "0001", "0003"); err == nil || !strings.Contains(err.Error(), "without an applied update operation") {
+		t.Fatalf("remaining provenance error = %v", err)
+	}
+	canceled := pending
+	canceled.Number, canceled.Status, canceled.History = "0004", "Abandoned", []adr.HistoryEvent{status("Proposed"), status("Abandoned")}
+	if err := assemble(t, []adr.ADR{legacy, canceled}, "0001", "0004"); err == nil || !strings.Contains(err.Error(), "without an applied update operation") {
+		t.Fatalf("canceled provenance error = %v", err)
+	}
+	bad := updating
+	bad.Number, bad.Status, bad.History = "0005", "Implemented", nil
+	if err := assemble(t, []adr.ADR{legacy, bad}, "0001", "0005"); err == nil || !strings.Contains(err.Error(), "invalid ADR-0005 application") {
+		t.Fatalf("invalid provenance projection error = %v", err)
+	}
+}
+
 func TestRecordMetaRejectsDuplicateID(t *testing.T) {
 	metadata := map[string]metaEntry{}
 	id := TopicID{"alpha", "x"}

@@ -147,6 +147,12 @@ func TestCheckPairFrozenAndHistoryRules(t *testing.T) {
 			}
 		})
 	}
+	formatBefore := record("Proposed", "same", proposed)
+	formatAfter := formatBefore
+	formatAfter.Format = adr.CurrentStateV2
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{formatBefore}), uni([]adr.ADR{formatAfter}), 137)); !strings.Contains(got, "changed governed format") {
+		t.Fatalf("governed format mutation not rejected:\n%s", got)
+	}
 }
 
 // TestCheckPairHistoryValid accepts Proposed edits before freezing and every
@@ -183,6 +189,104 @@ func TestCheckPairHistoryValid(t *testing.T) {
 				t.Fatalf("expected no findings, got:\n%s", messages(f))
 			}
 		})
+	}
+}
+
+func TestCheckPairV2IncrementalBatches(t *testing.T) {
+	addX := op(adr.OpAdd, "d/t:x")
+	updateX := op(adr.OpUpdate, "d/t:x")
+	addA := op(adr.OpAdd, "d/t:a")
+	addB := op(adr.OpAdd, "d/t:b")
+	base := rec("0137", "Implemented", 1, addX)
+	proposed := v2rec("0138", "Proposed", []adr.Operation{updateX, addA, addB}, v2status("Proposed"))
+	first := proposed
+	first.Status = "Implementing"
+	first.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(2, updateX))
+	before := uni([]adr.ADR{base, proposed}, prosed(claim("d/t:x", "0137"), "old"))
+	after := uni([]adr.ADR{base, first}, prosed(claim("d/t:x", "0137", "0138"), "new"))
+	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+		t.Fatalf("first batch pair rejected:\n%s", messages(f))
+	}
+
+	middle := first
+	middle.History = append(append([]adr.HistoryEvent(nil), first.History...), v2batch(3, addA))
+	middleAfter := uni([]adr.ADR{base, middle}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"))
+	if f := currentstate.CheckPair(after, middleAfter, 137); len(f) != 0 {
+		t.Fatalf("middle batch pair rejected:\n%s", messages(f))
+	}
+
+	done := middle
+	done.Status = "Implemented"
+	done.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(4, addB), v2status("Implemented"))
+	doneAfter := uni([]adr.ADR{base, done}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
+	if f := currentstate.CheckPair(middleAfter, doneAfter, 137); len(f) != 0 {
+		t.Fatalf("final batch pair rejected:\n%s", messages(f))
+	}
+
+	abandoned := middle
+	abandoned.Status = "Abandoned"
+	abandoned.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2status("Abandoned"))
+	if f := currentstate.CheckPair(middleAfter, uni([]adr.ADR{base, abandoned}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138")), 137); len(f) != 0 {
+		t.Fatalf("terminal abandonment pair rejected:\n%s", messages(f))
+	}
+
+	deleted := first
+	deleted.History = append([]adr.HistoryEvent(nil), first.History[:2]...)
+	if got := messages(currentstate.CheckPair(after, uni([]adr.ADR{base, deleted}, prosed(claim("d/t:x", "0137", "0138"), "new")), 137)); !strings.Contains(got, "history-prefix rule") {
+		t.Fatalf("Applied event deletion not rejected:\n%s", got)
+	}
+}
+
+func TestCheckPairV2BatchSetRules(t *testing.T) {
+	base := rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:base"))
+	direct := func(num, id string, sequence int) (adr.ADR, adr.ADR) {
+		operation := op(adr.OpAdd, id)
+		before := v2rec(num, "Accepted", []adr.Operation{operation}, v2status("Proposed"), v2status("Accepted"))
+		after := before
+		after.Status = "Implemented"
+		terminal := v2status("Implemented")
+		terminal.Sequence, terminal.HasSequence = sequence, true
+		after.History = append(append([]adr.HistoryEvent(nil), before.History...), terminal)
+		return before, after
+	}
+	b1, a1 := direct("0138", "d/t:a", 2)
+	b2, a2 := direct("0139", "d/t:b", 3)
+	before := uni([]adr.ADR{base, b1, b2}, claim("d/t:base", "0137"))
+	after := uni([]adr.ADR{base, a1, a2}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139"))
+	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+		t.Fatalf("disjoint consecutive batches rejected:\n%s", messages(f))
+	}
+
+	_, duplicateTarget := direct("0140", "d/t:a", 3)
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, b1, b2}), uni([]adr.ADR{base, a1, duplicateTarget}, claim("d/t:a", "0138")), 137)); !strings.Contains(got, "target of more than one operation") {
+		t.Fatalf("cross-batch duplicate target not rejected:\n%s", got)
+	}
+
+	wrong := a2
+	wrong.History[len(wrong.History)-1].Sequence = 4
+	if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, a1, wrong}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139")), 137)); !strings.Contains(got, "expected next sequence 3") {
+		t.Fatalf("nonconsecutive appended sequences not diagnosed:\n%s", got)
+	}
+
+	x, y, z := op(adr.OpAdd, "d/t:x"), op(adr.OpAdd, "d/t:y"), op(adr.OpAdd, "d/t:z")
+	partial := v2rec("0141", "Implementing", []adr.Operation{x, y, z}, v2status("Proposed"), v2status("Implementing"), v2batch(2, x))
+	two := partial
+	two.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(3, y), v2batch(4, z))
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141")), uni([]adr.ADR{base, two}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"), claim("d/t:z", "0141")), 137)); !strings.Contains(got, "at most one new batch") {
+		t.Fatalf("same ADR duplicate batch not rejected:\n%s", got)
+	}
+
+	terminal := v2rec("0142", "Implemented", nil, v2status("Proposed"), v2status("Implemented"))
+	illegal := terminal
+	illegal.Status = "Abandoned"
+	illegal.History = append(illegal.History, v2status("Abandoned"))
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{terminal}), uni([]adr.ADR{illegal}), 137)); !strings.Contains(got, "legal current-state-v2 transition") {
+		t.Fatalf("illegal V2 edge not format-attributed:\n%s", got)
+	}
+
+	invalid := v2rec("0143", "Implemented", []adr.Operation{op(adr.OpAdd, "d/t:invalid")})
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{invalid}), uni([]adr.ADR{invalid}), 137)); !strings.Contains(got, "no Implemented status event") {
+		t.Fatalf("invalid before/after projection not reported:\n%s", got)
 	}
 }
 

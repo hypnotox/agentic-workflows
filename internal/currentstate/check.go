@@ -1,8 +1,4 @@
-// Package currentstate runs the static current-state authority checks over an
-// already-parsed ADR record set and topic set: the current-state-v1 ADR
-// lifecycle and operation graph, and the bidirectional ADR-to-claim handshake
-// (ADR-0135). It consumes parsed inputs rather than a filesystem or Git tree, so
-// the same checker serves the working-tree, index, and range loaders.
+// Package currentstate validates parsed ADR application authority and topics.
 package currentstate
 
 import (
@@ -15,18 +11,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// Severity ranks a finding. Error findings make a check exit nonzero; Warn
-// findings are reported without failing.
 type Severity int
 
 const (
-	// Error is a blocking finding.
 	Error Severity = iota
-	// Warn is a non-blocking finding.
 	Warn
 )
 
-// String names the severity for rendering.
 func (s Severity) String() string {
 	if s == Warn {
 		return "warn"
@@ -34,18 +25,25 @@ func (s Severity) String() string {
 	return "error"
 }
 
-// Finding is one current-state check result.
 type Finding struct {
 	Severity Severity
 	Message  string
 }
 
-// Check validates the current-state-v1 lifecycle and operation facts over the
-// parsed records and topics. cutoff is the lock's adrFormatV1From boundary: a
-// claim Origin below it is the migration bootstrap exemption. Provenance
-// existence, references, and backing are validated when the topic corpus loads;
-// Check adds the operation graph and the bidirectional handshake. It returns
-// only Error findings, sorted deterministically by message.
+type projectedADR struct {
+	record   adr.ADR
+	batches  []adr.ApplicationBatch
+	progress adr.OperationProgress
+}
+
+type operationAt struct {
+	owner adr.ADR
+	op    adr.Operation
+	seq   int
+}
+
+// Check validates application sequences, operation history, forward results,
+// and inverse provenance. cutoff retains the V1 bootstrap exemption.
 func Check(records []adr.ADR, corpusTopics []topic.Topic, cutoff int) []Finding {
 	claims := map[string]topic.Claim{}
 	topics := map[string]bool{}
@@ -55,54 +53,56 @@ func Check(records []adr.ADR, corpusTopics []topic.Topic, cutoff int) []Finding 
 			claims[c.ID] = c
 		}
 	}
-	v1 := filterV1(records)
-	removed := removedSet(v1)
-
-	var findings []Finding
-	findings = append(findings, checkSequences(v1)...)
-	findings = append(findings, checkOperationHistory(v1, cutoff)...)
-	findings = append(findings, checkForward(v1, claims, topics, removed)...)
-	findings = append(findings, checkBackward(records, claims, cutoff)...)
+	projected, projectionFindings := projectADRs(records)
+	applied := appliedOperations(projected)
+	removed := removedSet(applied)
+	findings := append([]Finding(nil), projectionFindings...)
+	findings = append(findings, checkSequences(projected)...)
+	findings = append(findings, checkOperationHistory(applied, cutoff)...)
+	findings = append(findings, checkForward(projected, claims, topics, removed)...)
+	findings = append(findings, checkBackward(records, applied, claims, cutoff)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
 }
 
-// filterV1 returns the current-state-v1 records.
-func filterV1(records []adr.ADR) []adr.ADR {
-	var out []adr.ADR
+func projectADRs(records []adr.ADR) ([]projectedADR, []Finding) {
+	var projected []projectedADR
+	var findings []Finding
 	for _, a := range records {
-		if a.IsV1() {
-			out = append(out, a)
+		if !a.IsGoverned() {
+			continue
+		}
+		batches, err := a.ApplicationBatches()
+		if err != nil {
+			findings = append(findings, Finding{Error, err.Error()})
+			continue
+		}
+		progress, err := a.OperationProgress()
+		if err != nil {
+			findings = append(findings, Finding{Error, err.Error()})
+			continue
+		}
+		projected = append(projected, projectedADR{record: a, batches: batches, progress: progress})
+	}
+	return projected, findings
+}
+
+func appliedOperations(projected []projectedADR) []operationAt {
+	var out []operationAt
+	for _, p := range projected {
+		for _, applied := range p.progress.Applied {
+			out = append(out, operationAt{owner: p.record, op: applied.Operation, seq: applied.Sequence})
 		}
 	}
 	return out
 }
 
-// terminalSequence returns the state-sequence recorded on an ADR's final Status
-// history entry.
-func terminalSequence(a adr.ADR) int {
-	return a.History[len(a.History)-1].Sequence
-}
-
-// mutationADRs returns the Implemented v1 ADRs that carry operations, each with
-// its state-sequence.
-func mutationADRs(v1 []adr.ADR) []adr.ADR {
-	var out []adr.ADR
-	for _, a := range v1 {
-		if a.IsImplemented() && len(a.Operations) > 0 {
-			out = append(out, a)
-		}
-	}
-	return out
-}
-
-// checkSequences requires the state-sequence values of Implemented mutation
-// ADRs to be unique and contiguous from 1 (ADR-0135 item 7).
-func checkSequences(v1 []adr.ADR) []Finding {
+func checkSequences(projected []projectedADR) []Finding {
 	bySeq := map[int][]string{}
-	for _, a := range mutationADRs(v1) {
-		seq := terminalSequence(a)
-		bySeq[seq] = append(bySeq[seq], a.Number)
+	for _, p := range projected {
+		for _, batch := range p.batches {
+			bySeq[batch.Sequence] = append(bySeq[batch.Sequence], p.record.Number)
+		}
 	}
 	var findings []Finding
 	seqs := make([]int, 0, len(bySeq))
@@ -110,7 +110,7 @@ func checkSequences(v1 []adr.ADR) []Finding {
 		seqs = append(seqs, seq)
 		if len(nums) > 1 {
 			sort.Strings(nums)
-			findings = append(findings, Finding{Error, fmt.Sprintf("state-sequence %d is used by more than one ADR: %v", seq, nums)})
+			findings = append(findings, Finding{Error, fmt.Sprintf("state-sequence %d is used by more than one ADR batch: %v", seq, nums)})
 		}
 	}
 	sort.Ints(seqs)
@@ -122,21 +122,10 @@ func checkSequences(v1 []adr.ADR) []Finding {
 	return findings
 }
 
-// checkOperationHistory validates, for each claim ID touched by an Implemented
-// operation, that its sequence-ordered history is exactly one add, then ordered
-// updates, then at most one terminal remove, with nothing after the remove
-// (ADR-0135 items 3 and 7).
-func checkOperationHistory(v1 []adr.ADR, cutoff int) []Finding {
-	type opAt struct {
-		seq  int
-		verb adr.OpVerb
-	}
-	byID := map[string][]opAt{}
-	for _, a := range mutationADRs(v1) {
-		seq := terminalSequence(a)
-		for _, op := range a.Operations {
-			byID[op.ID] = append(byID[op.ID], opAt{seq, op.Verb})
-		}
+func checkOperationHistory(applied []operationAt, cutoff int) []Finding {
+	byID := map[string][]operationAt{}
+	for _, operation := range applied {
+		byID[operation.op.ID] = append(byID[operation.op.ID], operation)
 	}
 	ids := make([]string, 0, len(byID))
 	for id := range byID {
@@ -146,10 +135,10 @@ func checkOperationHistory(v1 []adr.ADR, cutoff int) []Finding {
 	var findings []Finding
 	for _, id := range ids {
 		ops := byID[id]
-		sort.Slice(ops, func(i, j int) bool { return ops[i].seq < ops[j].seq })
+		sort.SliceStable(ops, func(i, j int) bool { return ops[i].seq < ops[j].seq })
 		adds, removeIdx := 0, -1
-		for i, o := range ops {
-			switch o.verb {
+		for i, operation := range ops {
+			switch operation.op.Verb {
 			case adr.OpAdd:
 				adds++
 			case adr.OpRemove:
@@ -158,19 +147,14 @@ func checkOperationHistory(v1 []adr.ADR, cutoff int) []Finding {
 				}
 				removeIdx = i
 			case adr.OpUpdate:
-				// An update is legal anywhere between the add and the terminal
-				// remove; the add-count and remove-position checks below govern
-				// the sequence, so an update imposes no additional constraint here.
+				// Updates are legal between the add/baseline and terminal remove.
 			}
 		}
-		// A post-cutover identity may begin with update/remove because its add
-		// predates current-state-v1 and was sealed into the migration baseline.
-		// With no permanent cutoff there is no such bootstrap exemption.
-		legacyBaseline := cutoff > 0 && adds == 0 && ops[0].verb != adr.OpAdd
+		legacyBaseline := cutoff > 0 && adds == 0 && ops[0].op.Verb != adr.OpAdd
 		if adds != 1 && !legacyBaseline {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s has %d add operations; require exactly one", id, adds)})
 		}
-		if ops[0].verb != adr.OpAdd && !legacyBaseline {
+		if ops[0].op.Verb != adr.OpAdd && !legacyBaseline {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s history does not begin with an add", id)})
 		}
 		if removeIdx >= 0 && removeIdx != len(ops)-1 {
@@ -180,53 +164,57 @@ func checkOperationHistory(v1 []adr.ADR, cutoff int) []Finding {
 	return findings
 }
 
-// removedSet returns the claim IDs an Implemented ADR has removed.
-func removedSet(v1 []adr.ADR) map[string]bool {
+func removedSet(applied []operationAt) map[string]bool {
 	removed := map[string]bool{}
-	for _, a := range mutationADRs(v1) {
-		for _, op := range a.Operations {
-			if op.Verb == adr.OpRemove {
-				removed[op.ID] = true
-			}
+	for _, operation := range applied {
+		if operation.op.Verb == adr.OpRemove {
+			removed[operation.op.ID] = true
 		}
 	}
 	return removed
 }
 
-// checkForward validates each v1 ADR's operations against the current claim and
-// topic sets for its status (ADR-0135 item 8): operations that reached Accepted
-// and all Implemented operations target existing metadata; pending adds are
-// absent and updates/removes present; Implemented results are applied; Abandoned
-// add/update provenance is unapplied; and no add reuses a removed identity.
-func checkForward(v1 []adr.ADR, claims map[string]topic.Claim, topics map[string]bool, removed map[string]bool) []Finding {
+func checkForward(projected []projectedADR, claims map[string]topic.Claim, topics map[string]bool, removed map[string]bool) []Finding {
 	var findings []Finding
-	for _, a := range v1 {
-		for _, op := range a.Operations {
-			if operationNeedsTopic(a) {
-				topicID, _, _ := strings.Cut(op.ID, ":")
-				if !topics[topicID] {
-					findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s operation %s targets missing topic %s", a.Number, op.Verb, topicID)})
-				}
+	for _, p := range projected {
+		needsTopic := p.record.ReachedAccepted() || len(p.progress.Applied) != 0 || p.record.IsImplemented()
+		for _, applied := range p.progress.Applied {
+			op := applied.Operation
+			if needsTopic {
+				findings = append(findings, checkTopic(p.record, op, topics)...)
 			}
 			claim, present := claims[op.ID]
-			if op.Verb == adr.OpAdd && removed[op.ID] && !a.IsImplemented() {
-				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", a.Number, op.ID)})
+			findings = append(findings, checkAppliedOp(p.record, op, claim, present, removed[op.ID])...)
+		}
+		for _, op := range p.progress.Canceled {
+			if p.record.IsV1() && p.record.IsAbandoned() {
+				claim, present := claims[op.ID]
+				findings = append(findings, checkAbandonedOp(p.record, op, claim, present)...)
+				if p.record.ReachedAccepted() {
+					findings = append(findings, checkTopic(p.record, op, topics)...)
+				}
 			}
-			switch {
-			case a.IsInflight(): // Proposed or Accepted: the operation is pending
-				findings = append(findings, checkPendingOp(a, op, present)...)
-			case a.IsImplemented():
-				findings = append(findings, checkImplementedOp(a, op, claim, present, removed[op.ID])...)
-			case a.IsAbandoned():
-				findings = append(findings, checkAbandonedOp(a, op, claim, present)...)
+		}
+		for _, op := range p.progress.Remaining {
+			if needsTopic {
+				findings = append(findings, checkTopic(p.record, op, topics)...)
 			}
+			if op.Verb == adr.OpAdd && removed[op.ID] {
+				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Number, op.ID)})
+			}
+			_, present := claims[op.ID]
+			findings = append(findings, checkPendingOp(p.record, op, present)...)
 		}
 	}
 	return findings
 }
 
-func operationNeedsTopic(a adr.ADR) bool {
-	return a.IsImplemented() || a.ReachedAccepted()
+func checkTopic(a adr.ADR, op adr.Operation, topics map[string]bool) []Finding {
+	topicID, _, _ := strings.Cut(op.ID, ":")
+	if !topics[topicID] {
+		return []Finding{{Error, fmt.Sprintf("ADR-%s operation %s targets missing topic %s", a.Number, op.Verb, topicID)}}
+	}
+	return nil
 }
 
 func checkPendingOp(a adr.ADR, op adr.Operation, present bool) []Finding {
@@ -235,36 +223,6 @@ func checkPendingOp(a adr.ADR, op adr.Operation, present bool) []Finding {
 	}
 	if op.Verb != adr.OpAdd && !present {
 		return []Finding{{Error, fmt.Sprintf("pending ADR-%s %ss missing claim %s", a.Number, op.Verb, op.ID)}}
-	}
-	return nil
-}
-
-func checkImplementedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present, wasRemoved bool) []Finding {
-	switch op.Verb {
-	case adr.OpAdd:
-		if wasRemoved {
-			return nil // a later remove retired it; checkForward handles the remove separately
-		}
-		if !present {
-			return []Finding{{Error, fmt.Sprintf("Implemented ADR-%s adds claim %s, which has no active claim", a.Number, op.ID)}}
-		}
-		if claim.Origin != a.Number {
-			return []Finding{{Error, fmt.Sprintf("claim %s Origin is ADR-%s, not the adding ADR-%s", op.ID, claim.Origin, a.Number)}}
-		}
-	case adr.OpUpdate:
-		if wasRemoved {
-			return nil
-		}
-		if !present {
-			return []Finding{{Error, fmt.Sprintf("Implemented ADR-%s updates claim %s, which has no active claim", a.Number, op.ID)}}
-		}
-		if !contains(claim.RevisedBy, a.Number) {
-			return []Finding{{Error, fmt.Sprintf("claim %s does not list updating ADR-%s in Revised-by", op.ID, a.Number)}}
-		}
-	case adr.OpRemove:
-		if present {
-			return []Finding{{Error, fmt.Sprintf("Implemented ADR-%s removes claim %s, which still has an active claim", a.Number, op.ID)}}
-		}
 	}
 	return nil
 }
@@ -280,16 +238,48 @@ func checkAbandonedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present bo
 			return []Finding{{Error, fmt.Sprintf("Abandoned ADR-%s update for claim %s was applied; it must be reverted", a.Number, op.ID)}}
 		}
 	case adr.OpRemove:
-		// Removal attribution requires the before/after pair checked by CheckPair.
+		// V1 removal attribution remains a CheckPair responsibility.
 	}
 	return nil
 }
 
-// checkBackward validates that every active claim's provenance has the inverse
-// current-state-v1 operation (ADR-0135 item 8): each Origin at or above cutoff
-// is an Implemented add, and each Revised-by is an Implemented update. Origins
-// below cutoff are the closed migration bootstrap exemption.
-func checkBackward(records []adr.ADR, claims map[string]topic.Claim, cutoff int) []Finding {
+func checkAppliedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present, wasRemoved bool) []Finding {
+	label := a.Status
+	switch op.Verb {
+	case adr.OpAdd:
+		if wasRemoved {
+			return nil
+		}
+		if !present {
+			return []Finding{{Error, fmt.Sprintf("%s ADR-%s adds claim %s, which has no active claim", label, a.Number, op.ID)}}
+		}
+		if claim.Origin != a.Number {
+			return []Finding{{Error, fmt.Sprintf("claim %s Origin is ADR-%s, not the adding ADR-%s", op.ID, claim.Origin, a.Number)}}
+		}
+	case adr.OpUpdate:
+		if wasRemoved {
+			return nil
+		}
+		if !present {
+			return []Finding{{Error, fmt.Sprintf("%s ADR-%s updates claim %s, which has no active claim", label, a.Number, op.ID)}}
+		}
+		if !contains(claim.RevisedBy, a.Number) {
+			return []Finding{{Error, fmt.Sprintf("claim %s does not list updating ADR-%s in Revised-by", op.ID, a.Number)}}
+		}
+	case adr.OpRemove:
+		if present {
+			return []Finding{{Error, fmt.Sprintf("%s ADR-%s removes claim %s, which still has an active claim", label, a.Number, op.ID)}}
+		}
+	}
+	return nil
+}
+
+func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]topic.Claim, cutoff int) []Finding {
+	byOperation := map[string]operationAt{}
+	for _, operation := range applied {
+		key := operation.owner.Number + "\x00" + string(operation.op.Verb) + "\x00" + operation.op.ID
+		byOperation[key] = operation
+	}
 	byNum := map[string]adr.ADR{}
 	for _, a := range records {
 		byNum[a.Number] = a
@@ -302,53 +292,31 @@ func checkBackward(records []adr.ADR, claims map[string]topic.Claim, cutoff int)
 	var findings []Finding
 	for _, id := range ids {
 		claim := claims[id]
-		if num, _ := strconv.Atoi(claim.Origin); num >= cutoff {
-			if !hasOperation(byNum, claim.Origin, adr.OpAdd, id) {
-				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation", id, claim.Origin)})
-			}
+		originKey := claim.Origin + "\x00" + string(adr.OpAdd) + "\x00" + id
+		origin, hasOrigin := byOperation[originKey]
+		if num, _ := strconv.Atoi(claim.Origin); num >= cutoff && !hasOrigin {
+			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation applied", id, claim.Origin)})
 		}
 		lastSequence := 0
-		if origin, ok := byNum[claim.Origin]; ok && origin.IsV1() {
-			lastSequence = stateSequence(origin)
+		if hasOrigin {
+			lastSequence = origin.seq
+		} else if _, ok := byNum[claim.Origin]; ok {
+			lastSequence = 0
 		}
 		for _, rev := range claim.RevisedBy {
-			if !hasOperation(byNum, rev, adr.OpUpdate, id) {
-				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Revised-by ADR-%s, which has no matching update operation", id, rev)})
+			key := rev + "\x00" + string(adr.OpUpdate) + "\x00" + id
+			operation, ok := byOperation[key]
+			if !ok {
+				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Revised-by ADR-%s, which has no matching update operation applied", id, rev)})
 				continue
 			}
-			sequence := stateSequence(byNum[rev])
-			if sequence <= lastSequence {
+			if operation.seq <= lastSequence {
 				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s Revised-by entries are not in increasing State-sequence order at ADR-%s", id, rev)})
 			}
-			lastSequence = sequence
+			lastSequence = operation.seq
 		}
 	}
 	return findings
-}
-
-// hasOperation reports whether the named ADR is an Implemented v1 ADR carrying
-// the given verb over id.
-func stateSequence(a adr.ADR) int {
-	sequence := 0
-	for _, entry := range a.History {
-		if entry.HasSequence {
-			sequence = entry.Sequence
-		}
-	}
-	return sequence
-}
-
-func hasOperation(byNum map[string]adr.ADR, num string, verb adr.OpVerb, id string) bool {
-	a, ok := byNum[num]
-	if !ok || !a.IsV1() || !a.IsImplemented() {
-		return false
-	}
-	for _, op := range a.Operations {
-		if op.Verb == verb && op.ID == id {
-			return true
-		}
-	}
-	return false
 }
 
 func contains(list []string, v string) bool {

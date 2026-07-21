@@ -59,6 +59,30 @@ func LoadCorpus(dir string) (Corpus, error) {
 	if err != nil {
 		return Corpus{}, err
 	}
+	for i, a := range adrs {
+		if !a.IsGoverned() {
+			continue
+		}
+		data, err := os.ReadFile(a.Path)
+		if err != nil { // coverage-ignore: ParseDir just read the same discovered file
+			return Corpus{}, err
+		}
+		var parsed ADR
+		if a.IsV2() {
+			parsed, err = ParseV2(a.Filename, data)
+		} else {
+			parsed, err = ParseV1(a.Filename, data)
+		}
+		if err != nil {
+			marker := V1FormatMarker
+			if a.IsV2() {
+				marker = V2FormatMarker
+			}
+			return Corpus{}, fmt.Errorf("parse %s as %s: %w", a.Filename, marker, err)
+		}
+		parsed.Path = a.Path
+		adrs[i] = parsed
+	}
 	return NewCorpus(adrs), nil
 }
 
@@ -78,10 +102,26 @@ func (c Corpus) Has(num string) bool {
 	return ok
 }
 
-// ClaimOperationHistory returns the implemented operation history for claimID
-// in state-sequence order. The corpus-level current-state checker validates the
-// add/update/remove lifecycle; this semantic view only projects that validated
-// history and returns a fresh revision slice on every call.
+// OperationProgress returns the operation partition for one ADR. Missing and
+// invalid-present records are deliberately distinct.
+func (c Corpus) OperationProgress(number string) (OperationProgress, bool, error) {
+	a, ok := c.byNum[number]
+	if !ok {
+		return OperationProgress{}, false, nil
+	}
+	progress, err := a.OperationProgress()
+	if err != nil {
+		return OperationProgress{}, true, err
+	}
+	progress.Applied = append([]AppliedOperation(nil), progress.Applied...)
+	progress.Remaining = append([]Operation(nil), progress.Remaining...)
+	progress.Canceled = append([]Operation(nil), progress.Canceled...)
+	return progress, true, nil
+}
+
+// ClaimOperationHistory returns applied operation history for claimID in batch
+// sequence order. Remaining and canceled operations are excluded, and every
+// returned slice is fresh.
 func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bool) {
 	type recordedOperation struct {
 		verb   OpVerb
@@ -89,14 +129,14 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 	}
 	var records []recordedOperation
 	for _, a := range c.all {
-		if !a.IsImplemented() || len(a.Operations) == 0 {
+		progress, err := a.OperationProgress()
+		if err != nil {
 			continue
 		}
-		sequence := a.History[len(a.History)-1].Sequence
-		for _, op := range a.Operations {
-			if op.ID == claimID {
-				records = append(records, recordedOperation{verb: op.Verb, record: OperationRecord{
-					Number: a.Number, Title: a.Title, Status: a.Status, StateSequence: sequence,
+		for _, applied := range progress.Applied {
+			if applied.Operation.ID == claimID {
+				records = append(records, recordedOperation{verb: applied.Operation.Verb, record: OperationRecord{
+					Number: a.Number, Title: a.Title, Status: a.Status, StateSequence: applied.Sequence,
 				}})
 			}
 		}
@@ -104,7 +144,7 @@ func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bo
 	if len(records) == 0 {
 		return ClaimOperationHistory{}, false
 	}
-	sort.Slice(records, func(i, j int) bool { return records[i].record.StateSequence < records[j].record.StateSequence })
+	sort.SliceStable(records, func(i, j int) bool { return records[i].record.StateSequence < records[j].record.StateSequence })
 	history := ClaimOperationHistory{RevisedBy: []OperationRecord{}}
 	for _, operation := range records {
 		record := operation.record

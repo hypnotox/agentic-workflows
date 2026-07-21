@@ -303,6 +303,86 @@ func TestCheckBackward(t *testing.T) {
 	}
 }
 
+func v2rec(num, status string, declarations []adr.Operation, events ...adr.HistoryEvent) adr.ADR {
+	return adr.ADR{Number: num, Format: adr.CurrentStateV2, Status: status, Operations: declarations, History: events}
+}
+
+func v2status(status string) adr.HistoryEvent {
+	return adr.HistoryEvent{Kind: adr.HistoryStatus, Date: "2026-01-01", Status: status}
+}
+
+func v2batch(sequence int, operations ...adr.Operation) adr.HistoryEvent {
+	return adr.HistoryEvent{Kind: adr.HistoryApplied, Date: "2026-01-02", Sequence: sequence, HasSequence: true, Operations: operations}
+}
+
+func TestCheckV2AppliedAuthority(t *testing.T) {
+	addX := op(adr.OpAdd, "d/t:x")
+	updateX := op(adr.OpUpdate, "d/t:x")
+	pending := op(adr.OpAdd, "d/t:pending")
+	base := rec("0137", "Implemented", 1, addX)
+	implementing := v2rec("0138", "Implementing", []adr.Operation{updateX, pending},
+		v2status("Proposed"), v2status("Implementing"), v2batch(2, updateX))
+	if f := currentstate.Check([]adr.ADR{base, implementing}, topics(claim("d/t:x", "0137", "0138")), 137); len(f) != 0 {
+		t.Fatalf("valid interleaved Implementing state rejected:\n%s", messages(f))
+	}
+
+	abandoned := implementing
+	abandoned.Status = "Abandoned"
+	abandoned.History = append(append([]adr.HistoryEvent(nil), implementing.History...), v2status("Abandoned"))
+	if f := currentstate.Check([]adr.ADR{base, abandoned}, topics(claim("d/t:x", "0137", "0138"), claim("d/t:pending", "0100")), 137); len(f) != 0 {
+		t.Fatalf("canceled add imposed a pending/result precondition:\n%s", messages(f))
+	}
+
+	remove := op(adr.OpRemove, "d/t:x")
+	cancel := op(adr.OpUpdate, "d/t:unused")
+	partialRemove := v2rec("0139", "Abandoned", []adr.Operation{remove, cancel},
+		v2status("Proposed"), v2status("Implementing"), v2batch(2, remove), v2status("Abandoned"))
+	if f := currentstate.Check([]adr.ADR{base, partialRemove}, topics(), 137); len(f) != 0 {
+		t.Fatalf("partially Abandoned remove lost authority:\n%s", messages(f))
+	}
+	reuse := v2rec("0140", "Proposed", []adr.Operation{addX}, v2status("Proposed"))
+	if got := messages(currentstate.Check([]adr.ADR{base, partialRemove, reuse}, topics(), 137)); !strings.Contains(got, "may never be reused") {
+		t.Fatalf("removed ID reuse not rejected:\n%s", got)
+	}
+
+	remainingOrigin := v2rec("0141", "Proposed", []adr.Operation{op(adr.OpAdd, "d/t:new")}, v2status("Proposed"))
+	if got := messages(currentstate.Check([]adr.ADR{remainingOrigin}, topics(claim("d/t:new", "0141")), 137)); !strings.Contains(got, "no matching add operation applied") {
+		t.Fatalf("remaining operation authorized inverse provenance:\n%s", got)
+	}
+	canceledOrigin := remainingOrigin
+	canceledOrigin.Status = "Abandoned"
+	canceledOrigin.History = append(canceledOrigin.History, v2status("Abandoned"))
+	if got := messages(currentstate.Check([]adr.ADR{canceledOrigin}, topics(claim("d/t:new", "0141")), 137)); !strings.Contains(got, "no matching add operation applied") {
+		t.Fatalf("canceled operation authorized inverse provenance:\n%s", got)
+	}
+}
+
+func TestCheckRejectsInvalidV2Projection(t *testing.T) {
+	operation := op(adr.OpAdd, "d/t:x")
+	invalid := v2rec("0137", "Implementing", []adr.Operation{operation}, v2status("Proposed"), v2status("Implementing"), v2batch(1, operation))
+	if got := messages(currentstate.Check([]adr.ADR{invalid}, topics(claim("d/t:x", "0137")), 137)); !strings.Contains(got, "requires applied and remaining operations") {
+		t.Fatalf("invalid projection not reported:\n%s", got)
+	}
+}
+
+func TestCheckV2BatchSequences(t *testing.T) {
+	a := op(adr.OpAdd, "d/t:a")
+	b := op(adr.OpAdd, "d/t:b")
+	multi := v2rec("0137", "Implemented", []adr.Operation{a, b}, v2status("Proposed"), v2status("Implementing"), v2batch(1, a, b), v2status("Implemented"))
+	if f := currentstate.Check([]adr.ADR{multi}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0137")), 137); len(f) != 0 {
+		t.Fatalf("multi-operation batch counted as duplicate sequence:\n%s", messages(f))
+	}
+	duplicate := v2rec("0138", "Implemented", []adr.Operation{op(adr.OpAdd, "d/t:c")}, v2status("Proposed"), v2status("Implemented"))
+	duplicate.History[len(duplicate.History)-1].Sequence, duplicate.History[len(duplicate.History)-1].HasSequence = 1, true
+	if got := messages(currentstate.Check([]adr.ADR{multi, duplicate}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0137"), claim("d/t:c", "0138")), 137)); !strings.Contains(got, "more than one ADR batch") {
+		t.Fatalf("duplicate batch sequence not rejected:\n%s", got)
+	}
+	duplicate.History[len(duplicate.History)-1].Sequence = 3
+	if got := messages(currentstate.Check([]adr.ADR{multi, duplicate}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0137"), claim("d/t:c", "0138")), 137)); !strings.Contains(got, "expected 2, found 3") {
+		t.Fatalf("batch sequence gap not rejected:\n%s", got)
+	}
+}
+
 // TestSeverityString covers both severities.
 func TestSeverityString(t *testing.T) {
 	if currentstate.Error.String() != "error" || currentstate.Warn.String() != "warn" {

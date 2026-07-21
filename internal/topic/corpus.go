@@ -165,13 +165,28 @@ func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, d
 				return Corpus{}, fmt.Errorf("duplicate full claim ID %q", cl.ID)
 			}
 			c.byClaim[cl.ID] = cl
-			for _, num := range append([]string{cl.Origin}, cl.RevisedBy...) {
+			provenance := append([]string{cl.Origin}, cl.RevisedBy...)
+			for k, num := range provenance {
 				a, ok := adrs.ByNumber(num)
 				if !ok {
 					return Corpus{}, fmt.Errorf("claim %s cites missing ADR-%s", cl.ID, num)
 				}
-				if !a.IsImplemented() {
-					return Corpus{}, fmt.Errorf("claim %s cites ADR-%s with status %q; provenance must be Implemented", cl.ID, num, a.Status)
+				if !a.IsGoverned() {
+					if !a.IsImplemented() {
+						return Corpus{}, fmt.Errorf("claim %s cites ADR-%s with status %q; legacy provenance must be Implemented", cl.ID, num, a.Status)
+					}
+					continue
+				}
+				verb := adr.OpUpdate
+				if k == 0 {
+					verb = adr.OpAdd
+				}
+				progress, _, err := adrs.OperationProgress(num)
+				if err != nil {
+					return Corpus{}, fmt.Errorf("claim %s cites invalid ADR-%s application: %w", cl.ID, num, err)
+				}
+				if !hasAppliedOperation(progress, verb, cl.ID) {
+					return Corpus{}, fmt.Errorf("claim %s cites ADR-%s without an applied %s operation", cl.ID, num, verb)
 				}
 			}
 		}
@@ -197,6 +212,15 @@ func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, d
 		slices.Sort(c.outgoing[k])
 	}
 	return c, nil
+}
+
+func hasAppliedOperation(progress adr.OperationProgress, verb adr.OpVerb, id string) bool {
+	for _, applied := range progress.Applied {
+		if applied.Operation.Verb == verb && applied.Operation.ID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func collectFiles(root string, fn func(string) error) error {

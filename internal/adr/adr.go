@@ -59,6 +59,9 @@ func (a ADR) IsV1() bool { return a.Format == CurrentStateV1 }
 // IsV2 reports whether the record was parsed as current-state-v2.
 func (a ADR) IsV2() bool { return a.Format == CurrentStateV2 }
 
+// IsGoverned reports whether the record uses either current-state format.
+func (a ADR) IsGoverned() bool { return a.IsV1() || a.IsV2() }
+
 // decisionItemRe matches a column-0 numbered Decision item lead. Column-0
 // anchoring is load-bearing: 0067 and 0115 carry indented numbered
 // sub-lists that must not enumerate (ADR-0120 item 2).

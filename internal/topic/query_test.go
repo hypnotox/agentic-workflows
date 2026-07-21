@@ -182,6 +182,20 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 		t.Fatalf("active operation history = %#v", got.History)
 	}
 
+	incremental := adr.ADR{Number: "0004", Title: "ADR-0004: Incremental update", Status: "Implementing", Format: adr.CurrentStateV2,
+		Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: claimID}, {Verb: adr.OpAdd, ID: "alpha/contracts:later"}},
+		History: []adr.HistoryEvent{
+			{Kind: adr.HistoryStatus, Status: "Proposed"},
+			{Kind: adr.HistoryStatus, Status: "Implementing"},
+			{Kind: adr.HistoryApplied, Sequence: 2, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: claimID}}},
+		},
+	}
+	operations = adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd, 1), incremental))
+	got, err = Query(corpus, operations, claimID, QueryOptions{History: true})
+	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" {
+		t.Fatalf("immediate incremental operation history = %#v, err=%v", got.History, err)
+	}
+
 	incomplete := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0004", adr.OpUpdate, 1)))
 	got, err = Query(corpus, incomplete, claimID, QueryOptions{History: true})
 	if err != nil {
