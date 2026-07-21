@@ -55,12 +55,12 @@ Build the V2 event and operation-projection model behind an absent cutoff first,
 - [ ] **Task 1.3: Verify and commit the dormant record model.** Run:
 
   ```sh
-  gofmt -w internal/adr/adr.go internal/adr/format.go internal/adr/history.go internal/adr/operations.go internal/adr/adr_test.go internal/adr/format_test.go internal/manifest/manifest.go internal/manifest/manifest_test.go internal/project/project.go internal/project/project_test.go cmd/awf/run_test.go
+  gofmt -w internal/adr/adr.go internal/adr/format.go internal/adr/history.go internal/adr/operations.go internal/adr/status.go internal/adr/adr_test.go internal/adr/format_test.go internal/manifest/manifest.go internal/manifest/manifest_test.go internal/project/project.go internal/project/project_test.go cmd/awf/run_test.go
   git diff --check
   ./x check
-  ./x gate
-  git add internal/adr/adr.go internal/adr/format.go internal/adr/history.go internal/adr/operations.go internal/adr/adr_test.go internal/adr/format_test.go internal/manifest/manifest.go internal/manifest/manifest_test.go internal/project/project.go internal/project/project_test.go cmd/awf/run_test.go
+  git add internal/adr/adr.go internal/adr/format.go internal/adr/history.go internal/adr/operations.go internal/adr/status.go internal/adr/adr_test.go internal/adr/format_test.go internal/manifest/manifest.go internal/manifest/manifest_test.go internal/project/project.go internal/project/project_test.go cmd/awf/run_test.go
   ./x check --staged
+  ./x gate
   ```
 
   Every command must exit zero; checks and the gate must be clean. Commit:
@@ -120,9 +120,9 @@ Build the V2 event and operation-projection model behind an absent cutoff first,
   gofmt -w internal/adr/adr.go internal/adr/application.go internal/adr/corpus.go internal/adr/corpus_test.go internal/topic/corpus.go internal/topic/corpus_test.go internal/topic/query.go internal/topic/query_test.go internal/currentstate/check.go internal/currentstate/check_test.go internal/currentstate/transition.go internal/currentstate/transition_test.go
   git diff --check
   ./x check
-  ./x gate
   git add internal/adr/adr.go internal/adr/application.go internal/adr/corpus.go internal/adr/corpus_test.go internal/topic/corpus.go internal/topic/corpus_test.go internal/topic/query.go internal/topic/query_test.go internal/currentstate/check.go internal/currentstate/check_test.go internal/currentstate/transition.go internal/currentstate/transition_test.go
   ./x check --staged
+  ./x gate
   ```
 
   Every command must exit zero; checks and the gate must be clean. Commit:
@@ -133,7 +133,7 @@ Build the V2 event and operation-projection model behind an absent cutoff first,
 
 ## Phase 3: Thread V2 boundaries through project loading and presentation
 
-- [ ] **Task 3.1: Use both cutoffs in working, staged, and audit snapshots.** In `internal/adr/format.go`, add the exact value type `type FormatBoundaries struct { V1From int; V2From int }`; zero V2 means no V2 region. Change the router to `func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, error)`. In `internal/currentstate/load.go`, change the loader to `func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.FormatBoundaries, gaps []int) (Loaded, error)` and its private `adrsFromTree` analogously. `Check(records []adr.ADR, topics topic.Corpus) []Finding` and `CheckPair(before, after Loaded) []Finding` retain their existing signatures because parsed records already carry their format.
+- [ ] **Task 3.1: Use both cutoffs in working, staged, and audit snapshots.** In `internal/adr/format.go`, add the exact value type `type FormatBoundaries struct { V1From int; V2From int }`; zero V2 means no V2 region. Change the router to `func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, error)`. In `internal/currentstate/load.go`, change the loader to `func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.FormatBoundaries, gaps []int) (Loaded, error)` and its private `adrsFromTree` analogously. In `internal/currentstate/check.go` and `internal/currentstate/transition.go`, remove only the obsolete cutoff parameters, retaining the established input types: `func Check(records []adr.ADR, topics []topic.Topic) []Finding` and `func CheckPair(before, after Universe) []Finding`. Update all production callers in `internal/project/topics.go` and `internal/project/currentstate.go`, plus direct callers in `internal/currentstate/check_test.go` and `internal/currentstate/transition_test.go`; parsed records already carry their format.
 
   In `internal/project/currentstate.go`, replace each single `Cutoff int` snapshot field with `Boundaries adr.FormatBoundaries`, constructed only from the snapshot's lock, and carry it through `workingState`, Git tree loading, staged HEAD/index loading, and range audit. Extend `validatePermanentLockTransition` to reject V2 cutoff deletion or mutation; leave only the explicit schema-15 upgrade edge for Phase 4 to enable. Audit must continue comparing each included commit to its first parent through the same `CheckPair` call.
 
@@ -164,13 +164,13 @@ Build the V2 event and operation-projection model behind an absent cutoff first,
 - [ ] **Task 3.4: Verify and commit project integration.** Run:
 
   ```sh
-  gofmt -w internal/adr/adr.go internal/adr/index.go internal/adr/index_test.go internal/adr/adr_test.go internal/currentstate/load.go internal/currentstate/load_test.go internal/project/context.go internal/project/context_test.go internal/project/currentstate.go internal/project/currentstate_test.go internal/project/staged_test.go internal/project/audit_inputs_test.go internal/project/project.go internal/project/project_test.go internal/audit/audit.go internal/audit/audit_test.go cmd/awf/context.go cmd/awf/context_test.go cmd/awf/new_test.go
+  gofmt -w internal/adr/adr.go internal/adr/format.go internal/adr/index.go internal/adr/index_test.go internal/adr/adr_test.go internal/currentstate/check.go internal/currentstate/check_test.go internal/currentstate/load.go internal/currentstate/load_test.go internal/currentstate/transition.go internal/currentstate/transition_test.go internal/project/context.go internal/project/context_test.go internal/project/currentstate.go internal/project/currentstate_test.go internal/project/staged_test.go internal/project/audit_inputs_test.go internal/project/project.go internal/project/project_test.go internal/project/topics.go internal/project/topics_test.go internal/audit/audit.go internal/audit/audit_test.go cmd/awf/context.go cmd/awf/context_test.go cmd/awf/new_test.go
   git diff --check
   ./x check
-  ./x gate
   test -z "$(git diff --name-only -- .awf/awf.lock docs/decisions/template.md)"
-  git add internal/adr/adr.go internal/adr/index.go internal/adr/index_test.go internal/adr/adr_test.go internal/currentstate/load.go internal/currentstate/load_test.go internal/project/context.go internal/project/context_test.go internal/project/currentstate.go internal/project/currentstate_test.go internal/project/staged_test.go internal/project/audit_inputs_test.go internal/project/project.go internal/project/project_test.go internal/audit/audit.go internal/audit/audit_test.go cmd/awf/context.go cmd/awf/context_test.go cmd/awf/new_test.go
+  git add internal/adr/adr.go internal/adr/format.go internal/adr/index.go internal/adr/index_test.go internal/adr/adr_test.go internal/currentstate/check.go internal/currentstate/check_test.go internal/currentstate/load.go internal/currentstate/load_test.go internal/currentstate/transition.go internal/currentstate/transition_test.go internal/project/context.go internal/project/context_test.go internal/project/currentstate.go internal/project/currentstate_test.go internal/project/staged_test.go internal/project/audit_inputs_test.go internal/project/project.go internal/project/project_test.go internal/project/topics.go internal/project/topics_test.go internal/audit/audit.go internal/audit/audit_test.go cmd/awf/context.go cmd/awf/context_test.go cmd/awf/new_test.go
   ./x check --staged
+  ./x gate
   ```
 
   Every command must exit zero; the empty-diff assertion confirms activation has not occurred. Commit:
@@ -299,11 +299,14 @@ Phases 4.1 through 4.5 are one coupled transaction and share one closing commit.
 
   Run `./x check`; it must exit nonzero and report the exact expected content digest for ADR-0143. Replace only the zero digest with that reported digest. Run `./x check` again; it must exit nonzero and report the exact next global state sequence for ADR-0143. Replace only sequence 1 with that reported value. If either run fails first on a different diagnostic, fix that structural error without changing the frozen ADR body, rerun the same probe step, and require the named digest/sequence diagnostic before proceeding.
 
+  Before sync and the final gate, add `TestIncrementalADRLifecyclePublicPairs` to `internal/project/staged_test.go`. Build one `internal/testsupport/gitfixture` repository and assert through the public staged/range project seams that a V1 direct transaction passes unchanged; a V2 ADR enters Implementing with a strict subset, appends an interleaved middle batch, reaches Implemented with the remainder, and appears In flight until terminal; a partially Abandoned ADR retains applied provenance and cancels remaining operations; deleting an Applied event with the inverse mutation fails; and a correct endpoint never rescues a bad intermediate pair.
+
   Now run `./x sync` exactly once. It must regenerate INDEX.md, lock hashes, domains/topics/docs, target copies, AGENTS.md, and example outputs with valid Implemented provenance. Run these exact formatting and focused verification commands; each must exit zero:
 
   ```sh
   gofmt -w internal/adr/adr.go internal/adr/format.go internal/adr/history.go internal/adr/index.go internal/adr/corpus.go internal/adr/adr_test.go internal/adr/format_test.go internal/adr/index_test.go internal/adr/corpus_test.go internal/manifest/manifest.go internal/manifest/manifest_test.go internal/migrate/migrate.go internal/migrate/adrformatv2.go internal/migrate/migrate_test.go internal/migrate/adrformatv2_test.go internal/currentstate/check.go internal/currentstate/transition.go internal/currentstate/check_test.go internal/currentstate/transition_test.go internal/topic/corpus.go internal/topic/query.go internal/topic/corpus_test.go internal/topic/query_test.go internal/project/project.go internal/project/currentstate.go internal/project/context.go internal/project/staged_test.go internal/project/project_test.go internal/project/context_test.go internal/project/golden_test.go internal/project/spine_test.go internal/project/catalog_sweep_test.go internal/project/frontmatter_test.go internal/project/version_test.go internal/audit/audit.go internal/audit/audit_test.go internal/catalog/standard.go internal/catalog/catalog_test.go internal/configspec/spec.go internal/configspec/spec_test.go cmd/awf/init.go cmd/awf/upgrade.go cmd/awf/initrender_test.go cmd/awf/run_test.go cmd/awf/upgrade_test.go
   go test ./internal/adr ./internal/currentstate ./internal/topic ./internal/manifest ./internal/migrate ./internal/project ./internal/audit ./cmd/awf
+  go test ./internal/project -run '^TestIncrementalADRLifecyclePublicPairs$'
   git diff --check
   ./x check
   ```
@@ -330,7 +333,7 @@ Phases 4.1 through 4.5 are one coupled transaction and share one closing commit.
 - Run `./x check`; it reports clean drift and current-state validation.
 - Run `./x invariants`; every test-backed claim resolves to at least one proof and no unbacked claim has a proof.
 - Run `./x gate full`; all full-tier checks finish clean.
-- Add `TestIncrementalADRLifecyclePublicPairs` to `internal/project/staged_test.go`. Build one `internal/testsupport/gitfixture` repository and assert through the public staged/range project seams that a V1 direct transaction passes unchanged; a V2 ADR enters Implementing with a strict subset, appends an interleaved middle batch, reaches Implemented with the remainder, and appears In flight until terminal; a partially Abandoned ADR retains applied provenance and cancels remaining operations; deleting an Applied event with the inverse mutation fails; and a correct endpoint never rescues a bad intermediate pair. Run `go test ./internal/project -run '^TestIncrementalADRLifecyclePublicPairs$'`; it exits zero.
+- Rerun `go test ./internal/project -run '^TestIncrementalADRLifecyclePublicPairs$'`; it exits zero and the already-committed public-pair integration test covers every intermediate and reverse pair.
 - Run `git status --short`; it is empty after the final commit.
 
 ## Notes
