@@ -86,7 +86,7 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 			continue
 		}
 		has, err := p.Cfg.HasSidecar(kind, name)
-		if err != nil { // coverage-ignore: HasSidecar only errors on a permission fault a test cannot trigger
+		if err != nil {
 			return err
 		}
 		if !has {
@@ -169,7 +169,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 			continue
 		}
 		has, err := p.Cfg.HasSidecar("docs", name)
-		if err != nil { // coverage-ignore: HasSidecar only errors on a permission fault a test cannot trigger
+		if err != nil {
 			return err
 		}
 		if !has {

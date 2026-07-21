@@ -1,7 +1,9 @@
 package project
 
 import (
+	"errors"
 	"strings"
+	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -104,6 +106,16 @@ func TestLocalUndeclaredNameFailsOpen(t *testing.T) {
 	// invariant: rendering/project-output-plan:local-requires-declaration
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
 		t.Fatalf("expected not-in-catalog error, got %v", err)
+	}
+}
+
+func TestLocalSkillSidecarStatErrorFailsOpen(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\n", map[string]string{
+		"skills": "not a directory",
+	})
+	_, err := Open(root)
+	if !errors.Is(err, syscall.ENOTDIR) || !strings.Contains(err.Error(), "stat sidecar skills/my-skill.yaml") {
+		t.Fatalf("expected skill sidecar ENOTDIR, got %v", err)
 	}
 }
 
@@ -277,6 +289,16 @@ func TestLocalDocUndeclaredNameFailsOpen(t *testing.T) {
 	// invariant: rendering/project-output-plan:local-doc-requires-declaration
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
 		t.Fatalf("expected not-in-catalog error, got %v", err)
+	}
+}
+
+func TestLocalDocSidecarStatErrorFailsOpen(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - my-doc\n", map[string]string{
+		"docs": "not a directory",
+	})
+	_, err := Open(root)
+	if !errors.Is(err, syscall.ENOTDIR) || !strings.Contains(err.Error(), "stat sidecar docs/my-doc.yaml") {
+		t.Fatalf("expected doc sidecar ENOTDIR, got %v", err)
 	}
 }
 
