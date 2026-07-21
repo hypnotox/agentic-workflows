@@ -442,7 +442,11 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
     ];
     assert.ok(orderedActivity.every((position, index) => position >= 0 && (index === 0 || orderedActivity[index - 1] < position)), "collapsed activity is not chronological");
     assert.match(collapsed, /2 turns ↑1 ↓2 R3 W4\s+CH50\.0% \$0\.250/);
-    assert.match(collapsed, /model:proxy\/child/);
+    assert.match(collapsed, /model:cheap\/model/);
+    assert.match(collapsed, /source:requested/);
+    assert.match(collapsed, /actual:proxy\/child/);
+    assert.match(collapsed, /model-mismatch/);
+    assert.doesNotMatch(collapsed, /model-changed/);
     assert.match(collapsed, /thinking:high/);
     assert.match(collapsed, /to expand/);
   }
@@ -619,7 +623,7 @@ test("implementation reports git state and commit policy", async () => {
       { code: 0, stdout: "aaa\n" }, { code: 0, stdout: "" },
       { code: 0, stdout: "bbb\n" }, { code: 0, stdout: "" },
     ],
-    run: async () => ({ ...result, model: "cheap/actual-model", usage: violationUsage }),
+    run: async () => ({ ...result, model: "cheap/actual-model", usage: violationUsage, stderr: "child diagnostic", omittedEvents: 2, stopReason: "stop" }),
   });
   const violated = await execute(violation.tools.get("subagent_implement"), {
     task: "change", allowCommits: false, model: "cheap/model/with/slash",
@@ -630,6 +634,10 @@ test("implementation reports git state and commit policy", async () => {
   assert.equal(violated.value.details.requestedModel, "cheap/model/with/slash");
   assert.equal(violated.value.details.model, "cheap/actual-model");
   assert.equal(violated.value.details.modelMismatch, true);
+  assert.deepEqual(violated.value.details.events, [event]);
+  assert.equal(violated.value.details.omittedEvents, 2);
+  assert.equal(violated.value.details.stderr, "child diagnostic");
+  assert.equal(violated.value.details.stopReason, "stop");
   assert.deepEqual(violated.value.details.usage, violationUsage);
   assert.equal(violated.value.details.before.head, "aaa");
   assert.equal(violated.value.details.after.head, "bbb");

@@ -238,6 +238,13 @@ export function createRunner(deps: RunnerDependencies): Runner {
           const publishUpdate = (): void => request.onUpdate?.({
             events: [...events], omittedEvents, usage: { ...usage }, model, modelChanged, latestCacheHitRate,
           });
+          const childFailureSummary = (): string => {
+            const parts = [
+              childErrorMessage ? `Error: ${childErrorMessage}` : "",
+              output ? `Output: ${output}` : "",
+            ].filter(Boolean);
+            return parts.join("\n") || "(no output)";
+          };
           const appendDisplayEvent = (event: DisplayEventInput): void => {
             const fitted = fitDisplayEvent({ ...event, sequence: ++sequence } as DisplayEvent);
             events.push(fitted);
@@ -309,9 +316,10 @@ export function createRunner(deps: RunnerDependencies): Runner {
               finish(true, forcedFailure.message);
             } else if (code !== 0) {
               stopReason = "error";
-              finish(true, `Subagent exited ${code}: ${truncateStderr(stderr) || "no diagnostics"}`);
+              const diagnostics = [childErrorMessage, truncateStderr(stderr)].filter(Boolean).join("\n") || "no diagnostics";
+              finish(true, `Subagent exited ${code}: ${diagnostics}`);
             } else if (stopReason === "error" || stopReason === "aborted") {
-              finish(true, `Subagent ${stopReason}: ${truncateOutput(output || childErrorMessage || "(no output)")}`);
+              finish(true, `Subagent ${stopReason}: ${truncateOutput(childFailureSummary())}`);
             } else {
               finish();
             }

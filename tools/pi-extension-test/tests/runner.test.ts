@@ -306,6 +306,26 @@ test("runner preserves progress and bounded child errors on asynchronous process
   assert.equal(updates.length, 1);
   assert.deepEqual(h.removals, ["/tmp/child"]);
 
+  const progressError = harness();
+  const progressFailed = createRunner(progressError.deps).run(progressError.request);
+  await new Promise((resolve) => setImmediate(resolve));
+  progressError.process.stdout.write(message("earlier progress", "toolUse") + "\n");
+  progressError.process.stdout.write(message("", "error", { errorMessage: "actual child error" }) + "\n");
+  progressError.process.close();
+  const progressResult = await progressFailed;
+  assert.match(progressResult.failureMessage ?? "", /actual child error/);
+  assert.match(progressResult.failureMessage ?? "", /earlier progress/);
+
+  const exitError = harness();
+  const exitFailed = createRunner(exitError.deps).run(exitError.request);
+  await new Promise((resolve) => setImmediate(resolve));
+  exitError.process.stdout.write(message("", "error", { errorMessage: "child exit error" }) + "\n");
+  exitError.process.stderr.write("exit stderr");
+  exitError.process.close(2);
+  const exitResult = await exitFailed;
+  assert.match(exitResult.failureMessage ?? "", /child exit error/);
+  assert.match(exitResult.failureMessage ?? "", /exit stderr/);
+
   const childError = harness();
   const failed = createRunner(childError.deps).run(childError.request);
   await new Promise((resolve) => setImmediate(resolve));

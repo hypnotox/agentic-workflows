@@ -227,7 +227,6 @@ func TestPiSubagentModelRouting(t *testing.T) {
 		`modelChanged: result.modelChanged`,
 		`modelMismatch: Boolean(result.model && result.model !== details.resolvedModel)`,
 		`latestCacheHitRate: result.latestCacheHitRate`,
-		`{ ...gitDetails, model: result.model, modelChanged:`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("Pi extension missing model-routing contract %q", want)
@@ -291,9 +290,14 @@ func TestPiSubagentModelRouting(t *testing.T) {
 		}
 	}
 	implement := blocks["implement"]
-	commitPolicyFailure := `if (violation) return failedToolResult("implement", params.task, ` + "`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`" + `, { ...gitDetails, model: result.model, modelChanged: result.modelChanged, modelMismatch: Boolean(result.model && result.model !== metadata.resolvedModel), latestCacheHitRate: result.latestCacheHitRate, usage: result.usage });`
-	if !strings.Contains(implement, commitPolicyFailure) {
-		t.Errorf("implementation registration missing model and usage on exact commit-policy failure path %q", commitPolicyFailure)
+	for _, want := range []string{
+		`const failure = {`, `...result,`, `failed: true,`,
+		`failureMessage: ` + "`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`",
+		`return toolResult("implement", params.task, failure, gitDetails);`,
+	} {
+		if !strings.Contains(implement, want) {
+			t.Errorf("implementation registration does not preserve the full child result on commit-policy failure %q", want)
+		}
 	}
 }
 
@@ -469,7 +473,10 @@ func TestPiSubagentProgressRendering(t *testing.T) {
 // invariant: rendering/templates:pi-subagent-failure-details
 func TestPiSubagentFailureDetails(t *testing.T) {
 	content := renderPiExtensionFile(t, "index.ts")
-	for _, want := range []string{`awfFailure: true`, `pi.on("tool_result"`, `SUBAGENT_TOOL_NAMES.has(event.toolName)`, `return { isError: true }`} {
+	for _, want := range []string{
+		`awfFailure: true`, `pi.on("tool_result"`, `SUBAGENT_TOOL_NAMES.has(event.toolName)`, `return { isError: true }`,
+		`return toolResult("implement", params.task, failure, gitDetails);`,
+	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("extension missing failure-details contract %q", want)
 		}

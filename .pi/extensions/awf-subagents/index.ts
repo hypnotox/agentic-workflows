@@ -236,16 +236,6 @@ function stateFor(failed: boolean, stopReason?: string): SubagentState {
   return stopReason === "aborted" ? "aborted" : "failed";
 }
 
-function failedToolResult(role: RunRequest["role"], task: string, message: string, details: Record<string, unknown> = {}) {
-  return {
-    content: [{ type: "text" as const, text: message }],
-    details: {
-      role, task, state: "failed" as const, events: [], omittedEvents: 0,
-      ...details, awfFailure: true as const,
-    },
-  };
-}
-
 function toolResult(role: RunRequest["role"], task: string, result: Awaited<ReturnType<Runner["run"]>>, details: Record<string, unknown> = {}) {
   const failed = result.failed;
   return {
@@ -322,8 +312,14 @@ function renderSubagentResult(role: RunRequest["role"], result: any, options: { 
   const statusColor = state === "completed" ? "success" : state === "queued" || state === "running" ? "warning" : "error";
   const header = `${theme.fg(statusColor, state)} ${theme.fg("toolTitle", theme.bold(`${role} subagent`))}`;
   const actualModel = activeModel(details);
+  const resolvedModel = details.resolvedModel ?? actualModel;
+  const modelMismatch = details.modelMismatch || Boolean(details.resolvedModel && actualModel !== details.resolvedModel);
   const metadata = [
-    `model:${actualModel}`,
+    `model:${resolvedModel}`,
+    details.modelSource ? `source:${details.modelSource}` : "",
+    details.resolvedModel && actualModel !== details.resolvedModel ? `actual:${actualModel}` : "",
+    modelMismatch ? "model-mismatch" : "",
+    details.modelChanged ? "model-changed" : "",
     details.thinkingLevel ? `thinking:${details.thinkingLevel}` : "",
     optionText(details.options),
   ].filter(Boolean).join(" ");
@@ -546,7 +542,14 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
         const gitDetails = { ...metadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
-        if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, { ...gitDetails, model: result.model, modelChanged: result.modelChanged, modelMismatch: Boolean(result.model && result.model !== metadata.resolvedModel), latestCacheHitRate: result.latestCacheHitRate, usage: result.usage });
+        if (violation) {
+          const failure = {
+            ...result,
+            failed: true,
+            failureMessage: `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`,
+          };
+          return toolResult("implement", params.task, failure, gitDetails);
+        }
         return toolResult("implement", params.task, result, gitDetails);
       } finally { release(); }
     },
