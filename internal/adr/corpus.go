@@ -3,6 +3,7 @@ package adr
 import (
 	"fmt"
 	"os"
+	"sort"
 )
 
 // Corpus is the parsed decisions directory: one parse, threaded to every
@@ -15,6 +16,27 @@ import (
 type Corpus struct {
 	all   []ADR
 	byNum map[string]ADR
+}
+
+// Status is an ADR lifecycle status as presented by semantic corpus queries.
+type Status = string
+
+// OperationRecord is the ADR identity and implementation order for one claim
+// operation. StateSequence orders implemented mutations independently of ADR
+// number.
+type OperationRecord struct {
+	Number        string
+	Title         string
+	Status        Status
+	StateSequence int
+}
+
+// ClaimOperationHistory is the implemented add/update/remove history for one
+// qualified claim identity.
+type ClaimOperationHistory struct {
+	Origin    *OperationRecord
+	RevisedBy []OperationRecord
+	RemovedBy *OperationRecord
 }
 
 // NewCorpus builds the view over an already-parsed slice.
@@ -53,6 +75,49 @@ func (c Corpus) ByNumber(num string) (ADR, bool) {
 func (c Corpus) Has(num string) bool {
 	_, ok := c.byNum[num]
 	return ok
+}
+
+// ClaimOperationHistory returns the implemented operation history for claimID
+// in state-sequence order. The corpus-level current-state checker validates the
+// add/update/remove lifecycle; this semantic view only projects that validated
+// history and returns a fresh revision slice on every call.
+func (c Corpus) ClaimOperationHistory(claimID string) (ClaimOperationHistory, bool) {
+	type recordedOperation struct {
+		verb   OpVerb
+		record OperationRecord
+	}
+	var records []recordedOperation
+	for _, a := range c.all {
+		if !a.IsImplemented() || len(a.Operations) == 0 {
+			continue
+		}
+		sequence := a.History[len(a.History)-1].Sequence
+		for _, op := range a.Operations {
+			if op.ID == claimID {
+				records = append(records, recordedOperation{verb: op.Verb, record: OperationRecord{
+					Number: a.Number, Title: a.Title, Status: a.Status, StateSequence: sequence,
+				}})
+			}
+		}
+	}
+	if len(records) == 0 {
+		return ClaimOperationHistory{}, false
+	}
+	sort.Slice(records, func(i, j int) bool { return records[i].record.StateSequence < records[j].record.StateSequence })
+	history := ClaimOperationHistory{RevisedBy: []OperationRecord{}}
+	for _, operation := range records {
+		record := operation.record
+		switch operation.verb {
+		case OpAdd:
+			history.Origin = &record
+		case OpUpdate:
+			history.RevisedBy = append(history.RevisedBy, record)
+		case OpRemove:
+			history.RemovedBy = &record
+		}
+	}
+	history.RevisedBy = append([]OperationRecord(nil), history.RevisedBy...)
+	return history, true
 }
 
 // Raw returns the ADR file's bytes. Raw access is enumerated and closed

@@ -26,7 +26,7 @@ by this repository's own checks (ADR-0090).
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
 - `awf context <path>...`: report the current-state context awf holds for a set of repo-relative paths, namely the owning domain(s), the applicable topic claims (rules and invariants), and any Accepted-ADR pending changes. Read-only; `--json` for machine output, `--staged` to query the immutable index universe, `--range <a>..<b>` to resolve paths from git, and `--uncovered` to report unowned paths plus paths no scoped topic covers (`--uncovered --staged` uses the index universe).
-- `awf topic <domain>/<topic>[:<claim>]`: query one active current-state topic or claim. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR provenance with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. `--json` changes only presentation.
+- `awf topic <domain>/<topic>[:<claim>]`: query one current-state topic or claim, active by default. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR operations with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. A removed claim identity resolves only with `--history` as historical-only operation detail without active prose, references, coverage, or a tombstone. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR.
 - `awf new topic <domain> "<title>"`: scaffold paired current-state metadata and authored inputs without syncing. Edit the path placeholder and prose, then add reviewed claims manually before relying on coverage.
 - `awf new skill <name> "<description>"` / `awf new agent <name> "<description>"`: scaffold a project-local skill/agent (rendered from awf's base template plus a `content` part you author).
@@ -69,12 +69,14 @@ Run `awf new topic <domain> "<title>"` to create the metadata and part pair. It 
 collision-free kebab slug, prints both repository-relative paths, and writes an empty claim shell with
 a valid anchored path placeholder. It does not run sync or mutate config, the lock, or rendered docs.
 Replace the placeholder, revise the generic summary and prose, and add reviewed claims manually; a
-zero-claim shell renders but does not satisfy scoped coverage. Query an active topic as
-`awf topic <domain>/<topic>` or one claim as `awf topic <domain>/<topic>:<claim>`. Defaults hide
-provenance and reference edges; `--history`, `--references`, and `--coverage` independently add direct
-detail, and `--json` emits the same deterministic result model. Queries are read-only, active-only,
-and never traverse references transitively. A removed identity resolves only under `--history`, which
-reads its operations from the ADRs; its exact former prose stays in Git rather than an active tombstone.
+zero-claim shell renders but does not satisfy scoped coverage. Query a topic as
+`awf topic <domain>/<topic>` or one claim as `awf topic <domain>/<topic>:<claim>`. Defaults return
+active state and hide provenance and reference edges; `--history`, `--references`, and `--coverage`
+independently add direct detail, and `--json` emits the same deterministic result model. Queries are
+read-only and never traverse references transitively. A removed identity resolves only under
+`--history`, which returns ordered Origin/Revised-by/Removed-by operations, labels the result
+historical-only, and leaves active claims empty. Former prose stays in Git; references, coverage, and
+an active tombstone are not fabricated.
 
 **Migrating to current-state authority.** A project adopting this release from an older awf crosses
 over once through the preceding bridge release, which reviews a `.awf/current-state-migration.yaml`

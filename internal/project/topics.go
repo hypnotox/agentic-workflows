@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -15,21 +16,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// QueryTopic assembles one read-only active topic or claim projection. The
-// invocation reset keeps the ADR and topic views coherent with the current
-// working tree; the bridge migration can insert its lock refusal before the
-// first Topics call without changing the query model.
+// QueryTopic assembles one read-only topic or claim projection from one
+// cutoff-aware working snapshot. Active state and v1 operation history therefore
+// cannot come from different worktree universes.
 func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
 	p.beginInvocation()
-	adrs, err := p.Corpus()
+	ws, err := p.workingCurrentState()
 	if err != nil {
 		return topic.QueryResult{}, err
 	}
-	corpus, err := p.Topics()
-	if err != nil {
-		return topic.QueryResult{}, err
-	}
-	return topic.Query(corpus, adrs, selector, opts)
+	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts)
 }
 
 func (p *Project) Topics() (topic.Corpus, error) {

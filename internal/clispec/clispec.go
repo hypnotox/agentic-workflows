@@ -170,17 +170,18 @@ Flags:
 `,
 	},
 	{
-		Name: "topic", Summary: "Query an active current-state topic or claim",
+		Name: "topic", Summary: "Query a current-state topic or claim",
 		BoolFlags: []string{"--history", "--references", "--coverage", "--json"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf topic <domain>/<topic>[:<claim>] [flags]
 
-Query one active current-state topic or claim. Default output includes title and
-summary for a topic plus claim types, prose, and backing state. Detail flags are
-independent and direct-only. Outside an awf project, a static command reference
-prints without version gating.
+Query one current-state topic or claim, active by default. Default output includes
+title and summary for a topic plus claim types, prose, and backing state. Detail
+flags are independent and direct-only. A removed claim identity resolves only
+with --history and returns operation history without an active tombstone. Outside
+an awf project, a static command reference prints without version gating.
 
 Flags:
-  --history       add direct Origin and Revised-by ADR details
+  --history       add direct Origin, Revised-by, and Removed-by ADR details
   --references    add sorted direct incoming and outgoing claim IDs
   --coverage      add declared scope, effective scope, and marker sites
   --json          emit the same query result as deterministic JSON

@@ -17,14 +17,15 @@ type QueryOptions struct {
 // presentation. Optional detail blocks are nil unless their corresponding flag
 // was requested.
 type QueryResult struct {
-	Kind       string            `json:"kind"`
-	ID         string            `json:"id"`
-	Title      string            `json:"title,omitempty"`
-	Summary    string            `json:"summary,omitempty"`
-	Claims     []QueryClaim      `json:"claims"`
-	History    []ClaimHistory    `json:"history,omitempty"`
-	References []ClaimReferences `json:"references,omitempty"`
-	Coverage   *QueryCoverage    `json:"coverage,omitempty"`
+	Kind           string            `json:"kind"`
+	ID             string            `json:"id"`
+	Title          string            `json:"title,omitempty"`
+	Summary        string            `json:"summary,omitempty"`
+	Claims         []QueryClaim      `json:"claims"`
+	History        []ClaimHistory    `json:"history,omitempty"`
+	References     []ClaimReferences `json:"references,omitempty"`
+	Coverage       *QueryCoverage    `json:"coverage,omitempty"`
+	HistoricalOnly bool              `json:"historicalOnly,omitempty"`
 }
 
 type QueryClaim struct {
@@ -45,6 +46,7 @@ type ClaimHistory struct {
 	ClaimID   string       `json:"claimId"`
 	Origin    ADRHistory   `json:"origin"`
 	RevisedBy []ADRHistory `json:"revisedBy"`
+	RemovedBy *ADRHistory  `json:"removedBy,omitempty"`
 }
 
 type ClaimReferences struct {
@@ -61,7 +63,8 @@ type QueryCoverage struct {
 }
 
 // Query resolves one active topic or claim and assembles only the requested
-// direct detail. It never traverses references or constructs removed identities.
+// direct detail. A qualified removed claim resolves only when History is set;
+// it never traverses references or constructs tombstone state.
 func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (QueryResult, error) {
 	topicID, claimID, err := ParseSelector(selector)
 	if err != nil {
@@ -76,6 +79,18 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (Query
 	if claimID != "" {
 		claim, found := c.ByClaimID(claimID)
 		if !found {
+			if opts.History {
+				operations, historical := adrs.ClaimOperationHistory(claimID)
+				if historical {
+					history, complete := presentationHistory(claimID, operations)
+					if complete {
+						return QueryResult{
+							Kind: "claim", ID: claimID, Claims: []QueryClaim{}, HistoricalOnly: true,
+							History: []ClaimHistory{history},
+						}, nil
+					}
+				}
+			}
 			return QueryResult{}, fmt.Errorf("current-state claim %q not found", claimID)
 		}
 		result.Kind, result.ID, result.Title, result.Summary = "claim", claimID, "", ""
@@ -91,6 +106,12 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions) (Query
 	if opts.History {
 		result.History = make([]ClaimHistory, 0, len(claims))
 		for _, claim := range claims {
+			if operations, ok := adrs.ClaimOperationHistory(claim.ID); ok {
+				if history, complete := presentationHistory(claim.ID, operations); complete {
+					result.History = append(result.History, history)
+					continue
+				}
+			}
 			origin, _ := adrs.ByNumber(claim.Origin)
 			h := ClaimHistory{ClaimID: claim.ID, Origin: historyADR(origin), RevisedBy: []ADRHistory{}}
 			for _, number := range claim.RevisedBy {
@@ -140,6 +161,25 @@ func ParseSelector(selector string) (topicID, claimID string, err error) {
 
 func historyADR(a adr.ADR) ADRHistory {
 	return ADRHistory{Number: a.Number, Title: strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "), Status: a.Status}
+}
+
+func presentationHistory(claimID string, history adr.ClaimOperationHistory) (ClaimHistory, bool) {
+	if history.Origin == nil {
+		return ClaimHistory{}, false
+	}
+	result := ClaimHistory{ClaimID: claimID, Origin: operationADR(*history.Origin), RevisedBy: []ADRHistory{}}
+	for _, revision := range history.RevisedBy {
+		result.RevisedBy = append(result.RevisedBy, operationADR(revision))
+	}
+	if history.RemovedBy != nil {
+		removed := operationADR(*history.RemovedBy)
+		result.RemovedBy = &removed
+	}
+	return result, true
+}
+
+func operationADR(record adr.OperationRecord) ADRHistory {
+	return ADRHistory{Number: record.Number, Title: strings.TrimPrefix(record.Title, "ADR-"+record.Number+": "), Status: record.Status}
 }
 
 func nonNil[S ~[]E, E any](in S) S {

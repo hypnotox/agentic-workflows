@@ -103,8 +103,10 @@ direct references, and invariant backing metadata. Valid pairs render to `docs/t
 and a sorted `docs/topics/<domain>/index.md`, participate in the ordinary output plan, lock, drift,
 brownfield backup, and prune lifecycle, and add compact topic navigation to the owning domain doc.
 `awf new topic <domain> "<title>"` scaffolds the metadata and authored part; `awf topic
-<domain>/<topic>[:<claim>]` reads active topics and claims read-only, with `--history`, `--references`,
-and `--coverage` independently adding direct ADR operations, claim edges, and scope/marker sites.
+<domain>/<topic>[:<claim>]` reads topics and claims read-only and returns active state by default.
+`--history`, `--references`, and `--coverage` independently add direct ADR operations, claim edges, and
+scope/marker sites. A removed claim identity resolves only with `--history`, as historical-only
+Origin/Revised-by/Removed-by operations without active prose, references, coverage, or a tombstone.
 
 ADRs carry decisions through adoption and then become history. A current-state-v1 ADR has closed
 `format`/`status`/`date` frontmatter, a `## State changes` section listing `add`, `update`, and
@@ -208,7 +210,7 @@ disk.
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report the owning domains, backed invariants, related ADRs, and current-state docs for the given paths. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits machine-readable output. `--uncovered` inverts it, listing tracked paths owned by no domain. |
-| `awf topic <domain>/<topic>[:<claim>]` | Query one active topic or claim; add direct detail with `--history`, `--references`, and `--coverage`, or change presentation with `--json`. |
+| `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. `--check [--json]` reports current-state readiness read-only; `--attest-current-state` seals a ready, clean-HEAD prepared tree through a recoverable journal; `--recover` replays the journal recovery table. The four modes are mutually exclusive. |

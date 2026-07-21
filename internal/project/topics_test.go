@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -269,6 +270,52 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 		t.Fatalf("sweep: %#v", drift)
 	}
 }
+func queryV1ADR(t *testing.T, number, title, operation string, sequence int) string {
+	t.Helper()
+	build := func(status, history string) string {
+		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
+			"# ADR-" + number + ": " + title + "\n\n" +
+			"## Context\n\nContext.\n\n## Decision\n\n1. Change state.\n\n" +
+			"## State changes\n\n" + operation + "\n\n## Consequences\n\nConsequence.\n\n" +
+			"## Alternatives Considered\n\nNone.\n\n## Status history\n\n" + history + "\n"
+	}
+	proposed, err := adr.ParseV1(number+"-query.md", []byte(build("Proposed", "- 2026-07-20: Proposed")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := adr.ContentDigest(proposed.Sections)
+	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest+"; state-sequence: "+strconv.Itoa(sequence))
+}
+
+func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
+	claimID := "rendering/contracts:removed"
+	p := csRepo(t, topicProjectConfig, map[string]string{
+		".awf/domains/rendering.yaml":                            "paths: [\"internal/**\"]\n",
+		".awf/topics/metadata/rendering/contracts.yaml":          "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
+		"docs/decisions/0001-first.md":                           queryV1ADR(t, "0001", "Add removed claim", "- add `"+claimID+"`", 1),
+		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove old claim", "- remove `"+claimID+"`", 2),
+	})
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 1, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
+	if err := lock.Save(lockFile(p.Root)); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := p.QueryTopic(claimID, topic.QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("default removed-claim query = %v", err)
+	}
+	got, err := p.QueryTopic(claimID, topic.QueryOptions{History: true, References: true, Coverage: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.HistoricalOnly || got.ID != claimID || got.Claims == nil || len(got.Claims) != 0 || len(got.History) != 1 || got.History[0].RemovedBy == nil {
+		t.Fatalf("historical-only query = %#v", got)
+	}
+	if got.References != nil || got.Coverage != nil {
+		t.Fatalf("historical-only query fabricated details = %#v", got)
+	}
+}
+
 func TestQueryTopicLoadErrors(t *testing.T) {
 	badADRRoot := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: []\n", nil)
 	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
@@ -303,6 +350,11 @@ currentState:
       marker: "//"
   testGlobs: ["internal/**/*_test.go"]
 `, map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
+	initRepo := exec.Command("git", "init")
+	initRepo.Dir = root
+	if output, err := initRepo.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
 	writeADR(t, root, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule"), testsupport.WithTitle("0001: Scheduling contracts"), testsupport.WithBody("## Decision\n\n1. Define scheduling.\n\n## Invariants\n\n- `invariant: legacy-scheduling` - legacy authority remains stable.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "internal/legacy_test.go"), "package internal\n// invariant: legacy-scheduling\n// invariant: schedule\n")
 	p, err := Open(root)

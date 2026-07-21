@@ -488,6 +488,42 @@ func rawAccessProblems(raw map[string][]string, allowed map[string]bool) []strin
 	return problems
 }
 
+func TestClaimOperationHistorySemanticProjection(t *testing.T) {
+	claimID := "tooling/query:removed"
+	record := func(number, title, status, verb string, sequence int) adr.ADR {
+		return adr.ADR{
+			Number: number, Title: "ADR-" + number + ": " + title, Status: status, Format: adr.CurrentStateV1,
+			Operations: []adr.Operation{{Verb: adr.OpVerb(verb), ID: claimID}},
+			History:    []adr.StatusEntry{{Status: status, Sequence: sequence, HasSequence: status == "Implemented"}},
+		}
+	}
+	corpus := adr.NewCorpus([]adr.ADR{
+		record("0003", "Revise claim", "Implemented", "update", 2),
+		record("0004", "Ignored proposal", "Proposed", "remove", 0),
+		record("0001", "Add claim", "Implemented", "add", 1),
+		record("0005", "Remove claim", "Implemented", "remove", 3),
+	})
+
+	got, ok := corpus.ClaimOperationHistory(claimID)
+	if !ok || got.Origin == nil || got.Origin.Number != "0001" || got.Origin.StateSequence != 1 || got.Origin.Status != "Implemented" {
+		t.Fatalf("origin = %#v, found %v", got.Origin, ok)
+	}
+	if len(got.RevisedBy) != 1 || got.RevisedBy[0].Number != "0003" || got.RevisedBy[0].StateSequence != 2 {
+		t.Fatalf("revisions = %#v", got.RevisedBy)
+	}
+	if got.RemovedBy == nil || got.RemovedBy.Number != "0005" || got.RemovedBy.StateSequence != 3 {
+		t.Fatalf("removal = %#v", got.RemovedBy)
+	}
+	got.RevisedBy[0].Number = "mutated"
+	again, _ := corpus.ClaimOperationHistory(claimID)
+	if again.RevisedBy[0].Number != "0003" {
+		t.Fatalf("revision slice aliases a prior result: %#v", again.RevisedBy)
+	}
+	if _, ok := corpus.ClaimOperationHistory("tooling/query:unknown"); ok {
+		t.Fatal("unknown claim returned operation history")
+	}
+}
+
 // TestCorpusRawAccessEnumerated enforces the closed raw-byte seams: the ordered
 // schema migrations that perform offset surgery. Each goes through the view's
 // named accessor rather than re-reading the file.

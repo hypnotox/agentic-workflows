@@ -37,12 +37,14 @@ metadata carries a valid anchored path placeholder and the part carries generic 
 an empty final `## Claims`; adopters must edit paths and prose and author reviewed claims manually.
 The command mutates no config, lock, or rendered doc, and rolls its first file back if the second
 write fails. A zero-claim shell can render but does not satisfy scoped coverage. `awf topic` accepts
-exactly one active `<domain>/<topic>` or `<domain>/<topic>:<claim>` selector and uses one deterministic
-model for human and `--json` output. Defaults show active title/summary, claims, types, prose, and
-backing while hiding provenance and references. Independent `--history`, `--references`, and
-`--coverage` flags add only direct ADR details, direct incoming/outgoing edges, and declared/effective
-scope plus configured marker sites. It never traverses references, resolves tombstones, or writes the
-worktree, index, config, or lock; outside an adopted tree it prints a static reference before gating.
+exactly one `<domain>/<topic>` or `<domain>/<topic>:<claim>` selector and uses one deterministic model
+for human and `--json` output. Defaults show active title/summary, claims, types, prose, and backing
+while hiding provenance and references. Independent `--history`, `--references`, and `--coverage`
+flags add only direct ADR operations, direct incoming/outgoing edges, and declared/effective scope plus
+configured marker sites. A removed claim identity resolves only with `--history` as historical-only
+Origin/Revised-by/Removed-by operations, an empty active-claim projection, and no former prose,
+references, coverage, or tombstone object. Queries never traverse references or write the worktree,
+index, config, or lock; outside an adopted tree the command prints a static reference before gating.
 `awf upgrade` migrates the config tree to the current schema and syncs; when the lock carries a bridge
 attestation it instead performs the final current-state cutover. It verifies only the sealed facts (the
 prepared HEAD and a tree digest over the post-normalization config, domains, ADRs, topics, and marker

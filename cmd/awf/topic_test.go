@@ -11,9 +11,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -23,6 +25,7 @@ import (
 func topicCmdFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
+	runGit(t, root, "init")
 	testsupport.WriteAwfConfig(t, root, `prefix: example
 skills: []
 agents: []
@@ -34,12 +37,14 @@ currentState:
   testGlobs: ["internal/**/*_test.go"]
 `)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/schedule.yaml"), "paths: [\"internal/**\"]\n")
-	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), ADRFormatV1From: 3, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-scheduling.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: Scheduling origin"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Scheduling.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-revision.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0002: Scheduling revision"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Revise scheduling.\n")))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-add-removed.md"), topicV1ADR(t, "0003", "Add removed claim", "- add `schedule/contracts:removed`", 1))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove old claim", "- remove `schedule/contracts:removed`", 2))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md"), `Scheduling contracts.
 
@@ -69,6 +74,73 @@ References: schedule/contracts:stable-output
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule_test.go"), "package schedule\n// invariant: schedule/contracts:stable-output\n")
 	return root
+}
+
+func topicV1ADR(t *testing.T, number, title, operation string, sequence int) string {
+	t.Helper()
+	build := func(status, history string) string {
+		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
+			"# ADR-" + number + ": " + title + "\n\n" +
+			"## Context\n\nContext.\n\n## Decision\n\n1. Change state.\n\n" +
+			"## State changes\n\n" + operation + "\n\n## Consequences\n\nConsequence.\n\n" +
+			"## Alternatives Considered\n\nNone.\n\n## Status history\n\n" + history + "\n"
+	}
+	proposed, err := adr.ParseV1(number+"-query.md", []byte(build("Proposed", "- 2026-07-20: Proposed")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	digest := adr.ContentDigest(proposed.Sections)
+	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest+"; state-sequence: "+strconv.Itoa(sequence))
+}
+
+func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
+	root := topicCmdFixture(t)
+	claimID := "schedule/contracts:removed"
+	if err := runTopic(root, claimID, false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("default removed-claim query = %v", err)
+	}
+
+	var human bytes.Buffer
+	if err := runTopic(root, claimID, true, true, true, false, &human); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"claim " + claimID,
+		"historical only - no active claim",
+		"Origin: ADR-0003 (Implemented) Add removed claim",
+		"Removed-by: ADR-0004 (Implemented) Remove old claim",
+	} {
+		if !strings.Contains(human.String(), want) {
+			t.Errorf("historical human output missing %q:\n%s", want, human.String())
+		}
+	}
+	for _, fabricated := range []string{"Incoming:", "Outgoing:", "## Coverage", "[backing:"} {
+		if strings.Contains(human.String(), fabricated) {
+			t.Errorf("historical human output fabricated %q:\n%s", fabricated, human.String())
+		}
+	}
+
+	var encoded bytes.Buffer
+	if err := runTopic(root, claimID, true, true, true, true, &encoded); err != nil {
+		t.Fatal(err)
+	}
+	var result topic.QueryResult
+	if err := json.Unmarshal(encoded.Bytes(), &result); err != nil {
+		t.Fatalf("JSON: %v\n%s", err, encoded.String())
+	}
+	if !result.HistoricalOnly || result.Kind != "claim" || result.ID != claimID || result.Title != "" || result.Summary != "" || result.Claims == nil || len(result.Claims) != 0 || len(result.History) != 1 || result.History[0].RemovedBy == nil {
+		t.Fatalf("historical JSON projection = %#v", result)
+	}
+	for _, want := range []string{`"historicalOnly": true`, `"claims": []`, `"removedBy": {`} {
+		if !strings.Contains(encoded.String(), want) {
+			t.Errorf("historical JSON missing %q:\n%s", want, encoded.String())
+		}
+	}
+	for _, fabricated := range []string{`"references"`, `"coverage"`, `"summary"`} {
+		if strings.Contains(encoded.String(), fabricated) {
+			t.Errorf("historical JSON fabricated %q:\n%s", fabricated, encoded.String())
+		}
+	}
 }
 
 func TestRunTopicHumanJSONAndFlags(t *testing.T) {

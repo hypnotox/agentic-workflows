@@ -17,10 +17,11 @@ const topicStaticReference = `awf topic (static: not inside an awf project)
 
 Usage: awf topic <domain>/<topic>[:<claim>] [--history] [--references] [--coverage] [--json]
 
-Queries are active-only and read-only. Default output shows current topic title,
-summary, claims, claim types, prose, and backing state. --history adds direct
-Origin and Revised-by ADRs; --references adds direct incoming and outgoing claim
-IDs; --coverage adds declared and effective scope plus configured marker sites.
+Queries are active by default and read-only. Default output shows current topic
+title, summary, claims, claim types, prose, and backing state. --history adds
+direct Origin, Revised-by, and Removed-by ADR operations and is the only mode
+that resolves a removed claim identity. --references adds direct incoming and
+outgoing claim IDs; --coverage adds scope plus configured marker sites.
 `
 
 // runTopic validates the selector before inspecting project state, then mirrors
@@ -67,6 +68,9 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 		}
 	}
 	write("identity", "%s %s\n", result.Kind, result.ID)
+	if result.HistoricalOnly {
+		write("historical-only label", "historical only - no active claim\n")
+	}
 	if result.Title != "" {
 		write("metadata", "Title: %s\nSummary: %s\n", result.Title, result.Summary)
 	}
@@ -83,6 +87,9 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 			write("claim history", "%s\n  Origin: ADR-%s (%s) %s\n", history.ClaimID, history.Origin.Number, history.Origin.Status, history.Origin.Title)
 			for _, revision := range history.RevisedBy {
 				write("claim revision", "  Revised-by: ADR-%s (%s) %s\n", revision.Number, revision.Status, revision.Title)
+			}
+			if history.RemovedBy != nil {
+				write("claim removal", "  Removed-by: ADR-%s (%s) %s\n", history.RemovedBy.Number, history.RemovedBy.Status, history.RemovedBy.Title)
 			}
 		}
 	}
