@@ -78,6 +78,17 @@ func (a ADR) IsProposed() bool { return a.Status == statusProposed }
 // the topic claims describing current reality (ADR-0135).
 func (a ADR) IsAccepted() bool { return a.Status == statusAccepted }
 
+// ReachedAccepted reports whether the ADR's history entered Accepted, including
+// a later transition to a terminal state.
+func (a ADR) ReachedAccepted() bool {
+	for _, entry := range a.History {
+		if entry.Status == statusAccepted {
+			return true
+		}
+	}
+	return false
+}
+
 // IsInflight reports a legacy decision that must be resolved before bridge
 // attestation.
 func (a ADR) IsInflight() bool { return a.Status == statusProposed || a.Status == statusAccepted }

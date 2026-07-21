@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -45,9 +46,11 @@ type Finding struct {
 // existence, references, and backing are validated when the topic corpus loads;
 // Check adds the operation graph and the bidirectional handshake. It returns
 // only Error findings, sorted deterministically by message.
-func Check(records []adr.ADR, topics []topic.Topic, cutoff int) []Finding {
+func Check(records []adr.ADR, corpusTopics []topic.Topic, cutoff int) []Finding {
 	claims := map[string]topic.Claim{}
-	for _, t := range topics {
+	topics := map[string]bool{}
+	for _, t := range corpusTopics {
+		topics[t.ID.String()] = true
 		for _, c := range t.Claims {
 			claims[c.ID] = c
 		}
@@ -58,7 +61,7 @@ func Check(records []adr.ADR, topics []topic.Topic, cutoff int) []Finding {
 	var findings []Finding
 	findings = append(findings, checkSequences(v1)...)
 	findings = append(findings, checkOperationHistory(v1, cutoff)...)
-	findings = append(findings, checkForward(v1, claims, removed)...)
+	findings = append(findings, checkForward(v1, claims, topics, removed)...)
 	findings = append(findings, checkBackward(records, claims, cutoff)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
@@ -190,14 +193,21 @@ func removedSet(v1 []adr.ADR) map[string]bool {
 	return removed
 }
 
-// checkForward validates each v1 ADR's operations against the current claim set
-// for its status (ADR-0135 items 8): pending adds absent and updates/removes
-// present; Implemented results applied; Abandoned results unapplied; and no add
-// reuses a removed identity.
-func checkForward(v1 []adr.ADR, claims map[string]topic.Claim, removed map[string]bool) []Finding {
+// checkForward validates each v1 ADR's operations against the current claim and
+// topic sets for its status (ADR-0135 item 8): operations that reached Accepted
+// and all Implemented operations target existing metadata; pending adds are
+// absent and updates/removes present; Implemented results are applied; Abandoned
+// results are unapplied; and no add reuses a removed identity.
+func checkForward(v1 []adr.ADR, claims map[string]topic.Claim, topics map[string]bool, removed map[string]bool) []Finding {
 	var findings []Finding
 	for _, a := range v1 {
 		for _, op := range a.Operations {
+			if operationNeedsTopic(a) {
+				topicID, _, _ := strings.Cut(op.ID, ":")
+				if !topics[topicID] {
+					findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s operation %s targets missing topic %s", a.Number, op.Verb, topicID)})
+				}
+			}
 			claim, present := claims[op.ID]
 			if op.Verb == adr.OpAdd && removed[op.ID] && !a.IsImplemented() {
 				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", a.Number, op.ID)})
@@ -213,6 +223,10 @@ func checkForward(v1 []adr.ADR, claims map[string]topic.Claim, removed map[strin
 		}
 	}
 	return findings
+}
+
+func operationNeedsTopic(a adr.ADR) bool {
+	return a.IsImplemented() || a.ReachedAccepted()
 }
 
 func checkPendingOp(a adr.ADR, op adr.Operation, present bool) []Finding {

@@ -29,7 +29,13 @@ func claim(id, origin string, revisedBy ...string) topic.Claim {
 	return topic.Claim{ID: id, Origin: origin, RevisedBy: revisedBy}
 }
 
-func topics(cl ...topic.Claim) []topic.Topic { return []topic.Topic{{Claims: cl}} }
+func topics(cl ...topic.Claim) []topic.Topic {
+	return []topic.Topic{{ID: topic.TopicID{Domain: "d", Slug: "t"}, Claims: cl}}
+}
+
+func otherTopic(cl ...topic.Claim) []topic.Topic {
+	return []topic.Topic{{ID: topic.TopicID{Domain: "other", Slug: "topic"}, Claims: cl}}
+}
 
 // messages joins the findings for substring assertions.
 func messages(f []currentstate.Finding) string {
@@ -142,6 +148,91 @@ func TestCheckForward(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckDestinationTopic(t *testing.T) {
+	for _, verb := range []adr.OpVerb{adr.OpAdd, adr.OpUpdate, adr.OpRemove} {
+		t.Run("Accepted "+string(verb)+" missing", func(t *testing.T) {
+			var tp []topic.Topic
+			if verb != adr.OpAdd {
+				tp = otherTopic(claim("d/t:x", "0100"))
+			}
+			got := messages(currentstate.Check([]adr.ADR{
+				rec("0137", "Accepted", 0, op(verb, "d/t:x")),
+			}, tp, 137))
+			if !strings.Contains(got, "ADR-0137 operation "+string(verb)+" targets missing topic d/t") {
+				t.Fatalf("missing destination topic not reported:\n%s", got)
+			}
+		})
+
+		t.Run("Accepted "+string(verb)+" empty shell", func(t *testing.T) {
+			tp := topics()
+			if verb != adr.OpAdd {
+				tp[0].Claims = []topic.Claim{claim("d/t:x", "0100")}
+			}
+			got := messages(currentstate.Check([]adr.ADR{
+				rec("0137", "Accepted", 0, op(verb, "d/t:x")),
+			}, tp, 137))
+			if strings.Contains(got, "targets missing topic") {
+				t.Fatalf("empty topic shell was treated as absent:\n%s", got)
+			}
+		})
+
+		t.Run("Implemented direct "+string(verb), func(t *testing.T) {
+			var tp []topic.Topic
+			switch verb {
+			case adr.OpAdd:
+				tp = otherTopic(claim("d/t:x", "0137"))
+			case adr.OpUpdate:
+				tp = otherTopic(claim("d/t:x", "0100", "0137"))
+			case adr.OpRemove:
+				tp = nil
+			}
+			got := messages(currentstate.Check([]adr.ADR{
+				rec("0137", "Implemented", 1, op(verb, "d/t:x")),
+			}, tp, 137))
+			if !strings.Contains(got, "ADR-0137 operation "+string(verb)+" targets missing topic d/t") {
+				t.Fatalf("missing destination topic not reported:\n%s", got)
+			}
+		})
+
+		t.Run("Proposed "+string(verb)+" exempt", func(t *testing.T) {
+			var tp []topic.Topic
+			if verb != adr.OpAdd {
+				tp = otherTopic(claim("d/t:x", "0100"))
+			}
+			got := messages(currentstate.Check([]adr.ADR{
+				rec("0137", "Proposed", 0, op(verb, "d/t:x")),
+			}, tp, 137))
+			if strings.Contains(got, "targets missing topic") {
+				t.Fatalf("Proposed operation required destination metadata:\n%s", got)
+			}
+		})
+	}
+}
+
+func TestCheckDestinationTopicAbandonedHistory(t *testing.T) {
+	t.Run("Accepted then Abandoned requires topic", func(t *testing.T) {
+		a := rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x"))
+		a.History = []adr.StatusEntry{
+			{Date: "2026-01-01", Status: "Proposed"},
+			{Date: "2026-01-02", Status: "Accepted"},
+			{Date: "2026-01-03", Status: "Abandoned"},
+		}
+		got := messages(currentstate.Check([]adr.ADR{a}, nil, 137))
+		if !strings.Contains(got, "ADR-0137 operation add targets missing topic d/t") {
+			t.Fatalf("Accepted-then-Abandoned destination topic not reported:\n%s", got)
+		}
+	})
+
+	t.Run("Proposed then Abandoned is exempt", func(t *testing.T) {
+		got := messages(currentstate.Check([]adr.ADR{
+			rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x")),
+		}, nil, 137))
+		if strings.Contains(got, "targets missing topic") {
+			t.Fatalf("directly Abandoned operation required destination metadata:\n%s", got)
+		}
+	})
 }
 
 // TestCheckBackward covers the claim-to-ADR handshake direction.
