@@ -191,6 +191,44 @@ func TestBridgeAttestationOptionalAndRoundTrip(t *testing.T) {
 	}
 }
 
+func TestV2CutoffCanonicalRoundTrip(t *testing.T) {
+	lock := &Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]Entry{}, ADRFormatV1From: 4, ADRFormatV2From: 9, LegacyADRGaps: []int{2}, InitializedWithVersion: "0.19.0"}
+	b, err := lock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(b)
+	v1 := strings.Index(text, `"adrFormatV1From"`)
+	v2 := strings.Index(text, `"adrFormatV2From"`)
+	gaps := strings.Index(text, `"legacyAdrGaps"`)
+	initialized := strings.Index(text, `"initializedWithVersion"`)
+	if v1 >= v2 || v2 >= gaps || gaps >= initialized {
+		t.Fatalf("noncanonical authority order:\n%s", text)
+	}
+	got, err := Parse(b)
+	if err != nil || got.ADRFormatV2From != 9 {
+		t.Fatalf("V2 round trip = %#v, %v", got, err)
+	}
+	again, err := got.Marshal()
+	if err != nil || string(again) != text {
+		t.Fatalf("V2 round trip changed bytes: %v\n%s", err, again)
+	}
+
+	preV2 := &Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]Entry{}, ADRFormatV1From: 4, LegacyADRGaps: []int{2}}
+	before, err := preV2.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	parsed, err := Parse(before)
+	if err != nil {
+		t.Fatal(err)
+	}
+	after, err := parsed.Marshal()
+	if err != nil || string(before) != string(after) || strings.Contains(string(after), "adrFormatV2From") {
+		t.Fatalf("pre-V2 serialization changed: %v\n%s", err, after)
+	}
+}
+
 func TestAuthorityStateMatrix(t *testing.T) {
 	bridge := `"bridgeAttestation":{"version":1,"preparedHead":"head","treeDigest":"sha256:x","adrFormatV1From":4,"legacyADRGaps":[2]}`
 	tests := []struct {
@@ -202,8 +240,13 @@ func TestAuthorityStateMatrix(t *testing.T) {
 		{"permanent-migrated", `"adrFormatV1From":4,"legacyAdrGaps":[2]`, AuthorityPermanent, false},
 		{"permanent-initialized", `"adrFormatV1From":4,"legacyAdrGaps":[2],"initializedWithVersion":"0.20.0"`, AuthorityPermanent, false},
 		{"permanent-v-prefixed", `"adrFormatV1From":4,"legacyAdrGaps":[],"initializedWithVersion":"v0.20.0"`, AuthorityPermanent, false},
+		{"permanent-v2", `"adrFormatV1From":4,"adrFormatV2From":9,"legacyAdrGaps":[]`, AuthorityPermanent, false},
 		{"pre-tracking", "", AuthorityPreTracking, false},
 		{"mixed", bridge + `,"adrFormatV1From":4,"legacyAdrGaps":[]`, 0, true},
+		{"bridge-v2-mixing", bridge + `,"adrFormatV2From":9`, 0, true},
+		{"v2-zero", `"adrFormatV1From":4,"adrFormatV2From":0,"legacyAdrGaps":[]`, 0, true},
+		{"v2-negative", `"adrFormatV1From":4,"adrFormatV2From":-1,"legacyAdrGaps":[]`, 0, true},
+		{"v2-reversed", `"adrFormatV1From":4,"adrFormatV2From":3,"legacyAdrGaps":[]`, 0, true},
 		{"init-without-cutoff", `"initializedWithVersion":"0.20.0"`, 0, true},
 		{"gaps-without-cutoff", `"legacyAdrGaps":[]`, 0, true},
 		{"cutoff-without-gaps", `"adrFormatV1From":1`, 0, true},

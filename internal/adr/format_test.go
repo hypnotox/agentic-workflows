@@ -195,3 +195,166 @@ func TestParseV1Errors(t *testing.T) {
 		})
 	}
 }
+
+func buildV2(status, stateChanges, history string) string {
+	return strings.Replace(build(status, "2026-07-25", oneDecision, stateChanges, history), "format: current-state-v1", "format: current-state-v2", 1)
+}
+
+func v2DigestFor(t *testing.T, stateChanges string) string {
+	t.Helper()
+	a, err := adr.ParseV2("0137-x.md", []byte(buildV2("Proposed", stateChanges, "- 2026-07-20: Proposed")))
+	if err != nil {
+		t.Fatalf("V2 scaffold parse for digest: %v", err)
+	}
+	return adr.ContentDigest(a.Sections)
+}
+
+func TestParseV2LifecycleAndApplications(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
+	digest := v2DigestFor(t, changes)
+	p := "- 2026-07-20: Proposed"
+	a := "- 2026-07-21: Accepted; content-sha256: " + digest
+	i := "- 2026-07-22: Implementing; content-sha256: " + digest
+	first := "- 2026-07-22: Applied; state-sequence: 4; operations: add `a/b:first`"
+	middle := "- 2026-07-23: Applied; state-sequence: 7; operations: update `a/b:second`"
+	final := "- 2026-07-24: Applied; state-sequence: 9; operations: remove `a/b:third`"
+	implemented := "- 2026-07-24: Implemented; content-sha256: " + digest
+	abandoned := "- 2026-07-24: Abandoned; content-sha256: " + digest + "; rationale: stopped; safely"
+	cases := []struct {
+		name, status, history string
+		wantEvents            int
+	}{
+		{"proposed", "Proposed", p, 1},
+		{"proposed accepted", "Accepted", p + "\n" + a, 2},
+		{"proposed direct implemented", "Implemented", p + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 2", 2},
+		{"proposed abandoned", "Abandoned", p + "\n" + abandoned, 2},
+		{"proposed implementing first", "Implementing", p + "\n" + i + "\n" + first, 3},
+		{"accepted implementing middle", "Implementing", p + "\n" + a + "\n" + i + "\n" + first + "\n" + middle, 5},
+		{"accepted direct implemented", "Implemented", p + "\n" + a + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 3", 3},
+		{"accepted abandoned", "Abandoned", p + "\n" + a + "\n" + abandoned, 3},
+		{"implementing implemented", "Implemented", p + "\n" + i + "\n" + first + "\n" + middle + "\n" + final + "\n" + implemented, 6},
+		{"partial abandoned", "Abandoned", p + "\n" + i + "\n" + first + "\n" + abandoned, 4},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			record, err := adr.ParseV2("0137-test.md", []byte(buildV2(tc.status, changes, tc.history)))
+			if err != nil {
+				t.Fatalf("ParseV2: %v", err)
+			}
+			if !record.IsV2() || record.IsV1() || len(record.History) != tc.wantEvents {
+				t.Fatalf("record format/history = %v/%d", record.Format, len(record.History))
+			}
+		})
+	}
+
+	noneDigest := v2DigestFor(t, "None.")
+	if _, err := adr.ParseV2("0138-none.md", []byte(buildV2("Implemented", "None.", p+"\n- 2026-07-22: Implemented; content-sha256: "+noneDigest))); err != nil {
+		t.Fatalf("direct None implementation: %v", err)
+	}
+}
+
+func TestParseV2RejectsInvalidHistory(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`"
+	digest := v2DigestFor(t, changes)
+	p := "- 2026-07-20: Proposed"
+	i := "- 2026-07-21: Implementing; content-sha256: " + digest
+	first := "- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`"
+	cases := []struct{ name, status, changes, history, want string }{
+		{"v1 excludes implementing", "Implementing", changes, p + "\n" + i, ""},
+		{"first not proposed", "Accepted", changes, "- 2026-07-20: Accepted; content-sha256: " + digest, "first Status history"},
+		{"repeated proposed", "Proposed", changes, p + "\n" + p, "illegal Status history transition"},
+		{"proposed metadata", "Proposed", changes, p + "; state-sequence: 1", "first Status history"},
+		{"accepted sequence", "Accepted", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + digest + "; state-sequence: 1", "sequence or rationale"},
+		{"implementing rationale", "Implementing", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + digest + "; rationale: no\n" + first, "sequence or rationale"},
+		{"implemented rationale", "Implemented", changes, p + "\n- 2026-07-21: Implemented; content-sha256: " + digest + "; state-sequence: 1; rationale: no", "must not carry a rationale"},
+		{"abandoned sequence", "Abandoned", changes, p + "\n- 2026-07-21: Abandoned; content-sha256: " + digest + "; state-sequence: 1; rationale: no", "must not record a state-sequence"},
+		{"abandoned missing rationale", "Abandoned", changes, p + "\n- 2026-07-21: Abandoned; content-sha256: " + digest, "nonempty rationale"},
+		{"implicit operations missing sequence", "Implemented", changes, p + "\n- 2026-07-21: Implemented; content-sha256: " + digest, "must record a state-sequence"},
+		{"implicit None with sequence", "Implemented", "None.", p + "\n- 2026-07-21: Implemented; content-sha256: " + v2DigestFor(t, "None.") + "; state-sequence: 1", "must not record a state-sequence"},
+		{"implementing none", "Implementing", "None.", p + "\n" + i + "\n" + first, "not declared"},
+		{"implementing one op", "Implementing", "- add `a/b:first`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`") + "\n" + first, "at least two"},
+		{"missing first application", "Implementing", changes, p + "\n" + i, "followed by"},
+		{"all applied while implementing", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`, update `a/b:second`", "one remaining"},
+		{"applied before implementing", "Proposed", changes, p + "\n" + first, "only while Implementing"},
+		{"undeclared verb", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: remove `a/b:first`", "not declared"},
+		{"undeclared id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:other`", "not declared"},
+		{"duplicate in batch", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
+		{"duplicate across batches", "Implementing", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: add `a/b:first`", "already applied"},
+		{"declaration order", "Implementing", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n- 2026-07-21: Applied; state-sequence: 1; operations: update `a/b:second`, add `a/b:first`", "declaration order"},
+		{"bad separator", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`,update `a/b:second`", "malformed Applied operation"},
+		{"bad code span", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add a/b:first", "malformed Applied operation"},
+		{"bad id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `A/b:first`", "malformed Applied operation"},
+		{"zero sequence", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 0; operations: add `a/b:first`", "malformed Status history"},
+		{"metadata order", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`; state-sequence: 1", "malformed Status history"},
+		{"empty application", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: ", "malformed Status history"},
+		{"mixed sequencing", "Implemented", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 3", "mix"},
+		{"missing final application", "Implemented", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Implemented; content-sha256: " + digest, "every declared"},
+		{"incomplete implemented", "Implemented", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"), "every declared"},
+		{"fully applied abandoned", "Abandoned", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-23: Abandoned; content-sha256: " + digest + "; rationale: stopped", "canceled"},
+		{"descending applied date", "Implementing", changes, p + "\n" + i + "\n- 2026-07-19: Applied; state-sequence: 1; operations: add `a/b:first`", "must not descend"},
+		{"digest mismatch", "Accepted", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64), "does not match"},
+		{"latest status mismatch", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + digest, "does not match frontmatter"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var err error
+			if tc.name == "v1 excludes implementing" {
+				_, err = adr.ParseV1("0137-test.md", []byte(build("Implementing", "2026-07-25", oneDecision, changes, tc.history)))
+				tc.want = "invalid status"
+			} else {
+				_, err = adr.ParseV2("0137-test.md", []byte(buildV2(tc.status, tc.changes, tc.history)))
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestV2TransitionMatrix(t *testing.T) {
+	legal := map[string]bool{
+		"Proposed>Accepted": true, "Proposed>Implementing": true, "Proposed>Implemented": true, "Proposed>Abandoned": true,
+		"Accepted>Implementing": true, "Accepted>Implemented": true, "Accepted>Abandoned": true,
+		"Implementing>Implemented": true, "Implementing>Abandoned": true,
+	}
+	statuses := []string{"Proposed", "Accepted", "Implementing", "Implemented", "Abandoned"}
+	for _, from := range statuses {
+		for _, to := range statuses {
+			key := from + ">" + to
+			if got := adr.TransitionLegal(from, to, adr.CurrentStateV2); got != legal[key] {
+				t.Errorf("%s = %v, want %v", key, got, legal[key])
+			}
+		}
+	}
+}
+
+func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
+	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
+	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 1, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:c", Slug: "c"}}}
+	record := func(front string, events ...adr.HistoryEvent) adr.ADR {
+		return adr.ADR{Format: adr.CurrentStateV2, Status: front, History: events}
+	}
+	p, accepted, i, done, abandoned := status("Proposed"), status("Accepted"), status("Implementing"), status("Implemented"), status("Abandoned")
+	for _, tc := range []struct {
+		name          string
+		before, after adr.ADR
+		want          bool
+	}{
+		{"accept", record("Proposed", p), record("Accepted", p, accepted), true},
+		{"direct implementation", record("Accepted", p, accepted), record("Implemented", p, accepted, done), true},
+		{"enter implementing", record("Proposed", p), record("Implementing", p, i, applied), true},
+		{"middle batch", record("Implementing", p, i, applied), record("Implementing", p, i, applied, applied), true},
+		{"finish", record("Implementing", p, i, applied), record("Implemented", p, i, applied, applied, done), true},
+		{"abandon", record("Implementing", p, i, applied), record("Abandoned", p, i, applied, abandoned), true},
+		{"prefix deletion", record("Implementing", p, i, applied), record("Implemented", p, i, done), false},
+		{"prefix mutation", record("Implementing", p, i, applied), record("Abandoned", status("Accepted"), i, applied, abandoned), false},
+		{"same non-implementing append", record("Accepted", p, accepted), record("Accepted", p, accepted, applied), false},
+		{"illegal status edge", record("Accepted", p, accepted), record("Proposed", p, accepted, p), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := adr.HistoryTransitionValid(tc.before, tc.after); got != tc.want {
+				t.Fatalf("got %v want %v", got, tc.want)
+			}
+		})
+	}
+}

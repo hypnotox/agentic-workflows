@@ -64,7 +64,7 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.InitializedWithVersion != initial.InitializedWithVersion || got.ADRFormatV1From != initial.ADRFormatV1From || !slices.Equal(got.LegacyADRGaps, initial.LegacyADRGaps) {
+		if got.InitializedWithVersion != initial.InitializedWithVersion || got.ADRFormatV1From != initial.ADRFormatV1From || got.ADRFormatV2From != initial.ADRFormatV2From || !slices.Equal(got.LegacyADRGaps, initial.LegacyADRGaps) {
 			t.Fatalf("%s changed authority: initial=%#v got=%#v", step, initial, got)
 		}
 	}
@@ -218,7 +218,7 @@ func TestInitForcePreservesAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.InitializedWithVersion != after.InitializedWithVersion || before.ADRFormatV1From != after.ADRFormatV1From || !slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+	if before.InitializedWithVersion != after.InitializedWithVersion || before.ADRFormatV1From != after.ADRFormatV1From || before.ADRFormatV2From != after.ADRFormatV2From || !slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		t.Fatalf("authority changed: before=%#v after=%#v", before, after)
 	}
 }

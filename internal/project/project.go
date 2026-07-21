@@ -193,6 +193,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	if old != nil {
 		lock.InitializedWithVersion = old.InitializedWithVersion
 		lock.ADRFormatV1From = old.ADRFormatV1From
+		lock.ADRFormatV2From = old.ADRFormatV2From
 		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
 	} else {
 		lock.InitializedWithVersion = seed.InitializedWithVersion

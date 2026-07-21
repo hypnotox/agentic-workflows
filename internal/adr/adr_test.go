@@ -41,6 +41,42 @@ func TestParseDirExtractsStatusAndTitle(t *testing.T) {
 
 // TestParseDirExtractsTagsAndRelated confirms the revived tags:/related:
 // frontmatter is lifted into adr.ADR (previously parsed past and dropped).
+func TestParseRecordRoutesV1AndV2Cutoffs(t *testing.T) {
+	_, body, found := strings.Cut(adrTemplateFixture, "---\n")
+	if !found {
+		t.Fatal("fixture frontmatter delimiter missing")
+	}
+	v1 := strings.Replace("---\n"+body, "YYYY-MM-DD", "2026-07-21", 2)
+	v1 = strings.Replace(v1, "ADR-NNNN", "ADR-0005", 1)
+	v2 := strings.Replace(v1, "current-state-v1", "current-state-v2", 1)
+	for _, tc := range []struct {
+		name, file, doc string
+		v2From          int
+		wantV1, wantV2  bool
+	}{
+		{"V1 region", "0005-v1.md", v1, 8, true, false},
+		{"V2 boundary", "0008-v2.md", strings.Replace(v2, "ADR-0005", "ADR-0008", 1), 8, false, true},
+		{"missing V2 cutoff remains V1", "0005-v1.md", v1, 0, true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			a, err := adr.ParseRecord(tc.file, []byte(tc.doc), 5, tc.v2From)
+			if err != nil || a.IsV1() != tc.wantV1 || a.IsV2() != tc.wantV2 {
+				t.Fatalf("record=%#v err=%v", a, err)
+			}
+		})
+	}
+	if _, err := adr.ParseRecord("0004-stray.md", []byte(strings.Replace(v2, "ADR-0005", "ADR-0004", 1)), 5, 8); err == nil || !strings.Contains(err.Error(), "current-state-v2") {
+		t.Fatalf("stray V2 below cutoff error=%v", err)
+	}
+}
+
+func TestParseBytesRecognizesV2Marker(t *testing.T) {
+	a, found, err := adr.ParseBytes("0007-v2.md", []byte("---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-07-21\n---\n# ADR-0007: V2\n"))
+	if err != nil || !found || !a.IsV2() || a.IsV1() {
+		t.Fatalf("ParseBytes V2 = %#v found=%v err=%v", a, found, err)
+	}
+}
+
 func TestParseDirExtractsTagsAndRelated(t *testing.T) {
 	dir := t.TempDir()
 	content := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),

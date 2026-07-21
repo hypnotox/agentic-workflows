@@ -31,27 +31,33 @@ type ADR struct {
 	DecisionStart int               // raw file byte offset of the Decision heading; 0 when absent
 	DecisionEnd   int               // raw file byte offset immediately after the Decision section; 0 when absent
 
-	// Current-state-v1 fields, populated only for an ADR at or above the lock's
-	// format cutoff (ADR-0135). A legacy-format record leaves them zero.
-	Format     Format        // Legacy or CurrentStateV1
-	NoneState  bool          // State changes section is exactly "None."
-	Operations []Operation   // parsed `## State changes` operations
-	History    []StatusEntry // parsed `## Status history` entries
+	// Governed fields are populated only for an ADR at or above one of the
+	// lock's format cutoffs. A legacy-format record leaves them zero.
+	Format     Format         // Legacy, CurrentStateV1, or CurrentStateV2
+	NoneState  bool           // State changes section is exactly "None."
+	Operations []Operation    // parsed `## State changes` operations
+	History    []HistoryEvent // parsed `## Status history` events
 }
 
-// Format distinguishes a legacy-format ADR from a current-state-v1 ADR.
+// Format distinguishes legacy, current-state-v1, and current-state-v2 ADRs.
 type Format int
 
 const (
 	// Legacy is a pre-cutover ADR: identity, status, and date only.
 	Legacy Format = iota
 	// CurrentStateV1 is a `format: current-state-v1` ADR with State changes and
-	// Status history.
+	// status-only history.
 	CurrentStateV1
+	// CurrentStateV2 is a `format: current-state-v2` ADR with heterogeneous
+	// status and application history.
+	CurrentStateV2
 )
 
 // IsV1 reports whether the record was parsed as current-state-v1.
 func (a ADR) IsV1() bool { return a.Format == CurrentStateV1 }
+
+// IsV2 reports whether the record was parsed as current-state-v2.
+func (a ADR) IsV2() bool { return a.Format == CurrentStateV2 }
 
 // decisionItemRe matches a column-0 numbered Decision item lead. Column-0
 // anchoring is load-bearing: 0067 and 0115 carry indented numbered
@@ -128,8 +134,11 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 	}
 	parsed := sections(string(body), len(data)-len(body))
 	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Sections: parsed.bodies}
-	if fm.Format == V1FormatMarker {
+	switch fm.Format {
+	case V1FormatMarker:
 		a.Format = CurrentStateV1
+	case V2FormatMarker:
+		a.Format = CurrentStateV2
 	}
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end

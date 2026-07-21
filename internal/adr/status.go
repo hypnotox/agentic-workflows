@@ -6,10 +6,11 @@ import "strings"
 // asks a predicate rather than comparing a string, which is what stops the
 // three-way "is live" and five-way "is superseded" divergences from recurring.
 const (
-	statusAccepted    = "Accepted"
-	statusImplemented = "Implemented"
-	statusProposed    = "Proposed"
-	statusSuperseded  = "Superseded"
+	statusAccepted     = "Accepted"
+	statusImplementing = "Implementing"
+	statusImplemented  = "Implemented"
+	statusProposed     = "Proposed"
+	statusSuperseded   = "Superseded"
 	// statusAbandoned is the current-state-v1 terminal state for a decision
 	// that stops before implementation (ADR-0135 item 1). It never appears in a
 	// legacy-format ADR.
@@ -35,6 +36,20 @@ var v1Transitions = map[string]map[string]bool{
 	statusAccepted: {statusImplemented: true, statusAbandoned: true},
 }
 
+var v2Statuses = map[string]bool{
+	statusProposed:     true,
+	statusAccepted:     true,
+	statusImplementing: true,
+	statusImplemented:  true,
+	statusAbandoned:    true,
+}
+
+var v2Transitions = map[string]map[string]bool{
+	statusProposed:     {statusAccepted: true, statusImplementing: true, statusImplemented: true, statusAbandoned: true},
+	statusAccepted:     {statusImplementing: true, statusImplemented: true, statusAbandoned: true},
+	statusImplementing: {statusImplemented: true, statusAbandoned: true},
+}
+
 // v1StatusKnown reports whether s is a legal current-state-v1 status.
 func v1StatusKnown(s string) bool { return v1Statuses[s] }
 
@@ -42,12 +57,16 @@ func v1StatusKnown(s string) bool { return v1Statuses[s] }
 // current-state-v1 edges. A same-status pair and any edge out of a terminal
 // state are illegal.
 func v1TransitionLegal(from, to string) bool { return v1Transitions[from][to] }
+func v2TransitionLegal(from, to string) bool { return v2Transitions[from][to] }
 
-// TransitionLegal reports whether from -> to is one of the five legal
-// current-state-v1 status edges (ADR-0135 item 1). It is the exported seam the
-// snapshot-diff transition check takes to validate an ADR status change observed
-// across a before/after pair, without re-encoding the lifecycle matrix.
-func TransitionLegal(from, to string) bool { return v1TransitionLegal(from, to) }
+// TransitionLegal reports whether from -> to is legal for the selected format.
+// Omitting format preserves the V1 behavior used by existing callers.
+func TransitionLegal(from, to string, format ...Format) bool {
+	if len(format) > 0 && format[0] == CurrentStateV2 {
+		return v2TransitionLegal(from, to)
+	}
+	return v1TransitionLegal(from, to)
+}
 
 // IsLive reports whether the ADR's decisions are current guidance.
 func (a ADR) IsLive() bool {
