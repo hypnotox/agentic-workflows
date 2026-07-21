@@ -34,6 +34,7 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- Implementation plans may use implementation-ready pseudocode for logic and non-contractual prose while keeping machine-consumed, contract-bearing, fixture, golden, command, mechanical, and literal-text portions exact; the writing skill, reviewer, scaffold, plan guide, and agent guide now enforce the same boundary.
 - Pi's four governed subagent roles now accept strict optional exact model routing, independent
   exploration runs through an abort-aware ten-active FIFO queue, and mixed implementation batches
   are mechanically blocked before any member executes.
