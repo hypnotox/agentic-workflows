@@ -60,15 +60,16 @@ type ClaimRef struct {
 	Verify  string `json:"verify,omitempty"`
 }
 
-// PendingChange is one Accepted-ADR State-changes operation targeting a matched
-// topic (ADR-0135). It describes a change that is not yet current: an Accepted
-// ADR is normative only for executing its pending change and never overrides the
-// topic claims describing current reality, so it renders in its own section.
+// PendingChange is one remaining governed ADR operation targeting a matched
+// topic. It is not yet current and renders separately from current claims.
 type PendingChange struct {
-	ADR   string `json:"adr"`
-	Title string `json:"title"`
-	Op    string `json:"op"`
-	Claim string `json:"claim"`
+	ADR      string `json:"adr"`
+	Title    string `json:"title"`
+	Status   string `json:"status"`
+	Applied  int    `json:"applied"`
+	Declared int    `json:"declared"`
+	Op       string `json:"op"`
+	Claim    string `json:"claim"`
 }
 
 // ContextFor assembles the read-only current-state context for paths over the
@@ -114,8 +115,8 @@ func (p *Project) indexCurrentState() (indexState, error) {
 	if err != nil {
 		return indexState{}, err
 	}
-	cutoff, gaps := attestationCutoff(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, cutoff, gaps)
+	boundaries, gaps := attestationBoundaries(lock)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, boundaries, gaps)
 	if err != nil {
 		return indexState{}, err
 	}
@@ -258,23 +259,32 @@ func applicableClaims(t topic.Topic, markers topic.MarkerIndex, path string) []s
 	return all
 }
 
-// pendingChanges returns the Accepted-ADR State-changes operations whose claim
-// targets a matched topic, sorted by ADR number then claim ID.
+// pendingChanges returns remaining Accepted and Implementing operations whose
+// claims target a matched topic, sorted by ADR number then claim ID.
 func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChange {
 	var out []PendingChange
-	for _, a := range adrs {
-		if !a.IsAccepted() {
+	corpus := adr.NewCorpus(adrs)
+	for _, a := range corpus.All() {
+		if !a.IsAccepted() && !a.IsImplementing() {
 			continue
 		}
-		for _, op := range a.Operations {
+		progress, _, err := corpus.OperationProgress(a.Number)
+		if err != nil {
+			continue
+		}
+		declared := len(progress.Applied) + len(progress.Remaining) + len(progress.Canceled)
+		for _, op := range progress.Remaining {
 			if !matchedTopics[topicOfClaim(op.ID)] {
 				continue
 			}
 			out = append(out, PendingChange{
-				ADR:   a.Number,
-				Title: strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
-				Op:    string(op.Verb),
-				Claim: op.ID,
+				ADR:      a.Number,
+				Title:    strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
+				Status:   a.Status,
+				Applied:  len(progress.Applied),
+				Declared: declared,
+				Op:       string(op.Verb),
+				Claim:    op.ID,
 			})
 		}
 	}

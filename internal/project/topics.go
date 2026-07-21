@@ -26,7 +26,7 @@ func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.Qu
 	if err != nil {
 		return topic.QueryResult{}, err
 	}
-	findings := currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All(), ws.Cutoff)
+	findings := currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All())
 	if len(findings) > 0 {
 		messages := make([]string, len(findings))
 		for i, finding := range findings {

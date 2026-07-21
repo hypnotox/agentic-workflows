@@ -103,6 +103,51 @@ func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
 	}
 }
 
+func TestNewADRErrors(t *testing.T) {
+	root := t.TempDir()
+	p := &Project{Root: root, Cfg: &config.Config{DocsDir: "docs"}}
+	if _, err := p.NewADR("Missing Lock"); err == nil {
+		t.Fatal("expected missing lock error")
+	}
+	testsupport.WriteFile(t, p.lockPath(), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
+	p.Cfg.DocsDir = "bad["
+	if _, err := p.NewADR("Bad Glob"); err == nil {
+		t.Fatal("expected next-number glob error")
+	}
+}
+
+func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(p.lockPath())
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.ADRFormatV1From = 1
+	lock.ADRFormatV2From = 1
+	lock.LegacyADRGaps = []int{}
+	if err := lock.Save(p.lockPath()); err != nil {
+		t.Fatal(err)
+	}
+	path, err := p.NewADR("V2 Boundary")
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "format: current-state-v2") {
+		t.Fatalf("V2 cutoff scaffold:\n%s", data)
+	}
+}
+
 func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 	for _, initializedWithVersion := range []string{"0.18.0", ""} {
 		name := "initialized"

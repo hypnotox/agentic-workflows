@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -399,9 +400,8 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 	}
 	// The snapshot-diff transition check rides the same range (ADR-0135): each
 	// commit's ADR/claim mutations must match its ADR operations. It is advisory
-	// like the rest of the audit and reuses the cutoff the lock already supplied.
-	cutoff, gaps := attestationCutoff(lock)
-	trans, err := p.auditTransitions(base, head, cutoff, gaps)
+	// like the rest of the audit and derives boundaries from each commit snapshot.
+	trans, err := p.auditTransitions(base, head)
 	if err != nil { // coverage-ignore: audit.Run above validated this exact range through its own Collect, so auditTransitions' only error source (a re-Collect of base..head) cannot newly fail here
 		return nil, 0, err
 	}
@@ -414,7 +414,20 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 // the CheckInvariants/Audit pattern - cmd/awf reaches this only through this
 // exported method, never internal/project.Layout directly.
 func (p *Project) NewADR(title string) (string, error) {
-	return adr.NewFile(p.decisionsDir(), title)
+	lock, err := manifest.Load(p.lockPath())
+	if err != nil {
+		return "", err
+	}
+	number, err := adr.NextNumber(p.decisionsDir())
+	if err != nil {
+		return "", err
+	}
+	n, _ := strconv.Atoi(number)
+	format := adr.CurrentStateV1
+	if lock.ADRFormatV2From > 0 && n >= lock.ADRFormatV2From {
+		format = adr.CurrentStateV2
+	}
+	return adr.NewFile(p.decisionsDir(), title, format)
 }
 
 // NewPlan scaffolds a new plan under docsDir/plans from the rendered plans

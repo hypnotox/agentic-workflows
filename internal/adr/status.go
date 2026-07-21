@@ -108,9 +108,14 @@ func (a ADR) ReachedAccepted() bool {
 	return false
 }
 
-// IsInflight reports a legacy decision that must be resolved before bridge
-// attestation.
-func (a ADR) IsInflight() bool { return a.Status == statusProposed || a.Status == statusAccepted }
+// IsImplementing reports whether a V2 decision has applied only part of its
+// declared operations.
+func (a ADR) IsImplementing() bool { return a.Status == statusImplementing }
+
+// IsInflight reports a decision still under review or implementation.
+func (a ADR) IsInflight() bool {
+	return a.Status == statusProposed || a.Status == statusAccepted || a.Status == statusImplementing
+}
 
 // HasSameStatus reports exact status equality without exporting literal
 // comparisons to migration consumers.

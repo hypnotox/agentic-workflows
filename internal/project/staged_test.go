@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -109,6 +110,21 @@ func TestCheckStagedRejectsPermanentAuthorityMutation(t *testing.T) {
 				t.Fatalf("CheckStaged %s mutation error = %v", tc.field, err)
 			}
 		})
+	}
+}
+
+func TestValidatePermanentLockTransitionRejectsV2DeletionAndMutation(t *testing.T) {
+	tree, err := snapshot.NewTree(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := &manifest.Lock{ADRFormatV1From: 2, ADRFormatV2From: 5, LegacyADRGaps: []int{}}
+	for _, v2 := range []int{0, 6} {
+		after := *before
+		after.ADRFormatV2From = v2
+		if err := validatePermanentLockTransition(tree, before, &after); err == nil || !strings.Contains(err.Error(), "adrFormatV2From") {
+			t.Errorf("V2 boundary %d error = %v", v2, err)
+		}
 	}
 }
 
@@ -370,15 +386,24 @@ func TestRangePairUniversesErrors(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
 	p := openStaged(t, dir)
-	if _, _, err := p.rangePairUniverses("does-not-exist", 0, nil); err == nil {
+	if _, _, err := p.rangePairUniverses("does-not-exist"); err == nil {
 		t.Fatal("expected an unresolvable-rev error")
 	}
 	// A child whose first-parent commit carries a malformed config.
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd\n"})
 	gitfixture.Commit(t, repo, dir, "bad parent", nil)
 	child := gitfixture.Commit(t, repo, dir, "child", map[string]string{"note.txt": "x"})
-	if _, _, err := p.rangePairUniverses(child.String(), 0, nil); err == nil {
+	if _, _, err := p.rangePairUniverses(child.String()); err == nil {
 		t.Fatal("expected a before-side load error from the malformed parent")
+	}
+	gitfixture.Commit(t, repo, dir, "restore config", map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd]\nagents: []\n"})
+	badLock := gitfixture.Commit(t, repo, dir, "bad lock", map[string]string{".awf/awf.lock": "{"})
+	if _, _, err := p.rangePairUniverses(badLock.String()); err == nil {
+		t.Fatal("expected an after-side lock parse error")
+	}
+	lockChild := gitfixture.Commit(t, repo, dir, "bad lock child", map[string]string{"note.txt": "y"})
+	if _, _, err := p.rangePairUniverses(lockChild.String()); err == nil {
+		t.Fatal("expected a before-side lock parse error")
 	}
 }
 
@@ -402,7 +427,7 @@ func TestAuditTransitionsClean(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "cutover", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(base.String(), "HEAD", 2, nil)
+	findings, err := p.auditTransitions(base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -422,7 +447,7 @@ func TestAuditTransitionsFinding(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "drop claim", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(base.String(), "HEAD", 2, nil)
+	findings, err := p.auditTransitions(base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -449,7 +474,7 @@ func TestAuditTransitionsWarning(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "bad adr", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(base.String(), "HEAD", 2, nil)
+	findings, err := p.auditTransitions(base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -470,7 +495,7 @@ func TestAuditTransitionsCollectError(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n")
 	p := openStaged(t, dir)
-	if _, err := p.auditTransitions("does-not-exist", "HEAD", 2, nil); err == nil {
+	if _, err := p.auditTransitions("does-not-exist", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-range error")
 	}
 }
@@ -510,7 +535,7 @@ func TestAuditTransitionsMerge(t *testing.T) {
 	merge := gitfixture.Merge(t, repo, "merge", b0, f1)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(b0.String(), merge.String(), 2, nil)
+	findings, err := p.auditTransitions(b0.String(), merge.String())
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}

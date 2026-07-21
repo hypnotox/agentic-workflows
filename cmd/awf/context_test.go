@@ -113,8 +113,8 @@ func TestRunContextHuman(t *testing.T) {
 		"[rule] alpha/one:order: Order is deterministic.",
 		"core/g (global) - Global",
 		"[rule] core/g:everywhere:",
-		"## Pending accepted changes",
-		"ADR-0002 (Later) add alpha/one:pending-rule",
+		"## Pending changes (not yet current)",
+		"ADR-0002 (Later; Accepted) add alpha/one:pending-rule",
 		"## Unowned paths",
 		"README.md",
 	} {
@@ -125,6 +125,30 @@ func TestRunContextHuman(t *testing.T) {
 	// The state marker narrows alpha/one to the order claim; stable must not show.
 	if strings.Contains(got, "alpha/one:stable") {
 		t.Errorf("state marker should have narrowed away the stable claim:\n%s", got)
+	}
+}
+
+func TestPrintContextImplementingProgress(t *testing.T) {
+	res := project.ContextResult{Pending: []project.PendingChange{{
+		ADR: "0003", Title: "Progress", Status: "Implementing", Applied: 1, Declared: 3,
+		Op: "remove", Claim: "alpha/one:old-rule",
+	}}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	want := "## Pending changes (not yet current)\n  ADR-0003 (Progress; Implementing; 1/3 applied) remove alpha/one:old-rule\n"
+	if !strings.Contains(out.String(), want) {
+		t.Fatalf("Implementing output:\n%s", out.String())
+	}
+	out.Reset()
+	if err := printContext(&out, res, true, "ignored"); err != nil {
+		t.Fatal(err)
+	}
+	for _, field := range []string{`"status": "Implementing"`, `"applied": 1`, `"declared": 3`} {
+		if !strings.Contains(out.String(), field) {
+			t.Errorf("JSON missing %s:\n%s", field, out.String())
+		}
 	}
 }
 
@@ -177,7 +201,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	if one.Claims[2].Backing != "unbacked" || one.Claims[2].Verify != "by hand." {
 		t.Errorf("unbacked projection: %+v", one.Claims[2])
 	}
-	if len(res.Pending) != 1 || res.Pending[0].ADR != "0002" || res.Pending[0].Claim != "alpha/one:pending-rule" {
+	if len(res.Pending) != 1 || res.Pending[0] != (project.PendingChange{ADR: "0002", Title: "Later", Status: "Accepted", Applied: 0, Declared: 1, Op: "add", Claim: "alpha/one:pending-rule"}) {
 		t.Errorf("json pending: %+v", res.Pending)
 	}
 	// Same set as the human render.

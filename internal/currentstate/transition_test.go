@@ -22,7 +22,7 @@ func prosed(c topic.Claim, p string) topic.Claim { c.Prose = p; return c }
 func TestCheckPairValidAdd(t *testing.T) {
 	before := uni([]adr.ADR{rec("0137", "Proposed", 0, op(adr.OpAdd, "d/t:new"))})
 	after := uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:new"))}, claim("d/t:new", "0137"))
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("expected no findings, got:\n%s", messages(f))
 	}
 }
@@ -45,7 +45,7 @@ func TestCheckPairValidUpdate(t *testing.T) {
 			implemented,
 		},
 		prosed(claim("d/t:x", "0137", "0138"), "new"))
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("expected no findings, got:\n%s", messages(f))
 	}
 }
@@ -66,7 +66,7 @@ func TestCheckPairValidRemove(t *testing.T) {
 		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
 		implemented,
 	})
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("expected no findings, got:\n%s", messages(f))
 	}
 }
@@ -76,7 +76,7 @@ func TestCheckPairValidRemove(t *testing.T) {
 func TestCheckPairBootstrapAddExempt(t *testing.T) {
 	before := uni(nil)
 	after := uni([]adr.ADR{{Number: "0100", Format: adr.Legacy, Status: "Implemented"}}, claim("d/t:legacy", "0100"))
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("expected no findings for bootstrap add, got:\n%s", messages(f))
 	}
 }
@@ -87,7 +87,7 @@ func TestCheckPairUnchangedClaim(t *testing.T) {
 	legacy := []adr.ADR{{Number: "0100", Format: adr.Legacy, Status: "Implemented"}}
 	before := uni(legacy, prosed(claim("d/t:keep", "0100"), "steady"))
 	after := uni(legacy, prosed(claim("d/t:keep", "0100"), "steady"))
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("expected no findings, got:\n%s", messages(f))
 	}
 }
@@ -95,7 +95,7 @@ func TestCheckPairUnchangedClaim(t *testing.T) {
 // TestCheckPairDeletedV1ADR rejects removal of a governed ADR record.
 func TestCheckPairDeletedV1ADR(t *testing.T) {
 	before := uni([]adr.ADR{rec("0137", "Implemented", 1)})
-	if f := currentstate.CheckPair(before, uni(nil), 137); !strings.Contains(messages(f), "current-state-v1 ADR-0137 was deleted") {
+	if f := currentstate.CheckPair(before, uni(nil)); !strings.Contains(messages(f), "current-state-v1 ADR-0137 was deleted") {
 		t.Fatalf("deleted ADR not reported:\n%s", messages(f))
 	}
 }
@@ -104,7 +104,7 @@ func TestCheckPairDeletedV1ADR(t *testing.T) {
 func TestCheckPairIllegalTransition(t *testing.T) {
 	before := uni([]adr.ADR{rec("0137", "Implemented", 0)})
 	after := uni([]adr.ADR{rec("0137", "Abandoned", 0)})
-	if f := currentstate.CheckPair(before, after, 137); !strings.Contains(messages(f), "ADR-0137 changed status from Implemented to Abandoned, which is not a legal") {
+	if f := currentstate.CheckPair(before, after); !strings.Contains(messages(f), "ADR-0137 changed status from Implemented to Abandoned, which is not a legal") {
 		t.Fatalf("illegal transition not reported:\n%s", messages(f))
 	}
 }
@@ -141,7 +141,7 @@ func TestCheckPairFrozenAndHistoryRules(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := messages(currentstate.CheckPair(uni([]adr.ADR{tc.before}), uni([]adr.ADR{tc.after}), 137))
+			got := messages(currentstate.CheckPair(uni([]adr.ADR{tc.before}), uni([]adr.ADR{tc.after})))
 			if !strings.Contains(got, "ADR-0137") || !strings.Contains(got, tc.want) {
 				t.Fatalf("want ADR number and %q in:\n%s", tc.want, got)
 			}
@@ -150,7 +150,7 @@ func TestCheckPairFrozenAndHistoryRules(t *testing.T) {
 	formatBefore := record("Proposed", "same", proposed)
 	formatAfter := formatBefore
 	formatAfter.Format = adr.CurrentStateV2
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{formatBefore}), uni([]adr.ADR{formatAfter}), 137)); !strings.Contains(got, "changed governed format") {
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{formatBefore}), uni([]adr.ADR{formatAfter}))); !strings.Contains(got, "changed governed format") {
 		t.Fatalf("governed format mutation not rejected:\n%s", got)
 	}
 }
@@ -185,7 +185,7 @@ func TestCheckPairHistoryValid(t *testing.T) {
 				afterDecision = "after"
 			}
 			after := adr.ADR{Number: "0137", Format: adr.CurrentStateV1, Status: tc.to, Sections: map[string]string{"Decision": afterDecision}, History: afterHistory}
-			if f := currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after}), 137); len(f) != 0 {
+			if f := currentstate.CheckPair(uni([]adr.ADR{before}), uni([]adr.ADR{after})); len(f) != 0 {
 				t.Fatalf("expected no findings, got:\n%s", messages(f))
 			}
 		})
@@ -204,14 +204,14 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	first.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(2, updateX))
 	before := uni([]adr.ADR{base, proposed}, prosed(claim("d/t:x", "0137"), "old"))
 	after := uni([]adr.ADR{base, first}, prosed(claim("d/t:x", "0137", "0138"), "new"))
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("first batch pair rejected:\n%s", messages(f))
 	}
 
 	middle := first
 	middle.History = append(append([]adr.HistoryEvent(nil), first.History...), v2batch(3, addA))
 	middleAfter := uni([]adr.ADR{base, middle}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"))
-	if f := currentstate.CheckPair(after, middleAfter, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(after, middleAfter); len(f) != 0 {
 		t.Fatalf("middle batch pair rejected:\n%s", messages(f))
 	}
 
@@ -219,20 +219,20 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	done.Status = "Implemented"
 	done.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(4, addB), v2status("Implemented"))
 	doneAfter := uni([]adr.ADR{base, done}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
-	if f := currentstate.CheckPair(middleAfter, doneAfter, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(middleAfter, doneAfter); len(f) != 0 {
 		t.Fatalf("final batch pair rejected:\n%s", messages(f))
 	}
 
 	abandoned := middle
 	abandoned.Status = "Abandoned"
 	abandoned.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2status("Abandoned"))
-	if f := currentstate.CheckPair(middleAfter, uni([]adr.ADR{base, abandoned}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138")), 137); len(f) != 0 {
+	if f := currentstate.CheckPair(middleAfter, uni([]adr.ADR{base, abandoned}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"))); len(f) != 0 {
 		t.Fatalf("terminal abandonment pair rejected:\n%s", messages(f))
 	}
 
 	deleted := first
 	deleted.History = append([]adr.HistoryEvent(nil), first.History[:2]...)
-	if got := messages(currentstate.CheckPair(after, uni([]adr.ADR{base, deleted}, prosed(claim("d/t:x", "0137", "0138"), "new")), 137)); !strings.Contains(got, "history-prefix rule") {
+	if got := messages(currentstate.CheckPair(after, uni([]adr.ADR{base, deleted}, prosed(claim("d/t:x", "0137", "0138"), "new")))); !strings.Contains(got, "history-prefix rule") {
 		t.Fatalf("Applied event deletion not rejected:\n%s", got)
 	}
 }
@@ -253,18 +253,18 @@ func TestCheckPairV2BatchSetRules(t *testing.T) {
 	b2, a2 := direct("0139", "d/t:b", 3)
 	before := uni([]adr.ADR{base, b1, b2}, claim("d/t:base", "0137"))
 	after := uni([]adr.ADR{base, a1, a2}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139"))
-	if f := currentstate.CheckPair(before, after, 137); len(f) != 0 {
+	if f := currentstate.CheckPair(before, after); len(f) != 0 {
 		t.Fatalf("disjoint consecutive batches rejected:\n%s", messages(f))
 	}
 
 	_, duplicateTarget := direct("0140", "d/t:a", 3)
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, b1, b2}), uni([]adr.ADR{base, a1, duplicateTarget}, claim("d/t:a", "0138")), 137)); !strings.Contains(got, "target of more than one operation") {
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, b1, b2}), uni([]adr.ADR{base, a1, duplicateTarget}, claim("d/t:a", "0138")))); !strings.Contains(got, "target of more than one operation") {
 		t.Fatalf("cross-batch duplicate target not rejected:\n%s", got)
 	}
 
 	wrong := a2
 	wrong.History[len(wrong.History)-1].Sequence = 4
-	if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, a1, wrong}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139")), 137)); !strings.Contains(got, "expected next sequence 3") {
+	if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, a1, wrong}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139")))); !strings.Contains(got, "expected next sequence 3") {
 		t.Fatalf("nonconsecutive appended sequences not diagnosed:\n%s", got)
 	}
 
@@ -272,7 +272,7 @@ func TestCheckPairV2BatchSetRules(t *testing.T) {
 	partial := v2rec("0141", "Implementing", []adr.Operation{x, y, z}, v2status("Proposed"), v2status("Implementing"), v2batch(2, x))
 	two := partial
 	two.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(3, y), v2batch(4, z))
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141")), uni([]adr.ADR{base, two}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"), claim("d/t:z", "0141")), 137)); !strings.Contains(got, "at most one new batch") {
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141")), uni([]adr.ADR{base, two}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"), claim("d/t:z", "0141")))); !strings.Contains(got, "at most one new batch") {
 		t.Fatalf("same ADR duplicate batch not rejected:\n%s", got)
 	}
 
@@ -280,12 +280,12 @@ func TestCheckPairV2BatchSetRules(t *testing.T) {
 	illegal := terminal
 	illegal.Status = "Abandoned"
 	illegal.History = append(illegal.History, v2status("Abandoned"))
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{terminal}), uni([]adr.ADR{illegal}), 137)); !strings.Contains(got, "legal current-state-v2 transition") {
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{terminal}), uni([]adr.ADR{illegal}))); !strings.Contains(got, "legal current-state-v2 transition") {
 		t.Fatalf("illegal V2 edge not format-attributed:\n%s", got)
 	}
 
 	invalid := v2rec("0143", "Implemented", []adr.Operation{op(adr.OpAdd, "d/t:invalid")})
-	if got := messages(currentstate.CheckPair(uni([]adr.ADR{invalid}), uni([]adr.ADR{invalid}), 137)); !strings.Contains(got, "no Implemented status event") {
+	if got := messages(currentstate.CheckPair(uni([]adr.ADR{invalid}), uni([]adr.ADR{invalid}))); !strings.Contains(got, "no Implemented status event") {
 		t.Fatalf("invalid before/after projection not reported:\n%s", got)
 	}
 }
@@ -439,7 +439,7 @@ func TestCheckPairMismatches(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			f := currentstate.CheckPair(tc.before, tc.after, tc.cutoff)
+			f := currentstate.CheckPair(tc.before, tc.after)
 			if !strings.Contains(messages(f), tc.want) {
 				t.Fatalf("want %q in:\n%s", tc.want, messages(f))
 			}

@@ -245,7 +245,7 @@ func TestContextForPending(t *testing.T) {
 		t.Fatalf("pending = %#v; want the one Accepted operation", res.Pending)
 	}
 	pc := res.Pending[0]
-	if pc.ADR != "0002" || pc.Op != "add" || pc.Claim != "alpha/one:pending-rule" || pc.Title != "Later" {
+	if pc.ADR != "0002" || pc.Title != "Later" || pc.Status != "Accepted" || pc.Applied != 0 || pc.Declared != 1 || pc.Op != "add" || pc.Claim != "alpha/one:pending-rule" {
 		t.Errorf("pending change = %#v", pc)
 	}
 }
@@ -255,15 +255,20 @@ func TestContextForPending(t *testing.T) {
 // tie-break), with a Proposed ADR and an unmatched-topic operation both excluded.
 func TestPendingChangesSort(t *testing.T) {
 	adrs := []adr.ADR{
-		{Number: "0003", Title: "ADR-0003: Third", Status: "Accepted", Operations: []adr.Operation{
+		{Number: "0003", Title: "ADR-0003: Third", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{
 			{Verb: adr.OpAdd, ID: "alpha/one:zeta"},
 			{Verb: adr.OpAdd, ID: "alpha/one:alpha"},
 			{Verb: adr.OpAdd, ID: "beta/two:unmatched"},
 		}},
-		{Number: "0002", Title: "ADR-0002: Second", Status: "Accepted", Operations: []adr.Operation{
+		{Number: "0002", Title: "ADR-0002: Second", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{
 			{Verb: adr.OpUpdate, ID: "alpha/one:mid"},
 		}},
-		{Number: "0009", Title: "ADR-0009: Proposed", Status: "Proposed", Operations: []adr.Operation{
+		{Number: "0004", Title: "ADR-0004: Fourth", Status: "Implementing", Format: adr.CurrentStateV2, Operations: []adr.Operation{
+			{Verb: adr.OpAdd, ID: "alpha/one:done"},
+			{Verb: adr.OpRemove, ID: "alpha/one:old"},
+			{Verb: adr.OpUpdate, ID: "alpha/one:rule"},
+		}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 7, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "alpha/one:done"}}}}},
+		{Number: "0009", Title: "ADR-0009: Proposed", Status: "Proposed", Format: adr.CurrentStateV1, Operations: []adr.Operation{
 			{Verb: adr.OpAdd, ID: "alpha/one:skipme"},
 		}},
 	}
@@ -272,22 +277,29 @@ func TestPendingChangesSort(t *testing.T) {
 	for i, pc := range out {
 		got[i] = pc.ADR + ":" + pc.Claim
 	}
-	want := "0002:alpha/one:mid,0003:alpha/one:alpha,0003:alpha/one:zeta"
+	want := "0002:alpha/one:mid,0003:alpha/one:alpha,0003:alpha/one:zeta,0004:alpha/one:old,0004:alpha/one:rule"
 	if strings.Join(got, ",") != want {
 		t.Errorf("pendingChanges order = %v, want %s", got, want)
 	}
+	if out[3].Status != "Implementing" || out[3].Applied != 1 || out[3].Declared != 3 {
+		t.Errorf("Implementing progress = %#v", out[3])
+	}
+	invalid := adr.ADR{Number: "0010", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "alpha/one:bad"}}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 1}}}
+	if got := pendingChanges([]adr.ADR{invalid}, map[string]bool{"alpha/one": true}); len(got) != 0 {
+		t.Errorf("invalid progress produced pending rows: %#v", got)
+	}
 }
 
-// TestAttestationCutoffPermanentLockFields covers the post-cutover path where the
-// permanent lock fields (not a bridge attestation) carry the cutoff and gaps.
-func TestAttestationCutoffPermanentLockFields(t *testing.T) {
-	if c, g := attestationCutoff(nil); c != 0 || g != nil {
-		t.Errorf("nil lock = %d, %v; want 0, nil", c, g)
+// TestAttestationBoundariesPermanentLockFields covers the post-cutover path
+// where permanent lock fields carry both boundaries and the legacy gaps.
+func TestAttestationBoundariesPermanentLockFields(t *testing.T) {
+	if b, g := attestationBoundaries(nil); b != (adr.FormatBoundaries{}) || g != nil {
+		t.Errorf("nil lock = %#v, %v; want zero boundaries, nil", b, g)
 	}
-	lock := &manifest.Lock{ADRFormatV1From: 5, LegacyADRGaps: []int{2, 3}}
-	c, g := attestationCutoff(lock)
-	if c != 5 || len(g) != 2 || g[0] != 2 || g[1] != 3 {
-		t.Errorf("permanent-field cutoff = %d, gaps = %v; want 5, [2 3]", c, g)
+	lock := &manifest.Lock{ADRFormatV1From: 5, ADRFormatV2From: 9, LegacyADRGaps: []int{2, 3}}
+	b, g := attestationBoundaries(lock)
+	if b != (adr.FormatBoundaries{V1From: 5, V2From: 9}) || len(g) != 2 || g[0] != 2 || g[1] != 3 {
+		t.Errorf("permanent boundaries = %#v, gaps = %v", b, g)
 	}
 }
 

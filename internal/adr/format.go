@@ -147,21 +147,23 @@ func historiesEqual(a, b []HistoryEvent) bool {
 	})
 }
 
-// ParseRecord routes by the V1 cutoff and optional V2 cutoff. Missing V2
-// keeps every governed record in the V1 region.
-func ParseRecord(name string, data []byte, cutoff int, v2Cutoff ...int) (ADR, error) {
+// FormatBoundaries are the immutable ADR format cutoffs from one snapshot.
+// A zero V2From leaves every governed record in the V1 region.
+type FormatBoundaries struct {
+	V1From int
+	V2From int
+}
+
+// ParseRecord routes by the V1 and V2 format boundaries.
+func ParseRecord(name string, data []byte, boundaries FormatBoundaries) (ADR, error) {
 	num := 0
 	if m := FilenameRe.FindStringSubmatch(name); m != nil {
 		num, _ = strconv.Atoi(m[1]) // the regex admits only four digits
 	}
-	v2 := 0
-	if len(v2Cutoff) > 0 {
-		v2 = v2Cutoff[0]
-	}
-	if v2 > 0 && num >= v2 {
+	if boundaries.V2From > 0 && num >= boundaries.V2From {
 		return ParseV2(name, data)
 	}
-	if cutoff > 0 && num >= cutoff {
+	if boundaries.V1From > 0 && num >= boundaries.V1From {
 		return ParseV1(name, data)
 	}
 	a, _, err := ParseBytes(name, data)
@@ -171,7 +173,7 @@ func ParseRecord(name string, data []byte, cutoff int, v2Cutoff ...int) (ADR, er
 	if block, _, found := frontmatter.Split(data); found {
 		for _, marker := range []string{V1FormatMarker, V2FormatMarker} {
 			if bytes.Contains(block, []byte("format: "+marker)) {
-				return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, cutoff, marker)
+				return ADR{}, fmt.Errorf("ADR-%s is below the format cutoff %d but declares %s", a.Number, boundaries.V1From, marker)
 			}
 		}
 	}

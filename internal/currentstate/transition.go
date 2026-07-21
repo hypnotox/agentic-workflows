@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -36,14 +35,13 @@ func (l Loaded) Universe() Universe {
 // provenance nor formatting; a claim mutation with no matching operation and an
 // operation with no matching mutation are both rejected. It also runs the full
 // after-state static Check, so a legal transition still lands in a valid state.
-// cutoff routes the same bootstrap exemption Check applies: a claim first
-// appearing with an Origin below cutoff is the closed migration bootstrap and
-// needs no add operation. Findings are returned sorted by message.
-func CheckPair(before, after Universe, cutoff int) []Finding {
+// Parsed record formats identify the closed migration bootstrap. Findings are
+// returned sorted by message.
+func CheckPair(before, after Universe) []Finding {
 	var findings []Finding
-	findings = append(findings, Check(after.ADRs, after.Topics, cutoff)...)
+	findings = append(findings, Check(after.ADRs, after.Topics)...)
 	findings = append(findings, checkTransitions(before.ADRs, after.ADRs)...)
-	findings = append(findings, checkMutations(before, after, cutoff)...)
+	findings = append(findings, checkMutations(before, after)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
 }
@@ -110,7 +108,7 @@ type pairOp struct {
 // across the pair. Every union of an operation ID and a mutated claim ID is
 // classified once, so an operation with no mutation and a mutation with no
 // operation are both surfaced.
-func checkMutations(before, after Universe, cutoff int) []Finding {
+func checkMutations(before, after Universe) []Finding {
 	ops, dups, batchFindings := pairOps(before.ADRs, after.ADRs)
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
@@ -135,7 +133,7 @@ func checkMutations(before, after Universe, cutoff int) []Finding {
 		case hasOp && op.verb == adr.OpUpdate:
 			findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter)...)
 		default:
-			findings = append(findings, checkUnmatchedMutation(id, bcl, acl, hasBefore, hasAfter, cutoff)...)
+			findings = append(findings, checkUnmatchedMutation(after.ADRs, id, bcl, acl, hasBefore, hasAfter)...)
 		}
 	}
 	return findings
@@ -243,13 +241,12 @@ func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAft
 }
 
 // checkUnmatchedMutation reports a claim add/removal/material change that no
-// operation in this transition accounts for. A claim first appearing with an
-// Origin below cutoff is the closed migration bootstrap and needs no add
-// operation, mirroring the static backward check.
-func checkUnmatchedMutation(id string, before, after topic.Claim, hasBefore, hasAfter bool, cutoff int) []Finding {
+// operation in this transition accounts for. A claim first appearing with a
+// legacy Origin is the closed migration bootstrap and needs no add operation.
+func checkUnmatchedMutation(records []adr.ADR, id string, before, after topic.Claim, hasBefore, hasAfter bool) []Finding {
 	switch {
 	case !hasBefore && hasAfter:
-		if originBelowCutoff(after, cutoff) {
+		if legacyOrigin(records, after.Origin) {
 			return nil
 		}
 		return []Finding{{Error, fmt.Sprintf("claim %s was added with no ADR add operation in this transition", id)}}
@@ -288,17 +285,6 @@ func claimMateriallyEqual(a, b topic.Claim) bool {
 		a.Backing == b.Backing &&
 		a.Verify == b.Verify &&
 		slices.Equal(a.References, b.References)
-}
-
-// originBelowCutoff reports whether the claim's Origin ADR number is below the
-// format cutoff, the migration bootstrap exemption. A cutoff of zero or below
-// (pre-cutover) exempts nothing.
-func originBelowCutoff(c topic.Claim, cutoff int) bool {
-	if cutoff <= 0 {
-		return false
-	}
-	n, _ := strconv.Atoi(c.Origin)
-	return n < cutoff
 }
 
 // byNumber indexes records by their ADR number.

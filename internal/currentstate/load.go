@@ -25,13 +25,13 @@ type Loaded struct {
 // so a working-tree, index, or commit universe yields exactly the current-state
 // view that tree encodes (ADR-0135). cfg supplies the docs directory, configured
 // domains, and marker-source families; parse it from the same tree for a
-// single-universe load. cutoff is the lock's adrFormatV1From boundary routing
-// per-ADR legacy/format-v1 parsing, and gaps are the recorded absent lower ADR
+// single-universe load. boundaries are the lock's ADR format cutoffs routing
+// per-ADR legacy/V1/V2 parsing, and gaps are the recorded absent lower ADR
 // numbers the contiguity check tolerates. It does not run Check or
 // EvaluateCoverage; the command layer applies eligibility filters and routes
 // findings.
-func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, cutoff int, gaps []int) (Loaded, error) {
-	records, err := adrsFromTree(tree, cfg.DocsDir, cutoff, gaps)
+func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.FormatBoundaries, gaps []int) (Loaded, error) {
+	records, err := adrsFromTree(tree, cfg.DocsDir, boundaries, gaps)
 	if err != nil {
 		return Loaded{}, err
 	}
@@ -47,7 +47,7 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, cutoff int, gaps []in
 // cannot see: no two files share a number, and the numbers are contiguous from 1
 // except for the recorded legacy gaps (ADR-0135). Per-file format-v1 versus
 // legacy routing is already enforced by adr.ParseRecord.
-func adrsFromTree(tree *snapshot.Tree, docsDir string, cutoff int, gaps []int) ([]adr.ADR, error) {
+func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoundaries, gaps []int) ([]adr.ADR, error) {
 	prefix := docsDir + "/decisions/"
 	var records []adr.ADR
 	var numbers []int
@@ -60,7 +60,7 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string, cutoff int, gaps []int) (
 		if m == nil {
 			continue // README.md, INDEX.md, a template, or another non-ADR file
 		}
-		rec, err := adr.ParseRecord(rel, f.Bytes, cutoff)
+		rec, err := adr.ParseRecord(rel, f.Bytes, boundaries)
 		if err != nil {
 			return nil, err
 		}
@@ -68,7 +68,7 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string, cutoff int, gaps []int) (
 		records = append(records, rec)
 		numbers = append(numbers, num)
 	}
-	if err := checkADRContiguity(numbers, gaps, cutoff); err != nil {
+	if err := checkADRContiguity(numbers, gaps, boundaries.V1From); err != nil {
 		return nil, err
 	}
 	return records, nil

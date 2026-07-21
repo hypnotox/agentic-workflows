@@ -21,6 +21,8 @@ func TestRenderIndexMDPartitionsInFlightAndHistory(t *testing.T) {
 			testsupport.WithTitle("0002: A Proposal"), testsupport.WithBody("## Context\nx\n")),
 		"0004-accepted.md": testsupport.ADR("Accepted",
 			testsupport.WithTitle("0004: Accepted"), testsupport.WithBody("## Context\nx\n")),
+		"0005-implementing.md": testsupport.ADR("Implementing",
+			testsupport.WithTitle("0005: Implementing"), testsupport.WithBody("## Context\nx\n")),
 		"0001-shipped.md": testsupport.ADR("Implemented",
 			testsupport.WithTitle("0001: Shipped"), testsupport.WithBody("## Context\nx\n")),
 		"0003-abandoned.md": testsupport.ADR("Abandoned",
@@ -46,7 +48,7 @@ func TestRenderIndexMDPartitionsInFlightAndHistory(t *testing.T) {
 	inflight := got[inflightPos:historyPos]
 	history := got[historyPos:]
 
-	for _, want := range []string{"ADR-0002: A Proposal", "ADR-0004: Accepted"} {
+	for _, want := range []string{"ADR-0002: A Proposal", "ADR-0004: Accepted", "ADR-0005: Implementing"} {
 		if !strings.Contains(inflight, want) {
 			t.Errorf("In flight missing %q; section:\n%s", want, inflight)
 		}
@@ -60,7 +62,7 @@ func TestRenderIndexMDPartitionsInFlightAndHistory(t *testing.T) {
 	if strings.Contains(inflight, "Shipped") || strings.Contains(inflight, "Abandoned") {
 		t.Errorf("terminal ADR leaked into In flight:\n%s", inflight)
 	}
-	if strings.Contains(history, "Proposal") || strings.Contains(history, "0004: Accepted") {
+	if strings.Contains(history, "Proposal") || strings.Contains(history, "0004: Accepted") || strings.Contains(history, "0005: Implementing") {
 		t.Errorf("in-flight ADR leaked into History:\n%s", history)
 	}
 	// Entries carry the status suffix and the file link.

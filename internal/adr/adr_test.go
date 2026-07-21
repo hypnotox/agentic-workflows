@@ -59,13 +59,13 @@ func TestParseRecordRoutesV1AndV2Cutoffs(t *testing.T) {
 		{"missing V2 cutoff remains V1", "0005-v1.md", v1, 0, true, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			a, err := adr.ParseRecord(tc.file, []byte(tc.doc), 5, tc.v2From)
+			a, err := adr.ParseRecord(tc.file, []byte(tc.doc), adr.FormatBoundaries{V1From: 5, V2From: tc.v2From})
 			if err != nil || a.IsV1() != tc.wantV1 || a.IsV2() != tc.wantV2 {
 				t.Fatalf("record=%#v err=%v", a, err)
 			}
 		})
 	}
-	if _, err := adr.ParseRecord("0004-stray.md", []byte(strings.Replace(v2, "ADR-0005", "ADR-0004", 1)), 5, 8); err == nil || !strings.Contains(err.Error(), "current-state-v2") {
+	if _, err := adr.ParseRecord("0004-stray.md", []byte(strings.Replace(v2, "ADR-0005", "ADR-0004", 1)), adr.FormatBoundaries{V1From: 5, V2From: 8}); err == nil || !strings.Contains(err.Error(), "current-state-v2") {
 		t.Fatalf("stray V2 below cutoff error=%v", err)
 	}
 }
@@ -390,7 +390,7 @@ func TestNewFileHappyPath(t *testing.T) {
 		return time.Date(2026, 7, clockCalls, 0, 0, 0, 0, time.UTC)
 	})
 
-	path, err := adr.NewFile(dir, "My Cool Title")
+	path, err := adr.NewFile(dir, "My Cool Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("NewFile: %v", err)
 	}
@@ -429,15 +429,52 @@ func TestNewFileHappyPath(t *testing.T) {
 // overwrite guard can never fire from repeated same-process calls: NextNumber
 // always returns one more than every existing NNNN-*.md file, so a second call
 // with the same title lands at the next number instead of colliding.
+func TestNewFileExplicitV2ChangesOnlyFrontmatterMarker(t *testing.T) {
+	dir := t.TempDir()
+	template := strings.Replace(adrTemplateFixture, "## Context\n", "## Context\n\nformat: current-state-v1 remains prose.\n", 1)
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(template), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	swapNow(t, fixedNow)
+	path, err := adr.NewFile(dir, "V2 Title", adr.CurrentStateV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), "format: current-state-v2") || !strings.Contains(string(data), "format: current-state-v1 remains prose.") {
+		t.Fatalf("format selection rewrote more than frontmatter:\n%s", data)
+	}
+	if _, err := adr.ParseV2(filepath.Base(path), data); err != nil {
+		t.Fatalf("V2 scaffold does not parse: %v", err)
+	}
+}
+
+func TestNewFileRejectsNonGovernedFormatAndMissingFrontmatter(t *testing.T) {
+	dir := t.TempDir()
+	writeTemplateFixture(t, dir)
+	if _, err := adr.NewFile(dir, "Legacy", adr.Legacy); err == nil || !strings.Contains(err.Error(), "scaffold format") {
+		t.Fatalf("legacy format error = %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte("# ADR-NNNN: Title\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.NewFile(dir, "No Frontmatter", adr.CurrentStateV1); err == nil || !strings.Contains(err.Error(), "missing frontmatter") {
+		t.Fatalf("missing frontmatter error = %v", err)
+	}
+}
+
 func TestNewFileSequentialCallsGetDifferentNumbers(t *testing.T) {
 	dir := t.TempDir()
 	writeTemplateFixture(t, dir)
 	swapNow(t, fixedNow)
-	first, err := adr.NewFile(dir, "Same Title")
+	first, err := adr.NewFile(dir, "Same Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("first NewFile: %v", err)
 	}
-	second, err := adr.NewFile(dir, "Same Title")
+	second, err := adr.NewFile(dir, "Same Title", adr.CurrentStateV1)
 	if err != nil {
 		t.Fatalf("second NewFile: %v", err)
 	}
@@ -456,14 +493,14 @@ func TestNewFilePropagatesNextNumberError(t *testing.T) {
 	if err := os.Mkdir(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
+	if _, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1); err == nil {
 		t.Fatal("expected NextNumber's glob error to propagate")
 	}
 }
 
 func TestNewFileMissingTemplate(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := adr.NewFile(dir, "No Template Here"); err == nil {
+	if _, err := adr.NewFile(dir, "No Template Here", adr.CurrentStateV1); err == nil {
 		t.Fatal("expected error for missing template.md")
 	}
 }
@@ -471,8 +508,19 @@ func TestNewFileMissingTemplate(t *testing.T) {
 func TestNewFileEmptySlug(t *testing.T) {
 	dir := t.TempDir()
 	// No template.md needed - slugify errors before the file is ever read.
-	if _, err := adr.NewFile(dir, "!!!"); err == nil {
+	if _, err := adr.NewFile(dir, "!!!", adr.CurrentStateV1); err == nil {
 		t.Fatal("expected slugify error for an all-punctuation title")
+	}
+}
+
+func TestNewFileMissingFormatMarker(t *testing.T) {
+	dir := t.TempDir()
+	broken := strings.Replace(adrTemplateFixture, "format: current-state-v1\n", "", 1)
+	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := adr.NewFile(dir, "No Format", adr.CurrentStateV1); err == nil || !strings.Contains(err.Error(), "format: current-state-v1") {
+		t.Fatalf("missing format marker error = %v", err)
 	}
 }
 
@@ -482,7 +530,7 @@ func TestNewFileMissingDatePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := adr.NewFile(dir, "Some Title")
+	_, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1)
 	if err == nil || !strings.Contains(err.Error(), `template missing expected "date: YYYY-MM-DD"`) {
 		t.Fatalf("err = %v, want missing frontmatter date placeholder", err)
 	}
@@ -494,7 +542,7 @@ func TestNewFileMissingProposedHistoryDatePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := adr.NewFile(dir, "Some Title")
+	_, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1)
 	if err == nil || !strings.Contains(err.Error(), `ADR template Proposed history: adr: template missing expected "- YYYY-MM-DD: Proposed"`) {
 		t.Fatalf("err = %v, want missing Proposed history date placeholder", err)
 	}
@@ -506,7 +554,7 @@ func TestNewFileMissingTitlePlaceholder(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := adr.NewFile(dir, "Some Title"); err == nil {
+	if _, err := adr.NewFile(dir, "Some Title", adr.CurrentStateV1); err == nil {
 		t.Fatal("expected error for missing title placeholder")
 	}
 }

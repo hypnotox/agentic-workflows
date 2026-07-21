@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -68,20 +69,21 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 	tree := treeFrom(t, map[string]string{
 		"docs/decisions/0001-first.md":                 legacyADR(),
 		"docs/decisions/0002-second.md":                v1Scaffold(),
+		"docs/decisions/0003-third.md":                 strings.Replace(v1Scaffold(), adr.V1FormatMarker, adr.V2FormatMarker, 1),
 		"docs/decisions/README.md":                     "# Index\n",
 		"docs/decisions/nested/0009-ignored.md":        legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
 	})
-	got, err := currentstate.LoadFromTree(tree, loadCfg(t), 2, nil)
+	got, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: 2, V2From: 3}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.ADRs) != 2 {
-		t.Fatalf("ADRs = %d, want 2 (README and nested skipped)", len(got.ADRs))
+	if len(got.ADRs) != 3 {
+		t.Fatalf("ADRs = %d, want 3 (README and nested skipped)", len(got.ADRs))
 	}
-	if !got.ADRs[1].IsV1() {
-		t.Errorf("second ADR should parse as current-state-v1")
+	if !got.ADRs[1].IsV1() || !got.ADRs[2].IsV2() {
+		t.Errorf("mixed boundaries routed formats as %v and %v", got.ADRs[1].Format, got.ADRs[2].Format)
 	}
 	if len(got.Topics.All()) != 1 {
 		t.Fatalf("topics = %d, want 1", len(got.Topics.All()))
@@ -95,7 +97,7 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 // clean empty view rather than a contiguity failure.
 func TestLoadFromTreeEmpty(t *testing.T) {
 	tree := treeFrom(t, map[string]string{"docs/decisions/README.md": "# Index\n"})
-	got, err := currentstate.LoadFromTree(tree, loadCfg(t), 0, nil)
+	got, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +164,7 @@ func TestLoadFromTreeContiguity(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			tree := treeFrom(t, tc.files)
-			_, err := currentstate.LoadFromTree(tree, loadCfg(t), tc.cutoff, tc.gaps)
+			_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: tc.cutoff}, tc.gaps)
 			if tc.wantErr == "" {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
@@ -180,7 +182,7 @@ func TestLoadFromTreeContiguity(t *testing.T) {
 // at-or-above-cutoff ADR that is not valid current-state-v1.
 func TestLoadFromTreeADRParseError(t *testing.T) {
 	tree := treeFrom(t, map[string]string{"docs/decisions/0001-a.md": legacyADR()})
-	_, err := currentstate.LoadFromTree(tree, loadCfg(t), 1, nil)
+	_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{V1From: 1}, nil)
 	if err == nil {
 		t.Fatal("expected a parse error for a legacy body above the cutoff")
 	}
@@ -193,7 +195,7 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 		"docs/decisions/0001-a.md":            legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml": "title: [unterminated\n",
 	})
-	_, err := currentstate.LoadFromTree(tree, loadCfg(t), 0, nil)
+	_, err := currentstate.LoadFromTree(tree, loadCfg(t), adr.FormatBoundaries{}, nil)
 	if err == nil {
 		t.Fatal("expected a topic metadata parse error")
 	}

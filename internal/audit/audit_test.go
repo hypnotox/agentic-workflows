@@ -134,6 +134,8 @@ func TestRuleADRStatusCochange(t *testing.T) {
 	adrPath := "docs/decisions/0137-x.md"
 	index := "docs/decisions/INDEX.md"
 	proposedV1, acceptedV1 := auditV1(t, "Proposed"), auditV1(t, "Accepted")
+	proposedV2 := strings.Replace(proposedV1, adr.V1FormatMarker, adr.V2FormatMarker, 1)
+	implementingV2 := strings.Replace(proposedV2, "status: Proposed", "status: Implementing", 1)
 	cases := []struct {
 		name    string
 		commit  Commit
@@ -142,6 +144,8 @@ func TestRuleADRStatusCochange(t *testing.T) {
 		{"v1 added without INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Added, NewText: proposedV1}}}, 1},
 		{"v1 flip without INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV1, NewText: acceptedV1}}}, 1},
 		{"v1 flip with INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV1, NewText: acceptedV1}, {Path: index, Action: Modified}}}, 0},
+		{"v2 Implementing without INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV2, NewText: implementingV2}}}, 1},
+		{"v2 Implementing with INDEX", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV2, NewText: implementingV2}, {Path: index, Action: Modified}}}, 0},
 		{"legacy added is outside current-state rule", Commit{Changes: []FileChange{{Path: "docs/decisions/0001-x.md", Action: Added, NewText: proposedADR}}}, 0},
 		{"context edit same status", Commit{Changes: []FileChange{{Path: adrPath, Action: Modified, OldText: proposedV1, NewText: proposedV1}}}, 0},
 		{"non-ADR md", Commit{Changes: []FileChange{{Path: "docs/foo.md", Action: Modified, OldText: proposedV1, NewText: acceptedV1}}}, 0},

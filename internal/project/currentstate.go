@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
@@ -67,19 +68,19 @@ func coverageLine(c topic.CoverageFinding) string {
 }
 
 // workingState is one loaded working-tree current-state universe: the parsed
-// ADR/topic view, the Tree it came from, the lock, and the sealed cutoff/gaps.
+// ADR/topic view, the Tree it came from, the lock, and the sealed boundaries.
 // It is the shared substrate for CheckCurrentState and CurrentStateInvariants,
 // which each read exactly one working Tree so a check and a report never mix a
 // working and an index universe.
 type workingState struct {
-	Loaded currentstate.Loaded
-	Tree   *snapshot.Tree
-	Lock   *manifest.Lock
-	Cutoff int
+	Loaded     currentstate.Loaded
+	Tree       *snapshot.Tree
+	Lock       *manifest.Lock
+	Boundaries adr.FormatBoundaries
 }
 
 // workingCurrentState loads the working-tree ADR/topic view plus the sealed
-// cutoff/gaps. Parse has already classified the lock: permanent authority owns
+// boundaries/gaps. Parse has already classified the lock: permanent authority owns
 // the fields directly, while a bridge attestation owns them until cutover.
 func (p *Project) workingCurrentState() (workingState, error) {
 	tree, err := snapshot.WorkingTree(p.Root)
@@ -90,30 +91,29 @@ func (p *Project) workingCurrentState() (workingState, error) {
 	if err != nil {
 		return workingState{}, err
 	}
-	cutoff, gaps := attestationCutoff(lock)
-	loaded, err := currentstate.LoadFromTree(tree, p.Cfg, cutoff, gaps)
+	boundaries, gaps := attestationBoundaries(lock)
+	loaded, err := currentstate.LoadFromTree(tree, p.Cfg, boundaries, gaps)
 	if err != nil {
 		return workingState{}, err
 	}
-	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Cutoff: cutoff}, nil
+	return workingState{Loaded: loaded, Tree: tree, Lock: lock, Boundaries: boundaries}, nil
 }
 
-// attestationCutoff returns the format cutoff and recorded legacy gaps that
-// govern ADR parsing. After cutover the permanent lock fields hold them; during
-// the migration window the still-present bridge attestation does. Before either
-// exists no ADR is current-state-v1 and the cutoff is zero, so every ADR parses
-// as legacy.
-func attestationCutoff(lock *manifest.Lock) (int, []int) {
+// attestationBoundaries returns the format boundaries and recorded legacy gaps
+// that govern ADR parsing. Permanent authority owns both boundaries; during the
+// migration window the bridge attestation owns only V1. Before either exists
+// every ADR parses as legacy.
+func attestationBoundaries(lock *manifest.Lock) (adr.FormatBoundaries, []int) {
 	if lock == nil {
-		return 0, nil
+		return adr.FormatBoundaries{}, nil
 	}
 	if lock.ADRFormatV1From != 0 {
-		return lock.ADRFormatV1From, lock.LegacyADRGaps
+		return adr.FormatBoundaries{V1From: lock.ADRFormatV1From, V2From: lock.ADRFormatV2From}, lock.LegacyADRGaps
 	}
 	if lock.BridgeAttestation != nil {
-		return lock.BridgeAttestation.ADRFormatV1From, lock.BridgeAttestation.LegacyADRGaps
+		return adr.FormatBoundaries{V1From: lock.BridgeAttestation.ADRFormatV1From}, lock.BridgeAttestation.LegacyADRGaps
 	}
-	return 0, nil
+	return adr.FormatBoundaries{}, nil
 }
 
 // CheckCurrentState loads the working-tree current-state view and runs the
@@ -126,7 +126,7 @@ func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	report := CurrentStateReport{Static: currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All(), ws.Cutoff)}
+	report := CurrentStateReport{Static: currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All())}
 	if p.Cfg.CurrentState != nil {
 		report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, p.eligibleCoveragePaths(ws.Tree, ws.Lock), coveragePolicy(p.Cfg.CurrentState))
 	}
@@ -164,20 +164,20 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	if err := validatePermanentLockTransition(beforeTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
-	beforeCutoff, beforeGaps := attestationCutoff(beforeLock)
-	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeCutoff, beforeGaps)
+	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
+	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeBoundaries, beforeGaps)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	afterCutoff, afterGaps := attestationCutoff(afterLock)
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterCutoff, afterGaps)
+	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
+	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterBoundaries, afterGaps)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
 	if afterCfg == nil {
 		return CurrentStateReport{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), afterCutoff)}
+	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe())}
 	if afterCfg.CurrentState != nil {
 		report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	}
@@ -212,7 +212,10 @@ func (p *Project) headTreeAndLock() (*snapshot.Tree, *manifest.Lock, error) {
 	if err != nil { // coverage-ignore: HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault
 		return nil, nil, err
 	}
-	lock, _, err := optionalLockFromTree(tree)
+	lock, found, err := optionalLockFromTree(tree)
+	if !found {
+		return tree, nil, err
+	}
 	return tree, lock, err
 }
 
@@ -243,6 +246,7 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 	}
 	if before.InitializedWithVersion == after.InitializedWithVersion &&
 		before.ADRFormatV1From == after.ADRFormatV1From &&
+		before.ADRFormatV2From == after.ADRFormatV2From &&
 		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		return nil
 	}
@@ -253,14 +257,14 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
 		return nil
 	}
-	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/legacyAdrGaps authority")
+	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/adrFormatV2From/legacyAdrGaps authority")
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config
 // from that same tree so the load is single-universe (ADR-0135). The returned
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
-func loadTreeCurrentState(root string, tree *snapshot.Tree, cutoff int, gaps []int) (currentstate.Loaded, *config.Config, error) {
+func loadTreeCurrentState(root string, tree *snapshot.Tree, boundaries adr.FormatBoundaries, gaps []int) (currentstate.Loaded, *config.Config, error) {
 	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		return currentstate.Loaded{}, nil, nil
@@ -272,7 +276,7 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, cutoff int, gaps []i
 	if err := cfg.Validate(); err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
-	loaded, err := currentstate.LoadFromTree(tree, cfg, cutoff, gaps)
+	loaded, err := currentstate.LoadFromTree(tree, cfg, boundaries, gaps)
 	if err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
@@ -284,23 +288,22 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, cutoff int, gaps []i
 // a root commit uses the empty before universe and a merge follows its first
 // parent, integrating a branch's net change at the merge. It is advisory like
 // the rest of the audit: a pair whose universes cannot load is a warning rather
-// than a hard stop, and a genuine transition violation is an error. cutoff/gaps
-// are the sealed values the caller already read from the lock. Both sides read
-// only committed content.
-func (p *Project) auditTransitions(base, head string, cutoff int, gaps []int) ([]audit.Finding, error) {
+// than a hard stop, and a genuine transition violation is an error. Each side
+// derives format boundaries from its own committed lock.
+func (p *Project) auditTransitions(base, head string) ([]audit.Finding, error) {
 	commits, err := audit.Collect(p.Root, base, head)
 	if err != nil {
 		return nil, err
 	}
 	var out []audit.Finding
 	for _, c := range commits {
-		before, after, err := p.rangePairUniverses(c.Hash, cutoff, gaps)
+		before, after, err := p.rangePairUniverses(c.Hash)
 		if err != nil {
 			out = append(out, audit.Finding{Severity: audit.Warning, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
 				Detail: "could not load the current-state universes for this commit: " + err.Error()})
 			continue
 		}
-		for _, f := range currentstate.CheckPair(before, after, cutoff) {
+		for _, f := range currentstate.CheckPair(before, after) {
 			out = append(out, audit.Finding{Severity: audit.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
 		}
 	}
@@ -311,16 +314,26 @@ func (p *Project) auditTransitions(base, head string, cutoff int, gaps []int) ([
 // current-state universes for the transition into rev. A tree carrying no awf
 // config yields the empty universe, so a pre-adoption or root pair produces no
 // findings rather than an error.
-func (p *Project) rangePairUniverses(rev string, cutoff int, gaps []int) (before, after currentstate.Universe, err error) {
+func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Universe, err error) {
 	beforeTree, afterTree, err := snapshot.RangePair(p.Root, rev)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, cutoff, gaps)
+	beforeLock, _, err := optionalLockFromTree(beforeTree)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
-	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, cutoff, gaps)
+	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
+	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeBoundaries, beforeGaps)
+	if err != nil {
+		return currentstate.Universe{}, currentstate.Universe{}, err
+	}
+	afterLock, _, err := optionalLockFromTree(afterTree)
+	if err != nil {
+		return currentstate.Universe{}, currentstate.Universe{}, err
+	}
+	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
+	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterBoundaries, afterGaps)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}

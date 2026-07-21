@@ -176,9 +176,13 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		}
 	}
 	if len(res.Pending) > 0 {
-		fmt.Fprintln(stdout, "\n## Pending accepted changes (not yet current)")
+		fmt.Fprintln(stdout, "\n## Pending changes (not yet current)")
 		for _, pc := range res.Pending {
-			fmt.Fprintf(stdout, "  ADR-%s (%s) %s %s\n", pc.ADR, pc.Title, pc.Op, pc.Claim)
+			if pc.Applied > 0 {
+				fmt.Fprintf(stdout, "  ADR-%s (%s; %s; %d/%d applied) %s %s\n", pc.ADR, pc.Title, pc.Status, pc.Applied, pc.Declared, pc.Op, pc.Claim)
+			} else {
+				fmt.Fprintf(stdout, "  ADR-%s (%s; %s) %s %s\n", pc.ADR, pc.Title, pc.Status, pc.Op, pc.Claim)
+			}
 		}
 	}
 	if len(res.Unowned) > 0 {

@@ -4,7 +4,6 @@ package currentstate
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -43,8 +42,8 @@ type operationAt struct {
 }
 
 // Check validates application sequences, operation history, forward results,
-// and inverse provenance. cutoff retains the V1 bootstrap exemption.
-func Check(records []adr.ADR, corpusTopics []topic.Topic, cutoff int) []Finding {
+// and inverse provenance. Parsed record formats identify the legacy bootstrap.
+func Check(records []adr.ADR, corpusTopics []topic.Topic) []Finding {
 	claims := map[string]topic.Claim{}
 	topics := map[string]bool{}
 	for _, t := range corpusTopics {
@@ -58,11 +57,29 @@ func Check(records []adr.ADR, corpusTopics []topic.Topic, cutoff int) []Finding 
 	removed := removedSet(applied)
 	findings := append([]Finding(nil), projectionFindings...)
 	findings = append(findings, checkSequences(projected)...)
-	findings = append(findings, checkOperationHistory(applied, cutoff)...)
+	findings = append(findings, checkOperationHistory(applied, hasLegacyRecord(records))...)
 	findings = append(findings, checkForward(projected, claims, topics, removed)...)
-	findings = append(findings, checkBackward(records, applied, claims, cutoff)...)
+	findings = append(findings, checkBackward(records, applied, claims)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
+}
+
+func hasLegacyRecord(records []adr.ADR) bool {
+	for _, record := range records {
+		if !record.IsGoverned() {
+			return true
+		}
+	}
+	return false
+}
+
+func legacyOrigin(records []adr.ADR, number string) bool {
+	for _, record := range records {
+		if record.Number == number {
+			return !record.IsGoverned()
+		}
+	}
+	return false
 }
 
 func projectADRs(records []adr.ADR) ([]projectedADR, []Finding) {
@@ -122,7 +139,7 @@ func checkSequences(projected []projectedADR) []Finding {
 	return findings
 }
 
-func checkOperationHistory(applied []operationAt, cutoff int) []Finding {
+func checkOperationHistory(applied []operationAt, hasLegacy bool) []Finding {
 	byID := map[string][]operationAt{}
 	for _, operation := range applied {
 		byID[operation.op.ID] = append(byID[operation.op.ID], operation)
@@ -150,7 +167,7 @@ func checkOperationHistory(applied []operationAt, cutoff int) []Finding {
 				// Updates are legal between the add/baseline and terminal remove.
 			}
 		}
-		legacyBaseline := cutoff > 0 && adds == 0 && ops[0].op.Verb != adr.OpAdd
+		legacyBaseline := hasLegacy && adds == 0 && ops[0].op.Verb != adr.OpAdd
 		if adds != 1 && !legacyBaseline {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s has %d add operations; require exactly one", id, adds)})
 		}
@@ -277,7 +294,7 @@ func checkAppliedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present, was
 	return nil
 }
 
-func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]topic.Claim, cutoff int) []Finding {
+func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]topic.Claim) []Finding {
 	byOperation := map[string]operationAt{}
 	for _, operation := range applied {
 		key := operation.owner.Number + "\x00" + string(operation.op.Verb) + "\x00" + operation.op.ID
@@ -297,7 +314,7 @@ func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]t
 		claim := claims[id]
 		originKey := claim.Origin + "\x00" + string(adr.OpAdd) + "\x00" + id
 		origin, hasOrigin := byOperation[originKey]
-		if num, _ := strconv.Atoi(claim.Origin); num >= cutoff && !hasOrigin {
+		if !legacyOrigin(records, claim.Origin) && !hasOrigin {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation applied", id, claim.Origin)})
 		}
 		lastSequence := 0

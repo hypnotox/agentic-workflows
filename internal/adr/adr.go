@@ -4,6 +4,7 @@
 package adr
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -350,7 +351,7 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // touches-state: adr-system/adr-lifecycle:adr-new-strips-markers - NewFile strips every marker comment from the copied template; proof in adr_test.go
 // touches-state: adr-system/adr-lifecycle:adr-new-heading-matches-file - NewFile fills the heading from the allocated file number; proof in adr_test.go
 // touches-state: adr-system/adr-lifecycle:adr-new-no-overwrite - refuse-overwrite guard; unbacked (unreachable), see ADR-0042 Verify note
-func NewFile(dir, title string) (string, error) {
+func NewFile(dir, title string, format Format) (string, error) {
 	title = strings.TrimSpace(title)
 	number, err := NextNumber(dir)
 	if err != nil {
@@ -371,6 +372,21 @@ func NewFile(dir, title string) (string, error) {
 		return "", fmt.Errorf("adr: read template: %w", err)
 	}
 	content := markerLineRe.ReplaceAllString(string(raw), "")
+	marker := V1FormatMarker
+	if format == CurrentStateV2 {
+		marker = V2FormatMarker
+	} else if format != CurrentStateV1 {
+		return "", errors.New("adr: scaffold format must be current-state-v1 or current-state-v2")
+	}
+	block, body, found := frontmatter.Split([]byte(content))
+	if !found {
+		return "", errors.New("adr: template missing frontmatter")
+	}
+	front, err := replaceOnce(string(block), "format: "+V1FormatMarker, "format: "+marker)
+	if err != nil {
+		return "", err
+	}
+	content = "---\n" + front + "---\n" + string(body)
 	date := now().Format("2006-01-02")
 	content, err = replaceOnce(content, "date: YYYY-MM-DD", "date: "+date)
 	if err != nil {

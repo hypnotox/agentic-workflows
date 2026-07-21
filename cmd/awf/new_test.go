@@ -27,8 +27,11 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 	if got != want {
 		t.Errorf("runNew printed %q, want %q", got, want)
 	}
-	if _, err := os.Stat(want); err != nil {
+	data, err := os.ReadFile(want)
+	if err != nil {
 		t.Errorf("created file not found: %v", err)
+	} else if !strings.Contains(string(data), "format: current-state-v1") {
+		t.Errorf("pre-activation scaffold is not V1:\n%s", data)
 	}
 }
 

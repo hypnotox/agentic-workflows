@@ -209,7 +209,7 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 				continue
 			}
 			rec, ok := adrRecordOf(ch.Path, ch.NewText)
-			if !ok || !rec.HasStatus() || !rec.IsV1() {
+			if !ok || !rec.HasStatus() || !rec.IsGoverned() {
 				continue // malformed ADRs are reported separately; legacy transitions predate INDEX.md
 			}
 			// An unparseable old side cannot witness a transition - skip rather
