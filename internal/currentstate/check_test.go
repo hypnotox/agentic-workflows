@@ -138,7 +138,6 @@ func TestCheckForward(t *testing.T) {
 		{"implemented remove still present", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpRemove, "d/t:x"))}, topics(claim("d/t:x", "0100")), "still has an active claim"},
 		{"abandoned add applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0137")), "add for claim d/t:x was applied"},
 		{"abandoned update applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100", "0137")), "update for claim d/t:x was applied"},
-		{"abandoned remove applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpRemove, "d/t:x"))}, nil, "remove for claim d/t:x was applied"},
 		{"pending re-add of removed", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"), op(adr.OpRemove, "d/t:x")), rec("0138", "Proposed", 0, op(adr.OpAdd, "d/t:x"))}, nil, "may never be reused"},
 	}
 	for _, tc := range cases {
@@ -147,6 +146,16 @@ func TestCheckForward(t *testing.T) {
 				t.Errorf("want %q in:\n%s", tc.want, messages(f))
 			}
 		})
+	}
+}
+
+func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
+	records := []adr.ADR{
+		rec("0137", "Abandoned", 0, op(adr.OpRemove, "d/t:x")),
+		rec("0138", "Implemented", 1, op(adr.OpRemove, "d/t:x")),
+	}
+	if f := currentstate.Check(records, topics(), 137); len(f) != 0 {
+		t.Fatalf("distinct Implemented removal rejected:\n%s", messages(f))
 	}
 }
 

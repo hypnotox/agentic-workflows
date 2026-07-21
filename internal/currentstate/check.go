@@ -197,7 +197,7 @@ func removedSet(v1 []adr.ADR) map[string]bool {
 // topic sets for its status (ADR-0135 item 8): operations that reached Accepted
 // and all Implemented operations target existing metadata; pending adds are
 // absent and updates/removes present; Implemented results are applied; Abandoned
-// results are unapplied; and no add reuses a removed identity.
+// add/update provenance is unapplied; and no add reuses a removed identity.
 func checkForward(v1 []adr.ADR, claims map[string]topic.Claim, topics map[string]bool, removed map[string]bool) []Finding {
 	var findings []Finding
 	for _, a := range v1 {
@@ -280,9 +280,7 @@ func checkAbandonedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present bo
 			return []Finding{{Error, fmt.Sprintf("Abandoned ADR-%s update for claim %s was applied; it must be reverted", a.Number, op.ID)}}
 		}
 	case adr.OpRemove:
-		if !present {
-			return []Finding{{Error, fmt.Sprintf("Abandoned ADR-%s remove for claim %s was applied; it must be reverted", a.Number, op.ID)}}
-		}
+		// Removal attribution requires the before/after pair checked by CheckPair.
 	}
 	return nil
 }
