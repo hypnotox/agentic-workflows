@@ -147,6 +147,12 @@ No template under templates/ references any of the removed doc-path or project-s
 Origin: ADR-0013
 Backing: test
 
+### `invariant: plan-task-detail-modes`
+
+The rendered plan-authoring skill, plan reviewer, implementation-plans README, and agent guide accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, and render coherently with empty variables.
+Origin: ADR-0142
+Backing: test
+
 ### `invariant: pi-dedicated-grounding-dispatch`
 
 In the generated Pi extension and skills, brainstorming's grounding check dispatches through the dedicated grounding tool while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.

@@ -3,9 +3,9 @@
 
 <!-- awf:edit intro: default; create .awf/parts/plans-readme/intro.md to override -->
 A plan is the step-by-step execution record for a complex change: reviewable tasks, exact file
-paths, exact content or diffs, and the commands that verify each step. The design rationale lives in
-the linked ADR (when one exists); a plan links to it (structurally, via its `adrs:` frontmatter)
-rather than restating it.
+paths and commands, and implementation-ready detail supplied as exact content/diffs or qualifying
+pseudocode. The design rationale lives in the linked ADR (when one exists); a plan links to it
+(structurally, via its `adrs:` frontmatter) rather than restating it.
 
 <!-- awf:edit naming: default; create .awf/parts/plans-readme/naming.md to override -->
 ## Naming & location
@@ -27,9 +27,16 @@ where the date is the day the plan is written (ISO-8601). Example:
   header sections: Goal, Architecture summary, and File structure (created / modified /
   deleted).
 - Phases of tasks, each task one reviewable, logically-coherent change (a whole new file is one
-  task), as `- [ ]` checkboxes, each naming exact paths, the exact content or diff, and the exact
-  verifying command with its expected output.
-- For a transformation repeated across many sites, a task may take the *batch* form instead of N
+  task), as `- [ ]` checkboxes. Each names exact paths and relevant symbols, exact commands and
+  terminal states, and either exact content/diffs or implementation-ready pseudocode specifying
+  behavior, branches, ordering, failures, constraints, forbidden behavior, tests, acceptance
+  assertions, and deterministic verification, with no hidden design choice.
+- Exact form remains mandatory for machine-consumed declarative content such as configuration and
+  manifests, contract-bearing API/type/schema declarations, fixtures, golden output, commands,
+  mechanical replacements, required literal prose, and batch-task representative and edge
+  transformations. Non-contractual prose documentation may use qualifying instructions; a mixed
+  task may combine both forms.
+- For a transformation repeated across many sites, a *batch task* may be used instead of N
   near-identical diffs: a representative site shown as an exact diff, an edge site (unless the shape
   is identical everywhere), the exhaustive affected-site set (a list or a command that reproduces
   it), and a deterministic post-check that fails if any site is missed.

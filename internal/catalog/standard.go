@@ -144,7 +144,7 @@ var Standard = &Catalog{
 			RequiresSkills: []string{"reviewing-plan-resync"},
 			Data: map[string]any{
 				"focusItems": []any{
-					map[string]any{"name": "step-exactness", "description": "every task names exact file paths and exact commands with expected output, and either shows an exact diff or, for repeated work, a well-formed batch task (a representative and an edge diff, the affected-site set, and a post-check that actually proves coverage)"},
+					map[string]any{"name": "step-exactness", "description": "every task names exact file paths, relevant symbols, exact commands with terminal states, and supplies either exact content/diffs or implementation-ready pseudocode covering behavior, branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and deterministic verification with no hidden design choice; exact form remains mandatory for machine-consumed declarative content, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and the specialized batch task's representative and edge transformations"},
 					map[string]any{"name": "dependency-order", "description": "tasks are ordered so each builds only on already-completed work"},
 				},
 				"docCurrencyItems": []any{
