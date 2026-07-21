@@ -640,15 +640,15 @@
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:e702f901449cfa34778cc1a89d7af37714f1d74ffc088a662874e4d5d6681e4f",
+      "templateHash": "sha256:6b06f7cf06a50eaf3c5175b1474cdbcb61dc567d7429e714b7353bbf0fcc3c86",
       "configHash": "sha256:402daaf42fda71552009fd187d16fc3c518b5097791b1e04f19c92890c577b86",
-      "outputHash": "sha256:d7749f2c75c704e4d9af60fe54b9ed6b3e870c23a9fa1933702b267a2de9260a"
+      "outputHash": "sha256:e51f3255a27069c6d2fa211173c57eb2bd8574d73da0924bb26932a1d1350fa7"
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",
-      "templateHash": "sha256:e303310565423ea4486ca97ea98e8ab638ae9f59bcb023625616e3e31ca3b629",
+      "templateHash": "sha256:36afc173271b5876f631cdd7b380f4f7e14c23e86c8fdec5b97679fba154f861",
       "configHash": "sha256:402daaf42fda71552009fd187d16fc3c518b5097791b1e04f19c92890c577b86",
-      "outputHash": "sha256:9fa6043fda8dba46eb8e0a34a39d0f06b5d6ae398601c97e252a7881bf056258"
+      "outputHash": "sha256:d8afde64641149fddd75ec42d66b1e379adf4e6a92619478ad019dfc3511165e"
     },
     ".pi/skills/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",

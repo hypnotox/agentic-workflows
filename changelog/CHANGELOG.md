@@ -49,7 +49,9 @@ query a single version or a range.
 - Implementation plans may use implementation-ready pseudocode for logic and non-contractual prose while keeping machine-consumed, contract-bearing, fixture, golden, command, mechanical, and literal-text portions exact; the writing skill, reviewer, scaffold, plan guide, and agent guide now enforce the same boundary.
 - Pi's four governed subagent roles now accept strict optional exact model routing, independent
   exploration runs through an abort-aware ten-active FIFO queue, and mixed implementation batches
-  are mechanically blocked before any member executes.
+  are mechanically blocked before any member executes. Active tool rows now show queued/running
+  state, resolved and actual models, thinking level, role options, and cumulative per-turn usage with
+  Pi-style cache-hit statistics.
 
 ### Bug fixes
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:

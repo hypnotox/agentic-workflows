@@ -21,7 +21,7 @@ initTheme("dark", false);
 
 const event = { sequence: 1, kind: "assistant" as const, text: "working" };
 const result: RunResult = {
-  output: "child output", stderr: "", events: [event], omittedEvents: 0, failed: false,
+  output: "child output", stderr: "", events: [event], omittedEvents: 0, failed: false, modelChanged: false,
   usage: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 },
 };
 
@@ -31,6 +31,7 @@ function harness(options: {
   git?: Array<{ code: number; stdout: string }>;
   run?: (request: RunRequest) => Promise<RunResult>;
   leaf?: any;
+  thinking?: () => string;
 } = {}) {
   const tools = new Map<string, any>();
   const handlers = new Map<string, any>();
@@ -43,14 +44,18 @@ function harness(options: {
   const pi: any = {
     registerTool: (tool: any) => tools.set(tool.name, tool),
     on: (name: string, handler: any) => handlers.set(name, handler),
-    getThinkingLevel: () => "high",
+    getThinkingLevel: options.thinking ?? (() => "high"),
     exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
   };
   const deps: ExtensionDependencies = {
     readFile: async () => { reviewerReads++; return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully."; },
     runner: { run: async (request) => {
       requests.push(request);
-      request.onUpdate?.({ events: [event], omittedEvents: 0 });
+      request.onUpdate?.({
+        events: [event], omittedEvents: 0,
+        usage: { input: 1, output: 2, cacheRead: 3, cacheWrite: 0, cost: 0.01, turns: 1 },
+        model: "test/actual", modelChanged: false, latestCacheHitRate: 75,
+      });
       return options.run ? options.run(request) : result;
     } },
     packageVersion: options.version ?? MIN_PI_VERSION,
@@ -193,7 +198,10 @@ test("all roles route omitted and exact selected models with inherited thinking 
     assert.deepEqual(inherited.requests[0].model, { provider: "test", id: "parent" });
     assert.equal(inherited.requests[0].thinkingLevel, "high");
     assert.equal(inheritedValue.value.details.requestedModel, undefined);
-    assert.equal(inheritedValue.value.details.model, undefined);
+    assert.equal(inheritedValue.value.details.resolvedModel, "test/parent");
+    assert.equal(inheritedValue.value.details.modelSource, "inherited");
+    assert.equal(inheritedValue.value.details.thinkingLevel, "high");
+    assert.equal(inheritedValue.updates.at(-1)?.details.resolvedModel, "test/parent");
 
     const selected = harness({
       git: Array(4).fill({ code: 1, stdout: "" }),
@@ -203,6 +211,8 @@ test("all roles route omitted and exact selected models with inherited thinking 
     assert.deepEqual(selected.requests[0].model, { provider: "cheap", id: "model/with/slash" });
     assert.equal(selected.requests[0].thinkingLevel, "high");
     assert.equal(selectedValue.value.details.requestedModel, "cheap/model/with/slash");
+    assert.equal(selectedValue.value.details.resolvedModel, "cheap/model/with/slash");
+    assert.equal(selectedValue.value.details.modelSource, "requested");
     assert.equal(selectedValue.value.details.model, "cheap/model/with/slash");
   }
 });
@@ -364,6 +374,37 @@ function rendered(component: any, width: number): string[] {
   return lines;
 }
 
+test("queued children snapshot thinking before waiting and expose role metadata", async () => {
+  let thinking = "high";
+  const pending: Array<ReturnType<typeof deferred<RunResult>>> = [];
+  const h = harness({
+    thinking: () => thinking,
+    git: Array(8).fill({ code: 1, stdout: "" }),
+    run: async () => {
+      const next = deferred<RunResult>();
+      pending.push(next);
+      return next.promise;
+    },
+  });
+  const tool = h.tools.get("subagent_implement");
+  const first = execute(tool, { task: "one", allowCommits: false }, h.ctx);
+  await new Promise((resolve) => setImmediate(resolve));
+  const second = execute(tool, { task: "two", allowCommits: true }, h.ctx);
+  thinking = "low";
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal((await Promise.race([second.then(() => "done"), Promise.resolve("pending")])), "pending");
+  pending[0].resolve(result);
+  await first;
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(h.requests[1].thinkingLevel, "high");
+  pending[1].resolve(result);
+  const completed = await second;
+  assert.equal(completed.updates[0].details.state, "queued");
+  assert.equal(completed.updates[0].details.thinkingLevel, "high");
+  assert.deepEqual(completed.updates[0].details.options, { allowCommits: true });
+  assert.equal(completed.updates.some((update) => update.details.state === "running"), true);
+});
+
 test("all subagent renderers cover calls and bounded collapsed states", () => {
   const h = harness();
   const events = Array.from({ length: 12 }, (_, index) => index % 3 === 0
@@ -374,12 +415,13 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
   const usage = { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, cost: 0.25, turns: 2 };
   for (const [name, role] of [["subagent_grounding", "grounding"], ["subagent_explore", "explore"], ["subagent_review", "review"], ["subagent_implement", "implement"]]) {
     const tool = h.tools.get(name);
-    const call = rendered(tool.renderCall({ task: "x".repeat(1000) }, theme, {}), 24).join("\n");
+    const call = rendered(tool.renderCall({ task: "x".repeat(1000), model: "cheap/model" }, theme, {}), 24).join("\n");
     assert.match(call, new RegExp(`${role} subagent`));
+    assert.match(call, /cheap\/model/);
     assert.match(call, /task\s+truncated/);
     const collapsed = rendered(tool.renderResult({
       content: [{ type: "text", text: "report" }],
-      details: { role, task: "task", state: "completed", events, omittedEvents: 7, usage, requestedModel: "cheap/model", model: "child" },
+      details: { role, task: "task", state: "completed", events, omittedEvents: 7, usage, requestedModel: "cheap/model", resolvedModel: "cheap/model", modelSource: "requested", model: "proxy/child", modelChanged: false, thinkingLevel: "high", latestCacheHitRate: 50, options: {} },
     }, { expanded: false, isPartial: false }, theme, {}), 24).join("\n");
     assert.match(collapsed, /completed/);
     assert.match(collapsed, /earlier retained\s+events/);
@@ -399,14 +441,28 @@ test("all subagent renderers cover calls and bounded collapsed states", () => {
       collapsed.indexOf("<- read-11 ok"),
     ];
     assert.ok(orderedActivity.every((position, index) => position >= 0 && (index === 0 || orderedActivity[index - 1] < position)), "collapsed activity is not chronological");
-    assert.match(collapsed, /2 turns/);
-    assert.match(collapsed, /requested:cheap\/model/);
-    assert.match(collapsed, /child/);
+    assert.match(collapsed, /2 turns ↑1 ↓2 R3 W4\s+CH50\.0% \$0\.250/);
+    assert.match(collapsed, /model:proxy\/child/);
+    assert.match(collapsed, /thinking:high/);
     assert.match(collapsed, /to expand/);
   }
   const emptyCall = rendered(h.tools.get("subagent_explore").renderCall({}, theme, {}), 120).join("\n");
+  assert.match(emptyCall, /inherit parent/);
   assert.match(emptyCall, /no task/);
-  rendered(h.tools.get("subagent_explore").renderCall({ task: "é".repeat(1000) }, theme, {}), 24);
+  rendered(h.tools.get("subagent_explore").renderCall({ task: "é".repeat(1000), breadth: "broad", detail: "paths" }, theme, {}), 24);
+  assert.match(rendered(h.tools.get("subagent_review").renderCall({ task: "review", kind: "code" }, theme, {}), 120).join("\n"), /kind:code/);
+  assert.match(rendered(h.tools.get("subagent_implement").renderCall({ task: "change", allowCommits: false }, theme, {}), 120).join("\n"), /allowCommits:false/);
+
+  const formats = [
+    [1_200, "↑1.2k"], [120_000, "↑120k"], [1_200_000, "↑1.2m"], [12_000_000, "↑12m"],
+  ] as const;
+  for (const [input, expected] of formats) {
+    const text = rendered(h.tools.get("subagent_grounding").renderResult({
+      content: [],
+      details: { role: "grounding", task: "task", state: "running", events: [], omittedEvents: 0, usage: { input, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 }, resolvedModel: "test/parent", modelSource: "inherited", thinkingLevel: "high", options: {} },
+    }, { expanded: false, isPartial: true }, theme, {}), 120).join("\n");
+    assert.match(text, new RegExp(expected));
+  }
 });
 
 test("renderer covers expanded, partial, failure, abort, and fallback states", () => {
@@ -420,12 +476,14 @@ test("renderer covers expanded, partial, failure, abort, and fallback states", (
   const usage = { input: 1, output: 2, cacheRead: 3, cacheWrite: 4, cost: 0.25, turns: 1 };
   const complete = rendered(tool.renderResult({
     content: [{ type: "text", text: "# Final report" }],
-    details: { role: "explore", task: "inspect", state: "completed", events, omittedEvents: 0, stderr: "warning", usage, model: "child" },
+    details: { role: "explore", task: "inspect", state: "completed", events, omittedEvents: 0, stderr: "warning", usage, model: "proxy/child", resolvedModel: "test/parent", modelSource: "inherited", modelChanged: true, modelMismatch: true, thinkingLevel: "high", latestCacheHitRate: 37.5, options: { breadth: "bounded", detail: "analysis" } },
   }, { expanded: true, isPartial: false }, theme, {}), 24).join("\n");
-  for (const phrase of ["Task", "inspect", "Activity", "Report", "Final report", "Diagnostics", "warning", "1 turn", "child"]) assert.match(complete, new RegExp(phrase));
+  for (const phrase of ["Task", "inspect", "Activity", "Report", "Final report", "Diagnostics", "warning", "Model", "proxy/child", "resolved: test/parent", "Thinking", "high", "breadth: bounded", "detail: analysis", "Input: 1", "Output: 2", "Cache read: 3", "Cache write: 4", "Cache hit: 37.5%", "Cost: $0.250", "Turns: 1", "model changed during run"]) assert.ok(complete.includes(phrase), `expanded rendering missing ${phrase}`);
+  assert.match(complete, /actual model differs\s+from resolved model/);
 
-  const partial = rendered(tool.renderResult({ content: [{ type: "text", text: "(running...)" }], details: { role: "explore", task: "", state: "running", events: [], omittedEvents: 0 } }, { expanded: true, isPartial: true }, theme, {}), 120).join("\n");
-  assert.match(partial, /running/);
+  const partial = rendered(tool.renderResult({ content: [{ type: "text", text: "(running...)" }], details: { role: "explore", task: "", state: "queued", events: [], omittedEvents: 0, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 }, resolvedModel: "test/parent", modelSource: "inherited", thinkingLevel: "high", options: { breadth: "bounded", detail: "summary" } } }, { expanded: true, isPartial: true }, theme, {}), 120).join("\n");
+  assert.match(partial, /queued/);
+  for (const zero of ["Input: 0", "Output: 0", "Cache read: 0", "Cache write: 0", "Cost: $0.000", "Turns: 0"]) assert.ok(partial.includes(zero), `zero-usage rendering missing ${zero}`);
   assert.match(partial, /no task/);
   assert.match(partial, /no activity/);
   assert.doesNotMatch(partial, /Report/);
@@ -443,13 +501,18 @@ test("renderer covers expanded, partial, failure, abort, and fallback states", (
   rendered(tool.renderResult({}, { expanded: false, isPartial: false }, theme, {}), 120);
   rendered(tool.renderResult({ content: [{ type: "image" }], details: { events: "invalid" } }, { expanded: false, isPartial: false }, theme, {}), 120);
 
-  const runningCollapsed = rendered(tool.renderResult({ content: [], details: { role: "explore", task: "task", state: "completed", events: [], omittedEvents: 0, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 }, model: "child" } }, { expanded: false, isPartial: true }, theme, {}), 120).join("\n");
+  const runningCollapsed = rendered(tool.renderResult({ content: [], details: { role: "explore", task: "task", state: "running", events: [], omittedEvents: 0, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 }, resolvedModel: "test/parent", modelSource: "inherited", thinkingLevel: "high", options: {} } }, { expanded: false, isPartial: true }, theme, {}), 120).join("\n");
   assert.match(runningCollapsed, /running/);
   assert.match(runningCollapsed, /no omitted events/);
-  assert.match(runningCollapsed, /child/);
+  assert.match(runningCollapsed, /model:test\/parent/);
+  assert.doesNotMatch(runningCollapsed, /↑|↓|CH|\$0\.000/);
   assert.doesNotMatch(runningCollapsed, /to expand/);
   const noHint = rendered(tool.renderResult({ content: [], details: { role: "explore", task: "", state: "completed", events: [], omittedEvents: 0 } }, { expanded: false, isPartial: false }, theme, {}), 120).join("\n");
-  assert.doesNotMatch(noHint, /to expand/);
+  assert.match(noHint, /model:unknown/);
+  assert.doesNotMatch(noHint, /undefined|to expand/);
+  const legacy = rendered(tool.renderResult({ content: [], details: { role: "explore", task: "task", state: "completed", events: [], omittedEvents: 0, requestedModel: "legacy/requested" } }, { expanded: true, isPartial: false }, theme, {}), 120).join("\n");
+  assert.match(legacy, /Model: legacy\/requested/);
+  assert.doesNotMatch(legacy, /undefined/);
 });
 
 test("exploration forwards every breadth and detail into the fixed prompt", async () => {
@@ -468,8 +531,11 @@ test("explore isolates partial activity from final content", async () => {
   assert.equal(value.content[0].text, "child output");
   assert.deepEqual(value.details.events, [event]);
   assert.equal(value.content[0].text.includes("working"), false);
-  assert.equal(updates[0].content[0].text, "(running...)");
-  assert.deepEqual(updates[0].details.events, [event]);
+  assert.equal(updates.at(-1)?.content[0].text, "(running...)");
+  assert.deepEqual(updates.at(-1)?.details.events, [event]);
+  assert.equal(updates.at(-1)?.details.model, "test/actual");
+  assert.equal(updates.at(-1)?.details.latestCacheHitRate, 75);
+  assert.deepEqual(updates.at(-1)?.details.usage, { input: 1, output: 2, cacheRead: 3, cacheWrite: 0, cost: 0.01, turns: 1 });
   assert.deepEqual(h.requests[0].model, { provider: "test", id: "parent" });
   assert.equal(h.requests[0].cwd, "/repo");
   assert.equal(h.requests[0].thinkingLevel, "high");
@@ -483,6 +549,7 @@ test("explore isolates partial activity from final content", async () => {
     "a new fresh-context call", "corrects the task", "changes report detail", "widens breadth",
   ]) assert.ok(prompt.includes(phrase), `prompt missing ${phrase}`);
   await assert.rejects(execute(h.tools.get("subagent_explore"), { task: " ", breadth: "bounded", detail: "summary" }, h.ctx), /non-empty/);
+  assert.equal(h.requests.some((request) => request.task === " "), false);
   await assert.rejects(execute(h.tools.get("subagent_explore"), { task: "x", breadth: "bounded", detail: "summary" }, { ...h.ctx, model: undefined }), /active parent model/);
   await h.tools.get("subagent_explore").execute("id", { task: "without update", breadth: "bounded", detail: "summary" }, undefined, undefined, h.ctx);
 });
@@ -562,6 +629,7 @@ test("implementation reports git state and commit policy", async () => {
   assert.equal(violated.value.details.awfFailure, true);
   assert.equal(violated.value.details.requestedModel, "cheap/model/with/slash");
   assert.equal(violated.value.details.model, "cheap/actual-model");
+  assert.equal(violated.value.details.modelMismatch, true);
   assert.deepEqual(violated.value.details.usage, violationUsage);
   assert.equal(violated.value.details.before.head, "aaa");
   assert.equal(violated.value.details.after.head, "bbb");

@@ -42,7 +42,7 @@ test("real Pi parallel preflight enforces current-leaf implementation batch excl
   let turn = 0;
   try {
     const childResult: RunResult = {
-      output: "child ok", stderr: "", events: [], omittedEvents: 0, failed: false,
+      output: "child ok", stderr: "", events: [], omittedEvents: 0, failed: false, modelChanged: false,
       usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 },
       model: "runtime-test/runtime-test",
     };

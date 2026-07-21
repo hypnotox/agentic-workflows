@@ -180,13 +180,11 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
 		`rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`,
 		`MAX_EXPLORATION_CONCURRENCY = 10`, `createLimiter(MAX_EXPLORATION_CONCURRENCY)`,
-		`const release = await explorationLimiter.acquire(signal);
-      try {
-        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });
-      } finally {
-        release();
-      }`,
-		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
+		`const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { breadth: params.breadth, detail: params.detail });`,
+		`publishState(onUpdate, "explore", params.task, "queued", metadata);`,
+		`const release = await explorationLimiter.acquire(signal);`,
+		`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate), metadata);`,
+		`thinkingLevel: metadata.thinkingLevel`,
 		`content: [{ type: "text", text: "(running...)" }]`,
 		`events: update.events`, `result.output`,
 		"Return only the relevant final report, never the search narrative or intermediate activity.",
@@ -224,9 +222,12 @@ func TestPiSubagentModelRouting(t *testing.T) {
 		`ctx.modelRegistry.find(provider, id)`, `ctx.modelRegistry.hasConfiguredAuth(found)`,
 		`return { model: { provider: found.provider, id: found.id }, requested }`,
 		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
-		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`, `requested:${requestedModel}`,
-		`usage: result.usage, model: result.model`,
-		`{ ...gitDetails, model: result.model, usage: result.usage }`,
+		`executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel`, `resolvedModel:`, `modelSource:`,
+		`thinkingLevel: metadata.thinkingLevel`, `usage: result.usage, model: result.model`,
+		`modelChanged: result.modelChanged`,
+		`modelMismatch: Boolean(result.model && result.model !== details.resolvedModel)`,
+		`latestCacheHitRate: result.latestCacheHitRate`,
+		`{ ...gitDetails, model: result.model, modelChanged:`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("Pi extension missing model-routing contract %q", want)
@@ -251,21 +252,21 @@ func TestPiSubagentModelRouting(t *testing.T) {
 	}{
 		"grounding": {
 			[]string{`await run("grounding"`},
-			[]string{`return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });`},
+			[]string{`return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate), metadata);`},
 		},
 		"explore": {
 			[]string{`explorationLimiter.acquire(signal)`, `await run("explore"`},
-			[]string{`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });`},
+			[]string{`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate), metadata);`},
 		},
 		"review": {
 			[]string{`loadReviewer(deps, root, params.kind)`, `await run("review"`},
-			[]string{`return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, selected.requested, signal, onUpdate), { kind: params.kind, requestedModel: selected.requested });`},
+			[]string{`return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, metadata, signal, onUpdate), { ...metadata, kind: params.kind });`},
 		},
 		"implement": {
 			[]string{`implementationTail = new Promise`, `snapshot(pi, root)`, `await run("implement"`},
 			[]string{
-				`const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, selected.requested, signal, onUpdate);`,
-				`const gitDetails = { allowCommits: params.allowCommits, requestedModel: selected.requested, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };`,
+				`const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, metadata, signal, onUpdate);`,
+				`const gitDetails = { ...metadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };`,
 				`return toolResult("implement", params.task, result, gitDetails);`,
 			},
 		},
@@ -290,7 +291,7 @@ func TestPiSubagentModelRouting(t *testing.T) {
 		}
 	}
 	implement := blocks["implement"]
-	commitPolicyFailure := `if (violation) return failedToolResult("implement", params.task, ` + "`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`" + `, { ...gitDetails, model: result.model, usage: result.usage });`
+	commitPolicyFailure := `if (violation) return failedToolResult("implement", params.task, ` + "`Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`" + `, { ...gitDetails, model: result.model, modelChanged: result.modelChanged, modelMismatch: Boolean(result.model && result.model !== metadata.resolvedModel), latestCacheHitRate: result.latestCacheHitRate, usage: result.usage });`
 	if !strings.Contains(implement, commitPolicyFailure) {
 		t.Errorf("implementation registration missing model and usage on exact commit-policy failure path %q", commitPolicyFailure)
 	}
@@ -454,7 +455,11 @@ func TestPiSubagentProgressRendering(t *testing.T) {
 			t.Errorf("role %s does not delegate both render hooks", role)
 		}
 	}
-	for _, want := range []string{`renderCall(args:`, `renderResult(result:`, `keyHint("app.tools.expand"`, "COLLAPSED_EVENT_COUNT"} {
+	for _, want := range []string{
+		`renderCall(args:`, `renderResult(result:`, `keyHint("app.tools.expand"`, "COLLAPSED_EVENT_COUNT",
+		`"queued" | "running"`, `resolvedModel:`, `thinkingLevel:`, `latestCacheHitRate:`,
+		`CH${latestCacheHitRate.toFixed(1)}%`, `Input: ${details.usage.input}`,
+	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("extension missing rendering contract %q", want)
 		}
@@ -474,7 +479,11 @@ func TestPiSubagentFailureDetails(t *testing.T) {
 // invariant: rendering/templates:pi-subagent-progress-bounds
 func TestPiSubagentProgressBounds(t *testing.T) {
 	content := renderPiExtensionFile(t, "runner.ts") + renderPiExtensionFile(t, "index.ts")
-	for _, want := range []string{"MAX_DISPLAY_EVENTS = 20", "MAX_DISPLAY_EVENT_BYTES = 2 * 1024", "omittedEvents", `Buffer.byteLength(JSON.stringify(fitted), "utf8")`, "MAX_TASK_PREVIEW_BYTES", "MAX_FALLBACK_BYTES"} {
+	for _, want := range []string{
+		"MAX_DISPLAY_EVENTS = 20", "MAX_DISPLAY_EVENT_BYTES = 2 * 1024", "omittedEvents",
+		`Buffer.byteLength(JSON.stringify(fitted), "utf8")`, "MAX_TASK_PREVIEW_BYTES", "MAX_FALLBACK_BYTES",
+		`usage: { ...usage }`, `latestCacheHitRate`, `modelChanged`,
+	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("extension missing progress bound %q", want)
 		}
@@ -530,7 +539,7 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 	for _, want := range []string{
 		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
 		`return { model: { provider: found.provider, id: found.id }, requested }`,
-		`thinkingLevel: pi.getThinkingLevel() as ThinkingLevel`,
+		`thinkingLevel: metadata.thinkingLevel`,
 		`const MAX_TASK_PREVIEW_BYTES = 512;`,
 		`const MAX_FALLBACK_BYTES = 2 * 1024;`,
 	} {

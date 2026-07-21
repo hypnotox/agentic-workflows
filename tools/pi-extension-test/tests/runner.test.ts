@@ -59,8 +59,20 @@ function harness(process = new FakeProcess()) {
   return { process, deps, request, writes, removals, timers, madeDirectories: () => madeDirectories };
 }
 
-function message(text: string, stopReason = "end") {
-  return JSON.stringify({ type: "message_end", message: { role: "assistant", content: [{ type: "text", text }], model: "child", stopReason, usage: { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: { total: 0.25 } } } });
+function message(text: string, stopReason = "end", options: { provider?: string; model?: string; responseModel?: string; errorMessage?: string; usage?: Record<string, unknown> } = {}) {
+  return JSON.stringify({
+    type: "message_end",
+    message: {
+      role: "assistant",
+      content: text ? [{ type: "text", text }] : [],
+      provider: options.provider,
+      model: options.model ?? "child",
+      responseModel: options.responseModel,
+      stopReason,
+      errorMessage: options.errorMessage,
+      usage: options.usage ?? { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: { total: 0.25 } },
+    },
+  });
 }
 function toolStart(id: string, name: string, args: unknown) {
   return JSON.stringify({ type: "tool_execution_start", toolCallId: id, toolName: name, args });
@@ -161,6 +173,11 @@ test("runner streams ordered display events, usage, and cleans up", async () => 
   assert.equal(result.failed, false);
   assert.deepEqual(result.usage, { input: 2, output: 3, cacheRead: 4, cacheWrite: 5, cost: 0.25, turns: 1 });
   assert.equal(result.model, "child");
+  assert.equal(result.modelChanged, false);
+  assert.equal(result.latestCacheHitRate, 4 / 11 * 100);
+  assert.deepEqual(updates.at(-1)?.usage, result.usage);
+  assert.equal(updates.at(-1)?.model, "child");
+  assert.equal(updates.at(-1)?.latestCacheHitRate, 4 / 11 * 100);
   assert.deepEqual(result.events, [
     { sequence: 1, kind: "tool-start", toolCallId: "call-1", toolName: "read", argsPreview: "{}" },
     { sequence: 2, kind: "tool-end", toolCallId: "call-1", toolName: "read", isError: false },
@@ -204,14 +221,45 @@ test("runner bounds every event and counts omissions", async () => {
   for (const update of updates) for (const event of update.events) assert.ok(Buffer.byteLength(JSON.stringify(event), "utf8") <= MAX_DISPLAY_EVENT_BYTES);
 });
 
+test("runner reports every completed turn with current usage and actual model identity", async () => {
+  const h = harness();
+  const updates: any[] = [];
+  const pending = createRunner(h.deps).run({ ...h.request, onUpdate: (value) => updates.push(value) });
+  await new Promise((resolve) => setImmediate(resolve));
+  h.process.stdout.write(message("", "toolUse", {
+    provider: "proxy",
+    model: "requested",
+    responseModel: "actual-a",
+    usage: { input: 10, output: 2, cacheRead: 30, cacheWrite: 10, cost: { total: 0.1 } },
+  }) + "\n");
+  h.process.stdout.write(message("done", "end", {
+    provider: "proxy",
+    model: "requested",
+    responseModel: "actual-b",
+    usage: { input: 5, output: 3, cacheRead: 15, cacheWrite: 0, cost: { total: 0.2 } },
+  }) + "\n");
+  h.process.close();
+  const result = await pending;
+  assert.equal(updates.length, 2);
+  assert.deepEqual(updates[0].usage, { input: 10, output: 2, cacheRead: 30, cacheWrite: 10, cost: 0.1, turns: 1 });
+  assert.equal(updates[0].model, "proxy/actual-a");
+  assert.equal(updates[0].latestCacheHitRate, 60);
+  assert.deepEqual({ ...updates[1].usage, cost: Number(updates[1].usage.cost.toFixed(3)) }, { input: 15, output: 5, cacheRead: 45, cacheWrite: 10, cost: 0.3, turns: 2 });
+  assert.equal(result.model, "proxy/actual-b");
+  assert.equal(result.modelChanged, true);
+  assert.equal(result.latestCacheHitRate, 75);
+});
+
 test("runner handles defensive event shapes and a final unterminated event", async () => {
   const h = harness();
   const pending = createRunner(h.deps).run(h.request);
   await new Promise((resolve) => setImmediate(resolve));
   h.process.stdout.write("\n");
   h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "user", content: [] } }) + "\n");
-  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: "invalid" } }) + "\n");
-  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: [null, { type: "text" }], usage: {} } }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: "invalid", usage: null } }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", content: [null, { type: "text" }], usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: {} } } }) + "\n");
+  h.process.stdout.write(message("", "toolUse", { provider: "proxy", model: "requested", usage: {} }) + "\n");
+  h.process.stdout.write(JSON.stringify({ type: "message_end", message: { role: "assistant", provider: "proxy", content: [], usage: {} } }) + "\n");
   h.process.stdout.write(JSON.stringify({ type: "tool_execution_start" }) + "\n");
   h.process.stdout.write(JSON.stringify({ type: "tool_execution_end" }) + "\n");
   h.process.stdout.write(JSON.stringify({ type: "unknown" }) + "\n");
@@ -241,6 +289,41 @@ test("runner returns malformed, exit, and model failures with bounded diagnostic
   }
 });
 
+test("runner preserves progress and bounded child errors on asynchronous process failure", async () => {
+  const h = harness();
+  const updates: any[] = [];
+  const pending = createRunner(h.deps).run({ ...h.request, onUpdate: (value) => updates.push(value) });
+  await new Promise((resolve) => setImmediate(resolve));
+  h.process.stdout.write(message("progress", "toolUse") + "\n");
+  h.process.fail(new Error("pipe failed"));
+  const result = await pending;
+  h.process.close();
+  assert.equal(result.failed, true);
+  assert.match(result.failureMessage ?? "", /pipe failed/);
+  assert.equal(result.output, "progress");
+  assert.equal(result.events.length, 1);
+  assert.equal(result.usage.turns, 1);
+  assert.equal(updates.length, 1);
+  assert.deepEqual(h.removals, ["/tmp/child"]);
+
+  const childError = harness();
+  const failed = createRunner(childError.deps).run(childError.request);
+  await new Promise((resolve) => setImmediate(resolve));
+  childError.process.stdout.write(message("", "error", { errorMessage: "x".repeat(MAX_FAILURE_BYTES * 2) }) + "\n");
+  childError.process.close();
+  const childResult = await failed;
+  assert.equal(childResult.failed, true);
+  assert.match(childResult.failureMessage ?? "", /failure truncated/);
+  assert.ok(Buffer.byteLength(childResult.failureMessage ?? "", "utf8") <= MAX_FAILURE_BYTES);
+
+  const emptyError = harness();
+  const emptyFailed = createRunner(emptyError.deps).run(emptyError.request);
+  await new Promise((resolve) => setImmediate(resolve));
+  emptyError.process.stdout.write(message("", "error", { usage: {} }) + "\n");
+  emptyError.process.close();
+  assert.match((await emptyFailed).failureMessage ?? "", /no output/);
+});
+
 test("runner cleans setup failures and rejects pre-abort", async () => {
   const aborted = harness();
   const controller = new AbortController(); controller.abort();
@@ -251,14 +334,6 @@ test("runner cleans setup failures and rejects pre-abort", async () => {
   write.deps.writeFile = async () => { throw new Error("write failed"); };
   await assert.rejects(createRunner(write.deps).run(write.request), /write failed/);
   assert.deepEqual(write.removals, ["/tmp/child"]);
-
-  const spawn = harness();
-  const pending = createRunner(spawn.deps).run(spawn.request);
-  await new Promise((resolve) => setImmediate(resolve));
-  spawn.process.fail(new Error("spawn failed"));
-  spawn.process.close();
-  await assert.rejects(pending, /spawn failed/);
-  assert.deepEqual(spawn.removals, ["/tmp/child"]);
 
   const synchronous = harness();
   synchronous.deps.spawn = () => { throw new Error("sync spawn failed"); };

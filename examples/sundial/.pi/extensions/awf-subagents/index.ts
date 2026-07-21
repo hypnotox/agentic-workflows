@@ -45,8 +45,15 @@ type ReviewKind = keyof typeof REVIEWER_PATHS;
 type ExplorationBreadth = "targeted" | "bounded" | "broad";
 type ExplorationDetail = "paths" | "summary" | "analysis";
 interface GitSnapshot { available: boolean; head?: string; status?: string; }
-export type SubagentState = "running" | "completed" | "failed" | "aborted";
-export interface SubagentDetails {
+export type SubagentState = "queued" | "running" | "completed" | "failed" | "aborted";
+export interface ExecutionMetadata extends Record<string, unknown> {
+  resolvedModel: string;
+  requestedModel?: string;
+  modelSource: "inherited" | "requested";
+  thinkingLevel: ThinkingLevel;
+  options: Readonly<Record<string, string | boolean>>;
+}
+export interface SubagentDetails extends ExecutionMetadata {
   role: RunRequest["role"];
   task: string;
   state: SubagentState;
@@ -55,7 +62,9 @@ export interface SubagentDetails {
   stderr?: string;
   usage?: Usage;
   model?: string;
-  requestedModel?: string;
+  modelChanged?: boolean;
+  modelMismatch?: boolean;
+  latestCacheHitRate?: number;
   stopReason?: string;
   awfFailure?: true;
   [roleSpecific: string]: unknown;
@@ -204,6 +213,24 @@ async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
   return { available: status.code === 0, head: head.stdout.trim(), status: status.stdout };
 }
 
+function validateTask(task: string): void {
+  if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
+}
+
+function executionMetadata(
+  selected: ReturnType<typeof resolveChildModel>,
+  thinkingLevel: ThinkingLevel,
+  options: Record<string, string | boolean> = {},
+): ExecutionMetadata {
+  return {
+    resolvedModel: `${selected.model.provider}/${selected.model.id}`,
+    requestedModel: selected.requested,
+    modelSource: selected.requested === undefined ? "inherited" : "requested",
+    thinkingLevel,
+    options,
+  };
+}
+
 function stateFor(failed: boolean, stopReason?: string): SubagentState {
   if (!failed) return "completed";
   return stopReason === "aborted" ? "aborted" : "failed";
@@ -226,7 +253,9 @@ function toolResult(role: RunRequest["role"], task: string, result: Awaited<Retu
     details: {
       role, task, state: stateFor(failed, result.stopReason), events: result.events,
       omittedEvents: result.omittedEvents, ...details, stderr: result.stderr,
-      usage: result.usage, model: result.model, stopReason: result.stopReason,
+      usage: result.usage, model: result.model, modelChanged: result.modelChanged,
+      modelMismatch: Boolean(result.model && result.model !== details.resolvedModel),
+      latestCacheHitRate: result.latestCacheHitRate, stopReason: result.stopReason,
       ...(failed ? { awfFailure: true as const } : {}),
     },
   };
@@ -237,18 +266,30 @@ function contentText(result: any): string {
   return utf8Bound(String(part?.text ?? "(no output)"), MAX_FALLBACK_BYTES, DISPLAY_TRUNCATION);
 }
 
-function usageText(usage: Usage | undefined, model: string | undefined, requestedModel: string | undefined): string {
-  if (!usage && !model && !requestedModel) return "";
-  const parts: string[] = [];
-  if (usage?.turns) parts.push(`${usage.turns} turn${usage.turns === 1 ? "" : "s"}`);
-  if (usage?.input) parts.push(`in:${usage.input}`);
-  if (usage?.output) parts.push(`out:${usage.output}`);
-  if (usage?.cacheRead) parts.push(`cache-read:${usage.cacheRead}`);
-  if (usage?.cacheWrite) parts.push(`cache-write:${usage.cacheWrite}`);
-  if (usage?.cost) parts.push(`$${usage.cost.toFixed(4)}`);
-  if (requestedModel) parts.push(`requested:${requestedModel}`);
-  if (model) parts.push(model);
+function formatTokens(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1).replace(/\.0$/, "")}m`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(value >= 100_000 ? 0 : 1).replace(/\.0$/, "")}k`;
+  return String(value);
+}
+
+function compactUsageText(usage: Usage | undefined, latestCacheHitRate: number | undefined): string {
+  if (!usage || !(usage.turns || usage.input || usage.output || usage.cacheRead || usage.cacheWrite || usage.cost)) return "";
+  const parts = [`${usage.turns} turn${usage.turns === 1 ? "" : "s"}`];
+  if (usage.input) parts.push(`↑${formatTokens(usage.input)}`);
+  if (usage.output) parts.push(`↓${formatTokens(usage.output)}`);
+  if (usage.cacheRead) parts.push(`R${formatTokens(usage.cacheRead)}`);
+  if (usage.cacheWrite) parts.push(`W${formatTokens(usage.cacheWrite)}`);
+  if (latestCacheHitRate !== undefined) parts.push(`CH${latestCacheHitRate.toFixed(1)}%`);
+  if (usage.cost) parts.push(`$${usage.cost.toFixed(3)}`);
   return parts.join(" ");
+}
+
+function optionText(options: Readonly<Record<string, string | boolean>> | undefined): string {
+  return Object.entries(options ?? {}).map(([key, value]) => `${key}:${value}`).join(" ");
+}
+
+function activeModel(details: SubagentDetails): string {
+  return details.model ?? details.resolvedModel ?? details.requestedModel ?? "unknown";
 }
 
 function eventText(event: DisplayEvent): string {
@@ -257,9 +298,19 @@ function eventText(event: DisplayEvent): string {
   return `<- ${event.toolName} ${event.isError ? "error" : "ok"}`;
 }
 
+function callOptions(role: RunRequest["role"], args: any): Record<string, string | boolean> {
+  if (role === "explore") return { breadth: args.breadth ?? "?", detail: args.detail ?? "?" };
+  if (role === "review") return { kind: args.kind ?? "?" };
+  if (role === "implement") return { allowCommits: args.allowCommits ?? "?" };
+  return {};
+}
+
 function renderSubagentCall(role: RunRequest["role"], args: any, theme: any) {
   const task = utf8Bound(String(args.task ?? ""), MAX_TASK_PREVIEW_BYTES, TASK_TRUNCATION);
-  return new Text(`${theme.fg("toolTitle", theme.bold(`${role} subagent`))}\n${theme.fg("dim", task || "(no task)")}`, 0, 0);
+  const model = args.model ? String(args.model) : "inherit parent";
+  const options = optionText(callOptions(role, args));
+  const metadata = [`model:${model}`, options].filter(Boolean).join(" ");
+  return new Text(`${theme.fg("toolTitle", theme.bold(`${role} subagent`))}\n${theme.fg("muted", metadata)}\n${theme.fg("dim", task || "(no task)")}`, 0, 0);
 }
 
 function renderSubagentResult(role: RunRequest["role"], result: any, options: { expanded: boolean; isPartial: boolean }, theme: any) {
@@ -267,16 +318,22 @@ function renderSubagentResult(role: RunRequest["role"], result: any, options: { 
   if (!details || !Array.isArray(details.events)) {
     return new Text(`${theme.fg("toolTitle", theme.bold(`${role} subagent`))}\n${theme.fg("toolOutput", contentText(result))}`, 0, 0);
   }
-  const state = options.isPartial ? "running" : details.state;
-  const statusColor = state === "completed" ? "success" : state === "running" ? "warning" : "error";
+  const state = details.state;
+  const statusColor = state === "completed" ? "success" : state === "queued" || state === "running" ? "warning" : "error";
   const header = `${theme.fg(statusColor, state)} ${theme.fg("toolTitle", theme.bold(`${role} subagent`))}`;
-  const usage = usageText(details.usage, details.model, details.requestedModel);
+  const actualModel = activeModel(details);
+  const metadata = [
+    `model:${actualModel}`,
+    details.thinkingLevel ? `thinking:${details.thinkingLevel}` : "",
+    optionText(details.options),
+  ].filter(Boolean).join(" ");
+  const usage = compactUsageText(details.usage, details.latestCacheHitRate);
   const omission = details.omittedEvents > 0 ? `${details.omittedEvents} older events omitted` : "no omitted events";
 
   if (!options.expanded) {
     const retainedSkipped = Math.max(0, details.events.length - COLLAPSED_EVENT_COUNT);
     const events = details.events.slice(-COLLAPSED_EVENT_COUNT).map(eventText);
-    const lines = [header, omission];
+    const lines = [header, metadata, omission];
     if (retainedSkipped > 0) lines.push(`... ${retainedSkipped} earlier retained events`);
     lines.push(...events);
     if (usage) lines.push(usage);
@@ -286,6 +343,16 @@ function renderSubagentResult(role: RunRequest["role"], result: any, options: { 
 
   const container = new Container();
   container.addChild(new Text(header, 0, 0));
+  container.addChild(new Spacer(1));
+  container.addChild(new Text(theme.fg("muted", "Execution"), 0, 0));
+  const modelLines = [`Model: ${actualModel}`];
+  if (details.resolvedModel && actualModel !== details.resolvedModel) modelLines.push(`resolved: ${details.resolvedModel}`);
+  if (details.modelSource) modelLines.push(`source: ${details.modelSource}`);
+  if (details.thinkingLevel) modelLines.push(`Thinking: ${details.thinkingLevel}`);
+  if (details.modelMismatch) modelLines.push("actual model differs from resolved model");
+  if (details.modelChanged) modelLines.push("model changed during run");
+  for (const [key, value] of Object.entries(details.options ?? {})) modelLines.push(`${key}: ${value}`);
+  container.addChild(new Text(modelLines.join("\n"), 0, 0));
   container.addChild(new Spacer(1));
   container.addChild(new Text(theme.fg("muted", "Task"), 0, 0));
   container.addChild(new Text(details.task || "(no task)", 0, 0));
@@ -303,9 +370,19 @@ function renderSubagentResult(role: RunRequest["role"], result: any, options: { 
     container.addChild(new Text(theme.fg("muted", "Diagnostics"), 0, 0));
     container.addChild(new Text(details.stderr, 0, 0));
   }
-  if (usage) {
+  if (details.usage) {
+    const breakdown = [
+      `Input: ${details.usage.input}`,
+      `Output: ${details.usage.output}`,
+      `Cache read: ${details.usage.cacheRead}`,
+      `Cache write: ${details.usage.cacheWrite}`,
+      `Cache hit: ${details.latestCacheHitRate === undefined ? "n/a" : `${details.latestCacheHitRate.toFixed(1)}%`}`,
+      `Cost: $${details.usage.cost.toFixed(3)}`,
+      `Turns: ${details.usage.turns}`,
+    ];
     container.addChild(new Spacer(1));
-    container.addChild(new Text(theme.fg("dim", usage), 0, 0));
+    container.addChild(new Text(theme.fg("muted", "Usage"), 0, 0));
+    container.addChild(new Text(breakdown.join("\n"), 0, 0));
   }
   return container;
 }
@@ -328,19 +405,32 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   const root = projectRoot(deps.extensionFile);
   const explorationLimiter = createLimiter(MAX_EXPLORATION_CONCURRENCY);
   let implementationTail: Promise<void> = Promise.resolve();
+  const emptyUsage = (): Usage => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 });
+  const publishState = (
+    onUpdate: ((value: any) => void) | undefined,
+    role: RunRequest["role"], task: string, state: "queued" | "running", metadata: ExecutionMetadata,
+  ): void => onUpdate?.({
+    content: [{ type: "text", text: "(running...)" }],
+    details: { role, task, state, events: [], omittedEvents: 0, usage: emptyUsage(), ...metadata },
+  });
   const run = async (
     role: RunRequest["role"], task: string, tools: readonly string[], systemPrompt: string,
-    model: { provider: string; id: string }, requestedModel: string | undefined,
+    model: { provider: string; id: string }, metadata: ExecutionMetadata,
     signal: AbortSignal | undefined, onUpdate: ((value: any) => void) | undefined,
   ) => {
-    if (!task.trim()) throw new Error("Subagent task must be a non-empty string");
+    validateTask(task);
+    publishState(onUpdate, role, task, "running", metadata);
     return deps.runner.run({
-      role, task, cwd: root, model,
-      thinkingLevel: pi.getThinkingLevel() as ThinkingLevel,
+      role, task, cwd: root, model, thinkingLevel: metadata.thinkingLevel,
       tools, systemPrompt, signal,
       onUpdate: (update) => onUpdate?.({
         content: [{ type: "text", text: "(running...)" }],
-        details: { role, task, state: "running", events: update.events, omittedEvents: update.omittedEvents, requestedModel },
+        details: {
+          role, task, state: "running", events: update.events, omittedEvents: update.omittedEvents,
+          usage: update.usage, model: update.model, modelChanged: update.modelChanged,
+          modelMismatch: Boolean(update.model && update.model !== metadata.resolvedModel),
+          latestCacheHitRate: update.latestCacheHitRate, ...metadata,
+        },
       }),
     });
   };
@@ -373,8 +463,10 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. model is optional and omission inherits the parent."],
     parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(Type.String()) }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
+      validateTask(params.task);
       const selected = resolveChildModel(ctx, params.model);
-      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });
+      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel);
+      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate), metadata);
     },
     ...renderers("grounding"),
   });
@@ -392,10 +484,13 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       model: Type.Optional(Type.String()),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
+      validateTask(params.task);
       const selected = resolveChildModel(ctx, params.model);
+      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { breadth: params.breadth, detail: params.detail });
+      publishState(onUpdate, "explore", params.task, "queued", metadata);
       const release = await explorationLimiter.acquire(signal);
       try {
-        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, selected.requested, signal, onUpdate), { requestedModel: selected.requested });
+        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate), metadata);
       } finally {
         release();
       }
@@ -415,9 +510,11 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       model: Type.Optional(Type.String()),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
+      validateTask(params.task);
       const selected = resolveChildModel(ctx, params.model);
+      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { kind: params.kind });
       const prompt = await loadReviewer(deps, root, params.kind);
-      return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, selected.requested, signal, onUpdate), { kind: params.kind, requestedModel: selected.requested });
+      return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, metadata, signal, onUpdate), { ...metadata, kind: params.kind });
     },
     ...renderers("review"),
   });
@@ -434,19 +531,22 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       model: Type.Optional(Type.String()),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
+      validateTask(params.task);
       const selected = resolveChildModel(ctx, params.model);
+      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { allowCommits: params.allowCommits });
       let release!: () => void;
       const previous = implementationTail;
       implementationTail = new Promise<void>((resolve) => { release = resolve; });
+      publishState(onUpdate, "implement", params.task, "queued", metadata);
       await previous;
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
         const before = await snapshot(pi, root);
-        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, selected.requested, signal, onUpdate);
+        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, metadata, signal, onUpdate);
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
-        const gitDetails = { allowCommits: params.allowCommits, requestedModel: selected.requested, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
-        if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, { ...gitDetails, model: result.model, usage: result.usage });
+        const gitDetails = { ...metadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
+        if (violation) return failedToolResult("implement", params.task, `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`, { ...gitDetails, model: result.model, modelChanged: result.modelChanged, modelMismatch: Boolean(result.model && result.model !== metadata.resolvedModel), latestCacheHitRate: result.latestCacheHitRate, usage: result.usage });
         return toolResult("implement", params.task, result, gitDetails);
       } finally { release(); }
     },

@@ -62,8 +62,15 @@ type DisplayEventInput =
   | { kind: "assistant"; text: string }
   | { kind: "tool-start"; toolCallId: string; toolName: string; argsPreview: string }
   | { kind: "tool-end"; toolCallId: string; toolName: string; isError: boolean };
-export interface RunUpdate { events: readonly DisplayEvent[]; omittedEvents: number; }
 export interface Usage { input: number; output: number; cacheRead: number; cacheWrite: number; cost: number; turns: number; }
+export interface RunUpdate {
+  events: readonly DisplayEvent[];
+  omittedEvents: number;
+  usage: Usage;
+  model?: string;
+  modelChanged: boolean;
+  latestCacheHitRate?: number;
+}
 export interface RunResult {
   output: string;
   stderr: string;
@@ -71,6 +78,8 @@ export interface RunResult {
   omittedEvents: number;
   usage: Usage;
   model?: string;
+  modelChanged: boolean;
+  latestCacheHitRate?: number;
   stopReason?: string;
   failed: boolean;
   failureMessage?: string;
@@ -190,6 +199,9 @@ export function createRunner(deps: RunnerDependencies): Runner {
         let output = "";
         let stderr = "";
         let model: string | undefined;
+        let modelChanged = false;
+        let latestCacheHitRate: number | undefined;
+        let childErrorMessage: string | undefined;
         let stopReason: string | undefined;
         let buffer = "";
         let closed = false;
@@ -209,18 +221,22 @@ export function createRunner(deps: RunnerDependencies): Runner {
             omittedEvents,
             usage,
             model,
+            modelChanged,
+            latestCacheHitRate,
             stopReason,
             failed,
             failureMessage: failureMessage ? truncateFailure(failureMessage) : undefined,
           });
-          const finish = (error?: Error, failed = false, failureMessage?: string): void => {
+          const finish = (failed = false, failureMessage?: string): void => {
             if (settled) return;
             settled = true;
             if (timer !== undefined) deps.clearTimer(timer);
             if (request.signal && abortListener) request.signal.removeEventListener("abort", abortListener);
-            if (error) reject(error);
-            else resolve(buildResult(failed, failureMessage));
+            resolve(buildResult(failed, failureMessage));
           };
+          const publishUpdate = (): void => request.onUpdate?.({
+            events: [...events], omittedEvents, usage: { ...usage }, model, modelChanged, latestCacheHitRate,
+          });
           const appendDisplayEvent = (event: DisplayEventInput): void => {
             const fitted = fitDisplayEvent({ ...event, sequence: ++sequence } as DisplayEvent);
             events.push(fitted);
@@ -228,7 +244,7 @@ export function createRunner(deps: RunnerDependencies): Runner {
               omittedEvents += events.length - MAX_DISPLAY_EVENTS;
               events.splice(0, events.length - MAX_DISPLAY_EVENTS);
             }
-            request.onUpdate?.({ events: [...events], omittedEvents });
+            publishUpdate();
           };
           const processEvent = (line: string): void => {
             if (!line.trim()) return;
@@ -241,19 +257,33 @@ export function createRunner(deps: RunnerDependencies): Runner {
               return;
             }
             if (event.type === "message_end" && event.message?.role === "assistant") {
-              const text = finalText(event.message);
-              if (text) { output = text; appendDisplayEvent({ kind: "assistant", text }); }
               const current = event.message.usage;
-              usage.input += current?.input ?? 0;
-              usage.output += current?.output ?? 0;
-              usage.cacheRead += current?.cacheRead ?? 0;
-              usage.cacheWrite += current?.cacheWrite ?? 0;
+              const input = current?.input ?? 0;
+              const outputTokens = current?.output ?? 0;
+              const cacheRead = current?.cacheRead ?? 0;
+              const cacheWrite = current?.cacheWrite ?? 0;
+              usage.input += input;
+              usage.output += outputTokens;
+              usage.cacheRead += cacheRead;
+              usage.cacheWrite += cacheWrite;
               usage.cost += current?.cost?.total ?? 0;
               usage.turns++;
-              /* node:coverage ignore next -- defensive fallback; child assistant messages normally name their model */
-              model = event.message.model ?? model;
+              const promptTokens = input + cacheRead + cacheWrite;
+              latestCacheHitRate = promptTokens > 0 ? (cacheRead / promptTokens) * 100 : undefined;
+              const reportedID = event.message.responseModel ?? event.message.model;
+              const reportedModel = event.message.provider && reportedID
+                ? `${event.message.provider}/${reportedID}`
+                : reportedID;
+              if (reportedModel) {
+                if (model !== undefined && model !== reportedModel) modelChanged = true;
+                model = reportedModel;
+              }
+              if (event.message.errorMessage) childErrorMessage = String(event.message.errorMessage);
               /* node:coverage ignore next -- defensive fallback; child assistant messages normally carry a stop reason */
               stopReason = event.message.stopReason ?? stopReason;
+              const text = finalText(event.message);
+              if (text) { output = text; appendDisplayEvent({ kind: "assistant", text }); }
+              else publishUpdate();
             }
             if (event.type === "tool_execution_start") {
               appendDisplayEvent({ kind: "tool-start", toolCallId: String(event.toolCallId ?? ""), toolName: String(event.toolName ?? "tool"), argsPreview: JSON.stringify(event.args ?? {}) });
@@ -269,18 +299,18 @@ export function createRunner(deps: RunnerDependencies): Runner {
             for (const line of lines) processEvent(line);
           });
           child.stderr.on("data", (chunk: Buffer | string) => { stderr = truncateStderr(stderr + chunk.toString()); });
-          child.once("error", (error) => finish(error));
+          child.once("error", (error) => finish(true, `Subagent process error: ${error.message}`));
           child.once("close", (code) => {
             closed = true;
             if (buffer.trim() && !forcedFailure) processEvent(buffer);
             if (forcedFailure) {
               stopReason = forcedFailure.reason;
-              finish(undefined, true, forcedFailure.message);
+              finish(true, forcedFailure.message);
             } else if (code !== 0) {
               stopReason = "error";
-              finish(undefined, true, `Subagent exited ${code}: ${truncateStderr(stderr) || "no diagnostics"}`);
+              finish(true, `Subagent exited ${code}: ${truncateStderr(stderr) || "no diagnostics"}`);
             } else if (stopReason === "error" || stopReason === "aborted") {
-              finish(undefined, true, `Subagent ${stopReason}: ${truncateOutput(output)}`);
+              finish(true, `Subagent ${stopReason}: ${truncateOutput(output || childErrorMessage || "(no output)")}`);
             } else {
               finish();
             }

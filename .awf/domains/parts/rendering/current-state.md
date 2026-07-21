@@ -16,7 +16,10 @@ sync-repair, planned-output, and cleanup paths as other generated files. The tem
 `missingkey=zero` publication safety and are rendered automatically whenever Pi is enabled. The
 runner retains the last 20 structured assistant and tool-lifecycle events, caps each complete event
 at 2 KiB, reports cumulative omissions, and sends progress through context-isolated tool details.
-ADR-0125 expands the closed Pi contract to four roles with dedicated `subagent_grounding`, binds Pi
+Those details expose queued/running state, the admission-time resolved model and thinking level,
+role options, the latest reported actual model, and cumulative per-turn usage with Pi-compatible
+cache-hit reporting; collapsed rendering stays compact while expanded rendering labels the complete
+breakdown. ADR-0125 expands the closed Pi contract to four roles with dedicated `subagent_grounding`, binds Pi
 brainstorming to it while coupling audits retain exploration, and gives all four tools one shared
 collapsed/expanded inline renderer. Final report or failure-summary content alone reaches the parent
 model. ADR-0126 adds a `// @ts-nocheck` directive on the line after each extension file's provenance
