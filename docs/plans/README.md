@@ -27,8 +27,8 @@ where the date is the day the plan is written (ISO-8601). Example:
   header sections: Goal, Architecture summary, and File structure (created / modified /
   deleted).
 - Phases of tasks, each task one reviewable, logically-coherent change (a whole new file is one
-  task), as `- [ ]` checkboxes. Each names exact paths and relevant symbols, exact commands and
-  terminal states, and either exact content/diffs or implementation-ready pseudocode specifying
+  task), as `- [ ]` checkboxes. Each names exact file paths and relevant symbols, exact commands
+  with expected terminal states, and either exact content/diffs or implementation-ready pseudocode specifying
   behavior, branches, ordering, failures, constraints, forbidden behavior, tests, acceptance
   assertions, and deterministic verification, with no hidden design choice.
 - Exact form remains mandatory for machine-consumed declarative content such as configuration and
@@ -36,7 +36,8 @@ where the date is the day the plan is written (ISO-8601). Example:
   mechanical replacements, required literal prose, and batch-task representative and edge
   transformations. Non-contractual prose documentation may use qualifying instructions; a mixed
   task may combine both forms. `TBD`, `implement later`, outcome-only summaries, and hidden design
-  choices are placeholders, never pseudocode.
+  choices are placeholders, never pseudocode. Every task remains executable by an agent with no
+  prior conversation context.
 - For a transformation repeated across many sites, a specialized *batch task* may be used instead of N
   near-identical diffs: a representative site shown as an exact diff, an edge site (unless the shape
   is identical everywhere), the exhaustive affected-site set (a list or a command that reproduces

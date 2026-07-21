@@ -36,7 +36,8 @@ linked ADR).
   task's representative and edge. Non-contractual prose may use qualifying instructions; a mixed
   task may combine both forms. The batch task retains its affected-site set and post-check. `TBD`,
   `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
-  pseudocode. A task is one reviewable, logically-coherent change (a whole new file is one task).
+  pseudocode. The task remains executable by an agent with no prior conversation context. A task is
+  one reviewable, logically-coherent change (a whole new file is one task).
 - [ ] **Task 1.2: Verify and commit.** Run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; `git add` the exact paths; commit with a
   Conventional-Commits subject, placed in a fenced code block tagged `commit` so `awf check`
   validates its length and type before you commit (tag a display-only example `commit awf-ignore`

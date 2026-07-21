@@ -10,6 +10,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+type planPolicySurface struct {
+	name, output, start, end string
+}
+
 // invariant: rendering/templates:plan-task-detail-modes
 func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	defaultWriter := renderSkillGolden(t, "writing-plans", map[string]any{
@@ -38,40 +42,52 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		"data":   map[string]any{},
 	})
 
-	for name, output := range map[string]string{
-		"default writing skill": defaultWriter,
-		"default plan reviewer": defaultReviewer,
-		"default plans README":  defaultReadme,
-		"default plan template": defaultPlanTemplate,
-		"default agent guide":   defaultAgentGuide,
+	for _, surface := range []planPolicySurface{
+		{"default writing skill", defaultWriter, "- **Tasks:**", "- **Commit subjects"},
+		{"default plan reviewer", defaultReviewer, "1. **executability**", "1. **doc-currency"},
+		{"default plans README", defaultReadme, "- Phases of tasks", "- A commit step"},
+		{"default plan template", defaultPlanTemplate, "- [ ] **Task 1.1", "- [ ] **Task 1.2"},
+		{"default agent guide", defaultAgentGuide, "A plan may use exact content/diffs", "Each written artifact gets"},
 	} {
-		assertPlanTaskDetailContract(t, name, output)
+		assertPlanTaskDetailContract(t, surface)
 	}
 
 	root := testsupport.RepoRoot(t)
-	for _, rel := range []string{
-		".pi/skills/awf-writing-plans/SKILL.md",
-		".pi/skills/plan-reviewer.md",
-		"docs/plans/README.md",
-		"docs/plans/template.md",
-		"AGENTS.md",
+	for _, surface := range []planPolicySurface{
+		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Tasks:**", end: "- **Commit subjects"},
+		{name: ".pi/skills/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
+		{name: "docs/plans/README.md", start: "- Phases of tasks", end: "- A commit step"},
+		{name: "docs/plans/template.md", start: "- [ ] **Task 1.1", end: "- [ ] **Task 1.2"},
+		{name: "AGENTS.md", start: "A plan may use exact content/diffs", end: "Each written artifact gets"},
 	} {
-		body, err := os.ReadFile(filepath.Join(root, rel))
+		body, err := os.ReadFile(filepath.Join(root, surface.name))
 		if err != nil {
-			t.Fatalf("read rendered policy surface %s: %v", rel, err)
+			t.Fatalf("read rendered policy surface %s: %v", surface.name, err)
 		}
-		assertPlanTaskDetailContract(t, rel, string(body))
+		surface.output = string(body)
+		assertPlanTaskDetailContract(t, surface)
 	}
 }
 
-func assertPlanTaskDetailContract(t *testing.T, name, output string) {
+func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 	t.Helper()
-	output = strings.Join(strings.Fields(output), " ")
+	start := strings.Index(surface.output, surface.start)
+	if start < 0 {
+		t.Fatalf("%s missing plan-policy start %q", surface.name, surface.start)
+	}
+	endOffset := strings.Index(surface.output[start+len(surface.start):], surface.end)
+	if endOffset < 0 {
+		t.Fatalf("%s missing plan-policy end %q", surface.name, surface.end)
+	}
+	policy := surface.output[start : start+len(surface.start)+endOffset]
+	policy = strings.Join(strings.Fields(policy), " ")
+
 	for _, clause := range []string{
 		"exact content/diffs",
 		"implementation-ready pseudocode",
 		"exact file paths",
 		"relevant symbols",
+		"expected terminal states",
 		"behavior, branches, ordering, failures",
 		"constraints",
 		"forbidden behavior",
@@ -97,9 +113,10 @@ func assertPlanTaskDetailContract(t *testing.T, name, output string) {
 		"outcome-only summaries",
 		"hidden design choices",
 		"placeholders, never pseudocode",
+		"no prior conversation context",
 	} {
-		if !strings.Contains(output, clause) {
-			t.Errorf("%s missing plan-detail clause %q:\n%s", name, clause, output)
+		if !strings.Contains(policy, clause) {
+			t.Errorf("%s plan-policy section missing clause %q:\n%s", surface.name, clause, policy)
 		}
 	}
 }
