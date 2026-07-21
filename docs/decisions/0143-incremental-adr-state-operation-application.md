@@ -18,7 +18,7 @@ The stored grammar must remain mechanically distinguishable. Existing `current-s
 
 ## Decision
 
-1. awf introduces `format: current-state-v2`. The lock records `adrFormatV2From`, and every ADR at or above that number must use V2 while earlier V1 and legacy ADRs retain their existing validation. `awf upgrade` sets the cutoff to the highest existing ADR number plus one and stamps the new schema generation in the same atomic lock save. The cutoff is immutable after that transition. No existing ADR, topic, or claim is rewritten.
+1. awf introduces `format: current-state-v2`. The lock records `adrFormatV2From`, and every ADR at or above that number must use V2 while earlier V1 and legacy ADRs retain their existing validation. An empty first adoption at the V2 schema sets both `adrFormatV1From` and `adrFormatV2From` to 1. A brownfield first adoption sets both cutoffs to the highest existing ADR number plus one and retains every lower existing identity and gap in the closed legacy set. Upgrading an existing V1 adopter preserves `adrFormatV1From` and sets `adrFormatV2From` to the highest existing ADR number plus one. Upgrade stamps the new schema generation and V2 cutoff in the same atomic lock save. Both cutoffs are immutable afterward. No existing ADR, topic, or claim is rewritten.
 
 2. V2 statuses are Proposed, Accepted, Implementing, Implemented, and Abandoned. Legal edges are Proposed to Accepted, Implementing, Implemented, or Abandoned; Accepted to Implementing, Implemented, or Abandoned; and Implementing to Implemented or Abandoned. Implemented and Abandoned remain terminal. Proposed to Implementing preserves optional acceptance, while Accepted remains wholly unapplied.
 
@@ -51,6 +51,16 @@ The stored grammar must remain mechanically distinguishable. Existing `current-s
 16. The ADR corpus exposes enough progress data for explicit ADR-path context to partition Applied, Remaining, and, for Abandoned ADRs, Canceled operations with batch sequences while labeling decision material as non-current authority. The separate context-artifact UX decision owns that presentation; this decision establishes only the lifecycle contract and API seam.
 
 17. The generated decision index lists Proposed, Accepted, and Implementing ADRs under In flight and keeps Implemented and Abandoned records in compact History. ADR authoring, lifecycle, planning, execution, review, audit, and retrospective guidance describes application batches and no longer requires all operations in one final commit.
+
+18. Lock ownership remains separated by package. `internal/manifest` parses and canonically serializes both cutoffs; `internal/migrate` and the upgrade command initialize the V2 cutoff and schema generation atomically; `internal/project` preserves the lock fields, validates snapshot transitions, selects the scaffold format, and renders the resulting workflow surfaces. `internal/config` does not own either cutoff because they are permanent project metadata rather than authored configuration. Mixed legacy, V1, and V2 corpora remain readable according to the two immutable boundaries.
+
+19. The Implemented transaction applies every operation in this ADR's State changes list. Added claims name ADR-0143 as Origin and use `Backing: test` with matching proof markers. Updated claims preserve Origin and the complete prior Revised-by prefix, append ADR-0143, change at least one canonical field substantively, and retain or strengthen their required backing. The claim transaction and proof markers land with the behavior they describe.
+
+20. Every Accepted, Implementing, Implemented, or Abandoned status transition runs `./x sync` and commits the regenerated `docs/decisions/INDEX.md` and lock output in the same transaction. An Applied-only same-status transaction also syncs and commits any generated output that changes.
+
+21. The implementation updates the authored ADR guide and template, lifecycle and workflow skills, reviewer instructions, architecture, glossary, configuration reference, current-state sources, `templates/agents-doc/AGENTS.md.tmpl`, any applicable project convention parts under `.awf/parts/agents-doc/`, and rendered `AGENTS.md` in the behavior-changing commits. Generated target copies travel with their authored template and `.awf/` inputs.
+
+22. Every affected template preserves missing-key-zero rendering and coherent generic prose when its variables or data are unset. No empty interpolation or unresolved-value token is permitted in adopter output.
 
 ## State changes
 
@@ -85,6 +95,7 @@ The later context/topic UX effort can use incremental batches for its larger cla
 | Validate one ADR over audit range endpoints | Intermediate commits could carry stale authority, and staged checking, bisectability, cherry-pick safety, and mutation attribution would weaken. |
 | Keep four statuses and apply operations while Accepted | Accepted would mean both wholly pending and partially incorporated, obscuring the implementation boundary. |
 | Store application state in a separate ledger | ADR progress would be split across authored files and require another drift-prone authority schema. |
+| Split one multi-operation decision into several ADRs | It fragments one load-bearing rationale into artificial decisions solely to satisfy commit sizing. |
 | Keep one sequence per ADR and forbid interleaving | A partially implemented ADR would impose a project-wide mutation lock and block otherwise independent plans. |
 | Add reversible application events | Provenance deletion, sequence tombstones, and restoration of removed identities would substantially enlarge the state machine; forward successor decisions preserve clearer history. |
 | Extend current-state-v1 in place | Old and new records would share a marker despite different status and history grammars, making stored-version reasoning harder. |
