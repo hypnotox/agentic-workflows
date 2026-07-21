@@ -358,9 +358,14 @@ func NewFile(dir, title string) (string, error) {
 		return "", fmt.Errorf("adr: read template: %w", err)
 	}
 	content := markerLineRe.ReplaceAllString(string(raw), "")
-	content, err = replaceOnce(content, "date: YYYY-MM-DD", "date: "+now().Format("2006-01-02"))
+	date := now().Format("2006-01-02")
+	content, err = replaceOnce(content, "date: YYYY-MM-DD", "date: "+date)
 	if err != nil {
 		return "", err
+	}
+	content, err = replaceOnce(content, "- YYYY-MM-DD: Proposed", "- "+date+": Proposed")
+	if err != nil {
+		return "", fmt.Errorf("ADR template Proposed history: %w", err)
 	}
 	content, err = replaceOnce(content, "# ADR-NNNN: Title", fmt.Sprintf("# ADR-%s: %s", number, title))
 	if err != nil {
