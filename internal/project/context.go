@@ -43,18 +43,21 @@ type DomainRef struct {
 // narrows the selection to the marked claims (ADR-0134). Global is set for an
 // `applies: global` topic, which is always selected.
 type TopicContext struct {
-	ID     string     `json:"id"`
-	Title  string     `json:"title"`
-	Global bool       `json:"global,omitempty"`
-	Claims []ClaimRef `json:"claims"`
+	ID      string     `json:"id"`
+	Title   string     `json:"title"`
+	Summary string     `json:"summary"`
+	Global  bool       `json:"global,omitempty"`
+	Claims  []ClaimRef `json:"claims"`
 }
 
 // ClaimRef is one current-state claim: its full `<domain>/<topic>:<slug>` ID,
-// type (rule or invariant), and prose.
+// type (rule or invariant), prose, and invariant backing contract.
 type ClaimRef struct {
-	ID    string `json:"id"`
-	Type  string `json:"type"`
-	Prose string `json:"prose"`
+	ID      string `json:"id"`
+	Type    string `json:"type"`
+	Prose   string `json:"prose"`
+	Backing string `json:"backing,omitempty"`
+	Verify  string `json:"verify,omitempty"`
 }
 
 // PendingChange is one Accepted-ADR State-changes operation targeting a matched
@@ -210,10 +213,13 @@ func (p *Project) assembleContext(loaded currentstate.Loaded, paths []string) Co
 	}
 	for _, id := range slices.Sorted(maps.Keys(accs)) {
 		a := accs[id]
-		tc := TopicContext{ID: id, Title: a.topic.Metadata.Title, Global: a.topic.Metadata.Applies == "global"}
+		tc := TopicContext{ID: id, Title: a.topic.Metadata.Title, Summary: a.topic.Metadata.Summary, Global: a.topic.Metadata.Applies == "global"}
 		for _, cl := range a.topic.Claims {
 			if a.claims[cl.ID] {
-				tc.Claims = append(tc.Claims, ClaimRef{ID: cl.ID, Type: string(cl.Type), Prose: cl.Prose})
+				tc.Claims = append(tc.Claims, ClaimRef{
+					ID: cl.ID, Type: string(cl.Type), Prose: cl.Prose,
+					Backing: string(cl.Backing), Verify: cl.Verify,
+				})
 			}
 		}
 		res.Topics = append(res.Topics, tc)

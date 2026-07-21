@@ -164,8 +164,15 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		} else {
 			fmt.Fprintf(stdout, "  %s\n", label)
 		}
+		fmt.Fprintf(stdout, "    %s\n", t.Summary)
 		for _, c := range t.Claims {
 			fmt.Fprintf(stdout, "    [%s] %s: %s\n", c.Type, c.ID, c.Prose)
+			if c.Backing != "" {
+				fmt.Fprintf(stdout, "      Backing: %s\n", c.Backing)
+			}
+			if c.Verify != "" {
+				fmt.Fprintf(stdout, "      Verify: %s\n", c.Verify)
+			}
 		}
 	}
 	if len(res.Pending) > 0 {

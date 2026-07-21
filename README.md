@@ -116,8 +116,10 @@ ADRs carry decisions through adoption and then become history. A current-state-v
 (Proposed, Accepted, Implemented, Abandoned; there is no Superseded status). When an ADR reaches
 Implemented, `awf check --staged` verifies each declared operation against the matching claim mutation
 in one Git transaction, and the generated `docs/decisions/INDEX.md` lists in-flight and historical
-ADRs. `awf context <paths>` reports the topic claims that apply to a set of files plus any Accepted-ADR
-pending changes, and `awf context --uncovered` reports paths no scoped topic covers.
+ADRs. `awf context <paths>` reports applicable topic summaries and claims, including invariant backing
+and unbacked `Verify` instructions, plus any Accepted-ADR pending changes. Rules carry no backing.
+`contextIgnore` excludes matching paths from working and staged directory expansion and coverage;
+`awf context --uncovered` reports eligible paths no scoped topic covers.
 
 Adopting this release from an older awf is a one-time cutover: the preceding bridge release seals the
 prepared tree into a `bridgeAttestation` lock block, and this binary's plain `awf upgrade` consumes
@@ -211,7 +213,7 @@ disk.
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
-| `awf context <paths>` | Report the owning domains, backed invariants, related ADRs, and current-state docs for the given paths. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits machine-readable output. `--uncovered` inverts it, listing tracked paths owned by no domain. |
+| `awf context <paths>` | Report owning domains, topic summaries, applicable rules and invariants with backing contracts, and Accepted-ADR pending changes. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits the same data. `--uncovered` reports eligible unowned and uncovered paths. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |

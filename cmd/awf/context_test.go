@@ -59,9 +59,9 @@ func acceptedV1(t *testing.T, num, title, date, stateChanges string) string {
 
 // ctxCmdFixture builds a git-backed adopted tree: a current lock (so the gate
 // passes) with a format-v1 cutoff of 2, domain alpha owning internal/foo/** plus
-// a global core topic, the scoped topic alpha/one (a rule and an unbacked
-// invariant), an Accepted v1 ADR with a pending add on alpha/one, and a state
-// marker under internal/foo/x.go.
+// a global core topic, the scoped topic alpha/one (a rule plus test-backed and
+// unbacked invariants), an Accepted v1 ADR with a pending add on alpha/one, and
+// a state marker under internal/foo/x.go.
 func ctxCmdFixture(t *testing.T) string {
 	t.Helper()
 	repo, root := gitfixture.InitRepo(t)
@@ -79,13 +79,15 @@ func ctxCmdFixture(t *testing.T) string {
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
 		".awf/domains/core.yaml":                       "paths: []\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
-		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
 		".awf/topics/metadata/core/g.yaml":             "title: Global\nsummary: Global rules.\napplies: global\n",
 		".awf/topics/parts/core/g/current-state.md":    "Intro.\n\n## Claims\n\n### `rule: everywhere`\nApplies everywhere.\nOrigin: ADR-0001\n",
 		"docs/decisions/0001-first.md": testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"),
 			testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n")),
 		"docs/decisions/0002-later.md": acceptedV1(t, "0002", "Later", "2026-07-20", "- add `alpha/one:pending-rule`"),
 		"internal/foo/x.go":            "package foo\n// state: alpha/one:order\n",
+		"internal/foo/y.go":            "package foo\n",
+		"internal/foo/y_test.go":       "package foo\n// invariant: alpha/one:tested\n",
 	}
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(rel)), body)
@@ -107,6 +109,7 @@ func TestRunContextHuman(t *testing.T) {
 		"live state for this project",
 		"alpha: docs/domains/alpha.md",
 		"alpha/one - One",
+		"    The one topic.",
 		"[rule] alpha/one:order: Order is deterministic.",
 		"core/g (global) - Global",
 		"[rule] core/g:everywhere:",
@@ -148,7 +151,7 @@ func TestPrintContextTitlelessTopic(t *testing.T) {
 func TestRunContextJSONParity(t *testing.T) {
 	root := ctxCmdFixture(t)
 	var jsonOut bytes.Buffer
-	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", true, false, &jsonOut); err != nil {
+	if err := runContext(root, []string{"internal/foo/y.go"}, false, "", true, false, &jsonOut); err != nil {
 		t.Fatal(err)
 	}
 	var res project.ContextResult
@@ -161,15 +164,28 @@ func TestRunContextJSONParity(t *testing.T) {
 	if len(res.Topics) != 2 || res.Topics[0].ID != "alpha/one" || res.Topics[1].ID != "core/g" {
 		t.Fatalf("json topics: %+v", res.Topics)
 	}
+	one := res.Topics[0]
+	if one.Summary != "The one topic." || len(one.Claims) != 3 {
+		t.Fatalf("json topic projection: %+v", one)
+	}
+	if one.Claims[0].Backing != "" || one.Claims[0].Verify != "" {
+		t.Errorf("rule invented backing metadata: %+v", one.Claims[0])
+	}
+	if one.Claims[1].Backing != "test" || one.Claims[1].Verify != "" {
+		t.Errorf("test-backed projection: %+v", one.Claims[1])
+	}
+	if one.Claims[2].Backing != "unbacked" || one.Claims[2].Verify != "by hand." {
+		t.Errorf("unbacked projection: %+v", one.Claims[2])
+	}
 	if len(res.Pending) != 1 || res.Pending[0].ADR != "0002" || res.Pending[0].Claim != "alpha/one:pending-rule" {
 		t.Errorf("json pending: %+v", res.Pending)
 	}
 	// Same set as the human render.
 	var humanOut bytes.Buffer
-	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, &humanOut); err != nil {
+	if err := runContext(root, []string{"internal/foo/y.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha/one", "core/g", "pending-rule"} {
+	for _, want := range []string{"alpha/one", "The one topic.", "Backing: test", "Backing: unbacked", "Verify: by hand.", "core/g", "pending-rule"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}

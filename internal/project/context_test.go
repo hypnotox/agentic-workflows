@@ -28,18 +28,20 @@ currentState:
 `
 
 // ctxFiles is the standard current-state fixture: alpha owns internal/foo/** and
-// owns the scoped topic alpha/one (a rule and an unbacked invariant); core owns
-// the global topic core/g. A state marker on internal/foo/x.go targets one claim.
+// owns the scoped topic alpha/one (a rule plus test-backed and unbacked
+// invariants); core owns the global topic core/g. A state marker on
+// internal/foo/x.go targets one claim.
 func ctxFiles() map[string]string {
 	return map[string]string{
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/foo/**\n",
 		".awf/domains/core.yaml":                       "paths: []\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n",
-		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
+		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n",
 		".awf/topics/metadata/core/g.yaml":             "title: Global\nsummary: Global rules.\napplies: global\n",
 		".awf/topics/parts/core/g/current-state.md":    "Intro.\n\n## Claims\n\n### `rule: everywhere`\nApplies everywhere.\nOrigin: ADR-0001\n",
 		"internal/foo/x.go":                            "package foo\n// state: alpha/one:order\n",
 		"internal/foo/y.go":                            "package foo\n",
+		"internal/foo/y_test.go":                       "package foo\n// invariant: alpha/one:tested\n",
 	}
 }
 
@@ -77,8 +79,21 @@ func TestContextForAssembles(t *testing.T) {
 		t.Fatalf("topics = %#v; want [alpha/one core/g] sorted", res.Topics)
 	}
 	// A directory query has no exact-path state marker, so the whole topic applies.
-	if got := claimIDs(res.Topics[0]); got != "alpha/one:order,alpha/one:stable" {
-		t.Errorf("alpha/one claims = %q; want both", got)
+	if got := claimIDs(res.Topics[0]); got != "alpha/one:order,alpha/one:tested,alpha/one:stable" {
+		t.Errorf("alpha/one claims = %q; want all three", got)
+	}
+	one := res.Topics[0]
+	if one.Summary != "The one topic." {
+		t.Errorf("topic summary = %q", one.Summary)
+	}
+	if one.Claims[0].Backing != "" || one.Claims[0].Verify != "" {
+		t.Errorf("rule invented backing metadata: %#v", one.Claims[0])
+	}
+	if one.Claims[1].Backing != "test" || one.Claims[1].Verify != "" {
+		t.Errorf("test-backed projection = %#v", one.Claims[1])
+	}
+	if one.Claims[2].Backing != "unbacked" || one.Claims[2].Verify != "by hand." {
+		t.Errorf("unbacked projection = %#v", one.Claims[2])
 	}
 	if !res.Topics[1].Global || claimIDs(res.Topics[1]) != "core/g:everywhere" {
 		t.Errorf("core/g = %#v; want the global everywhere claim", res.Topics[1])
@@ -137,7 +152,7 @@ func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
 	files["internal/foo/nested/.awf/config.yaml"] = "prefix: nested\n"
 	files["internal/foo/nested/z.go"] = "package nested\n"
 	p := csRepo(t, cfg, files)
-	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"internal/foo/y.go": {}}}
+	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"internal/foo/y.go": {}, "internal/foo/y_test.go": {}}}
 	if err := lock.Save(lockFile(p.Root)); err != nil {
 		t.Fatal(err)
 	}

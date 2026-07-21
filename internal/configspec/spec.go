@@ -120,8 +120,8 @@ var keys = []Entry{
 	},
 	{
 		Path: "contextIgnore", Type: "string list", Default: "none",
-		Description:  "Anchored doublestar globs for tracked paths that no domain should own (config source, docs, the example adopter, top-level non-code files). `awf context --uncovered` treats them as legitimately unowned, alongside awf's own generated outputs, so the report finds only genuinely-unowned code. An empty or absent list adds no exclusion.",
-		Availability: "Always; only consulted by `awf context --uncovered`.",
+		Description:  "Anchored doublestar globs for tracked paths that context and coverage should exclude (config source, docs, the example adopter, top-level non-code files). Matching paths are ineligible for directory expansion and coverage, including staged queries, alongside awf's own generated outputs. An empty or absent list adds no exclusion.",
+		Availability: "Always; consulted by working and staged context path expansion and coverage.",
 	},
 	{
 		Path: "currentState.sources", Type: "list of {globs, marker, close} mappings", Default: "none",
