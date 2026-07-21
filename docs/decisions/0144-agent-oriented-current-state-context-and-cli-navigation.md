@@ -62,7 +62,7 @@ ADR-0143 removes the former requirement that all of this decision's claim operat
 
 21. Implementation updates CLI help, generated configuration and workflow documentation, the architecture and glossary, relevant skill templates and project convention parts, the authored AGENTS convention source, rendered `AGENTS.md`, and examples. Every lifecycle transition runs `./x sync` so `docs/decisions/INDEX.md` and all affected rendered guidance land in the same transaction. Publication-safe templates retain coherent missing-value output, and rendered files travel with their authored sources.
 
-22. Every new State changes claim in this decision is a test-backed invariant. Updates preserve the existing Origin, prior Revised-by prefix, and backing contract while adding this ADR's revision. Each ordered Applied event lands in the same checked transaction as exactly its matching provenance-preserving claim mutations and proof markers; topic metadata shells exist before the ADR reaches Accepted, and no Remaining operation's claim effect lands early.
+22. Every new State changes claim in this decision is a test-backed invariant. Updates preserve the existing Origin, prior Revised-by prefix, and backing contract while adding this ADR's revision. Each ordered Applied event lands in the same checked transaction as exactly its matching provenance-preserving claim mutations and, for test-backed claims, proof markers; an unbacked update retains its Verify line and remains proof-marker-free. Topic metadata shells exist before the ADR reaches Accepted, and no Remaining operation's claim effect lands early.
 
 ## State changes
 
