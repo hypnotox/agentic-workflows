@@ -63,16 +63,26 @@ type PendingChange struct {
 // so the selection never mixes a working and an index universe, and it writes
 // nothing.
 func (p *Project) ContextFor(paths []string) (ContextResult, error) {
-	return p.contextFor(paths, false)
+	return p.contextFor(paths, false, ContextConcise)
+}
+
+// ContextForFull returns the complete authority projection from the same model.
+func (p *Project) ContextForFull(paths []string) (ContextResult, error) {
+	return p.contextFor(paths, false, ContextFull)
 }
 
 // ContextForGitSelection preserves Git-selected request status while resolving
 // authority against the same single working universe.
 func (p *Project) ContextForGitSelection(paths []string) (ContextResult, error) {
-	return p.contextFor(paths, true)
+	return p.contextFor(paths, true, ContextConcise)
 }
 
-func (p *Project) contextFor(paths []string, gitSelected bool) (ContextResult, error) {
+// ContextForFullGitSelection combines Git request attribution with full authority.
+func (p *Project) ContextForFullGitSelection(paths []string) (ContextResult, error) {
+	return p.contextFor(paths, true, ContextFull)
+}
+
+func (p *Project) contextFor(paths []string, gitSelected bool, projection ContextProjection) (ContextResult, error) {
 	ws, err := p.workingCurrentState()
 	if err != nil {
 		return ContextResult{}, err
@@ -90,21 +100,31 @@ func (p *Project) contextFor(paths []string, gitSelected bool) (ContextResult, e
 	if err != nil {
 		return ContextResult{}, err
 	}
-	return universe.assembleContextUniverse(ws.Loaded, ws.Tree, ws.Lock, ws.Cfg, decls, paths, gitSelected), nil
+	return universe.assembleContextUniverse(ws.Loaded, ws.Tree, ws.Lock, ws.Cfg, decls, paths, gitSelected, projection), nil
 }
 
 // StagedContextRoot assembles every result from one immutable index universe.
 func StagedContextRoot(root string, paths []string) (ContextResult, error) {
-	return stagedContextRoot(root, paths, false)
+	return stagedContextRoot(root, paths, false, ContextConcise)
+}
+
+// StagedContextRootFull returns the full projection from the immutable index.
+func StagedContextRootFull(root string, paths []string) (ContextResult, error) {
+	return stagedContextRoot(root, paths, false, ContextFull)
 }
 
 // StagedContextRootGitSelection preserves Git-selected request status in the
 // immutable index universe.
 func StagedContextRootGitSelection(root string, paths []string) (ContextResult, error) {
-	return stagedContextRoot(root, paths, true)
+	return stagedContextRoot(root, paths, true, ContextConcise)
 }
 
-func stagedContextRoot(root string, paths []string, gitSelected bool) (ContextResult, error) {
+// StagedContextRootFullGitSelection combines Git attribution and full authority.
+func StagedContextRootFullGitSelection(root string, paths []string) (ContextResult, error) {
+	return stagedContextRoot(root, paths, true, ContextFull)
+}
+
+func stagedContextRoot(root string, paths []string, gitSelected bool, projection ContextProjection) (ContextResult, error) {
 	p := &Project{Root: root}
 	state, err := p.indexCurrentState()
 	if err != nil {
@@ -123,7 +143,7 @@ func stagedContextRoot(root string, paths []string, gitSelected bool) (ContextRe
 	if err != nil { // coverage-ignore: effectiveCatalog just parsed the same selected sidecars and declaration enumeration has no other error source
 		return ContextResult{}, err
 	}
-	return p.assembleContextUniverse(state.Loaded, state.Tree, state.Lock, state.Cfg, decls, paths, gitSelected), nil
+	return p.assembleContextUniverse(state.Loaded, state.Tree, state.Lock, state.Cfg, decls, paths, gitSelected, projection), nil
 }
 
 type indexState struct {
@@ -155,7 +175,7 @@ func (p *Project) indexCurrentState() (indexState, error) {
 
 // assembleContextUniverse classifies requests and resolves authority from one
 // selected snapshot independently of coverage eligibility.
-func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snapshot.Tree, lock *manifest.Lock, cfg *config.Config, declarations []OutputDeclaration, queries []string, gitSelected bool) ContextResult {
+func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snapshot.Tree, lock *manifest.Lock, cfg *config.Config, declarations []OutputDeclaration, queries []string, gitSelected bool, projection ContextProjection) ContextResult {
 	outputs := map[string]bool{}
 	for _, d := range declarations {
 		if !d.Reservation {
@@ -172,7 +192,7 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 	slices.Sort(nested)
 	set := contextPathSet{tree: tree, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore), nested: nested, outputs: outputs, ignores: cfg.ContextIgnore, domainPaths: loaded.Topics.DomainPaths}
 	requests, attribution := buildContextRequests(queries, gitSelected, set)
-	res := ContextResult{Projection: ContextConcise, Requests: requests, Paths: []ContextPath{}}
+	res := ContextResult{Projection: projection, Requests: requests, Paths: []ContextPath{}}
 	lay := p.layout()
 	currentPaths := safelyMatchablePaths(tree)
 	for _, path := range slices.Sorted(maps.Keys(attribution)) {
@@ -187,12 +207,17 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 					cp.Domains = append(cp.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
 				}
 			}
-			for _, t := range topic.TopicsForPath(loaded.Topics, path) {
-				id := t.ID.String()
-				matchedTopics[id] = true
-				cp.Topics = append(cp.Topics, PathTopicContext{ID: id, Title: t.Metadata.Title, Summary: t.Metadata.Summary, Applicability: topic.ApplicabilityForTopic(t, loaded.Topics.DomainPaths[t.ID.Domain], loaded.Topics.Markers, currentPaths), DirectClaims: []ClaimDetail{}, TopicCommand: "awf topic " + id})
+			applicable := topic.TopicsForPath(loaded.Topics, path)
+			for _, t := range applicable {
+				matchedTopics[t.ID.String()] = true
 			}
 			cp.Pending = pendingChanges(loaded.ADRs, matchedTopics)
+			for _, t := range applicable {
+				cp.Topics = append(cp.Topics, projectPathTopic(t, loaded.Topics, path, currentPaths, cp.Pending, projection))
+			}
+		}
+		if explicitContextPath(requests, path) {
+			cp.ADR = projectADRArtifact(path, lay.ADRDir, adr.NewCorpus(loaded.ADRs), loaded.Topics, projection)
 		}
 		res.Paths = append(res.Paths, cp)
 		for _, d := range cp.Domains {
@@ -215,19 +240,16 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 				res.Topics = append(res.Topics, TopicContext{ID: pt.ID, Title: pt.Title, Summary: pt.Summary})
 				idx = len(res.Topics) - 1
 			}
-			for _, t := range topic.TopicsForPath(loaded.Topics, path) {
-				if t.ID.String() == pt.ID {
-					res.Topics[idx].Global = t.Metadata.Applies == "global"
-					selected := applicableClaims(t, loaded.Topics.Markers, path)
-					for _, cl := range t.Claims {
-						if slices.Contains(selected, cl.ID) {
-							ref := ClaimRef{ID: cl.ID, Type: string(cl.Type), Prose: cl.Prose, Backing: string(cl.Backing), Verify: cl.Verify}
-							if !slices.Contains(res.Topics[idx].Claims, ref) {
-								res.Topics[idx].Claims = append(res.Topics[idx].Claims, ref)
-							}
+			if t, ok := loaded.Topics.ByTopicID(pt.ID); ok {
+				res.Topics[idx].Global = t.Metadata.Applies == "global"
+				selected := applicableClaims(t, loaded.Topics.Markers, path)
+				for _, claim := range t.Claims {
+					if slices.Contains(selected, claim.ID) {
+						ref := ClaimRef{ID: claim.ID, Type: string(claim.Type), Prose: claim.Prose, Backing: string(claim.Backing), Verify: claim.Verify}
+						if !slices.Contains(res.Topics[idx].Claims, ref) {
+							res.Topics[idx].Claims = append(res.Topics[idx].Claims, ref)
 						}
 					}
-					break
 				}
 			}
 		}

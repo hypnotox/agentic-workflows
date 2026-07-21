@@ -432,6 +432,14 @@ func TestStagedContextFor(t *testing.T) {
 	if !ok || claimIDs(one) != "alpha/one:order" {
 		t.Fatalf("staged topics = %#v; want alpha/one from the index", res.Topics)
 	}
+	full, err := StagedContextRootFull(p.Root, []string{"internal/foo/x.go"})
+	if err != nil || full.Projection != ContextFull || full.Paths[0].Topics[0].Full == nil {
+		t.Fatalf("staged full = %#v, %v", full, err)
+	}
+	selected, err := StagedContextRootFullGitSelection(p.Root, []string{"internal/foo/x.go"})
+	if err != nil || selected.Requests[0].Status != RequestGitSelected || selected.Projection != ContextFull {
+		t.Fatalf("staged selected full = %#v, %v", selected, err)
+	}
 }
 
 func TestStagedContextRootExpandsEligibleDescendants(t *testing.T) {

@@ -25,7 +25,7 @@ by this repository's own checks (ADR-0090).
 - `awf enable <kind> <name>` / `awf disable <kind> <name>`: toggle a skill, agent, doc, domain, or target artifact, or a nameless singleton (`bootstrap`, `hooks`, `runner`, given no name). For a skill/agent/doc, enable brings in the full requirement closure in one edit and disable refuses while enabled artifacts still require it; `--with-dependents` disables them together, `--dry-run` previews either plan without changing the config.
 - `awf list`: show the catalog and what is enabled.
 - `awf config [<key-or-var>]`: describe config keys and vars, the full reference or one entry, with live state inside a project (current values, consumers, dormant hints) and a static catalog reference outside one.
-- `awf context <path>...`: report the current-state context awf holds for a set of repo-relative paths: owning domains, topic summaries, applicable rules and invariants with their backing contracts, and Accepted pending changes or Implementing Remaining operations with applied-to-total progress. Unbacked invariants include their `Verify` instruction; rules carry no backing. Read-only; `--json` for machine output, `--staged` to query the immutable index universe, `--range <a>..<b>` to resolve paths from git, and `--uncovered` to report unowned paths plus paths no scoped topic covers (`--uncovered --staged` uses the index universe). `contextIgnore` excludes matching paths from all directory expansion and coverage, including staged queries.
+- `awf context <path>...`: report concise, per-path current-state orientation: classification, owning domains, applicable topics, claims directly selected by exact-path state/touches/proof markers, omitted-claim counts and drilldowns, pending operations, and known-artifact navigation. Use `awf context --full <path>...` for every applicable current claim, backing and `Verify` contract, marker site, direct reference ID, and Remaining operation; neither projection recursively expands references or unrelated ADR history. Explicit ADR paths report lifecycle-derived operation progress and label prose as pending intent or decision history, never current authority. `--json` serializes only the selected projection, so concise JSON has no full block. Both forms are read-only and support `--staged` or `--range <a>..<b>`. `--uncovered` retains the coverage-gap report and refuses `--full`; `contextIgnore` continues to exclude matching paths from directory expansion and coverage.
 - `awf topic <domain>/<topic>[:<claim>]`: query one current-state topic or claim, active by default. Default output shows current title/summary, claims, types, prose, and backing; independently add direct ADR operations with `--history`, direct claim edges with `--references`, or scope and marker sites with `--coverage`. A removed claim identity resolves only with `--history` as historical-only operation detail without active prose, references, coverage, or a tombstone. `--json` changes only presentation.
 - `awf new adr "<title>"`: scaffold the next ADR in the format selected by the immutable lock cutoffs; new schema-15 adopters receive V2.
 - `awf new topic <domain> "<title>"`: scaffold paired current-state metadata and authored inputs without syncing. Edit the path placeholder and prose, then add reviewed claims manually before relying on coverage.
@@ -41,9 +41,18 @@ by this repository's own checks (ADR-0090).
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.
 - `awf version`: print the binary's version.
 
+`awf context <path>...` is concise orientation: it attributes each effective path,
+shows directly marked claims, and names omitted topic-wide claims with drilldowns.
+Use `awf context --full <path>...` whenever every applicable authority claim is
+required. `--json` serializes the same selected projection; concise JSON omits the
+full block. Explicit ADR paths show lifecycle-derived operation progress without
+treating ADR prose as current authority.
+
 `awf context --uncovered [<scan-root>...]` reports eligible paths that are
 unowned or covered by no scoped topic. Add `--staged` to evaluate the immutable
 index universe with the same eligibility and coverage model as staged check.
+`--full --uncovered` is refused because a coverage-gap report is not an authority
+projection.
 
 
 <!-- awf:edit config-and-overrides: default; create .awf/parts/working-with-awf/config-and-overrides.md to override -->

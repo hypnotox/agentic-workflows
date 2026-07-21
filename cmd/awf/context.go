@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,13 +24,20 @@ import (
 // genuinely absent config prints the pre-adoption notice; any other stat fault
 // is an error; inside a tree the binary-version gate runs before Open.
 func runContext(cwd string, paths []string, staged bool, rng string, asJSON, uncovered bool, stdout io.Writer) error {
+	return runContextProjection(cwd, paths, staged, rng, asJSON, uncovered, false, stdout)
+}
+
+func runContextProjection(cwd string, paths []string, staged bool, rng string, asJSON, uncovered, full bool, stdout io.Writer) error {
+	if full && uncovered {
+		return &usageErr{"awf context: --full cannot be combined with --uncovered"}
+	}
 	if uncovered {
 		return runUncovered(cwd, paths, staged, rng, asJSON, stdout)
 	}
 	gitSelected := len(paths) == 0
 	if len(paths) == 0 {
 		if !staged && rng == "" {
-			return &usageErr{"usage: awf context <path>... [--json] [--staged] [--range <a>..<b>]"}
+			return &usageErr{"usage: awf context <path>... [--json] [--full] [--staged] [--range <a>..<b>]"}
 		}
 		resolved, err := awfgit.ChangedPaths(cwd, staged, rng)
 		if err != nil {
@@ -46,9 +54,14 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		}
 		var res project.ContextResult
 		var err error
-		if gitSelected {
+		switch {
+		case full && gitSelected:
+			res, err = project.StagedContextRootFullGitSelection(cwd, paths)
+		case full:
+			res, err = project.StagedContextRootFull(cwd, paths)
+		case gitSelected:
 			res, err = project.StagedContextRootGitSelection(cwd, paths)
-		} else {
+		default:
 			res, err = project.StagedContextRoot(cwd, paths)
 		}
 		if err != nil {
@@ -60,7 +73,11 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		if !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
-		return printContext(stdout, project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{}}, asJSON,
+		projection := project.ContextConcise
+		if full {
+			projection = project.ContextFull
+		}
+		return printContext(stdout, project.ContextResult{Projection: projection, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{}}, asJSON,
 			"context (static: not inside an awf project; live classification and authority require an adopted project)")
 	}
 	if err := gate(cwd); err != nil {
@@ -71,9 +88,14 @@ func runContext(cwd string, paths []string, staged bool, rng string, asJSON, unc
 		return err
 	}
 	var res project.ContextResult
-	if gitSelected {
+	switch {
+	case full && gitSelected:
+		res, err = p.ContextForFullGitSelection(paths)
+	case full:
+		res, err = p.ContextForFull(paths)
+	case gitSelected:
 		res, err = p.ContextForGitSelection(paths)
-	} else {
+	default:
 		res, err = p.ContextFor(paths)
 	}
 	if err != nil {
@@ -157,36 +179,94 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	if asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(res)
+		if err := enc.Encode(res); err != nil {
+			return fmt.Errorf("write context JSON: %w", err)
+		}
+		return nil
 	}
-	fmt.Fprintln(stdout, header)
-	fmt.Fprintf(stdout, "Projection: %s\n", res.Projection)
-	fmt.Fprintln(stdout, "\n## Requests")
+	var out bytes.Buffer
+	fmt.Fprintln(&out, header)
+	fmt.Fprintf(&out, "Projection: %s\n", res.Projection)
+	fmt.Fprintln(&out, "\n## Requests")
 	for _, r := range res.Requests {
-		fmt.Fprintf(stdout, "  %s [%s]: %v\n", r.Query, r.Status, r.EffectivePaths)
+		fmt.Fprintf(&out, "  %s [%s]: %v\n", r.Query, r.Status, r.EffectivePaths)
 	}
-	fmt.Fprintln(stdout, "\n## Effective paths")
+	fmt.Fprintln(&out, "\n## Effective paths")
 	for _, p := range res.Paths {
-		fmt.Fprintf(stdout, "\n%s [%s] (requests: %v)\n", p.Path, p.Classification, p.Requests)
+		fmt.Fprintf(&out, "\n%s [%s] (requests: %v)\n", p.Path, p.Classification, p.Requests)
 		if p.NestedRoot != "" {
-			fmt.Fprintf(stdout, "  Nested root: %s/.awf/config.yaml\n", p.NestedRoot)
+			fmt.Fprintf(&out, "  Nested root: %s/.awf/config.yaml\n", p.NestedRoot)
 		}
 		if p.TargetInsideRepository != nil {
-			fmt.Fprintf(stdout, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
+			fmt.Fprintf(&out, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
 		}
 		for _, d := range p.Domains {
-			fmt.Fprintf(stdout, "  Domain: %s (%s)\n", d.Name, d.CurrentState)
+			fmt.Fprintf(&out, "  Domain: %s (%s)\n", d.Name, d.CurrentState)
 		}
 		for _, t := range p.Topics {
-			fmt.Fprintf(stdout, "  Topic: %s - %s\n", t.ID, t.Title)
-			fmt.Fprintf(stdout, "    Domain paths: %v\n    Topic paths: %v\n    Both domain and topic selectors must match.\n    Matched paths: %v\n", t.Applicability.DomainPaths, t.Applicability.TopicPaths, t.Applicability.MatchedPaths)
-			for _, site := range t.Applicability.MarkerSites {
-				fmt.Fprintf(stdout, "    Marker: %s:%d [%s] %s\n", site.Path, site.Line, site.Kind, site.ClaimID)
+			fmt.Fprintf(&out, "  Topic: %s - %s\n", t.ID, t.Title)
+			fmt.Fprintf(&out, "    Domain paths: %v\n    Topic paths: %v\n    Both domain and topic selectors must match.\n    Matched paths: %v\n", t.Applicability.DomainPaths, t.Applicability.TopicPaths, t.Applicability.MatchedPaths)
+			for _, claim := range t.DirectClaims {
+				printClaimDetail(&out, "Direct claim", claim)
+			}
+			if t.OmittedClaimCount > 0 {
+				fmt.Fprintf(&out, "    %d topic-wide claim(s) omitted; drill down: %s\n", t.OmittedClaimCount, t.TopicCommand)
+			}
+			if t.Full != nil {
+				fmt.Fprintln(&out, "    Full authority:")
+				for _, claim := range t.Full.Claims {
+					printClaimDetail(&out, "Claim", claim)
+				}
+				for _, pending := range t.Full.Pending {
+					fmt.Fprintf(&out, "      Pending: ADR-%s %s %s\n", pending.ADR, pending.Op, pending.Claim)
+				}
 			}
 		}
 		for _, a := range p.Artifacts {
-			fmt.Fprintf(stdout, "  Artifact: %s %s\n", a.Role, a.Identity)
+			fmt.Fprintf(&out, "  Artifact: %s %s (navigation)\n", a.Role, a.Identity)
+			for _, link := range a.Sources {
+				fmt.Fprintf(&out, "    Source: %s (%s)\n", link.Path, link.Label)
+			}
+			for _, link := range a.Outputs {
+				fmt.Fprintf(&out, "    Output: %s (%s)\n", link.Path, link.Label)
+			}
+			for _, link := range a.Navigation {
+				fmt.Fprintf(&out, "    Navigate: %s (%s)\n", link.Path, link.Label)
+			}
+		}
+		if p.ADR != nil {
+			fmt.Fprintf(&out, "  ADR navigation: ADR-%s %s [%s, %s]\n", p.ADR.Number, p.ADR.Title, p.ADR.Status, p.ADR.Mutability)
+			fmt.Fprintf(&out, "    Authority role: %s\n", p.ADR.AuthorityRole)
+			for _, operation := range p.ADR.Operations {
+				fmt.Fprintf(&out, "    %s %s [%s, %s]", operation.Operation, operation.Claim, operation.Progress, operation.ClaimState)
+				if operation.StateSequence != 0 {
+					fmt.Fprintf(&out, " state-sequence %d", operation.StateSequence)
+				}
+				fmt.Fprintln(&out)
+				if operation.Detail != nil && operation.Detail.Current != nil {
+					printClaimDetail(&out, "Current", *operation.Detail.Current)
+				}
+			}
 		}
 	}
+	if _, err := stdout.Write(out.Bytes()); err != nil {
+		return fmt.Errorf("write context: %w", err)
+	}
 	return nil
+}
+
+func printClaimDetail(out io.Writer, label string, claim project.ClaimDetail) {
+	fmt.Fprintf(out, "      %s: %s [%s] %s\n", label, claim.ID, claim.Type, claim.Prose)
+	if claim.Backing != "" {
+		fmt.Fprintf(out, "        Backing: %s\n", claim.Backing)
+	}
+	if claim.Verify != "" {
+		fmt.Fprintf(out, "        Verify: %s\n", claim.Verify)
+	}
+	for _, site := range claim.Sites {
+		fmt.Fprintf(out, "        Site: %s:%d [%s]\n", site.Path, site.Line, site.Kind)
+	}
+	if len(claim.References.Incoming) > 0 || len(claim.References.Outgoing) > 0 {
+		fmt.Fprintf(out, "        References: incoming %v; outgoing %v\n", claim.References.Incoming, claim.References.Outgoing)
+	}
 }

@@ -96,7 +96,28 @@ type FullTopicContext struct {
 	Claims  []ClaimDetail   `json:"claims"`
 	Pending []PendingChange `json:"pending"`
 }
-type ADRArtifactContext struct{}
+type ADROperationDetail struct {
+	Current     *ClaimDetail        `json:"current,omitempty"`
+	History     *topic.ClaimHistory `json:"history,omitempty"`
+	MarkerSites []topic.MarkerSite  `json:"markerSites"`
+}
+type ADROperationContext struct {
+	Operation     string              `json:"operation"`
+	Claim         string              `json:"claim"`
+	Topic         string              `json:"topic"`
+	Progress      string              `json:"progress"`
+	StateSequence int                 `json:"stateSequence,omitempty"`
+	ClaimState    string              `json:"claimState"`
+	Detail        *ADROperationDetail `json:"detail,omitempty"`
+}
+type ADRArtifactContext struct {
+	Number        string                `json:"number"`
+	Title         string                `json:"title"`
+	Status        string                `json:"status"`
+	Mutability    string                `json:"mutability"`
+	AuthorityRole string                `json:"authorityRole"`
+	Operations    []ADROperationContext `json:"operations"`
+}
 
 type contextPathSet struct {
 	tree        *snapshot.Tree

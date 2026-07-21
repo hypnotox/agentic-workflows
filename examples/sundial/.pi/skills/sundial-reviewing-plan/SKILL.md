@@ -30,7 +30,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
-   - The affected context (collect the created/modified paths from the plan's file-structure header and paste the output of `awf context <those paths>`) so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs.
+   - The affected context (collect the created/modified paths from the plan's file-structure header and paste the output of `awf context --full <those paths>`) so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.

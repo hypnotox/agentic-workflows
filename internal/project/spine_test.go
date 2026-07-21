@@ -250,6 +250,49 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
 }
 
+// invariant: tooling/cli:context-full-authority-packet
+func TestManagedContextCallersChooseProjection(t *testing.T) {
+	complete := map[string]bool{"adr-lifecycle": true, "reviewing-impl": true, "reviewing-plan": true}
+	concise := map[string]bool{"brainstorming": true}
+	seen := map[string]bool{}
+	for name := range catalog.Standard.Skills {
+		templateID := "skills/" + name + "/SKILL.md.tmpl"
+		source, err := fs.ReadFile(templates.FS, templateID)
+		if err != nil {
+			t.Fatalf("read %s: %v", templateID, err)
+		}
+		expanded, err := render.ExpandIncludes(string(source), templates.FS)
+		if err != nil {
+			t.Fatalf("expand %s: %v", templateID, err)
+		}
+		for lineNumber, line := range strings.Split(expanded, "\n") {
+			if !strings.Contains(line, "awf context") && !strings.Contains(line, "./x context") {
+				continue
+			}
+			seen[name] = true
+			hasFull := strings.Contains(line, "--full")
+			switch {
+			case complete[name] && !hasFull:
+				t.Errorf("%s:%d complete-authority invocation lacks --full: %s", templateID, lineNumber+1, line)
+			case concise[name] && hasFull:
+				t.Errorf("%s:%d orientation invocation must stay concise: %s", templateID, lineNumber+1, line)
+			case !complete[name] && !concise[name]:
+				t.Errorf("%s:%d has an unclassified context invocation: %s", templateID, lineNumber+1, line)
+			}
+		}
+	}
+	for name := range complete {
+		if !seen[name] {
+			t.Errorf("complete-authority template %s has no context invocation", name)
+		}
+	}
+	for name := range concise {
+		if !seen[name] {
+			t.Errorf("concise-orientation template %s has no context invocation", name)
+		}
+	}
+}
+
 func TestWritingPlansTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

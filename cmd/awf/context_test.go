@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -158,6 +159,38 @@ func TestPrintContextLifecycleGoldens(t *testing.T) {
 
 // TestPrintContextTitlelessTopic covers the human render of a topic with no
 // title, which prints the bare id without a dangling separator.
+type contextFailWriter struct{}
+
+func (contextFailWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
+
+func TestPrintContextFullHumanAndWriteErrors(t *testing.T) {
+	claim := project.ClaimDetail{ID: "alpha/one:stable", Type: "invariant", Prose: "Stable.", Backing: "unbacked", Verify: "inspect", Sites: []topic.MarkerSite{{Path: "x.go", Line: 3, Kind: topic.TouchesMarker, ClaimID: "alpha/one:stable"}}, References: project.ClaimReferences{Incoming: []string{"beta/two:in"}, Outgoing: []string{"beta/two:out"}}}
+	pathTopic := project.PathTopicContext{
+		ID: "alpha/one", Title: "One",
+		Applicability: topic.TopicApplicability{DomainPaths: []string{"**"}, TopicPaths: []string{"**"}, MatchedPaths: []string{"x.go"}, MarkerSites: []topic.MarkerSite{}},
+		DirectClaims:  []project.ClaimDetail{claim}, OmittedClaimCount: 1, TopicCommand: "awf topic alpha/one",
+		Full: &project.FullTopicContext{Claims: []project.ClaimDetail{claim}, Pending: []project.PendingChange{{ADR: "0003", Op: "add", Claim: "alpha/one:new"}}},
+	}
+	artifact := project.ArtifactRecord{Role: project.ArtifactManagedOutput, Identity: "managed", Sources: []project.ArtifactLink{{Path: "source", Label: "source"}}, Outputs: []project.ArtifactLink{{Path: "output", Label: "output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "nav"}}}
+	adrContext := &project.ADRArtifactContext{Number: "0002", Title: "Example", Status: "Implemented", Mutability: "frozen", AuthorityRole: "decision history, never current authority", Operations: []project.ADROperationContext{{Operation: "add", Claim: "alpha/one:stable", Topic: "alpha/one", Progress: "applied", StateSequence: 4, ClaimState: "active-current", Detail: &project.ADROperationDetail{Current: &claim, MarkerSites: []topic.MarkerSite{}}}}}
+	res := project.ContextResult{Projection: project.ContextFull, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{{Path: "x.go", Requests: []string{"x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Pending: []project.PendingChange{}, Topics: []project.PathTopicContext{pathTopic}, Artifacts: []project.ArtifactRecord{artifact}, ADR: adrContext}}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"Direct claim", "Full authority", "Pending: ADR-0003", "Source: source", "Output: output", "Navigate: nav", "ADR navigation", "state-sequence 4", "References: incoming"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("full human missing %q:\n%s", want, out.String())
+		}
+	}
+	if err := printContext(contextFailWriter{}, res, false, "header"); err == nil || !strings.Contains(err.Error(), "write context") {
+		t.Fatalf("human write error = %v", err)
+	}
+	if err := printContext(contextFailWriter{}, res, true, "header"); err == nil || !strings.Contains(err.Error(), "write context JSON") {
+		t.Fatalf("JSON write error = %v", err)
+	}
+}
+
 func TestPrintContextTitlelessTopic(t *testing.T) {
 	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{{Path: "x", Requests: []string{}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{{ID: "alpha/untitled", Applicability: topic.TopicApplicability{DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}, DirectClaims: []project.ClaimDetail{}}}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}}}}
 	var out bytes.Buffer
@@ -172,6 +205,30 @@ func TestPrintContextTitlelessTopic(t *testing.T) {
 // TestRunContextJSONParity proves the JSON render carries the same assembled set
 // as the human render - one assembler feeds both.
 // invariant: tooling/cli:context-output-parity
+func TestRunContextFullProjectionAndConciseJSONBoundary(t *testing.T) {
+	root := ctxCmdFixture(t)
+	var concise, full bytes.Buffer
+	if err := runContextProjection(root, []string{"internal/foo/y_test.go"}, false, "", true, false, false, &concise); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContextProjection(root, []string{"internal/foo/y_test.go"}, false, "", true, false, true, &full); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(concise.String(), `"full"`) {
+		t.Fatalf("concise JSON leaked full key: %s", concise.String())
+	}
+	if !strings.Contains(full.String(), `"projection": "full"`) || !strings.Contains(full.String(), `"full"`) || !strings.Contains(full.String(), "alpha/one:stable") {
+		t.Fatalf("full JSON is incomplete: %s", full.String())
+	}
+}
+
+func TestRunContextFullUncoveredConflictPrecedesProjectLoading(t *testing.T) {
+	err := runContextProjection(t.TempDir(), nil, false, "", false, true, true, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "--full cannot be combined with --uncovered") {
+		t.Fatalf("conflict = %v", err)
+	}
+}
+
 func TestRunContextJSONParity(t *testing.T) {
 	root := ctxCmdFixture(t)
 	var jsonOut bytes.Buffer
@@ -242,6 +299,14 @@ func TestRunContextStaged(t *testing.T) {
 	if !strings.Contains(out.String(), "[git-selected]") {
 		t.Fatalf("staged selected status missing: %s", out.String())
 	}
+	out.Reset()
+	if err := runContextProjection(root, []string{"internal/foo/x.go"}, true, "", false, false, true, &out); err != nil || !strings.Contains(out.String(), "Projection: full") {
+		t.Fatalf("staged explicit full: %v\n%s", err, out.String())
+	}
+	out.Reset()
+	if err := runContextProjection(root, nil, true, "", false, false, true, &out); err != nil || !strings.Contains(out.String(), "[git-selected]") {
+		t.Fatalf("staged selected full: %v\n%s", err, out.String())
+	}
 }
 
 func TestRunContextRangeUsesGitSelectedRequests(t *testing.T) {
@@ -266,6 +331,10 @@ func TestRunContextRangeUsesGitSelectedRequests(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "[git-selected]") {
 		t.Fatalf("range selected status missing: %s", out.String())
+	}
+	out.Reset()
+	if err := runContextProjection(root, nil, false, "HEAD~1..HEAD", false, false, true, &out); err != nil || !strings.Contains(out.String(), "Projection: full") {
+		t.Fatalf("full range selection: %v\n%s", err, out.String())
 	}
 }
 
@@ -297,13 +366,15 @@ func TestRunContextStaticFallback(t *testing.T) {
 	if !strings.Contains(human.String(), "not inside an awf project") {
 		t.Errorf("static human: %s", human.String())
 	}
-	var j bytes.Buffer
-	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", true, false, &j); err != nil {
-		t.Fatalf("static json errored: %v", err)
-	}
-	var res project.ContextResult
-	if err := json.Unmarshal(j.Bytes(), &res); err != nil || res.Projection != project.ContextConcise || len(res.Paths) != 0 {
-		t.Errorf("static json: %s (err %v)", j.String(), err)
+	for _, full := range []bool{false, true} {
+		var j bytes.Buffer
+		if err := runContextProjection(t.TempDir(), []string{"cmd/x.go"}, false, "", true, false, full, &j); err != nil {
+			t.Fatalf("static json errored: %v", err)
+		}
+		var res project.ContextResult
+		if err := json.Unmarshal(j.Bytes(), &res); err != nil || res.Projection == "" || len(res.Paths) != 0 {
+			t.Errorf("static json: %s (err %v)", j.String(), err)
+		}
 	}
 }
 
@@ -372,6 +443,16 @@ func TestRunContextDispatch(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "not inside an awf project") {
 		t.Errorf("dispatch body: %s", out.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{"awf", "context", "--full", "somepath"}, &out, &errBuf); code != 0 || !strings.Contains(out.String(), "Projection: full") {
+		t.Errorf("full dispatch: code %d, stdout %s, stderr %s", code, out.String(), errBuf.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{"awf", "context", "--full", "--uncovered"}, &out, &errBuf); code != 2 || !strings.Contains(errBuf.String(), "--full cannot be combined") {
+		t.Errorf("full uncovered conflict: code %d, stderr %s", code, errBuf.String())
 	}
 }
 

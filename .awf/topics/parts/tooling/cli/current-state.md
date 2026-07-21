@@ -83,15 +83,17 @@ Backing: test
 
 ### `invariant: context-default-excludes-history`
 
-Normal path context returns active current-state claims without expanding Implemented ADRs or historical plans.
+Concise path context returns only claims selected directly by exact-path state, touches-state, or invariant proof markers, reports omitted topic-wide claims with a topic drilldown, and never expands Implemented ADRs, historical plans, referenced claim bodies, or unrelated ADR history.
 Origin: ADR-0134
+Revised-by: ADR-0144
 Backing: unbacked
-Verify: On a fixture with claim provenance, ADR tags and relations, and linked plans, bounded default context differs from explicit awf topic <claim-id> --history output.
+Verify: On a fixture with claim provenance, ADR tags and relations, linked plans, and claim references, concise context reports direct claims and omissions but differs from both context --full and explicit awf topic <claim-id> --history output.
 
 ### `invariant: context-output-parity`
 
-The human-readable and --json renderings of `awf context` report the same underlying context set for the same inputs, because both are produced from one assembled context struct.
+The human-readable and --json renderings of `awf context` consume the same selected concise or full semantic result, so serialization changes presentation only and concise JSON contains no hidden full block.
 Origin: ADR-0092
+Revised-by: ADR-0144
 Backing: test
 
 ### `invariant: context-read-only`
@@ -125,10 +127,23 @@ Topic and context applicability share one evidence model that lists owning-domai
 Origin: ADR-0144
 Backing: test
 
+### `invariant: context-adr-operation-projection`
+
+An explicit governed ADR path projects its parsed identity, lifecycle, mutability, non-authoritative prose role, and declaration-ordered Proposed, Remaining, Applied, or Canceled operation progress from canonical application batches; full mode adds only operation-linked current or removed claim history and marker detail.
+Origin: ADR-0144
+Backing: test
+
+### `invariant: context-full-authority-packet`
+
+Concise context emits exact-path marker-selected claims plus explicit omission counts and topic drilldowns, while context --full emits every applicable current claim with backing, Verify text, marker sites, direct reference IDs, and Remaining operations from the same non-recursive semantic model; managed complete-authority callers request --full explicitly.
+Origin: ADR-0144
+Backing: test
+
 ### `invariant: context-static-fallback`
 
-Run outside an adopted tree, where no config file is present, `awf context` degrades to a static empty answer and succeeds rather than refusing, mirroring `awf config`.
+Run outside an adopted tree, where no config file is present, concise and full `awf context` both degrade to a successful static empty answer that states live classification and authority require adoption, mirroring `awf config`.
 Origin: ADR-0092
+Revised-by: ADR-0144
 Backing: test
 
 ### `invariant: describe-read-only`

@@ -40,7 +40,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, the S
 <!-- awf:edit state-changes: default; create .awf/skills/parts/adr-lifecycle/state-changes.md to override -->
 An ADR's `## State changes` section is the authoritative link to the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id.
 
-- **At `Accepted`** the operations are frozen instruction. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; a pending operation surfaces only as a bounded Accepted notice in `awf context`.
+- **At `Accepted`** the operations are frozen instruction. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; a pending operation surfaces only as a bounded Accepted notice in `awf context --full`.
 - **At `Implementing`** each Applied event and exactly its matching claim mutations form one checked Git pair. An `add` appears with this ADR as Origin; an `update` preserves Origin and the prior Revised-by prefix, then appends this ADR; a `remove` disappears. Remaining operations continue to appear as pending progress.
 - **At `Implemented`** all declarations are Applied. A direct transition uses one implicit batch; an incremental transition appends its final batch before the status event.
 - **At `Abandoned`** Applied operations and their provenance remain historical facts, while Remaining operations become Canceled and authorize nothing.

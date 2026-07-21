@@ -9,9 +9,7 @@ part without syncing. Replace the anchored path placeholder and generic prose, t
 claims manually. The command prints both repository-relative input paths and does not mutate config,
 the lock, or rendered docs. `awf topic <domain>/<topic>[:<claim>]` queries active state read-only;
 `--history`, `--references`, and `--coverage` independently add direct details, while `--json` changes
-presentation only. `awf context <paths>` answers which current-state claims apply to those paths;
-`awf context --uncovered` reports unowned paths and per-domain uncovered coverage, and `--staged`
-evaluates the Git index instead of the working tree. `awf check --staged` runs the same index-snapshot
+presentation only. `awf context <paths>` gives concise per-path orientation with directly marked claims and explicit omitted-claim drilldowns; `awf context --full <paths>` returns the complete applicable authority packet without recursively expanding references or history. `--json` serializes the selected projection, and concise JSON has no full block. `awf context --uncovered` reports unowned paths and per-domain uncovered coverage and refuses `--full`; `--staged` evaluates the Git index instead of the working tree. Explicit ADR paths report lifecycle-derived operation progress while treating ADR prose only as pending intent or decision history. `awf check --staged` runs the same index-snapshot
 coverage and the HEAD-to-index claim-transition handshake; the rendered pre-commit hook runs it.
 
 `awf upgrade` migrates the `.awf/` config tree to the current schema and syncs. When the lock carries

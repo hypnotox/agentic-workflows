@@ -158,13 +158,14 @@ sidecar.local, or a data key name).
 	},
 	{
 		Name: "context", Summary: "Report owning domains, invariants, and ADRs for paths", Runner: RunnerDisposition{Forward: true},
-		BoolFlags: []string{"--json", "--staged", "--uncovered"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
-		HelpBody: `Usage: awf context <path>... [--json] [--staged] [--range <a>..<b>] [--uncovered]
+		BoolFlags: []string{"--json", "--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
+		HelpBody: `Usage: awf context <path>... [--json] [--full] [--staged] [--range <a>..<b>] [--uncovered]
 
-Report the committed context awf holds for a set of repo-relative paths: owning
-domain(s), the invariant slugs backed under those paths, related ADRs, and each
-domain's current-state doc. Read-only. Inside an awf project the output reflects
-live config; outside one, a static pre-adoption notice prints.
+Report concise, path-attributed current-state orientation for repo-relative paths.
+Use --full for every applicable current claim, backing and direct reference IDs.
+Explicit ADR paths report lifecycle operation progress without treating ADR prose
+as current authority. Read-only. Outside a project, both projections print the
+same static pre-adoption reference.
 
 Provide paths explicitly, or resolve them from git with --staged (the staged
 changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
@@ -175,10 +176,11 @@ but covered by no scoped topic. Positional args become optional scan roots.
 Combine with --staged to read the index universe; --range is not accepted.
 
 Flags:
-  --json               emit the context as JSON
+  --json               emit the selected projection as JSON
+  --full               emit the complete applicable authority packet
   --staged             use the staged index universe
   --range <a>..<b>     use the paths changed between revisions a and b
-  --uncovered          report unowned and uncovered paths (scan roots optional)
+  --uncovered          report unowned and uncovered paths (cannot use --full)
 `,
 	},
 	{
