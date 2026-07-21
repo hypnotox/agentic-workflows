@@ -96,7 +96,8 @@ func (p *Project) contextFor(paths []string, gitSelected bool, projection Contex
 	if err != nil {
 		return ContextResult{}, err
 	}
-	decls, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree})
+	selectedADRs := adr.NewCorpus(ws.Loaded.ADRs)
+	decls, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, selectedADRs)
 	if err != nil {
 		return ContextResult{}, err
 	}
@@ -139,7 +140,8 @@ func stagedContextRoot(root string, paths []string, gitSelected bool, projection
 	if err != nil {
 		return ContextResult{}, err
 	}
-	decls, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, snapshotTreeReader{tree: state.Tree})
+	selectedADRs := adr.NewCorpus(state.Loaded.ADRs)
+	decls, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, snapshotTreeReader{tree: state.Tree}, selectedADRs)
 	if err != nil { // coverage-ignore: effectiveCatalog just parsed the same selected sidecars and declaration enumeration has no other error source
 		return ContextResult{}, err
 	}
@@ -197,7 +199,8 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 	currentPaths := safelyMatchablePaths(tree)
 	for _, path := range slices.Sorted(maps.Keys(attribution)) {
 		class, nestedRoot, targetInside := classifyContextPath(path, set)
-		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: artifactRecords(path, declarations, lay.ADRDir)}
+		selectedADRs := adr.NewCorpus(loaded.ADRs)
+		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: artifactRecords(path, declarations, lay.ADRDir, selectedADRs)}
 		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
 		matchedTopics := map[string]bool{}

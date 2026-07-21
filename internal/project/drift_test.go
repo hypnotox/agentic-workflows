@@ -86,14 +86,37 @@ func configHashOf(t *testing.T, root, rel string) string {
 	return ""
 }
 
-func TestClaimBudgetChangesConfigHash(t *testing.T) {
-	const rel = ".claude/skills/example-tdd/SKILL.md"
+func TestClaimBudgetDriftIsLimitedToConsumingGuidance(t *testing.T) {
+	const unrelated = ".claude/skills/example-tdd/SKILL.md"
 	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxClaimsPerTopic: 20\n")
-	before := configHashOf(t, root, rel)
+	beforeHash := configHashOf(t, root, unrelated)
+	beforeReference := renderedContentOf(t, root, "docs/config-reference.md")
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxClaimsPerTopic: 21\n")
-	if after := configHashOf(t, root, rel); after == before {
-		t.Fatal("maxClaimsPerTopic change did not change render config hash")
+	if after := configHashOf(t, root, unrelated); after != beforeHash {
+		t.Fatal("maxClaimsPerTopic drifted unrelated skill guidance")
 	}
+	if after := renderedContentOf(t, root, "docs/config-reference.md"); after == beforeReference || !strings.Contains(after, "| 21 |") {
+		t.Fatal("maxClaimsPerTopic did not update consuming config-reference guidance")
+	}
+}
+
+func renderedContentOf(t *testing.T, root, rel string) string {
+	t.Helper()
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range files {
+		if file.Path == rel {
+			return file.Content
+		}
+	}
+	t.Fatalf("no rendered file %s", rel)
+	return ""
 }
 
 // invariant: rendering/project-output-plan:drift-source-set

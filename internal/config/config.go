@@ -467,6 +467,16 @@ func (c *Config) HasSidecar(kind, name string) (bool, error) {
 	} else {
 		rel = filepath.Join(kind, name+".yaml")
 	}
+	if c.filesystem {
+		_, err := os.Stat(filepath.Join(c.root, rel))
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		if err != nil {
+			return false, fmt.Errorf("stat sidecar %s: %w", rel, err)
+		}
+		return true, nil
+	}
 	_, ok := c.ReadSidecar(filepath.ToSlash(rel))
 	return ok, nil
 }

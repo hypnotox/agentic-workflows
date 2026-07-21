@@ -1,6 +1,7 @@
 package testsupport_test
 
 import (
+	"fmt"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -10,15 +11,34 @@ import (
 	"testing"
 )
 
-// TestZeroInternalDeps enforces mechanically that internal/testsupport (and
-// every subpackage under it, including gitfixture) stays a leaf package: no
-// non-test .go file may import any
-// github.com/hypnotox/agentic-workflows/internal/* package, so this package
-// stays safely importable from any package's tests without risking an import
-// cycle. gitfixture/ is the sole exception permitted to import go-git. The
-// walk recurses the whole tree so a future deeper subpackage cannot escape the
-// check, and the seen-count guard fails the test rather than passing vacuously
-// if the source files are ever renamed or relocated out from under it.
+const testsupportImport = "github.com/hypnotox/agentic-workflows/internal/testsupport"
+
+func dependencyViolations(path string, source any) ([]string, error) {
+	fset := token.NewFileSet()
+	astFile, err := parser.ParseFile(fset, path, source, parser.ImportsOnly)
+	if err != nil {
+		return nil, fmt.Errorf("parse %s: %w", path, err)
+	}
+	allowGoGit := strings.HasPrefix(filepath.ToSlash(path), "gitfixture/")
+	violations := []string{}
+	for _, imp := range astFile.Imports {
+		p, err := strconv.Unquote(imp.Path.Value)
+		if err != nil {
+			return nil, fmt.Errorf("%s: unquote import %s: %w", path, imp.Path.Value, err)
+		}
+		ownSubpackage := p == testsupportImport || strings.HasPrefix(p, testsupportImport+"/")
+		standardLibrary := !strings.Contains(strings.Split(p, "/")[0], ".")
+		goGitException := allowGoGit && strings.HasPrefix(p, "github.com/go-git/go-git/")
+		if !standardLibrary && !ownSubpackage && !goGitException {
+			violations = append(violations, fmt.Sprintf("%s imports third-party or repository package %q", path, p))
+		}
+	}
+	return violations, nil
+}
+
+// TestZeroInternalDeps enforces mechanically that internal/testsupport and its
+// subpackages depend only on the standard library and their own subpackages.
+// gitfixture alone may import the scoped go-git module needed by Git fixtures.
 // invariant: tooling/quality-gates:testsupport-zero-internal-deps
 // invariant: tooling/test-infrastructure:test-support-leaf-boundary
 func TestZeroInternalDeps(t *testing.T) {
@@ -27,36 +47,59 @@ func TestZeroInternalDeps(t *testing.T) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+		if d.IsDir() {
+			if path == "testdata" {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
 		seen++
-		fset := token.NewFileSet()
-		astFile, perr := parser.ParseFile(fset, path, nil, parser.ImportsOnly)
-		if perr != nil {
-			t.Fatalf("parse %s: %v", path, perr)
+		violations, err := dependencyViolations(path, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-		allowGoGit := strings.HasPrefix(path, "gitfixture"+string(filepath.Separator))
-		for _, imp := range astFile.Imports {
-			p, uerr := strconv.Unquote(imp.Path.Value)
-			if uerr != nil {
-				t.Fatalf("%s: unquote import %s: %v", path, imp.Path.Value, uerr)
-			}
-			if strings.HasPrefix(p, "github.com/hypnotox/agentic-workflows/internal/") {
-				t.Errorf("%s imports internal package %q - internal/testsupport must stay a leaf package (ADR-0044)", path, p)
-			}
-			if !allowGoGit && strings.HasPrefix(p, "github.com/go-git/") {
-				t.Errorf("%s imports go-git package %q - only gitfixture/ may depend on go-git", path, p)
-			}
+		for _, violation := range violations {
+			t.Error(violation)
 		}
 		return nil
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Guard against a vacuous pass: testsupport.go and gitfixture/gitfixture.go
-	// must both be present, so the check can never silently inspect nothing.
 	if seen < 2 {
 		t.Fatalf("inspected only %d non-test source file(s); expected at least testsupport.go and gitfixture/gitfixture.go - did they move?", seen)
+	}
+}
+
+func TestDependencyProofRejectsThirdPartyImportFixture(t *testing.T) {
+	violations, err := dependencyViolations("testdata/thirdparty.go", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(violations) != 1 || !strings.Contains(violations[0], "example.com/thirdparty") {
+		t.Fatalf("violations = %v", violations)
+	}
+	allowed := `package fixture
+import (
+ "testing"
+ "github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+)`
+	if got, err := dependencyViolations("nested/allowed.go", allowed); err != nil || len(got) != 0 {
+		t.Fatalf("own subpackage violations=%v err=%v", got, err)
+	}
+	goGit := `package fixture
+import "github.com/go-git/go-git/v5"
+`
+	if got, err := dependencyViolations("gitfixture/allowed.go", goGit); err != nil || len(got) != 0 {
+		t.Fatalf("gitfixture violations=%v err=%v", got, err)
+	}
+	if got, err := dependencyViolations("other/not-allowed.go", goGit); err != nil || len(got) != 1 {
+		t.Fatalf("unscoped go-git violations=%v err=%v", got, err)
+	}
+	if _, err := dependencyViolations("bad.go", "not go"); err == nil {
+		t.Fatal("malformed fixture parsed")
 	}
 }

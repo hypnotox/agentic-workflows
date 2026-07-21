@@ -756,4 +756,24 @@ func TestHasSidecar(t *testing.T) {
 	if has, err := c.HasSidecar("agents-doc", ""); err != nil || !has {
 		t.Fatalf("expected singleton present, got has=%v err=%v", has, err)
 	}
+
+	brokenDir := writeConfig(t, "prefix: x\n")
+	if err := os.WriteFile(filepath.Join(brokenDir, "skills"), []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	broken, err := Load(brokenDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has, err := broken.HasSidecar("skills", "fault"); err == nil || has || !strings.Contains(err.Error(), "stat sidecar skills/fault.yaml") {
+		t.Fatalf("filesystem I/O error was not propagated: has=%v err=%v", has, err)
+	}
+
+	snapshot, err := ParseTree(".awf", []byte("prefix: x\n"), memoryTreeReader{"skills/yep.yaml": []byte("data: {}\n")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has, err := snapshot.HasSidecar("skills", "yep"); err != nil || !has {
+		t.Fatalf("snapshot sidecar behavior changed: has=%v err=%v", has, err)
+	}
 }

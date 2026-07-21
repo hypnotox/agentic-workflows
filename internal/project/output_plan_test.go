@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -12,7 +13,6 @@ import (
 )
 
 // invariant: rendering/project-output-plan:output-plan-complete
-// invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(root)
@@ -151,6 +151,33 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	}
 	if (OutputPolicy{}).ScanReferences {
 		t.Fatal("zero policy must not scan")
+	}
+}
+
+// invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership
+func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {
+	p, err := Open(filepath.Clean(filepath.Join("..", "..")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const extension = ".pi/extensions/awf-subagents/index.ts"
+	result, err := p.ContextFor([]string{extension})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Paths) != 1 || result.Paths[0].Classification != PathGeneratedOutput {
+		t.Fatalf("extension classification = %#v", result.Paths)
+	}
+	path := result.Paths[0]
+	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic PathTopicContext) bool { return topic.ID == "rendering/adapter-outputs" }) {
+		t.Fatalf("extension ownership = domains %#v topics %#v", path.Domains, path.Topics)
+	}
+	expanded, err := p.ContextFor([]string{".pi/extensions"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(expanded.Paths) != 0 || len(expanded.Requests) != 1 || expanded.Requests[0].Status != RequestDirectoryEmpty {
+		t.Fatalf("generated extension entered whole-tree expansion: %#v", expanded)
 	}
 }
 

@@ -195,7 +195,7 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	for _, p := range res.Paths {
 		fmt.Fprintf(&out, "\n%s [%s] (requests: %v)\n", p.Path, p.Classification, p.Requests)
 		if p.NestedRoot != "" {
-			fmt.Fprintf(&out, "  Nested root: %s/.awf/config.yaml\n", p.NestedRoot)
+			fmt.Fprintf(&out, "  Nested root: %s\n", p.NestedRoot)
 		}
 		if p.TargetInsideRepository != nil {
 			fmt.Fprintf(&out, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)

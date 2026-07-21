@@ -214,7 +214,7 @@ func classifyContextPath(p string, set contextPathSet) (PathClassification, stri
 	}
 	for _, root := range set.nested {
 		if p == root || strings.HasPrefix(p, root+"/") {
-			return PathNestedAdopter, root, nil
+			return PathNestedAdopter, root + "/.awf/config.yaml", nil
 		}
 	}
 	if set.outputs[p] {

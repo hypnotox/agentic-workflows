@@ -132,7 +132,7 @@ func TestPrintContextLifecycleGoldens(t *testing.T) {
 		Requests:   []project.ContextRequest{{Query: "internal/foo/x.go", Status: project.RequestLiteral, EffectivePaths: []string{"internal/foo/x.go"}}},
 		Paths: []project.ContextPath{
 			{Path: "internal/foo/x.go", Requests: []string{"internal/foo/x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
-			{Path: "nested/x", Requests: []string{"nested/x"}, Classification: project.PathNestedAdopter, NestedRoot: "nested", Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
+			{Path: "nested/x", Requests: []string{"nested/x"}, Classification: project.PathNestedAdopter, NestedRoot: "nested/.awf/config.yaml", Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
 			{Path: "link", Requests: []string{"link"}, Classification: project.PathSymlink, TargetInsideRepository: &inside, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{{Role: project.ArtifactManagedOutput, Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}},
 		},
 	}

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
@@ -40,14 +41,14 @@ type ArtifactRecord struct {
 	Snapshot   *ArtifactSnapshot `json:"snapshot,omitempty"`
 }
 
-func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir string) []ArtifactRecord {
+func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir string, adrs adr.Corpus) []ArtifactRecord {
 	records := []ArtifactRecord{}
 	add := func(role ArtifactRole, identity string, sources, outputs []ArtifactLink) {
 		records = append(records, ArtifactRecord{Role: role, Identity: identity, Sources: nonNilLinks(sources), Outputs: nonNilLinks(outputs), Navigation: []ArtifactLink{}})
 	}
 	switch {
 	case path == ".awf/config.yaml":
-		add(ArtifactConfig, "project-config", nil, nil)
+		add(ArtifactConfig, "project-config", nil, declarationOutputs(path, declarations))
 	case path == ".awf/awf.lock":
 		add(ArtifactLock, "project-lock", nil, nil)
 		add(ArtifactManifest, "output-manifest", nil, nil)
@@ -57,8 +58,10 @@ func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir
 		add(ArtifactClaimPart, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/parts/"), "/current-state.md"), nil, declarationOutputs(path, declarations))
 	case strings.HasPrefix(path, strings.TrimRight(decisionsDir, "/")+"/"):
 		base := strings.TrimPrefix(path, strings.TrimRight(decisionsDir, "/")+"/")
-		if len(base) >= 5 && base[4] == '-' {
-			add(ArtifactDecisionRecord, path, nil, nil)
+		if match := adr.FilenameRe.FindStringSubmatch(base); match != nil {
+			if record, ok := adrs.ByNumber(match[1]); ok && record.Filename == base {
+				add(ArtifactDecisionRecord, path, nil, declarationOutputs(path, declarations))
+			}
 		}
 	}
 	for _, d := range declarations {
@@ -69,9 +72,11 @@ func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir
 			}
 			add(ArtifactManagedOutput, d.TemplateID, sources, nil)
 		}
-		for _, in := range d.Inputs {
-			if in.Path == path {
-				add(in.Role, d.TemplateID, nil, []ArtifactLink{{Path: d.Path, Label: "managed output"}})
+		if !d.Reservation {
+			for _, in := range d.Inputs {
+				if in.Path == path && !canonicalArtifactInputRole(in.Role) {
+					add(in.Role, d.TemplateID, nil, []ArtifactLink{{Path: d.Path, Label: "managed output"}})
+				}
 			}
 		}
 	}
@@ -84,6 +89,10 @@ func artifactRecords(path string, declarations []OutputDeclaration, decisionsDir
 	})
 	return records
 }
+func canonicalArtifactInputRole(role ArtifactRole) bool {
+	return role == ArtifactConfig || role == ArtifactTopicMetadata || role == ArtifactClaimPart || role == ArtifactDecisionRecord
+}
+
 func declarationOutputs(path string, declarations []OutputDeclaration) []ArtifactLink {
 	out := []ArtifactLink{}
 	for _, d := range declarations {

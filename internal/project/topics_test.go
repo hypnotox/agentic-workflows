@@ -28,6 +28,28 @@ func topicProject(t *testing.T) string {
 	writeADR(t, root, "0001-topic.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Topic"), testsupport.WithBody("## Decision\n\n1. Topic.\n")))
 	return root
 }
+func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
+	root := topicProject(t)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/bad.yaml"), "title: [bad\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.Topics(); err == nil {
+		t.Fatal("malformed topic corpus accepted")
+	}
+
+	adrRoot := topicProject(t)
+	testsupport.WriteFile(t, filepath.Join(adrRoot, "docs/decisions/0001-topic.md"), "---\nstatus: [bad\n---\n")
+	withBadADR, err := Open(adrRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := withBadADR.Topics(); err == nil {
+		t.Fatal("malformed ADR corpus accepted by topic loader")
+	}
+}
+
 func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	root := topicProject(t)
 	p, err := Open(root)

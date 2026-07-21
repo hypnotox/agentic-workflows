@@ -31,9 +31,8 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
-		"prefix":            p.Cfg.Prefix,
-		"layout":            p.layout().templateMap(),
-		"maxClaimsPerTopic": p.Cfg.CurrentState.EffectiveMaxClaimsPerTopic(),
+		"prefix": p.Cfg.Prefix,
+		"layout": p.layout().templateMap(),
 	}
 	if len(targets) != 0 {
 		// Identity is a declarer property of an output-plan node, not part of

@@ -442,6 +442,32 @@ func TestStagedContextFor(t *testing.T) {
 	}
 }
 
+func TestContextADRProjectionPreservesStagedWorkingDivergence(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := ctxFiles()
+	files[".awf/awf.lock"] = `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`
+	files[".awf/config.yaml"] = ctxConfig
+	files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: Staged title"))
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "base", nil)
+	testsupport.WriteFile(t, filepath.Join(dir, "docs/decisions/0001-first.md"), testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: Working title")))
+	p, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	working, err := p.ContextFor([]string{"docs/decisions/0001-first.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	staged, err := StagedContextRoot(dir, []string{"docs/decisions/0001-first.md"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if working.Paths[0].ADR == nil || staged.Paths[0].ADR == nil || working.Paths[0].ADR.Title != "Working title" || staged.Paths[0].ADR.Title != "Staged title" {
+		t.Fatalf("working ADR=%#v staged ADR=%#v", working.Paths[0].ADR, staged.Paths[0].ADR)
+	}
+}
+
 func TestStagedContextRootExpandsEligibleDescendants(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})

@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -79,6 +81,39 @@ func TestADRArtifactProjectionInvalidProgressStaysBounded(t *testing.T) {
 	got := projectADRArtifact("docs/decisions/0002-example.md", "docs/decisions", adr.NewCorpus([]adr.ADR{record}), topic.Corpus{}, ContextConcise)
 	if got == nil || len(got.Operations) != 0 {
 		t.Fatalf("invalid progress projection = %#v", got)
+	}
+}
+
+func TestADRArtifactProjectionDirectV2RemoveAndRelocatedDocsDir(t *testing.T) {
+	claim := "alpha/one:gone"
+	add := adr.ADR{Number: "0001", Title: "ADR-0001: Add", Filename: "0001-add.md", Status: "Implemented", Format: adr.CurrentStateV2, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claim}}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 1, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claim}}}}}
+	remove := adr.ADR{Number: "0002", Title: "ADR-0002: Remove", Filename: "0002-remove.md", Status: "Implemented", Format: adr.CurrentStateV2, Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claim}}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 2, Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claim}}}}}
+	corpus := adr.NewCorpus([]adr.ADR{add, remove})
+	cfg, err := config.ParseTree(".awf", []byte("prefix: x\ndomains: [alpha]\n"), configReaderAdapter{memoryProjectReader{}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/domains/alpha.yaml", Mode: snapshot.Regular, Bytes: []byte("paths: [\"internal/**\"]\n")},
+		{Path: ".awf/topics/metadata/alpha/one.yaml", Mode: snapshot.Regular, Bytes: []byte("title: One\nsummary: One.\npaths: [\"internal/**\"]\n")},
+		{Path: ".awf/topics/parts/alpha/one/current-state.md", Mode: snapshot.Regular, Bytes: []byte("Intro.\n\n## Claims\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	topics, err := topic.LoadCorpusFromTree(tree, cfg, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := projectADRArtifact("handbook/decisions/0002-remove.md", "handbook/decisions", corpus, topics, ContextFull)
+	if got == nil || got.Status != "Implemented" || len(got.Operations) != 1 || got.Operations[0].Progress != "applied" || got.Operations[0].StateSequence != 2 || got.Operations[0].ClaimState != "historically-removed" {
+		t.Fatalf("direct V2 relocated remove projection = %#v", got)
+	}
+	if got.Operations[0].Detail == nil || got.Operations[0].Detail.Current != nil || got.Operations[0].Detail.History == nil || got.Operations[0].Detail.History.RemovedBy == nil || got.Operations[0].Detail.History.RemovedBy.StateSequence != 2 || got.Operations[0].Detail.MarkerSites == nil {
+		t.Fatalf("removed detail = %#v", got.Operations[0].Detail)
+	}
+	if outside := projectADRArtifact("docs/decisions/0002-remove.md", "handbook/decisions", corpus, topic.Corpus{}, ContextFull); outside != nil {
+		t.Fatalf("default docsDir lookalike projected in relocated layout: %#v", outside)
 	}
 }
 

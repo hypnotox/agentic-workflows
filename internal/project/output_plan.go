@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -28,11 +29,12 @@ type OutputInput struct {
 	Role ArtifactRole
 }
 type OutputDeclaration struct {
-	Path        string
-	TemplateID  string
-	Declarers   []string
-	Inputs      []OutputInput
-	Reservation bool
+	Path         string
+	TemplateID   string
+	Declarers    []string
+	Inputs       []OutputInput
+	Dependencies []string
+	Reservation  bool
 }
 
 type snapshotTreeReader struct{ tree *snapshot.Tree }
@@ -83,11 +85,15 @@ func (r filesystemProjectReader) Paths(prefix string) []string {
 
 // BuildOutputDeclarations enumerates deterministic producer declarations without
 // rendering or materializing the selected tree.
-func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader) ([]OutputDeclaration, error) {
+func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
 	decls := []OutputDeclaration{}
 	add := func(path, tid, who string, inputs []OutputInput, reservation bool) {
 		if path == "" {
 			return
+		}
+		path = filepath.ToSlash(filepath.Clean(path))
+		for i := range inputs {
+			inputs[i].Path = filepath.ToSlash(filepath.Clean(inputs[i].Path))
 		}
 		for i := range decls {
 			if decls[i].Path == path && decls[i].TemplateID == tid && decls[i].Reservation == reservation {
@@ -96,7 +102,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				return
 			}
 		}
-		decls = append(decls, OutputDeclaration{Path: filepath.ToSlash(path), TemplateID: tid, Declarers: []string{who}, Inputs: inputs, Reservation: reservation})
+		decls = append(decls, OutputDeclaration{Path: path, TemplateID: tid, Declarers: []string{who}, Inputs: inputs, Reservation: reservation})
 	}
 	configInput := []OutputInput{{Path: ".awf/config.yaml", Role: ArtifactConfig}}
 	inputs := func(tid string, authored ...OutputInput) []OutputInput {
@@ -234,7 +240,8 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		topicInputs := []OutputInput{}
 		for _, p := range read.Paths(".awf/topics/metadata/" + d + "/") {
 			if strings.HasSuffix(p, ".yaml") {
-				topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata})
+				id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
+				topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
 			}
 		}
 		if len(topicInputs) > 0 {
@@ -242,10 +249,8 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 	}
 	decisionInputs := []OutputInput{}
-	for _, p := range read.Paths(strings.TrimRight(cfg.DocsDir, "/") + "/decisions/") {
-		if strings.HasSuffix(p, ".md") {
-			decisionInputs = append(decisionInputs, OutputInput{Path: p, Role: ArtifactDecisionRecord})
-		}
+	for _, record := range adrs.All() {
+		decisionInputs = append(decisionInputs, OutputInput{Path: strings.TrimRight(cfg.DocsDir, "/") + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
 	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "decisions/index.md.tmpl", "generated-index", inputs("decisions/index.md.tmpl", decisionInputs...), false)
 	if cfg.Runner != nil && cfg.Runner.Enabled {
@@ -262,6 +267,22 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	}
 	add(".awf/memory/.gitignore", "memory/gitignore.tmpl", "memory/gitignore.tmpl", inputs("memory/gitignore.tmpl"), false)
 	for i := range decls {
+		switch decls[i].TemplateID {
+		case "topics/topic.md.tmpl", "topics/index.md.tmpl":
+			for _, input := range decls[i].Inputs {
+				if input.Role == ArtifactTopicMetadata || input.Role == ArtifactClaimPart {
+					decls[i].Dependencies = append(decls[i].Dependencies, input.Path)
+				}
+			}
+		case "docs/config-reference.md.tmpl":
+			for _, candidate := range decls {
+				if !candidate.Reservation && candidate.Path != decls[i].Path && candidate.TemplateID != "decisions/index.md.tmpl" {
+					decls[i].Dependencies = append(decls[i].Dependencies, candidate.Path)
+				}
+			}
+		}
+		slices.Sort(decls[i].Dependencies)
+		decls[i].Dependencies = slices.Compact(decls[i].Dependencies)
 		slices.Sort(decls[i].Declarers)
 		decls[i].Declarers = slices.Compact(decls[i].Declarers)
 		slices.SortFunc(decls[i].Inputs, func(a, b OutputInput) int {
@@ -306,6 +327,7 @@ type OutputNode struct {
 	Declarers           []string
 	DeclarerProjections []string
 	DependsOn           []string
+	DeclarationInputs   []OutputInput
 	Reservation         bool
 	file                *RenderedFile
 }
@@ -402,7 +424,11 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 // deliberately excluded from its own input.
 func (p *Project) OutputPlan() (*OutputPlan, error) {
 	p.beginInvocation()
-	outputDeclarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root})
+	corpus, err := p.Corpus()
+	if err != nil {
+		return nil, err
+	}
+	outputDeclarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		return nil, err
 	}
@@ -528,7 +554,17 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 		}
 	}
 	slices.SortFunc(plan.Nodes, func(a, b OutputNode) int { return strings.Compare(a.Path, b.Path) })
+	declarationsByPath := map[string]OutputDeclaration{}
+	for _, declaration := range outputDeclarations {
+		declarationsByPath[declaration.Path] = declaration
+	}
 	for i := range plan.Nodes {
+		if declaration, ok := declarationsByPath[plan.Nodes[i].Path]; ok {
+			plan.Nodes[i].DeclarationInputs = slices.Clone(declaration.Inputs)
+			if plan.Nodes[i].Recipe.TemplateID == "" {
+				plan.Nodes[i].Recipe.TemplateID = declaration.TemplateID
+			}
+		}
 		slices.Sort(plan.Nodes[i].Declarers)
 		slices.Sort(plan.Nodes[i].DeclarerProjections)
 		slices.Sort(plan.Nodes[i].DependsOn)
@@ -556,8 +592,9 @@ func validateDeclarationPlanParity(nodes []OutputNode, declarations []OutputDecl
 		return fmt.Errorf("output declaration parity: declarations-only %v, plan-only %v", difference(dp, np), difference(np, dp))
 	}
 	for i := range nodes {
-		if nodes[i].Path != declarations[i].Path || nodes[i].Reservation != declarations[i].Reservation || !slices.Equal(nodes[i].Declarers, declarations[i].Declarers) {
-			return fmt.Errorf("output declaration parity at %q: plan %v declaration %v", nodes[i].Path, nodes[i].Declarers, declarations[i].Declarers)
+		node, declaration := nodes[i], declarations[i]
+		if node.Path != declaration.Path || node.Reservation != declaration.Reservation || node.Recipe.TemplateID != declaration.TemplateID || !slices.Equal(node.Declarers, declaration.Declarers) || !slices.Equal(node.DeclarationInputs, declaration.Inputs) || !slices.Equal(node.DependsOn, declaration.Dependencies) {
+			return fmt.Errorf("output declaration parity at %q: plan template=%q declarers=%v inputs=%v dependencies=%v reservation=%t; declaration template=%q declarers=%v inputs=%v dependencies=%v reservation=%t", node.Path, node.Recipe.TemplateID, node.Declarers, node.DeclarationInputs, node.DependsOn, node.Reservation, declaration.TemplateID, declaration.Declarers, declaration.Inputs, declaration.Dependencies, declaration.Reservation)
 		}
 	}
 	return nil
