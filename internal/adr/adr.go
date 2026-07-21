@@ -382,10 +382,24 @@ func NewFile(dir, title string, format Format) (string, error) {
 	if !found {
 		return "", errors.New("adr: template missing frontmatter")
 	}
-	front, err := replaceOnce(string(block), "format: "+V1FormatMarker, "format: "+marker)
-	if err != nil {
-		return "", err
+	var formatMarkers []string
+	for _, line := range strings.Split(string(block), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "format:") {
+			formatMarkers = append(formatMarkers, strings.TrimSpace(strings.TrimPrefix(line, "format:")))
+		}
 	}
+	if len(formatMarkers) == 0 {
+		return "", errors.New("adr: template frontmatter missing governed format marker")
+	}
+	if len(formatMarkers) != 1 {
+		return "", errors.New("adr: template frontmatter must contain exactly one governed format marker")
+	}
+	templateMarker := formatMarkers[0]
+	if templateMarker != V1FormatMarker && templateMarker != V2FormatMarker {
+		return "", fmt.Errorf("adr: template frontmatter has unsupported governed format marker %q", templateMarker)
+	}
+	front := strings.Replace(string(block), "format: "+templateMarker, "format: "+marker, 1)
 	content = "---\n" + front + "---\n" + string(body)
 	date := now().Format("2006-01-02")
 	content, err = replaceOnce(content, "date: YYYY-MM-DD", "date: "+date)

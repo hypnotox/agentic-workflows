@@ -429,26 +429,47 @@ func TestNewFileHappyPath(t *testing.T) {
 // overwrite guard can never fire from repeated same-process calls: NextNumber
 // always returns one more than every existing NNNN-*.md file, so a second call
 // with the same title lands at the next number instead of colliding.
-func TestNewFileExplicitV2ChangesOnlyFrontmatterMarker(t *testing.T) {
-	dir := t.TempDir()
-	template := strings.Replace(adrTemplateFixture, "## Context\n", "## Context\n\nformat: current-state-v1 remains prose.\n", 1)
-	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(template), 0o644); err != nil {
-		t.Fatal(err)
-	}
+func TestNewFileReplacesEitherGovernedTemplateMarkerWithRequestedFormat(t *testing.T) {
 	swapNow(t, fixedNow)
-	path, err := adr.NewFile(dir, "V2 Title", adr.CurrentStateV2)
-	if err != nil {
-		t.Fatal(err)
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(data), "format: current-state-v2") || !strings.Contains(string(data), "format: current-state-v1 remains prose.") {
-		t.Fatalf("format selection rewrote more than frontmatter:\n%s", data)
-	}
-	if _, err := adr.ParseV2(filepath.Base(path), data); err != nil {
-		t.Fatalf("V2 scaffold does not parse: %v", err)
+	for _, templateMarker := range []string{adr.V1FormatMarker, adr.V2FormatMarker} {
+		for _, requested := range []adr.Format{adr.CurrentStateV1, adr.CurrentStateV2} {
+			requestedName := adr.V1FormatMarker
+			if requested == adr.CurrentStateV2 {
+				requestedName = adr.V2FormatMarker
+			}
+			t.Run(templateMarker+" to "+requestedName, func(t *testing.T) {
+				dir := t.TempDir()
+				template := strings.Replace(adrTemplateFixture, "format: current-state-v1", "format: "+templateMarker, 1)
+				template = strings.Replace(template, "## Context\n", "## Context\n\nformat: current-state-v1 remains prose.\n", 1)
+				if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(template), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				path, err := adr.NewFile(dir, "Format Title", requested)
+				if err != nil {
+					t.Fatal(err)
+				}
+				data, err := os.ReadFile(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantMarker := adr.V1FormatMarker
+				parse := adr.ParseV1
+				if requested == adr.CurrentStateV2 {
+					wantMarker = adr.V2FormatMarker
+					parse = adr.ParseV2
+				}
+				wantCount := 1
+				if requested == adr.CurrentStateV1 {
+					wantCount = 2 // frontmatter plus the deliberately similar body prose
+				}
+				if strings.Count(string(data), "format: "+wantMarker) != wantCount || !strings.Contains(string(data), "format: current-state-v1 remains prose.") {
+					t.Fatalf("format selection rewrote outside frontmatter or emitted the wrong marker:\n%s", data)
+				}
+				if _, err := parse(filepath.Base(path), data); err != nil {
+					t.Fatalf("requested %s scaffold does not parse: %v", requestedName, err)
+				}
+			})
+		}
 	}
 }
 
@@ -513,14 +534,25 @@ func TestNewFileEmptySlug(t *testing.T) {
 	}
 }
 
-func TestNewFileMissingFormatMarker(t *testing.T) {
-	dir := t.TempDir()
-	broken := strings.Replace(adrTemplateFixture, "format: current-state-v1\n", "", 1)
-	if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := adr.NewFile(dir, "No Format", adr.CurrentStateV1); err == nil || !strings.Contains(err.Error(), "format: current-state-v1") {
-		t.Fatalf("missing format marker error = %v", err)
+func TestNewFileRejectsInvalidGovernedTemplateMarkers(t *testing.T) {
+	for _, tc := range []struct {
+		name, formatLines, want string
+	}{
+		{"missing", "", "missing governed format marker"},
+		{"multiple same", "format: current-state-v1\nformat: current-state-v1\n", "exactly one"},
+		{"multiple mixed", "format: current-state-v1\nformat: current-state-v2\n", "exactly one"},
+		{"unsupported", "format: current-state-v3\n", "unsupported governed format marker"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			broken := strings.Replace(adrTemplateFixture, "format: current-state-v1\n", tc.formatLines, 1)
+			if err := os.WriteFile(filepath.Join(dir, "template.md"), []byte(broken), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := adr.NewFile(dir, "Bad Format", adr.CurrentStateV1); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("format marker error = %v, want %q", err, tc.want)
+			}
+		})
 	}
 }
 

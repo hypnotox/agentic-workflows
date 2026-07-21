@@ -9,6 +9,7 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/format/index"
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -36,6 +37,31 @@ func stagedHeadFiles() map[string]string {
 // attestedLock returns the permanent cutoff used by staged fixtures.
 func attestedLock() *manifest.Lock {
 	return &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}}
+}
+
+func boundaryADR(format, title string) string {
+	return "---\nformat: " + format + "\nstatus: Proposed\ndate: 2026-07-21\n---\n" +
+		"# ADR-0002: " + title + "\n\n## Context\n\nContext.\n\n## Decision\n\n1. Decide.\n\n" +
+		"## State changes\n\nNone.\n\n## Consequences\n\nConsequence.\n\n" +
+		"## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-21: Proposed\n"
+}
+
+func lockJSON(t *testing.T, lock *manifest.Lock) string {
+	t.Helper()
+	data, err := lock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(data)
+}
+
+func findBoundaryADR(records []adr.ADR) (adr.ADR, bool) {
+	for _, record := range records {
+		if record.Number == "0002" {
+			return record, true
+		}
+	}
+	return adr.ADR{}, false
 }
 
 // writeLock writes and stages the project's awf.lock.
@@ -152,6 +178,55 @@ func TestCheckStagedAllowsSealedBridgePromotion(t *testing.T) {
 	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}})
 	if _, err := p.CheckStaged(); err != nil {
 		t.Fatalf("sealed promotion: %v", err)
+	}
+}
+
+// TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary uses snapshots
+// whose ADR-0002 bytes are valid only under each side's own lock: V1 under the
+// bridge HEAD and V2 under the staged permanent lock. Phase 3 must reject that
+// arbitrary V2 activation rather than treating it as the sealed V1 promotion.
+func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	files[".awf/awf.lock"] = `{"awfVersion":"0.18.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":2,"legacyAdrGaps":[]}}`
+	files["docs/decisions/0002-boundary.md"] = boundaryADR(adr.V1FormatMarker, "V1 side")
+	gitfixture.Stage(t, repo, dir, files)
+	gitfixture.Commit(t, repo, dir, "bridge", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}),
+		"docs/decisions/0002-boundary.md": boundaryADR(adr.V2FormatMarker, "V2 side"),
+	})
+	p := openStaged(t, dir)
+	beforeTree, beforeLock, err := p.headTreeAndLock()
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
+	before, _, err := loadTreeCurrentState(dir, beforeTree, beforeBoundaries, beforeGaps)
+	if err != nil {
+		t.Fatalf("load staged before snapshot with its lock: %v", err)
+	}
+	afterTree, err := snapshot.IndexTree(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterLock, err := lockFromTree(afterTree)
+	if err != nil {
+		t.Fatal(err)
+	}
+	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
+	after, _, err := loadTreeCurrentState(dir, afterTree, afterBoundaries, afterGaps)
+	if err != nil {
+		t.Fatalf("load staged after snapshot with its lock: %v", err)
+	}
+	if got, ok := findBoundaryADR(before.ADRs); !ok || !got.IsV1() {
+		t.Fatalf("staged before ADR-0002 = %#v, found=%v; want V1", got, ok)
+	}
+	if got, ok := findBoundaryADR(after.ADRs); !ok || !got.IsV2() {
+		t.Fatalf("staged after ADR-0002 = %#v, found=%v; want V2", got, ok)
+	}
+	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "adrFormatV2From") {
+		t.Fatalf("arbitrary bridge V2 promotion error = %v", err)
 	}
 }
 
@@ -418,8 +493,44 @@ func openStaged(t *testing.T, dir string) *Project {
 	return p
 }
 
-// TestAuditTransitionsClean accepts a range whose only mutation is a bootstrap
-// claim first appearing below the cutoff: no add operation is owed.
+// TestRangePairUniversesUsesEachFirstParentSnapshotBoundary changes both the
+// lock boundary and ADR-0002 bytes across one commit. Each ADR is deliberately
+// invalid under the other side's lock, so a parsed format-transition finding
+// proves audit loading derived boundaries independently from both snapshots.
+func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	files := stagedHeadFiles()
+	files["docs/decisions/0002-boundary.md"] = boundaryADR(adr.V1FormatMarker, "V1 side")
+	gitfixture.Stage(t, repo, dir, files)
+	base := gitfixture.Commit(t, repo, dir, "v1 boundary", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}),
+		"docs/decisions/0002-boundary.md": boundaryADR(adr.V2FormatMarker, "V2 side"),
+	})
+	head := gitfixture.Commit(t, repo, dir, "v2 boundary", nil)
+	p := openStaged(t, dir)
+	before, after, err := p.rangePairUniverses(head.String())
+	if err != nil {
+		t.Fatalf("rangePairUniverses: %v", err)
+	}
+	if got, ok := findBoundaryADR(before.ADRs); !ok || !got.IsV1() {
+		t.Fatalf("before ADR-0002 = %#v, found=%v; want V1", got, ok)
+	}
+	if got, ok := findBoundaryADR(after.ADRs); !ok || !got.IsV2() {
+		t.Fatalf("after ADR-0002 = %#v, found=%v; want V2", got, ok)
+	}
+	findings, err := p.auditTransitions(base.String(), head.String())
+	if err != nil {
+		t.Fatalf("auditTransitions: %v", err)
+	}
+	if len(findings) != 1 || findings[0].Severity != audit.Error || !strings.Contains(findings[0].Detail, "changed governed format") {
+		t.Fatalf("audit transitions findings=%#v; want the parsed format-transition error, not a snapshot-load warning", findings)
+	}
+}
+
+// TestAuditTransitionsClean retains the live V1-only-lock case: its only
+// mutation is a bootstrap claim first appearing below the cutoff, so no add
+// operation is owed.
 func TestAuditTransitionsClean(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})

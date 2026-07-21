@@ -128,27 +128,64 @@ func TestRunContextHuman(t *testing.T) {
 	}
 }
 
-func TestPrintContextImplementingProgress(t *testing.T) {
-	res := project.ContextResult{Pending: []project.PendingChange{{
-		ADR: "0003", Title: "Progress", Status: "Implementing", Applied: 1, Declared: 3,
-		Op: "remove", Claim: "alpha/one:old-rule",
-	}}}
+// TestPrintContextLifecycleGoldens pins the complete human and JSON contract
+// for the remaining rows selected from Accepted, first and middle Implementing
+// progress. The project-layer golden proves Implemented and partially Abandoned
+// rows are excluded; the current claim here stays in the ordinary Topics section.
+func TestPrintContextLifecycleGoldens(t *testing.T) {
+	res := project.ContextResult{
+		Paths: []string{"internal/foo/x.go"}, Domains: []project.DomainRef{}, Unowned: []string{},
+		Topics: []project.TopicContext{{
+			ID: "alpha/one", Title: "One", Summary: "Current.", Claims: []project.ClaimRef{{
+				ID: "alpha/one:current", Type: "rule", Prose: "Current claim.",
+			}},
+		}},
+		Pending: []project.PendingChange{
+			{ADR: "0002", Title: "Accepted", Status: "Accepted", Applied: 0, Declared: 3, Op: "update", Claim: "alpha/one:alpha"},
+			{ADR: "0002", Title: "Accepted", Status: "Accepted", Applied: 0, Declared: 3, Op: "add", Claim: "alpha/one:zeta"},
+			{ADR: "0003", Title: "First batch", Status: "Implementing", Applied: 1, Declared: 3, Op: "remove", Claim: "alpha/one:old"},
+			{ADR: "0003", Title: "First batch", Status: "Implementing", Applied: 1, Declared: 3, Op: "update", Claim: "alpha/one:rule"},
+			{ADR: "0004", Title: "Middle batch", Status: "Implementing", Applied: 2, Declared: 3, Op: "remove", Claim: "alpha/one:z-remaining"},
+		},
+	}
 	var out bytes.Buffer
 	if err := printContext(&out, res, false, "header"); err != nil {
 		t.Fatal(err)
 	}
-	want := "## Pending changes (not yet current)\n  ADR-0003 (Progress; Implementing; 1/3 applied) remove alpha/one:old-rule\n"
-	if !strings.Contains(out.String(), want) {
-		t.Fatalf("Implementing output:\n%s", out.String())
+	wantHuman := "header\n" +
+		"\npaths: [internal/foo/x.go]\n" +
+		"\n## Domains\n" +
+		"\n## Topics\n" +
+		"  alpha/one - One\n" +
+		"    Current.\n" +
+		"    [rule] alpha/one:current: Current claim.\n" +
+		"\n## Pending changes (not yet current)\n" +
+		"  ADR-0002 (Accepted; Accepted) update alpha/one:alpha\n" +
+		"  ADR-0002 (Accepted; Accepted) add alpha/one:zeta\n" +
+		"  ADR-0003 (First batch; Implementing; 1/3 applied) remove alpha/one:old\n" +
+		"  ADR-0003 (First batch; Implementing; 1/3 applied) update alpha/one:rule\n" +
+		"  ADR-0004 (Middle batch; Implementing; 2/3 applied) remove alpha/one:z-remaining\n"
+	if out.String() != wantHuman {
+		t.Fatalf("human context:\n--- got ---\n%s--- want ---\n%s", out.String(), wantHuman)
 	}
+
 	out.Reset()
 	if err := printContext(&out, res, true, "ignored"); err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{`"status": "Implementing"`, `"applied": 1`, `"declared": 3`} {
-		if !strings.Contains(out.String(), field) {
-			t.Errorf("JSON missing %s:\n%s", field, out.String())
-		}
+	wantJSON := "{\n" +
+		"  \"paths\": [\n    \"internal/foo/x.go\"\n  ],\n" +
+		"  \"domains\": [],\n" +
+		"  \"topics\": [\n    {\n      \"id\": \"alpha/one\",\n      \"title\": \"One\",\n      \"summary\": \"Current.\",\n      \"claims\": [\n        {\n          \"id\": \"alpha/one:current\",\n          \"type\": \"rule\",\n          \"prose\": \"Current claim.\"\n        }\n      ]\n    }\n  ],\n" +
+		"  \"pending\": [\n" +
+		"    {\n      \"adr\": \"0002\",\n      \"title\": \"Accepted\",\n      \"status\": \"Accepted\",\n      \"applied\": 0,\n      \"declared\": 3,\n      \"op\": \"update\",\n      \"claim\": \"alpha/one:alpha\"\n    },\n" +
+		"    {\n      \"adr\": \"0002\",\n      \"title\": \"Accepted\",\n      \"status\": \"Accepted\",\n      \"applied\": 0,\n      \"declared\": 3,\n      \"op\": \"add\",\n      \"claim\": \"alpha/one:zeta\"\n    },\n" +
+		"    {\n      \"adr\": \"0003\",\n      \"title\": \"First batch\",\n      \"status\": \"Implementing\",\n      \"applied\": 1,\n      \"declared\": 3,\n      \"op\": \"remove\",\n      \"claim\": \"alpha/one:old\"\n    },\n" +
+		"    {\n      \"adr\": \"0003\",\n      \"title\": \"First batch\",\n      \"status\": \"Implementing\",\n      \"applied\": 1,\n      \"declared\": 3,\n      \"op\": \"update\",\n      \"claim\": \"alpha/one:rule\"\n    },\n" +
+		"    {\n      \"adr\": \"0004\",\n      \"title\": \"Middle batch\",\n      \"status\": \"Implementing\",\n      \"applied\": 2,\n      \"declared\": 3,\n      \"op\": \"remove\",\n      \"claim\": \"alpha/one:z-remaining\"\n    }\n  ],\n" +
+		"  \"unowned\": []\n}\n"
+	if out.String() != wantJSON {
+		t.Fatalf("JSON context:\n--- got ---\n%s--- want ---\n%s", out.String(), wantJSON)
 	}
 }
 

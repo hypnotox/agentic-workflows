@@ -252,7 +252,7 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 	}
 	if before.InitializedWithVersion == "" && after.InitializedWithVersion == "" &&
 		before.ADRFormatV1From == 0 && before.BridgeAttestation != nil &&
-		after.BridgeAttestation == nil &&
+		after.BridgeAttestation == nil && after.ADRFormatV2From == 0 &&
 		after.ADRFormatV1From == before.BridgeAttestation.ADRFormatV1From &&
 		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
 		return nil

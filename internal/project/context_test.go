@@ -1,6 +1,7 @@
 package project
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -250,39 +251,48 @@ func TestContextForPending(t *testing.T) {
 	}
 }
 
-// TestPendingChangesSort exercises the ADR-number-then-claim ordering: two
-// Accepted ADRs (different numbers) and two operations under one ADR (a claim
-// tie-break), with a Proposed ADR and an unmatched-topic operation both excluded.
-func TestPendingChangesSort(t *testing.T) {
+// TestPendingChangesLifecycleGolden pins remaining-only projection and ordering
+// across Accepted, first and middle Implementing, Implemented, and partially
+// Abandoned ADRs. Terminal records contribute no pending guidance.
+func TestPendingChangesLifecycleGolden(t *testing.T) {
+	addDone := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:done"}
+	removeOld := adr.Operation{Verb: adr.OpRemove, ID: "alpha/one:old"}
+	updateRule := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/one:rule"}
+	middleA := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:a-applied"}
+	middleB := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/one:b-applied"}
+	middleRemaining := adr.Operation{Verb: adr.OpRemove, ID: "alpha/one:z-remaining"}
 	adrs := []adr.ADR{
-		{Number: "0003", Title: "ADR-0003: Third", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{
+		{Number: "0002", Title: "ADR-0002: Accepted", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{
 			{Verb: adr.OpAdd, ID: "alpha/one:zeta"},
-			{Verb: adr.OpAdd, ID: "alpha/one:alpha"},
+			{Verb: adr.OpUpdate, ID: "alpha/one:alpha"},
 			{Verb: adr.OpAdd, ID: "beta/two:unmatched"},
 		}},
-		{Number: "0002", Title: "ADR-0002: Second", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{
-			{Verb: adr.OpUpdate, ID: "alpha/one:mid"},
-		}},
-		{Number: "0004", Title: "ADR-0004: Fourth", Status: "Implementing", Format: adr.CurrentStateV2, Operations: []adr.Operation{
-			{Verb: adr.OpAdd, ID: "alpha/one:done"},
-			{Verb: adr.OpRemove, ID: "alpha/one:old"},
-			{Verb: adr.OpUpdate, ID: "alpha/one:rule"},
-		}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 7, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "alpha/one:done"}}}}},
-		{Number: "0009", Title: "ADR-0009: Proposed", Status: "Proposed", Format: adr.CurrentStateV1, Operations: []adr.Operation{
-			{Verb: adr.OpAdd, ID: "alpha/one:skipme"},
-		}},
+		{Number: "0003", Title: "ADR-0003: First batch", Status: "Implementing", Format: adr.CurrentStateV2,
+			Operations: []adr.Operation{addDone, removeOld, updateRule},
+			History:    []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 7, Operations: []adr.Operation{addDone}}}},
+		{Number: "0004", Title: "ADR-0004: Middle batch", Status: "Implementing", Format: adr.CurrentStateV2,
+			Operations: []adr.Operation{middleA, middleB, middleRemaining},
+			History: []adr.HistoryEvent{
+				{Kind: adr.HistoryApplied, Sequence: 8, Operations: []adr.Operation{middleA}},
+				{Kind: adr.HistoryApplied, Sequence: 9, Operations: []adr.Operation{middleB}},
+			}},
+		{Number: "0005", Title: "ADR-0005: Done", Status: "Implemented", Format: adr.CurrentStateV2,
+			Operations: []adr.Operation{addDone}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 10, Operations: []adr.Operation{addDone}}}},
+		{Number: "0006", Title: "ADR-0006: Stopped", Status: "Abandoned", Format: adr.CurrentStateV2,
+			Operations: []adr.Operation{addDone, removeOld}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 11, Operations: []adr.Operation{addDone}}}},
+		{Number: "0009", Title: "ADR-0009: Proposed", Status: "Proposed", Format: adr.CurrentStateV1,
+			Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "alpha/one:skipme"}}},
 	}
-	out := pendingChanges(adrs, map[string]bool{"alpha/one": true})
-	got := make([]string, len(out))
-	for i, pc := range out {
-		got[i] = pc.ADR + ":" + pc.Claim
+	got := pendingChanges(adrs, map[string]bool{"alpha/one": true})
+	want := []PendingChange{
+		{ADR: "0002", Title: "Accepted", Status: "Accepted", Applied: 0, Declared: 3, Op: "update", Claim: "alpha/one:alpha"},
+		{ADR: "0002", Title: "Accepted", Status: "Accepted", Applied: 0, Declared: 3, Op: "add", Claim: "alpha/one:zeta"},
+		{ADR: "0003", Title: "First batch", Status: "Implementing", Applied: 1, Declared: 3, Op: "remove", Claim: "alpha/one:old"},
+		{ADR: "0003", Title: "First batch", Status: "Implementing", Applied: 1, Declared: 3, Op: "update", Claim: "alpha/one:rule"},
+		{ADR: "0004", Title: "Middle batch", Status: "Implementing", Applied: 2, Declared: 3, Op: "remove", Claim: "alpha/one:z-remaining"},
 	}
-	want := "0002:alpha/one:mid,0003:alpha/one:alpha,0003:alpha/one:zeta,0004:alpha/one:old,0004:alpha/one:rule"
-	if strings.Join(got, ",") != want {
-		t.Errorf("pendingChanges order = %v, want %s", got, want)
-	}
-	if out[3].Status != "Implementing" || out[3].Applied != 1 || out[3].Declared != 3 {
-		t.Errorf("Implementing progress = %#v", out[3])
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("pending changes:\n got: %#v\nwant: %#v", got, want)
 	}
 	invalid := adr.ADR{Number: "0010", Status: "Accepted", Format: adr.CurrentStateV1, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "alpha/one:bad"}}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 1}}}
 	if got := pendingChanges([]adr.ADR{invalid}, map[string]bool{"alpha/one": true}); len(got) != 0 {
