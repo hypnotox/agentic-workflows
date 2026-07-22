@@ -323,24 +323,25 @@ func TestConfigspecAuditDefaultsPinned(t *testing.T) {
 }
 
 func TestWorkflowTelemetrySpecContract(t *testing.T) {
-	expected := map[string]struct{ def, typ string }{
-		"workflowTelemetry.retention.maxCompletedEffortAgeDays":              {"90", "non-negative integer"},
-		"workflowTelemetry.retention.maxCompletedEffortCount":                {"100", "non-negative integer"},
-		"workflowTelemetry.widget.enabled":                                   {"true", "bool"},
-		"workflowTelemetry.widget.showCost":                                  {"true", "bool"},
-		"workflowTelemetry.diagnostics.heuristicsEnabled":                    {"true", "bool"},
-		"workflowTelemetry.diagnostics.minimumBaselineSamples":               {"10", "positive integer"},
-		"workflowTelemetry.diagnostics.baselinePercentile":                   {"95", "integer from 1 through 100"},
-		"workflowTelemetry.diagnostics.thresholds.phaseReentryCount":         {"2", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.phaseDurationSeconds":      {"14400", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.phaseTokens":               {"200000", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.compactionCount":           {"3", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.handoffCount":              {"3", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.toolFailureCount":          {"3", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.gateFailureCount":          {"2", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.cacheReadPercentBelow":     {"10", "integer from 0 through 100"},
-		"workflowTelemetry.diagnostics.thresholds.subagentQueueWaitSeconds":  {"60", "positive integer"},
-		"workflowTelemetry.diagnostics.thresholds.implementationReworkCount": {"2", "positive integer"},
+	type contract struct{ def, typ, description, availability string }
+	expected := map[string]contract{
+		"workflowTelemetry.retention.maxCompletedEffortAgeDays":              {"90", "non-negative integer", "Maximum age in days for terminal effort metrics; zero disables age-based retention.", "Consumed by workflow metrics retention."},
+		"workflowTelemetry.retention.maxCompletedEffortCount":                {"100", "non-negative integer", "Maximum number of terminal efforts retained repository-wide; zero disables count-based retention.", "Consumed by workflow metrics retention."},
+		"workflowTelemetry.widget.enabled":                                   {"true", "bool", "Shows the compact active-effort Pi widget when the dashboard target is installed.", "Consumed by the Pi workflow dashboard."},
+		"workflowTelemetry.widget.showCost":                                  {"true", "bool", "Shows cost in the compact widget without changing collection or export.", "Consumed by the Pi workflow dashboard widget."},
+		"workflowTelemetry.diagnostics.heuristicsEnabled":                    {"true", "bool", "Enables heuristic workflow findings; exact diagnostics remain enabled when false.", "Consumed by workflow diagnosis."},
+		"workflowTelemetry.diagnostics.minimumBaselineSamples":               {"10", "positive integer", "Minimum comparable completed-effort sample count required for historical heuristic baselines.", "Consumed by workflow diagnosis."},
+		"workflowTelemetry.diagnostics.baselinePercentile":                   {"95", "integer from 1 through 100", "Nearest-rank percentile used for historical heuristic baselines.", "Consumed by workflow diagnosis."},
+		"workflowTelemetry.diagnostics.thresholds.phaseReentryCount":         {"2", "positive integer", "Inclusive absolute threshold for reentries into a named phase.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.phaseDurationSeconds":      {"14400", "positive integer", "Inclusive absolute threshold for phase duration in seconds.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.phaseTokens":               {"200000", "positive integer", "Inclusive absolute threshold for tokens used in one phase interval.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.compactionCount":           {"3", "positive integer", "Inclusive absolute threshold for compactions in one effort.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.handoffCount":              {"3", "positive integer", "Inclusive absolute threshold for handoffs in one effort.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.toolFailureCount":          {"3", "positive integer", "Inclusive absolute threshold for categorized tool failures in an implementation segment.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.gateFailureCount":          {"2", "positive integer", "Inclusive absolute threshold for failed gates in an implementation segment.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.cacheReadPercentBelow":     {"10", "integer from 0 through 100", "Inclusive lower threshold for cache-read percentage when the token denominator is positive.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.subagentQueueWaitSeconds":  {"60", "positive integer", "Inclusive absolute threshold for one subagent queue wait in seconds.", "Consumed when heuristic diagnostics are enabled."},
+		"workflowTelemetry.diagnostics.thresholds.implementationReworkCount": {"2", "positive integer", "Inclusive absolute threshold for returns to implementation after implementation review.", "Consumed when heuristic diagnostics are enabled."},
 	}
 	seen := map[string]bool{}
 	for _, entry := range Keys() {
@@ -349,11 +350,9 @@ func TestWorkflowTelemetrySpecContract(t *testing.T) {
 			continue
 		}
 		seen[entry.Path] = true
-		if entry.Default != want.def || entry.Type != want.typ {
-			t.Errorf("%s = default %q type %q, want %q %q", entry.Path, entry.Default, entry.Type, want.def, want.typ)
-		}
-		if strings.Contains(entry.Path, "retention.") && !strings.Contains(entry.Description, "zero disables") {
-			t.Errorf("%s omits zero-disable semantics", entry.Path)
+		got := contract{entry.Default, entry.Type, entry.Description, entry.Availability}
+		if got != want {
+			t.Errorf("%s = %#v, want %#v", entry.Path, got, want)
 		}
 	}
 	if len(seen) != len(expected) {

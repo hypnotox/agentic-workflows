@@ -450,8 +450,8 @@
     "docs/topics/config/migrations-and-locks.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:aa780a343e923b2167a98cdf9c7b96859812ed801517054ac6da3d5809cfb07d",
-      "outputHash": "sha256:6de706618ebd63f7c016b4fc67604173e50dea85fafbbad99980da69e8ddd28f"
+      "configHash": "sha256:989fc827291e6df22d2dd58643bba847c6a1805a310366df4d74752a14cbf3e2",
+      "outputHash": "sha256:6dd60ab3589f2294566ad59c05cb424cba5d0ea68a2e1be496cbd9e87b8076c0"
     },
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",

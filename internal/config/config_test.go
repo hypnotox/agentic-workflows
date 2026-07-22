@@ -834,6 +834,15 @@ func TestWorkflowTelemetryConfigContract(t *testing.T) {
 			t.Errorf("accepted %s", mutate.new)
 		}
 	}
+	upperBounds := strings.Replace(strings.Replace(valid, "baselinePercentile: 1", "baselinePercentile: 100", 1), "cacheReadPercentBelow: 0", "cacheReadPercentBelow: 100", 1)
+	cfg, err = Parse(".", []byte(upperBounds))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("inclusive upper boundaries rejected: %v", err)
+	}
+
 	allZero := strings.ReplaceAll(valid, ": 1\n", ": 0\n")
 	cfg, err = Parse(".", []byte(allZero))
 	if err != nil {
