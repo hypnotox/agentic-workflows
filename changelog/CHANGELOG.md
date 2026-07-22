@@ -40,6 +40,15 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- `awf context` output is grouped by topic: each applicable topic renders its authority exactly once
+  per invocation (selectors, a matched-path count with an `awf topic <id> --coverage` drilldown, the
+  uncapped claim-ID roster, and the deduplicated direct-claim detail with an explicit detail-omission
+  line), while effective paths carry classification and attribution and `eligible-unowned` paths gain
+  a remediation hint. `--full` renders every applicable claim once per topic instead of once per file.
+  The JSON projection serializes the same grouped model (a shape change, pre-1.0, no bridge). Rendered
+  topic docs reduce their Applicability paragraph to selectors plus the coverage drilldown, so adding
+  a file to a matched package no longer rewrites topic docs; existing adopters see one-time topic-doc
+  drift resolved by their next `awf sync`.
 - Pi targets now ship a privacy-minimal, trajectory-aware workflow ledger and dashboard with explicit
   lifecycle tools, active-effort widget, interactive metrics/doctor views, confirmed maintenance,
   parent-handoff association, and resident history preserved by uninstall. The canonical `awf metrics`
