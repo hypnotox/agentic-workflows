@@ -30,15 +30,9 @@ The grouped semantic model lands in `internal/project` (a serialized invocation-
   - `docs/decisions/0147-topic-grouped-context-output-and-selectors-only-rendered-applicability.md` (status events), `docs/decisions/INDEX.md`, `.awf/awf.lock`, this plan (final status flip), rendered docs under `docs/` and `examples/sundial/` (sync fallout)
 - **Deleted:** none.
 
-## Phase 1: Begin implementation
+## Phase 2: Grouped context output (Implementing flip + Applied batch 1: the four `tooling/cli` updates)
 
-- [ ] **Task 1.1: Flip ADR-0147 to Implementing.** Following `awf-adr-lifecycle`, append the Implementing status event with the frozen content digest to `docs/decisions/0147-topic-grouped-context-output-and-selectors-only-rendered-applicability.md` (`## Status history` gains `- <today>: Implementing; content-sha256: <digest>`; the digest form and computation are validated by `awf check`, which fails on a wrong digest and names the expected value). Run `./x sync` (regenerates `docs/decisions/INDEX.md`), stage the ADR, `INDEX.md`, and `.awf/awf.lock`, run `go run ./cmd/awf check --staged` (expect `clean`), run `./x gate` (expect pass), commit.
-
-```commit
-docs(adr): begin 0147 implementation
-```
-
-## Phase 2: Grouped context output (Applied batch 1: the four `tooling/cli` updates)
+Phase 1 (a standalone begin-implementation commit) was removed during implementation; see Notes. Task numbering is unchanged.
 
 One closing commit for the whole phase: the V2 handshake requires the claim mutations, the Applied status event, and the code whose tests prove the new claim prose to travel in one staged transaction, so the phase's tasks cannot land as independent commits.
 
@@ -128,7 +122,7 @@ One closing commit for the whole phase: the V2 handshake requires the claim muta
   - `.awf/domains/parts/tooling/current-state.md`: update the projection-narrative sentences that describe per-path authority and the census.
   Non-contractual prose: qualifying instructions above suffice; no literal wording is mandated beyond the `--json` flag line. Run `./x sync`; `AGENTS.md`, `docs/working-with-awf.md`, `docs/glossary.md`, `docs/domains/tooling.md`, and `docs/topics/tooling/cli.md` regenerate.
 
-- [ ] **Task 2.7: Applied event and batch commit.** Append to the ADR's `## Status history` one Applied event naming, in declaration order, exactly the four update operations (`- <today>: Applied; state-sequence: <n>; operations: update `tooling/cli:context-full-authority-packet`, update `tooling/cli:context-default-excludes-history`, update `tooling/cli:context-path-attribution`, update `tooling/cli:context-applicability-navigation``; the sequence number must be the next state sequence, and a mismatch fails `awf check --staged` naming the expected value). Stage the complete transaction (code, tests, claim part, ADR, prose parts, every regenerated rendered file, `.awf/awf.lock`), run `go run ./cmd/awf check --staged` (expect `clean`), run `./x gate` (expect pass), commit.
+- [ ] **Task 2.7: Implementing flip, Applied event, and batch commit.** Append to the ADR's `## Status history` the Implementing status event (`- <today>: Implementing; content-sha256: <digest>`; the digest is validated by `awf check`, which fails on a wrong value and names the expected one) immediately followed by one Applied event naming, in declaration order, exactly the four update operations (`- <today>: Applied; state-sequence: <n>; operations: update `tooling/cli:context-full-authority-packet`, update `tooling/cli:context-default-excludes-history`, update `tooling/cli:context-path-attribution`, update `tooling/cli:context-applicability-navigation``; the sequence number must be the next state sequence, and a mismatch fails `awf check --staged` naming the expected value). Stage the complete transaction (code, tests, claim part, ADR, prose parts, every regenerated rendered file, `.awf/awf.lock`), run `go run ./cmd/awf check --staged` (expect `clean`), run `./x gate` (expect pass), commit.
 
 ```commit
 feat(tooling): group context output by topic
@@ -174,6 +168,7 @@ feat(invariants): render selectors-only applicability
 
 ## Notes
 
+- Implementation finding (2026-07-22): the current-state-v2 parser rejects an Implementing status event that is not immediately followed by the first Applied event, so the originally planned standalone begin-implementation commit is structurally impossible; the Implementing flip was folded into the first Applied batch's transaction (Task 2.7), reducing the plan to two commits.
 - Deferred, recorded in ADR-0147 Consequences: implementer-side grounding in workflow skills; topic hygiene for over-budget topics.
 - Adopters see a one-time topic-doc drift after upgrading, resolved by their next sync (awfVersion-gated).
 - If `TestManagedContextCallersChooseProjection` pins output substrings that moved, adjust only the pinned substrings; the caller-projection expectations themselves are out of scope.
