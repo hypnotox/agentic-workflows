@@ -84,7 +84,23 @@ Binary resolution starts at the project root derived from the extension path. Wh
 
 Effort lifecycle state is `discovery`, `active`, `completed`, or `abandoned`. Creation starts `discovery`; route selection moves it to `active`; route change remains `active`; completion and abandonment are terminal events. Reopen moves only an unpruned `completed` effort back to `active`, starts a new trajectory and terminal epoch, and preserves all earlier totals. An abandoned effort is never reopened. A missing pruned origin can be referenced opaquely by a new derived effort but cannot be reconstructed or reopened.
 
-The legal lifecycle mutations are closed: create, associate or detach session, select or change route, start or finish phase, start or resume or close trajectory, complete, abandon, reopen, waive, and repair. A phase finish must name its causally visible unmatched start. A start must observe no other open top-level phase in its frontier. Duplicate identical retries are idempotent. A finish without its start, a second competing start from the same frontier, a mutation after terminal state other than allowed reopen, and causally ordered phase overlap are exact violations. Repairs name the rejected or superseded event and append a typed correction; they never make the source event disappear.
+The legal lifecycle mutations and transitions are closed:
+
+| Mutation | Allowed source | Effect |
+|---|---|---|
+| create | absent | atomically create metadata and first event; enter `discovery` |
+| associate or detach session | `discovery`, `active` | change only the named session association |
+| select route | `discovery` | set the first route; enter `active` |
+| change route | `active` | replace the effective route and retain route history |
+| start or finish phase | `discovery`, `active` | open or close one named phase interval |
+| start, resume, or close trajectory | `discovery`, `active` | change trajectory projection without changing effort state |
+| complete | `active` | require route and freshness rules; enter `completed` |
+| abandon | `discovery`, `active` | enter `abandoned` with no route-completion requirement |
+| reopen | `completed` | create a terminal epoch and trajectory; enter `active` |
+| waive | any existing state, including terminal | reference one eligible finding and change only its presentation |
+| repair | any existing state, including terminal | append one typed correction to named evidence |
+
+A phase finish must name its causally visible unmatched start. A start must observe no other open top-level phase in its frontier. Duplicate identical retries are idempotent. Explicit lifecycle tools validate before append and fail without writing an invalid transition. Readers retain a structurally valid event from any other writer even when its transition is invalid, exclude its claimed state effect, and emit the exact transition finding. A finish without its start, a second competing start from the same frontier, an unlisted transition, and causally ordered phase overlap are exact violations. Waiver and repair are the only legal post-terminal mutations other than reopen; they do not reopen an effort. Repairs name the rejected or superseded event and append a typed correction; they never make the source event disappear.
 
 Per-session order plus predecessor frontiers, explicit handoff links, trajectory parent and fork anchors, and transitive closure define a partial order. No wall-clock total order is invented across sessions. Exact ordering rules evaluate causally comparable events. Competing mutations from a shared frontier are reported as concurrent-state violations rather than ordered by timestamp. Timestamps remain authoritative only for durations when both endpoints are in one causally linked interval; negative or implausible clock results are integrity findings and are excluded from duration baselines.
 
@@ -99,13 +115,35 @@ The route requirements are:
 | `bugfix` | brainstorming, implementation, implementation review, retrospective |
 | `investigation-only` | investigation, retrospective |
 
-Investigation is optional before any implementation route. Reentry is legal and counted, but it invalidates stale downstream evidence: ADR authoring after ADR review requires another ADR review; planning after plan review requires another plan review; either change after ADR-plan resync requires another resync; implementation after implementation review requires another implementation review. Completion requires the latest terminal epoch to satisfy its route and freshness rules. `investigation-only` may be selected only when no implementation phase exists. Route changes cause the final route's requirements to apply to the full causally ordered history. A waiver has a closed reason code, exact rule code, scope, and referenced evidence; it changes the matching finding to informational but does not change lifecycle state.
+Investigation is optional before any implementation route. Reentry is legal and counted, but it invalidates stale downstream evidence: ADR authoring after ADR review requires another ADR review; planning after plan review requires another plan review; either change after ADR-plan resync requires another resync; implementation after implementation review requires another implementation review. Completion requires the latest terminal epoch to satisfy its route and freshness rules. `investigation-only` may be selected only when no implementation phase exists. Route changes cause the final route's requirements to apply to the full causally ordered history.
+
+Exact diagnostic rule version 1 is closed:
+
+| Code | Severity | Predicate and evidence | Scope | Waiver or remediation |
+|---|---|---|---|---|
+| `WFV1-LIFECYCLE-TRANSITION` | violation | event source state or effect is not in the transition table; event and frontier IDs | effort | typed repair only |
+| `WFV1-PHASE-ORDER` | violation | causally ordered phase sequence contradicts the effective route table; route and phase event IDs | terminal epoch | `approved-route-deviation` waiver or typed phase repair |
+| `WFV1-ADR-REVIEW` | violation | ADR authoring required by the route has no later fresh ADR review; phase event IDs | terminal epoch | `benign-followup-no-rereview` waiver or add/correct review evidence |
+| `WFV1-PLAN-REVIEW` | violation | planning required by the route has no later fresh plan review; phase event IDs | terminal epoch | `benign-followup-no-rereview` waiver or add/correct review evidence |
+| `WFV1-ADR-PLAN-RESYNC` | violation | `adr-plan` lacks resync after the final ADR review and plan review; phase event IDs | terminal epoch | `approved-route-deviation` waiver or add/correct resync evidence |
+| `WFV1-IMPLEMENTATION-REVIEW` | violation | implementation has no later fresh implementation review before completion; phase event IDs | terminal epoch | `benign-followup-no-rereview` waiver or add/correct review evidence |
+| `WFV1-RETROSPECTIVE` | violation | the effective route lacks its required retrospective before completion; phase event IDs | terminal epoch | `approved-route-deviation` waiver or add/correct retrospective evidence |
+| `WFV1-PHASE-OVERLAP` | violation | one start observes an open phase or causally ordered intervals overlap; interval event IDs | trajectory | `approved-phase-overlap` waiver or typed phase repair |
+| `WFV1-CONCURRENT-STATE` | violation | competing lifecycle mutations share a frontier without causal order; competing event IDs | effort | typed repair selecting or superseding evidence |
+| `WFV1-HANDOFF-ASSOCIATION` | warning | a handoff link has no validated association copy or changes effort without an explicit association event; handoff and association IDs | session link | `approved-missing-handoff-association` waiver or associate/detach repair |
+| `WFV1-EVENT-INTEGRITY` | violation | malformed complete line, duplicate conflict, unsafe path, broken causal reference, or invalid payload; file, line, and available event IDs | stream or effort | no waiver; repair when an event remains appendable, otherwise explicit confirmed cleanup |
+| `WFV1-SCHEMA-COMPATIBILITY` | violation | protocol major is unsupported or a required interpretation is unknown; version and stream evidence | stream or effort | no waiver; compatible binary/protocol migration only |
+| `WFV1-CLOCK-INTEGRITY` | warning | linked interval has negative, non-finite, or protocol-bound-exceeding duration; endpoint IDs and timestamps | interval | `approved-clock-skew` waiver; exclude from duration baselines |
+
+A waiver has one of the reason codes named in this table, the exact rule code, matching scope, and referenced evidence. It changes only that finding to informational and does not change lifecycle state. A rule not naming a waiver is never waivable.
 
 ### Integrity, retention, and resident-data contract
 
 The threat model covers accidental truncation or alteration, incompatible writers, path traversal, unsafe file types, and symlink or reparse-point redirection by repository content. It does not defend against a hostile process running as the same user, and the ledger has no cryptographic tamper-evidence guarantee. Readers distinguish a final partial line from malformed complete lines, invalid schemas, broken causal references, duplicate conflicts, and unsupported versions. All identifiers are single path components after validation. On POSIX, directories and new files use owner-only permissions, existing paths must be owned by the current user, and ledger, metadata, lease, cache, and pruning targets must be confined regular files or directories with no symlink traversal. Platforms without POSIX ownership enforce their closest regular-file and no-reparse equivalent. Explicit mutations fail closed on an unsafe path; passive telemetry degrades and reports it.
 
-Every append and prune operation takes a short cross-process effort lease using atomic creation, a random nonce, owner identity, a 30-second expiry, and a heartbeat every 10 seconds. A contender may recover an expired lease only after a further 30-second grace interval and a compare-before-remove check on its nonce. Under the lease, an append revalidates the effort path, appends and flushes, then releases. A pruner revalidates terminal state, atomically renames the effort into a private trash directory, writes a tombstone, and then releases before recursive deletion. The rename is the append/prune linearization point: a later writer observes the missing effort or tombstone and refuses rather than recreating it. Recovery completes deletion for a tombstoned trash entry, restores a renamed entry only when no tombstone was committed, and reports ambiguous states. Retry is idempotent by prune nonce.
+Creation first takes an effort-ID lease outside the not-yet-created effort and rejects an existing effort or tombstone. It writes `effort.json` and the first session stream containing `effort_created` into an owner-only staging directory, flushes both files and their directory, and atomically renames the staging directory into `efforts/<effort-id>` before syncing the efforts directory. The rename is the creation commit point. A retry with identical creation idempotency key, immutable metadata, and first event succeeds; any same-ID difference is a collision. Recovery removes an expired uncommitted staging directory, preserves a committed effort, and never synthesizes missing metadata or a create event.
+
+Every later append and prune operation takes a short cross-process effort lease using atomic creation, a random nonce, owner identity, a 30-second expiry, and a heartbeat every 10 seconds. A contender may recover an expired lease only after a further 30-second grace interval and a compare-before-remove check on its nonce. Under the lease, an append revalidates the effort path, appends and flushes, then releases. A pruner revalidates terminal state, writes and flushes a nonce-bearing pending tombstone, atomically renames the effort into a private trash directory, syncs both parent directories, atomically promotes and syncs the tombstone as committed, and then releases before recursive deletion. The effort rename is the append/prune linearization point: a later writer observes the missing effort or pending or committed tombstone and refuses rather than recreating it. Recovery removes a pending tombstone when the effort was never renamed, commits it when the matching trash entry exists, completes deletion for a committed tombstone, and reports any nonce or path mismatch as ambiguous. No recursive deletion begins before the committed tombstone and its directory entry are durable. Retry is idempotent by prune nonce.
 
 Only completed and abandoned efforts are retention candidates; active and discovery efforts are preserved. The `maxCompletedEffort*` config names use completed in this retention sense to include either terminal outcome. Age uses the latest terminal event timestamp. Count applies repository-wide to terminal efforts. Zero disables that retention dimension. An effort is selected if it exceeds enabled maximum age or falls beyond enabled maximum count after sorting newest first by terminal timestamp, creation timestamp, then effort ID. Pruning executes oldest candidates first with the inverse stable keys. Reopening must win the effort lease and append before candidate selection can remain valid; pruning rechecks terminal state under the same lease.
 
@@ -140,7 +178,7 @@ workflowTelemetry:
       implementationReworkCount: 2
 ```
 
-Retention zero values disable their individual dimension. Other counts and durations are positive integers; percentages are integers from 0 through 100. Disabling the widget hides only the widget. Disabling heuristics leaves exact diagnostics, collection, tools, and the overlay active. `showCost` suppresses cost display but not collection or export. Migration from every supported earlier schema adds this block without changing any unrelated configured value.
+Retention zero values disable their individual dimension. Other counts and durations are positive integers; `baselinePercentile` is an integer from 1 through 100, and percentage thresholds are integers from 0 through 100. Disabling the widget hides only the widget. Disabling heuristics leaves exact diagnostics, collection, tools, and the overlay active. `showCost` suppresses cost display but not collection or export. Migration from every supported earlier schema adds this block without changing any unrelated configured value.
 
 Initial heuristic rule version 1 evaluates: reentries per named phase; duration and tokens per phase interval; compactions and handoffs per effort; categorized tool failures and failed gates per implementation segment; cache-read percentage as `cacheReadTokens / (inputTokens + cacheReadTokens) * 100` when the denominator is positive; queue wait per subagent invocation; and implementation rework as each return to implementation after an implementation review. The narrow shell classifier counts a gate only for an exact supported awf gate command shape; ambiguity is unclassified.
 
@@ -157,6 +195,8 @@ An absolute signal fires when a value reaches an upper threshold or falls to the
 - add `config/configuration:workflow-telemetry-settings`
 - add `config/migrations-and-locks:workflow-telemetry-config-migration`
 - update `rendering/catalog-and-targets:pi-extension-target-render`
+- update `rendering/catalog-and-targets:pi-minimum-runtime`
+- update `rendering/catalog-and-targets:pi-real-runtime-smoke`
 - add `rendering/project-output-plan:workflow-telemetry-governed-outputs-and-resident-data`
 - add `rendering/adapter-outputs:pi-workflow-dashboard-runtime`
 - add `rendering/templates:pi-workflow-dashboard-public-contract`
