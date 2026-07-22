@@ -423,14 +423,14 @@ func TestCausalLifecycleIsInvariantUnderEventIDRenaming(t *testing.T) {
 	}
 }
 
-func TestRepairWithoutApplicableSourceHasNoEffect(t *testing.T) {
+func TestRepairCanCorrectExcludedSourceEvidence(t *testing.T) {
 	events := lifecycleBaseEvents()
 	events = appendEvent(events, "excluded-route", "route_selected", RoutePayload{Route: "direct"})
 	replacement, _ := json.Marshal(RoutePayload{Route: "plan"})
 	events = appendEvent(events, "repair", "repair_applied", RepairAppliedPayload{ProposalKind: "supersede-event", SourceEventIDs: []string{"excluded-route"}, Replacement: RepairReplacement{EventKind: "route_selected", Payload: replacement}})
 	projection := projectLifecycle(events, map[string]bool{"excluded-route": true})
-	if projection.EffectApplied["excluded-route"] || projection.EffectApplied["repair"] {
-		t.Fatalf("repair without an applicable source changed effects: %#v", projection)
+	if projection.EffectApplied["excluded-route"] || !projection.EffectApplied["repair"] || projection.Route != "plan" || projection.State != EffortActive {
+		t.Fatalf("repair did not correct excluded source evidence: %#v", projection)
 	}
 }
 

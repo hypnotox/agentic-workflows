@@ -139,9 +139,7 @@ func projectLifecycle(events []EventEnvelope, excluded map[string]bool) Lifecycl
 	replacementApplied := map[string]bool{}
 	for _, event := range pending {
 		projection.EffectApplied[event.EventID] = false
-		if invalid[event.EventID] || excluded[event.EventID] {
-			continue
-		}
+		sourceRejected := invalid[event.EventID] || excluded[event.EventID]
 		if repairID := projection.SupersededEventIDs[event.EventID]; repairID != "" {
 			if replacementApplied[repairID] {
 				continue
@@ -158,20 +156,25 @@ func projectLifecycle(events []EventEnvelope, excluded map[string]bool) Lifecycl
 						delete(projection.SupersededEventIDs, source)
 					}
 				}
-				if err := projection.apply(event, order); err != nil {
-					invalid[event.EventID] = true
-					projection.Invalid = append(projection.Invalid, transitionIssue(event, err))
-				} else {
-					projection.EffectApplied[event.EventID] = true
-					projection.AppliedEventIDs = append(projection.AppliedEventIDs, event.EventID)
+				if !sourceRejected {
+					if err := projection.apply(event, order); err != nil {
+						invalid[event.EventID] = true
+						projection.Invalid = append(projection.Invalid, transitionIssue(event, err))
+					} else {
+						projection.EffectApplied[event.EventID] = true
+						projection.AppliedEventIDs = append(projection.AppliedEventIDs, event.EventID)
+					}
 				}
 			} else {
 				replacementApplied[repairID] = true
 			}
 			continue
 		}
+		if sourceRejected {
+			continue
+		}
 		if payload, repair := repairPayloads[event.EventID]; repair {
-			if !replacementApplied[event.EventID] {
+			if !replacementApplied[event.EventID] { // coverage-ignore: validateRepair requires every source to happen before the repair, so ordered projection always attempts its replacement first
 				continue
 			}
 			projection.Repairs = append(projection.Repairs, RepairState{EventID: event.EventID, ProposalKind: payload.ProposalKind, SourceEventIDs: append([]string(nil), payload.SourceEventIDs...), Replacement: payload.Replacement})
@@ -298,6 +301,7 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 				return errors.New("cannot resume a causally unknown trajectory")
 			}
 			p.ActiveTrajectoryID = payload.TrajectoryID
+			p.closedTrajectories[payload.TrajectoryID] = false
 			if association, ok := p.Associations[event.SessionID]; ok {
 				associationEventID := p.associationEvents[event.SessionID]
 				anchorEventID := order.anchors[payload.AnchorID]

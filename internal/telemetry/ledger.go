@@ -32,6 +32,7 @@ type syncedFile interface {
 }
 
 type ledgerOps struct {
+	mkdir     func(string, fs.FileMode) error
 	mkdirAll  func(string, fs.FileMode) error
 	openFile  func(string, int, fs.FileMode) (syncedFile, error)
 	readFile  func(string) ([]byte, error)
@@ -52,6 +53,7 @@ type ledgerOps struct {
 
 func defaultLedgerOps() ledgerOps {
 	return ledgerOps{
+		mkdir:    os.Mkdir,
 		mkdirAll: os.MkdirAll,
 		openFile: func(path string, flag int, mode fs.FileMode) (syncedFile, error) {
 			return os.OpenFile(path, flag, mode)
@@ -177,8 +179,8 @@ func (l *Ledger) CreateEffort(metadata EffortMetadata, first json.RawMessage) (A
 	}
 
 	staging := filepath.Join(l.paths.staging, stagingName(metadata.EffortID, nonce))
-	if err := l.ops.mkdirAll(filepath.Join(staging, "sessions"), ownerOnlyMode); err != nil {
-		return AppendResult{}, fmt.Errorf("create effort staging directory: %w", err)
+	if err := l.ops.mkdir(staging, ownerOnlyMode); err != nil {
+		return AppendResult{}, fmt.Errorf("create exclusive effort staging directory: %w", err)
 	}
 	committed := false
 	defer func() {
@@ -186,6 +188,16 @@ func (l *Ledger) CreateEffort(metadata EffortMetadata, first json.RawMessage) (A
 			_ = l.ops.removeAll(staging)
 		}
 	}()
+	if err := l.ops.inspect(l.paths.root, staging, true); err != nil {
+		return AppendResult{}, fmt.Errorf("inspect effort staging directory: %w", err)
+	}
+	sessionsStaging := filepath.Join(staging, "sessions")
+	if err := l.ops.mkdir(sessionsStaging, ownerOnlyMode); err != nil {
+		return AppendResult{}, fmt.Errorf("create exclusive sessions staging directory: %w", err)
+	}
+	if err := l.ops.inspect(l.paths.root, sessionsStaging, true); err != nil {
+		return AppendResult{}, fmt.Errorf("inspect sessions staging directory: %w", err)
+	}
 	metadataBytes, err := json.Marshal(metadata)
 	if err != nil { // coverage-ignore: validated metadata contains only JSON-safe values
 		return AppendResult{}, fmt.Errorf("encode effort metadata: %w", err)
@@ -200,7 +212,7 @@ func (l *Ledger) CreateEffort(metadata EffortMetadata, first json.RawMessage) (A
 	if err := l.writeSynced(filepath.Join(staging, "sessions", event.SessionID+".jsonl"), line); err != nil {
 		return AppendResult{}, fmt.Errorf("write first event stream: %w", err)
 	}
-	if err := l.syncDir(filepath.Join(staging, "sessions")); err != nil {
+	if err := l.syncDir(sessionsStaging); err != nil {
 		return AppendResult{}, err
 	}
 	if err := l.syncDir(staging); err != nil {

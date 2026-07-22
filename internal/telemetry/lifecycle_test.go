@@ -89,6 +89,26 @@ func TestEffortLifecycleAndRoutes(t *testing.T) {
 		t.Fatalf("terminal repair or waiver changed effort state: %#v", projection)
 	}
 
+	illegal := lifecycleBaseEvents()
+	illegal = appendEvent(illegal, "illegal-route-change", "route_changed", RoutePayload{Route: "plan"})
+	illegalReplacement, _ := json.Marshal(RoutePayload{Route: "direct"})
+	illegal = appendEvent(illegal, "illegal-repair", "repair_applied", RepairAppliedPayload{ProposalKind: "supersede-event", SourceEventIDs: []string{"illegal-route-change"}, Replacement: RepairReplacement{EventKind: "route_selected", Payload: illegalReplacement}})
+	if projection := ProjectLifecycle(illegal); projection.Route != "direct" || projection.State != EffortActive || projection.EffectApplied["illegal-route-change"] || !projection.EffectApplied["illegal-repair"] || len(projection.Repairs) != 1 {
+		t.Fatalf("illegal retained evidence was not repairable: %#v", projection)
+	}
+
+	concurrentRepair := lifecycleBaseEvents()
+	concurrentRepair = appendEvent(concurrentRepair, "concurrent-a", "route_selected", RoutePayload{Route: "direct"})
+	concurrentRepair[len(concurrentRepair)-1].Predecessors = []string{"create"}
+	concurrentRepair = appendEvent(concurrentRepair, "concurrent-b", "route_selected", RoutePayload{Route: "plan"})
+	concurrentRepair[len(concurrentRepair)-1].Predecessors = []string{"create"}
+	concurrentRepair[len(concurrentRepair)-1].SessionID = "concurrent-session"
+	concurrentRepair = appendEvent(concurrentRepair, "concurrent-repair", "repair_applied", RepairAppliedPayload{ProposalKind: "supersede-event", SourceEventIDs: []string{"concurrent-a", "concurrent-b"}, Replacement: RepairReplacement{EventKind: "route_selected", Payload: illegalReplacement}})
+	concurrentRepair[len(concurrentRepair)-1].Predecessors = []string{"concurrent-a", "concurrent-b"}
+	if projection := ProjectLifecycle(concurrentRepair); projection.Route != "direct" || projection.State != EffortActive || projection.EffectApplied["concurrent-a"] || projection.EffectApplied["concurrent-b"] || !projection.EffectApplied["concurrent-repair"] {
+		t.Fatalf("concurrent retained evidence was not repairable: %#v", projection)
+	}
+
 	reopened := completedRoute("direct")
 	reopened = appendEvent(reopened, "reopen", "effort_reopened", EffortReopenedPayload{TerminalEpoch: 2, TrajectoryID: "reopened-trajectory", AnchorID: "reopen-anchor"})
 	reopened[len(reopened)-1].TrajectoryID = "reopened-trajectory"

@@ -108,6 +108,36 @@ func TestProtocolLedgerContract(t *testing.T) {
 	}
 }
 
+func TestCreateEffortRejectsPreexistingOrSymlinkedStaging(t *testing.T) {
+	for _, symlink := range []bool{false, true} {
+		t.Run(fmt.Sprintf("symlink=%v", symlink), func(t *testing.T) {
+			root := newTestProject(t)
+			ledger, err := NewLedger(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			nonce := "00000000000000000000000000000000"
+			ledger.ops.nonce = func() (string, error) { return nonce, nil }
+			metadata, first := testCreation(t)
+			staging := filepath.Join(ledger.paths.staging, stagingName(metadata.EffortID, nonce))
+			outside := t.TempDir()
+			if symlink {
+				if err := os.Symlink(outside, staging); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			} else if err := os.Mkdir(staging, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := ledger.CreateEffort(metadata, first); err == nil {
+				t.Fatal("pre-existing staging entry accepted")
+			}
+			if _, err := os.Lstat(filepath.Join(outside, "effort.json")); !os.IsNotExist(err) {
+				t.Fatalf("creation escaped through staging entry: %v", err)
+			}
+		})
+	}
+}
+
 func TestCreateEffortCommitPointAndInjectedFailures(t *testing.T) {
 	t.Parallel()
 	root := newTestProject(t)

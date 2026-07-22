@@ -103,8 +103,8 @@ func injectOperationFailure(ledger *Ledger, operation string, wanted int) {
 	}
 	switch operation {
 	case "mkdir":
-		original := ledger.ops.mkdirAll
-		ledger.ops.mkdirAll = func(path string, mode fs.FileMode) error {
+		original := ledger.ops.mkdir
+		ledger.ops.mkdir = func(path string, mode fs.FileMode) error {
 			if hit() {
 				return errInjected
 			}

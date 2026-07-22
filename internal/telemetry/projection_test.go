@@ -55,6 +55,16 @@ func TestTrajectoryAndDerivedEffortModel(t *testing.T) {
 	if reopened.Lifecycle.State != EffortActive || reopened.Lifecycle.TerminalEpoch != 2 || reopened.Lifecycle.ActiveTrajectoryID != "reopened" {
 		t.Fatalf("reopened effort projection = %#v", reopened.Lifecycle)
 	}
+
+	segments := lifecycleBaseEvents()
+	segments = appendEvent(segments, "segment-start", "trajectory_started", TrajectoryPayload{TrajectoryID: "segment", AnchorID: "anchor-a"})
+	segments = appendEvent(segments, "segment-close-a", "trajectory_closed", TrajectoryPayload{TrajectoryID: "segment", AnchorID: "anchor-a"})
+	segments = appendEvent(segments, "segment-resume", "trajectory_resumed", TrajectoryPayload{TrajectoryID: "segment", AnchorID: "anchor-b"})
+	segments = appendEvent(segments, "segment-close-b", "trajectory_closed", TrajectoryPayload{TrajectoryID: "segment", AnchorID: "anchor-b"})
+	segmentProjection := ProjectLifecycle(segments)
+	if len(segmentProjection.Invalid) != 0 || segmentProjection.ActiveTrajectoryID != "" || !segmentProjection.closedTrajectories["segment"] || !segmentProjection.EffectApplied["segment-close-b"] {
+		t.Fatalf("close-resume-close segment lifecycle = %#v", segmentProjection)
+	}
 }
 
 func TestProjectionUsesAssociationAndActiveAncestry(t *testing.T) {
