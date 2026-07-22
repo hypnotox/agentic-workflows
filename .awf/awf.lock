@@ -307,7 +307,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:535988a11aa59ea1b0392bb82d3326d6923b6ac536a52d9345aa526a3effda30",
+      "outputHash": "sha256:94c322bba31ac40297f63264dd6c4cae3882576a308056f74bedce55a247246b",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -366,7 +366,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:2cd5d9226e582bee71905f70204e1f7cfed6101b5d56701af84a2d3c8bb14735",
+      "outputHash": "sha256:5642e545a17f6da92ac99e30066d415ed0e8d24dae9bb7e0c1c08e612d520459",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -534,8 +534,8 @@
     "docs/topics/tooling/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:36f5a61bd902d989762c8991b7bfe68083deb427f0ffedfadf894b73aaaf445c",
-      "outputHash": "sha256:526efb7c7039130cdccb6854f537fad05614f01f9e02097f695a7edbd25c6e0d"
+      "configHash": "sha256:aada9b9fe7d15db03f85931e88c08defe293b3010ef3935728e136919ba6783f",
+      "outputHash": "sha256:5f77b6da06f24c46ac3f869cf6461f0e8ef4ec1c37274b0200f2479713cb7709"
     },
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -554,6 +554,12 @@
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
       "configHash": "sha256:4e676761c82886cb2f4bba1d6e019eac120ae2ad0240c60e9ca3993e125a72e7",
       "outputHash": "sha256:f797820b1c2e09900597d5737c4c2499247f2ce7c8111f8d7934cdd67e3f7adc"
+    },
+    "docs/topics/tooling/workflow-telemetry.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:65ffd575240da6332b696d0ea93a225f3c586202b41fb2fe6d9a90698b79aac8",
+      "outputHash": "sha256:2308101219172b8ca1a89c642ff39b15f8f7620208f8200c48b3295157d13890"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

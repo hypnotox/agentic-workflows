@@ -8,3 +8,4 @@
 - [Quality gates](quality-gates.md): Coverage, prose, and the command-runner gate machinery.
 - [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.
+- [Workflow telemetry](workflow-telemetry.md): Durable effort telemetry, projections, retention, and workflow diagnosis.
