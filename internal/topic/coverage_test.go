@@ -106,7 +106,7 @@ func TestClaimBudgetNotes(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:context-applicability-navigation
+// invariant: tooling/context-and-topic:context-applicability-navigation
 func TestApplicabilityForTopic(t *testing.T) {
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/t:c": {{Path: "z", Line: 2, ClaimID: "d/t:c"}, {Path: "a", Line: 1, ClaimID: "d/t:c"}}}}
 	topic := Topic{ID: TopicID{"d", "t"}, Metadata: Metadata{Paths: []string{"internal/**"}}, Claims: []Claim{{ID: "d/t:c"}}}

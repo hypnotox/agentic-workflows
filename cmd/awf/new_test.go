@@ -735,7 +735,7 @@ func TestRunNewDocOpenError(t *testing.T) {
 
 // seedScaffoldVars: an absent referenced var is seeded empty, a present one is
 // untouched, and a malformed source surfaces the editor's error.
-// invariant: tooling/cli:new-seeds-scaffold-vars
+// invariant: tooling/init-and-enablement:new-seeds-scaffold-vars
 func TestSeedScaffoldVars(t *testing.T) {
 	src := []byte("prefix: x\nvars:\n  kept: value\n")
 	got, err := seedScaffoldVars(src, []string{"kept", "added"})

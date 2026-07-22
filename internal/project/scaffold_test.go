@@ -52,7 +52,7 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	if c.WorkflowTelemetry != config.DefaultWorkflowTelemetryConfig() {
 		t.Errorf("scaffold workflowTelemetry = %#v, want complete defaults", c.WorkflowTelemetry)
 	}
-	// invariant: tooling/cli:init-hooks-default-on
+	// invariant: tooling/init-and-enablement:init-hooks-default-on
 	if c.Hooks == nil || !c.Hooks.Enabled {
 		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)
 	}
@@ -348,7 +348,7 @@ func TestScaffoldYAMLContainsNoPlaceholders(t *testing.T) {
 
 // A resolved scope list lands under audit.allowedScopes; an empty list writes
 // no audit key at all (ADR-0051).
-// invariant: tooling/cli:audit-scopes-descriptor-routed
+// invariant: tooling/audit-commands:audit-scopes-descriptor-routed
 func TestScaffoldWritesAuditScopes(t *testing.T) {
 	b, _, err := ScaffoldConfig("example", nil, nil, []string{"adr", "awf"})
 	if err != nil {
@@ -393,7 +393,7 @@ func TestScaffoldDefaultIsClosed(t *testing.T) {
 	for _, d := range cfg.Docs {
 		enabled[catalog.Node{Kind: "doc", Name: d}] = true
 	}
-	// invariant: tooling/cli:init-set-closed
+	// invariant: tooling/init-and-enablement:init-set-closed
 	for n := range enabled {
 		for _, r := range catalog.RequiresOf(catalog.Standard, n) {
 			if !enabled[r] {

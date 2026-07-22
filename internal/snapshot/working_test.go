@@ -125,7 +125,7 @@ func TestWorkingTreeExcludesIgnoredMetricsDescendants(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:init-unborn-head-supported
+// invariant: tooling/init-and-enablement:init-unborn-head-supported
 func TestWorkingTreeUnborn(t *testing.T) {
 	_, dir := gitfixture.InitRepo(t)
 	if err := os.WriteFile(filepath.Join(dir, "eligible.txt"), []byte("working\n"), 0o644); err != nil {

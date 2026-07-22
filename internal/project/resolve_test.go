@@ -37,7 +37,7 @@ func openChainProject(t *testing.T) *Project {
 
 // Cascade members are seed-dependent (ADR-0081 Decision 5). Pin names, not
 // corpus sizes, so an unrelated closure addition cannot silently shift scope.
-// invariant: tooling/cli:remove-refuses-dependents
+// invariant: tooling/init-and-enablement:remove-refuses-dependents
 func TestResolveDisableCascadeSizes(t *testing.T) {
 	p := openChainProject(t)
 	cases := []struct {
@@ -63,7 +63,7 @@ func TestResolveDisableCascadeSizes(t *testing.T) {
 }
 
 // The add plan on an empty config is the seed's full forward closure.
-// invariant: tooling/cli:add-applies-closure-plan
+// invariant: tooling/init-and-enablement:add-applies-closure-plan
 func TestResolveEnableClosurePlan(t *testing.T) {
 	p, err := Open(scaffold(t, "prefix: example\nskills: []\nagents: []\n"))
 	if err != nil {

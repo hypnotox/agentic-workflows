@@ -8,8 +8,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-// invariant: tooling/cli:context-path-attribution
-// invariant: tooling/cli:context-path-classification
+// invariant: tooling/context-and-topic:context-path-attribution
+// invariant: tooling/context-and-topic:context-path-classification
 func TestContextPathRequestsAndClassification(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: "owned/a.go", Mode: snapshot.Regular, Bytes: []byte("a")},

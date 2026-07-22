@@ -8,7 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: tooling/cli:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestContextConciseAndFullProjectionBoundaries(t *testing.T) {
 	files := ctxFiles()
 	files["internal/foo/y.go"] = "package foo\n// touches-state: alpha/one:stable - direct implementation\n// touches-state: alpha/one:order - direct ordering\n// touches-state: alpha/one:aaa - direct early claim\n"
@@ -52,7 +52,7 @@ func TestContextConciseAndFullProjectionBoundaries(t *testing.T) {
 	if got := strings.Join(concise.Paths[0].Topics[0].DirectClaimIDs, ","); got != "alpha/one:aaa,alpha/one:order,alpha/one:stable" {
 		t.Fatalf("path attribution = %q", got)
 	}
-	// invariant: tooling/cli:context-applicability-navigation
+	// invariant: tooling/context-and-topic:context-applicability-navigation
 	if conciseTopic.Applicability.MatchedPathCount == 0 || conciseTopic.CoverageCommand != "awf topic alpha/one --coverage" {
 		t.Fatalf("applicability brief = %#v via %q; want a matched-path count with the coverage drilldown", conciseTopic.Applicability, conciseTopic.CoverageCommand)
 	}

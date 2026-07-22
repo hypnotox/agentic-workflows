@@ -9,7 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: tooling/cli:context-adr-operation-projection
+// invariant: tooling/context-and-topic:context-adr-operation-projection
 func TestADRArtifactProjectionUsesLifecycleApplicationRecords(t *testing.T) {
 	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:new"}
 	update := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/one:existing"}

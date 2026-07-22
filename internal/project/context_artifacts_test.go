@@ -42,7 +42,7 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:context-known-artifact-navigation
+// invariant: tooling/context-and-topic:context-known-artifact-navigation
 func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) {
 	parsed := adr.NewCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
 	decls := []OutputDeclaration{

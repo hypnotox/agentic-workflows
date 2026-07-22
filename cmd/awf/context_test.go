@@ -241,7 +241,7 @@ func TestPrintContextTitlelessTopic(t *testing.T) {
 
 // TestRunContextJSONParity proves the JSON render carries the same assembled set
 // as the human render - one assembler feeds both.
-// invariant: tooling/cli:context-output-parity
+// invariant: tooling/context-and-topic:context-output-parity
 func TestRunContextFullProjectionAndConciseJSONBoundary(t *testing.T) {
 	root := ctxCmdFixture(t)
 	var concise, full bytes.Buffer
@@ -394,7 +394,7 @@ func TestRunContextStagedErrors(t *testing.T) {
 
 // Outside an adopted tree the command prints the static pre-adoption notice and
 // succeeds - never refuses. The JSON variant emits the paths-only result.
-// invariant: tooling/cli:context-static-fallback
+// invariant: tooling/context-and-topic:context-static-fallback
 func TestRunContextStaticFallback(t *testing.T) {
 	var human bytes.Buffer
 	if err := runContext(t.TempDir(), []string{"cmd/x.go"}, false, "", false, false, &human); err != nil {
@@ -495,7 +495,7 @@ func TestRunContextDispatch(t *testing.T) {
 
 // awf context writes nothing: file mtimes and the lock bytes are byte-identical
 // before and after runs across the command's branches.
-// invariant: tooling/cli:context-read-only
+// invariant: tooling/context-and-topic:context-read-only
 func TestRunContextReadOnly(t *testing.T) {
 	root := ctxCmdFixture(t)
 	before := snapshotTree(t, root)
@@ -619,7 +619,7 @@ func TestRunContextUncoveredHuman(t *testing.T) {
 }
 
 // The --uncovered JSON render carries the same set as the human render.
-// invariant: tooling/cli:uncovered-output-parity
+// invariant: tooling/context-and-topic:uncovered-output-parity
 func TestRunContextUncoveredJSONParity(t *testing.T) {
 	root := uncoveredCmdFixture(t)
 	var j bytes.Buffer

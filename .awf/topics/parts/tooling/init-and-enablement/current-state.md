@@ -1,3 +1,81 @@
 Project scaffolding and enablement surfaces: init, add, remove, and new.
 
 ## Claims
+
+### `invariant: add-applies-closure-plan`
+
+Adding an artifact enables its full missing forward requirement closure in a single config rewrite and prints one provenance plan line per enabled node, naming which requirement pulled each dependency in.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: add-skill-pairs-agent`
+
+Enabling a reviewing skill whose required reviewer agent is not yet enabled adds that agent to the agents array in the same config rewrite.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: explicit-answers-win`
+
+A value supplied to awf init via --set or --answers is written verbatim into the scaffolded config and suppresses any prompt for that key, regardless of whether stdin is a terminal.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-collision-guard`
+
+Before writing anything, `awf init` pre-flights every path it would create and, if any already exists, writes nothing and reports the offending paths; `awf init --force` backs up each colliding file to `<path>.awf-bak` and overwrites.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-force-backs-up`
+
+Running init with --force copies every colliding non-managed file to <path>.awf-bak before any managed output overwrites it, and reports the backup on stdout.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-hooks-default-on`
+
+The config scaffolded by awf init enables the hooks singleton by default.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-noninteractive-default`
+
+awf init with a non-terminal stdin and no --set or --answers seeds every var empty and writes no invariants config, producing output byte-identical to the plain seed-empty scaffold.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-prompts-enabled-vars`
+
+Interactive awf init prompts only for the vars referenced by the chosen enabled set's templates, while the seeded config still carries the full catalog var union as empty keys.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-set-closed`
+
+The enabled set that init scaffolds, whether the curated default or a closure-completed trim, satisfies the requirement-closure rule: every enabled node's catalog requirements are also enabled.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: init-unborn-head-supported`
+
+Working-state assembly uses an empty committed baseline only when HEAD is specifically unborn, allowing init and check to consume eligible working files while every other repository, reference, and object error remains a failure.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: new-seeds-scaffold-vars`
+
+awf new adds an empty vars entry for every variable referenced by the scaffolded template source that is absent from config, leaving already-present keys untouched and surfacing the editor's error on a malformed source.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: remove-agent-pairing-guard`
+
+Disabling an agent refuses upfront, leaving the config file unchanged, while any enabled non-local skill still requires that agent.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: remove-refuses-dependents`
+
+Without the cascade flag, remove refuses while enabled transitive dependents exist and prints the dependent plan; with --with-dependents it removes the full reverse closure in a single config rewrite.
+Origin: ADR-0148
+Backing: test

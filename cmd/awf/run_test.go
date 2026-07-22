@@ -866,7 +866,7 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:init-collision-guard
+// invariant: tooling/init-and-enablement:init-collision-guard
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
@@ -895,7 +895,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Fatalf("init --force failed: %s", errb.String())
 	}
 	// The original is preserved at <path>.awf-bak.
-	// invariant: tooling/cli:init-force-backs-up
+	// invariant: tooling/init-and-enablement:init-force-backs-up
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
 		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
 	}

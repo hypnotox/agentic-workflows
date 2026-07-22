@@ -31,7 +31,7 @@ func TestRunUsage(t *testing.T) {
 // ./x mutants pre-creates the report via mktemp, so a nonexistent path is a
 // caller error (typo, changed script) - it must fail loudly, not read as a
 // clean run. Only a present-but-empty file means "nothing to report".
-// invariant: tooling/cli:mutants-missing-report-errors
+// invariant: tooling/audit-commands:mutants-missing-report-errors
 func TestRunMissingFileErrors(t *testing.T) {
 	var out, errb bytes.Buffer
 	if code := run([]string{"mutants", filepath.Join(t.TempDir(), "nope.json")}, &out, &errb); code == 0 {

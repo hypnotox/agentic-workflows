@@ -250,7 +250,7 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
 }
 
-// invariant: tooling/cli:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestManagedContextCallersChooseProjection(t *testing.T) {
 	complete := map[string]bool{"adr-lifecycle": true, "reviewing-impl": true, "reviewing-plan": true}
 	concise := map[string]bool{"brainstorming": true}

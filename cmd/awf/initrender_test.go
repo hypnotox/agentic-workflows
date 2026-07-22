@@ -18,7 +18,7 @@ import (
 // empty inline code spans, no tables without body rows, and no dangling
 // list-introduction sentences.
 // invariant: rendering/templates:empty-init-coherent-render
-// invariant: tooling/cli:init-unborn-head-supported
+// invariant: tooling/init-and-enablement:init-unborn-head-supported
 func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	forceNonInteractive(t)
 	_, root := gitfixture.InitRepo(t)

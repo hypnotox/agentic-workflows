@@ -284,7 +284,7 @@ func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
 // detail, while the topic's roster stays uncapped and a topic with no marker at
 // that path renders no direct detail; the path's own topic collection is an
 // ID-plus-direct-claim-ID attribution while authority lives at invocation level.
-// invariant: tooling/cli:context-path-attribution
+// invariant: tooling/context-and-topic:context-path-attribution
 func TestContextForStateMarkerSelectsDirect(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
 	res, err := p.ContextFor([]string{"internal/foo/x.go"})
@@ -756,7 +756,7 @@ func uncoveredFiles() map[string]string {
 // TestUncovered proves the report lists domain-owned paths with no scoped topic
 // and, separately, the eligible paths owned by no domain (collapsed).
 // invariant: invariants/current-state-authority:uncovered-lists-unowned-unignored
-// invariant: tooling/cli:uncovered-collapses-directories
+// invariant: tooling/context-and-topic:uncovered-collapses-directories
 func TestUncovered(t *testing.T) {
 	p := csRepo(t, uncoveredConfig, uncoveredFiles())
 	res, err := p.Uncovered(nil)
