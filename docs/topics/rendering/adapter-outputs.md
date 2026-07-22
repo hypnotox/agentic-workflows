@@ -3,7 +3,7 @@
 
 Generated executable adapter-runtime outputs and their ownership boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Current matched paths: `.pi/extensions/awf-subagents/index.ts`, `.pi/extensions/awf-subagents/runner.ts`. Marker sites: `internal/project/output_plan_test.go:157 [invariant] rendering/adapter-outputs:generated-adapter-runtime-ownership`.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Current matched paths: `.pi/extensions/awf-handoff/index.ts`, `.pi/extensions/awf-subagents/index.ts`, `.pi/extensions/awf-subagents/runner.ts`. Marker sites: `internal/project/output_plan_test.go:168 [invariant] rendering/adapter-outputs:generated-adapter-runtime-ownership`.
 
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 

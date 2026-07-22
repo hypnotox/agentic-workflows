@@ -209,7 +209,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 //
 // invariant: rendering/templates:pi-extension-editor-quiet-strip
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
-	for _, name := range []string{"index.ts", "runner.ts"} {
+	for _, name := range []string{"awf-handoff/index.ts", "awf-subagents/index.ts", "awf-subagents/runner.ts"} {
 		content := renderPiExtensionFile(t, name)
 		lines := strings.Split(content, "\n")
 		if len(lines) < 2 || lines[1] != "// @ts-nocheck" {
@@ -221,7 +221,7 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 		t.Fatalf("read container manager: %v", err)
 	}
 	manager := string(raw)
-	strip := `sed -i "/^\/\/ @ts-nocheck$/d" .pi/extensions/awf-subagents/index.ts .pi/extensions/awf-subagents/runner.ts`
+	strip := `find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 sed -i "s|^// @ts-nocheck$||"`
 	stripAt := strings.Index(manager, strip)
 	if stripAt < 0 {
 		t.Fatal("container manager missing the @ts-nocheck strip stage")
@@ -236,5 +236,19 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	}
 	if cpAt >= stripAt || stripAt >= tscAt {
 		t.Error("the @ts-nocheck strip must run after the source copy and before tsc")
+	}
+	if !strings.Contains(manager, `--include='.pi/extensions/**/*.ts'`) {
+		t.Error("container coverage does not include every Pi extension")
+	}
+	for _, rel := range []string{"../../.pi/extensions/awf-handoff/index.ts", "../../.pi/extensions/awf-subagents/index.ts", "../../.pi/extensions/awf-subagents/runner.ts", "../../examples/sundial/.pi/extensions/awf-handoff/index.ts", "../../examples/sundial/.pi/extensions/awf-subagents/index.ts", "../../examples/sundial/.pi/extensions/awf-subagents/runner.ts"} {
+		content, err := os.ReadFile(rel)
+		if err != nil {
+			t.Errorf("read governed Pi output %s: %v", rel, err)
+			continue
+		}
+		lines := strings.Split(string(content), "\n")
+		if len(lines) < 2 || lines[1] != "// @ts-nocheck" {
+			t.Errorf("governed Pi output %s lacks line-2 directive", rel)
+		}
 	}
 }

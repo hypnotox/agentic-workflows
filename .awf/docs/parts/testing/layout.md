@@ -27,14 +27,14 @@ golden-completeness guard machine-enforcing the one-golden-per-artifact conventi
 
 Pi-extension tests live under `tools/pi-extension-test/`. A digest-pinned container keeps locked
 dependencies in a named volume, snapshots the read-only checkout inside the container for each run,
-and executes strict TypeScript and coverage checks without host npm state. The rendered extension
-files carry a `// @ts-nocheck` directive (ADR-0126) that keeps adopter IDEs quiet without a
+and executes strict TypeScript and coverage checks without host npm state. Every rendered extension
+file carries a `// @ts-nocheck` directive (ADR-0126) that keeps adopter IDEs quiet without a
 resolvable `@types/node`; the container strips that line from its snapshot before `tsc` runs, so the
 type-check still covers the real extension code. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
-in-memory Pi 0.80.9 `AgentSession` proves that partial details, result-middleware error patches, and
+in-memory pinned-fork Pi 0.81.1 runtime proves that partial details, result-middleware error patches, and
 current-leaf mixed-implementation blocking survive the real runtime event seam without entering
-model-visible content. Unit tests cover exact all-role model routing and rejection, inherited
+model-visible content. Compatibility tests reject an official-0.81.1-shaped API that lacks the required queued-command or persisted-session surface. Handoff tests cover the closed schema, path and symlink boundaries, exclusivity, pending token, countdown cleanup and cancellation, pending-window revalidation, parent-linked replacement, teardown failures, kickoff, and editor fallback. The container type-check and c8 coverage globs include every extension TypeScript file. Unit tests cover exact all-role model routing and rejection, inherited
 thinking, and the ten-active FIFO limiter's abort and release lifecycle including runner setup
 failure. Grounding schema/prompt tests and shared-renderer tests cover every role and state at narrow
 and normal widths, including omissions, diagnostics, usage, malformed details, and configurable

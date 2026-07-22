@@ -66,8 +66,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling the Pi target renders exactly the two governed extension files with valid TypeScript provenance comments and target-sensitive config hashes; a target set without Pi renders neither file, and both files participate in ordinary check, sync, and manifest-cleanup semantics.
+Enabling the Pi target renders exactly three governed extension files with valid TypeScript provenance comments and target-sensitive config hashes: two under awf-subagents and the separate awf-handoff entrypoint. A target set without Pi renders none, and all participate in ordinary check, sync, and manifest-cleanup semantics.
 Origin: ADR-0123
+Revised-by: ADR-0145
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -78,16 +79,24 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-The generated Pi extension supports Pi 0.80.9 or newer and emits a single actionable compatibility error on an older runtime instead of registering its tools partially.
+Both generated Pi extension factories require Pi 0.81.1 or newer with `ExtensionAPI.queueCommand` and share one actionable compatibility notification on an older or API-incompatible runtime, failing before either factory registers commands, tools, or other functional hooks.
 Origin: ADR-0123
+Revised-by: ADR-0145
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-The containerized fixtures are the deterministic gate for the Pi extension, and release readiness additionally requires one real subagent child run on Pi 0.80.9 or newer.
+The containerized fixtures are the deterministic gate for every Pi extension, and release readiness additionally requires subagent and handoff smoke runs on the exact compatible fork for Pi 0.81.1 or a later build verified to expose the queued-command and persisted-session APIs, covering countdown cancellation, parent lineage, preserved old history, and kickoff continuation.
 Origin: ADR-0123
+Revised-by: ADR-0145
 Backing: unbacked
-Verify: Before a release, perform the documented real-Pi smoke check by running a subagent child against Pi 0.80.9 or newer and record any compatibility finding in the release work.
+Verify: Before a release, perform the documented real-Pi smoke on `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or on a later build after verifying `ExtensionAPI.queueCommand` and `ReadonlySessionManager.isPersisted`: run a subagent child, create a checkpoint, cancel one handoff, complete one handoff, verify parent lineage and preserved old history, and confirm the kickoff reads the exact memory path before continuing; record any compatibility finding in the release work.
+
+### `invariant: pi-session-handoff-lifecycle`
+
+The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory path, replaces with a persisted parent-linked session, submits kickoff only through the replacement context, retains an editor fallback, and states the truthful nontransactional teardown boundary without deleting sessions or memory.
+Origin: ADR-0145
+Backing: test
 
 ### `invariant: requires-skills-exact`
 

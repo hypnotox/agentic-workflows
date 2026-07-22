@@ -249,6 +249,44 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	}
 }
 
+func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
+			t.Fatalf("missing %s: %v", rel, err)
+		}
+	}
+	unrelated := filepath.Join(root, ".pi", "keep.txt")
+	if err := os.WriteFile(unrelated, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, rel := range []string{".pi/extensions/awf-handoff", ".pi/extensions/awf-subagents", ".pi/extensions"} {
+		if _, err := os.Stat(filepath.Join(root, rel)); !os.IsNotExist(err) {
+			t.Errorf("expected %s removed: %v", rel, err)
+		}
+	}
+	if got, err := os.ReadFile(unrelated); err != nil || string(got) != "keep" {
+		t.Errorf("unrelated Pi content changed: %q %v", got, err)
+	}
+}
+
 func TestCheckCleanAfterSync(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)

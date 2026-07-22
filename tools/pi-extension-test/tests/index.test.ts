@@ -13,6 +13,7 @@ import defaultExtension, {
   type ExtensionDependencies,
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
+import defaultHandoff from "../../../.pi/extensions/awf-handoff/index.ts";
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { Value } from "typebox/value";
@@ -32,6 +33,7 @@ function harness(options: {
   run?: (request: RunRequest) => Promise<RunResult>;
   leaf?: any;
   thinking?: () => string;
+  queueCommand?: boolean;
 } = {}) {
   const tools = new Map<string, any>();
   const handlers = new Map<string, any>();
@@ -46,6 +48,7 @@ function harness(options: {
     on: (name: string, handler: any) => handlers.set(name, handler),
     getThinkingLevel: options.thinking ?? (() => "high"),
     exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
+    ...(options.queueCommand === false ? {} : { queueCommand() {} }),
   };
   const deps: ExtensionDependencies = {
     readFile: async () => { reviewerReads++; return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully."; },
@@ -113,24 +116,56 @@ test("default factory registers against the installed minimum Pi package", async
 });
 
 test("version support is strict and ordered", () => {
-  assert.equal(versionSupported("0.80.9"), true);
-  assert.equal(versionSupported("0.80.9-beta.1"), true);
-  assert.equal(versionSupported("0.80.10"), true);
-  assert.equal(versionSupported("0.81.0-beta.1"), true);
+  assert.equal(versionSupported("0.81.1"), true);
+  assert.equal(versionSupported("0.81.1-beta.1"), true);
+  assert.equal(versionSupported("0.81.2"), true);
+  assert.equal(versionSupported("0.82.0-beta.1"), true);
   assert.equal(versionSupported("1.0.0"), true);
+  assert.equal(versionSupported("0.81.0"), false);
   assert.equal(versionSupported("0.80.8"), false);
-  assert.equal(versionSupported("0.79.99"), false);
   assert.equal(versionSupported("invalid"), false);
 });
 
-test("unsupported version registers one startup notification and no tools", async () => {
-  for (const version of ["0.80.8", "unknown"]) {
-    const h = harness({ version });
+test("unsupported runtime registers one guarded startup notification and no tools", async () => {
+  const notice = Symbol.for("awf.pi.minimum-runtime-notified");
+  for (const [version, queueCommand, detail] of [
+    ["0.81.0", true, ""],
+    ["unknown", true, ""],
+    ["0.81.1", false, " ExtensionAPI.queueCommand is missing."],
+  ] as const) {
+    delete (globalThis as any)[notice];
+    const h = harness({ version, queueCommand });
     assert.equal(h.tools.size, 0);
     assert.deepEqual([...h.handlers.keys()], ["session_start"]);
     await h.handlers.get("session_start")({}, h.ctx);
-    assert.deepEqual(h.notifications, [[`awf Pi subagents require Pi 0.80.9 or newer; found ${version}. Upgrade Pi and reload.`, "error"]]);
+    await h.handlers.get("session_start")({}, h.ctx);
+    assert.deepEqual(h.notifications, [[`awf Pi extensions require Pi 0.81.1 or newer with ExtensionAPI.queueCommand; found ${version}.${detail} Upgrade Pi and reload.`, "error"]]);
   }
+  delete (globalThis as any)[notice];
+});
+
+test("both unsupported factories share one precise notification and no functional surface", async () => {
+  const notice = Symbol.for("awf.pi.minimum-runtime-notified");
+  delete (globalThis as any)[notice];
+  const starts: any[] = [];
+  const notifications: any[] = [];
+  const registrations: string[] = [];
+  const pi: any = {
+    on(name: string, handler: any) { assert.equal(name, "session_start"); starts.push(handler); },
+    registerTool() { registrations.push("tool"); },
+    registerCommand() { registrations.push("command"); },
+    registerShortcut() { registrations.push("shortcut"); },
+    registerFlag() { registrations.push("flag"); },
+    registerMessageRenderer() { registrations.push("renderer"); },
+  };
+  await defaultExtension(pi);
+  await defaultHandoff(pi);
+  assert.deepEqual(registrations, []);
+  assert.equal(starts.length, 2);
+  const ctx = { ui: { notify: (...args: any[]) => notifications.push(args) } };
+  for (const start of starts) await start({}, ctx);
+  assert.deepEqual(notifications, [["awf Pi extensions require Pi 0.81.1 or newer with ExtensionAPI.queueCommand; found 0.81.1. ExtensionAPI.queueCommand is missing. Upgrade Pi and reload.", "error"]]);
+  delete (globalThis as any)[notice];
 });
 
 test("registers exactly four governed public tools with structured exploration schema", () => {

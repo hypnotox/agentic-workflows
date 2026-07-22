@@ -34,15 +34,15 @@ resolved against a built-in registry of adapters (`claude`, `codex`, `copilot`, 
 `pi`), each rendering skills and agents into its own runtime layout: `claude` and `gemini` add a
 bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cursor reads
 `AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog
-outputs: Pi automatically renders the project-local `.pi/extensions/awf-subagents/` TypeScript
-delegation extension. awf's own config tree lives at `.awf/`, decoupled from any one runtime's
+outputs: Pi automatically renders the two-file project-local `.pi/extensions/awf-subagents/` TypeScript
+delegation extension and the separate `.pi/extensions/awf-handoff/index.ts` checkpoint handoff extension. awf's own config tree lives at `.awf/`, decoupled from any one runtime's
 directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
-ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools capability), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
+ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools and session-handoff capabilities), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
 
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
@@ -194,7 +194,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
   fallback).
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
-  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension. Pi-rendered workflow
+  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension, while `templates/pi/awf-handoff/` contains the separate main-session handoff state machine. The latter validates durable memory paths, queues a single-use private command after settlement, runs the cancellable countdown and revalidation, creates a parent-linked session, and submits kickoff only through the replacement context. Pi-rendered workflow
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
   language. Exploration requires task, breadth, and detail, which feed Pi's dynamic fixed prompt;
@@ -207,7 +207,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
-  the dogfooded generated extension. Its repo-keyed persistent container snapshots current source
+  every dogfooded generated extension, including real pinned-runtime replacement lifecycle proofs. Its repo-keyed persistent container snapshots current source
   and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.
@@ -325,10 +325,12 @@ bytes, so a comment-only edit reflags stale and self-settles.
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
-- **Pi coding-agent/TUI 0.80.9 and TypeBox 1.1.38**: peer APIs used only by the generated Pi
-  extension at runtime; they are supplied by the adopter's Pi installation and are not dependencies
-  of the awf binary. The test package pins pi-ai, pi-coding-agent, pi-tui, and TypeBox directly at
-  the minimum version, rather than resolving any of them transitively.
+- **Pi ai/TUI 0.81.1, compatible coding-agent 0.81.1, and TypeBox 1.1.38**: peer APIs used only by the generated Pi
+  extensions at runtime; they are supplied by the adopter's Pi installation and are not dependencies
+  of the awf binary. The test package pins pi-ai and pi-tui directly at 0.81.1, TypeBox directly at
+  1.1.38, and coding-agent to the checksummed `hypnotox/pi` `fork-v0.81.1-awf.3` release URL because
+  the official coding-agent 0.81.1 artifact lacks `ExtensionAPI.queueCommand`. Its lockfile SRI is
+  `sha512-Xk34jkheEgNwBPMfT00+jmhY3YHcMkq5xL3C+a1Cr9yR0hsN76J5am6RJkZVQSxwAdHS2GKgzREElp0awve/sQ==`.
 - **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
   `tools/pi-extension-test/`; no host npm installation is used.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`

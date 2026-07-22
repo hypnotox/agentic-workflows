@@ -23,7 +23,33 @@ import {
   type Usage,
 } from "./runner.ts";
 
-export const MIN_PI_VERSION = "0.80.9";
+export const MIN_PI_VERSION = "0.81.1";
+const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
+export interface MinimumRuntimeDependencies { packageVersion: string; }
+function parseVersion(value: string): [number, number, number] | undefined {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
+  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
+}
+export function versionSupported(value: string): boolean {
+  const actual = parseVersion(value);
+  const minimum = parseVersion(MIN_PI_VERSION)!;
+  if (!actual) return false;
+  for (let i = 0; i < minimum.length; i++) {
+    if (actual[i] !== minimum[i]) return actual[i] > minimum[i];
+  }
+  return true;
+}
+export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies): boolean {
+  const queueCommandMissing = typeof pi.queueCommand !== "function";
+  if (versionSupported(deps.packageVersion) && !queueCommandMissing) return true;
+  pi.on("session_start", async (_event, ctx) => {
+    if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
+    (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
+    const missingAPI = queueCommandMissing ? " ExtensionAPI.queueCommand is missing." : "";
+    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with ExtensionAPI.queueCommand; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
+  });
+  return false;
+}
 export const EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
 export const GROUNDING_TOOLS = EXPLORE_TOOLS;
 export const REVIEW_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
@@ -82,21 +108,6 @@ function utf8Bound(value: string, maximum: number, marker: string): string {
   let end = Math.min(value.length, maximum - Buffer.byteLength(marker, "utf8"));
   while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > maximum - Buffer.byteLength(marker, "utf8")) end--;
   return value.slice(0, Math.max(0, end)) + marker;
-}
-
-function parseVersion(value: string): [number, number, number] | undefined {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
-  return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
-}
-
-export function versionSupported(value: string): boolean {
-  const actual = parseVersion(value);
-  const minimum = parseVersion(MIN_PI_VERSION)!;
-  if (!actual) return false;
-  for (let i = 0; i < minimum.length; i++) {
-    if (actual[i] !== minimum[i]) return actual[i] > minimum[i];
-  }
-  return true;
 }
 
 function projectRoot(extensionFile: string): string {
@@ -391,12 +402,7 @@ function renderers(role: RunRequest["role"]) {
 }
 
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
-  if (!versionSupported(deps.packageVersion)) {
-    pi.on("session_start", async (_event, ctx) => {
-      ctx.ui.notify(`awf Pi subagents require Pi ${MIN_PI_VERSION} or newer; found ${deps.packageVersion}. Upgrade Pi and reload.`, "error");
-    });
-    return;
-  }
+  if (!guardMinimumRuntime(pi, deps)) return;
 
   const root = projectRoot(deps.extensionFile);
   const explorationLimiter = createLimiter(MAX_EXPLORATION_CONCURRENCY);
@@ -558,11 +564,11 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
 }
 
 export default async function (pi: ExtensionAPI): Promise<void> {
-  const packageJSON = JSON.parse(await readFile(join(getPackageDir(), "package.json"), "utf8")) as { version?: string };
+  const packageJSON = JSON.parse(await readFile(join(getPackageDir(), "package.json"), "utf8")) as { version: string };
   registerSubagentTools(pi, {
     readFile,
     runner: createRunner(productionRunnerDependencies),
-    packageVersion: packageJSON.version as string,
+    packageVersion: packageJSON.version,
     extensionFile: fileURLToPath(import.meta.url),
   });
 }

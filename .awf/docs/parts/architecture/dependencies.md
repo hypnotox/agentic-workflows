@@ -17,10 +17,12 @@
 - **`deadcode`** (`golang.org/x/tools/cmd/deadcode`): pinned as a `go tool` dependency; the gate
   runs it (no `-test`) and `cmd/deadcodecheck` fails on any production function unreachable from a
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
-- **Pi coding-agent/TUI 0.80.9 and TypeBox 1.1.38**: peer APIs used only by the generated Pi
-  extension at runtime; they are supplied by the adopter's Pi installation and are not dependencies
-  of the awf binary. The test package pins pi-ai, pi-coding-agent, pi-tui, and TypeBox directly at
-  the minimum version, rather than resolving any of them transitively.
+- **Pi ai/TUI 0.81.1, compatible coding-agent 0.81.1, and TypeBox 1.1.38**: peer APIs used only by the generated Pi
+  extensions at runtime; they are supplied by the adopter's Pi installation and are not dependencies
+  of the awf binary. The test package pins pi-ai and pi-tui directly at 0.81.1, TypeBox directly at
+  1.1.38, and coding-agent to the checksummed `hypnotox/pi` `fork-v0.81.1-awf.3` release URL because
+  the official coding-agent 0.81.1 artifact lacks `ExtensionAPI.queueCommand`. Its lockfile SRI is
+  `sha512-Xk34jkheEgNwBPMfT00+jmhY3YHcMkq5xL3C+a1Cr9yR0hsN76J5am6RJkZVQSxwAdHS2GKgzREElp0awve/sQ==`.
 - **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
   `tools/pi-extension-test/`; no host npm installation is used.
 - **`gremlins`** (`github.com/go-gremlins/gremlins`): pinned as a `go tool` dependency; `./x mutants`

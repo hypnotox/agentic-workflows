@@ -84,7 +84,7 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	for _, file := range files {
 		got[file.Path] = file.Content
 	}
-	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
 		if !strings.HasPrefix(got[path], "// "+bannerText+"\n") {
 			t.Errorf("Pi extension %s missing TypeScript banner", path)
 		}
@@ -136,8 +136,8 @@ func registrationBlock(t *testing.T, content, name, nextMarker string) string {
 
 // invariant: rendering/templates:pi-structured-exploration-contract
 func TestPiStructuredExplorationContract(t *testing.T) {
-	index := renderPiExtensionFile(t, "index.ts")
-	runner := renderPiExtensionFile(t, "runner.ts")
+	index := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	runner := renderPiExtensionFile(t, "awf-subagents/runner.ts")
 	for _, name := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"} {
 		if strings.Count(index, `name: "`+name+`"`) != 1 {
 			t.Errorf("tool %s registration count differs from one", name)
@@ -216,7 +216,7 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 
 // invariant: rendering/templates:pi-subagent-model-routing
 func TestPiSubagentModelRouting(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		`model: Type.Optional(Type.String())`, `requested.indexOf("/")`,
 		`ctx.modelRegistry.find(provider, id)`, `ctx.modelRegistry.hasConfiguredAuth(found)`,
@@ -397,7 +397,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 func TestBoundedExplorationReporting(t *testing.T) {
 	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
-	prompt := renderPiExtensionFile(t, "index.ts")
+	prompt := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	contracts := map[string]struct {
 		body  string
 		wants []string
@@ -438,7 +438,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 
 // invariant: rendering/templates:pi-subagent-progress-context-isolation
 func TestPiSubagentProgressContextIsolation(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{`text: "(running...)"`, `events: update.events`, `result.failureMessage`, `result.output`} {
 		if !strings.Contains(content, want) {
 			t.Errorf("extension missing context-isolation contract %q", want)
@@ -453,7 +453,7 @@ func TestPiSubagentProgressContextIsolation(t *testing.T) {
 
 // invariant: rendering/templates:pi-subagent-progress-rendering
 func TestPiSubagentProgressRendering(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, role := range []string{"grounding", "explore", "review", "implement"} {
 		if strings.Count(content, `...renderers("`+role+`")`) != 1 {
 			t.Errorf("role %s does not delegate both render hooks", role)
@@ -472,7 +472,7 @@ func TestPiSubagentProgressRendering(t *testing.T) {
 
 // invariant: rendering/templates:pi-subagent-failure-details
 func TestPiSubagentFailureDetails(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		`awfFailure: true`, `pi.on("tool_result"`, `SUBAGENT_TOOL_NAMES.has(event.toolName)`, `return { isError: true }`,
 		`return toolResult("implement", params.task, failure, gitDetails);`,
@@ -485,7 +485,7 @@ func TestPiSubagentFailureDetails(t *testing.T) {
 
 // invariant: rendering/templates:pi-subagent-progress-bounds
 func TestPiSubagentProgressBounds(t *testing.T) {
-	content := renderPiExtensionFile(t, "runner.ts") + renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/runner.ts") + renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		"MAX_DISPLAY_EVENTS = 20", "MAX_DISPLAY_EVENT_BYTES = 2 * 1024", "omittedEvents",
 		`Buffer.byteLength(JSON.stringify(fitted), "utf8")`, "MAX_TASK_PREVIEW_BYTES", "MAX_FALLBACK_BYTES",
@@ -502,8 +502,8 @@ func TestPiSubagentProgressBounds(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-child-tool-boundaries
 func TestPiSubagentToolBoundaries(t *testing.T) {
-	index := renderPiExtensionFile(t, "index.ts")
-	runner := renderPiExtensionFile(t, "runner.ts")
+	index := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	runner := renderPiExtensionFile(t, "awf-subagents/runner.ts")
 	allowlists := map[string]string{
 		"EXPLORE_TOOLS":   `export const EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;`,
 		"GROUNDING_TOOLS": `export const GROUNDING_TOOLS = EXPLORE_TOOLS;`,
@@ -581,7 +581,7 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 
 // invariant: rendering/templates:pi-implementation-batch-exclusivity
 func TestPiImplementationBatchExclusivity(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		`pi.on("tool_call"`, `ctx.sessionManager.getLeafEntry()`,
 		`leaf.message?.role === "assistant"`, `Array.isArray(leaf.message.content)`,
@@ -599,7 +599,7 @@ func TestPiImplementationBatchExclusivity(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-child-process-safety
 func TestPiSubagentProcessSafetyContract(t *testing.T) {
-	content := renderPiExtensionFile(t, "runner.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/runner.ts")
 	for _, want := range []string{"SIGTERM", "SIGKILL", "removeEventListener", "await deps.rm"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("runner missing process-safety contract %q", want)
@@ -609,7 +609,7 @@ func TestPiSubagentProcessSafetyContract(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-implementation-state-boundary
 func TestPiImplementationStateBoundary(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{"implementationTail", "allowCommits=false", "changes were not reverted", "commitVerification"} {
 		if !strings.Contains(content, want) {
 			t.Errorf("extension missing implementation-state contract %q", want)
@@ -619,9 +619,77 @@ func TestPiImplementationStateBoundary(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-minimum-runtime
 func TestPiMinimumRuntimeContract(t *testing.T) {
-	content := renderPiExtensionFile(t, "index.ts")
-	if !strings.Contains(content, `MIN_PI_VERSION = "0.80.9"`) || !strings.Contains(content, `pi.on("session_start"`) {
-		t.Fatal("extension missing minimum-version startup contract")
+	for _, path := range []string{"awf-subagents/index.ts", "awf-handoff/index.ts"} {
+		content := renderPiExtensionFile(t, path)
+		for _, want := range []string{`MIN_PI_VERSION = "0.81.1"`, `Symbol.for("awf.pi.minimum-runtime-notified")`, `typeof pi.queueCommand !== "function"`, `ExtensionAPI.queueCommand is missing`, `pi.on("session_start"`, `if (!guardMinimumRuntime(pi, deps)) return`} {
+			if !strings.Contains(content, want) {
+				t.Errorf("%s missing minimum-version contract %q", path, want)
+			}
+		}
+	}
+}
+
+// invariant: rendering/templates:pi-session-handoff-public-contract
+func TestPiSessionHandoffPublicContract(t *testing.T) {
+	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{
+		`memoryPath: Type.String()`, `kickoff: Type.String({ maxLength: 1000 })`, `{ additionalProperties: false }`,
+		`ctx.mode !== "tui"`, `typeof (ctx.sessionManager as any).isPersisted !== "function"`, `params.kickoff.length > 1000`, `memoryPath.includes("\\")`, `stat.isSymbolicLink()`,
+		`A batch containing handoff_session cannot contain siblings`, `Cannot verify the current tool batch`,
+		`pi.queueCommand("awf-handoff-continue", request.id)`, `terminate: true`, `pending?.id === request.id`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("handoff source missing public contract %q", want)
+		}
+	}
+}
+
+// invariant: rendering/catalog-and-targets:pi-session-handoff-lifecycle
+func TestPiSessionHandoffLifecycle(t *testing.T) {
+	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{
+		`Handoff to a fresh session in ${seconds}s - Esc/Ctrl+C to cancel`, `await validateMemoryPath(request.memoryPath, deps)`,
+		`ctx.newSession({`, `parentSession: oldSessionFile`, `replacementCtx.sendUserMessage(wrapper)`,
+		`replacementCtx.ui.setEditorText(wrapper)`, `Automatic kickoff failed; submit the prepared editor text.`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("handoff source missing lifecycle contract %q", want)
+		}
+	}
+	for _, forbidden := range []string{"rm(", "unlink(", "deleteSession"} {
+		if strings.Contains(content, forbidden) {
+			t.Errorf("handoff source contains deletion behavior %q", forbidden)
+		}
+	}
+}
+
+// invariant: rendering/templates:pi-session-handoff-workflow
+func TestPiSessionHandoffWorkflow(t *testing.T) {
+	config := "prefix: example\nskills: [executing-plans, subagent-driven-development, retrospective, reviewing-impl]\nagents: [code-reviewer]\ntargets: [%s]\n"
+	for _, target := range []string{"pi", "claude"} {
+		files := explorationRenderedByPath(t, fmt.Sprintf(config, target))
+		dir := map[string]string{"pi": ".pi/skills", "claude": ".claude/skills"}[target]
+		for _, skill := range []string{"executing-plans", "subagent-driven-development", "reviewing-impl"} {
+			body := files[dir+"/example-"+skill+"/SKILL.md"]
+			position := 0
+			ordered := []string{"Complete the memory update in its own tool batch", "Display a concise checkpoint summary", "user's intervention point"}
+			if target == "pi" {
+				ordered = append(ordered, "In the next tool batch", "invoke `handoff_session` alone", "exact memory path", "kickoff that states the immediate successor action", "Continue automatically in the fresh session", "unless the user cancels during the five-second window")
+			} else {
+				ordered = append(ordered, "continue through the target-native successor without claiming session replacement")
+			}
+			for _, phrase := range ordered {
+				next := strings.Index(body[position:], phrase)
+				if next < 0 {
+					t.Errorf("%s/%s missing ordered checkpoint phrase %q", target, skill, phrase)
+					break
+				}
+				position += next + len(phrase)
+			}
+			if target != "pi" && strings.Contains(body, "handoff_session") {
+				t.Errorf("%s/%s leaks Pi handoff", target, skill)
+			}
+		}
 	}
 }
 
@@ -636,7 +704,7 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := ".pi/extensions/awf-subagents/" + name
+	path := ".pi/extensions/" + name
 	for _, file := range files {
 		if file.Path == path {
 			return file.Content

@@ -16,6 +16,7 @@ Developer tools are pinned in `go.mod`'s `tool` block for reproducibility:
 `golangci-lint` (lint and format), `deadcode` (the dead-code gate, ADR-0063), and
 `gremlins` (advisory mutation testing, ADR-0066).
 
-The Pi-extension test lane pins Node, TypeScript, Pi 0.80.9, TypeBox, and test dependencies in
+The Pi-extension test lane pins Node, TypeScript, Pi ai/TUI 0.81.1, the checksummed compatible
+coding-agent `fork-v0.81.1-awf.3` release, TypeBox, and test dependencies in
 `tools/pi-extension-test/`. Docker installs them into a repo-keyed persistent volume; they are
 never awf binary dependencies and never create host npm state.

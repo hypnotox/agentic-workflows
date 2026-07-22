@@ -310,7 +310,7 @@ var memoryCheckpointSkills = []string{
 // invariant: rendering/templates:memory-checkpoint-chain-coverage
 func TestMemoryCheckpointCoverage(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalog(t, cat)
+	root := syncFullCatalogForTarget(t, cat, "pi")
 	ordered := []string{
 		"**Working-memory checkpoint.**",
 		"Complete the memory update in its own tool batch",
@@ -319,10 +319,18 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		"immediate next action",
 		"exact memory path",
 		"user's intervention point",
-		"continue to the successor step",
+		"In the next tool batch",
+		"invoke `handoff_session` alone",
+		"exact memory path",
+		"kickoff that states the immediate successor action",
+		"Continue automatically in the fresh session",
+		"unless the user cancels during the five-second window",
+	}
+	piSkillPath := func(name string) string {
+		return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
 	}
 	for _, name := range memoryCheckpointSkills {
-		body := read(t, skillPath(root, name))
+		body := read(t, piSkillPath(name))
 		position := 0
 		for _, phrase := range ordered {
 			next := strings.Index(body[position:], phrase)
@@ -336,13 +344,26 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 			t.Errorf("non-terminal skill %q claims the retrospective's memory deletion", name)
 		}
 	}
-	if body := read(t, skillPath(root, "executing-plans")); !strings.Contains(body, "independently resumable committed task") {
+	if body := read(t, piSkillPath("executing-plans")); !strings.Contains(body, "independently resumable committed task") {
 		t.Errorf("executing-plans missing its intermediate checkpoint")
 	}
-	if body := read(t, skillPath(root, "subagent-driven-development")); !strings.Contains(body, "implemented and reviewed task") {
+	if body := read(t, piSkillPath("subagent-driven-development")); !strings.Contains(body, "implemented and reviewed task") {
 		t.Errorf("subagent-driven-development missing its intermediate checkpoint")
 	}
-	if body := read(t, skillPath(root, "retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
+	if body := read(t, piSkillPath("retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
 		t.Errorf("retrospective missing the working-memory deletion step")
+	}
+
+	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
+	for _, name := range memoryCheckpointSkills {
+		body := read(t, skillPath(nonPiRoot, name))
+		if strings.Contains(body, "handoff_session") {
+			t.Errorf("non-Pi skill %q names handoff_session", name)
+		}
+		checkpoint := strings.Index(body, "user's intervention point")
+		continuation := strings.Index(body, "continue through the target-native successor without claiming session replacement")
+		if checkpoint < 0 || continuation < checkpoint {
+			t.Errorf("non-Pi skill %q does not continue target-natively after the visible checkpoint", name)
+		}
 	}
 }

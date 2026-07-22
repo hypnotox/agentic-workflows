@@ -76,7 +76,7 @@ paths and dialect: Codex agents are TOML profiles, while Claude Code and Gemini 
 bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your team
 uses.
 
-Pi 0.80.9+ automatically receives a trusted project extension with `subagent_grounding`,
+A compatible Pi 0.81.1+ build exposing `ExtensionAPI.queueCommand` automatically receives trusted project extensions with `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
 `model` selection and otherwise inherits the parent. Exploration requires `{task, breadth, detail}`:
 breadth is `targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`;
@@ -84,7 +84,7 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content.
+activity stays outside parent model content. A separate `handoff_session` tool continues from an exact durable `.awf/memory/` checkpoint in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
 
 ## How it works
 
@@ -181,7 +181,7 @@ Windows, put `awf` on `PATH` and call it directly.
     awf list             # see what's enabled vs available
     awf enable skill tdd    # opt a skill in
     awf enable doc pitfalls # opt a doc in
-    awf enable target pi    # render Pi 0.80.9+ skills and trusted subagent extension
+    awf enable target pi    # render compatible Pi 0.81.1+ skills and trusted extensions
 
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
 files are drift-checked; use `awf sync` to restore missing or modified copies.

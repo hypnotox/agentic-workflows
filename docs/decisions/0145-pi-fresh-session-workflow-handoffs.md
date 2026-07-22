@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-22
 ---
 # ADR-0145: Pi Fresh-Session Workflow Handoffs
@@ -95,3 +95,5 @@ The upstream queued-command API becomes a real awf runtime dependency. Pinning t
 - 2026-07-22: Proposed
 - 2026-07-22: Implementing; content-sha256: 668f00302378496b92465c023e4ce014020130bbda035ea2a617f3689ff77ed3
 - 2026-07-22: Applied; state-sequence: 13; operations: update `rendering/templates:memory-checkpoint-chain-coverage`
+- 2026-07-22: Applied; state-sequence: 14; operations: update `rendering/templates:pi-extension-editor-quiet-strip`, add `rendering/templates:pi-session-handoff-public-contract`, add `rendering/templates:pi-session-handoff-workflow`, update `rendering/catalog-and-targets:pi-extension-target-render`, update `rendering/catalog-and-targets:pi-minimum-runtime`, update `rendering/catalog-and-targets:pi-real-runtime-smoke`, add `rendering/catalog-and-targets:pi-session-handoff-lifecycle`
+- 2026-07-22: Implemented; content-sha256: 668f00302378496b92465c023e4ce014020130bbda035ea2a617f3689ff77ed3

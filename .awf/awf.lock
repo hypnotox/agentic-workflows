@@ -52,27 +52,27 @@
     },
     ".claude/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
-      "templateHash": "sha256:93aaf6e3ca54d51d22d85c9198eea05de8ffdec168c5fb7909b4f4ff122d1203",
+      "templateHash": "sha256:5173fe92d4d78e037d7ab18db911fb95330d15997664d5dd076e85280eccedb5",
       "configHash": "sha256:973dd5ad1a92eec6227fc330fc2ac960fa8af16a9359d7e5daeae4e837d06808",
-      "outputHash": "sha256:bfe721ddf8758f2b30610674f5429486d65c6cedd5a6de334033960392817114"
+      "outputHash": "sha256:7d24b0e0df0d12f14bf301406050c066ec6e7d10ae382d7fccd6b2292955accc"
     },
     ".claude/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:fa173e7e4be226bb3544e8aa4163fcc4e39fa7319b734544a7d1538e23ef64f4",
+      "templateHash": "sha256:2ada820c6645e96580a3ae0b0d3edcf1964d57d93a949c4b933f5cb93c68c04f",
       "configHash": "sha256:ec4325245a60851e16463cacb09ed40d4942a4f253002449799b939d794a8fac",
-      "outputHash": "sha256:60c8696bae857be2d5f47740f7f57784590fe608777eeb236073d262278e9941"
+      "outputHash": "sha256:404b8615a25ac9ed2aa5de67f795ede1518c5656ec7c13d4f02b7090596ee379"
     },
     ".claude/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
-      "templateHash": "sha256:55517e9a6bf9a1e5b64401aba9f483c287df75a43681f479cfc5b3a79c6939be",
+      "templateHash": "sha256:a830c45b2c107041795874dfc66af34ed56bdb058ef80020143b993c121a0650",
       "configHash": "sha256:516a297445f635cac25abfa1a6e3ebb458f2c0f3b394e2c36dc8a2feb795849a",
-      "outputHash": "sha256:5951af04553cdc95d01904beffd0f197a1ce0140281b1f2b9192a0232da0c961"
+      "outputHash": "sha256:64b22055ce7f8f50203006ed1a2a589102f594c839078f77a70790dbc65ac295"
     },
     ".claude/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:aa8cad04bb288001191ed9c4c5e67d9564e1de5fcd466ed9b93966a075053385",
+      "templateHash": "sha256:426f5579b90a4611f41e2e107b85df88fdb7b2a9a79c0135690ba38df262114b",
       "configHash": "sha256:4215fb7fa1b58817858227a1ab81da1f781768de54e8f9ae80fc83353e2f3ac7",
-      "outputHash": "sha256:cf0b06bc54fce6f7096eb6fdfeb076e3718d0c9204c2d7fc5faf03a2f9118bab"
+      "outputHash": "sha256:9c5bd02a6dba57e64ce7ce863ddaa81c2fe2f16cc935281545f22b81d23c9b40"
     },
     ".claude/skills/awf-exploring/SKILL.md": {
       "templateId": "skills/exploring/SKILL.md.tmpl",
@@ -82,9 +82,9 @@
     },
     ".claude/skills/awf-proposing-adr/SKILL.md": {
       "templateId": "skills/proposing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:342d09c0b12394aaed7bdf2a3f53c13ffc0cf7aa4e23442c094c354be7d4d6d9",
+      "templateHash": "sha256:8ec0c91ed6e09ced4e3a867eefc7d4bdc87783350c46dbb9403f9c2f27bdc32f",
       "configHash": "sha256:6e8c98d8ebbaf053d907bf803c5bb322020f101ce2b13277433d77b8efacbe4d",
-      "outputHash": "sha256:a6714f36a31f6da50f4f12527d775204a28017bea77072d75da203c5321c0810"
+      "outputHash": "sha256:011730df4c38380ad62dd0e62454a15ca7e07d13e4af2554ac20ab63da66185e"
     },
     ".claude/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
@@ -100,33 +100,33 @@
     },
     ".claude/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:85b3b2d68abf5931f02e2710521b7004e7f166e9d4e3b98ebaa4e19f1e03ba69",
+      "templateHash": "sha256:82d45328d4f8ac1baef3065261df23951843e22439b9d524f0530f1e8762d344",
       "configHash": "sha256:d90e34aacf156879e2bc2b693a0f821520049fab125b01cc64eb49a32b859ee9",
-      "outputHash": "sha256:889d2941a819f617b608047ea640474d4f49dbb9c14e05d05e70f7c08d6872e0"
+      "outputHash": "sha256:79d519377fb492fe78c94b7295b389dd47bd54759d09f898d5c3bf8aaeabebf6"
     },
     ".claude/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:27ea01ea7643e6531832c5f0c50ad5a774ef6141e6b12aec6ea2d48b1d5c2601",
+      "templateHash": "sha256:d4415d835ea765093ab274bd098fed9ce20a709b1fe379702bb813ff1de55cc0",
       "configHash": "sha256:13c7c50c1dada5481da49c8f9a53566200a8c3f73f6ffe8f6e33309f43fe871e",
-      "outputHash": "sha256:150969b1212bff79d7041e66d992a12efbcf8954fffcab955a83e8e29138e585"
+      "outputHash": "sha256:7bb59cf1f986e96db1e979372f6f3d1a6ed437fa2cdee84e65bf79477aaf6463"
     },
     ".claude/skills/awf-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
-      "templateHash": "sha256:4f61ddd032988cc43912166f6e08f337d0e4d6c42fdf692492ce149dd5a72bc2",
+      "templateHash": "sha256:ea0c842e777013cd819b23e075c5dc8ec5a44c59a07927fbbe95b4068ed27589",
       "configHash": "sha256:d8b9496fde36dcfe0bbb6b0ba9fdda79ec0746cfe197d9fdfb3cd26419167418",
-      "outputHash": "sha256:545a93814392017b6cad18760081c3a9cc916f663427dd86ef954473cc26fdba"
+      "outputHash": "sha256:e61c64938035a0930f7624d9a08ecb850896c7a68ef11c2b1ad19c9cd4a33705"
     },
     ".claude/skills/awf-reviewing-plan/SKILL.md": {
       "templateId": "skills/reviewing-plan/SKILL.md.tmpl",
-      "templateHash": "sha256:b2fdba879eed83846f9a7eba51c7fc9c5cc9b03b5708758e16ace17b2826fdbb",
+      "templateHash": "sha256:938df766d794ad5b49397f97313e931e952ae21873ff632ee473038c3e063f42",
       "configHash": "sha256:d90e34aacf156879e2bc2b693a0f821520049fab125b01cc64eb49a32b859ee9",
-      "outputHash": "sha256:8aabb51c559585ae8c7f7589656c83adc8b03bee6579c39a64323a702e96fcd0"
+      "outputHash": "sha256:e4ea6fc1f0e3e95fca29cf8f6f1326836746b436ab427cb50c945a65b5be1d6d"
     },
     ".claude/skills/awf-subagent-driven-development/SKILL.md": {
       "templateId": "skills/subagent-driven-development/SKILL.md.tmpl",
-      "templateHash": "sha256:0ec67d749b8c2956048313d976587b692259643bb382a0b9e5c79927f8210c32",
+      "templateHash": "sha256:c394c2f2c1d7cc454a5606ee33fbc438c7cfc1fc07e4d9da6ed23b2a39661c5a",
       "configHash": "sha256:4215fb7fa1b58817858227a1ab81da1f781768de54e8f9ae80fc83353e2f3ac7",
-      "outputHash": "sha256:2307c80e09502b65cd6b90f0360267780524aa85b9068417b889afe17c42fd9b"
+      "outputHash": "sha256:6e7c22a8c2f759726dcaec2543f542d82d257cee5f93a58b3908a9e5a42a0bad"
     },
     ".claude/skills/awf-tdd/SKILL.md": {
       "templateId": "skills/tdd/SKILL.md.tmpl",
@@ -136,141 +136,147 @@
     },
     ".claude/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:5fc97210a869249e189a6f46978803f977d0ae8fcc09342c751fb8a49004e3d5",
+      "templateHash": "sha256:9677db29fe0ca20222b21f6087dfbdede74c3e925f12c945f96e48e0e1c35465",
       "configHash": "sha256:799470fb42f004994e04f7721e711f157996be58ab68781c2362b81c93069184",
-      "outputHash": "sha256:a0d696059bf0db44edd7a5c09ebf27afbfbe9b04a949bc2b4a4527b6144dbf8d"
+      "outputHash": "sha256:ea45d4f253639206f2a831232470579faba31531c52c2b516edce0dccf383740"
+    },
+    ".pi/extensions/awf-handoff/index.ts": {
+      "templateId": "pi/awf-handoff/index.ts.tmpl",
+      "templateHash": "sha256:5cc63130d655532a616f668890526fb19cabcdc3179126c8d55ba26297f22cc0",
+      "configHash": "sha256:f4f055963d76f1380d45ae71f7e78c4b1382f3ccea4b6e0926a26d13a06cb920",
+      "outputHash": "sha256:baabfaaa03112159ce2058cd674f304b48319b77ac7f9722ff45d8fa573dc756"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:0b30fe53cd6dacb8db56b992f4cfe7eaa11c24661d32b5f05e58b7f0e703845b",
-      "configHash": "sha256:8e1c809849f280945dae7569e24b25d9e8f1fd0411f3c9dcbdad88bca7039f18",
-      "outputHash": "sha256:cf947a89f588f5b14f864cca08b2f29fc4a05577e9a32ab64d281f4654f0fece"
+      "templateHash": "sha256:1887ed93bad09dd8e1ac788792ca09ba851428c6dad95cc88e5c8cf71fef6c1c",
+      "configHash": "sha256:f4f055963d76f1380d45ae71f7e78c4b1382f3ccea4b6e0926a26d13a06cb920",
+      "outputHash": "sha256:3c1ba7b43f24e0f5a9908ffff92fdc7239c767052b2e0b55755c13b52e92ef4f"
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",
       "templateHash": "sha256:68116424c8cca7f41933851a50f9ba5527bd48664aec49fb8b704a490fc1fd5a",
-      "configHash": "sha256:8e1c809849f280945dae7569e24b25d9e8f1fd0411f3c9dcbdad88bca7039f18",
+      "configHash": "sha256:f4f055963d76f1380d45ae71f7e78c4b1382f3ccea4b6e0926a26d13a06cb920",
       "outputHash": "sha256:cec79bbd559e900855de9b247a4ed0ea87594b89664dd27338bc13b66614a178"
     },
     ".pi/skills/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
       "templateHash": "sha256:a21b18f9b06b2a5ee10b75f66a3ffe4416e80a5c57c10984b75a9deae8b345ca",
-      "configHash": "sha256:207ca083349cf4e4318d3d149db659809973895215365b129d08b840770645fe",
+      "configHash": "sha256:4bb1faf2b7e0af1798ecd4a8199b72c8af6150e1b83461c5cab1ff5cdc7de5d4",
       "outputHash": "sha256:be7bdc7b0f39202a047ca79c711b0874d7ba9fc88212ed344077419412529653"
     },
     ".pi/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
       "templateHash": "sha256:bbf2f8af7654330402cb71d6efdd5a998d90eed2dd159dcb2876398646a356a7",
-      "configHash": "sha256:a2f79c063f5b5078b799e3b9109df7e13a6b853682db6c349e1b436016229c72",
+      "configHash": "sha256:686bcf93a2d2a200b1261e53804e644fd3527c2147a4b0c189cf5e2179272978",
       "outputHash": "sha256:48b0563c9d5d18cd150f0fbef9426ae8c755caffb3d4ba458dcae426ffebe2f0"
     },
     ".pi/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
-      "templateHash": "sha256:93aaf6e3ca54d51d22d85c9198eea05de8ffdec168c5fb7909b4f4ff122d1203",
-      "configHash": "sha256:8e1c809849f280945dae7569e24b25d9e8f1fd0411f3c9dcbdad88bca7039f18",
-      "outputHash": "sha256:afcd6b856a1732c10204db8641fb4594b3912dc96b1eb93975e09654ebf74972"
+      "templateHash": "sha256:5173fe92d4d78e037d7ab18db911fb95330d15997664d5dd076e85280eccedb5",
+      "configHash": "sha256:f4f055963d76f1380d45ae71f7e78c4b1382f3ccea4b6e0926a26d13a06cb920",
+      "outputHash": "sha256:445868f0bb50292589857c5003fc4e0d4c5a5f9932a498c9903b3d9d848a2c63"
     },
     ".pi/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
-      "templateHash": "sha256:fa173e7e4be226bb3544e8aa4163fcc4e39fa7319b734544a7d1538e23ef64f4",
-      "configHash": "sha256:49ffc42c44697d78a710e0c8bc6a759c8b895254b554ce7916d7b7fdfa92df0a",
-      "outputHash": "sha256:60c8696bae857be2d5f47740f7f57784590fe608777eeb236073d262278e9941"
+      "templateHash": "sha256:2ada820c6645e96580a3ae0b0d3edcf1964d57d93a949c4b933f5cb93c68c04f",
+      "configHash": "sha256:f93687ed1af232d8d48ad62c990e0c8cc484b5718f8edcfaa63b360356bfc4e7",
+      "outputHash": "sha256:585377f43061f713a39f6d112d741b9e69266f3d60089959ef6500fd251f5d30"
     },
     ".pi/skills/awf-debugging/SKILL.md": {
       "templateId": "skills/debugging/SKILL.md.tmpl",
-      "templateHash": "sha256:55517e9a6bf9a1e5b64401aba9f483c287df75a43681f479cfc5b3a79c6939be",
-      "configHash": "sha256:aaf647bba3aff49996ab41cd4730b2606d15480454c62f3319941f7695244714",
-      "outputHash": "sha256:5951af04553cdc95d01904beffd0f197a1ce0140281b1f2b9192a0232da0c961"
+      "templateHash": "sha256:a830c45b2c107041795874dfc66af34ed56bdb058ef80020143b993c121a0650",
+      "configHash": "sha256:7c252e331f316e5064384ba2a75806550989f0dcbf703dc292fc8945782216f4",
+      "outputHash": "sha256:1ee6e6e889be62dfb69b96da106cdf3df63a4978d629b0f8dd35be85f295253e"
     },
     ".pi/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:aa8cad04bb288001191ed9c4c5e67d9564e1de5fcd466ed9b93966a075053385",
-      "configHash": "sha256:866cbf87031266250cae9967520da095d50267e075566e6596e86dc47f109dfb",
-      "outputHash": "sha256:cf0b06bc54fce6f7096eb6fdfeb076e3718d0c9204c2d7fc5faf03a2f9118bab"
+      "templateHash": "sha256:426f5579b90a4611f41e2e107b85df88fdb7b2a9a79c0135690ba38df262114b",
+      "configHash": "sha256:03270275c0712ded31c19a099ac3976eb0140954d0b6d69b3152b61d255a3376",
+      "outputHash": "sha256:b685aed62b189454dc3c7ed9d2be49462f8055eff6f811f06ea5b073c279e0e0"
     },
     ".pi/skills/awf-exploring/SKILL.md": {
       "templateId": "skills/exploring/SKILL.md.tmpl",
       "templateHash": "sha256:ab6a422bb115e0d4faabee82eb2fd0eed580eafd9b7d2d343a620e626e01e15b",
-      "configHash": "sha256:8e1c809849f280945dae7569e24b25d9e8f1fd0411f3c9dcbdad88bca7039f18",
+      "configHash": "sha256:f4f055963d76f1380d45ae71f7e78c4b1382f3ccea4b6e0926a26d13a06cb920",
       "outputHash": "sha256:c24d51091db887a4b1600705b353f2bc4b6589fd5ad2bf63ae46572e7930b484"
     },
     ".pi/skills/awf-proposing-adr/SKILL.md": {
       "templateId": "skills/proposing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:342d09c0b12394aaed7bdf2a3f53c13ffc0cf7aa4e23442c094c354be7d4d6d9",
-      "configHash": "sha256:8ec2322dbb2b1c8885523547ca80df5abcfa19854fef74d6db3cc2814853ae67",
-      "outputHash": "sha256:a6714f36a31f6da50f4f12527d775204a28017bea77072d75da203c5321c0810"
+      "templateHash": "sha256:8ec0c91ed6e09ced4e3a867eefc7d4bdc87783350c46dbb9403f9c2f27bdc32f",
+      "configHash": "sha256:19cbeed98d43c3a6e86c34dc50ccf49f56835a38a9c57e2def1910916f425c83",
+      "outputHash": "sha256:41ee30ed860757229aab326e42420392ef2f94ae65b739b0e05de2363790b212"
     },
     ".pi/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
       "templateHash": "sha256:2488b46d3cd60c20898aae62486714568fe43d42052bd343faaa084883ef6066",
-      "configHash": "sha256:76e2a7e61b2932d50d835c16d461b757d56fc976cb7be610a5e582f7f5fd7f5b",
+      "configHash": "sha256:cf69e22d4ed55db6a112dc4473ee3762a9d4ed0d50518f191eef8d4f0c0559b7",
       "outputHash": "sha256:35290d31773ff959d6d12d9e1a8c7610f5b33b1c1a135fc78ec5302351f93176"
     },
     ".pi/skills/awf-retrospective/SKILL.md": {
       "templateId": "skills/retrospective/SKILL.md.tmpl",
       "templateHash": "sha256:1294eaca596d70e8dfbae963a9e0c177323d42bed80b8b6209608a9ec87b86e4",
-      "configHash": "sha256:ba0843d8507ace6b31a66e2e4a247848e9f66e99020a54ae67a6ad98fd816d08",
+      "configHash": "sha256:f029699674e154c6a8859413916553dde5c6d403b688de3dc0117dc7a7bafda2",
       "outputHash": "sha256:7c2419372a33b7c3aef37c719bcee7102da758c260fa9e2f0be96f72fb54d91f"
     },
     ".pi/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:85b3b2d68abf5931f02e2710521b7004e7f166e9d4e3b98ebaa4e19f1e03ba69",
-      "configHash": "sha256:dca7af401e749427800866c4d49a50246ef087dcd8f659856f4800f011aa29b7",
-      "outputHash": "sha256:7de23613ed0eba24a13db8a2cf8c5b70ea7c04c94e86b0390be51b521d416d8f"
+      "templateHash": "sha256:82d45328d4f8ac1baef3065261df23951843e22439b9d524f0530f1e8762d344",
+      "configHash": "sha256:bfd2192fbca37700021d0fd460bbf083b4b61983337a2d76e05cdf826992c1af",
+      "outputHash": "sha256:7aa102e52c32a8a0fb4d25cc397c65c41ca41b98a18695896d5fdf533af33f15"
     },
     ".pi/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
-      "templateHash": "sha256:27ea01ea7643e6531832c5f0c50ad5a774ef6141e6b12aec6ea2d48b1d5c2601",
-      "configHash": "sha256:6d44bf25b2b4d069d7e54f6ae17e1b195d94ea1acd1e878c6ccd093ba5c318fa",
-      "outputHash": "sha256:f56b4a1c879fa5acea1150c2d0ceced1c8a706117c5ee0975e6c15fb17e599f6"
+      "templateHash": "sha256:d4415d835ea765093ab274bd098fed9ce20a709b1fe379702bb813ff1de55cc0",
+      "configHash": "sha256:a00c22fb8a98e955eb6e8c4ce799501c27c9eba498eb492b96861ba6a388d1c2",
+      "outputHash": "sha256:38e98f42e8d0b7261996fffef585fb6c9d71f161cf400481c6113e5bf22885e4"
     },
     ".pi/skills/awf-reviewing-plan-resync/SKILL.md": {
       "templateId": "skills/reviewing-plan-resync/SKILL.md.tmpl",
-      "templateHash": "sha256:4f61ddd032988cc43912166f6e08f337d0e4d6c42fdf692492ce149dd5a72bc2",
-      "configHash": "sha256:d8259d25a54998ff5c70fc9de3e4e9d1825e04729f2a347ea2a675f2426174a0",
-      "outputHash": "sha256:b1d89be39f0920484bb445ccbd8ecea454f0a3b2dbffadb3b1393b9a2c22506f"
+      "templateHash": "sha256:ea0c842e777013cd819b23e075c5dc8ec5a44c59a07927fbbe95b4068ed27589",
+      "configHash": "sha256:0b25e409a0ad2916198368fec0b0c200b1101ac7add2a1ece322148e47e4304c",
+      "outputHash": "sha256:4e7e3d4f73f3058aa62a34e9510ddcc4dfb92c617221cf1608bf3b193a86dd52"
     },
     ".pi/skills/awf-reviewing-plan/SKILL.md": {
       "templateId": "skills/reviewing-plan/SKILL.md.tmpl",
-      "templateHash": "sha256:b2fdba879eed83846f9a7eba51c7fc9c5cc9b03b5708758e16ace17b2826fdbb",
-      "configHash": "sha256:dca7af401e749427800866c4d49a50246ef087dcd8f659856f4800f011aa29b7",
-      "outputHash": "sha256:be7382d821783124c9e5ab81635192fe9da16a37c03ca27165731db6814e5b38"
+      "templateHash": "sha256:938df766d794ad5b49397f97313e931e952ae21873ff632ee473038c3e063f42",
+      "configHash": "sha256:bfd2192fbca37700021d0fd460bbf083b4b61983337a2d76e05cdf826992c1af",
+      "outputHash": "sha256:eae218b1ee835902e7f283052b81dfdaf3070d62331dd8dc37620f582ca77dc3"
     },
     ".pi/skills/awf-subagent-driven-development/SKILL.md": {
       "templateId": "skills/subagent-driven-development/SKILL.md.tmpl",
-      "templateHash": "sha256:0ec67d749b8c2956048313d976587b692259643bb382a0b9e5c79927f8210c32",
-      "configHash": "sha256:866cbf87031266250cae9967520da095d50267e075566e6596e86dc47f109dfb",
-      "outputHash": "sha256:4a4c3ddf2f10524d00b33b9db866c1f0ec38ab96804ecf05abbc72110e65ddba"
+      "templateHash": "sha256:c394c2f2c1d7cc454a5606ee33fbc438c7cfc1fc07e4d9da6ed23b2a39661c5a",
+      "configHash": "sha256:03270275c0712ded31c19a099ac3976eb0140954d0b6d69b3152b61d255a3376",
+      "outputHash": "sha256:c8c00ad573746ea7d92058580544eff6972b9dae40266e29b9c1272a2c0be9c2"
     },
     ".pi/skills/awf-tdd/SKILL.md": {
       "templateId": "skills/tdd/SKILL.md.tmpl",
       "templateHash": "sha256:e1762589f1a8afbc418ee7c6d93f32adca8e412abf0ba141f7052d379934542c",
-      "configHash": "sha256:fdc0528afc5079b38519d3aed61312e515b30af38f46fc2548908528cbd91f8c",
+      "configHash": "sha256:af5d29006878d0955836a6135eda1ba6c7429603726a1b13604ccc6289d0bce6",
       "outputHash": "sha256:1fdfa173df7362f6fb42007b2a38091977860a89e69ff396560d4756a24dfd97"
     },
     ".pi/skills/awf-writing-plans/SKILL.md": {
       "templateId": "skills/writing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:5fc97210a869249e189a6f46978803f977d0ae8fcc09342c751fb8a49004e3d5",
-      "configHash": "sha256:9da69adbc4dc61176dbe35e162a6225ab422b0062c848d9546e8ca5f80ffbfab",
-      "outputHash": "sha256:a0d696059bf0db44edd7a5c09ebf27afbfbe9b04a949bc2b4a4527b6144dbf8d"
+      "templateHash": "sha256:9677db29fe0ca20222b21f6087dfbdede74c3e925f12c945f96e48e0e1c35465",
+      "configHash": "sha256:4e97d05059b886e6ed79a913c212b66ac50ffece8c8ab83b10d84fbda898474d",
+      "outputHash": "sha256:c3b3cbb95205fd1137de8b38e36a8f0a8581f004fdeeaa4c8f975d9b8de101d5"
     },
     ".pi/skills/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:b409e1ae497cf70834721d95e03bbe765e7951cf015dbd5cba81615e41726f7b",
-      "configHash": "sha256:457e9cb83ca23d40bd87d8ce914213f80589885f53132d987bfcd994265e8663",
+      "configHash": "sha256:0b5e977b9c330c940db79a8f0f97523812fa924a491639797a074cf3a7f35360",
       "outputHash": "sha256:32224f4cee802684719014d8117a3c94d3a1f6a1f0c72327b6bf02c3e3921499"
     },
     ".pi/skills/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:f456d03e8270cf887d942dda92bfad15ca48f4b628503f936c555f208f0ab302",
-      "configHash": "sha256:2581f28963c774907e3d59da663112297882f2682e41021b06067dd826714a3d",
+      "configHash": "sha256:a186a5e9186d2c3e24c21598499bb51845c49ea50bae9ac18915d3827288a8b1",
       "outputHash": "sha256:6413aab3053b6e44271e16428e439972e88c6388f2c104c92c773debcc5eb1a9"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:bb1dec7aa3cc3c16575f918d7f3a8420c5b79192981fba12560b3c6ebcb626ac",
-      "configHash": "sha256:1fbbe47c82b0212b7fc49604fb7e707ca9b4d8ec72c3e9c3931dbe8caa95fdad",
-      "outputHash": "sha256:a6c0b3a490e3173cbad9d9f30dc7d02728713d00a8bc1e81a1123cf3b70a9156"
+      "templateHash": "sha256:04559aeb8f7f2a4a60ec55e45fb7ca4a6fb60e009c6115bc5009110430c4a942",
+      "configHash": "sha256:7d300f2429384103a0c2403d64e972f58d8906621bc7bad08e000536189ea044",
+      "outputHash": "sha256:6ecdc26e662140c10f4495ad1395aba8a92632493382f61d9eccbfc72a7469da"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -287,8 +293,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:f96891f61ec43a0b7d4a7dca2f3049d5e78566dae4d1e11d5ab8ba0a9db79748",
-      "configHash": "sha256:2ef33f378ddf777ba1eb9a251317440da9b4054cff8cf5cbabc10fae33aa8150",
-      "outputHash": "sha256:5a412c642524aaebc412e2317062f1626fc7cdb5b5830179eb359ef15eb1ce6a"
+      "configHash": "sha256:6e91254871c94f3bb74f36d8a30ff86bfd75dd1f089203ca04658332e46f0bba",
+      "outputHash": "sha256:96e1669e966b4912945ba94fb0fd36cf2daac7195840f76453fb601553a5b16a"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -301,7 +307,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:b3b813712550c0801a62abbc268983bf23a1610ed039e4d34e0edf777315b767",
+      "outputHash": "sha256:535988a11aa59ea1b0392bb82d3326d6923b6ac536a52d9345aa526a3effda30",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -319,8 +325,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:d5cff357e12f4a8fc9bf84dd82a1f65e9f62ce1002a574d9edce76904fa43710",
-      "outputHash": "sha256:2ebf1155c8dfc7072d163705a5174da973d3260e65cbba4c6e900c76719e6074"
+      "configHash": "sha256:4ed4531691b431f4706a1c323aa6d156857d0acc8476caa0bc81f336ffbfc471",
+      "outputHash": "sha256:95e8d8072d5289cf1a8392906488e97a988c82d0d192582d78a119449a3cb2cf"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
@@ -353,14 +359,14 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:19dd95127ef42171d55707fb884d7eade985100c6b4980d660f8764cc171ba8e",
+      "outputHash": "sha256:23c88a8d3a9866e517004c2839f8d97cc0845dab3ade70dd8820a0be4a067204",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:24c80f6435c77897ffdd4a1816faf8b270be71eb757b7afc117450b7a1a1ec44",
+      "outputHash": "sha256:2cd5d9226e582bee71905f70204e1f7cfed6101b5d56701af84a2d3c8bb14735",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -390,20 +396,20 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:78176baf2610a8469999a03e5deee95f0716b8ccb14b8fd2d28de34c0ffcd636",
-      "configHash": "sha256:7da388b84f95f1a09ae28eec30f8061187cf90a08c801327e69771b4e2ae7415",
-      "outputHash": "sha256:9708f71d7e18a165e0d60d62e3a595583c117a83e320b7e25e495ae08af9a9ae"
+      "configHash": "sha256:c0a5720431a0f49b199447d407581239860072ca4bb4f50180af7aed9e27792e",
+      "outputHash": "sha256:9e9ab510d25497ba58fafba910336044f104314590fc086dcfdc614fd4d51c1f"
     },
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:11466190721412751fdc2eb76e748e775758b135a2f87782b26a0b0fab01dcb3",
-      "outputHash": "sha256:63a4c4ed901d44ff15399fe05e891f80790f4769df932d3c0dd47145b977a6dd"
+      "configHash": "sha256:810bbff5a7cb40c01833249fd0d0bbaa69202da0b77840515b9a913a27a29378",
+      "outputHash": "sha256:9f0e60ef04148914bc640a41feb7508038eb8f680d9a6781f74cb952e7bf3ec5"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:f9e4fd0b01ab248d45e0c51a281fb4181bed9c4af699edc97e00a428899bff03",
-      "configHash": "sha256:ae3c5655603a3e929a23fc93c60e2daac0d3ad76e2451136fee78a612e581d50",
-      "outputHash": "sha256:5fbf37501b6f3c97ced1b2190ad274d10ca6cfb15d1900c51fcee1987c9e8d2c"
+      "configHash": "sha256:0ae3fb997f5eda689b383cb75df06661386ad1f0c252cf2a57fc8a6a907e3977",
+      "outputHash": "sha256:c50e4e03767bc2fdc54e4ee9225a954a520fc719a4c8fe2f039151b0f1202a02"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -432,8 +438,8 @@
     "docs/topics/config/configuration.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:4fa0e03c78b1804f94378166d3093cb6819f6770726cbed36cc7e27db08f9443",
-      "outputHash": "sha256:26db4a702caaaf4f729e89424ae6db925761d7286cf4bcfc5066711847f621c1"
+      "configHash": "sha256:feffd0f1cf31924b6e22130603e8d7cc0dd4c0f4f2562db7c5ce3bf91067ea51",
+      "outputHash": "sha256:53575df8e5728630eb22a62bec9d7aed2229bdfaa551ec40a64e07e043dc04bc"
     },
     "docs/topics/config/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -468,14 +474,14 @@
     "docs/topics/rendering/adapter-outputs.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:84f020618b80011247d79fc9bbc4cc47bcbbeee8927b2b6885650168275b32dd",
-      "outputHash": "sha256:3637c181e285558c110f6b6836a76ce2463729000abf015f68f6d35a7b5e1b0d"
+      "configHash": "sha256:39c50334fc53f37b8c8ed2c096b7662bf1955b58d726370a6d029883737e3aca",
+      "outputHash": "sha256:b3549477300fc2629c03752af070558c86e9be4897666a88307df5c630b264e9"
     },
     "docs/topics/rendering/catalog-and-targets.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:0dec8a0230074dee3766c4accfddd7c0bab5efad1618a9df1339efc85aaa6fe1",
-      "outputHash": "sha256:4b855ec104aeab2109f4557712559d2a50566f747be52b3babd1ed743b57e982"
+      "configHash": "sha256:a17445c33635fb19bedddba7e15a3594a2951bfe28ce612300cb842fc960ee6f",
+      "outputHash": "sha256:44c31b3ace15266050ea1d84bc66ba4a413fcba3f6c7a2e586adb883ae1a919a"
     },
     "docs/topics/rendering/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -486,8 +492,8 @@
     "docs/topics/rendering/project-output-plan.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:6dd8fc772084773837659e4c18fd3f807d84b9fe0142143d49963da30fc6bf3a",
-      "outputHash": "sha256:ea6892429cb0643db12d889760058159e2e730324f2aaa2c1d7d44502a9d132e"
+      "configHash": "sha256:2a7fd0802dcb180fce63c1d28f5b169751f36b704bb97bab0294b719fedbf508",
+      "outputHash": "sha256:92f93a62876f91380cdeb403c8631948969e32bed5bcd7d8d9e774fa83195414"
     },
     "docs/topics/rendering/render-engine.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -498,8 +504,8 @@
     "docs/topics/rendering/templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:febc0fc663e228ae557ac2f846d5d208a6394b9d17c37dd99e5601bd39083f94",
-      "outputHash": "sha256:bb52937bde8537a716f0fe63ec3328b6a62e6efa6d0e4f80531fb898a3938b63"
+      "configHash": "sha256:dbcf11ec6c77a87f82b5bd75f76666523a843e2e2e8d58ba0e8b4f309cc10edd",
+      "outputHash": "sha256:5db533cffc1df995049e5fca81d39be694a0ec4545ed86f1a0af8da6f0e2d0cb"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -534,8 +540,8 @@
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:26414b268a60dc0ce21b3f4b00ce2f245f8cc682b06da9ff19fafc4e45e4db05",
-      "outputHash": "sha256:63e7f5e978f1a6ed20b3b285e5e93bda24c96c5e1ed83c11c686186ed48d160b"
+      "configHash": "sha256:abe1347ab3333c93bdefefadd0b5d4a98e90e55f5d879dc530ecdecfc2149df7",
+      "outputHash": "sha256:ec486f6db66b452f4d21d9243f6d2a5339f0a5524c9929f466c29808d68e541c"
     },
     "docs/topics/tooling/test-infrastructure.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -551,15 +557,15 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:052962a280b27d16db7999e221da0855eb8e15a177e0ee8eeaad60a5b44e5740",
+      "templateHash": "sha256:772e459f2e91c1bb5505ce4aa6e53ce342b1915415cf5eae8c66ceed2fdf1225",
       "configHash": "sha256:5ec11740f26c14787a82119ca21110d029ba7dc99689e5f86e1aa85096ef107b",
-      "outputHash": "sha256:4e5d85564967e0734b28315799f94dda2651d3e3bd4abdc06f81283be1e68629"
+      "outputHash": "sha256:2f580aeb62222c88249cdb35652db7c235ffb9c387fbbf9f421491315f5e85dd"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:28fff20c76ca60a07771e19ffb25b0fbe1331895a5c4078e4a2c35f0dae71915",
+      "templateHash": "sha256:b1e89c0dc819f45c9f3bfd44c5297883a63e013e5472b9c44d4f83aea1e9c853",
       "configHash": "sha256:8ebb484f1bda401730fb0bdce58286317f077350568a0ffcd636be9c4f9f3539",
-      "outputHash": "sha256:2f5233cab73275314197457e545256667a86867bb59c58caed1af8ec30238dc7"
+      "outputHash": "sha256:b6ae0d266f1978aa28b328ac3d1320ab697ec3a63150a2409cf8a4a8410782fc"
     }
   },
   "adrFormatV1From": 137,

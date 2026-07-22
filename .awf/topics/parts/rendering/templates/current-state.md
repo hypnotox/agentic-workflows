@@ -162,8 +162,21 @@ Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`
 
-Both rendered Pi extension files carry the ts-nocheck directive on the line immediately after the provenance banner, and the container test harness strips that exact directive from its ephemeral copy after the source copy and before running the TypeScript compiler.
+Every governed Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the container test harness deterministically strips that exact directive from every extension TypeScript file in its ephemeral copy after source copy and before running the TypeScript compiler.
 Origin: ADR-0126
+Revised-by: ADR-0145
+Backing: test
+
+### `invariant: pi-session-handoff-public-contract`
+
+The generated Pi handoff extension exposes exactly the closed memoryPath and bounded kickoff schema, confines canonical no-symlink paths to regular files below .awf/memory, requires a persisted TUI and an exclusive trustworthy tool batch, keeps one correlated pending request, queues its private command, and terminates the calling model turn.
+Origin: ADR-0145
+Backing: test
+
+### `invariant: pi-session-handoff-workflow`
+
+Pi-rendered checkpoint guidance automatically invokes handoff_session alone after the durable visible summary at phase and intermediate implementation checkpoints, while non-Pi targets retain the checkpoint and continue without naming the unsupported tool.
+Origin: ADR-0145
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`

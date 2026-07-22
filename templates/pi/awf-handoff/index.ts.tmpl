@@ -1,0 +1,175 @@
+// @ts-nocheck
+import { randomUUID } from "node:crypto";
+import { lstat, readFile } from "node:fs/promises";
+import * as nodePath from "node:path";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { getPackageDir, type ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { truncateToWidth } from "@earendil-works/pi-tui";
+import { Type } from "typebox";
+
+<!-- awf:include pi-minimum-runtime -->
+
+export interface HandoffStat { isSymbolicLink(): boolean; isFile(): boolean; isDirectory(): boolean; }
+export interface HandoffPathOps {
+  dirname(path: string): string; isAbsolute(path: string): boolean; normalize(path: string): string;
+  relative(from: string, to: string): string; resolve(...paths: string[]): string; sep: string;
+}
+export interface HandoffDependencies extends MinimumRuntimeDependencies {
+  extensionFile: string;
+  lstat(path: string): Promise<HandoffStat>;
+  path: HandoffPathOps;
+  randomUUID(): string;
+  setInterval(callback: () => void, milliseconds: number): unknown;
+  clearInterval(handle: unknown): void;
+  setTimeout(callback: () => void, milliseconds: number): unknown;
+  clearTimeout(handle: unknown): void;
+}
+
+function repositoryRoot(deps: HandoffDependencies): string {
+  return deps.path.resolve(deps.path.dirname(deps.extensionFile), "../../..");
+}
+
+export async function validateMemoryPath(memoryPath: string, deps: HandoffDependencies): Promise<string> {
+  const path = deps.path;
+  if (!memoryPath || path.isAbsolute(memoryPath) || memoryPath.includes("\\")) throw new Error("memoryPath must be a repository-relative path below .awf/memory/");
+  const components = memoryPath.split("/");
+  if (components.some((part) => !part || part === "." || part === "..") || path.normalize(memoryPath).split(path.sep).join("/") !== memoryPath)
+    throw new Error("memoryPath must be canonical and contain no traversal");
+  if (components.length < 3 || components[0] !== ".awf" || components[1] !== "memory")
+    throw new Error("memoryPath must name a file strictly below .awf/memory/");
+  const root = repositoryRoot(deps);
+  const resolved = path.resolve(root, memoryPath);
+  const relative = path.relative(root, resolved);
+  if (!relative || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) throw new Error("memoryPath resolves outside the repository");
+  let current = root;
+  for (let index = 0; index < components.length; index++) {
+    current = path.resolve(current, components[index]);
+    let stat: HandoffStat;
+    try { stat = await deps.lstat(current); }
+    catch (error) { throw new Error(`Cannot access ${current}: ${String(error)}`); }
+    if (stat.isSymbolicLink()) throw new Error(`memoryPath contains a symbolic link: ${current}`);
+    const final = index === components.length - 1;
+    if (!final && !stat.isDirectory()) throw new Error(`memoryPath component is not a directory: ${current}`);
+    if (final && !stat.isFile()) throw new Error(`memoryPath is not a regular file: ${current}`);
+  }
+  return memoryPath;
+}
+
+export function buildKickoffWrapper(memoryPath: string, kickoff: string): string {
+  return `Read ${memoryPath} first. Repository sources and current-state documentation are authoritative over the checkpoint. Then continue with this immediate action: ${kickoff}`;
+}
+
+function countdown(ctx: any, deps: HandoffDependencies): Promise<boolean> {
+  return ctx.ui.custom((tui: any, _theme: any, keybindings: any, done: (result: boolean) => void) => {
+    let seconds = 5;
+    let interval: unknown;
+    let timeout: unknown;
+    let finished = false;
+    let cached: { width: number; lines: string[] } | undefined;
+    const finish = (result: boolean) => {
+      if (finished) return;
+      finished = true;
+      if (interval !== undefined) deps.clearInterval(interval);
+      if (timeout !== undefined) deps.clearTimeout(timeout);
+      done(result);
+    };
+    const component = {
+      render(width: number) {
+        const boundedWidth = Math.max(1, width);
+        if (!cached || cached.width !== boundedWidth) cached = { width: boundedWidth, lines: [truncateToWidth(`Handoff to a fresh session in ${seconds}s - Esc/Ctrl+C to cancel`, boundedWidth)] };
+        return cached.lines;
+      },
+      invalidate() { cached = undefined; tui.requestRender(); },
+      handleInput(data: string) {
+        try { if (keybindings.matches(data, "tui.select.cancel")) finish(false); }
+        catch (error) { finish(false); throw error; }
+      },
+      dispose() {
+        if (interval !== undefined) deps.clearInterval(interval);
+        if (timeout !== undefined) deps.clearTimeout(timeout);
+      },
+    };
+    try {
+      interval = deps.setInterval(() => { seconds = Math.max(1, seconds - 1); component.invalidate(); }, 1000);
+      timeout = deps.setTimeout(() => finish(true), 5000);
+    } catch (error) { finish(false); throw error; }
+    return component;
+  });
+}
+
+export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): void {
+  if (!guardMinimumRuntime(pi, deps)) return;
+  let pending: { id: string; memoryPath: string; kickoff: string } | undefined;
+
+  pi.on("tool_call", (event, ctx) => {
+    const leaf = ctx.sessionManager.getLeafEntry();
+    const content = leaf?.type === "message" && leaf.message?.role === "assistant" && Array.isArray(leaf.message.content) ? leaf.message.content : [];
+    const calls = content.filter((item: any) => item?.type === "toolCall");
+    const correlated = calls.some((call: any) => call.id === event.toolCallId && call.name === event.toolName);
+    if (!correlated) return event.toolName === "handoff_session" ? { block: true, reason: "Cannot verify the current tool batch; retry handoff_session alone." } : undefined;
+    if (calls.length > 1 && calls.some((call: any) => call.name === "handoff_session"))
+      return { block: true, reason: "A batch containing handoff_session cannot contain siblings; retry handoff_session alone." };
+  });
+
+  pi.registerCommand("awf-handoff-continue", {
+    description: "Continue a validated awf fresh-session handoff.",
+    async handler(args, ctx) {
+      const request = pending;
+      if (!request || !args || args !== request.id) throw new Error("No matching pending handoff request");
+      try {
+        const proceed = await countdown(ctx, deps);
+        if (!proceed) { ctx.ui.notify("Fresh-session handoff canceled."); return; }
+        await validateMemoryPath(request.memoryPath, deps);
+        const oldSessionFile = ctx.sessionManager.getSessionFile();
+        if (!oldSessionFile) throw new Error("The active session is no longer persisted");
+        const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
+        await ctx.newSession({
+          parentSession: oldSessionFile,
+          async withSession(replacementCtx) {
+            try { await replacementCtx.sendUserMessage(wrapper); }
+            catch {
+              replacementCtx.ui.setEditorText(wrapper);
+              replacementCtx.ui.notify("Automatic kickoff failed; submit the prepared editor text.", "warning");
+            }
+          },
+        });
+      } finally { if (pending?.id === request.id) pending = undefined; }
+    },
+  });
+
+  pi.registerTool({
+    name: "handoff_session",
+    label: "Fresh Session Handoff",
+    description: "Continue from a durable awf checkpoint in a parent-linked fresh Pi TUI session.",
+    parameters: Type.Object({
+      memoryPath: Type.String(),
+      kickoff: Type.String({ maxLength: 1000 }),
+    }, { additionalProperties: false }),
+    async execute(_id, params, _signal, _onUpdate, ctx) {
+      if (ctx.mode !== "tui" || typeof (ctx.sessionManager as any).isPersisted !== "function" || !(ctx.sessionManager as any).isPersisted() || !ctx.sessionManager.getSessionFile())
+        throw new Error("handoff_session requires a compatible persisted interactive Pi TUI session");
+      if (!params.kickoff.trim()) throw new Error("kickoff must contain non-whitespace content");
+      if (params.kickoff.length > 1000) throw new Error("kickoff must be at most 1,000 UTF-16 code units");
+      if (pending) throw new Error("A handoff request is already pending");
+      await validateMemoryPath(params.memoryPath, deps);
+      const request = { id: deps.randomUUID(), memoryPath: params.memoryPath, kickoff: params.kickoff };
+      pending = request;
+      try { pi.queueCommand("awf-handoff-continue", request.id); }
+      catch (error) { if (pending?.id === request.id) pending = undefined; throw error; }
+      return { content: [{ type: "text" as const, text: "Fresh-session handoff queued." }], details: { memoryPath: request.memoryPath }, terminate: true };
+    },
+  });
+}
+
+export default async function (pi: ExtensionAPI): Promise<void> {
+  const packageJSON = JSON.parse(await readFile(join(getPackageDir(), "package.json"), "utf8")) as { version: string };
+  registerHandoff(pi, {
+    extensionFile: fileURLToPath(import.meta.url), packageVersion: packageJSON.version,
+    lstat, path: nodePath, randomUUID,
+    setInterval: (callback, milliseconds) => globalThis.setInterval(callback, milliseconds),
+    clearInterval: (handle) => globalThis.clearInterval(handle as any),
+    setTimeout: (callback, milliseconds) => globalThis.setTimeout(callback, milliseconds),
+    clearTimeout: (handle) => globalThis.clearTimeout(handle as any),
+  });
+}

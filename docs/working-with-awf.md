@@ -166,8 +166,8 @@ joins the document map and dead-link checks like any catalog doc.
 
 ### Pi workflow subagents
 
-The Pi target requires Pi 0.80.9 or newer and renders executable project-extension code that Pi
-loads only after project trust. It registers exactly four tools: `subagent_grounding` takes a
+The Pi target requires a compatible Pi 0.81.1 or newer build exposing `ExtensionAPI.queueCommand`
+and renders executable project-extension code that Pi loads only after project trust. It registers exactly four tools: `subagent_grounding` takes a
 required `task` for the workflow's premise and altitude check; `subagent_explore` requires
 `{task, breadth, detail}`, where breadth is `targeted`, `bounded`, or `broad` and independently
 selected detail is `paths`, `summary`, or `analysis`; `subagent_review` takes required `kind`
@@ -198,6 +198,8 @@ Intermediate activity remains in tool details; only the final report or bounded 
 enters parent model content.
 Brainstorming uses grounding, while brainstorming, debugging, and coupling audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
 extension files are `awf check` drift; run `awf sync` to repair them.
+
+Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime does not expose the readonly persisted-session query. After a durable checkpoint's visible summary, workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments; it rejects unsupported print, JSON, RPC, ephemeral, and in-memory sessions. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory file are preserved, cleanup is manual, and automatic kickoff uses only the replacement context. If kickoff submission fails, the exact wrapper remains in the new editor for manual submission. Validation and cancellation preserve the old active session, but teardown after replacement begins is not transactional and may terminate the runtime.
 
 ### Path globs and domain territories
 

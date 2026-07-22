@@ -146,7 +146,7 @@
   regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
   fallback).
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
-  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension. Pi-rendered workflow
+  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension, while `templates/pi/awf-handoff/` contains the separate main-session handoff state machine. The latter validates durable memory paths, queues a single-use private command after settlement, runs the cancellable countdown and revalidation, creates a parent-linked session, and submits kickoff only through the replacement context. Pi-rendered workflow
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
   language. Exploration requires task, breadth, and detail, which feed Pi's dynamic fixed prompt;
@@ -159,7 +159,7 @@
   report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
-  the dogfooded generated extension. Its repo-keyed persistent container snapshots current source
+  every dogfooded generated extension, including real pinned-runtime replacement lifecycle proofs. Its repo-keyed persistent container snapshots current source
   and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.

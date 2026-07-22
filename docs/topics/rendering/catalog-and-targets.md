@@ -3,7 +3,7 @@
 
 The compile-time catalog and the tool-agnostic target seam.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `internal/catalog/**`. Both domain and topic selectors must match. Current matched paths: `internal/catalog/batch_test.go`, `internal/catalog/catalog.go`, `internal/catalog/catalog_test.go`, `internal/catalog/graph.go`, `internal/catalog/graph_test.go`, `internal/catalog/standard.go`. Marker sites: `internal/catalog/catalog_test.go:18 [invariant] rendering/catalog-and-targets:catalog-go-single-source`, `internal/catalog/catalog_test.go:31 [invariant] rendering/catalog-and-targets:catalog-defaults-generic-denylist`, `internal/catalog/catalog_test.go:103 [invariant] rendering/catalog-and-targets:reviewing-skill-specs-paired`, `internal/catalog/catalog_test.go:154 [invariant] rendering/catalog-and-targets:no-single-marker-init-descriptor`, `internal/project/agent_test.go:144 [invariant] rendering/catalog-and-targets:structured-agent-encoding`, `internal/project/catalog_sweep_test.go:60 [invariant] rendering/catalog-and-targets:requires-skills-exact`, `internal/project/descriptor_parity_test.go:22 [invariant] rendering/catalog-and-targets:var-descriptor-parity`, `internal/project/descriptor_parity_test.go:94 [invariant] rendering/catalog-and-targets:var-descriptor-set-pinned`, `internal/project/docs_sections_test.go:126 [invariant] rendering/catalog-and-targets:adr-singleton-section-parity`, `internal/project/project_test.go:1240 [invariant] rendering/catalog-and-targets:enabled-set-closed`, `internal/project/scaffold_test.go:96 [invariant] rendering/catalog-and-targets:exploration-skill-closure`, `internal/project/skill_sections_test.go:51 [invariant] rendering/catalog-and-targets:skill-section-parity`, `internal/project/target_test.go:27 [invariant] rendering/catalog-and-targets:claude-md-bridge`, `internal/project/target_test.go:28 [invariant] rendering/catalog-and-targets:target-dialect-render`, `internal/project/target_test.go:72 [invariant] rendering/catalog-and-targets:pi-extension-target-render`, `internal/project/target_test.go:503 [invariant] rendering/catalog-and-targets:pi-child-tool-boundaries`, `internal/project/target_test.go:600 [invariant] rendering/catalog-and-targets:pi-child-process-safety`, `internal/project/target_test.go:610 [invariant] rendering/catalog-and-targets:pi-implementation-state-boundary`, `internal/project/target_test.go:620 [invariant] rendering/catalog-and-targets:pi-minimum-runtime`, `internal/project/unified_doc_model_test.go:14 [invariant] rendering/catalog-and-targets:unified-doc-model`, `internal/project/unified_doc_model_test.go:61 [invariant] rendering/catalog-and-targets:mandatory-doc-pool-exclusion`.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `internal/catalog/**`. Both domain and topic selectors must match. Current matched paths: `internal/catalog/batch_test.go`, `internal/catalog/catalog.go`, `internal/catalog/catalog_test.go`, `internal/catalog/graph.go`, `internal/catalog/graph_test.go`, `internal/catalog/standard.go`. Marker sites: `internal/catalog/catalog_test.go:18 [invariant] rendering/catalog-and-targets:catalog-go-single-source`, `internal/catalog/catalog_test.go:31 [invariant] rendering/catalog-and-targets:catalog-defaults-generic-denylist`, `internal/catalog/catalog_test.go:103 [invariant] rendering/catalog-and-targets:reviewing-skill-specs-paired`, `internal/catalog/catalog_test.go:154 [invariant] rendering/catalog-and-targets:no-single-marker-init-descriptor`, `internal/project/agent_test.go:144 [invariant] rendering/catalog-and-targets:structured-agent-encoding`, `internal/project/catalog_sweep_test.go:60 [invariant] rendering/catalog-and-targets:requires-skills-exact`, `internal/project/descriptor_parity_test.go:22 [invariant] rendering/catalog-and-targets:var-descriptor-parity`, `internal/project/descriptor_parity_test.go:94 [invariant] rendering/catalog-and-targets:var-descriptor-set-pinned`, `internal/project/docs_sections_test.go:126 [invariant] rendering/catalog-and-targets:adr-singleton-section-parity`, `internal/project/project_test.go:1278 [invariant] rendering/catalog-and-targets:enabled-set-closed`, `internal/project/scaffold_test.go:96 [invariant] rendering/catalog-and-targets:exploration-skill-closure`, `internal/project/skill_sections_test.go:51 [invariant] rendering/catalog-and-targets:skill-section-parity`, `internal/project/target_test.go:27 [invariant] rendering/catalog-and-targets:claude-md-bridge`, `internal/project/target_test.go:28 [invariant] rendering/catalog-and-targets:target-dialect-render`, `internal/project/target_test.go:72 [invariant] rendering/catalog-and-targets:pi-extension-target-render`, `internal/project/target_test.go:503 [invariant] rendering/catalog-and-targets:pi-child-tool-boundaries`, `internal/project/target_test.go:600 [invariant] rendering/catalog-and-targets:pi-child-process-safety`, `internal/project/target_test.go:610 [invariant] rendering/catalog-and-targets:pi-implementation-state-boundary`, `internal/project/target_test.go:620 [invariant] rendering/catalog-and-targets:pi-minimum-runtime`, `internal/project/target_test.go:647 [invariant] rendering/catalog-and-targets:pi-session-handoff-lifecycle`, `internal/project/unified_doc_model_test.go:14 [invariant] rendering/catalog-and-targets:unified-doc-model`, `internal/project/unified_doc_model_test.go:61 [invariant] rendering/catalog-and-targets:mandatory-doc-pool-exclusion`.
 
 The catalog package holds the compile-time descriptor set for every artifact kind and target adapter. The claims below capture the current catalog and target contracts.
 
@@ -73,8 +73,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling the Pi target renders exactly the two governed extension files with valid TypeScript provenance comments and target-sensitive config hashes; a target set without Pi renders neither file, and both files participate in ordinary check, sync, and manifest-cleanup semantics.
+Enabling the Pi target renders exactly three governed extension files with valid TypeScript provenance comments and target-sensitive config hashes: two under awf-subagents and the separate awf-handoff entrypoint. A target set without Pi renders none, and all participate in ordinary check, sync, and manifest-cleanup semantics.
 Origin: ADR-0123
+Revised-by: ADR-0145
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -85,16 +86,24 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-The generated Pi extension supports Pi 0.80.9 or newer and emits a single actionable compatibility error on an older runtime instead of registering its tools partially.
+Both generated Pi extension factories require Pi 0.81.1 or newer with `ExtensionAPI.queueCommand` and share one actionable compatibility notification on an older or API-incompatible runtime, failing before either factory registers commands, tools, or other functional hooks.
 Origin: ADR-0123
+Revised-by: ADR-0145
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-The containerized fixtures are the deterministic gate for the Pi extension, and release readiness additionally requires one real subagent child run on Pi 0.80.9 or newer.
+The containerized fixtures are the deterministic gate for every Pi extension, and release readiness additionally requires subagent and handoff smoke runs on the exact compatible fork for Pi 0.81.1 or a later build verified to expose the queued-command and persisted-session APIs, covering countdown cancellation, parent lineage, preserved old history, and kickoff continuation.
 Origin: ADR-0123
+Revised-by: ADR-0145
 Backing: unbacked
-Verify: Before a release, perform the documented real-Pi smoke check by running a subagent child against Pi 0.80.9 or newer and record any compatibility finding in the release work.
+Verify: Before a release, perform the documented real-Pi smoke on `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or on a later build after verifying `ExtensionAPI.queueCommand` and `ReadonlySessionManager.isPersisted`: run a subagent child, create a checkpoint, cancel one handoff, complete one handoff, verify parent lineage and preserved old history, and confirm the kickoff reads the exact memory path before continuing; record any compatibility finding in the release work.
+
+### `invariant: pi-session-handoff-lifecycle`
+
+The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory path, replaces with a persisted parent-linked session, submits kickoff only through the replacement context, retains an editor fallback, and states the truthful nontransactional teardown boundary without deleting sessions or memory.
+Origin: ADR-0145
+Backing: test
 
 ### `invariant: requires-skills-exact`
 

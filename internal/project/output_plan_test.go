@@ -47,9 +47,17 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
+		}
+	}
+	for _, n := range op.Nodes {
+		if n.Path == ".pi/extensions/awf-handoff/index.ts" {
+			templateInput := slices.Contains(n.ConsumedInputs, OutputInput{Path: "templates/pi/awf-handoff/index.ts.tmpl", Role: ArtifactTemplate})
+			if n.Reservation || strings.Join(n.Declarers, ",") != "pi" || !templateInput {
+				t.Errorf("handoff output-plan node = %#v", n)
+			}
 		}
 	}
 	files := op.writeFiles()
@@ -87,7 +95,10 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		}
 	}
 	if got := piTarget.targetTemplateData()["targetSubagentTools"]; got != true {
-		t.Fatalf("Pi capability projection = %#v", got)
+		t.Fatalf("Pi subagent capability projection = %#v", got)
+	}
+	if got := piTarget.targetTemplateData()["targetSessionHandoff"]; got != true {
+		t.Fatalf("Pi handoff capability projection = %#v", got)
 	}
 	if _, err := resolveTargets([]string{"nope"}); err == nil {
 		t.Fatal("unknown target resolved")

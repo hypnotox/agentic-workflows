@@ -24,7 +24,10 @@ const (
 // targets cannot inject arbitrary template data.
 type Capability string
 
-const CapabilitySubagentTools Capability = "subagent-tools"
+const (
+	CapabilitySubagentTools  Capability = "subagent-tools"
+	CapabilitySessionHandoff Capability = "session-handoff"
+)
 
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
 type TargetOutput struct {
@@ -38,7 +41,10 @@ type TargetOutput struct {
 
 // targetTemplateData is the complete target projection exposed to templates.
 func (t Target) targetTemplateData() map[string]any {
-	return map[string]any{"targetSubagentTools": t.hasCapability(CapabilitySubagentTools)}
+	return map[string]any{
+		"targetSubagentTools":  t.hasCapability(CapabilitySubagentTools),
+		"targetSessionHandoff": t.hasCapability(CapabilitySessionHandoff),
+	}
 }
 
 func (t Target) hasCapability(c Capability) bool {
@@ -63,7 +69,7 @@ func targetDescriptorProjection(t Target) string {
 }
 
 func (t Target) validate() error {
-	known := map[Capability]bool{CapabilitySubagentTools: true}
+	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true}
 	for _, c := range t.Capabilities {
 		if !known[c] {
 			return fmt.Errorf("target %q has unknown capability %q", t.Name, c)
@@ -183,8 +189,9 @@ var piTarget = Target{
 	AgentDir:     ".pi/skills",
 	AgentSuffix:  ".md",
 	AgentDialect: MarkdownAgentDialect,
-	Capabilities: []Capability{CapabilitySubagentTools},
+	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
 	Outputs: []TargetOutput{
+		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 	},

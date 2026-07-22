@@ -9,5 +9,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["tests/**/*.ts", "../../.pi/extensions/awf-subagents/*.ts"]
+  "include": ["tests/**/*.ts", "../../.pi/extensions/**/*.ts"]
 }
