@@ -76,7 +76,7 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:pi-extension-target-render
+// invariant: rendering/pi-runtime:pi-extension-target-render
 func TestPiTargetRendersExtension(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
@@ -734,7 +734,7 @@ func TestPiSubagentProgressBounds(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:pi-child-tool-boundaries
+// invariant: rendering/pi-runtime:pi-child-tool-boundaries
 func TestPiSubagentToolBoundaries(t *testing.T) {
 	index := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	runner := renderPiExtensionFile(t, "awf-subagents/runner.ts")
@@ -831,7 +831,7 @@ func TestPiImplementationBatchExclusivity(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:pi-child-process-safety
+// invariant: rendering/pi-runtime:pi-child-process-safety
 func TestPiSubagentProcessSafetyContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/runner.ts")
 	for _, want := range []string{"SIGTERM", "SIGKILL", "removeEventListener", "await deps.rm"} {
@@ -841,7 +841,7 @@ func TestPiSubagentProcessSafetyContract(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:pi-implementation-state-boundary
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary
 func TestPiImplementationStateBoundary(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{"implementationTail", "allowCommits=false", "changes were not reverted", "commitVerification"} {
@@ -851,7 +851,7 @@ func TestPiImplementationStateBoundary(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:pi-minimum-runtime
+// invariant: rendering/pi-runtime:pi-minimum-runtime
 func TestPiMinimumRuntimeContract(t *testing.T) {
 	provePiContractBehavior(t,
 		"subagent minimum runtime rejects unsupported version before registration",
@@ -925,7 +925,7 @@ func TestPiSessionHandoffPublicContract(t *testing.T) {
 	)
 }
 
-// invariant: rendering/catalog-and-targets:pi-session-handoff-lifecycle
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
 func TestPiSessionHandoffLifecycle(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	if got := strings.Count(content, "await validateMemoryPath("); got != 2 {

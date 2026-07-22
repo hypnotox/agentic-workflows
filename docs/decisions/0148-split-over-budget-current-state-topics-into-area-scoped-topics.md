@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Accepted
+status: Implementing
 date: 2026-07-22
 ---
 # ADR-0148: Split over-budget current-state topics into area-scoped topics
@@ -465,3 +465,5 @@ Mechanics that constrain the split, verified against the checker:
 
 - 2026-07-22: Proposed
 - 2026-07-22: Accepted; content-sha256: 1ec4a8afee213941a5a600a79737e8b331e9f61e07a22c014573e3fef5b05819
+- 2026-07-22: Implementing; content-sha256: 1ec4a8afee213941a5a600a79737e8b331e9f61e07a22c014573e3fef5b05819
+- 2026-07-22: Applied; state-sequence: 21; operations: remove `rendering/catalog-and-targets:pi-child-process-safety`, add `rendering/pi-runtime:pi-child-process-safety`, remove `rendering/catalog-and-targets:pi-child-tool-boundaries`, add `rendering/pi-runtime:pi-child-tool-boundaries`, remove `rendering/catalog-and-targets:pi-extension-target-render`, add `rendering/pi-runtime:pi-extension-target-render`, remove `rendering/catalog-and-targets:pi-implementation-state-boundary`, add `rendering/pi-runtime:pi-implementation-state-boundary`, remove `rendering/catalog-and-targets:pi-minimum-runtime`, add `rendering/pi-runtime:pi-minimum-runtime`, remove `rendering/catalog-and-targets:pi-real-runtime-smoke`, add `rendering/pi-runtime:pi-real-runtime-smoke`, remove `rendering/catalog-and-targets:pi-session-handoff-lifecycle`, add `rendering/pi-workflows:pi-session-handoff-lifecycle`
