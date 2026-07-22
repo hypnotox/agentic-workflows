@@ -64,7 +64,7 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:domain-doc-regenerated
+// invariant: rendering/doc-outputs:domain-doc-regenerated
 func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 	root := topicProject(t)
 	p, err := Open(root)

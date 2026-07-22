@@ -217,7 +217,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:target-prune-ancestors
+// invariant: rendering/sync-and-drift:target-prune-ancestors
 func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
 	p, err := Open(root)
@@ -894,7 +894,7 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:layout-derivation
+// invariant: rendering/doc-outputs:layout-derivation
 func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	p := &Project{Cfg: &config.Config{DocsDir: "documentation", Docs: []string{"architecture"}}}
 	l := p.layout()
@@ -902,11 +902,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 		l.IndexMd != "documentation/decisions/INDEX.md" || l.PlansDir != "documentation/plans" {
 		t.Errorf("layout = %+v", l)
 	}
-	// invariant: rendering/project-output-plan:domains-dir-given
+	// invariant: rendering/doc-outputs:domains-dir-given
 	if l.DomainsDir != "documentation/domains" {
 		t.Errorf("domainsDir = %q", l.DomainsDir)
 	}
-	// invariant: rendering/project-output-plan:layout-docs-enabled-only
+	// invariant: rendering/doc-outputs:layout-docs-enabled-only
 	wantDocs := map[string]string{
 		"architecture": "documentation/architecture.md",
 	}
@@ -988,8 +988,8 @@ func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:sync-always-writes-active-md
-// invariant: rendering/project-output-plan:check-active-md-stale
+// invariant: rendering/sync-and-drift:sync-always-writes-active-md
+// invariant: rendering/sync-and-drift:check-active-md-stale
 func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	adrDir := filepath.Join(root, "docs", "decisions")
@@ -1043,7 +1043,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:sync-always-writes-active-md
+// invariant: rendering/sync-and-drift:sync-always-writes-active-md
 func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	p, err := Open(root)
@@ -1065,7 +1065,7 @@ func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:check-invalid-frontmatter
+// invariant: rendering/sync-and-drift:check-invalid-frontmatter
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)
@@ -1104,9 +1104,9 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:adr-system-singletons-rendered
-// invariant: rendering/project-output-plan:plain-singleton-via-renderkind
-// invariant: rendering/project-output-plan:working-with-awf-mandatory
+// invariant: rendering/singletons-and-payloads:adr-system-singletons-rendered
+// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind
+// invariant: rendering/doc-outputs:working-with-awf-mandatory
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
@@ -1195,7 +1195,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 			got = &backups[i]
 		}
 	}
-	// invariant: rendering/project-output-plan:sync-backs-up-foreign
+	// invariant: rendering/sync-and-drift:sync-backs-up-foreign
 	if got == nil {
 		t.Fatalf("foreign INDEX.md not backed up; backups=%#v", backups)
 	}
@@ -1228,7 +1228,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// invariant: rendering/project-output-plan:regeneration-checked-attribute
+	// invariant: rendering/sync-and-drift:regeneration-checked-attribute
 	amd, err := p.generateIndexMD()
 	if err != nil {
 		t.Fatal(err)

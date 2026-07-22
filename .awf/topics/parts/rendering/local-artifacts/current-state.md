@@ -1,3 +1,63 @@
 Local skill, agent, and doc declarations: catalog cloning, shadow rejection, declaration requirements, and rendering from shared base templates.
 
 ## Claims
+
+### `invariant: local-catalog-clone`
+
+Opening a project synthesizes its declared local skill and agent entries into a clone of the standard catalog, never mutating the shared standard catalog's skills or agents maps.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-doc-catalog-clone`
+
+Local doc entries are synthesized into a clone of the standard catalog's Docs map, so opening a project never mutates the shared package-global catalog.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-doc-map-fields`
+
+A synthesized local doc entry always carries a non-empty Title and Desc, lifted from its declaring sidecar or defaulted to a name-derived title and a generic description when the sidecar omits them, so the document map lists it with a non-empty title and description.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-doc-no-shadow`
+
+A local, non-standard doc name equal to a name in the standard catalog's Docs is rejected rather than shadowing the standard doc.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-doc-renders-from-base`
+
+A rendered local doc resolves its template id through the effective catalog to the shared base doc template, not to a name-derived or empty path.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-doc-requires-declaration`
+
+An enabled doc name that is neither a standard catalog doc nor a local: true doc, and that has no declaring sidecar, is a hard error when the project is opened.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-frontmatter`
+
+A declared local skill or agent has its on-disk frontmatter validated by sync and check at its conventional output path: a missing or empty name or description fails exactly as a rendered target would, and an absent file for a declared local target is an error.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-no-shadow`
+
+A local (non-standard) skill or agent whose name equals a standard-catalog name is rejected.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-renders-from-base`
+
+A rendered local artifact resolves its template id to the shared base template for its kind rather than to a name-derived template path.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-requires-declaration`
+
+An enabled skill or agent name that is neither in the standard catalog nor declared with local: true by a sidecar is a hard error when the project is opened.
+Origin: ADR-0148
+Backing: test

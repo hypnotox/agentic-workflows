@@ -29,7 +29,7 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 
 // With the singleton enabled, exactly the three payloads render under
 // .awf/hooks/; absent or disabled, none do.
-// invariant: rendering/project-output-plan:hook-payloads-rendered
+// invariant: rendering/singletons-and-payloads:hook-payloads-rendered
 func TestHookPayloadsRendered(t *testing.T) {
 	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
 	for _, name := range hookNames {

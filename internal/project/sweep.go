@@ -145,7 +145,7 @@ var awfBakRE = regexp.MustCompile(`\.awf-bak(\.\d+)?$`)
 // their ADR-0011 detail strings byte-identical, sync-written backups get
 // the stale-backup detail (inv: awf-bak-flagged), local-managed artifacts'
 // parts their own, and everything else is unclaimed.
-// touches-state: rendering/project-output-plan:awf-bak-flagged - stale awf-bak backup classification; proof in sweep_test.go
+// touches-state: rendering/sync-and-drift:awf-bak-flagged - stale awf-bak backup classification; proof in sweep_test.go
 func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 	const localDetail = "convention parts for a local-managed artifact (local: true renders nothing)"
 	d := manifest.Drift{Path: rel, Kind: "orphaned"}

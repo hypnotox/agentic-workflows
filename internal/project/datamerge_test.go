@@ -70,7 +70,7 @@ func TestWithDefaultData(t *testing.T) {
 
 // A change to an artifact's catalog default data must change its lock
 // configHash, so awf check flags the artifact stale (ADR-0045).
-// invariant: rendering/project-output-plan:catalog-data-in-confighash
+// invariant: rendering/sync-and-drift:catalog-data-in-confighash
 func TestCatalogDataChangesConfigHash(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)

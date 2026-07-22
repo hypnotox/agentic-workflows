@@ -8,7 +8,7 @@ import (
 // TestMemoryGitignoreAlwaysOn asserts RenderAll unconditionally emits the
 // self-ignoring .awf/memory/.gitignore with a #-comment banner (ADR-0069) -
 // no config gate, unlike bootstrap/hooks.
-// invariant: rendering/project-output-plan:memory-gitignore-always-on
+// invariant: rendering/singletons-and-payloads:memory-gitignore-always-on
 func TestMemoryGitignoreAlwaysOn(t *testing.T) {
 	root := scaffold(t, "prefix: example\n")
 	p, err := Open(root)

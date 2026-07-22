@@ -142,7 +142,7 @@ func preserveMetricsRemoval(path string, resident bool) bool {
 
 // Uninstall removes awf's generated footprint while preserving dynamic resident
 // workflow metrics. It is a free function so a broken config does not block it.
-// touches-state: rendering/project-output-plan:uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
+// touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
 func Uninstall(root string) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
 	lock, found, err := manifest.LoadOptional(lockPath)

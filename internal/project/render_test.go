@@ -34,7 +34,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 // rendered output, while a mid-line occurrence and a fenced whole-line demo
 // render verbatim (ADR-0121 Decisions 1-3; the template-source seam is proven
 // by the render-layer unit tests plus the strip call in renderTarget).
-// invariant: rendering/project-output-plan:authoring-comment-stripped
+// invariant: rendering/inplace-and-placeholders:authoring-comment-stripped
 func TestAuthoringCommentStrippedFromPart(t *testing.T) {
 	out := syncedWorkflowDoc(t,
 		"<!-- awf:comment touches-state: demo/topic:demo-slug - an internal tag -->\n"+
@@ -101,7 +101,7 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 // qualified touches-state authoring comment, so any regression in the
 // renderTarget strip wiring (which the render-layer unit tests cannot see)
 // leaks it into every scaffolded project's rendered README.
-// touches-state: rendering/project-output-plan:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
+// touches-state: rendering/inplace-and-placeholders:authoring-comment-stripped - the renderTarget wiring, proven end-to-end over the real embedded template
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	const directive = "<!-- awf:comment touches-state: rendering/templates:local-doc-base-publication-safe - the embedded ADR README directive is source-only -->"
 	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")

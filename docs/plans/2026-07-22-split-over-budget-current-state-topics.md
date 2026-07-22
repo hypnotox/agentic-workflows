@@ -1,7 +1,7 @@
 ---
 date: 2026-07-22
 adrs: [148]
-status: Proposed
+status: Implemented
 ---
 # Plan: Split over-budget current-state topics
 
@@ -282,6 +282,9 @@ expected value on mismatch and is the authority (at authoring time the next five
 
 ## Notes
 
+- Implementation findings: none; all five batches applied exactly as written (sequences
+  21-25), every post-check empty on first run, and the shared scripts needed no
+  amendment.
 - Follow-ups deliberately out of scope (tracked in ADR-0148): advisory severity promotion
   via its own ADR with an adopter-facing `error`/`warn`/`off` config; per-area selector
   narrowing.

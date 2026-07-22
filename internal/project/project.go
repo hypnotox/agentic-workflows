@@ -223,7 +223,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
-				// touches-state: rendering/project-output-plan:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
+				// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in project_test.go
 				bak, err := p.BackupFile(f.Path)
 				if err != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
 					return nil, nil, nil, fmt.Errorf("back up %s: %w", f.Path, err)

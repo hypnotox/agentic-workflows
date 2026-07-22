@@ -1,3 +1,76 @@
 Generated documentation outputs: domain and topic documents, docs layout, pitfall data validation, unauthored-content stubs, and skill-reference hygiene.
 
 ## Claims
+
+### `invariant: domain-doc-regenerated`
+
+awf check regenerates each enabled domain document from current state and reports it stale when the on-disk copy diverges, so adding a topic to a domain without re-syncing is detected rather than passing silently.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: domains-dir-given`
+
+The layout's domains directory is computed as <docsDir>/domains.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: layout-derivation`
+
+The decisions directory, ADR index file, and plans directory are derived structurally from the configured docsDir rather than being independently configurable, so setting docsDir to documentation resolves them under documentation/decisions, documentation/decisions/INDEX.md, and documentation/plans.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: layout-docs-enabled-only`
+
+The layout docs map contains exactly the enabled doc names, each mapping to <docsDir>/<name>.md, and no other keys.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: pitfall-adr-link-resolved`
+
+check fails a pitfall entry whose related list names an ADR number with no matching file under docs/decisions/.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: pitfall-data-validated`
+
+check fails on unparseable docs/pitfalls.yaml data and on any entry with a non-string or empty or newline-bearing title, a missing or non-string or empty body, or a malformed domains, related, or tags field; the transform that renders docs/pitfalls.md is a hard error on the same malformed data.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: pitfall-domains-resolved`
+
+check fails a pitfall entry whose domains list names a domain not configured in the project; an entry with no domains is valid and never surfaces through context.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: skill-ref-dead-fails`
+
+awf check fails when a managed rendered artifact references a known skill name via its prefix-anchored token while that skill is not in the effective rendered set.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: skill-ref-unknown-ignored`
+
+A prefix-anchored token whose trailing word matches no catalog or local skill name produces no dead-skill-reference finding.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: stub-notes-path-keyed`
+
+The unauthored-content advisory reports one entry per rendered output path, so artifacts that share a template id, including per-target local artifacts and domain docs, each report independently.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: topic-output-complete`
+
+Every valid topic input has one rendered topic document and participates in its domain's generated topic index, output plan, lock manifest, drift check, and prune behaviour.
+Origin: ADR-0148
+Backing: unbacked
+Verify: Creating and removing a topic in a render fixture changes awf sync, awf check, the output plan, the lock, the index, and stale-output pruning consistently.
+
+### `invariant: working-with-awf-mandatory`
+
+The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds, and is suppressible only by a local: true sidecar.
+Origin: ADR-0148
+Backing: test

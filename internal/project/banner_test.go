@@ -29,7 +29,7 @@ func TestInjectBannerShebang(t *testing.T) {
 // TestInjectBannerPlain covers the unchanged non-frontmatter HTML-comment branch.
 func TestInjectBannerPlain(t *testing.T) {
 	got := injectBanner("# Title\n\nbody\n", "")
-	// invariant: rendering/project-output-plan:provenance-banner
+	// invariant: rendering/sync-and-drift:provenance-banner
 	if !strings.HasPrefix(got, "<!-- "+bannerText+" -->\n") {
 		t.Fatalf("plain content missing leading HTML banner: %q", got)
 	}

@@ -37,7 +37,7 @@ func driftOfKind(drift []manifest.Drift, kind string) []manifest.Drift {
 	return out
 }
 
-// invariant: rendering/project-output-plan:unused-var-drift
+// invariant: rendering/inplace-and-placeholders:unused-var-drift
 func TestCheckFlagsUnusedVar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars:\n  bogusVar: set-but-dead\nskills:\n  - tdd\nagents: []\n", nil)
 	hits := driftOfKind(checkDrift(t, root), "unused-var")
@@ -103,7 +103,7 @@ func TestBareReferenceEscapes(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:unused-data-drift
+// invariant: rendering/inplace-and-placeholders:unused-data-drift
 func TestCheckFlagsUnusedDataKey(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: One, location: a, kind: b}\n  dead: v\n",

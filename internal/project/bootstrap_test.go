@@ -9,7 +9,7 @@ import (
 // bootstrapFile renders a project with the given config and returns the
 // .awf/bootstrap.sh RenderedFile, or nil if none was produced. It also asserts
 // no output lands at the retired repo-root path (ADR-0047).
-// invariant: rendering/project-output-plan:bootstrap-config-tree-path
+// invariant: rendering/singletons-and-payloads:bootstrap-config-tree-path
 func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
@@ -172,7 +172,7 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 	return nil
 }
 
-// invariant: rendering/project-output-plan:bootstrap-two-files
+// invariant: rendering/singletons-and-payloads:bootstrap-two-files
 func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	root := scaffold(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	p, err := Open(root)

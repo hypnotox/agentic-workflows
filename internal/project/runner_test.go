@@ -174,7 +174,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 // The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
 // stays out of SingletonKinds() - the unified-doc-model completeness set is
 // unchanged by the runner's existence.
-// invariant: rendering/project-output-plan:singleton-kinds-complete
+// invariant: rendering/singletons-and-payloads:singleton-kinds-complete
 func TestRunnerNotASingletonKind(t *testing.T) {
 	if slices.Contains(catalog.SingletonKinds(), "runner") {
 		t.Error("the runner must not be a catalog SingletonKind (it is a dedicated render block)")

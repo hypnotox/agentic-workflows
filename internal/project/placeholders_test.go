@@ -112,7 +112,7 @@ func TestSubstitutePlaceholders(t *testing.T) {
 	}
 
 	// Error cases.
-	// invariant: rendering/project-output-plan:part-placeholder-sandboxed
+	// invariant: rendering/inplace-and-placeholders:part-placeholder-sandboxed
 	for _, tc := range []struct{ name, body, want string }{
 		{"unknown", "{{=awf:nope}}", "unknown or empty placeholder"},
 		{"two-unknown", "{{=awf:nope}} {{=awf:alsobad}}", "unknown or empty placeholder"},
@@ -135,7 +135,7 @@ func TestSubstitutePlaceholders(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:escaped-placeholder-literal
+// invariant: rendering/inplace-and-placeholders:escaped-placeholder-literal
 func TestPlaceholderEscape(t *testing.T) {
 	p := projectWithScopes(t)
 	reg, _ := p.placeholderRegistry()
@@ -166,7 +166,7 @@ func TestPlaceholderEscape(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:placeholder-value-token-free
+// invariant: rendering/inplace-and-placeholders:placeholder-value-token-free
 func TestPlaceholderValueTokenFree(t *testing.T) {
 	// A scope meaning carrying the token taints commitScopeTable's value.
 	root := scaffold(t, "prefix: awftest\nvars: {}\nskills: []\nagents: []\n"+

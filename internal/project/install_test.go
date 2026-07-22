@@ -39,7 +39,7 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	if _, err := os.Stat(victim); err != nil {
 		t.Errorf("escaping lock entry deleted the out-of-tree file: %v", err)
 	}
-	// invariant: rendering/project-output-plan:uninstall-removes-lock-entries
+	// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries
 	if _, err := os.Stat(filepath.Join(root, inTree)); !os.IsNotExist(err) {
 		t.Errorf("in-tree lock entry not removed (err = %v)", err)
 	}

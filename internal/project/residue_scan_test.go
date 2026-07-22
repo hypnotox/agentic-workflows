@@ -42,7 +42,7 @@ var identityLiterals = []string{"hypnotox", "agentic-workflows"}
 func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
 	// proof site contains the check that proves it (ADR-0131 Task 3.3).
-	// invariant: rendering/project-output-plan:residue-exemptions-pinned-three
+	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three
 	if len(identityExempt) != 3 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||

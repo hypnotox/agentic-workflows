@@ -69,7 +69,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:workflow-telemetry-governed-outputs-and-resident-data
+// invariant: rendering/singletons-and-payloads:workflow-telemetry-governed-outputs-and-resident-data
 func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", nil)
 	p, err := Open(root)

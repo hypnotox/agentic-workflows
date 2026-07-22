@@ -270,8 +270,8 @@ func (p *Project) planSections(kind, artifact string, declared []string, sec map
 // framing) are trimmed; the interior, including internal blank lines, is returned
 // verbatim. Returns ("", false) when `name`'s own pointer is absent (first render
 // or a deleted anchor), so the caller falls back to the template default.
-// touches-state: rendering/project-output-plan:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
-// touches-state: rendering/project-output-plan:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
+// touches-state: rendering/inplace-and-placeholders:in-place-readback - read-back between the section pointer and awf's next registered pointer; proof in inplace_test.go
+// touches-state: rendering/inplace-and-placeholders:in-place-spacing-owned - verbatim interior, trimmed framing; proof in inplace_test.go
 func readBackInPlaceBody(output, name string, declared []string, style render.CommentStyle) (string, bool) {
 	lines := strings.Split(output, "\n")
 	ownPrefixes := render.PointerLinePrefixes(name, style)
@@ -433,7 +433,7 @@ type renderKindSpec struct {
 
 // skillTID resolves a skill's template id: the shared base template for a
 // synthesized local entry, else the name-derived catalog path (ADR-0068).
-// touches-state: rendering/project-output-plan:local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
+// touches-state: rendering/local-artifacts:local-renders-from-base - skillTID resolves a local skill to the base template; proof in local_test.go
 func (p *Project) skillTID(n string) string {
 	if p.Cat.Skills[n].Base {
 		return baseSkillTID
@@ -453,7 +453,7 @@ func (p *Project) agentTID(n string) string {
 // doc template for a synthesized local doc (its DocEntry.TID), else the Standard
 // doc's own template. Reading p.Cat (not the package global) is what lets a
 // synthesized local doc render at all (ADR-0091).
-// touches-state: rendering/project-output-plan:local-doc-renders-from-base - docTID resolves a local doc to the base template; proof in local_test.go
+// touches-state: rendering/local-artifacts:local-doc-renders-from-base - docTID resolves a local doc to the base template; proof in local_test.go
 func (p *Project) docTID(n string) string {
 	return p.Cat.Docs[n].TID
 }
@@ -809,7 +809,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		Path: outPath, Content: content, TemplateID: tid,
 		// TemplateHash covers the post-expansion source so an edit to an included
 		// partial flags every including artifact stale (ADR-0052).
-		// touches-state: rendering/project-output-plan:authoring-comment-stripped - TemplateHash covers the pre-strip source, so a comment-only template edit reflags stale and self-settles
+		// touches-state: rendering/inplace-and-placeholders:authoring-comment-stripped - TemplateHash covers the pre-strip source, so a comment-only template edit reflags stale and self-settles
 		TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: cfgHash,
 		// A file carrying an in-place-editable section is drift-checked by
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).

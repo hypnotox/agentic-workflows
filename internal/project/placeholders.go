@@ -92,7 +92,7 @@ func (p *Project) commitScopeSentence() string {
 // substitutePlaceholders replaces every {{=awf:key}} in a raw convention-part
 // body with its registry value. An unknown or empty-valued key, or any residual
 // {{=awf token surviving substitution, is a hard error (ADR-0057).
-// touches-state: rendering/project-output-plan:part-placeholder-sandboxed - placeholder substitution + residual guard; proof in placeholders_test.go
+// touches-state: rendering/inplace-and-placeholders:part-placeholder-sandboxed - placeholder substitution + residual guard; proof in placeholders_test.go
 func (p *Project) substitutePlaceholders(partName, body string, reg map[string]string) (string, error) {
 	if !strings.Contains(body, "{{=") {
 		return body, nil

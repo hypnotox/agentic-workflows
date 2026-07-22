@@ -26,8 +26,8 @@ func TestCheckPitfallsDisabled(t *testing.T) {
 
 // An unknown domain yields pitfall-domain drift, a dangling related ADR yields
 // pitfall-adr-link drift, and an entry resolving both yields none.
-// invariant: rendering/project-output-plan:pitfall-domains-resolved
-// invariant: rendering/project-output-plan:pitfall-adr-link-resolved
+// invariant: rendering/doc-outputs:pitfall-domains-resolved
+// invariant: rendering/doc-outputs:pitfall-adr-link-resolved
 func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls:\n" +

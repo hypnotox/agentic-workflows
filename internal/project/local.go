@@ -45,7 +45,7 @@ func ScaffoldVarRefs(kind string) ([]string, error) {
 // outside the standard pool that carries a declaring sidecar. The package global
 // is never mutated: the maps are cloned before any insert, and existing values
 // are only read (ADR-0068).
-// touches-state: rendering/project-output-plan:local-catalog-clone - effectiveCatalog clones the skill/agent maps before any insert; proof in local_test.go
+// touches-state: rendering/local-artifacts:local-catalog-clone - effectiveCatalog clones the skill/agent maps before any insert; proof in local_test.go
 func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	// Start from a full struct copy so any Catalog field (present or future) is
 	// carried unchanged, then replace only the two maps synthesis mutates with
@@ -54,7 +54,7 @@ func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	clone := *catalog.Standard
 	clone.Skills = maps.Clone(catalog.Standard.Skills)
 	clone.Agents = maps.Clone(catalog.Standard.Agents)
-	// touches-state: rendering/project-output-plan:local-doc-catalog-clone - the Docs map is cloned before doc synthesis; proof in local_test.go
+	// touches-state: rendering/local-artifacts:local-doc-catalog-clone - the Docs map is cloned before doc synthesis; proof in local_test.go
 	clone.Docs = maps.Clone(catalog.Standard.Docs)
 	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
@@ -82,7 +82,7 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 	for _, name := range enabled {
 		if _, ok := pool[name]; ok {
 			// A standard entry is never overwritten by a local synthesis.
-			// touches-state: rendering/project-output-plan:local-no-shadow - a standard skill/agent is never overwritten by local synthesis; proof in local_test.go
+			// touches-state: rendering/local-artifacts:local-no-shadow - a standard skill/agent is never overwritten by local synthesis; proof in local_test.go
 			continue
 		}
 		has, err := p.Cfg.HasSidecar(kind, name)
@@ -92,7 +92,7 @@ func synthesizeLocals[T any](p *Project, pool map[string]T, enabled []string, ki
 		if !has {
 			// Undeclared non-standard name: leave it absent so validateAgainstCatalog
 			// rejects it as a typo.
-			// touches-state: rendering/project-output-plan:local-requires-declaration - an undeclared name is left absent to fail open; proof in local_test.go
+			// touches-state: rendering/local-artifacts:local-requires-declaration - an undeclared name is left absent to fail open; proof in local_test.go
 			continue
 		}
 		sc, err := p.Cfg.Sidecar(kind, name)
@@ -165,7 +165,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 	for _, name := range enabled {
 		if _, ok := pool[name]; ok {
 			// A standard doc is never overwritten by a local synthesis.
-			// touches-state: rendering/project-output-plan:local-doc-no-shadow - a standard doc is never overwritten by local synthesis; proof in local_test.go
+			// touches-state: rendering/local-artifacts:local-doc-no-shadow - a standard doc is never overwritten by local synthesis; proof in local_test.go
 			continue
 		}
 		has, err := p.Cfg.HasSidecar("docs", name)
@@ -174,7 +174,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 		}
 		if !has {
 			// Undeclared non-standard name: leave it absent so validateAgainstCatalog rejects it.
-			// touches-state: rendering/project-output-plan:local-doc-requires-declaration - an undeclared doc name is left absent to fail open; proof in local_test.go
+			// touches-state: rendering/local-artifacts:local-doc-requires-declaration - an undeclared doc name is left absent to fail open; proof in local_test.go
 			continue
 		}
 		sc, err := p.Cfg.Sidecar("docs", name)
@@ -195,7 +195,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 		if desc == "" {
 			desc = defaultLocalDocDesc
 		}
-		// touches-state: rendering/project-output-plan:local-doc-map-fields - synthesized DocEntry carries title/desc for the document map; proof in local_test.go
+		// touches-state: rendering/local-artifacts:local-doc-map-fields - synthesized DocEntry carries title/desc for the document map; proof in local_test.go
 		pool[name] = catalog.DocEntry{
 			Title:    title,
 			Desc:     desc,

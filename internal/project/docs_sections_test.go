@@ -57,7 +57,7 @@ func TestDocsSectionParity(t *testing.T) {
 // in the target's catalog-declared set is reported as drift, while a part at a
 // genuinely declared section is not. The valid section is read from the live
 // catalog so the test stays correct as the taxonomy evolves.
-// invariant: rendering/project-output-plan:section-orphan-flagged
+// invariant: rendering/inplace-and-placeholders:section-orphan-flagged
 func TestSectionOrphanDetection(t *testing.T) {
 	cat := catalog.Standard
 	valid := cat.Docs["architecture"].Sections[0]

@@ -28,7 +28,7 @@ func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []s
 
 // A managed rendered artifact referencing a known skill outside the effective
 // set fails check; enabling the skill clears it.
-// invariant: rendering/project-output-plan:skill-ref-dead-fails
+// invariant: rendering/doc-outputs:skill-ref-dead-fails
 func TestDeadSkillReferenceFlagged(t *testing.T) {
 	part := map[string]string{
 		"parts/agents-doc/workflow.md": "Use `example-tdd` for test-first work.\n",
@@ -44,7 +44,7 @@ func TestDeadSkillReferenceFlagged(t *testing.T) {
 
 // Prefix-adjacent tokens that name no known skill, and references inside
 // fenced code blocks, produce no findings.
-// invariant: rendering/project-output-plan:skill-ref-unknown-ignored
+// invariant: rendering/doc-outputs:skill-ref-unknown-ignored
 func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 	got := deadSkillRefs(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", map[string]string{
 		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nexample-tdd\n```\n",

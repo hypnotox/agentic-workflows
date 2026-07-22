@@ -13,7 +13,7 @@ import (
 // key is an open to-do and notes; an absent key is the deliberate, deleted
 // acknowledgement and stays silent - the standing-note regression this exists
 // for.
-// invariant: rendering/project-output-plan:absent-var-acknowledged
+// invariant: rendering/inplace-and-placeholders:absent-var-acknowledged
 func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 	for name, tc := range map[string]struct {
 		yaml     string
@@ -153,7 +153,7 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 			stub = append(stub, n)
 		}
 	}
-	// invariant: rendering/project-output-plan:stub-notes-path-keyed
+	// invariant: rendering/doc-outputs:stub-notes-path-keyed
 	if len(stub) != 2 {
 		t.Fatalf("expected one stub note per target path, got %d: %v", len(stub), notes)
 	}

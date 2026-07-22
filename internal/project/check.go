@@ -177,7 +177,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 // per output path: artifacts sharing a template id (local artifacts, the domain
 // docs) each report independently, and a multi-target project prints one line
 // per target path by design (ADR-0070).
-// touches-state: rendering/project-output-plan:stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
+// touches-state: rendering/doc-outputs:stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
 func stubNotes(files []RenderedFile) []string {
 	var notes []string
 	for _, f := range files {
@@ -486,7 +486,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 				if rf.TemplateID == "" {
 					drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf sync"})
 				} else {
-					// touches-state: rendering/project-output-plan:in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
+					// touches-state: rendering/inplace-and-placeholders:in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
 					drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
 				}
 			}

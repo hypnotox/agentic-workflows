@@ -16,7 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-// invariant: rendering/project-output-plan:managed-output-attribution
+// invariant: rendering/sync-and-drift:managed-output-attribution
 func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	decls := []OutputDeclaration{{Path: "docs/out.md", TemplateID: "docs/out.md.tmpl", Declarers: []string{"out"}, Inputs: []OutputInput{{Path: ".awf/docs/parts/out/content.md", Role: ArtifactConventionPart}}}}
 	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))

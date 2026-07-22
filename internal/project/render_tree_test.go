@@ -118,7 +118,7 @@ func TestSidecarAbsentRendersDefault(t *testing.T) {
 	}
 }
 
-// invariant: rendering/project-output-plan:local-frontmatter
+// invariant: rendering/local-artifacts:local-frontmatter
 func TestLocalFrontmatterChecked(t *testing.T) {
 	cfg := "prefix: example\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
