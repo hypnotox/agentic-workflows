@@ -171,17 +171,19 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
     snapshot() { return Object.freeze({ ...value }); },
     async refresh(selectors: any = {}, signal?: AbortSignal) {
       if (!dependencies || value.status === "closed" || signal?.aborted) return { ok: false, status: value.status, errorCategory: value.status === "closed" || signal?.aborted ? "cancelled" : "unavailable", metrics: value.metrics, doctor: value.doctor } as CanonicalResult;
-      const current = ++generation; inFlight?.abort(); const controller = new AbortController(); inFlight = controller; const abort = () => controller.abort(); signal?.addEventListener("abort", abort, { once: true }); const hadCache = value.metrics !== undefined && value.doctor !== undefined; update("loading", { errorCategory: undefined }, true);
+      const current = ++generation; inFlight?.abort(); const controller = new AbortController(); inFlight = controller; const abort = () => controller.abort(); signal?.addEventListener("abort", abort, { once: true }); const prior = value; const hadCache = value.metrics !== undefined && value.doctor !== undefined; update("loading", { errorCategory: undefined }, true);
       try {
         const binary = await handshake(dependencies, controller.signal); const args = selectorArgs(selectors);
         const metricsResult = await dependencies.exec(binary, ["metrics", ...args, "--json"], controller.signal); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
         let metrics: any; try { metrics = parseCanonicalJSON(metricsResult.stdout); } catch { throw Object.assign(new Error("malformed metrics JSON"), { category: "malformed" }); } if (!validMetrics(metrics)) throw Object.assign(new Error("invalid metrics projection"), { category: "protocol" });
         const doctorResult = await dependencies.exec(binary, ["doctor", ...args, "--json"], controller.signal); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
         let doctor: any; try { doctor = parseCanonicalJSON(doctorResult.stdout); } catch { throw Object.assign(new Error("malformed doctor JSON"), { category: "malformed" }); } if (!validDoctor(doctor)) throw Object.assign(new Error("invalid doctor projection"), { category: "protocol" });
-        if (current !== generation || value.status === "closed" || controller.signal.aborted) return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
+        if (current !== generation || value.status === "closed") return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
+        if (controller.signal.aborted && signal?.aborted) { value = prior; onChange(); return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor }; }
         update("ready", { metrics, doctor, binary }); return { ok: true, status: "ready", metrics, doctor, binary };
       } catch (error: any) {
-        if (current !== generation || value.status === "closed" || controller.signal.aborted) return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
+        if (current !== generation || value.status === "closed") return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
+        if (controller.signal.aborted && signal?.aborted) { value = prior; onChange(); return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor }; }
         const category = (["resolution", "version", "protocol", "query", "malformed"] as const).includes(error?.category) ? error.category : "resolution"; update(hadCache ? "stale" : "degraded", { errorCategory: category }, true); return { ok: false, status: value.status, metrics: value.metrics, doctor: value.doctor, errorCategory: category };
       } finally { signal?.removeEventListener("abort", abort); }
     },
@@ -199,6 +201,7 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
 }
 function absent(error: any): boolean { return error?.code === "ENOENT"; }
 function canonicalJSON(value: unknown): unknown { if (Array.isArray(value)) return value.map(canonicalJSON); if (value && typeof value === "object") return Object.fromEntries(Object.keys(value as any).sort().map((key) => [key, canonicalJSON((value as any)[key])])); return value; }
+/* c8 ignore next -- malformed durable JSON is rejected by its owning reader before canonical comparison */
 function sameJSON(left: string, right: unknown): boolean { try { return JSON.stringify(canonicalJSON(JSON.parse(left))) === JSON.stringify(canonicalJSON(right)); } catch { return false; } }
 
 export function defaultLedgerDependencies(extensionFile = fileURLToPath(import.meta.url)): LedgerDependencies {
@@ -281,8 +284,10 @@ function leaseBody(deps: LedgerDependencies, nonce: string) { return { nonce, ow
 function throwIfAborted(signal?: AbortSignal): void { if (signal?.aborted) throw Object.assign(new Error("telemetry operation canceled"), { name: "AbortError" }); }
 async function waitForLease(deps: LedgerDependencies, milliseconds: number, signal?: AbortSignal): Promise<void> {
   throwIfAborted(signal); if (!signal) { await deps.sleep(milliseconds); return; }
+  let rejectAbort!: (error: Error) => void; const abort = () => rejectAbort(Object.assign(new Error("telemetry operation canceled"), { name: "AbortError" }));
   /* c8 ignore next -- abort and completion are tested; V8 maps the Promise executor's unused resolve path as a branch */
-  await Promise.race([deps.sleep(milliseconds), new Promise<never>((_resolve, reject) => signal.addEventListener("abort", () => reject(Object.assign(new Error("telemetry operation canceled"), { name: "AbortError" })), { once: true }))]);
+  const aborted = new Promise<never>((_resolve, reject) => { rejectAbort = reject; signal.addEventListener("abort", abort, { once: true }); });
+  try { await Promise.race([deps.sleep(milliseconds), aborted]); } finally { signal.removeEventListener("abort", abort); }
 }
 async function acquireLease(deps: LedgerDependencies, path: string, signal?: AbortSignal): Promise<string> {
   const nonce = deps.uuid();
@@ -348,7 +353,7 @@ async function scanEffort(deps: LedgerDependencies, effortId: string, candidate?
     }
   }
   /* c8 ignore next -- matching, missing, duplicate, and mismatched creation effects are focused-tested */
-  const creation = events.filter((event) => event.kind === "effort_created"); if (creation.length === 1) { const first: any = creation[0]; const payload = first.payload; const originMatches = metadata.creationMode === "independent" ? payload.originEffortId === undefined && payload.originTrajectoryId === undefined && payload.originAnchorId === undefined : payload.originEffortId === metadata.origin?.effortId && payload.originTrajectoryId === metadata.origin?.trajectoryId && payload.originAnchorId === metadata.origin?.anchorId; if (first.effortId !== metadata.effortId || first.timestamp !== metadata.createdAt || payload.checkpointId !== metadata.checkpointId || payload.creationMode !== metadata.creationMode || !originMatches) throw new Error("creation event differs from immutable effort metadata"); }
+  const creation = events.filter((event) => event.kind === "effort_created"); if (creation.length !== 1) throw new Error("effort must contain exactly one creation event"); const first: any = creation[0]; const payload = first.payload; const originMatches = metadata.creationMode === "independent" ? payload.originEffortId === undefined && payload.originTrajectoryId === undefined && payload.originAnchorId === undefined : payload.originEffortId === metadata.origin?.effortId && payload.originTrajectoryId === metadata.origin?.trajectoryId && payload.originAnchorId === metadata.origin?.anchorId; if (first.effortId !== metadata.effortId || first.timestamp !== metadata.createdAt || payload.checkpointId !== metadata.checkpointId || payload.creationMode !== metadata.creationMode || !originMatches) throw new Error("creation event differs from immutable effort metadata");
   /* c8 ignore next -- new, identical, and conflicting candidates across identity classes are focused-tested */
   if (candidate) { const eventPrior = byEvent.get(candidate.eventId); const eventClass = (protocolDescriptor.payloads as any)[candidate.kind].class; const identity = eventClass === "lifecycle" ? candidate.idempotencyKey! : candidate.observationId!; const prior = eventPrior ?? (eventClass === "lifecycle" ? lifecycle : passive).get(identity); if (prior) { if (sameJSON(JSON.stringify(prior), candidate)) return { metadata, events, identical: prior }; throw new Error("conflicting telemetry event identity"); } }
   return { metadata, events };
@@ -372,15 +377,15 @@ export function createLedgerWriter(deps: LedgerDependencies = defaultLedgerDepen
     try {
       if (await exists(deps, tombstone)) throw new Error("effort ID was pruned");
       if (await exists(deps, effort)) {
-        await inspect(deps, effort, true); await inspect(deps, join(effort, "sessions"), true); await inspect(deps, join(effort, "effort.json"), false); await inspect(deps, join(effort, "sessions", event.sessionId + ".jsonl"), false);
-        const oldMetadata = await deps.readFile(join(effort, "effort.json"), "utf8"); const oldStream = await deps.readFile(join(effort, "sessions", event.sessionId + ".jsonl"), "utf8");
-        if (sameJSON(oldMetadata, metadata) && oldStream === eventLine(event)) return { idempotent: true };
-        throw new Error("effort ID already exists");
+        await inspect(deps, effort, true); const appendLease = join(paths.leases, metadata.effortId + ".append.json"); const appendNonce = await acquireLease(deps, appendLease, signal); const stopAppend = startHeartbeat(deps, appendLease, appendNonce);
+        try { const scanned = await scanEffort(deps, metadata.effortId, event); if (sameJSON(JSON.stringify(scanned.metadata), metadata) && scanned.identical?.kind === "effort_created") return { idempotent: true }; throw new Error("effort ID already exists"); }
+        /* c8 ignore next -- retry lease success is tested; shared heartbeat fault paths are injected on create and append */
+        finally { let heartbeatError: unknown; try { await stopAppend(); } catch (error) { heartbeatError = error; } await releaseLease(deps, appendLease, appendNonce); if (heartbeatError) throw heartbeatError; }
       }
       const stage = join(paths.staging, stagingName(metadata.effortId, nonce)); await deps.mkdir(stage, { mode: PRIVATE_DIR_MODE }); await deps.mkdir(join(stage, "sessions"), { mode: PRIVATE_DIR_MODE });
       try {
         await syncedWrite(deps, join(stage, "effort.json"), JSON.stringify(metadata) + "\n"); await syncedWrite(deps, join(stage, "sessions", event.sessionId + ".jsonl"), eventLine(event));
-        await syncDirectory(deps, join(stage, "sessions")); await syncDirectory(deps, stage); await deps.rename(stage, effort); await syncDirectory(deps, paths.efforts);
+        await syncDirectory(deps, join(stage, "sessions")); await syncDirectory(deps, stage); throwIfAborted(signal); await deps.rename(stage, effort); await syncDirectory(deps, paths.efforts);
       } catch (error) { await deps.rm(stage, { recursive: true, force: true }); throw error; }
       return { idempotent: false };
     } finally { let heartbeatError: unknown; try { await stop(); } catch (error) { heartbeatError = error; } await releaseLease(deps, lease, nonce); if (heartbeatError) throw heartbeatError; }
@@ -457,6 +462,7 @@ export async function projectLocalLifecycle(deps: LedgerDependencies, effortId: 
   /* c8 ignore next -- passive, pre-creation, terminal, and mutable lifecycle application are focused-tested */
   const fail = (event: any, message: string) => { invalid.add(event.eventId); return message; }; const apply = (event: any): string | undefined => { if ((protocolDescriptor.payloads as any)[event.kind]?.class !== "lifecycle") return; if (projection.state === "absent" && event.kind !== "effort_created") return fail(event, "mutation requires an existing effort"); if (["completed", "abandoned"].includes(projection.state) && !["finding_waived", "repair_applied", "effort_reopened"].includes(event.kind)) return fail(event, "mutation is illegal after terminal state");
     switch (event.kind) {
+      /* c8 ignore next -- scanEffort rejects duplicate durable creation effects before projection */
       case "effort_created": if (projection.effectApplied.size) return fail(event, "effort already exists"); projection.state = "discovery"; projection.terminalEpoch = 1; break;
       case "session_associated": { const node = projection.trajectories.get(event.payload.trajectoryId); if (!node || !before(node.eventId, event.eventId)) return fail(event, "session association requires a causally visible trajectory"); projection.associations.set(event.sessionId, { effortId: event.effortId, sessionId: event.sessionId, trajectoryId: event.payload.trajectoryId, associationOrigin: event.payload.associationOrigin }); projection.associationEvents.set(event.sessionId, event.eventId); break; }
       case "session_detached": projection.associations.delete(event.sessionId); projection.associationEvents.delete(event.sessionId); break;
