@@ -22,7 +22,7 @@ type NavigationModel struct {
 }
 
 func BuildTopicModel(t Topic, domainPaths []string, markers MarkerIndex, currentPaths []string) TopicRenderModel {
-	return TopicRenderModel{Title: t.Metadata.Title, Summary: t.Metadata.Summary, Applicability: applicabilitySummary(ApplicabilityForTopic(t, domainPaths, markers, currentPaths)), Part: t.Part}
+	return TopicRenderModel{Title: t.Metadata.Title, Summary: t.Metadata.Summary, Applicability: applicabilitySummary(t.ID.String(), ApplicabilityForTopic(t, domainPaths, markers, currentPaths)), Part: t.Part}
 }
 func BuildIndexModel(domain string, topics []Topic) IndexRenderModel {
 	items := topicItems(topics, "")
@@ -47,16 +47,25 @@ func topicItems(topics []Topic, prefix string) []TopicListItem {
 	})
 	return items
 }
-func applicabilitySummary(a TopicApplicability) string {
-	markers := make([]string, 0, len(a.MarkerSites))
-	for _, s := range a.MarkerSites {
-		markers = append(markers, fmt.Sprintf("%s:%d [%s] %s", s.Path, s.Line, s.Kind, s.ClaimID))
-	}
-	evidence := fmt.Sprintf("Current matched paths: `%s`. Marker sites: `%s`.", strings.Join(a.MatchedPaths, "`, `"), strings.Join(markers, "`, `"))
+
+// applicabilitySummary renders the selectors-only applicability paragraph: the
+// concrete matched paths and marker sites stay out of committed docs and live
+// in `awf topic <id> --coverage` (ADR-0147).
+func applicabilitySummary(id string, a TopicApplicability) string {
+	drilldown := fmt.Sprintf("Run `awf topic %s --coverage` for current matched paths and marker sites.", id)
 	if a.DeclaredGlobal {
-		return fmt.Sprintf("Global topic within owning domain selectors `%s`. %s", strings.Join(a.DomainPaths, "`, `"), evidence)
+		return fmt.Sprintf("Global topic within owning domain selectors %s. %s", selectorList(a.DomainPaths), drilldown)
 	}
-	return fmt.Sprintf("Owning domain selectors: `%s`. Topic selectors: `%s`. Both domain and topic selectors must match. %s", strings.Join(a.DomainPaths, "`, `"), strings.Join(a.TopicPaths, "`, `"), evidence)
+	return fmt.Sprintf("Owning domain selectors: %s. Topic selectors: %s. Both domain and topic selectors must match. %s", selectorList(a.DomainPaths), selectorList(a.TopicPaths), drilldown)
+}
+
+// selectorList renders a backticked selector list, degrading to the word none
+// when the list is empty so the paragraph stays coherent prose.
+func selectorList(globs []string) string {
+	if len(globs) == 0 {
+		return "none"
+	}
+	return "`" + strings.Join(globs, "`, `") + "`"
 }
 
 func RenderTopic(model TopicRenderModel) (string, error) {

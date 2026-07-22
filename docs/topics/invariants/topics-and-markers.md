@@ -3,7 +3,7 @@
 
 How topic inputs, claims, and their relevance and proof markers are parsed and resolved.
 
-**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/topic/**`. Both domain and topic selectors must match. Current matched paths: `internal/topic/corpus.go`, `internal/topic/corpus_test.go`, `internal/topic/coverage.go`, `internal/topic/coverage_test.go`, `internal/topic/markers.go`, `internal/topic/markers_test.go`, `internal/topic/query.go`, `internal/topic/query_test.go`, `internal/topic/render.go`, `internal/topic/render_test.go`, `internal/topic/scaffold.go`, `internal/topic/scaffold_test.go`, `internal/topic/topic.go`, `internal/topic/topic_test.go`, `internal/topic/tree.go`, `internal/topic/tree_test.go`. Marker sites: `internal/topic/markers_test.go:23 [invariant] invariants/topics-and-markers:invariants-marker-whitespace`, `internal/topic/markers_test.go:24 [invariant] invariants/topics-and-markers:invariants-multilang-scan`, `internal/topic/markers_test.go:25 [invariant] invariants/topics-and-markers:touches-marker-advisory`, `internal/topic/markers_test.go:97 [invariant] invariants/topics-and-markers:proof-marker-test-scoped`, `internal/topic/markers_test.go:128 [invariant] invariants/topics-and-markers:backed-requires-proof`, `internal/topic/markers_test.go:129 [invariant] invariants/topics-and-markers:invariants-three-state`, `internal/topic/markers_test.go:130 [invariant] invariants/topics-and-markers:invariants-unbacked-detected`, `internal/topic/markers_test.go:131 [invariant] invariants/topics-and-markers:unbacked-refuses-proof`, `internal/topic/markers_test.go:153 [invariant] invariants/topics-and-markers:invariant-marker-close-token`, `internal/topic/markers_test.go:154 [invariant] invariants/topics-and-markers:invariants-marker-literal`, `internal/topic/topic_test.go:92 [invariant] invariants/topics-and-markers:invariants-duplicate-slug`, `internal/topic/topic_test.go:93 [invariant] invariants/topics-and-markers:unbacked-requires-verify-note`.
+**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/topic/**`. Both domain and topic selectors must match. Run `awf topic invariants/topics-and-markers --coverage` for current matched paths and marker sites.
 
 The topic package parses topic metadata and claim inputs, builds the claim corpus, and resolves relevance, touches, and proof markers. The claims below capture the current topic and marker contracts.
 
@@ -114,4 +114,10 @@ Backing: test
 
 Parsing a claim declared with unbacked backing fails when it carries no Verify note.
 Origin: ADR-0105
+Backing: test
+
+### `invariant: rendered-applicability-selectors-only`
+
+A rendered topic document's applicability paragraph carries only the owning-domain selectors, the topic selectors, the both-must-match rule (or the global-topic variant), and a drilldown to `awf topic <id> --coverage`; it never embeds current matched paths or marker sites, and an empty selector list degrades to coherent prose.
+Origin: ADR-0147
 Backing: test

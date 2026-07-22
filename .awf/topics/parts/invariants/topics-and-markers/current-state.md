@@ -108,3 +108,9 @@ Backing: test
 Parsing a claim declared with unbacked backing fails when it carries no Verify note.
 Origin: ADR-0105
 Backing: test
+
+### `invariant: rendered-applicability-selectors-only`
+
+A rendered topic document's applicability paragraph carries only the owning-domain selectors, the topic selectors, the both-must-match rule (or the global-topic variant), and a drilldown to `awf topic <id> --coverage`; it never embeds current matched paths or marker sites, and an empty selector list degrades to coherent prose.
+Origin: ADR-0147
+Backing: test

@@ -44,6 +44,34 @@ func TestRenderModelsAndTemplates(t *testing.T) {
 		t.Fatal(model.Applicability)
 	}
 }
+
+// TestApplicabilitySummarySelectorsOnly proves the rendered applicability
+// paragraph carries only selectors, the both-must-match rule (or the global
+// variant), and the coverage drilldown: never the matched-path census or marker
+// sites, with an empty selector list degrading to coherent prose.
+// invariant: invariants/topics-and-markers:rendered-applicability-selectors-only
+func TestApplicabilitySummarySelectorsOnly(t *testing.T) {
+	scoped := Topic{ID: TopicID{"d", "z"}, Metadata: Metadata{Title: "Beta", Summary: "Second.", Paths: []string{"x/**"}}}
+	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/z:claim": {{Path: "x/pkg/a.go", Line: 3, Kind: ProofMarker, ClaimID: "d/z:claim"}}}}
+	model := BuildTopicModel(scoped, []string{"x/pkg/**"}, markers, []string{"x/pkg/a.go"})
+	if !strings.Contains(model.Applicability, "Owning domain selectors: `x/pkg/**`.") ||
+		!strings.Contains(model.Applicability, "Topic selectors: `x/**`.") ||
+		!strings.Contains(model.Applicability, "Both domain and topic selectors must match.") ||
+		!strings.Contains(model.Applicability, "Run `awf topic d/z --coverage` for current matched paths and marker sites.") {
+		t.Fatalf("selectors-only form missing: %s", model.Applicability)
+	}
+	if strings.Contains(model.Applicability, "Current matched paths") || strings.Contains(model.Applicability, "Marker sites") || strings.Contains(model.Applicability, "x/pkg/a.go") {
+		t.Fatalf("census leaked into rendered applicability: %s", model.Applicability)
+	}
+	global := BuildTopicModel(Topic{ID: TopicID{"d", "g"}, Metadata: Metadata{Title: "G", Summary: "G.", Applies: "global"}}, []string{"x/**"}, MarkerIndex{}, nil)
+	if !strings.Contains(global.Applicability, "Global topic within owning domain selectors `x/**`.") || !strings.Contains(global.Applicability, "Run `awf topic d/g --coverage`") {
+		t.Fatalf("global variant = %s", global.Applicability)
+	}
+	empty := BuildTopicModel(Topic{ID: TopicID{"d", "e"}, Metadata: Metadata{Title: "E", Summary: "E."}}, nil, MarkerIndex{}, nil)
+	if !strings.Contains(empty.Applicability, "Owning domain selectors: none.") || !strings.Contains(empty.Applicability, "Topic selectors: none.") || strings.Contains(empty.Applicability, "``") {
+		t.Fatalf("empty selectors did not degrade to coherent prose: %s", empty.Applicability)
+	}
+}
 func TestRenderTopicTrimsTrailingNewlineFraming(t *testing.T) {
 	out, err := RenderTopic(TopicRenderModel{
 		Title:         "Title",

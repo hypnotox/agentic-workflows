@@ -3,7 +3,7 @@
 
 The current-state migration, attestation, and journaled cutover runtime.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Current matched paths: `internal/upgrade/digest.go`, `internal/upgrade/journal.go`, `internal/upgrade/journal_test.go`, `internal/upgrade/upgrade.go`, `internal/upgrade/upgrade_test.go`. Marker sites: `cmd/awf/run_test.go:47 [invariant] tooling/upgrade-runtime:initial-adoption-version-immutable`.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Run `awf topic tooling/upgrade-runtime --coverage` for current matched paths and marker sites.
 
 The upgrade package runs the current-state migration: it verifies the bridge seal, journals the cutover, and writes the permanent lock. The claims below capture the current upgrade-runtime contracts.
 

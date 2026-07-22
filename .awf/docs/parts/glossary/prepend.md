@@ -1,6 +1,6 @@
 Project jargon and what each term means; start here when a term is unfamiliar. Sorted by term.
 
-- **Applicability evidence:** Separate owning-domain and topic selectors, the rule that both must match, and concrete current matched paths and marker sites; it is not symbolic glob intersection.
+- **Applicability evidence:** Separate owning-domain and topic selectors and the rule that both must match; the concrete current matched paths and marker sites live in `awf topic <id> --coverage`, while rendered docs carry selectors only and context carries the matched-path count. It is not symbolic glob intersection.
 - **Artifact role:** One closed attribution kind assigned from loaded project authorities, with source, output, and navigation links.
 - **Concise context:** The default orientation projection: each applicable topic once with its uncapped claim-ID roster, the full detail of directly marked claims, and an explicit detail-omission line with drilldown, plus per-path classification and attribution.
 - **Effective path:** One unique file path selected literally or by request-directory expansion and classified independently.

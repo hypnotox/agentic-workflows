@@ -1,7 +1,7 @@
 ---
 date: 2026-07-22
 adrs: [147]
-status: Proposed
+status: Implemented
 ---
 # Plan: Topic-Grouped Context Output and Selectors-Only Rendered Applicability
 

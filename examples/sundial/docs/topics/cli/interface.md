@@ -3,7 +3,7 @@
 
 The sundial command coordinate input contract and its usage-error behaviour.
 
-**Applicability:** Owning domain selectors: `cmd/**`. Topic selectors: `cmd/**`. Both domain and topic selectors must match. Current matched paths: `cmd/sundial/main.go`. Marker sites: ``.
+**Applicability:** Owning domain selectors: `cmd/**`. Topic selectors: `cmd/**`. Both domain and topic selectors must match. Run `awf topic cli/interface --coverage` for current matched paths and marker sites.
 
 The sundial command turns a latitude and longitude into a short table of sunrise and sunset times for
 the coming days. Coordinate parsing lives in the cmd layer; the almanac package owns the model and
