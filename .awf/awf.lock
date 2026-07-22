@@ -325,7 +325,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:eeaa47a7c25dca45dba95f548f5c6a7d4fd48bb066f477c825f0bd0806eccfda",
+      "outputHash": "sha256:fd063bc8c69a69284cba713420c9232dce03c60994d14795c3aae63ac8eceb6f",
       "regenChecked": true
     },
     "docs/decisions/README.md": {

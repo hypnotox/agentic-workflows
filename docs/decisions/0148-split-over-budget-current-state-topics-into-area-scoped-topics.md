@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-22
 ---
 # ADR-0148: Split over-budget current-state topics into area-scoped topics
@@ -464,3 +464,4 @@ Mechanics that constrain the split, verified against the checker:
 ## Status history
 
 - 2026-07-22: Proposed
+- 2026-07-22: Accepted; content-sha256: 1ec4a8afee213941a5a600a79737e8b331e9f61e07a22c014573e3fef5b05819
