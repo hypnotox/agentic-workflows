@@ -9,6 +9,7 @@ paths:
   - internal/git/**
   - internal/testsupport/**
   - internal/snapshot/**
+  - internal/telemetry/**
   - internal/upgrade/**
   - internal/prosegate/**
   - tools/**

@@ -3,8 +3,32 @@
 
 Durable effort telemetry, projections, retention, and workflow diagnosis.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/telemetry/**`. Both domain and topic selectors must match. Current matched paths: ``. Marker sites: ``.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/telemetry/**`. Both domain and topic selectors must match. Current matched paths: `internal/telemetry/causal.go`, `internal/telemetry/causal_test.go`, `internal/telemetry/coverage_test.go`, `internal/telemetry/faults_test.go`, `internal/telemetry/ledger.go`, `internal/telemetry/ledger_branches_test.go`, `internal/telemetry/ledger_fault_branches_test.go`, `internal/telemetry/ledger_test.go`, `internal/telemetry/lifecycle.go`, `internal/telemetry/lifecycle_branches_test.go`, `internal/telemetry/lifecycle_test.go`, `internal/telemetry/mask_regression_test.go`, `internal/telemetry/paths.go`, `internal/telemetry/paths_nonwindows.go`, `internal/telemetry/paths_test.go`, `internal/telemetry/paths_windows.go`, `internal/telemetry/projection.go`, `internal/telemetry/projection_test.go`, `internal/telemetry/protocol.go`, `internal/telemetry/protocol.json`, `internal/telemetry/protocol_test.go`, `internal/telemetry/reader.go`, `internal/telemetry/reader_test.go`, `internal/telemetry/recovery_fault_test.go`, `internal/telemetry/retention.go`, `internal/telemetry/retention_branches_test.go`, `internal/telemetry/retention_test.go`, `internal/telemetry/review_regression_test.go`, `internal/telemetry/types.go`. Marker sites: `internal/telemetry/ledger_test.go:19 [invariant] tooling/workflow-telemetry:event-protocol-and-ledger`, `internal/telemetry/lifecycle_test.go:40 [invariant] tooling/workflow-telemetry:effort-lifecycle-and-routes`, `internal/telemetry/projection_test.go:8 [invariant] tooling/workflow-telemetry:trajectory-and-derived-effort-model`, `internal/telemetry/retention_test.go:14 [invariant] tooling/workflow-telemetry:privacy-integrity-and-retention`.
 
-Current project contracts for this topic are documented here.
+The telemetry package owns the versioned privacy-minimal event protocol, confined append-only resident ledger, explicit lifecycle and trajectory model, and deterministic terminal-effort retention. The initial CLI exposes only protocol negotiation, lifecycle mutation, and confirmed maintenance; canonical queries and diagnostics are not yet current behavior.
 
 ## Claims
+
+### `invariant: event-protocol-and-ledger`
+
+One embedded machine-readable descriptor defines protocol version 1.0, closed event and payload vocabularies, bounded identifiers and categories, privacy exclusions, compatible-minor preservation, and the append-only per-session JSONL ledger. Creation and append validate confinement, ownership, leases, durability, idempotency, and corrupt-stream evidence without inferring missing state.
+Origin: ADR-0146
+Backing: test
+
+### `invariant: effort-lifecycle-and-routes`
+
+Effort identity, route selection, phase transitions, terminal epochs, repairs, and waivers change only through the closed explicit lifecycle request union. Causal predecessor frontiers rather than timestamps define ordering, and structurally valid illegal events remain evidence while their state effects are excluded.
+Origin: ADR-0146
+Backing: test
+
+### `invariant: trajectory-and-derived-effort-model`
+
+Trajectories preserve parent and fork ancestry so current-path projection follows the active ancestry while all-work projection retains discarded branches. Independent, derived, and reopened efforts use explicit immutable lineage or terminal-epoch operations without reconstructing or double-counting origin work.
+Origin: ADR-0146
+Backing: test
+
+### `invariant: privacy-integrity-and-retention`
+
+Resident telemetry excludes conversational content and repository paths other than the bounded checkpoint identifier, rejects unsafe paths and unsupported interpretations, and prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge.
+Origin: ADR-0146
+Backing: test

@@ -16,6 +16,8 @@ invariants)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
 audit)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+metrics)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
 commit-gate)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
 prose-gate)
@@ -47,6 +49,6 @@ test)
 	go test ./... "$@" ;;
 # awf:edit runner-tail: default; create .awf/runner/parts/runner-tail.md to override
 *)
-	echo "usage: ./x {sync|check|invariants|audit|commit-gate|prose-gate|list|config|context|topic|new|enable|disable|changelog|version|gate|test}" >&2
+	echo "usage: ./x {sync|check|invariants|audit|metrics|commit-gate|prose-gate|list|config|context|topic|new|enable|disable|changelog|version|gate|test}" >&2
 	exit 1 ;;
 esac

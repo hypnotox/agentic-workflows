@@ -54,6 +54,8 @@ private byte copy in one path-sorted, tamper-proof view, so the scan and its `.a
 lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
 and range universes the current-state checks compare.
 
+An explicit `awf metrics lifecycle` request is validated against the embedded protocol descriptor and the current causal frontier before a confined, leased, flushed JSONL append acknowledges success. Effort creation commits immutable metadata and its first stream through an atomic staging rename. Readers retain malformed or illegal evidence without applying its state effect, and retention rechecks terminal state under the same effort lease before a tombstoned rename into private trash. Protocol handshake and confirmed maintenance are the only Phase-2 CLI surfaces; query aggregation and diagnosis are not yet exposed.
+
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
 skeleton is executed, then the raw part bodies are restored verbatim, so a literal `{{` in a part

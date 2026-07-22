@@ -95,6 +95,7 @@
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
+- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, and leased deterministic retention. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while canonical query and diagnostic projections land in a later batch.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:

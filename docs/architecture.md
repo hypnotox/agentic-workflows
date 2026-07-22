@@ -40,6 +40,8 @@ directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
+Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union; Go validates and appends one JSONL stream per session, projects causal lifecycle and trajectory state, and performs leased deterministic retention without treating ledger descendants as rendered artifacts.
+
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
 ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools and session-handoff capabilities), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
@@ -143,6 +145,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
+- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, and leased deterministic retention. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while canonical query and diagnostic projections land in a later batch.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
@@ -276,6 +279,8 @@ private byte copy in one path-sorted, tamper-proof view, so the scan and its `.a
 lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
 and range universes the current-state checks compare.
 
+An explicit `awf metrics lifecycle` request is validated against the embedded protocol descriptor and the current causal frontier before a confined, leased, flushed JSONL append acknowledges success. Effort creation commits immutable metadata and its first stream through an atomic staging rename. Readers retain malformed or illegal evidence without applying its state effect, and retention rechecks terminal state under the same effort lease before a tombstoned rename into private trash. Protocol handshake and confirmed maintenance are the only Phase-2 CLI surfaces; query aggregation and diagnosis are not yet exposed.
+
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
 skeleton is executed, then the raw part bodies are restored verbatim, so a literal `{{` in a part
@@ -310,6 +315,7 @@ bytes, so a comment-only edit reflags stale and self-settles.
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.
+- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse and fingerprint the normative telemetry descriptor and implement its confined, durable append-only resident ledger without a database or daemon.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s

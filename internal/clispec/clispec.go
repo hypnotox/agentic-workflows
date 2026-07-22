@@ -107,6 +107,37 @@ There is no default range, so an audit never reports over commits nobody named.
 `,
 	},
 	{
+		Name: "metrics", Summary: "Record and maintain workflow telemetry", Runner: RunnerDisposition{Forward: true},
+		MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf metrics <protocol|lifecycle|retain|purge>
+
+Record explicit lifecycle mutations, inspect the protocol handshake, and run
+confirmed resident-data maintenance. Query and export selectors are not available yet.
+`,
+		Children: []Command{
+			{Name: "protocol", Summary: "Print the telemetry protocol handshake", BoolFlags: []string{"--json"}, MaxPos: 0,
+				HelpBody: `Usage: awf metrics protocol --json
+
+Print the machine-readable telemetry protocol handshake. --json is required.
+`},
+			{Name: "lifecycle", Summary: "Durably record one lifecycle request", BoolFlags: []string{"--json"}, ValueFlags: []string{"--request"}, MaxPos: 0,
+				HelpBody: `Usage: awf metrics lifecycle --request <FILE|-> [--json]
+
+Validate and durably record exactly one lifecycle request from a file or stdin.
+`},
+			{Name: "retain", Summary: "Apply configured telemetry retention", BoolFlags: []string{"--dry-run", "--json"}, MaxPos: 0,
+				HelpBody: `Usage: awf metrics retain [--dry-run] [--json]
+
+Recover interrupted maintenance and apply configured deterministic retention.
+`},
+			{Name: "purge", Summary: "Explicitly purge one terminal effort", BoolFlags: []string{"--confirm", "--json"}, ValueFlags: []string{"--effort"}, MaxPos: 0,
+				HelpBody: `Usage: awf metrics purge --effort <ID> --confirm [--json]
+
+Recursively purge one named terminal effort only after explicit confirmation.
+`},
+		},
+	},
+	{
 		Name: "commit-gate", Summary: "Validate one commit message (Conventional Commits), blocking", Runner: RunnerDisposition{Forward: true},
 		MaxPos: 1, Gating: Ungated,
 		HelpBody: `Usage: awf commit-gate [FILE]

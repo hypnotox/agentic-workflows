@@ -52,6 +52,7 @@ var handlers = map[string]handler{
 	"check":       func(c *cmdCtx) error { return runCheck(c.root, c.inv.bools["--staged"], c.stdout) },
 	"invariants":  func(c *cmdCtx) error { return runInvariants(c.root, c.stdout) },
 	"audit":       func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"metrics":     runMetrics,
 	"commit-gate": func(c *cmdCtx) error { return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout) },
 	"list":        func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"config":      func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },

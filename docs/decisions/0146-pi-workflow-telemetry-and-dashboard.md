@@ -235,3 +235,4 @@ The dashboard adds process starts only at controlled refresh boundaries, not dur
 - 2026-07-22: Proposed
 - 2026-07-22: Implementing; content-sha256: 8fa0a72cf5fc1d2f8c3a999750601cc1bed361ef31160f990653281a2d1dca97
 - 2026-07-22: Applied; state-sequence: 15; operations: add `config/configuration:workflow-telemetry-settings`, add `config/migrations-and-locks:workflow-telemetry-config-migration`
+- 2026-07-22: Applied; state-sequence: 16; operations: add `tooling/workflow-telemetry:event-protocol-and-ledger`, add `tooling/workflow-telemetry:effort-lifecycle-and-routes`, add `tooling/workflow-telemetry:trajectory-and-derived-effort-model`, add `tooling/workflow-telemetry:privacy-integrity-and-retention`
