@@ -99,7 +99,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 // hand-written runner was missing, ADR-0092) and its ported project verbs in the
 // in-place section.
 //
-// invariant: rendering/templates:runner-example-adopted
+// invariant: rendering/companion-scripts:runner-example-adopted
 // invariant: tooling/quality-gates:pi-extension-container-gate
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	raw, err := os.ReadFile("../../x")
@@ -208,7 +208,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 // half stands alone: a missing strip leaves the lane green while `tsc` silently
 // skips the file, so only this static assertion enforces the coupling.
 //
-// invariant: rendering/templates:pi-extension-editor-quiet-strip
+// invariant: rendering/pi-workflows:pi-extension-editor-quiet-strip
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	want := map[string]bool{}
 	for _, output := range piTarget.Outputs {

@@ -38,7 +38,7 @@ func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 
 // With the singleton enabled, exactly one runner `x` renders at the repo root;
 // absent or disabled, none does.
-// invariant: rendering/templates:runner-singleton-toggle
+// invariant: rendering/companion-scripts:runner-singleton-toggle
 func TestRunnerToggle(t *testing.T) {
 	if runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n") == nil {
 		t.Error("expected the runner x to render when enabled")
@@ -56,8 +56,8 @@ func TestRunnerToggle(t *testing.T) {
 // The awf-verb arms are awf-owned (outside any awf:edit-in-place section) and each
 // delegates to the bootstrap-resolved pinned binary; the two adopter regions are
 // awf:edit-in-place sections rendered as #-comments (the shell comment style).
-// invariant: rendering/templates:runner-awf-verbs-owned
-// invariant: rendering/templates:runner-project-verbs-in-place
+// invariant: rendering/companion-scripts:runner-awf-verbs-owned
+// invariant: rendering/companion-scripts:runner-project-verbs-in-place
 func TestRunnerStructure(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
@@ -107,7 +107,7 @@ func TestRunnerStructure(t *testing.T) {
 
 // The runner renders leak-free (no unresolved token, no stray section/marker
 // residue) - the publication-safety contract every awf template meets.
-// invariant: rendering/templates:runner-render-publication-safe
+// invariant: rendering/companion-scripts:runner-render-publication-safe
 func TestRunnerProjectVerbLabelsAndCollisions(t *testing.T) {
 	labels, err := runnerProjectVerbLabels("alpha | beta)\n\techo ok ;;\nz9)\n\techo z ;;\n")
 	if err != nil || strings.Join(labels, ",") != "alpha,beta,z9" {

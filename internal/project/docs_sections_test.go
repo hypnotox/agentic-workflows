@@ -15,7 +15,7 @@ import (
 // TestDocsSectionParity asserts that for every catalog doc the declared section
 // set equals the template's marker-block set, and that each doc renders from
 // template defaults with no leaked <no value> token.
-// invariant: rendering/templates:docs-section-parity
+// invariant: rendering/guide-and-doc-templates:docs-section-parity
 func TestDocsSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Docs {
@@ -104,7 +104,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 // excluded from both TestDocsSectionParity (Mandatory skip) and
 // TestAdrSingletonSectionParity (plainSingletons excludes it), so without this
 // test a guide section could half-land with a broken override path (ADR-0069).
-// invariant: rendering/templates:agents-doc-section-parity
+// invariant: rendering/guide-and-doc-templates:agents-doc-section-parity
 func TestAgentsDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	entry := cat.Docs["agents-doc"]

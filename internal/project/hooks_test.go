@@ -54,7 +54,7 @@ func TestHookPayloadsRendered(t *testing.T) {
 // With every command var unset, each payload degrades to runnable generic awf
 // forms - pin-aware shim plus `awf check` / `awf commit-gate "$1"` - with no
 // unresolved-value token (the ADR-0045 fallback contract).
-// invariant: rendering/templates:hook-payloads-fallback-safe
+// invariant: rendering/companion-scripts:hook-payloads-fallback-safe
 func TestHookPayloadsFallbackSafe(t *testing.T) {
 	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
 	wantCmd := map[string]string{

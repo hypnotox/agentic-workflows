@@ -1,3 +1,51 @@
 Workflow-chain and task-skill template contracts: chain ordering, exploration and review behaviour, and memory checkpoints.
 
 ## Claims
+
+### `invariant: bounded-exploration-reporting`
+
+The rendered exploration guidance and Pi's fixed prompt define adaptive breadth and grounded reporting, keep refinement sequential, permit independent information needs to run concurrently, and make Pi queue above ten active children in FIFO and abort-aware order.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: cross-runtime-exploration-dispatch`
+
+The core exploring skill renders for every target with one semantic breadth-and-detail protocol; the Pi target uses its awf-owned subagent_explore tool while non-Pi targets are directed to a generic target-native fresh-context exploration subagent, with no Pi tool name leaking into their output.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: memory-checkpoint-chain-coverage`
+
+Every non-terminal chain-node skill plus the bugfix and debugging task skills complete the working-memory update before displaying the completed phase, immediate next action, and exact memory path as an intervention point. The two implementation skills also checkpoint independently resumable tasks, and retrospective alone carries the memory-file deletion step.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: plan-task-detail-modes`
+
+The rendered plan-authoring skill, plan reviewer, implementation-plans README, and agent guide accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, and render coherently with empty variables.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: reviewers-report-only`
+
+The rendered reviewer agent templates and the shared review spine instruct the reviewer only to read, run its lenses, and report findings; none contains a directive to apply fixes, commit, or loop a re-review.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: skill-prose-tool-agnostic`
+
+Every rendered skill and agent body is free of runtime tool-name tokens; a case-insensitive, word-anchored scan rejects subagent_type, the phrase subagent type, agent tool, skill tool, AskUserQuestion, the backticked-agent prompt phrasing, and the backticked or phrased file-operation tool names for write, edit, and read, while plain action verbs and the shell grep stay allowed.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: workflow-chain-adr-before-plan`
+
+The rendered AGENTS.md and workflow.md workflow-chain string presents the ADR step before the plan step.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: workflow-chain-surfaces-resync`
+
+The rendered workflow chain names the plan-to-ADR resync step explicitly rather than hiding it from the high-level chain.
+Origin: ADR-0148
+Backing: test

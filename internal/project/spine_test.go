@@ -951,11 +951,11 @@ func TestAgentsDocTemplate(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	// invariant: rendering/templates:workflow-chain-adr-before-plan
+	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan
 	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
 		t.Errorf("Workflow chain must present ADR before plan:\n%s", out)
 	}
-	// invariant: rendering/templates:workflow-chain-surfaces-resync
+	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync
 	if !strings.Contains(out, "resync (when both)") {
 		t.Errorf("Workflow chain must surface the resync step:\n%s", out)
 	}
@@ -1093,7 +1093,7 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{"Project documentation", "Project-local documentation.", "Replace this with the document body"},
 		ban:  []string{"<no value>"},
 	},
-	// invariant: rendering/templates:reviewers-report-only
+	// invariant: rendering/workflow-skill-templates:reviewers-report-only
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
 		want: []string{"Regen command: `awf sync`."},

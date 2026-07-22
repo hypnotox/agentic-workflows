@@ -336,7 +336,7 @@ func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
 	)
 }
 
-// invariant: rendering/templates:pi-workflow-dashboard-public-contract
+// invariant: rendering/pi-workflows:pi-workflow-dashboard-public-contract
 func TestPiWorkflowDashboardPublicContract(t *testing.T) {
 	provePiContractBehavior(t, "dashboard public contract covers overlay, maintenance, widget, and disposal")
 }
@@ -368,7 +368,7 @@ func registrationBlock(t *testing.T, content, name, nextMarker string) string {
 	return content[start : start+relativeEnd]
 }
 
-// invariant: rendering/templates:pi-structured-exploration-contract
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract
 func TestPiStructuredExplorationContract(t *testing.T) {
 	index := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	runner := renderPiExtensionFile(t, "awf-subagents/runner.ts")
@@ -448,7 +448,7 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-subagent-model-routing
+// invariant: rendering/pi-workflows:pi-subagent-model-routing
 func TestPiSubagentModelRouting(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -556,7 +556,7 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	return got
 }
 
-// invariant: rendering/templates:cross-runtime-exploration-dispatch
+// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch
 func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	if !catalog.Standard.Skills["exploring"].Core {
 		t.Fatal("exploring is not a core skill")
@@ -627,7 +627,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:bounded-exploration-reporting
+// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
 func TestBoundedExplorationReporting(t *testing.T) {
 	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
@@ -670,7 +670,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-subagent-progress-context-isolation
+// invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation
 func TestPiSubagentProgressContextIsolation(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{`text: "(running...)"`, `events: update.events`, `result.failureMessage`, `result.output`} {
@@ -685,7 +685,7 @@ func TestPiSubagentProgressContextIsolation(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-subagent-progress-rendering
+// invariant: rendering/pi-workflows:pi-subagent-progress-rendering
 func TestPiSubagentProgressRendering(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, role := range []string{"grounding", "explore", "review", "implement"} {
@@ -704,7 +704,7 @@ func TestPiSubagentProgressRendering(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-subagent-failure-details
+// invariant: rendering/pi-workflows:pi-subagent-failure-details
 func TestPiSubagentFailureDetails(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -717,7 +717,7 @@ func TestPiSubagentFailureDetails(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-subagent-progress-bounds
+// invariant: rendering/pi-workflows:pi-subagent-progress-bounds
 func TestPiSubagentProgressBounds(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/runner.ts") + renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -813,7 +813,7 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-implementation-batch-exclusivity
+// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity
 func TestPiImplementationBatchExclusivity(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -860,7 +860,7 @@ func TestPiMinimumRuntimeContract(t *testing.T) {
 	)
 }
 
-// invariant: rendering/templates:pi-session-handoff-public-contract
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract
 func TestPiSessionHandoffPublicContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{
@@ -974,7 +974,7 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-session-handoff-workflow
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow
 func TestPiSessionHandoffWorkflow(t *testing.T) {
 	skills := []string{
 		"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
@@ -1105,7 +1105,7 @@ func TestPiTargetDescriptorChangesEveryArtifactConfigHash(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:pi-dedicated-grounding-dispatch
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch
 func TestPiDedicatedGroundingDispatch(t *testing.T) {
 	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	dirs := map[string]string{

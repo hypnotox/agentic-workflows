@@ -1271,7 +1271,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:document-map-lists-mandatory-docs
+// invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
 	p, err := Open(root)

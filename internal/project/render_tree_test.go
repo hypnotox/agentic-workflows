@@ -54,7 +54,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 	return string(b)
 }
 
-// invariant: rendering/templates:agentsdoc-parts
+// invariant: rendering/guide-and-doc-templates:agentsdoc-parts
 func TestAgentsDocPartsOverride(t *testing.T) {
 	cfg := "prefix: example\nskills: []\nagents: []\n"
 

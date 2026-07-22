@@ -172,7 +172,7 @@ func TestDomainPartOrphan(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:docs-section-parity
+// invariant: rendering/guide-and-doc-templates:docs-section-parity
 func TestDomainDocSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	src, err := fs.ReadFile(templates.FS, "domains/domain.md.tmpl")

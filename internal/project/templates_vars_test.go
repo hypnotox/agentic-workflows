@@ -13,7 +13,7 @@ import (
 // the doc-path or project-specific vars that ADR-0013 migrated onto .layout or
 // deleted outright. Doc paths are awf-given (.layout); these var names must not
 // reappear in any template.
-// invariant: rendering/templates:no-doc-path-vars
+// invariant: rendering/guide-and-doc-templates:no-doc-path-vars
 func TestNoDocPathVarsInTemplates(t *testing.T) {
 	banned := []string{
 		"workflowDoc", "debuggingDoc", "pitfallsDoc", "roadmapDoc", "stateDocsPath",

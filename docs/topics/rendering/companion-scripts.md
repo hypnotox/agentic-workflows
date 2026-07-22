@@ -8,3 +8,75 @@ Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
 Rendered companion script contracts: the bootstrap and upgrade scripts, the command runner, and hook payload fallback behaviour.
 
 ## Claims
+
+### `invariant: bootstrap-checksum`
+
+The rendered `awf-bootstrap.sh` performs a SHA-256 checksum verification of the downloaded archive before it installs the binary, so the download is always integrity-checked ahead of use.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: bootstrap-env-override`
+
+The rendered bootstrap script's version assignment is the default-expansion form AWF_VERSION set to the pattern that prefers a pre-set AWF_VERSION and otherwise expands to the rendering binary's version, so an environment override wins and, absent one, the script resolves exactly the version of the binary that rendered it.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: bootstrap-local-first`
+
+The rendered bootstrap installer probes for an awf binary already on PATH before downloading anything. When a local binary reports exactly the pinned target version, the script uses it and exits before reaching any download step.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: bootstrap-stdout-path-only`
+
+The rendered bootstrap installer writes only the resolved binary path to standard output. Every diagnostic line is a comment or is redirected to standard error, so nothing but the binary path reaches standard output.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: hook-payloads-fallback-safe`
+
+With checkCmd, gateCmd, gateCmdFull, and commitGateCmd all unset, every rendered hook payload is a runnable script whose commands degrade to the generic awf forms, carrying no unresolved-value token.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: runner-awf-verbs-owned`
+
+In the rendered command runner, every clispec command declared runner-forwarded has an awf-owned arm outside editable in-place sections and delegates to the bootstrap-resolved pinned binary; the usage tail derives from the same ordered metadata, so command additions cannot drift.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: runner-example-adopted`
+
+The bundled sundial example enables the runner singleton, and its rendered `x` is drift-free, invariant-clean, and free of advisory notes, carrying the awf-owned dispatch including the context verb.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: runner-project-verbs-in-place`
+
+The rendered runner's project-verb region and its setup-and-helpers region are editable in-place sections, so an adopter's edits there survive re-sync while the awf-owned verb arms and file structure are regenerated.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: runner-render-publication-safe`
+
+The runner template renders leak-free under empty data, producing no unresolved token and no stray section or marker residue, like every other awf template.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: runner-singleton-toggle`
+
+With the runner singleton enabled, `awf sync` renders exactly one runner file at the repo-root path `x`; with it disabled or absent, it renders none.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: upgrade-delegates-fetch`
+
+The rendered `.awf/upgrade.sh` obtains the binary only by invoking `.awf/bootstrap.sh` with AWF_VERSION set; it performs no release-asset download and no checksum of its own, and its single direct network call is the latest-tag redirect probe against releases/latest.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: upgrade-exec-final`
+
+The rendered `.awf/upgrade.sh` hands off with exec of the fetched binary running upgrade as its final statement, so the shell process is replaced before `awf upgrade` re-renders the script in place.
+Origin: ADR-0148
+Backing: test

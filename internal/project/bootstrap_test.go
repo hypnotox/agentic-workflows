@@ -33,7 +33,7 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	return found
 }
 
-// invariant: rendering/templates:bootstrap-env-override
+// invariant: rendering/companion-scripts:bootstrap-env-override
 func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -56,7 +56,7 @@ func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:bootstrap-checksum
+// invariant: rendering/companion-scripts:bootstrap-checksum
 func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -77,7 +77,7 @@ func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:bootstrap-stdout-path-only
+// invariant: rendering/companion-scripts:bootstrap-stdout-path-only
 func TestBootstrapStdoutPathOnly(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -95,7 +95,7 @@ func TestBootstrapStdoutPathOnly(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:bootstrap-local-first
+// invariant: rendering/companion-scripts:bootstrap-local-first
 func TestBootstrapLocalFirstResolution(t *testing.T) {
 	rf := bootstrapFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -197,7 +197,7 @@ func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:upgrade-exec-final
+// invariant: rendering/companion-scripts:upgrade-exec-final
 func TestUpgradeScriptExecFinal(t *testing.T) {
 	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
@@ -219,7 +219,7 @@ func TestUpgradeScriptExecFinal(t *testing.T) {
 	}
 }
 
-// invariant: rendering/templates:upgrade-delegates-fetch
+// invariant: rendering/companion-scripts:upgrade-delegates-fetch
 func TestUpgradeScriptDelegatesFetch(t *testing.T) {
 	rf := upgradeFile(t, "prefix: example\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
