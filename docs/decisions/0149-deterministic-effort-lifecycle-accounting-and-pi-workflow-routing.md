@@ -50,7 +50,7 @@ No protocol-1 resident production data exists. Preserving protocol-1 migration c
 
 15. Local lifecycle state updates the badge immediately after a validated append. Canonical metrics and doctor refresh asynchronously at startup, overlay open, lifecycle settlement, bounded passive-observation boundaries, and explicit refresh. Refreshes are coalesced, and a monotonic generation or epoch prevents an older completion from overwriting newer local lifecycle or projection state. An open overlay receives the same refresh notifications.
 
-16. The compact widget renders below the editor in a muted style. Its information shape follows the Pi footer: input, output, cache-read, cache-hit percentage, permitted cost, subagent marker, and context percentage and window. It uses Pi session entries plus `ctx.getContextUsage` so restored history, summaries, compactions, and current context match footer accounting. It shows subscription or automatic-context indicators only when Pi exposes them through a public and safe API; otherwise those fields are omitted rather than inferred from internals.
+16. The compact widget renders below the editor in a muted style. Its information shape follows the Pi footer: input, output, cache-read, cache-hit percentage, permitted cost, and context percentage and window. It uses Pi session entries plus `ctx.getContextUsage` so restored history, summaries, compactions, nested subagent usage, and current context match footer accounting. It shows subscription or automatic-context indicators only when Pi exposes them through a public and safe API; otherwise those fields are omitted rather than inferred from internals.
 
 17. Subagent tool results return Pi's top-level `usage` shape in addition to bounded details, so Pi's own totals include nested work. The telemetry observation retains only the protocol-approved aggregate fields and never the subagent task, report, transcript, tool arguments, or diagnostics text.
 
@@ -73,12 +73,12 @@ No protocol-1 resident production data exists. Preserving protocol-1 migration c
 - update `rendering/pi-workflows:pi-session-handoff-lifecycle`
 - update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - update `rendering/pi-workflows:pi-session-handoff-workflow`
-- update `rendering/pi-workflows:pi-workflow-dashboard-public-contract`
 - add `rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router`
 - update `rendering/pi-runtime:pi-real-runtime-smoke`
 - update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
-- update `rendering/adapter-outputs:pi-workflow-dashboard-runtime`
 - update `rendering/singletons-and-payloads:workflow-telemetry-governed-outputs-and-resident-data`
+- update `rendering/pi-workflows:pi-workflow-dashboard-public-contract`
+- update `rendering/adapter-outputs:pi-workflow-dashboard-runtime`
 
 ## Consequences
 

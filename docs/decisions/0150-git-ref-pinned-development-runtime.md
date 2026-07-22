@@ -54,6 +54,7 @@ This is a repository-development fallback, not a replacement distribution channe
 
 - update `tooling/cli:version-compat-gate`
 - update `tooling/cli:metrics-and-doctor-command-contract`
+- add `tooling/dashboard-runtime:pinned-development-runtime-cache`
 - add `rendering/companion-scripts:dashboard-development-runtime-commands`
 - add `rendering/pi-runtime:pi-pinned-development-runtime`
 - update `rendering/adapter-outputs:pi-workflow-dashboard-runtime`
