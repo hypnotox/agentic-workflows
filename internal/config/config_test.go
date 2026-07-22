@@ -809,9 +809,22 @@ func TestWorkflowTelemetryConfigContract(t *testing.T) {
 		}
 	}
 	for _, mutate := range []struct{ old, new string }{
+		{"maxCompletedEffortAgeDays: 0", "maxCompletedEffortAgeDays: -1"},
+		{"maxCompletedEffortCount: 0", "maxCompletedEffortCount: -1"},
 		{"minimumBaselineSamples: 1", "minimumBaselineSamples: 0"},
+		{"baselinePercentile: 1", "baselinePercentile: 0"},
 		{"baselinePercentile: 1", "baselinePercentile: 101"},
+		{"phaseReentryCount: 1", "phaseReentryCount: 0"},
+		{"phaseDurationSeconds: 1", "phaseDurationSeconds: 0"},
+		{"phaseTokens: 1", "phaseTokens: 0"},
+		{"compactionCount: 1", "compactionCount: 0"},
+		{"handoffCount: 1", "handoffCount: 0"},
+		{"toolFailureCount: 1", "toolFailureCount: 0"},
+		{"gateFailureCount: 1", "gateFailureCount: 0"},
+		{"cacheReadPercentBelow: 0", "cacheReadPercentBelow: -1"},
 		{"cacheReadPercentBelow: 0", "cacheReadPercentBelow: 101"},
+		{"subagentQueueWaitSeconds: 1", "subagentQueueWaitSeconds: 0"},
+		{"implementationReworkCount: 1", "implementationReworkCount: 0"},
 	} {
 		cfg, err := Parse(".", []byte(strings.Replace(valid, mutate.old, mutate.new, 1)))
 		if err != nil {
@@ -820,5 +833,13 @@ func TestWorkflowTelemetryConfigContract(t *testing.T) {
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("accepted %s", mutate.new)
 		}
+	}
+	allZero := strings.ReplaceAll(valid, ": 1\n", ": 0\n")
+	cfg, err = Parse(".", []byte(allZero))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err == nil {
+		t.Error("explicit all-zero workflowTelemetry was treated as omitted")
 	}
 }

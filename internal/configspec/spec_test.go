@@ -321,3 +321,42 @@ func TestConfigspecAuditDefaultsPinned(t *testing.T) {
 		t.Error("resolver default types lost feat; update the audit.allowedTypes default prose")
 	}
 }
+
+func TestWorkflowTelemetrySpecContract(t *testing.T) {
+	expected := map[string]struct{ def, typ string }{
+		"workflowTelemetry.retention.maxCompletedEffortAgeDays":              {"90", "non-negative integer"},
+		"workflowTelemetry.retention.maxCompletedEffortCount":                {"100", "non-negative integer"},
+		"workflowTelemetry.widget.enabled":                                   {"true", "bool"},
+		"workflowTelemetry.widget.showCost":                                  {"true", "bool"},
+		"workflowTelemetry.diagnostics.heuristicsEnabled":                    {"true", "bool"},
+		"workflowTelemetry.diagnostics.minimumBaselineSamples":               {"10", "positive integer"},
+		"workflowTelemetry.diagnostics.baselinePercentile":                   {"95", "integer from 1 through 100"},
+		"workflowTelemetry.diagnostics.thresholds.phaseReentryCount":         {"2", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.phaseDurationSeconds":      {"14400", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.phaseTokens":               {"200000", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.compactionCount":           {"3", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.handoffCount":              {"3", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.toolFailureCount":          {"3", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.gateFailureCount":          {"2", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.cacheReadPercentBelow":     {"10", "integer from 0 through 100"},
+		"workflowTelemetry.diagnostics.thresholds.subagentQueueWaitSeconds":  {"60", "positive integer"},
+		"workflowTelemetry.diagnostics.thresholds.implementationReworkCount": {"2", "positive integer"},
+	}
+	seen := map[string]bool{}
+	for _, entry := range Keys() {
+		want, ok := expected[entry.Path]
+		if !ok {
+			continue
+		}
+		seen[entry.Path] = true
+		if entry.Default != want.def || entry.Type != want.typ {
+			t.Errorf("%s = default %q type %q, want %q %q", entry.Path, entry.Default, entry.Type, want.def, want.typ)
+		}
+		if strings.Contains(entry.Path, "retention.") && !strings.Contains(entry.Description, "zero disables") {
+			t.Errorf("%s omits zero-disable semantics", entry.Path)
+		}
+	}
+	if len(seen) != len(expected) {
+		t.Fatalf("telemetry spec entries = %d, want %d", len(seen), len(expected))
+	}
+}

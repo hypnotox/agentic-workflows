@@ -41,27 +41,28 @@ type Sidecar struct {
 // data/sections/local live in sidecars, not here. Targets is the adapter-runtime
 // enable array (default ["claude"]); adapter artifacts render once per entry.
 type Config struct {
-	Prefix            string                  `yaml:"prefix"`
-	DocsDir           string                  `yaml:"docsDir"`
-	Vars              map[string]any          `yaml:"vars"`
-	Skills            []string                `yaml:"skills"`
-	Agents            []string                `yaml:"agents"`
-	Docs              []string                `yaml:"docs"`
-	Domains           []string                `yaml:"domains"`
-	Tags              map[string]string       `yaml:"tags"`
-	ContextIgnore     []string                `yaml:"contextIgnore"`
-	Targets           []string                `yaml:"targets"`
-	CurrentState      *CurrentStateConfig     `yaml:"currentState"`
-	Audit             *AuditConfig            `yaml:"audit"`
-	Bootstrap         *BootstrapConfig        `yaml:"bootstrap"`
-	Hooks             *HooksConfig            `yaml:"hooks"`
-	Runner            *RunnerConfig           `yaml:"runner"`
-	ProseGate         *ProseGateConfig        `yaml:"proseGate"`
-	WorkflowTelemetry WorkflowTelemetryConfig `yaml:"workflowTelemetry"`
-	root              string                  // <project>/.awf, for sidecar/part resolution
-	raw               []byte                  // the exact config.yaml bytes Load read, for in-place byte edits
-	read              TreeReader              // selected filesystem or immutable snapshot universe
-	filesystem        bool
+	Prefix               string                  `yaml:"prefix"`
+	DocsDir              string                  `yaml:"docsDir"`
+	Vars                 map[string]any          `yaml:"vars"`
+	Skills               []string                `yaml:"skills"`
+	Agents               []string                `yaml:"agents"`
+	Docs                 []string                `yaml:"docs"`
+	Domains              []string                `yaml:"domains"`
+	Tags                 map[string]string       `yaml:"tags"`
+	ContextIgnore        []string                `yaml:"contextIgnore"`
+	Targets              []string                `yaml:"targets"`
+	CurrentState         *CurrentStateConfig     `yaml:"currentState"`
+	Audit                *AuditConfig            `yaml:"audit"`
+	Bootstrap            *BootstrapConfig        `yaml:"bootstrap"`
+	Hooks                *HooksConfig            `yaml:"hooks"`
+	Runner               *RunnerConfig           `yaml:"runner"`
+	ProseGate            *ProseGateConfig        `yaml:"proseGate"`
+	WorkflowTelemetry    WorkflowTelemetryConfig `yaml:"workflowTelemetry"`
+	workflowTelemetrySet bool
+	root                 string     // <project>/.awf, for sidecar/part resolution
+	raw                  []byte     // the exact config.yaml bytes Load read, for in-place byte edits
+	read                 TreeReader // selected filesystem or immutable snapshot universe
+	filesystem           bool
 }
 
 // TreeReader supplies canonical config-tree-relative bytes without exposing a
@@ -404,6 +405,14 @@ func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	if err := dec.Decode(&c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+	var source yaml.Node
+	if err := yaml.Unmarshal(b, &source); err != nil { // coverage-ignore: the strict decoder accepted the same YAML bytes above
+		return nil, fmt.Errorf("parse config presence: %w", err)
+	}
+	if len(source.Content) > 0 {
+		_, index := mapValue(source.Content[0], "workflowTelemetry")
+		c.workflowTelemetrySet = index >= 0
+	}
 	c.root = awfDir
 	c.raw = slices.Clone(b)
 	c.read = read
@@ -550,7 +559,7 @@ func (c *Config) PartPath(kind, artifact, section string) string {
 }
 
 func (c *Config) Validate() error {
-	if c.WorkflowTelemetry == (WorkflowTelemetryConfig{}) {
+	if !c.workflowTelemetrySet && c.WorkflowTelemetry == (WorkflowTelemetryConfig{}) {
 		c.WorkflowTelemetry = DefaultWorkflowTelemetryConfig()
 	}
 	if c.Prefix == "" {

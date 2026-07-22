@@ -29,9 +29,22 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(got), "maxCompletedEffortCount: 7 # keep") || !strings.Contains(string(got), "phaseDurationSeconds: 14400") {
-		t.Fatalf("migrated config:\n%s", got)
+	if !strings.HasPrefix(string(got), "# leading\nprefix: x\nworkflowTelemetry:\n") || !strings.Contains(string(got), "maxCompletedEffortCount: 7 # keep") {
+		t.Fatalf("migration did not preserve unrelated order/comment:\n%s", got)
 	}
+	cfg, err := config.Parse(filepath.Join(root, ".awf"), got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := config.DefaultWorkflowTelemetryConfig()
+	want.Retention.MaxCompletedEffortCount = 7
+	if cfg.WorkflowTelemetry != want {
+		t.Fatalf("migrated defaults = %#v, want %#v", cfg.WorkflowTelemetry, want)
+	}
+	if Current() != 17 {
+		t.Fatalf("current schema = %d, want 17", Current())
+	}
+	first := append([]byte(nil), got...)
 	if out.String() != "workflow-telemetry: added workflowTelemetry defaults\n" {
 		t.Fatalf("output = %q", out.String())
 	}
@@ -41,6 +54,13 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Fatalf("idempotent output = %q", out.String())
+	}
+	second, err := os.ReadFile(config.ConfigPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Fatal("idempotent migration changed bytes")
 	}
 	if err := applyWorkflowTelemetry(t.TempDir(), &out); err != nil {
 		t.Fatalf("absent config: %v", err)
