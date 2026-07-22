@@ -1,3 +1,51 @@
 Config-tree validation rules: names, path globs, targets, tags, and anchoring.
 
 ## Claims
+
+### `invariant: domain-name-validated`
+
+Config validation rejects a domain name that contains a path separator (a forward or back slash) or a .. segment.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: duplicate-target-rejected`
+
+Configuration validation rejects a targets list that names the same target more than once, failing with a duplicate-target error.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: glob-migration-anchored`
+
+AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs and audit.dependencyManifests to a leading double-star form, leaves already-slashed patterns untouched, and is idempotent.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-doc-name-path-validated`
+
+A local doc name is accepted only as one or more lowercase-kebab segments separated by slashes, and is rejected for a parent-directory path escape, a leading, trailing, or empty segment, a .md suffix, or the reserved _base stem; skill and agent names remain flat.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: local-name-validated`
+
+A local skill or agent name is rejected when it contains a path separator or a .. segment.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: pathglob-anchored`
+
+pathglob.Match is an anchored full-path doublestar match against a slash-separated repo-relative path: a bare star-dot-go pattern does not match cmd/a.go, a leading double-star form matches both a.go and cmd/a.go, and cmd followed by double-star matches every file under cmd/; no production matcher matches against a basename.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: tag-not-domain-name`
+
+With a non-empty tag vocabulary and a non-empty domain set, awf check fails when any vocabulary member name equals a configured domain name; a project with no domains or an empty vocabulary is inert.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: testglobs-anchored-validated`
+
+Config validation rejects a testGlobs pattern that is malformed or contains no path separator, applying the same anchored-glob rule used for the invariant marker source globs.
+Origin: ADR-0148
+Backing: test

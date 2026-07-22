@@ -8,3 +8,45 @@ The config-spec model and the generated configuration reference.
 The config-spec model and the generated configuration reference document.
 
 ## Claims
+
+### `invariant: config-reference-data-rejected`
+
+Because the config-reference doc's data namespace is injected at generation time, an authored data section in the config-reference sidecar is rejected when the sidecar is opened. An authored paths section and any unknown section name are rejected as well, keeping the sidecar limited to section bodies and the local flag.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: config-reference-no-bare-vars`
+
+The generated config-reference doc contains no unresolved bare vars or data reference token, and none of the template partials it assembles from reference a bare or dotted vars token.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: config-reference-regen-drift`
+
+Regeneration is the drift oracle for the config-reference doc: a hand-edited file reports stale, a deleted file reports missing, and switching the sidecar to local while a lock entry still lists the file reports orphaned.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: configspec-data-parity`
+
+The hand-authored table of per-artifact data-key descriptions is matched in both directions against the data keys derived from the catalog, the include-expanded embedded templates, and each artifact's declared defaults, so an undescribed data key cannot ship. The domain template's injected pair and the generated config reference's injected collections are the only exemptions.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: configspec-description-residue`
+
+No adopter-facing configspec description carries awf-internal residue: none contains a concrete decision-record citation of the form ADR followed by four digits, and none contains the repository identity literals for the owning account or module name.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: configspec-key-parity`
+
+The hand-authored table of config and sidecar key descriptions is matched by reflection against the config and sidecar struct fields in both directions, with no missing, duplicate, or extra entries. Each entry supplies a non-empty type, default, description, and availability clause.
+Origin: ADR-0148
+Backing: test
+
+### `invariant: configspec-var-derivation`
+
+The var reference table is derived from the catalog var descriptors, producing exactly one entry per descriptor whose target is empty or names a var. Each entry's description matches its catalog descriptor verbatim, each carries a non-empty availability clause, and no stale availability key remains.
+Origin: ADR-0148
+Backing: test

@@ -456,14 +456,14 @@
     "docs/topics/config/configspec-and-reference.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:890096581b5a3173f150bf9d2f9b29d2939608e498ea49470bb5c385be2bbb98",
-      "outputHash": "sha256:27a542d454504d52da77936714cb89063b6be0d2d20ee56c53e807d6b9add44f"
+      "configHash": "sha256:48e8c5eb033aebf483418c211afb5fc5e8b54c89db2eadfc7f9429bfd5e8f1d4",
+      "outputHash": "sha256:13d5589500d096a800ea3213056157938a751b1fb46512efdd6ec041a15b4320"
     },
     "docs/topics/config/configuration.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a9623ba76462302838b7af7424a9bc5332c18c34571bdd46b76c0546747ed984",
-      "outputHash": "sha256:18cd9430fe6d88e79c3c871c1d57b7bb951d86322f1a7f1b6fd8af1adf3aaf4f"
+      "configHash": "sha256:4b4e0f363a04f048726e37ce0e96c965d6b8870fe75eaefcd5c836a32a46b0c3",
+      "outputHash": "sha256:1907e650e3ebcbbc718dcf4411ed8aa0324a219104c958d21e8de52669c0d98b"
     },
     "docs/topics/config/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -480,8 +480,8 @@
     "docs/topics/config/validation.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:3984f29f84c3cafddb9c59df95a0730cac32c4f17f65a510f7aa39d673614c41",
-      "outputHash": "sha256:10876d326c4331c4f51bcf8a67e5486ac2657b103a45fbaebbf5192b032957ff"
+      "configHash": "sha256:957d3b9e2f3d7ad112031bf408062557c16005d1d43211c8f96c69312c58962a",
+      "outputHash": "sha256:3607c103beab827496ed99c1bdda0ea63da0092868629946d905c9146fd5096b"
     },
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",

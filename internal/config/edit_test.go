@@ -435,7 +435,7 @@ audit:
 		t.Fatal(err)
 	}
 	s := string(out)
-	// invariant: config/configuration:glob-migration-anchored
+	// invariant: config/validation:glob-migration-anchored
 	for _, want := range []string{"**/*.go", "cmd/**", "**/go.mod", "**/package.json"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("output missing %q:\n%s", want, s)

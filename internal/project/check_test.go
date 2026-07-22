@@ -487,7 +487,7 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 
 // A vocabulary member equal to a configured domain name is the coarse-tag
 // regression, gated exactly; inert when no domains are configured.
-// invariant: config/configuration:tag-not-domain-name
+// invariant: config/validation:tag-not-domain-name
 func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
 		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")

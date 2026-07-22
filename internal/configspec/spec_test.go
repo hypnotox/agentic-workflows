@@ -109,7 +109,7 @@ func TestADRStatesV2DescriptionAndEmptyOverride(t *testing.T) {
 
 // TestConfigspecKeyParity keeps the hand-authored key table bidirectionally
 // matched to the config structs, every entry fully described.
-// invariant: config/configuration:configspec-key-parity
+// invariant: config/configspec-and-reference:configspec-key-parity
 func TestConfigspecKeyParity(t *testing.T) {
 	want := map[string]bool{}
 	walkPaths(reflect.TypeOf(config.Config{}), "", want)
@@ -187,7 +187,7 @@ func expandedTemplate(t *testing.T, tid string) string {
 // both directions. The domain template's injected pair and the generated
 // config reference's injected collections are exempt (neither is
 // adopter-settable).
-// invariant: config/configuration:configspec-data-parity
+// invariant: config/configspec-and-reference:configspec-data-parity
 func TestConfigspecDataParity(t *testing.T) {
 	type ak struct{ kind, artifact, key string }
 	want := map[ak]bool{}
@@ -249,7 +249,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 		}
 	}
 	entries := VarEntries()
-	// invariant: config/configuration:configspec-var-derivation
+	// invariant: config/configspec-and-reference:configspec-var-derivation
 	if len(entries) != len(want) {
 		t.Errorf("VarEntries returned %d entries, want %d", len(entries), len(want))
 	}
@@ -275,7 +275,7 @@ func TestConfigspecVarDerivation(t *testing.T) {
 
 // TestConfigspecDescriptionResidue bans awf-internal residue from every
 // adopter-facing string: concrete ADR citations and repo-identity literals.
-// invariant: config/configuration:configspec-description-residue
+// invariant: config/configspec-and-reference:configspec-description-residue
 func TestConfigspecDescriptionResidue(t *testing.T) {
 	adrRE := regexp.MustCompile(`ADR-[0-9]{4}`)
 	check := func(where, s string) {

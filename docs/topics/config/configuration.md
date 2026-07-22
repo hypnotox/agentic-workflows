@@ -27,53 +27,11 @@ SetArrayMember edits config.yaml through a yaml.Node round-trip rather than line
 Origin: ADR-0026
 Backing: test
 
-### `invariant: config-reference-data-rejected`
-
-Because the config-reference doc's data namespace is injected at generation time, an authored data section in the config-reference sidecar is rejected when the sidecar is opened. An authored paths section and any unknown section name are rejected as well, keeping the sidecar limited to section bodies and the local flag.
-Origin: ADR-0088
-Backing: test
-
-### `invariant: config-reference-no-bare-vars`
-
-The generated config-reference doc contains no unresolved bare vars or data reference token, and none of the template partials it assembles from reference a bare or dotted vars token.
-Origin: ADR-0088
-Backing: test
-
-### `invariant: config-reference-regen-drift`
-
-Regeneration is the drift oracle for the config-reference doc: a hand-edited file reports stale, a deleted file reports missing, and switching the sidecar to local while a lock entry still lists the file reports orphaned.
-Origin: ADR-0088
-Backing: test
-
 ### `invariant: config-serialization-owned`
 
 The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, SetMappingScalar, and the typed nested-integer SetMappingInteger editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
 Revised-by: ADR-0144
-Backing: test
-
-### `invariant: configspec-data-parity`
-
-The hand-authored table of per-artifact data-key descriptions is matched in both directions against the data keys derived from the catalog, the include-expanded embedded templates, and each artifact's declared defaults, so an undescribed data key cannot ship. The domain template's injected pair and the generated config reference's injected collections are the only exemptions.
-Origin: ADR-0088
-Backing: test
-
-### `invariant: configspec-description-residue`
-
-No adopter-facing configspec description carries awf-internal residue: none contains a concrete decision-record citation of the form ADR followed by four digits, and none contains the repository identity literals for the owning account or module name.
-Origin: ADR-0088
-Backing: test
-
-### `invariant: configspec-key-parity`
-
-The hand-authored table of config and sidecar key descriptions is matched by reflection against the config and sidecar struct fields in both directions, with no missing, duplicate, or extra entries. Each entry supplies a non-empty type, default, description, and availability clause.
-Origin: ADR-0088
-Backing: test
-
-### `invariant: configspec-var-derivation`
-
-The var reference table is derived from the catalog var descriptors, producing exactly one entry per descriptor whose target is empty or names a var. Each entry's description matches its catalog descriptor verbatim, each carries a non-empty availability clause, and no stale availability key remains.
-Origin: ADR-0088
 Backing: test
 
 ### `invariant: docsdir-default`
@@ -82,28 +40,10 @@ The config carries a docsDir field; loading a config file that omits it defaults
 Origin: ADR-0005
 Backing: test
 
-### `invariant: domain-name-validated`
-
-Config validation rejects a domain name that contains a path separator (a forward or back slash) or a .. segment.
-Origin: ADR-0014
-Backing: test
-
-### `invariant: duplicate-target-rejected`
-
-Configuration validation rejects a targets list that names the same target more than once, failing with a duplicate-target error.
-Origin: ADR-0124
-Backing: test
-
 ### `invariant: enable-arrays`
 
 The skills, agents, and docs keys in config.yaml are plain string arrays whose entries enable targets by presence, and a data, sections, or local key placed at the root of config.yaml is rejected at load.
 Origin: ADR-0009
-Backing: test
-
-### `invariant: glob-migration-anchored`
-
-AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs and audit.dependencyManifests to a leading double-star form, leaves already-slashed patterns untouched, and is idempotent.
-Origin: ADR-0077
 Backing: test
 
 ### `invariant: topic-claim-budget-configured`
@@ -112,28 +52,10 @@ The positive currentState.maxClaimsPerTopic setting has an effective default of 
 Origin: ADR-0144
 Backing: test
 
-### `invariant: local-doc-name-path-validated`
-
-A local doc name is accepted only as one or more lowercase-kebab segments separated by slashes, and is rejected for a parent-directory path escape, a leading, trailing, or empty segment, a .md suffix, or the reserved _base stem; skill and agent names remain flat.
-Origin: ADR-0091
-Backing: test
-
-### `invariant: local-name-validated`
-
-A local skill or agent name is rejected when it contains a path separator or a .. segment.
-Origin: ADR-0068
-Backing: test
-
 ### `invariant: no-replacewith`
 
 A section-override sidecar exposes no replaceWith field: the strict config decoder rejects a sections entry carrying replaceWith, so a convention part is the only mechanism that replaces a section body.
 Origin: ADR-0015
-Backing: test
-
-### `invariant: pathglob-anchored`
-
-pathglob.Match is an anchored full-path doublestar match against a slash-separated repo-relative path: a bare star-dot-go pattern does not match cmd/a.go, a leading double-star form matches both a.go and cmd/a.go, and cmd followed by double-star matches every file under cmd/; no production matcher matches against a basename.
-Origin: ADR-0077
 Backing: test
 
 ### `invariant: remove-block-scoped`
@@ -160,12 +82,6 @@ Under a non-empty tag vocabulary, awf check emits a non-failing note for each vo
 Origin: ADR-0109
 Backing: test
 
-### `invariant: tag-not-domain-name`
-
-With a non-empty tag vocabulary and a non-empty domain set, awf check fails when any vocabulary member name equals a configured domain name; a project with no domains or an empty vocabulary is inert.
-Origin: ADR-0109
-Backing: test
-
 ### `invariant: tag-vocabulary-governed`
 
 With a non-empty tag vocabulary, awf check fails on any tag used by an ADR or a pitfall that is not a declared vocabulary member and on any vocabulary entry whose meaning is empty; with an empty or absent vocabulary the membership rule is inert.
@@ -176,12 +92,6 @@ Backing: test
 
 A config with no targets key loads with targets defaulting to [claude]; Validate rejects an empty targets list and any path-separator name, while an unknown adapter name is rejected later by project open, keeping config free of the adapter registry.
 Origin: ADR-0037
-Backing: test
-
-### `invariant: testglobs-anchored-validated`
-
-Config validation rejects a testGlobs pattern that is malformed or contains no path separator, applying the same anchored-glob rule used for the invariant marker source globs.
-Origin: ADR-0105
 Backing: test
 
 ### `invariant: workflow-telemetry-settings`

@@ -21,7 +21,7 @@ func Validate(pattern string) error {
 // Match reports whether the slash-separated repo-relative path matches the
 // anchored pattern. A malformed pattern matches nothing - Validate at config
 // load / audit-input building keeps that branch cold in practice.
-// touches-state: config/configuration:pathglob-anchored - anchored full-path match; proof in pathglob_test.go
+// touches-state: config/validation:pathglob-anchored - anchored full-path match; proof in pathglob_test.go
 func Match(pattern, relPath string) bool {
 	ok, err := doublestar.Match(pattern, relPath)
 	return err == nil && ok

@@ -21,7 +21,7 @@ func writeConfig(t *testing.T, body string) string {
 	return dir
 }
 
-// invariant: config/configuration:duplicate-target-rejected
+// invariant: config/validation:duplicate-target-rejected
 func TestConfigRejectsDuplicateTargets(t *testing.T) {
 	cfg, err := Load(writeConfig(t, "prefix: awf\nskills: []\nagents: []\ntargets: [claude, claude]\n"))
 	if err != nil {
@@ -364,7 +364,7 @@ func TestValidateRejectsPathInPrefix(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:domain-name-validated
+// invariant: config/validation:domain-name-validated
 func TestValidateRejectsBadDomainName(t *testing.T) {
 	for _, bad := range []string{"", "../evil", "foo/bar", "a\\b"} {
 		c := &Config{Prefix: "x", DocsDir: "docs", Domains: []string{bad}}
@@ -503,7 +503,7 @@ func TestCurrentStateSeverityValidation(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:testglobs-anchored-validated
+// invariant: config/validation:testglobs-anchored-validated
 func TestCurrentStateStrictValidation(t *testing.T) {
 	valid := `prefix: x
 currentState:
@@ -721,7 +721,7 @@ func TestValidateArtifactName(t *testing.T) {
 	if err := ValidateArtifactName("skill", "good-name"); err != nil {
 		t.Errorf("valid name rejected: %v", err)
 	}
-	// invariant: config/configuration:local-name-validated
+	// invariant: config/validation:local-name-validated
 	for _, bad := range []string{"", "a/b", "a\\b", "..", "a..b", "_reserved", "Foo", "foo bar", "foo: bar", "foo.bar", "über"} {
 		if err := ValidateArtifactName("skill", bad); err == nil {
 			t.Errorf("expected %q rejected", bad)

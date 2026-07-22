@@ -387,7 +387,7 @@ func AnchorNoSlashGlobs(src []byte) ([]byte, []GlobRewrite, error) {
 
 // anchorSeq rewrites each non-empty no-slash scalar member of seq to `**/<value>`
 // and reports the rewrites under key.
-// touches-state: config/configuration:glob-migration-anchored - no-slash glob anchoring rewrite; proof in edit_test.go
+// touches-state: config/validation:glob-migration-anchored - no-slash glob anchoring rewrite; proof in edit_test.go
 func anchorSeq(seq *yaml.Node, key string) []GlobRewrite {
 	var rewrites []GlobRewrite
 	for _, n := range seq.Content {

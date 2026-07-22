@@ -22,7 +22,7 @@ func TestMatchAnchored(t *testing.T) {
 		{"**/go.mod", "sub/go.mod", true},
 	}
 	for _, c := range cases {
-		// invariant: config/configuration:pathglob-anchored
+		// invariant: config/validation:pathglob-anchored
 		if got := Match(c.pattern, c.path); got != c.want {
 			t.Errorf("Match(%q, %q) = %v, want %v", c.pattern, c.path, got, c.want)
 		}

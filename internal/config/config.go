@@ -695,7 +695,7 @@ func ValidateDomainName(name string) error {
 // invariant requires, awf's reserved "_" namespace, and the colon/space/quote
 // characters that would otherwise interpolate into the base template's name: line
 // and break its YAML frontmatter. It mirrors every catalog artifact's naming.
-// touches-state: config/configuration:local-name-validated - local skill/agent name charset validation; proof in config_test.go
+// touches-state: config/validation:local-name-validated - local skill/agent name charset validation; proof in config_test.go
 func ValidateArtifactName(kind, name string) error {
 	if name == "" {
 		return fmt.Errorf("%s name must not be empty", kind)
@@ -714,7 +714,7 @@ func ValidateArtifactName(kind, name string) error {
 // lowercase-kebab segments joined by "/", rejecting a path escape, an empty or
 // leading/trailing segment, a ".md" suffix, and any segment (e.g. the reserved
 // "_base" stem) carrying a non-kebab character. Skill/agent names stay flat.
-// touches-state: config/configuration:local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
+// touches-state: config/validation:local-doc-name-path-validated - path-aware local doc name validation; proof in docname_test.go
 func ValidateDocName(name string) error {
 	if name == "" {
 		return errors.New("doc name must not be empty")
