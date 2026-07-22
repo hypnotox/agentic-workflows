@@ -1,5 +1,19 @@
 data:
   pitfalls:
+    - title: "A V2 ADR's Implementing flip cannot commit alone"
+      domains: [adr-system]
+      tags: [adr-lifecycle, plan-taxonomy]
+      body: |
+        The current-state-v2 parser rejects an ADR whose Status history ends on an Implementing
+        event: "implementing status event must be followed by the first Applied event". A plan that
+        schedules a standalone begin-implementation commit (flip to Implementing, sync, commit) is
+        therefore structurally unexecutable - every `./x sync`, `./x check`, and gate run fails to
+        parse the ADR until the first Applied event exists, so the Implementing flip must travel in
+        the same staged transaction as the first Applied batch and its claim mutations. The
+        ADR-0147 plan scheduled exactly that standalone phase and it survived the full plan review,
+        the verify pass, and the plan-ADR resync; only the parser caught it at execution time. When
+        authoring or reviewing a plan for a V2 ADR with incremental batches, check that no phase
+        commits an Implementing event without its paired first Applied event.
     - title: "A schema-generation bump needs `awf upgrade`, not `awf sync`"
       domains: [config, tooling]
       tags: [schema-migration, upgrade-flow]
