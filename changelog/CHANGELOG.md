@@ -9,6 +9,9 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+- awf 0.22.0 advances to schema generation 17 with a strict, tracked `workflowTelemetry`
+  configuration block for retention, dashboard widget behavior, diagnostics, and heuristic thresholds.
+  Existing adopters must run `awf upgrade`; the migration writes the complete defaults.
 - awf 0.21.0 advances to schema generation 16 with strict `currentState.maxClaimsPerTopic`
   configuration. Existing adopters must run `awf upgrade`; the migration writes the explicit default
   of 20 while preserving an explicit positive value and the sealed ADR format cutoff.
@@ -37,6 +40,12 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- Pi targets now ship a privacy-minimal, trajectory-aware workflow ledger and dashboard with explicit
+  lifecycle tools, active-effort widget, interactive metrics/doctor views, confirmed maintenance,
+  parent-handoff association, and resident history preserved by uninstall. The canonical `awf metrics`
+  and read-only `awf doctor` commands provide selector-scoped human, JSON, and export surfaces. Pi does
+  not currently produce shell/gate observations because its tool API exposes command text rather than
+  a trusted token vector; the typed protocol shape remains reserved.
 - `awf context` now preserves request-to-effective-path attribution, reports one primary path
   classification and known-artifact navigation, defaults to directly relevant concise claims, and
   adds an untruncated `--full` authority packet plus lifecycle-aware explicit ADR navigation.
