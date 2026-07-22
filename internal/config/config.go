@@ -41,26 +41,27 @@ type Sidecar struct {
 // data/sections/local live in sidecars, not here. Targets is the adapter-runtime
 // enable array (default ["claude"]); adapter artifacts render once per entry.
 type Config struct {
-	Prefix        string              `yaml:"prefix"`
-	DocsDir       string              `yaml:"docsDir"`
-	Vars          map[string]any      `yaml:"vars"`
-	Skills        []string            `yaml:"skills"`
-	Agents        []string            `yaml:"agents"`
-	Docs          []string            `yaml:"docs"`
-	Domains       []string            `yaml:"domains"`
-	Tags          map[string]string   `yaml:"tags"`
-	ContextIgnore []string            `yaml:"contextIgnore"`
-	Targets       []string            `yaml:"targets"`
-	CurrentState  *CurrentStateConfig `yaml:"currentState"`
-	Audit         *AuditConfig        `yaml:"audit"`
-	Bootstrap     *BootstrapConfig    `yaml:"bootstrap"`
-	Hooks         *HooksConfig        `yaml:"hooks"`
-	Runner        *RunnerConfig       `yaml:"runner"`
-	ProseGate     *ProseGateConfig    `yaml:"proseGate"`
-	root          string              // <project>/.awf, for sidecar/part resolution
-	raw           []byte              // the exact config.yaml bytes Load read, for in-place byte edits
-	read          TreeReader          // selected filesystem or immutable snapshot universe
-	filesystem    bool
+	Prefix            string                  `yaml:"prefix"`
+	DocsDir           string                  `yaml:"docsDir"`
+	Vars              map[string]any          `yaml:"vars"`
+	Skills            []string                `yaml:"skills"`
+	Agents            []string                `yaml:"agents"`
+	Docs              []string                `yaml:"docs"`
+	Domains           []string                `yaml:"domains"`
+	Tags              map[string]string       `yaml:"tags"`
+	ContextIgnore     []string                `yaml:"contextIgnore"`
+	Targets           []string                `yaml:"targets"`
+	CurrentState      *CurrentStateConfig     `yaml:"currentState"`
+	Audit             *AuditConfig            `yaml:"audit"`
+	Bootstrap         *BootstrapConfig        `yaml:"bootstrap"`
+	Hooks             *HooksConfig            `yaml:"hooks"`
+	Runner            *RunnerConfig           `yaml:"runner"`
+	ProseGate         *ProseGateConfig        `yaml:"proseGate"`
+	WorkflowTelemetry WorkflowTelemetryConfig `yaml:"workflowTelemetry"`
+	root              string                  // <project>/.awf, for sidecar/part resolution
+	raw               []byte                  // the exact config.yaml bytes Load read, for in-place byte edits
+	read              TreeReader              // selected filesystem or immutable snapshot universe
+	filesystem        bool
 }
 
 // TreeReader supplies canonical config-tree-relative bytes without exposing a
@@ -298,6 +299,59 @@ type ProseExemption struct {
 	Count     *int   `yaml:"count"`
 }
 
+// WorkflowTelemetryConfig controls resident workflow metrics collection and display.
+type WorkflowTelemetryConfig struct {
+	Retention   TelemetryRetentionConfig   `yaml:"retention"`
+	Widget      TelemetryWidgetConfig      `yaml:"widget"`
+	Diagnostics TelemetryDiagnosticsConfig `yaml:"diagnostics"`
+}
+
+type TelemetryRetentionConfig struct {
+	MaxCompletedEffortAgeDays int `yaml:"maxCompletedEffortAgeDays"`
+	MaxCompletedEffortCount   int `yaml:"maxCompletedEffortCount"`
+}
+
+type TelemetryWidgetConfig struct {
+	Enabled  bool `yaml:"enabled"`
+	ShowCost bool `yaml:"showCost"`
+}
+
+type TelemetryDiagnosticsConfig struct {
+	HeuristicsEnabled      bool                      `yaml:"heuristicsEnabled"`
+	MinimumBaselineSamples int                       `yaml:"minimumBaselineSamples"`
+	BaselinePercentile     int                       `yaml:"baselinePercentile"`
+	Thresholds             TelemetryThresholdsConfig `yaml:"thresholds"`
+}
+
+type TelemetryThresholdsConfig struct {
+	PhaseReentryCount         int `yaml:"phaseReentryCount"`
+	PhaseDurationSeconds      int `yaml:"phaseDurationSeconds"`
+	PhaseTokens               int `yaml:"phaseTokens"`
+	CompactionCount           int `yaml:"compactionCount"`
+	HandoffCount              int `yaml:"handoffCount"`
+	ToolFailureCount          int `yaml:"toolFailureCount"`
+	GateFailureCount          int `yaml:"gateFailureCount"`
+	CacheReadPercentBelow     int `yaml:"cacheReadPercentBelow"`
+	SubagentQueueWaitSeconds  int `yaml:"subagentQueueWaitSeconds"`
+	ImplementationReworkCount int `yaml:"implementationReworkCount"`
+}
+
+// DefaultWorkflowTelemetryConfig returns the complete schema default.
+func DefaultWorkflowTelemetryConfig() WorkflowTelemetryConfig {
+	return WorkflowTelemetryConfig{
+		Retention: TelemetryRetentionConfig{MaxCompletedEffortAgeDays: 90, MaxCompletedEffortCount: 100},
+		Widget:    TelemetryWidgetConfig{Enabled: true, ShowCost: true},
+		Diagnostics: TelemetryDiagnosticsConfig{
+			HeuristicsEnabled: true, MinimumBaselineSamples: 10, BaselinePercentile: 95,
+			Thresholds: TelemetryThresholdsConfig{
+				PhaseReentryCount: 2, PhaseDurationSeconds: 14400, PhaseTokens: 200000,
+				CompactionCount: 3, HandoffCount: 3, ToolFailureCount: 3, GateFailureCount: 2,
+				CacheReadPercentBelow: 10, SubagentQueueWaitSeconds: 60, ImplementationReworkCount: 2,
+			},
+		},
+	}
+}
+
 // AuditConfig tunes `awf audit` (ADR-0017). A nil *AuditConfig means all
 // defaults; within it, a nil slice means "use the default", an explicit empty
 // slice means "accept any / disabled" per field. Resolution and defaults live in
@@ -344,7 +398,7 @@ func Parse(awfDir string, b []byte) (*Config, error) {
 
 // ParseTree decodes config bytes and injects the selected config-tree reader.
 func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
-	var c Config
+	c := Config{WorkflowTelemetry: DefaultWorkflowTelemetryConfig()}
 	dec := yaml.NewDecoder(bytes.NewReader(b))
 	dec.KnownFields(true)
 	if err := dec.Decode(&c); err != nil {
@@ -496,6 +550,9 @@ func (c *Config) PartPath(kind, artifact, section string) string {
 }
 
 func (c *Config) Validate() error {
+	if c.WorkflowTelemetry == (WorkflowTelemetryConfig{}) {
+		c.WorkflowTelemetry = DefaultWorkflowTelemetryConfig()
+	}
 	if c.Prefix == "" {
 		return errors.New("prefix must not be empty")
 	}
@@ -554,6 +611,35 @@ func (c *Config) Validate() error {
 		if err := validateUniquePathGlobs(c.CurrentState.TestGlobs); err != nil {
 			return fmt.Errorf("currentState.testGlobs: %w", err)
 		}
+	}
+	t := c.WorkflowTelemetry
+	for _, setting := range []struct {
+		name      string
+		value     int
+		allowZero bool
+	}{
+		{"retention.maxCompletedEffortAgeDays", t.Retention.MaxCompletedEffortAgeDays, true},
+		{"retention.maxCompletedEffortCount", t.Retention.MaxCompletedEffortCount, true},
+		{"diagnostics.minimumBaselineSamples", t.Diagnostics.MinimumBaselineSamples, false},
+		{"diagnostics.thresholds.phaseReentryCount", t.Diagnostics.Thresholds.PhaseReentryCount, false},
+		{"diagnostics.thresholds.phaseDurationSeconds", t.Diagnostics.Thresholds.PhaseDurationSeconds, false},
+		{"diagnostics.thresholds.phaseTokens", t.Diagnostics.Thresholds.PhaseTokens, false},
+		{"diagnostics.thresholds.compactionCount", t.Diagnostics.Thresholds.CompactionCount, false},
+		{"diagnostics.thresholds.handoffCount", t.Diagnostics.Thresholds.HandoffCount, false},
+		{"diagnostics.thresholds.toolFailureCount", t.Diagnostics.Thresholds.ToolFailureCount, false},
+		{"diagnostics.thresholds.gateFailureCount", t.Diagnostics.Thresholds.GateFailureCount, false},
+		{"diagnostics.thresholds.subagentQueueWaitSeconds", t.Diagnostics.Thresholds.SubagentQueueWaitSeconds, false},
+		{"diagnostics.thresholds.implementationReworkCount", t.Diagnostics.Thresholds.ImplementationReworkCount, false},
+	} {
+		if setting.value < 0 || (!setting.allowZero && setting.value == 0) {
+			return fmt.Errorf("workflowTelemetry.%s must be %s; got %d", setting.name, map[bool]string{true: "non-negative", false: "positive"}[setting.allowZero], setting.value)
+		}
+	}
+	if t.Diagnostics.BaselinePercentile < 1 || t.Diagnostics.BaselinePercentile > 100 {
+		return fmt.Errorf("workflowTelemetry.diagnostics.baselinePercentile must be between 1 and 100; got %d", t.Diagnostics.BaselinePercentile)
+	}
+	if p := t.Diagnostics.Thresholds.CacheReadPercentBelow; p < 0 || p > 100 {
+		return fmt.Errorf("workflowTelemetry.diagnostics.thresholds.cacheReadPercentBelow must be between 0 and 100; got %d", p)
 	}
 	if c.Audit != nil {
 		for _, g := range c.Audit.DependencyManifests {

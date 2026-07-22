@@ -54,7 +54,7 @@ func TestApplyTopicClaimBudget(t *testing.T) {
 	}
 }
 
-func TestUpgradeSchemaFifteenToSixteenPreservesCutoff(t *testing.T) {
+func TestUpgradeSchemaFifteenToCurrentPreservesCutoff(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\ncurrentState:\n  topicCoverage: off\n")
 	lock := &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 9, LegacyADRGaps: []int{1}}
@@ -65,14 +65,14 @@ func TestUpgradeSchemaFifteenToSixteenPreservesCutoff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"topic-claim-budget"}) {
+	if !reflect.DeepEqual(applied, []string{"topic-claim-budget", "workflow-telemetry"}) {
 		t.Fatalf("applied = %#v", applied)
 	}
 	upgraded, err := manifest.Load(config.LockPath(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgraded.SchemaVersion != 16 || upgraded.ADRFormatV1From != 2 || upgraded.ADRFormatV2From != 9 || !reflect.DeepEqual(upgraded.LegacyADRGaps, []int{1}) {
+	if upgraded.SchemaVersion != 17 || upgraded.ADRFormatV1From != 2 || upgraded.ADRFormatV2From != 9 || !reflect.DeepEqual(upgraded.LegacyADRGaps, []int{1}) {
 		t.Fatalf("upgraded lock = %#v", upgraded)
 	}
 	applied, err = Upgrade(root, io.Discard)

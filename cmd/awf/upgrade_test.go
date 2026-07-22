@@ -44,7 +44,7 @@ func TestRunUpgradeExistingV1ToCurrentIsAtomicAndIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.SchemaVersion != 16 || got.AWFVersion != "0.21.0" || got.ADRFormatV1From != 1 || got.ADRFormatV2From != 4 {
+	if got.SchemaVersion != 17 || got.AWFVersion != "0.22.0" || got.ADRFormatV1From != 1 || got.ADRFormatV2From != 4 {
 		t.Fatalf("upgraded authority = %#v", got)
 	}
 	for path, want := range map[string]string{onePath: one, threePath: three} {
@@ -61,7 +61,7 @@ func TestRunUpgradeExistingV1ToCurrentIsAtomicAndIdempotent(t *testing.T) {
 	if second := snapshotTree(t, root); second != first {
 		t.Fatal("same-schema upgrade changed the synchronized tree")
 	}
-	if !strings.Contains(out.String(), "already at schema 16") {
+	if !strings.Contains(out.String(), "already at schema 17") {
 		t.Fatalf("idempotent output = %q", out.String())
 	}
 }
@@ -92,7 +92,7 @@ func TestRunUpgradeSchema15FailureAndAheadAreAtomic(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		lock.SchemaVersion = 17
+		lock.SchemaVersion = 18
 		if err := lock.Save(config.LockPath(root)); err != nil {
 			t.Fatal(err)
 		}

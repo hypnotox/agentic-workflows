@@ -176,3 +176,9 @@ Backing: test
 Config validation rejects a testGlobs pattern that is malformed or contains no path separator, applying the same anchored-glob rule used for the invariant marker source globs.
 Origin: ADR-0105
 Backing: test
+
+### `invariant: workflow-telemetry-settings`
+
+The strict tracked workflowTelemetry block carries retention, widget, heuristic baseline, and threshold settings with complete scaffolded defaults; omission receives effective defaults, explicit valid leaves are preserved, retention zero disables its dimension, and all other numeric bounds follow the documented contract.
+Origin: ADR-0146
+Backing: test

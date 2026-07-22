@@ -16,14 +16,17 @@ func TestVersionCoversCurrentSchema(t *testing.T) {
 	if semver.Compare("v"+Version, "v"+min) < 0 {
 		t.Errorf("project.Version %s is below the minimum %s for schema generation %d; bump the const (ADR-0049 Decision 4)", Version, min, migrate.Current())
 	}
-	if migrate.Current() != 16 {
-		t.Errorf("migrate.Current() = %d, want 16", migrate.Current())
+	if migrate.Current() != 17 {
+		t.Errorf("migrate.Current() = %d, want 17", migrate.Current())
 	}
 	if minVersionBySchema[16] != "0.21.0" {
 		t.Errorf("minVersionBySchema[16] = %q, want %q", minVersionBySchema[16], "0.21.0")
 	}
-	if Version != "0.21.0" {
-		t.Errorf("Version = %q, want %q", Version, "0.21.0")
+	if minVersionBySchema[17] != "0.22.0" {
+		t.Errorf("minVersionBySchema[17] = %q, want %q", minVersionBySchema[17], "0.22.0")
+	}
+	if Version != "0.22.0" {
+		t.Errorf("Version = %q, want %q", Version, "0.22.0")
 	}
 	if !BridgeTrancheComplete {
 		t.Error("bridge tranche must be complete now that Plans 1 and 2 have both landed")

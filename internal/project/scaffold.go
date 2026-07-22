@@ -69,15 +69,16 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
 	}
 	out, err := config.MarshalSkeleton(config.Skeleton{
-		Prefix:       prefix,
-		Vars:         seeded,
-		Skills:       skillNames,
-		Agents:       agentNames,
-		Docs:         docNames,
-		Audit:        auditBlk,
-		Bootstrap:    &config.BootstrapConfig{Enabled: true},
-		Hooks:        &config.HooksConfig{Enabled: true},
-		CurrentState: &config.SkeletonCurrentState{MaxClaimsPerTopic: 20},
+		Prefix:            prefix,
+		Vars:              seeded,
+		Skills:            skillNames,
+		Agents:            agentNames,
+		Docs:              docNames,
+		Audit:             auditBlk,
+		Bootstrap:         &config.BootstrapConfig{Enabled: true},
+		Hooks:             &config.HooksConfig{Enabled: true},
+		CurrentState:      &config.SkeletonCurrentState{MaxClaimsPerTopic: 20},
+		WorkflowTelemetry: config.DefaultWorkflowTelemetryConfig(),
 	})
 	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
 		return nil, nil, err

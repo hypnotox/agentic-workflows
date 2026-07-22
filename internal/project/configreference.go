@@ -105,6 +105,7 @@ func (p *Project) currentValue(path string) string {
 		return s
 	}
 	a := p.Cfg.Audit
+	t := p.Cfg.WorkflowTelemetry
 	switch path {
 	case "prefix":
 		return "`" + p.Cfg.Prefix + "`"
@@ -152,6 +153,40 @@ func (p *Project) currentValue(path string) string {
 		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
 	case "currentState.maxClaimsPerTopic":
 		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxClaimsPerTopic()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxClaimsPerTopic == nil)
+	case "workflowTelemetry.retention.maxCompletedEffortAgeDays":
+		return strconv.Itoa(t.Retention.MaxCompletedEffortAgeDays)
+	case "workflowTelemetry.retention.maxCompletedEffortCount":
+		return strconv.Itoa(t.Retention.MaxCompletedEffortCount)
+	case "workflowTelemetry.widget.enabled":
+		return strconv.FormatBool(t.Widget.Enabled)
+	case "workflowTelemetry.widget.showCost":
+		return strconv.FormatBool(t.Widget.ShowCost)
+	case "workflowTelemetry.diagnostics.heuristicsEnabled":
+		return strconv.FormatBool(t.Diagnostics.HeuristicsEnabled)
+	case "workflowTelemetry.diagnostics.minimumBaselineSamples":
+		return strconv.Itoa(t.Diagnostics.MinimumBaselineSamples)
+	case "workflowTelemetry.diagnostics.baselinePercentile":
+		return strconv.Itoa(t.Diagnostics.BaselinePercentile)
+	case "workflowTelemetry.diagnostics.thresholds.phaseReentryCount":
+		return strconv.Itoa(t.Diagnostics.Thresholds.PhaseReentryCount)
+	case "workflowTelemetry.diagnostics.thresholds.phaseDurationSeconds":
+		return strconv.Itoa(t.Diagnostics.Thresholds.PhaseDurationSeconds)
+	case "workflowTelemetry.diagnostics.thresholds.phaseTokens":
+		return strconv.Itoa(t.Diagnostics.Thresholds.PhaseTokens)
+	case "workflowTelemetry.diagnostics.thresholds.compactionCount":
+		return strconv.Itoa(t.Diagnostics.Thresholds.CompactionCount)
+	case "workflowTelemetry.diagnostics.thresholds.handoffCount":
+		return strconv.Itoa(t.Diagnostics.Thresholds.HandoffCount)
+	case "workflowTelemetry.diagnostics.thresholds.toolFailureCount":
+		return strconv.Itoa(t.Diagnostics.Thresholds.ToolFailureCount)
+	case "workflowTelemetry.diagnostics.thresholds.gateFailureCount":
+		return strconv.Itoa(t.Diagnostics.Thresholds.GateFailureCount)
+	case "workflowTelemetry.diagnostics.thresholds.cacheReadPercentBelow":
+		return strconv.Itoa(t.Diagnostics.Thresholds.CacheReadPercentBelow)
+	case "workflowTelemetry.diagnostics.thresholds.subagentQueueWaitSeconds":
+		return strconv.Itoa(t.Diagnostics.Thresholds.SubagentQueueWaitSeconds)
+	case "workflowTelemetry.diagnostics.thresholds.implementationReworkCount":
+		return strconv.Itoa(t.Diagnostics.Thresholds.ImplementationReworkCount)
 	case "audit.allowedTypes":
 		if len(res.AllowedTypes) == 0 {
 			return "accept any"

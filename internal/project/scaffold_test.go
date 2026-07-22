@@ -49,6 +49,9 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	if c.Bootstrap == nil || !c.Bootstrap.Enabled {
 		t.Errorf("scaffold bootstrap = %+v, want enabled true", c.Bootstrap)
 	}
+	if c.WorkflowTelemetry != config.DefaultWorkflowTelemetryConfig() {
+		t.Errorf("scaffold workflowTelemetry = %#v, want complete defaults", c.WorkflowTelemetry)
+	}
 	// invariant: tooling/cli:init-hooks-default-on
 	if c.Hooks == nil || !c.Hooks.Enabled {
 		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)

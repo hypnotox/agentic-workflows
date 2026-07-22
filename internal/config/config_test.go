@@ -777,3 +777,48 @@ func TestHasSidecar(t *testing.T) {
 		t.Fatalf("snapshot sidecar behavior changed: has=%v err=%v", has, err)
 	}
 }
+
+func TestWorkflowTelemetryConfigContract(t *testing.T) {
+	// invariant: config/configuration:workflow-telemetry-settings
+	cfg, err := Parse(".", []byte("prefix: x\ntargets: [claude]\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.WorkflowTelemetry != DefaultWorkflowTelemetryConfig() {
+		t.Fatalf("defaults = %#v", cfg.WorkflowTelemetry)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+
+	valid := "prefix: x\ntargets: [claude]\nworkflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 0\n    maxCompletedEffortCount: 0\n  widget:\n    enabled: false\n    showCost: false\n  diagnostics:\n    heuristicsEnabled: false\n    minimumBaselineSamples: 1\n    baselinePercentile: 1\n    thresholds:\n      phaseReentryCount: 1\n      phaseDurationSeconds: 1\n      phaseTokens: 1\n      compactionCount: 1\n      handoffCount: 1\n      toolFailureCount: 1\n      gateFailureCount: 1\n      cacheReadPercentBelow: 0\n      subagentQueueWaitSeconds: 1\n      implementationReworkCount: 1\n"
+	cfg, err = Parse(".", []byte(valid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []string{
+		"workflowTelemetry:\n  unknown: true\n",
+		"workflowTelemetry:\n  retention:\n    unknown: 1\n",
+		"workflowTelemetry:\n  diagnostics:\n    thresholds:\n      unknown: 1\n",
+	} {
+		if _, err := Parse(".", []byte("prefix: x\ntargets: [claude]\n"+bad)); err == nil {
+			t.Errorf("accepted unknown field in %q", bad)
+		}
+	}
+	for _, mutate := range []struct{ old, new string }{
+		{"minimumBaselineSamples: 1", "minimumBaselineSamples: 0"},
+		{"baselinePercentile: 1", "baselinePercentile: 101"},
+		{"cacheReadPercentBelow: 0", "cacheReadPercentBelow: 101"},
+	} {
+		cfg, err := Parse(".", []byte(strings.Replace(valid, mutate.old, mutate.new, 1)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := cfg.Validate(); err == nil {
+			t.Errorf("accepted %s", mutate.new)
+		}
+	}
+}

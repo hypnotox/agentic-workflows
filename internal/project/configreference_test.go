@@ -53,6 +53,8 @@ func TestConfigReferenceGolden(t *testing.T) {
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 8 (default) |",
 		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 20 (default) |",
 		"`currentState.topicCoverage` | severity (error, warn, or off) | error | error (default) |",
+		"`workflowTelemetry.retention.maxCompletedEffortAgeDays` | non-negative integer | 90 | 90 |",
+		"`workflowTelemetry.diagnostics.thresholds.phaseDurationSeconds` | positive integer | 14400 | 14400 |",
 		"State: set (`make gate`). Consumed by: agents-doc, doc workflow, plans-template, skill tdd.",
 		"`checkCmd`",
 		"State: empty, an open to-do.",

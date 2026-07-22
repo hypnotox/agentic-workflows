@@ -4,6 +4,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 func TestMarshalSkeleton(t *testing.T) {
@@ -23,7 +25,12 @@ func TestMarshalSkeleton(t *testing.T) {
 		"skills:\n  - tdd\n" +
 		"agents: []\n" +
 		"docs:\n  - workflow\n" +
-		"currentState:\n  maxClaimsPerTopic: 20\n"
+		"currentState:\n  maxClaimsPerTopic: 20\n" +
+		"workflowTelemetry:\n" +
+		"  retention:\n    maxCompletedEffortAgeDays: 90\n    maxCompletedEffortCount: 100\n" +
+		"  widget:\n    enabled: true\n    showCost: true\n" +
+		"  diagnostics:\n    heuristicsEnabled: true\n    minimumBaselineSamples: 10\n    baselinePercentile: 95\n" +
+		"    thresholds:\n      phaseReentryCount: 2\n      phaseDurationSeconds: 14400\n      phaseTokens: 200000\n      compactionCount: 3\n      handoffCount: 3\n      toolFailureCount: 3\n      gateFailureCount: 2\n      cacheReadPercentBelow: 10\n      subagentQueueWaitSeconds: 60\n      implementationReworkCount: 2\n"
 	// invariant: config/configuration:config-serialization-owned
 	if string(out) != want {
 		t.Errorf("MarshalSkeleton:\n got: %q\nwant: %q", out, want)
@@ -476,5 +483,52 @@ func TestAnchorNoSlashGlobsSkipsNonMappingSourceItem(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "**/*.py") || !strings.Contains(string(out), "just-a-scalar") {
 		t.Errorf("scalar source item must be skipped, mapping one rewritten:\n%s", out)
+	}
+}
+
+func TestEnsureWorkflowTelemetryDefaults(t *testing.T) {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte("# keep\nprefix: x\nworkflowTelemetry:\n  widget:\n    enabled: false # explicit\n"), &doc); err != nil {
+		t.Fatal(err)
+	}
+	changed, err := EnsureWorkflowTelemetryDefaults(&doc)
+	if err != nil || !changed {
+		t.Fatalf("changed=%v err=%v", changed, err)
+	}
+	widget, _ := mapValue(doc.Content[0], "workflowTelemetry")
+	widget, _ = mapValue(widget, "widget")
+	enabled, _ := mapValue(widget, "enabled")
+	if enabled.Value != "false" || enabled.LineComment != "# explicit" {
+		t.Fatalf("explicit leaf changed: %#v", enabled)
+	}
+	changed, err = EnsureWorkflowTelemetryDefaults(&doc)
+	if err != nil || changed {
+		t.Fatalf("second changed=%v err=%v", changed, err)
+	}
+
+	for _, node := range []*yaml.Node{
+		{Kind: yaml.DocumentNode},
+		{Kind: yaml.SequenceNode},
+	} {
+		if _, err := EnsureWorkflowTelemetryDefaults(node); err == nil {
+			t.Errorf("accepted invalid node kind %d", node.Kind)
+		}
+	}
+	root := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	if changed, err := EnsureWorkflowTelemetryDefaults(root); err != nil || !changed {
+		t.Fatalf("raw absent mapping changed=%v err=%v", changed, err)
+	}
+	for _, src := range []string{
+		"workflowTelemetry: false\n",
+		"workflowTelemetry:\n  widget: false\n",
+		"workflowTelemetry:\n  diagnostics:\n    thresholds: false\n",
+	} {
+		var bad yaml.Node
+		if err := yaml.Unmarshal([]byte(src), &bad); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := EnsureWorkflowTelemetryDefaults(&bad); err == nil {
+			t.Errorf("accepted malformed telemetry mapping %q", src)
+		}
 	}
 }

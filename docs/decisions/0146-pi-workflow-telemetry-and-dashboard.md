@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-22
 ---
 # ADR-0146: Pi Workflow Telemetry and Dashboard
@@ -233,3 +233,5 @@ The dashboard adds process starts only at controlled refresh boundaries, not dur
 ## Status history
 
 - 2026-07-22: Proposed
+- 2026-07-22: Implementing; content-sha256: 8fa0a72cf5fc1d2f8c3a999750601cc1bed361ef31160f990653281a2d1dca97
+- 2026-07-22: Applied; state-sequence: 15; operations: add `config/configuration:workflow-telemetry-settings`, add `config/migrations-and-locks:workflow-telemetry-config-migration`

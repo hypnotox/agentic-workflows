@@ -17,15 +17,16 @@ import (
 // `x: null` and decode back to a nil value that renders as "<no value>", tripping
 // the publication-safe check (ADR-0026 Decision 3).
 type Skeleton struct {
-	Prefix       string                `yaml:"prefix"`
-	Vars         map[string]string     `yaml:"vars"`
-	Skills       []string              `yaml:"skills"`
-	Agents       []string              `yaml:"agents"`
-	Docs         []string              `yaml:"docs"`
-	Audit        *SkeletonAudit        `yaml:"audit,omitempty"`
-	Bootstrap    *BootstrapConfig      `yaml:"bootstrap,omitempty"`
-	Hooks        *HooksConfig          `yaml:"hooks,omitempty"`
-	CurrentState *SkeletonCurrentState `yaml:"currentState,omitempty"`
+	Prefix            string                  `yaml:"prefix"`
+	Vars              map[string]string       `yaml:"vars"`
+	Skills            []string                `yaml:"skills"`
+	Agents            []string                `yaml:"agents"`
+	Docs              []string                `yaml:"docs"`
+	Audit             *SkeletonAudit          `yaml:"audit,omitempty"`
+	Bootstrap         *BootstrapConfig        `yaml:"bootstrap,omitempty"`
+	Hooks             *HooksConfig            `yaml:"hooks,omitempty"`
+	CurrentState      *SkeletonCurrentState   `yaml:"currentState,omitempty"`
+	WorkflowTelemetry WorkflowTelemetryConfig `yaml:"workflowTelemetry"`
 }
 
 // SkeletonCurrentState carries current-state defaults written by a fresh init.
@@ -53,6 +54,9 @@ type CatalogTrim struct {
 // (two-space block style). It is the construction half of internal/config's
 // ownership of config.yaml serialization (ADR-0026).
 func MarshalSkeleton(s Skeleton) ([]byte, error) {
+	if s.WorkflowTelemetry == (WorkflowTelemetryConfig{}) {
+		s.WorkflowTelemetry = DefaultWorkflowTelemetryConfig()
+	}
 	return encode(s)
 }
 
@@ -236,6 +240,70 @@ func RemoveMappingKey(src []byte, key, child string) ([]byte, error) {
 
 func boolScalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
+}
+
+// EnsureWorkflowTelemetryDefaults materializes every missing telemetry mapping
+// and leaf while preserving explicit values and unrelated node ordering.
+func EnsureWorkflowTelemetryDefaults(node *yaml.Node) (bool, error) {
+	root := node
+	if node.Kind == yaml.DocumentNode {
+		if len(node.Content) == 0 {
+			return false, errors.New("config: empty YAML document")
+		}
+		root = node.Content[0]
+	}
+	if root.Kind != yaml.MappingNode {
+		return false, errors.New("config: not a YAML mapping")
+	}
+	defaults := DefaultWorkflowTelemetryConfig()
+	var encoded yaml.Node
+	if err := encoded.Encode(defaults); err != nil { // coverage-ignore: closed scalar-only config is always representable
+		return false, err
+	}
+	encodedRoot := &encoded
+	telemetry, _ := mapValue(root, "workflowTelemetry")
+	changed := false
+	if telemetry == nil {
+		root.Content = append(root.Content, strScalar("workflowTelemetry"), cloneYAMLNode(encodedRoot))
+		return true, nil
+	}
+	if telemetry.Kind != yaml.MappingNode {
+		return false, errors.New("config: workflowTelemetry must be a mapping")
+	}
+	var merge func(dst, src *yaml.Node, path string) error
+	merge = func(dst, src *yaml.Node, path string) error {
+		for i := 0; i < len(src.Content); i += 2 {
+			key, value := src.Content[i], src.Content[i+1]
+			current, _ := mapValue(dst, key.Value)
+			if current == nil {
+				dst.Content = append(dst.Content, cloneYAMLNode(key), cloneYAMLNode(value))
+				changed = true
+				continue
+			}
+			if value.Kind == yaml.MappingNode {
+				if current.Kind != yaml.MappingNode {
+					return fmt.Errorf("config: %s.%s must be a mapping", path, key.Value)
+				}
+				if err := merge(current, value, path+"."+key.Value); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+	if err := merge(telemetry, encodedRoot, "workflowTelemetry"); err != nil {
+		return false, err
+	}
+	return changed, nil
+}
+
+func cloneYAMLNode(n *yaml.Node) *yaml.Node {
+	copy := *n
+	copy.Content = make([]*yaml.Node, len(n.Content))
+	for i, child := range n.Content {
+		copy.Content[i] = cloneYAMLNode(child)
+	}
+	return &copy
 }
 
 // SeedVarKey adds `name: ""` under the top-level vars: mapping when the key is

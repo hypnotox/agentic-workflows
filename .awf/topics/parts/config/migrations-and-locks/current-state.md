@@ -98,3 +98,9 @@ Backing: test
 The generation-12 upgrade migration strips supersedes and superseded_by from every ADR under the configured docs directory, appends to each former full-supersession carrier one bookkeeping Decision item whose supersedes tokens claim each predecessor anchor, inserts the carrier number into each target's related list when absent, rewrites each predecessor's status to bare Superseded, and rewrites every pre-existing inline item token to refines while leaving slug tokens untouched.
 Origin: ADR-0128
 Backing: test
+
+### `invariant: workflow-telemetry-config-migration`
+
+Schema generation 17 materializes every missing workflowTelemetry default through an idempotent YAML-node edit, preserves explicit leaves and unrelated configuration, and pairs the generation with minimum awf version 0.22.0.
+Origin: ADR-0146
+Backing: test
