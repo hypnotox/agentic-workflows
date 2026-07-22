@@ -34,6 +34,8 @@ by this repository's own checks (ADR-0090).
 - `awf upgrade`: migrate the config tree after upgrading the awf binary. When the lock carries a bridge attestation, plain upgrade instead performs the final current-state cutover, verifying the sealed HEAD and tree digest, journaling the migration approval-file deletion and permanent lock, and promoting the sealed format cutoff and gaps.
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
+- `awf metrics --json`: print the canonical workflow metrics projection. The `--effort`, `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND. Use `awf metrics export --format json` for that projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
+- `awf doctor --json`: report exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status.
 - `awf invariants`: report the current-state topic invariant claims and their backing state.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
 - `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).

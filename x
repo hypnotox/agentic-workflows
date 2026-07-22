@@ -72,7 +72,7 @@ case "$cmd" in
   audit)
     go run ./cmd/awf audit "$@"
     ;;
-  list | config | topic | metrics | enable | disable | changelog | version)
+  list | config | topic | metrics | doctor | enable | disable | changelog | version)
     go run ./cmd/awf "$cmd" "$@"
     ;;
   context)
@@ -128,7 +128,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|metrics|commit-gate|prose-gate|pi-test <run|stop|reset>|new|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|metrics|doctor|commit-gate|prose-gate|pi-test <run|stop|reset>|new|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

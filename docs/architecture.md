@@ -40,7 +40,7 @@ directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
-Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union; Go validates and appends one JSONL stream per session, projects causal lifecycle and trajectory state, and performs leased deterministic retention without treating ledger descendants as rendered artifacts.
+Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union; Go validates and appends one JSONL stream per session, projects causal lifecycle and trajectory state, performs leased deterministic retention, and serves canonical selector-driven metrics and diagnosis without treating ledger descendants as rendered artifacts. `awf metrics` queries or exports that model, while read-only `awf doctor` reports exact violations and configured versioned heuristics without blocking on findings.
 
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
@@ -51,7 +51,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
@@ -145,7 +145,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
-- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, and leased deterministic retention. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while canonical query and diagnostic projections land in a later batch.
+- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
@@ -279,7 +279,7 @@ private byte copy in one path-sorted, tamper-proof view, so the scan and its `.a
 lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
 and range universes the current-state checks compare.
 
-An explicit `awf metrics lifecycle` request is validated against the embedded protocol descriptor and the current causal frontier before a confined, leased, flushed JSONL append acknowledges success. Effort creation commits immutable metadata and its first stream through an atomic staging rename. Readers retain malformed or illegal evidence without applying its state effect, and retention rechecks terminal state under the same effort lease before a tombstoned rename into private trash. Protocol handshake and confirmed maintenance are the only Phase-2 CLI surfaces; query aggregation and diagnosis are not yet exposed.
+An explicit `awf metrics lifecycle` request is validated against the embedded protocol descriptor and the current causal frontier before a confined, leased, flushed JSONL append acknowledges success. Effort creation commits immutable metadata and its first stream through an atomic staging rename. Readers retain malformed or illegal evidence without applying its state effect, and retention rechecks terminal state under the same effort lease before a tombstoned rename into private trash. Bare `awf metrics` and JSON export aggregate every resident effort through the shared selector into deterministic current-path, all-work, session, phase, trajectory, integrity, and retention projections; JSONL export emits only validated normalized envelopes in stable stream order. `awf doctor` reads the same selected ledger state, evaluates exact rules and configured comparable-route heuristics, and renders advisory findings without writing resident state or changing exit status because of a finding.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
@@ -315,7 +315,7 @@ bytes, so a comment-only edit reflags stale and self-settles.
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.
-- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse and fingerprint the normative telemetry descriptor and implement its confined, durable append-only resident ledger without a database or daemon.
+- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse and fingerprint the normative telemetry descriptor, implement its confined durable append-only resident ledger, and produce canonical metrics, normalized exports, and diagnostic results without a database or daemon.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s

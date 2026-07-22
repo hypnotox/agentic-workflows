@@ -77,12 +77,35 @@ func TestLookup(t *testing.T) {
 	if got := strings.Join(topic.BoolFlags, ","); got != "--history,--references,--coverage,--json" {
 		t.Errorf("topic flags = %q", got)
 	}
+	metrics, ok := Lookup("metrics")
+	if !ok || strings.Join(metrics.BoolFlags, ",") != "--json" || strings.Join(metrics.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
+		t.Fatalf("metrics query spec = %#v, found %v", metrics, ok)
+	}
+	export, ok := metrics.Child("export")
+	if !ok || strings.Join(export.ValueFlags, ",") != "--effort,--session,--phase,--since,--until,--format" {
+		t.Fatalf("metrics export spec = %#v, found %v", export, ok)
+	}
+	for _, name := range []string{"protocol", "lifecycle", "retain", "purge"} {
+		child, found := metrics.Child(name)
+		if !found {
+			t.Fatalf("metrics maintenance child %q missing", name)
+		}
+		for _, flag := range []string{"--session", "--phase", "--since", "--until"} {
+			if strings.Contains(strings.Join(append(child.BoolFlags, child.ValueFlags...), ","), flag) {
+				t.Errorf("metrics %s admits selector %s", name, flag)
+			}
+		}
+	}
+	doctor, ok := Lookup("doctor")
+	if !ok || doctor.Gating != Gated || !doctor.Runner.Forward || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
+		t.Fatalf("doctor spec = %#v, found %v", doctor, ok)
+	}
 }
 
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"sync", "check", "invariants", "audit", "metrics", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"sync", "check", "invariants", "audit", "metrics", "doctor", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

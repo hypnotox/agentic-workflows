@@ -1,5 +1,11 @@
 {{=awf:sectionDefault}}
 
+`awf metrics --json` prints the canonical repository-wide metrics projection. Narrow it with
+`--effort`, `--session`, `--phase`, `--since`, and `--until`; export the same projection with
+`awf metrics export --format json`, or validated normalized ledger events with `--format jsonl`.
+`awf doctor --json` applies exact rules plus the configured heuristics to the same selector and is
+read-only and advisory: findings do not change its exit status.
+
 Before every commit, stage the complete transaction, run `awf check --staged`, then run `./x gate`.
 Commit only after both commands pass. The pre-commit hook repeats the staged check as defense in depth;
 it does not replace the agent's explicit validation.

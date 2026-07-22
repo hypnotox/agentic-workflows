@@ -5,6 +5,7 @@ set -euo pipefail
 # awf:edit-in-place runner-setup: your edits below are preserved across syncs; awf owns the rest
 # Add project-specific setup or helper functions here.
 # awf:edit runner-dispatch: default; create .awf/runner/parts/runner-dispatch.md to override
+# Forward every metadata-declared awf verb and its nested grammar unchanged.
 cmd="${1:-}"
 [ "$#" -gt 0 ] && shift || true
 case "$cmd" in
@@ -17,6 +18,8 @@ invariants)
 audit)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
 metrics)
+	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
+doctor)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
 commit-gate)
 	"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;
@@ -49,6 +52,6 @@ test)
 	go test ./... "$@" ;;
 # awf:edit runner-tail: default; create .awf/runner/parts/runner-tail.md to override
 *)
-	echo "usage: ./x {sync|check|invariants|audit|metrics|commit-gate|prose-gate|list|config|context|topic|new|enable|disable|changelog|version|gate|test}" >&2
+	echo "usage: ./x {sync|check|invariants|audit|metrics|doctor|commit-gate|prose-gate|list|config|context|topic|new|enable|disable|changelog|version|gate|test}" >&2
 	exit 1 ;;
 esac

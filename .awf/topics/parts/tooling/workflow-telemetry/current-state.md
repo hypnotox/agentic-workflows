@@ -1,4 +1,4 @@
-The telemetry package owns the versioned privacy-minimal event protocol, confined append-only resident ledger, explicit lifecycle and trajectory model, and deterministic terminal-effort retention. The initial CLI exposes only protocol negotiation, lifecycle mutation, and confirmed maintenance; canonical queries and diagnostics are not yet current behavior.
+The telemetry package owns the versioned privacy-minimal event protocol, confined append-only resident ledger, explicit lifecycle and trajectory model, deterministic terminal-effort retention, and canonical metrics and diagnostic projections. Selectors, aggregation, exact workflow violations, and versioned heuristic signals share one deterministic Go interpretation for CLI and later runtime consumers.
 
 ## Claims
 
@@ -23,5 +23,11 @@ Backing: test
 ### `invariant: privacy-integrity-and-retention`
 
 Resident telemetry excludes conversational content and repository paths other than the bounded checkpoint identifier, rejects unsafe paths and unsupported interpretations, and prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge.
+Origin: ADR-0146
+Backing: test
+
+### `invariant: canonical-projections-and-diagnostics`
+
+Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, expose stable exact and heuristic findings with thresholds, baselines, confidence, and typed read-only remediation, and never derive an opaque health score.
 Origin: ADR-0146
 Backing: test

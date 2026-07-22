@@ -113,15 +113,52 @@ type tombstoneRecord struct {
 }
 
 func NewLedger(root string) (*Ledger, error) {
-	paths, err := newLedgerPaths(root)
+	ledger, err := newLedger(root)
 	if err != nil {
 		return nil, err
 	}
-	ledger := &Ledger{paths: paths, ops: defaultLedgerOps(), leaseDuration: defaultLeaseDuration, leaseGrace: defaultLeaseGrace, leasePoll: defaultLeasePoll, leaseHeartbeat: 10 * time.Second}
 	if err := ledger.ensureLayout(); err != nil {
 		return nil, err
 	}
 	return ledger, nil
+}
+
+// OpenLedger opens existing resident telemetry without creating or recovering
+// any path. It is the read-only constructor for metrics and doctor queries.
+func OpenLedger(root string) (*Ledger, error) {
+	ledger, err := newLedger(root)
+	if err != nil {
+		return nil, err
+	}
+	return openLedger(ledger)
+}
+
+func openLedger(ledger *Ledger) (*Ledger, error) {
+	if err := inspectProjectAnchor(ledger.paths.project, ledger.paths.awf); err != nil {
+		return nil, fmt.Errorf("inspect telemetry project anchor: %w", err)
+	}
+	if err := ledger.ops.inspect(ledger.paths.root, ledger.paths.root, true); err != nil {
+		return nil, fmt.Errorf("open telemetry storage: %w", err)
+	}
+	for _, path := range []string{ledger.paths.efforts, ledger.paths.tombstones} {
+		if _, err := ledger.ops.lstat(path); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return nil, fmt.Errorf("open telemetry storage: %w", err)
+		}
+		if err := ledger.ops.inspect(ledger.paths.root, path, true); err != nil {
+			return nil, fmt.Errorf("open telemetry storage: %w", err)
+		}
+	}
+	return ledger, nil
+}
+
+func newLedger(root string) (*Ledger, error) {
+	paths, err := newLedgerPaths(root)
+	if err != nil {
+		return nil, err
+	}
+	return &Ledger{paths: paths, ops: defaultLedgerOps(), leaseDuration: defaultLeaseDuration, leaseGrace: defaultLeaseGrace, leasePoll: defaultLeasePoll, leaseHeartbeat: 10 * time.Second}, nil
 }
 
 func (l *Ledger) ensureLayout() error {

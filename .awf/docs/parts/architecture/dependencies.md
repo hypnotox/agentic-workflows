@@ -2,7 +2,7 @@
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.
-- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse and fingerprint the normative telemetry descriptor and implement its confined, durable append-only resident ledger without a database or daemon.
+- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse and fingerprint the normative telemetry descriptor, implement its confined durable append-only resident ledger, and produce canonical metrics, normalized exports, and diagnostic results without a database or daemon.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s

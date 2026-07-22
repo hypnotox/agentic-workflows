@@ -1,6 +1,9 @@
 package telemetry
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type ProtocolVersion struct {
 	Major uint16 `json:"major"`
@@ -320,3 +323,133 @@ type RepairLifecycleRequest struct {
 }
 
 func (r RepairLifecycleRequest) lifecycleAction() string { return r.Action }
+
+// Selector is the shared metrics and diagnosis event selector. Since is
+// inclusive and Until is exclusive.
+type Selector struct {
+	EffortID  *string    `json:"effortId,omitempty"`
+	SessionID *string    `json:"sessionId,omitempty"`
+	Phase     *string    `json:"phase,omitempty"`
+	Since     *time.Time `json:"since,omitempty"`
+	Until     *time.Time `json:"until,omitempty"`
+}
+
+type UsageTotals struct {
+	InputTokens      uint64  `json:"inputTokens"`
+	OutputTokens     uint64  `json:"outputTokens"`
+	CacheReadTokens  uint64  `json:"cacheReadTokens"`
+	CacheWriteTokens uint64  `json:"cacheWriteTokens"`
+	CostUSD          float64 `json:"costUsd"`
+	DurationMS       uint64  `json:"durationMs"`
+}
+
+type Counters struct {
+	Compactions          uint64 `json:"compactions"`
+	Handoffs             uint64 `json:"handoffs"`
+	ToolFailures         uint64 `json:"toolFailures"`
+	GateFailures         uint64 `json:"gateFailures"`
+	SubagentInvocations  uint64 `json:"subagentInvocations"`
+	ImplementationRework uint64 `json:"implementationRework"`
+}
+
+type ScopeProjection struct {
+	ScopeID  string      `json:"scopeId"`
+	Usage    UsageTotals `json:"usage"`
+	Counters Counters    `json:"counters"`
+	EventIDs []string    `json:"eventIds"`
+}
+
+type IntegrityNotice struct {
+	Code        string   `json:"code"`
+	Severity    string   `json:"severity"`
+	Scope       string   `json:"scope"`
+	EventIDs    []string `json:"eventIds"`
+	Explanation string   `json:"explanation"`
+}
+
+type RetentionState struct {
+	MaxAgeDays          int        `json:"maxAgeDays"`
+	MaxCount            int        `json:"maxCount"`
+	TerminalEffortCount int        `json:"terminalEffortCount"`
+	Candidates          []string   `json:"candidates"`
+	LastRunAt           *time.Time `json:"lastRunAt,omitempty"`
+}
+
+type EffortProjection struct {
+	EffortID           string            `json:"effortId"`
+	CheckpointID       string            `json:"checkpointId"`
+	State              string            `json:"state"`
+	Route              string            `json:"route"`
+	ActiveTrajectoryID string            `json:"activeTrajectoryId"`
+	CurrentPath        ScopeProjection   `json:"currentPath"`
+	AllWork            ScopeProjection   `json:"allWork"`
+	Sessions           []ScopeProjection `json:"sessions"`
+	Phases             []ScopeProjection `json:"phases"`
+	Trajectories       []ScopeProjection `json:"trajectories"`
+	DerivedEffortIDs   []string          `json:"derivedEffortIds"`
+	Origin             *OriginMetadata   `json:"origin,omitempty"`
+	Integrity          []IntegrityNotice `json:"integrity"`
+}
+
+type MetricsResult struct {
+	SchemaVersion int                `json:"schemaVersion"`
+	ProtocolMajor int                `json:"protocolMajor"`
+	GeneratedAt   time.Time          `json:"generatedAt"`
+	Selector      Selector           `json:"selector"`
+	Efforts       []EffortProjection `json:"efforts"`
+	Retention     RetentionState     `json:"retention"`
+	Integrity     []IntegrityNotice  `json:"integrity"`
+}
+
+type FindingEvidence struct {
+	EventIDs      []string `json:"eventIds"`
+	CounterIDs    []string `json:"counterIds"`
+	ObservedValue *float64 `json:"observedValue,omitempty"`
+	Unit          string   `json:"unit,omitempty"`
+}
+
+type FindingThreshold struct {
+	Kind       string  `json:"kind"`
+	Comparator string  `json:"comparator"`
+	Value      float64 `json:"value"`
+	Unit       string  `json:"unit"`
+}
+
+type FindingBaseline struct {
+	Route       string  `json:"route"`
+	RuleVersion int     `json:"ruleVersion"`
+	SampleCount int     `json:"sampleCount"`
+	Percentile  int     `json:"percentile"`
+	Value       float64 `json:"value"`
+	Unit        string  `json:"unit"`
+}
+
+type ReconciliationProposal struct {
+	Kind           string            `json:"kind"`
+	SourceEventIDs []string          `json:"sourceEventIds"`
+	Replacement    RepairReplacement `json:"replacement"`
+}
+
+type Finding struct {
+	Code           string                  `json:"code"`
+	Type           string                  `json:"type"`
+	Severity       string                  `json:"severity"`
+	Scope          string                  `json:"scope"`
+	Evidence       FindingEvidence         `json:"evidence"`
+	Threshold      *FindingThreshold       `json:"threshold,omitempty"`
+	Baseline       *FindingBaseline        `json:"baseline,omitempty"`
+	Confidence     string                  `json:"confidence"`
+	Explanation    string                  `json:"explanation"`
+	NextAction     string                  `json:"nextAction"`
+	Reconciliation *ReconciliationProposal `json:"reconciliation,omitempty"`
+	Waived         bool                    `json:"waived"`
+}
+
+type DoctorResult struct {
+	SchemaVersion int               `json:"schemaVersion"`
+	ProtocolMajor int               `json:"protocolMajor"`
+	GeneratedAt   time.Time         `json:"generatedAt"`
+	Selector      Selector          `json:"selector"`
+	Findings      []Finding         `json:"findings"`
+	Integrity     []IntegrityNotice `json:"integrity"`
+}

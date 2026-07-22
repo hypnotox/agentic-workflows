@@ -1,4 +1,4 @@
-The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. The claims below capture the current CLI behaviour contracts.
+The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. The command table now includes canonical workflow metrics querying and export plus read-only, non-blocking workflow diagnosis over shared structured selectors.
 
 ## Claims
 
@@ -294,4 +294,10 @@ Backing: test
 
 Every gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted.
 Origin: ADR-0039
+Backing: test
+
+### `invariant: metrics-and-doctor-command-contract`
+
+The gated, runner-forwarded `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags. The gated, runner-forwarded `awf doctor` command consumes the same selectors and storage interpretation, remains read-only, and never changes exit status merely because findings exist.
+Origin: ADR-0146
 Backing: test

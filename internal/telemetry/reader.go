@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -37,6 +38,31 @@ type EffortRead struct {
 
 func (l *Ledger) ReadEffort(effortID string) (EffortRead, error) {
 	return l.readEffort(effortID, false)
+}
+
+// ReadAllEfforts reads every resident effort in stable effort-ID order. An
+// unexpected entry is an integrity failure rather than an object to skip.
+func (l *Ledger) ReadAllEfforts() ([]EffortRead, error) {
+	entries, err := l.ops.readDir(l.paths.efforts)
+	if errors.Is(err, os.ErrNotExist) {
+		return []EffortRead{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read telemetry efforts: %w", err)
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	reads := make([]EffortRead, 0, len(entries))
+	for _, entry := range entries {
+		if !entry.IsDir() || validatePathIdentifier("effortId", entry.Name()) != nil {
+			return nil, fmt.Errorf("unsafe effort entry %q", entry.Name())
+		}
+		read, readErr := l.ReadEffort(entry.Name())
+		if readErr != nil {
+			return nil, fmt.Errorf("read telemetry effort %s: %w", entry.Name(), readErr)
+		}
+		reads = append(reads, read)
+	}
+	return reads, nil
 }
 
 func (l *Ledger) readEffort(effortID string, allowPendingTombstone bool) (EffortRead, error) {

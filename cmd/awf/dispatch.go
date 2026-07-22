@@ -53,6 +53,7 @@ var handlers = map[string]handler{
 	"invariants":  func(c *cmdCtx) error { return runInvariants(c.root, c.stdout) },
 	"audit":       func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"metrics":     runMetrics,
+	"doctor":      runDoctor,
 	"commit-gate": func(c *cmdCtx) error { return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout) },
 	"list":        func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"config":      func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
@@ -193,6 +194,9 @@ func parseArgs(cmd clispec.Command, rest []string) (invocation, error) {
 				inv.values[a] = rest[i]
 			}
 		case slices.Contains(cmd.BoolFlags, a):
+			if inv.bools[a] {
+				return invocation{}, &usageErr{fmt.Sprintf("awf %s: flag %s given more than once", cmd.Name, a)}
+			}
 			inv.bools[a] = true
 		case strings.HasPrefix(a, "-"):
 			return invocation{}, &usageErr{fmt.Sprintf("awf %s: unknown flag %q", cmd.Name, a)}

@@ -1,7 +1,7 @@
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
@@ -95,7 +95,7 @@
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
-- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, and leased deterministic retention. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while canonical query and diagnostic projections land in a later batch.
+- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:

@@ -107,14 +107,20 @@ There is no default range, so an audit never reports over commits nobody named.
 `,
 	},
 	{
-		Name: "metrics", Summary: "Record and maintain workflow telemetry", Runner: RunnerDisposition{Forward: true},
-		MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf metrics <protocol|lifecycle|retain|purge>
+		Name: "metrics", Summary: "Query, export, and maintain workflow telemetry", Runner: RunnerDisposition{Forward: true},
+		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"},
+		MinPos: 0, MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf metrics [--effort ID] [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
 
-Record explicit lifecycle mutations, inspect the protocol handshake, and run
-confirmed resident-data maintenance. Query and export selectors are not available yet.
+Print canonical workflow metrics. Selectors combine with logical AND; since is
+inclusive and until is exclusive.
 `,
 		Children: []Command{
+			{Name: "export", Summary: "Export canonical metrics or normalized events", ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until", "--format"}, MinPos: 0, MaxPos: 0,
+				HelpBody: `Usage: awf metrics export [selectors] --format <json|jsonl>
+
+Export the canonical metrics result as JSON or validated normalized events as JSONL.
+`},
 			{Name: "protocol", Summary: "Print the telemetry protocol handshake", BoolFlags: []string{"--json"}, MaxPos: 0,
 				HelpBody: `Usage: awf metrics protocol --json
 
@@ -136,6 +142,16 @@ Recover interrupted maintenance and apply configured deterministic retention.
 Recursively purge one named terminal effort only after explicit confirmation.
 `},
 		},
+	},
+	{
+		Name: "doctor", Summary: "Diagnose workflow telemetry without blocking", Runner: RunnerDisposition{Forward: true},
+		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"},
+		MinPos: 0, MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf doctor [--effort ID] [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
+
+Report exact and configured heuristic findings read-only. Findings are advisory
+and do not alter the command exit status.
+`,
 	},
 	{
 		Name: "commit-gate", Summary: "Validate one commit message (Conventional Commits), blocking", Runner: RunnerDisposition{Forward: true},

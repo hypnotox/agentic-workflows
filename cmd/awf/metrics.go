@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -17,6 +20,10 @@ import (
 
 func runMetrics(c *cmdCtx) error {
 	switch c.sub {
+	case "":
+		return runMetricsQuery(c)
+	case "export":
+		return runMetricsExport(c)
 	case "protocol":
 		if !c.inv.bools["--json"] {
 			return &usageErr{"usage: awf metrics protocol --json"}
@@ -36,11 +43,145 @@ func runMetrics(c *cmdCtx) error {
 		return runMetricsRetain(c)
 	case "purge":
 		return runMetricsPurge(c)
-	case "":
-		return &usageErr{"usage: awf metrics <protocol|lifecycle|retain|purge>"}
 	default:
 		return &usageErr{fmt.Sprintf("awf metrics: unknown subcommand %q", c.sub)}
 	}
+}
+
+var telemetryNow = func() time.Time { return time.Now().UTC() }
+var telemetryStorageLstat = os.Lstat
+
+func parseTelemetrySelector(inv invocation) (telemetry.Selector, error) {
+	selector := telemetry.Selector{}
+	for flag, destination := range map[string]**string{
+		"--effort":  &selector.EffortID,
+		"--session": &selector.SessionID,
+		"--phase":   &selector.Phase,
+	} {
+		if value, present := inv.values[flag]; present {
+			copy := value
+			*destination = &copy
+		}
+	}
+	for flag, destination := range map[string]**time.Time{"--since": &selector.Since, "--until": &selector.Until} {
+		if value, present := inv.values[flag]; present {
+			parsed, err := telemetry.ParseSelectorTime(value)
+			if err != nil {
+				return telemetry.Selector{}, &usageErr{fmt.Sprintf("%s: %v", flag, err)}
+			}
+			*destination = &parsed
+		}
+	}
+	if err := telemetry.ValidateSelector(selector); err != nil {
+		return telemetry.Selector{}, &usageErr{err.Error()}
+	}
+	return selector, nil
+}
+
+func runMetricsQuery(c *cmdCtx) error {
+	selector, err := parseTelemetrySelector(c.inv)
+	if err != nil {
+		return err
+	}
+	reads, cfg, err := readTelemetryQueryInputs(c.root)
+	if err != nil {
+		return boundedTelemetryError(c.root, err)
+	}
+	result, err := telemetry.AggregateMetrics(reads, selector, telemetry.MetricsOptions{
+		GeneratedAt: telemetryNow(),
+		Retention: telemetry.RetentionPolicy{
+			MaxCompletedEffortAgeDays: cfg.WorkflowTelemetry.Retention.MaxCompletedEffortAgeDays,
+			MaxCompletedEffortCount:   cfg.WorkflowTelemetry.Retention.MaxCompletedEffortCount,
+		},
+	})
+	if err != nil { // coverage-ignore: parsing validated the selector used by aggregation
+		return boundedTelemetryError(c.root, err)
+	}
+	if c.inv.bools["--json"] {
+		return writeMetricsJSON(c.stdout, result)
+	}
+	return telemetry.RenderMetricsHuman(c.stdout, result)
+}
+
+func runMetricsExport(c *cmdCtx) error {
+	format := c.inv.values["--format"]
+	if format != "json" && format != "jsonl" {
+		return &usageErr{"usage: awf metrics export [selectors] --format <json|jsonl>"}
+	}
+	selector, err := parseTelemetrySelector(c.inv)
+	if err != nil {
+		return err
+	}
+	reads, cfg, err := readTelemetryQueryInputs(c.root)
+	if err != nil {
+		return boundedTelemetryError(c.root, err)
+	}
+	if format == "json" {
+		result, aggregateErr := telemetry.AggregateMetrics(reads, selector, telemetry.MetricsOptions{
+			GeneratedAt: telemetryNow(),
+			Retention: telemetry.RetentionPolicy{
+				MaxCompletedEffortAgeDays: cfg.WorkflowTelemetry.Retention.MaxCompletedEffortAgeDays,
+				MaxCompletedEffortCount:   cfg.WorkflowTelemetry.Retention.MaxCompletedEffortCount,
+			},
+		})
+		if aggregateErr != nil { // coverage-ignore: parsing validated the selector used by aggregation
+			return boundedTelemetryError(c.root, aggregateErr)
+		}
+		return writeMetricsJSON(c.stdout, result)
+	}
+	events, err := telemetry.SelectNormalizedEvents(reads, selector)
+	if err != nil {
+		return boundedTelemetryError(c.root, err)
+	}
+	var output bytes.Buffer
+	for _, event := range events {
+		output.Write(event)
+		output.WriteByte('\n')
+	}
+	_, err = io.Copy(c.stdout, &output)
+	return err
+}
+
+func readTelemetryQueryInputs(root string) ([]telemetry.EffortRead, *config.Config, error) {
+	cfg, err := config.Load(filepath.Join(root, config.DirName))
+	if err != nil {
+		return nil, nil, err
+	}
+	metricsPath := filepath.Join(root, config.DirName, "metrics")
+	if _, err := telemetryStorageLstat(metricsPath); errors.Is(err, os.ErrNotExist) {
+		return []telemetry.EffortRead{}, cfg, nil
+	} else if err != nil {
+		return nil, nil, fmt.Errorf("inspect telemetry storage: %w", err)
+	}
+	ledger, err := telemetry.OpenLedger(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	reads, err := ledger.ReadAllEfforts()
+	if err != nil {
+		return nil, nil, err
+	}
+	return reads, cfg, nil
+}
+
+type telemetryCommandError struct {
+	message string
+	cause   error
+}
+
+func (e *telemetryCommandError) Error() string { return e.message }
+func (e *telemetryCommandError) Unwrap() error { return e.cause }
+
+func boundedTelemetryError(root string, err error) error {
+	message := strings.ReplaceAll(err.Error(), "\n", " ")
+	if absolute, absoluteErr := filepath.Abs(root); absoluteErr == nil && absolute != string(filepath.Separator) {
+		message = strings.ReplaceAll(message, filepath.Clean(absolute), "<project>")
+	}
+	const maximum = 512
+	if len(message) > maximum {
+		message = message[:maximum-3] + "..."
+	}
+	return &telemetryCommandError{message: message, cause: err}
 }
 
 func runMetricsLifecycle(c *cmdCtx) error {
