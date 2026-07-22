@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -94,6 +95,52 @@ func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
 	got := renderedByPath(t, op.writeFiles(), ".awf/metrics/.gitignore")
 	if got != "# "+bannerText+"\n*\n!.gitignore\n" {
 		t.Fatalf("metrics ignore bytes = %q", got)
+	}
+	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	resident := filepath.Join(root, ".awf", "metrics", "efforts", "e", ".awf", "config.yaml")
+	testsupport.WriteFile(t, resident, "adversarial nested adopter\n")
+	if !isMetricsResidentPath(".awf/metrics/efforts/e/.awf/config.yaml") {
+		t.Fatal("adversarial resident descendant escaped the closed-tree predicate")
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(resident); err != nil {
+		t.Fatalf("sync cleanup removed resident descendant: %v", err)
+	}
+	initRepo := exec.Command("git", "init")
+	initRepo.Dir = root
+	if output, err := initRepo.CombinedOutput(); err != nil {
+		t.Fatalf("git init: %v: %s", err, output)
+	}
+	context, err := p.ContextFor([]string{".awf/metrics/efforts/e/.awf/config.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(context.Paths) != 1 || context.Paths[0].Classification != PathNotFound || context.Paths[0].NestedRoot != "" {
+		t.Fatalf("resident adversarial adopter entered discovery: %#v", context.Paths)
+	}
+	if drift, err := p.Check(); err != nil || len(drift) != 0 {
+		t.Fatalf("resident descendant entered sync/check: drift=%#v err=%v", drift, err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if swept, err := p.sweepConfigTree(files); err != nil || len(swept) != 0 {
+		t.Fatalf("resident descendant entered sweep: drift=%#v err=%v", swept, err)
+	}
+	report, err := Uninstall(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !report.MetricsPreserved {
+		t.Fatal("uninstall did not report preserved resident telemetry")
+	}
+	if _, err := os.Stat(resident); err != nil {
+		t.Fatalf("ordinary uninstall acted as purge: %v", err)
 	}
 }
 

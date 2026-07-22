@@ -10,16 +10,18 @@ const DIR = { isSymbolicLink: () => false, isFile: () => false, isDirectory: () 
 const LINK = { isSymbolicLink: () => true, isFile: () => false, isDirectory: () => false };
 function leaf(calls: Array<{ id: string; name: string }>) { return { type: "message", message: { role: "assistant", content: calls.map((call) => ({ type: "toolCall", ...call })) } }; }
 
-function harness(options: { version?: string; entries?: Record<string, any>; mode?: string; persisted?: boolean; isPersistedAPI?: boolean; file?: string; queueCommandAPI?: boolean; queueError?: Error; uuidError?: Error; timerError?: Error; newSessionError?: Error; associationResponses?: unknown[]; associationListenerError?: Error; associationAppendError?: Error } = {}) {
+function harness(options: { version?: string; entries?: Record<string, any>; mode?: string; persisted?: boolean; isPersistedAPI?: boolean; file?: string; queueCommandAPI?: boolean; queueError?: Error; uuidError?: Error; timerError?: Error; newSessionError?: Error; associationResponses?: unknown[]; associationListenerError?: Error; associationAppendError?: Error; childSessionId?: string } = {}) {
   const tools = new Map<string, any>(); const commands = new Map<string, any>(); const hooks = new Map<string, any>();
-  const queued: any[] = []; const notifications: any[] = []; const newSessions: any[] = []; const editor: string[] = []; const associationEntries: any[] = [];
+  const queued: any[] = []; const notifications: any[] = []; const newSessions: any[] = []; const editor: string[] = []; const associationEntries: any[] = []; const telemetry: any[] = [];
   const intervals: any[] = []; const timeouts: any[] = []; const clearedIntervals: any[] = []; const clearedTimeouts: any[] = [];
   const entries: Record<string, any> = { "/repo": DIR, "/repo/.awf": DIR, "/repo/.awf/memory": DIR, "/repo/.awf/memory/work.md": FILE, ...options.entries };
   let currentLeaf: any = leaf([{ id: "handoff", name: "handoff_session" }]); let component: any; let customDone: any; let sendError: Error | undefined; let inputError: Error | undefined; let sessionFile = options.file === undefined ? "/sessions/old.jsonl" : options.file;
   const pi: any = {
     on: (name: string, fn: any) => hooks.set(name, fn), registerTool: (tool: any) => tools.set(tool.name, tool), registerCommand: (name: string, command: any) => commands.set(name, command),
-    events: { emit: (_name: string, request: any) => {
+    appendEntry() {},
+    events: { on() {}, emit: (name: string, request: any) => {
       if (options.associationListenerError) throw options.associationListenerError;
+      if (name === "awf.telemetry.handoff.v1") { telemetry.push(request); return; }
       for (const response of options.associationResponses ?? []) request.respond(response);
     } },
     ...(options.queueCommandAPI === false ? {} : { queueCommand: (name: string, args: string) => { if (options.queueError) throw options.queueError; queued.push([name, args]); } }),
@@ -41,8 +43,8 @@ function harness(options: { version?: string; entries?: Record<string, any>; mod
     notify: (...args: any[]) => notifications.push(args), setEditorText: (text: string) => editor.push(text),
     custom: async (factory: any) => new Promise<boolean>((resolve, reject) => { customDone = (value: boolean) => queueMicrotask(() => resolve(value)); try { component = factory({ requestRender() {} }, {}, { matches: (data: string) => { if (inputError) throw inputError; return data === "escape" || data === "ctrl+c"; } }, customDone); } catch (e) { reject(e); } }),
   };
-  const ctx: any = { mode: options.mode ?? "tui", sessionManager, ui, newSession: async (args: any) => { newSessions.push(args); if (options.newSessionError) throw options.newSessionError; await args.setup?.({ appendCustomEntry: (customType: string, data: unknown) => { if (options.associationAppendError) throw options.associationAppendError; associationEntries.push({ customType, data }); } }); const replacementCtx = { ui, sendUserMessage: async (text: string) => { if (sendError) throw sendError; editor.push("sent:" + text); } }; await args.withSession(replacementCtx); return { cancelled: false }; } };
-  return { pi, deps, tools, commands, hooks, queued, notifications, newSessions, editor, associationEntries, intervals, timeouts, clearedIntervals, clearedTimeouts, entries, ctx,
+  const ctx: any = { mode: options.mode ?? "tui", sessionManager, ui, newSession: async (args: any) => { newSessions.push(args); if (options.newSessionError) throw options.newSessionError; await args.setup?.({ ...(options.childSessionId ? { getSessionId: () => options.childSessionId } : {}), appendCustomEntry: (customType: string, data: unknown) => { if (options.associationAppendError) throw options.associationAppendError; associationEntries.push({ customType, data }); } }); const replacementCtx = { ui, sendUserMessage: async (text: string) => { if (sendError) throw sendError; editor.push("sent:" + text); } }; await args.withSession(replacementCtx); return { cancelled: false }; } };
+  return { pi, deps, tools, commands, hooks, queued, notifications, newSessions, editor, associationEntries, telemetry, intervals, timeouts, clearedIntervals, clearedTimeouts, entries, ctx,
     setLeaf: (value: any) => { currentLeaf = value; }, component: () => component, done: (value: boolean) => customDone(value), setSendError: (error: Error) => { sendError = error; }, setInputError: (error: Error) => { inputError = error; }, setSessionFile: (value: string) => { sessionFile = value; } };
 }
 
@@ -54,12 +56,13 @@ const associationResponse = { version: { major: 1, minor: 0 }, association };
 
 const notice = Symbol.for("awf.pi.minimum-runtime-notified");
 test("minimum guard and default factory use exact Pi 0.81.1", async () => {
+  registerHandoff({} as any, { packageVersion: MIN_PI_VERSION } as any);
   assert.equal(versionSupported("0.81.1"), true); assert.equal(versionSupported("0.81.1-beta"), true); assert.equal(versionSupported("0.82.0"), true);
   for (const value of ["0.81.0", "invalid", "1.2", ""]) assert.equal(versionSupported(value), false);
   delete (globalThis as any)[notice]; const old = harness({ version: "0.81.0" }); assert.equal(old.tools.size, 0); assert.deepEqual([...old.hooks.keys()], ["session_start"]);
   await old.hooks.get("session_start")({}, old.ctx); await old.hooks.get("session_start")({}, old.ctx); assert.equal(old.notifications.length, 1); delete (globalThis as any)[notice];
   const official = harness({ queueCommandAPI: false }); assert.equal(official.tools.size, 0); assert.equal(official.commands.size, 0); assert.deepEqual([...official.hooks.keys()], ["session_start"]);
-  await official.hooks.get("session_start")({}, official.ctx); assert.match(official.notifications[0][0], /ExtensionAPI\.queueCommand is missing/); delete (globalThis as any)[notice];
+  await official.hooks.get("session_start")({}, official.ctx); assert.match(official.notifications[0][0], /Missing runtime APIs: queueCommand/); delete (globalThis as any)[notice];
   const fresh = harness(); const tools = new Map(); fresh.pi.registerTool = (tool: any) => tools.set(tool.name, tool); await defaultHandoff(fresh.pi); assert.equal(tools.has("handoff_session"), true);
 });
 
@@ -111,7 +114,7 @@ test("countdown cancellation renders exact bounded text and consumes request", a
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(h.component().render(200), ["Handoff to a fresh session in 5s - Esc/Ctrl+C to cancel"]); assert.ok(visibleWidth(h.component().render(12)[0]) <= 12);
   h.intervals[0].callback(); assert.match(h.component().render(200)[0], /4s/); h.component().invalidate(); h.component().handleInput("other"); h.component().handleInput("escape"); h.setInputError(new Error("input failed")); assert.throws(() => h.component().handleInput("x"), /input failed/); h.timeouts[0].callback(); await command;
-  assert.deepEqual(h.notifications, [["Fresh-session handoff canceled."]]); assert.equal(h.newSessions.length, 0); assert.ok(h.clearedIntervals.length > 0); assert.ok(h.clearedTimeouts.length > 0);
+  assert.deepEqual(h.notifications, [["Fresh-session handoff canceled."]]); assert.equal(h.newSessions.length, 0); assert.equal(h.telemetry.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.equal(h.telemetry[0].errorCategory, "handoff"); assert.ok(h.clearedIntervals.length > 0); assert.ok(h.clearedTimeouts.length > 0);
   await assert.rejects(startCommand(h), /matching pending/); h.component().dispose();
 });
 
@@ -120,7 +123,7 @@ test("timer setup, pending-window races, and pre-replacement failures preserve t
   const raced = harness(); await execute(raced); const raceCommand = startCommand(raced); await new Promise((resolve) => setImmediate(resolve)); raced.entries["/repo/.awf/memory/work.md"] = LINK; raced.timeouts[0].callback(); await assert.rejects(raceCommand, /symbolic link/); assert.equal(raced.newSessions.length, 0); await assert.rejects(startCommand(raced), /matching pending/);
   const unpersisted = harness(); await execute(unpersisted); const unpersistedCommand = startCommand(unpersisted); await new Promise((resolve) => setImmediate(resolve)); unpersisted.setSessionFile(""); unpersisted.timeouts[0].callback(); await assert.rejects(unpersistedCommand, /no longer persisted/); assert.equal(unpersisted.newSessions.length, 0);
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
-  assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
+  assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.deepEqual(Object.keys(h.telemetry[0]).sort(), ["durationMs", "observationId", "outcome", "targetSessionId", "version"]); assert.equal(h.telemetry[0].outcome, "success"); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
   assert.equal(buildKickoffWrapper(".awf/memory/work.md", "next"), "Read .awf/memory/work.md first. Repository sources and current-state documentation are authoritative over the checkpoint. Then continue with this immediate action: next");
 });
 
@@ -129,9 +132,9 @@ test("handoff copies exactly one validated synchronous association only during s
   for (const invalid of [null, [], { ...association, extra: true }, { ...association, effortId: "../bad" }, { ...association, effortId: "x".repeat(129) }, { ...association, associationOrigin: "guess" }]) {
     assert.equal(validateTelemetryAssociation(invalid), false);
   }
-  const h = harness({ associationResponses: [associationResponse] });
+  const h = harness({ associationResponses: [associationResponse], childSessionId: "child-session" });
   await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
-  assert.deepEqual(h.associationEntries, [{ customType: "awf.telemetry.association.v1", data: association }]);
+  assert.deepEqual(h.associationEntries, [{ customType: "awf.telemetry.association.v1", data: association }]); assert.equal(h.telemetry[0].targetSessionId, "child-session");
 
   for (const options of [
     {},
@@ -157,7 +160,7 @@ test("handoff copies exactly one validated synchronous association only during s
 
 test("replacement rejection consumes pending without kickoff or memory deletion", async () => {
   const h = harness({ newSessionError: new Error("replacement failed") }); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback();
-  await assert.rejects(command, /replacement failed/); assert.equal(h.newSessions.length, 1); assert.deepEqual(h.editor, []); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
+  await assert.rejects(command, /replacement failed/); assert.equal(h.newSessions.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.deepEqual(h.editor, []); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
 });
 
 test("kickoff rejection leaves exact wrapper in replacement editor and no deletion API exists", async () => {

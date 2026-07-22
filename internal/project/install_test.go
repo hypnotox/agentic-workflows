@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -140,6 +141,15 @@ func TestUninstallRejectsUnsafeMetricsRoot(t *testing.T) {
 				t.Fatalf("lock mutated after refusal: %v", err)
 			}
 		})
+	}
+}
+
+func TestInspectResidentMetricsReportsLstatFailure(t *testing.T) {
+	original := lstatResidentMetrics
+	t.Cleanup(func() { lstatResidentMetrics = original })
+	lstatResidentMetrics = func(string) (os.FileInfo, error) { return nil, os.ErrPermission }
+	if _, err := inspectResidentMetrics(t.TempDir()); err == nil || !strings.Contains(err.Error(), "inspect resident workflow metrics") {
+		t.Fatalf("inspectResidentMetrics error = %v", err)
 	}
 }
 

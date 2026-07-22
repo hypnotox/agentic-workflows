@@ -15,13 +15,22 @@ export function versionSupported(value: string): boolean {
   return true;
 }
 export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies): boolean {
-  const queueCommandMissing = typeof pi.queueCommand !== "function";
-  if (versionSupported(deps.packageVersion) && !queueCommandMissing) return true;
+  const requirements = {
+    queueCommand: typeof pi.queueCommand === "function",
+    eventHooks: typeof pi.on === "function" && typeof pi.events?.on === "function" && typeof pi.events?.emit === "function",
+    persistedEntries: typeof pi.appendEntry === "function",
+    tools: typeof pi.registerTool === "function",
+    overlayCommands: typeof pi.registerCommand === "function",
+    shutdownHooks: typeof pi.on === "function",
+  };
+  const missing = Object.entries(requirements).filter(([, available]) => !available).map(([name]) => name);
+  if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
+  if (typeof pi.on !== "function") return false;
   pi.on("session_start", async (_event, ctx) => {
     if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
     (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
-    const missingAPI = queueCommandMissing ? " ExtensionAPI.queueCommand is missing." : "";
-    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with ExtensionAPI.queueCommand; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
+    const missingAPI = missing.length > 0 ? ` Missing runtime APIs: ${missing.join(", ")}.` : "";
+    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
   });
   return false;
 }

@@ -2,8 +2,12 @@ package project
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -141,6 +145,54 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	if !strings.HasPrefix(protocol, "// "+bannerText+"\n// @ts-nocheck\n") || strings.Count(protocol, bannerText) != 1 {
 		t.Fatalf("protocol TypeScript prefix is not the exact two-line provenance prefix: %q", protocol[:min(len(protocol), 100)])
 	}
+	beforeDashboard := got[".pi/extensions/awf-dashboard/index.ts"]
+	beforeProtocol := got[".pi/extensions/awf-dashboard/protocol.ts"]
+	p.Cfg.WorkflowTelemetry.Widget.Enabled = !p.Cfg.WorkflowTelemetry.Widget.Enabled
+	widgetFiles, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, file := range widgetFiles {
+		if file.Path == beforeDashboard.Path && (file.Content == beforeDashboard.Content || file.ConfigHash == beforeDashboard.ConfigHash) {
+			t.Error("widget setting did not isolate a dashboard byte/hash change")
+		}
+		if file.Path == beforeProtocol.Path && (file.Content != beforeProtocol.Content || file.ConfigHash != beforeProtocol.ConfigHash) {
+			t.Error("widget setting changed descriptor-derived protocol output")
+		}
+	}
+	p.Cfg.WorkflowTelemetry.Widget.Enabled = !p.Cfg.WorkflowTelemetry.Widget.Enabled
+	plan, err := p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, node := range plan.Nodes {
+		if node.Path == beforeProtocol.Path && (!slices.Contains(node.ConsumedInputs, OutputInput{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}) || node.file.TemplateHash == "") {
+			t.Fatalf("descriptor hash/input attribution missing: %#v", node)
+		}
+	}
+	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	if drift, err := p.Check(); err != nil || len(drift) != 0 {
+		t.Fatalf("fresh Pi sync/check drift=%#v err=%v", drift, err)
+	}
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\ntargets: []\n")
+	disabled, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := disabled.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for path := range wantPaths {
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(path))); !os.IsNotExist(err) {
+			t.Errorf("disabled Pi output survived cleanup %s: %v", path, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "metrics", ".gitignore")); err != nil {
+		t.Errorf("neutral metrics output removed with target: %v", err)
+	}
+
 	for _, target := range []string{"claude", "codex", "copilot", "cursor", "gemini"} {
 		other := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: ["+target+"]\n")
 		op, err := Open(other)
@@ -242,33 +294,37 @@ func TestDashboardWidgetConfigHashIsolation(t *testing.T) {
 	}
 }
 
+var piBehaviorProof struct {
+	sync.Once
+	err    error
+	output []byte
+}
+
+func provePiDashboardBehavior(t *testing.T) {
+	t.Helper()
+	piBehaviorProof.Do(func() {
+		root, err := filepath.Abs(filepath.Join("..", ".."))
+		if err != nil {
+			piBehaviorProof.err = err
+			return
+		}
+		command := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
+		command.Dir = root
+		piBehaviorProof.output, piBehaviorProof.err = command.CombinedOutput()
+	})
+	if piBehaviorProof.err != nil {
+		t.Fatalf("Pi dashboard behavioral proof failed: %v\n%s", piBehaviorProof.err, piBehaviorProof.output)
+	}
+}
+
 // invariant: rendering/adapter-outputs:pi-workflow-dashboard-runtime
 func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
-	content := renderPiExtensionFile(t, "awf-dashboard/index.ts")
-	for _, want := range []string{
-		`export function createLedgerWriter`,
-		`export function restoreAssociation`,
-		`ctx?.sessionManager?.getBranch?.()`,
-		`name: "awf_lifecycle"`,
-		`[["awf_metrics", "metrics"], ["awf_doctor", "doctor"]]`,
-		`pi.registerCommand("awf-dashboard"`,
-		`export class DashboardOverlay`,
-		`pi.on("session_shutdown"`,
-		`await writer.shutdown()`,
-	} {
-		if !strings.Contains(content, want) {
-			t.Errorf("dashboard runtime missing contract %q", want)
-		}
-	}
-	for _, forbidden := range []string{"promptText", "assistantText", "toolArguments", "commandOutput"} {
-		if strings.Contains(content, forbidden) {
-			t.Errorf("dashboard runtime contains forbidden telemetry field %q", forbidden)
-		}
-	}
+	provePiDashboardBehavior(t)
 }
 
 // invariant: rendering/templates:pi-workflow-dashboard-public-contract
 func TestPiWorkflowDashboardPublicContract(t *testing.T) {
+	provePiDashboardBehavior(t)
 	dashboard := renderPiExtensionFile(t, "awf-dashboard/index.ts")
 	protocol := renderPiExtensionFile(t, "awf-dashboard/protocol.ts")
 	for _, want := range []string{
@@ -280,6 +336,11 @@ func TestPiWorkflowDashboardPublicContract(t *testing.T) {
 	} {
 		if !strings.Contains(dashboard, want) {
 			t.Errorf("dashboard public contract missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"healthScore", "autoReconcile", "setInterval(() => state.refresh", "aggregateLocally", "backgroundDaemon"} {
+		if strings.Contains(dashboard, forbidden) {
+			t.Errorf("dashboard public contract contains forbidden local policy %q", forbidden)
 		}
 	}
 	for _, want := range []string{"export const protocolDescriptor", "export function validateTelemetryEvent", "export function validateLifecycleRequest"} {
@@ -376,7 +437,7 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 			t.Errorf("Pi extension index missing exploration boundary %q", want)
 		}
 	}
-	for _, absent := range []string{"appendEntry", "appendMessage", "sendMessage", "rawTranscript"} {
+	for _, absent := range []string{"appendMessage", "sendMessage", "rawTranscript"} {
 		if strings.Contains(index+runner, absent) {
 			t.Errorf("Pi extension contains forbidden parent-context channel %q", absent)
 		}
@@ -626,7 +687,7 @@ func TestPiSubagentProgressContextIsolation(t *testing.T) {
 			t.Errorf("extension missing context-isolation contract %q", want)
 		}
 	}
-	for _, absent := range []string{"appendEntry", "appendMessage", "sendMessage"} {
+	for _, absent := range []string{"appendMessage", "sendMessage"} {
 		if strings.Contains(content, absent) {
 			t.Errorf("extension contains forbidden progress channel %q", absent)
 		}
@@ -817,15 +878,23 @@ func TestPiMinimumRuntimeContract(t *testing.T) {
 		}
 		guard := content[guardStart : guardStart+guardEnd]
 		assertOrderedSource(t, path+" minimum-runtime guard", guard,
-			`const queueCommandMissing = typeof pi.queueCommand !== "function";`,
-			`if (versionSupported(deps.packageVersion) && !queueCommandMissing) return true;`,
+			`const requirements = {`,
+			`queueCommand: typeof pi.queueCommand === "function"`,
+			`eventHooks: typeof pi.on === "function" && typeof pi.events?.on === "function" && typeof pi.events?.emit === "function"`,
+			`persistedEntries: typeof pi.appendEntry === "function"`,
+			`tools: typeof pi.registerTool === "function"`,
+			`overlayCommands: typeof pi.registerCommand === "function"`,
+			`shutdownHooks: typeof pi.on === "function"`,
+			`const missing = Object.entries(requirements)`,
+			`if (versionSupported(deps.packageVersion) && missing.length === 0) return true;`,
+			`if (typeof pi.on !== "function") return false;`,
 			`pi.on("session_start"`,
 			`if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;`,
 			`(globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;`,
 			`ctx.ui.notify(`,
 			`return false;`,
 		)
-		for _, want := range []string{`MIN_PI_VERSION = "0.81.1"`, `Symbol.for("awf.pi.minimum-runtime-notified")`, `ExtensionAPI.queueCommand is missing`, `if (!guardMinimumRuntime(pi, deps)) return`} {
+		for _, want := range []string{`MIN_PI_VERSION = "0.81.1"`, `Symbol.for("awf.pi.minimum-runtime-notified")`, `Missing runtime APIs:`, `widget/overlay commands`, `if (!guardMinimumRuntime(pi, deps)) return`} {
 			if !strings.Contains(content, want) {
 				t.Errorf("%s missing minimum-version contract %q", path, want)
 			}

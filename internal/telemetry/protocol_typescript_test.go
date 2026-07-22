@@ -1,6 +1,8 @@
 package telemetry
 
 import (
+	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 )
@@ -29,6 +31,29 @@ func TestProjectTypeScriptDerivesProtocolContract(t *testing.T) {
 	}
 	if got != ProjectTypeScript() {
 		t.Fatal("TypeScript projection is nondeterministic")
+	}
+}
+
+func TestCrossLanguageRecoveryFixture(t *testing.T) {
+	raw, err := os.ReadFile("testdata/recovery-cross-language.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fixture struct {
+		EffortID, Nonce, StagingName string
+		Recoveries, Ambiguous        []string
+	}
+	if err := json.Unmarshal(raw, &fixture); err != nil {
+		t.Fatal(err)
+	}
+	if got := stagingName(fixture.EffortID, fixture.Nonce); got != fixture.StagingName {
+		t.Fatalf("Go staging name = %q, shared fixture %q", got, fixture.StagingName)
+	}
+	if effortID, nonce, err := parseStagingName(fixture.StagingName); err != nil || effortID != fixture.EffortID || nonce != fixture.Nonce {
+		t.Fatalf("Go recovery fixture parse = %q %q %v", effortID, nonce, err)
+	}
+	if len(fixture.Recoveries) != 4 || len(fixture.Ambiguous) != 3 {
+		t.Fatalf("shared recovery table incomplete: %#v", fixture)
 	}
 }
 

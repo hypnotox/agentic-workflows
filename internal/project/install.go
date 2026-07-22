@@ -102,13 +102,15 @@ type UninstallReport struct {
 // inspectResidentMetrics inspects only the direct children of the dynamic
 // telemetry root. It never follows a metrics-root symlink, and any child other
 // than the governed ignore file counts as resident data regardless of its type.
+var lstatResidentMetrics = os.Lstat
+
 func inspectResidentMetrics(root string) (bool, error) {
 	metricsRoot := filepath.Join(root, config.DirName, "metrics")
-	info, err := os.Lstat(metricsRoot)
+	info, err := lstatResidentMetrics(metricsRoot)
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
-	if err != nil { // coverage-ignore: Lstat errors other than absence require a permission fault that the root gate cannot induce
+	if err != nil {
 		return false, fmt.Errorf("inspect resident workflow metrics: %w", err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {

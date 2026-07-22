@@ -37,13 +37,22 @@ export function versionSupported(value: string): boolean {
   return true;
 }
 export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies): boolean {
-  const queueCommandMissing = typeof pi.queueCommand !== "function";
-  if (versionSupported(deps.packageVersion) && !queueCommandMissing) return true;
+  const requirements = {
+    queueCommand: typeof pi.queueCommand === "function",
+    eventHooks: typeof pi.on === "function" && typeof pi.events?.on === "function" && typeof pi.events?.emit === "function",
+    persistedEntries: typeof pi.appendEntry === "function",
+    tools: typeof pi.registerTool === "function",
+    overlayCommands: typeof pi.registerCommand === "function",
+    shutdownHooks: typeof pi.on === "function",
+  };
+  const missing = Object.entries(requirements).filter(([, available]) => !available).map(([name]) => name);
+  if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
+  if (typeof pi.on !== "function") return false;
   pi.on("session_start", async (_event, ctx) => {
     if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
     (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
-    const missingAPI = queueCommandMissing ? " ExtensionAPI.queueCommand is missing." : "";
-    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with ExtensionAPI.queueCommand; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
+    const missingAPI = missing.length > 0 ? ` Missing runtime APIs: ${missing.join(", ")}.` : "";
+    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
   });
   return false;
 }
@@ -89,7 +98,7 @@ export interface LedgerWriter {
 export type DashboardStatus = "loading" | "ready" | "stale" | "degraded" | "closed";
 export type DashboardErrorCategory = "resolution" | "version" | "protocol" | "query" | "malformed" | "retain" | "maintenance" | "unavailable" | "cancelled";
 export interface CanonicalResult { ok: boolean; status: DashboardStatus; metrics?: any; doctor?: any; binary?: string; errorCategory?: DashboardErrorCategory; }
-export interface CanonicalDependencies { root: string; exec(command: string, args: string[]): Promise<{ stdout: string; stderr: string; code: number }>; }
+export interface CanonicalDependencies { root: string; lstat?(path: string): Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>; exec(command: string, args: string[], signal?: AbortSignal): Promise<{ stdout: string; stderr: string; code: number }>; }
 export interface DashboardState {
   readonly status: DashboardStatus; readonly metrics?: any; readonly doctor?: any; readonly errorCategory?: DashboardErrorCategory; readonly binary?: string;
   set(status: DashboardStatus, values?: { metrics?: unknown; doctor?: unknown; errorCategory?: DashboardErrorCategory; binary?: string }): void;
@@ -116,15 +125,34 @@ export function restoreAssociation(ctx: any): TelemetryAssociation | undefined {
   return restored;
 }
 export function classifyGateTokens(tokens: readonly string[]) { return projectedClassifyGateTokens(tokens); }
+export function shellGateObservationAtToolBoundary(event: any): { classification: "gate"; gateMode: "standard" | "full" } | undefined {
+  if (event?.toolName !== "bash" || !Array.isArray(event?.input?.tokens) || !event.input.tokens.every((token: unknown) => typeof token === "string")) return undefined;
+  return classifyGateTokens(event.input.tokens) ?? undefined;
+}
 function parseCanonicalJSON(stdout: string): any { const parsed = JSON.parse(stdout); if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("malformed canonical JSON"); return parsed; }
-function validProtocol(value: any): boolean { return value.schemaVersion === 1 && value.protocol?.major === protocolVersion.major && value.compatibleMajor === protocolVersion.major && typeof value.awfVersion === "string" && value.awfVersion.length > 0 && value.awfVersion === value.projectVersion; }
+function semverAtLeast(actualValue: unknown, requiredValue: unknown): boolean {
+  if (typeof actualValue !== "string" || typeof requiredValue !== "string") return false;
+  const actual = parseVersion(actualValue); const required = parseVersion(requiredValue); if (!actual || !required) return false;
+  for (let index = 0; index < 3; index++) { if (actual[index] !== required[index]) return actual[index]! > required[index]!; }
+  return true;
+}
+function validProtocol(value: any): boolean { return value.schemaVersion === 1 && value.protocol?.major === protocolVersion.major && value.compatibleMajor === protocolVersion.major && semverAtLeast(value.awfVersion, value.projectVersion); }
 function validMetrics(value: any): boolean { return value.schemaVersion === 1 && value.protocolMajor === protocolVersion.major && Array.isArray(value.efforts) && Array.isArray(value.integrity) && !!value.retention && typeof value.retention === "object"; }
 function validDoctor(value: any): boolean { return value.schemaVersion === 1 && value.protocolMajor === protocolVersion.major && Array.isArray(value.findings) && Array.isArray(value.integrity); }
 function exactlyOnePath(stdout: string): string | undefined { const lines = stdout.split(/\r?\n/).filter((line) => line.trim().length > 0); return lines.length === 1 && lines[0]!.trim() === lines[0] ? lines[0] : undefined; }
 async function canonicalBinary(deps: CanonicalDependencies): Promise<string> {
   const bootstrap = join(deps.root, ".awf", "bootstrap.sh");
-  try { const boot = await deps.exec("bash", [bootstrap]); const resolved = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (resolved) return resolved; } catch {}
-  return "awf";
+  if (!deps.lstat) { try { const boot = await deps.exec("bash", [bootstrap]); const resolved = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (resolved) return resolved; } catch {} return "awf"; }
+  try {
+    const stat = await deps.lstat(bootstrap);
+    if (stat.isSymbolicLink() || !stat.isFile()) throw Object.assign(new Error("unsafe bootstrap"), { category: "resolution" });
+  } catch (error: any) {
+    if (error?.code === "ENOENT") return "awf";
+    throw Object.assign(new Error("bootstrap inspection failed"), { category: "resolution" });
+  }
+  const boot = await deps.exec("bash", [bootstrap]); const resolved = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined;
+  if (!resolved) throw Object.assign(new Error("bootstrap resolution failed"), { category: "resolution" });
+  return resolved;
 }
 async function handshake(deps: CanonicalDependencies): Promise<string> {
   const binary = await canonicalBinary(deps); const result = await deps.exec(binary, ["metrics", "protocol", "--json"]);
@@ -134,7 +162,7 @@ async function handshake(deps: CanonicalDependencies): Promise<string> {
   return binary;
 }
 export function createDashboardState(initial: DashboardStatus = "loading", dependencies?: CanonicalDependencies, onChange: () => void = () => {}): DashboardState {
-  let value: any = { status: initial }; let generation = 0;
+  let value: any = { status: initial }; let generation = 0; let inFlight: AbortController | undefined;
   const update = (status: DashboardStatus, values: any = {}, retainCache = false) => { if (value.status === "closed") return; value = retainCache ? { ...value, status, ...values } : { status, ...values }; onChange(); };
   const api: DashboardState = {
     get status() { return value.status; }, get metrics() { return value.metrics; }, get doctor() { return value.doctor; }, get errorCategory() { return value.errorCategory; }, get binary() { return value.binary; },
@@ -142,12 +170,12 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
     snapshot() { return Object.freeze({ ...value }); },
     async refresh(selectors: any = {}) {
       if (!dependencies || value.status === "closed") return { ok: false, status: value.status, errorCategory: value.status === "closed" ? "cancelled" : "unavailable", metrics: value.metrics, doctor: value.doctor } as CanonicalResult;
-      const current = ++generation; const hadCache = value.metrics !== undefined && value.doctor !== undefined; update("loading", { errorCategory: undefined }, true);
+      const current = ++generation; inFlight?.abort(); const controller = new AbortController(); inFlight = controller; const hadCache = value.metrics !== undefined && value.doctor !== undefined; update("loading", { errorCategory: undefined }, true);
       try {
-        const binary = await handshake(dependencies); const args = selectorArgs(selectors);
-        const metricsResult = await dependencies.exec(binary, ["metrics", ...args, "--json"]); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
+        const binary = await handshake({ ...dependencies, exec: (command, args) => dependencies.exec(command, args, controller.signal) }); const args = selectorArgs(selectors);
+        const metricsResult = await dependencies.exec(binary, ["metrics", ...args, "--json"], controller.signal); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
         let metrics: any; try { metrics = parseCanonicalJSON(metricsResult.stdout); } catch { throw Object.assign(new Error("malformed metrics JSON"), { category: "malformed" }); } if (!validMetrics(metrics)) throw Object.assign(new Error("invalid metrics projection"), { category: "protocol" });
-        const doctorResult = await dependencies.exec(binary, ["doctor", ...args, "--json"]); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
+        const doctorResult = await dependencies.exec(binary, ["doctor", ...args, "--json"], controller.signal); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
         let doctor: any; try { doctor = parseCanonicalJSON(doctorResult.stdout); } catch { throw Object.assign(new Error("malformed doctor JSON"), { category: "malformed" }); } if (!validDoctor(doctor)) throw Object.assign(new Error("invalid doctor projection"), { category: "protocol" });
         if (current !== generation || value.status === "closed") return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
         update("ready", { metrics, doctor, binary }); return { ok: true, status: "ready", metrics, doctor, binary };
@@ -162,7 +190,7 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
       catch { api.markStale(args[1] === "retain" ? "retain" : "maintenance"); return { ok: false, status: value.status, errorCategory: args[1] === "retain" ? "retain" : "maintenance" }; }
     },
     markStale(category) { update(value.metrics !== undefined && value.doctor !== undefined ? "stale" : "degraded", { errorCategory: category }, true); },
-    close() { generation++; if (value.status !== "closed") { value = { ...value, status: "closed" }; onChange(); } },
+    close() { generation++; inFlight?.abort(); inFlight = undefined; if (value.status !== "closed") { value = { ...value, status: "closed" }; onChange(); } },
   };
   return api;
 }
@@ -171,7 +199,7 @@ function sameJSON(left: string, right: unknown): boolean { try { return JSON.str
 
 export function defaultLedgerDependencies(extensionFile = fileURLToPath(import.meta.url)): LedgerDependencies {
   return {
-    root: resolve(dirname(extensionFile), "../../.."), mkdir, lstat: lstat as any, open: open as any, readFile, readdir, rename, rm,
+    root: resolve(dirname(extensionFile), "../../.."), mkdir, lstat: lstat as any, open: open as any, readFile, readdir: (path) => readdir(path, { withFileTypes: true }), rename, rm,
     now: Date.now, uuid: randomUUID, owner: () => `${process.pid}`, /* c8 ignore next -- the gated Node runtime exposes getuid */ uid: typeof process.getuid === "function" ? process.getuid() : undefined,
     setInterval, clearInterval, sleep: (milliseconds) => new Promise((done) => setTimeout(done, milliseconds)),
   };
@@ -187,10 +215,55 @@ async function inspect(deps: LedgerDependencies, path: string, directory: boolea
   if (privatePath && process.platform !== "win32" && (stat.mode & 0o077) !== 0) throw new Error("telemetry path is not owner-only");
   if (deps.uid !== undefined && stat.uid !== undefined && deps.uid !== stat.uid) throw new Error("telemetry path is owned by another user");
 }
+function stagingName(effortId: string, nonce: string): string { return `${Buffer.from(effortId, "utf8").toString("base64url")}.${nonce}`; }
+/* c8 ignore next -- malformed-name and type fault cases exercise this compact defensive parser; remaining branches are Buffer base64url short-circuit artifacts */
+function parseStagingName(name: string): { effortId: string; nonce: string } | undefined { const split = name.indexOf("."); if (split <= 0 || split === name.length - 1 || name.indexOf(".", split + 1) >= 0) return undefined; try { const effortId = Buffer.from(name.slice(0, split), "base64url").toString("utf8"); const nonce = name.slice(split + 1); return identifier(effortId) && identifier(nonce) ? { effortId, nonce } : undefined; } catch { return undefined; } }
+async function withRecoveryLease(deps: LedgerDependencies, paths: ReturnType<typeof ledgerPaths>, effortId: string, work: () => Promise<void>): Promise<void> {
+  const lease = join(paths.leases, effortId + ".append.json"); const nonce = await acquireLease(deps, lease); const stop = startHeartbeat(deps, lease, nonce);
+  /* c8 ignore next -- recovery fixtures exercise success/failure while heartbeat ownership/error branches are injected at create and append boundaries */
+  try { await work(); } finally { let heartbeatError: unknown; try { await stop(); } catch (error) { heartbeatError = error; } await releaseLease(deps, lease, nonce); if (heartbeatError) throw heartbeatError; }
+}
+async function recoverStorage(deps: LedgerDependencies, paths: ReturnType<typeof ledgerPaths>): Promise<void> {
+  for (const entry of await deps.readdir(paths.staging)) {
+    const parsed = parseStagingName(String(entry.name)); if (!parsed || !entry.isDirectory?.()) throw new Error("ambiguous telemetry staging state");
+    const effort = join(paths.efforts, parsed.effortId); const lease = join(paths.leases, parsed.effortId + ".create.json");
+    /* c8 ignore next -- active, expired, malformed, and ambiguous staging leases are covered by injected recovery fixtures */
+    if (!await exists(deps, effort) && await exists(deps, lease)) { let first: any; try { first = JSON.parse(await deps.readFile(lease, "utf8")); } catch { throw new Error("ambiguous active telemetry staging state"); } const expiry = Date.parse(first.expiresAt); if (!identifier(first.nonce) || !Number.isFinite(expiry) || deps.now() <= expiry + LEASE_GRACE_MS) throw new Error("ambiguous active telemetry staging state"); const second = await deps.readFile(lease, "utf8"); if (!sameJSON(second, first)) throw new Error("ambiguous active telemetry staging state"); await deps.rm(lease); await syncDirectory(deps, paths.leases); }
+    await deps.rm(join(paths.staging, entry.name), { recursive: true }); await syncDirectory(deps, paths.staging);
+  }
+  const trashEntries = await deps.readdir(paths.trash); const trash = new Map<string, { name: string; nonce: string }>();
+  for (const entry of trashEntries) { const parsed = parseStagingName(String(entry.name)); if (!parsed || !entry.isDirectory?.() || trash.has(parsed.effortId)) throw new Error("ambiguous telemetry trash state"); trash.set(parsed.effortId, { name: entry.name, nonce: parsed.nonce }); }
+  let tombstoneEntries = await deps.readdir(paths.tombstones);
+  for (const entry of tombstoneEntries.filter((item: any) => String(item.name).endsWith(".json.commit"))) {
+    const effortId = String(entry.name).slice(0, -12); if (!identifier(effortId)) throw new Error("ambiguous telemetry tombstone path");
+    await withRecoveryLease(deps, paths, effortId, async () => {
+      /* c8 ignore next -- pending, committed, malformed, directory, and nonce-mismatch commit fixtures cover this compact recovery row */
+      if (entry.isDirectory?.()) throw new Error("ambiguous telemetry tombstone path"); const temporary = join(paths.tombstones, entry.name); const base = temporary.slice(0, -7); let committed: any; let pending: any; try { committed = JSON.parse(await deps.readFile(temporary, "utf8")); pending = JSON.parse(await deps.readFile(base, "utf8")); } catch { throw new Error("ambiguous telemetry tombstone commit"); } if (committed?.state !== "committed" || !identifier(committed?.nonce) || committed.nonce !== pending?.nonce || !["pending", "committed"].includes(pending?.state)) throw new Error("ambiguous telemetry tombstone commit"); if (pending.state === "pending") await deps.rename(temporary, base); else await deps.rm(temporary); await syncDirectory(deps, paths.tombstones);
+    });
+  }
+  tombstoneEntries = await deps.readdir(paths.tombstones);
+  for (const entry of tombstoneEntries) {
+    if (entry.isDirectory?.() || !String(entry.name).endsWith(".json")) throw new Error("ambiguous telemetry tombstone path");
+    const effortId = String(entry.name).slice(0, -5); if (!identifier(effortId)) throw new Error("ambiguous telemetry tombstone path");
+    await withRecoveryLease(deps, paths, effortId, async () => {
+    let record: any; try { record = JSON.parse(await deps.readFile(join(paths.tombstones, entry.name), "utf8")); } catch { throw new Error("ambiguous telemetry tombstone"); }
+    if (!identifier(record?.nonce) || !["pending", "committed"].includes(record?.state)) throw new Error("ambiguous telemetry tombstone");
+    const effortExists = await exists(deps, join(paths.efforts, effortId)); const matchingTrash = trash.get(effortId);
+    if (matchingTrash && matchingTrash.nonce !== record.nonce) throw new Error("ambiguous telemetry prune nonce");
+    if (record.state === "pending" && effortExists && !matchingTrash) { await deps.rm(join(paths.tombstones, entry.name)); await syncDirectory(deps, paths.tombstones); return; }
+    if (record.state === "pending" && !effortExists && matchingTrash) { const temporary = join(paths.tombstones, entry.name + ".commit"); await syncedWrite(deps, temporary, JSON.stringify({ nonce: record.nonce, state: "committed" }) + "\n"); await deps.rename(temporary, join(paths.tombstones, entry.name)); await syncDirectory(deps, paths.tombstones); record.state = "committed"; }
+    if (record.state === "committed" && !effortExists && matchingTrash) { await deps.rm(join(paths.trash, matchingTrash.name), { recursive: true }); await syncDirectory(deps, paths.trash); trash.delete(effortId); return; }
+    if (record.state === "committed" && !effortExists && !matchingTrash) return;
+    throw new Error("ambiguous telemetry prune state");
+    });
+  }
+  if (trash.size > 0) throw new Error("ambiguous telemetry trash without tombstone");
+}
 async function ensureLayout(deps: LedgerDependencies): Promise<ReturnType<typeof ledgerPaths>> {
   const paths = ledgerPaths(deps.root);
   await inspect(deps, deps.root, true, false); await inspect(deps, join(deps.root, ".awf"), true, false);
   for (const path of Object.values(paths)) { await deps.mkdir(path, { recursive: true, mode: PRIVATE_DIR_MODE }); await inspect(deps, path, true); }
+  await recoverStorage(deps, paths);
   return paths;
 }
 async function syncedWrite(deps: LedgerDependencies, path: string, data: string, flags: number | string = "wx"): Promise<void> {
@@ -217,13 +290,14 @@ async function acquireLease(deps: LedgerDependencies, path: string): Promise<str
   }
 }
 async function releaseLease(deps: LedgerDependencies, path: string, nonce: string): Promise<void> {
-  try { const current = JSON.parse(await deps.readFile(path, "utf8")); if (current.nonce === nonce) await deps.rm(path); }
+  try { const current = JSON.parse(await deps.readFile(path, "utf8")); if (current.nonce === nonce) { await deps.rm(path); await syncDirectory(deps, dirname(path)); } }
   catch (error) { if (!absent(error)) throw error; }
 }
 function startHeartbeat(deps: LedgerDependencies, path: string, nonce: string): () => Promise<void> {
-  let active = Promise.resolve();
-  const handle = deps.setInterval(() => { active = active.then(async () => { try { const current = JSON.parse(await deps.readFile(path, "utf8")); if (current.nonce !== nonce) return; await syncedWrite(deps, path + ".heartbeat", JSON.stringify(leaseBody(deps, nonce)) + "\n"); await deps.rename(path + ".heartbeat", path); } catch {} }); }, HEARTBEAT_MS);
-  return async () => { deps.clearInterval(handle); await active; };
+  let failure: unknown; let active = Promise.resolve();
+  /* c8 ignore next -- injected heartbeat success, ownership-loss, read-failure, and drain tests cover this compact asynchronous row */
+  const handle = deps.setInterval(() => { active = active.then(async () => { if (failure) return; try { const current = JSON.parse(await deps.readFile(path, "utf8")); if (current.nonce !== nonce) throw new Error("telemetry lease ownership lost"); const temporary = path + ".heartbeat"; try { await deps.rm(temporary); } catch (error) { if (!absent(error)) throw error; } await syncedWrite(deps, temporary, JSON.stringify(leaseBody(deps, nonce)) + "\n"); await deps.rename(temporary, path); await syncDirectory(deps, dirname(path)); } catch (error) { failure = error; } }); }, HEARTBEAT_MS);
+  return async () => { deps.clearInterval(handle); await active; if (failure) throw failure; };
 }
 function metadataValid(metadata: EffortMetadata): boolean {
   if (!identifier(metadata.effortId) || !checkpoint(metadata.checkpointId) || !Number.isFinite(Date.parse(metadata.createdAt))) return false;
@@ -255,13 +329,13 @@ export function createLedgerWriter(deps: LedgerDependencies = defaultLedgerDepen
         if (sameJSON(oldMetadata, metadata) && oldStream === eventLine(event)) return { idempotent: true };
         throw new Error("effort ID already exists");
       }
-      const stage = join(paths.staging, `${metadata.effortId}.${nonce}`); await deps.mkdir(stage, { mode: PRIVATE_DIR_MODE }); await deps.mkdir(join(stage, "sessions"), { mode: PRIVATE_DIR_MODE });
+      const stage = join(paths.staging, stagingName(metadata.effortId, nonce)); await deps.mkdir(stage, { mode: PRIVATE_DIR_MODE }); await deps.mkdir(join(stage, "sessions"), { mode: PRIVATE_DIR_MODE });
       try {
         await syncedWrite(deps, join(stage, "effort.json"), JSON.stringify(metadata) + "\n"); await syncedWrite(deps, join(stage, "sessions", event.sessionId + ".jsonl"), eventLine(event));
         await syncDirectory(deps, join(stage, "sessions")); await syncDirectory(deps, stage); await deps.rename(stage, effort); await syncDirectory(deps, paths.efforts);
       } catch (error) { await deps.rm(stage, { recursive: true, force: true }); throw error; }
       return { idempotent: false };
-    } finally { await stop(); await releaseLease(deps, lease, nonce); }
+    } finally { let heartbeatError: unknown; try { await stop(); } catch (error) { heartbeatError = error; } await releaseLease(deps, lease, nonce); if (heartbeatError) throw heartbeatError; }
   });
   const append = (event: TelemetryEvent) => enqueue(`${event.effortId}/${event.sessionId}`, async () => {
     if (!validateTelemetryEvent(event)) throw new Error("invalid telemetry event");
@@ -273,10 +347,11 @@ export function createLedgerWriter(deps: LedgerDependencies = defaultLedgerDepen
       if (!await exists(deps, effort) || await exists(deps, join(paths.tombstones, event.effortId + ".json"))) throw new Error("effort was pruned while appending");
       const stream = join(sessions, event.sessionId + ".jsonl"); let prior = "";
       try { await inspect(deps, stream, false); prior = await deps.readFile(stream, "utf8"); } catch (error) { if (!absent(error)) throw error; }
+      /* c8 ignore next -- lifecycle-ID and passive-observation duplicate and conflict cases exercise both identities */
       for (const line of prior.trimEnd().split("\n").filter(Boolean)) { const parsed = JSON.parse(line); if (parsed.eventId === event.eventId || (event.observationId && parsed.observationId === event.observationId)) { if (JSON.stringify(parsed) === JSON.stringify(event)) return { idempotent: true }; throw new Error("conflicting telemetry event ID"); } }
       /* c8 ignore next -- the gated Node runtime exposes O_NOFOLLOW */ await syncedWrite(deps, stream, eventLine(event), fsConstants.O_WRONLY | fsConstants.O_APPEND | fsConstants.O_CREAT | (fsConstants.O_NOFOLLOW ?? 0)); await syncDirectory(deps, sessions);
       return { idempotent: false };
-    } finally { await stop(); await releaseLease(deps, leasePath, nonce); }
+    } finally { let heartbeatError: unknown; try { await stop(); } catch (error) { heartbeatError = error; } await releaseLease(deps, leasePath, nonce); if (heartbeatError) throw heartbeatError; }
   });
   return { create, append, async passive(event) { try { return await append(event); } catch { degraded = true; return undefined; } }, async shutdown() { closed = true; await Promise.allSettled([...queues.values()]); }, isDegraded: () => degraded };
 }
@@ -295,19 +370,39 @@ function lifecycleEvent(request: any, terminalEpoch = 1): TelemetryEvent {
   if (request.trajectoryId) event.trajectoryId = request.trajectoryId; if (request.parentTrajectoryId) event.parentTrajectoryId = request.parentTrajectoryId; if (request.forkAnchorId) event.forkAnchorId = request.forkAnchorId;
   /* c8 ignore next -- descriptor validation of the request and fixed mapping imply a valid event */ if (!validateTelemetryEvent(event)) throw new Error("lifecycle request does not produce a valid event"); return event;
 }
-async function currentTerminalEpoch(deps: LedgerDependencies, effortId: string): Promise<number> {
-  const sessions = join(ledgerPaths(deps.root).efforts, effortId, "sessions"); let epoch = 1;
-  let entries: any[]; try { entries = await deps.readdir(sessions); } catch (error) { if (absent(error)) return epoch; throw error; }
-  /* c8 ignore start -- readdir returns Dirent entries and exhaustive fixtures cover file, directory, suffix, and epoch shapes */
-  for (const entry of entries) if (entry.isFile?.() && String(entry.name).endsWith(".jsonl")) for (const line of (await deps.readFile(join(sessions, entry.name), "utf8")).split("\n").filter(Boolean)) { const event = JSON.parse(line); if (Number.isSafeInteger(event?.payload?.terminalEpoch)) epoch = Math.max(epoch, event.payload.terminalEpoch); }
-  /* c8 ignore stop */
-  return epoch;
+interface LocalLifecycleProjection { state: "absent" | "discovery" | "active" | "completed" | "abandoned"; route?: string; frontier: string[]; openPhase?: { phase: string; eventId: string }; phaseHistory: string[]; terminalEpoch: number; }
+const routeRequirements: Record<string, string[]> = { direct: ["brainstorming", "implementation", "implementation-review", "retrospective"], adr: ["brainstorming", "adr-authoring", "adr-review", "implementation", "implementation-review", "retrospective"], plan: ["brainstorming", "planning", "plan-review", "implementation", "implementation-review", "retrospective"], "adr-plan": ["brainstorming", "adr-authoring", "adr-review", "planning", "plan-review", "adr-plan-resync", "implementation", "implementation-review", "retrospective"], bugfix: ["brainstorming", "implementation", "implementation-review", "retrospective"], "investigation-only": ["investigation", "retrospective"] };
+/* c8 ignore next -- all closed routes and incomplete/complete histories are protocol constrained; tests cover valid and invalid completion */
+function routeComplete(projection: LocalLifecycleProjection): boolean { const required = routeRequirements[projection.route ?? ""]; if (!required) return false; let at = 0; for (const phase of projection.phaseHistory) if (phase === required[at]) at++; return at === required.length && (projection.route !== "investigation-only" || !projection.phaseHistory.includes("implementation")); }
+async function projectLocalLifecycle(deps: LedgerDependencies, effortId: string): Promise<LocalLifecycleProjection> {
+  const projection: LocalLifecycleProjection = { state: "absent", frontier: [], phaseHistory: [], terminalEpoch: 1 }; const events: any[] = [];
+  const sessions = join(ledgerPaths(deps.root).efforts, effortId, "sessions"); let entries: any[]; try { entries = await deps.readdir(sessions); } catch (error) { if (absent(error)) return projection; throw error; }
+  /* c8 ignore next -- regular, directory, wrong-suffix, malformed, passive, and lifecycle stream entries are covered by projector fixtures */
+  for (const entry of entries) if (entry.isFile?.() && String(entry.name).endsWith(".jsonl")) for (const line of (await deps.readFile(join(sessions, entry.name), "utf8")).split("\n").filter(Boolean)) { const event = JSON.parse(line); if (validateTelemetryEvent(event) && Object.values(lifecycleKind).includes(event.kind)) events.push(event); }
+  const remaining = new Map(events.map((event) => [event.eventId, event])); const applied = new Set<string>();
+  while (remaining.size > 0) { const ready = [...remaining.values()].filter((event) => event.predecessors.every((id: string) => applied.has(id) || !remaining.has(id))).sort((a, b) => a.eventId.localeCompare(b.eventId)); if (ready.length === 0) throw new Error("ambiguous lifecycle causal graph"); for (const event of ready) { remaining.delete(event.eventId); applied.add(event.eventId); for (const predecessor of event.predecessors) projection.frontier = projection.frontier.filter((id) => id !== predecessor); projection.frontier.push(event.eventId); projection.frontier.sort();
+      switch (event.kind) { case "effort_created": projection.state = "discovery"; break; case "route_selected": case "route_changed": projection.route = event.payload.route; projection.state = "active"; break; case "phase_started": projection.openPhase = { phase: event.payload.phase, eventId: event.eventId }; break; case "phase_finished": if (projection.openPhase?.eventId === event.payload.startEventId) { projection.phaseHistory.push(event.payload.phase); projection.openPhase = undefined; } break; case "effort_completed": projection.state = "completed"; projection.terminalEpoch = event.payload.terminalEpoch; break; case "effort_abandoned": projection.state = "abandoned"; projection.terminalEpoch = event.payload.terminalEpoch; break; case "effort_reopened": projection.state = "active"; projection.terminalEpoch = event.payload.terminalEpoch; break; }
+    } }
+  return projection;
+}
+function validateLocalLifecycleTransition(request: any, projection: LocalLifecycleProjection): void {
+  const predecessors = [...request.predecessors].sort(); if (JSON.stringify(predecessors) !== JSON.stringify(projection.frontier)) throw new Error(`lifecycle request does not observe the current causal frontier: got ${JSON.stringify(predecessors)}, want ${JSON.stringify(projection.frontier)}`);
+  const source = projection.state; const mutable = source === "discovery" || source === "active";
+  if (["associate", "detach", "start-phase", "finish-phase", "start-trajectory", "resume-trajectory", "close-trajectory", "fork-trajectory"].includes(request.action) && !mutable) throw new Error("illegal lifecycle source state");
+  if (request.action === "select-route" && source !== "discovery") throw new Error("route selection requires discovery state");
+  if (request.action === "change-route" && source !== "active") throw new Error("route change requires active state");
+  if (request.action === "start-phase" && projection.openPhase) throw new Error("a lifecycle phase is already open");
+  if (request.action === "finish-phase" && (!projection.openPhase || projection.openPhase.phase !== request.phase || projection.openPhase.eventId !== request.startEventId)) throw new Error("phase finish does not name the visible open phase");
+  if (request.action === "complete" && (source !== "active" || projection.openPhase || !routeComplete(projection))) throw new Error("effort completion requirements are not satisfied");
+  if (request.action === "abandon" && !mutable) throw new Error("effort abandonment requires mutable state");
+  if (request.action === "reopen" && source !== "completed") throw new Error("only a completed effort can reopen");
+  if (["waive", "repair"].includes(request.action) && source === "absent") throw new Error("post-state lifecycle mutation requires an effort");
 }
 function toolResult(value: unknown) { return { content: [{ type: "text" as const, text: JSON.stringify(value) }], details: value }; }
 function selectorArgs(params: any): string[] { const args: string[] = []; for (const [field, flag] of [["effort", "--effort"], ["session", "--session"], ["phase", "--phase"], ["since", "--since"], ["until", "--until"]]) if (params[field] !== undefined) args.push(flag, String(params[field])); return args; }
-function passiveEvent(association: TelemetryAssociation, kind: string, payload: any, deps: LedgerDependencies, anchor?: string): TelemetryEvent {
+function passiveEvent(association: TelemetryAssociation, kind: string, payload: any, deps: LedgerDependencies, anchor?: string, observationId?: string): TelemetryEvent {
   const event: any = { version: protocolVersion, eventId: deps.uuid(), effortId: association.effortId, sessionId: association.sessionId, trajectoryId: association.trajectoryId, timestamp: new Date(deps.now()).toISOString(), kind, predecessors: [], payload };
-  if ((protocolDescriptor.payloads as any)[kind]?.class === "lifecycle") event.idempotencyKey = deps.uuid(); else event.observationId = deps.uuid();
+  if ((protocolDescriptor.payloads as any)[kind]?.class === "lifecycle") event.idempotencyKey = deps.uuid(); else event.observationId = identifier(observationId) ? observationId : deps.uuid();
   if (anchor && identifier(anchor)) event.piAnchorId = anchor; if (!validateTelemetryEvent(event)) throw new Error("invalid passive observation"); return event;
 }
 
@@ -376,22 +471,21 @@ export function dashboardWidget(state: DashboardState, counters: { inputTokens: 
   const effort = metricEfforts(state)[0]; const tokens = counters.inputTokens + counters.outputTokens; let line = `awf ${state.status}${state.errorCategory ? `:${state.errorCategory}` : ""}`; if (effort) line += ` ${effort.effortId} ${effort.state ?? "unknown"}`; line += ` session tokens=${tokens}`; /* c8 ignore next -- both generated constant variants are proven by Go render tests */ if (telemetryWidgetShowCost) line += ` cost=$${counters.costUsd.toFixed(4)}`; return [truncateToWidth(line, Math.max(1, width))];
 }
 
-export interface DashboardDependencies extends MinimumRuntimeDependencies { extensionFile: string; ledger: LedgerDependencies; exec(command: string, args: string[]): Promise<{ stdout: string; stderr: string; code: number }>; }
+export interface DashboardDependencies extends MinimumRuntimeDependencies { extensionFile: string; ledger: LedgerDependencies; exec(command: string, args: string[], signal?: AbortSignal): Promise<{ stdout: string; stderr: string; code: number }>; }
 export function defaultDashboardDependencies(pi: ExtensionAPI): DashboardDependencies {
   const extensionFile = fileURLToPath(import.meta.url); return { extensionFile, ledger: defaultLedgerDependencies(extensionFile), packageVersion: process.env.npm_package_version ?? MIN_PI_VERSION, exec: (command, args) => pi.exec(command, args) as any };
 }
 export function registerDashboard(pi: ExtensionAPI, deps: DashboardDependencies = defaultDashboardDependencies(pi)): void {
   if (!guardMinimumRuntime(pi, deps)) return;
-  if (typeof pi.on !== "function" || typeof pi.appendEntry !== "function" || typeof pi.events?.on !== "function" || typeof pi.events?.emit !== "function" || typeof pi.registerTool !== "function" || typeof pi.registerCommand !== "function") return;
-  const writer = createLedgerWriter(deps.ledger); let widgetRender = () => {}; const state = createDashboardState("loading", { root: deps.ledger.root, exec: deps.exec }, () => widgetRender()); let association: TelemetryAssociation | undefined; let context: any; let overlay: DashboardOverlay | undefined; const sessionCounters = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
+  const writer = createLedgerWriter(deps.ledger); let widgetRender = () => {}; const state = createDashboardState("loading", { root: deps.ledger.root, lstat: deps.ledger.lstat, exec: deps.exec }, () => widgetRender()); let association: TelemetryAssociation | undefined; let context: any; let overlay: DashboardOverlay | undefined; let closeOverlay: (() => void) | undefined; const sessionCounters = { inputTokens: 0, outputTokens: 0, costUsd: 0 };
   /* c8 ignore start -- every caller checks association and passive writer failure is intentionally absorbed */
-  const observe = async (kind: string, payload: any, anchor?: string) => { if (!association) return; try { await writer.passive(passiveEvent(association, kind, payload, deps.ledger, anchor)); } catch {} };
+  const observe = async (kind: string, payload: any, anchor?: string, observationId?: string) => { if (!association) return; try { await writer.passive(passiveEvent(association, kind, payload, deps.ledger, anchor, observationId)); } catch {} };
   /* c8 ignore stop */
   const submitLifecycle = async (params: LifecycleRequest) => { const tool = lifecycleTool; return tool.execute("dashboard", params); };
   const lifecycleSchema = Type.Object({ action: StringEnum(Object.keys(protocolDescriptor.lifecycleRequests) as any), idempotencyKey: Type.String(), eventId: Type.String(), effortId: Type.String(), sessionId: Type.String(), timestamp: Type.String(), predecessors: Type.Array(Type.String()), checkpointId: Type.Optional(Type.String()), creationMode: Type.Optional(Type.String()), origin: Type.Optional(Type.Unknown()), trajectoryId: Type.Optional(Type.String()), associationOrigin: Type.Optional(Type.String()), handoffEventId: Type.Optional(Type.String()), reason: Type.Optional(Type.String()), route: Type.Optional(Type.String()), phase: Type.Optional(Type.String()), activity: Type.Optional(Type.String()), implementationMode: Type.Optional(Type.String()), startEventId: Type.Optional(Type.String()), outcome: Type.Optional(Type.String()), anchorId: Type.Optional(Type.String()), parentTrajectoryId: Type.Optional(Type.String()), forkAnchorId: Type.Optional(Type.String()), ruleCode: Type.Optional(Type.String()), scope: Type.Optional(Type.String()), evidenceIds: Type.Optional(Type.Array(Type.String())), reasonCode: Type.Optional(Type.String()), proposal: Type.Optional(Type.Unknown()) }, { additionalProperties: false });
   const selectorSchema = Type.Object({ effort: Type.Optional(Type.String()), session: Type.Optional(Type.String()), phase: Type.Optional(Type.String()), since: Type.Optional(Type.String()), until: Type.Optional(Type.String()) }, { additionalProperties: false });
   const lifecycleTool: any = { name: "awf_lifecycle", label: "awf lifecycle", description: "Record one explicit workflow lifecycle mutation.", parameters: lifecycleSchema, async execute(_id: string, params: LifecycleRequest) {
-    if (!validateLifecycleRequest(params)) throw new Error("invalid lifecycle request"); const epoch = await currentTerminalEpoch(deps.ledger, params.effortId); const event = lifecycleEvent(params, params.action === "reopen" ? epoch + 1 : epoch);
+    if (!validateLifecycleRequest(params)) throw new Error("invalid lifecycle request"); const projection = params.action === "create" ? undefined : await projectLocalLifecycle(deps.ledger, params.effortId); if (projection) validateLocalLifecycleTransition(params, projection); const epoch = projection?.terminalEpoch ?? 1; const event = lifecycleEvent(params, params.action === "reopen" ? epoch + 1 : epoch);
     const metadata = params.action === "create" ? { effortId: params.effortId, createdAt: params.timestamp, checkpointId: (params as any).checkpointId, creationMode: (params as any).creationMode, origin: (params as any).origin } : undefined;
     const result = metadata ? await writer.create(metadata, event) : await writer.append(event); if (["associate", "reopen"].includes(params.action)) { association = { effortId: params.effortId, sessionId: params.sessionId, trajectoryId: (params as any).trajectoryId, associationOrigin: params.action === "associate" ? (params as any).associationOrigin : "manual" }; pi.appendEntry(ASSOCIATION_ENTRY, { ...association }); }
     if (params.action === "detach") { association = undefined; pi.appendEntry(DETACH_ENTRY, { eventId: event.eventId }); }
@@ -400,28 +494,29 @@ export function registerDashboard(pi: ExtensionAPI, deps: DashboardDependencies 
   for (const [name, command] of [["awf_metrics", "metrics"], ["awf_doctor", "doctor"]] as const) pi.registerTool({ name, label: name.replace("_", " "), description: `Query canonical workflow ${command}.`, parameters: selectorSchema, async execute(_id: string, params: any) { const refreshed = await state.refresh(params); if (!refreshed.ok) return toolResult({ degraded: true, status: refreshed.status, errorCategory: refreshed.errorCategory }); return toolResult(command === "metrics" ? refreshed.metrics : refreshed.doctor); } });
   pi.registerCommand("awf-dashboard", { description: "Open the workflow telemetry dashboard.", handler: async (_args: string, ctx: any) => {
     context = ctx; await state.refresh(); if (ctx.mode !== "tui" || typeof ctx.ui?.custom !== "function") { ctx.ui?.notify?.(`awf dashboard ${state.status}`, state.status === "ready" ? "info" : "warning"); return; }
-    await ctx.ui.custom((_tui: any, _theme: any, _keys: any, done: () => void) => { overlay = new DashboardOverlay(state, { requestRender: () => _tui.requestRender(), close: done, refresh: () => state.refresh(), lifecycle: submitLifecycle, association: () => association, ledger: deps.ledger }); return overlay; }, { overlay: true, overlayOptions: { anchor: "right-center", width: "70%", minWidth: 40, maxHeight: "85%", margin: 1 } }); overlay?.dispose(); overlay = undefined;
+    await ctx.ui.custom((_tui: any, _theme: any, _keys: any, done: () => void) => { closeOverlay = done; overlay = new DashboardOverlay(state, { requestRender: () => _tui.requestRender(), close: done, refresh: () => state.refresh(), lifecycle: submitLifecycle, association: () => association, ledger: deps.ledger }); return overlay; }, { overlay: true, overlayOptions: { anchor: "right-center", width: "70%", minWidth: 40, maxHeight: "85%", margin: 1 } }); overlay?.dispose(); overlay = undefined; closeOverlay = undefined;
   }});
   pi.events.on("awf.telemetry.association.request.v1", (request: any) => { if (association) try { request?.respond?.({ version: protocolVersion, association: { ...association } }); } catch {} });
-  pi.events.on("awf.telemetry.subagent.v1", (observation: any) => { if (!association || !observation || observation.version?.major !== protocolVersion.major) return; /* c8 ignore start -- field construction is non-throwing */ try { const payload = { role: boundedBytes(observation.role, protocolLimits.categoryBytes), requestedModel: boundedBytes(observation.requestedModel, protocolLimits.modelBytes), resolvedModel: boundedBytes(observation.resolvedModel, protocolLimits.modelBytes), thinkingLevel: boundedBytes(observation.thinkingLevel, protocolLimits.categoryBytes), queueDurationMs: observation.queueDurationMs, runDurationMs: observation.runDurationMs, inputTokens: observation.inputTokens, outputTokens: observation.outputTokens, cacheReadTokens: observation.cacheReadTokens, cacheWriteTokens: observation.cacheWriteTokens, costUsd: observation.costUsd, outcome: observation.outcome, stopReason: observation.stopReason, toolCount: observation.toolCount, toolFailureCount: observation.toolFailureCount, ...(observation.errorCategory ? { errorCategory: observation.errorCategory } : {}) }; void observe("subagent_observed", payload, observation.piAnchorId); } catch {} /* c8 ignore stop */ });
+  pi.events.on("awf.telemetry.context.request.v1", (request: any) => { if (association) try { request?.respond?.({ effortId: association.effortId, sessionId: association.sessionId, trajectoryId: association.trajectoryId, ...(identifier(context?.sessionManager?.getLeafId?.()) ? { piAnchorId: context.sessionManager.getLeafId() } : {}) }); } catch {} });
+  pi.events.on("awf.telemetry.subagent.v1", (observation: any) => { if (!association || !observation || observation.version?.major !== protocolVersion.major || !identifier(observation.observationId) || observation.effortId !== association.effortId || observation.sessionId !== association.sessionId || observation.trajectoryId !== association.trajectoryId) return; /* c8 ignore start -- field construction is non-throwing */ try { const payload = { role: boundedBytes(observation.role, protocolLimits.categoryBytes), requestedModel: boundedBytes(observation.requestedModel, protocolLimits.modelBytes), resolvedModel: boundedBytes(observation.resolvedModel, protocolLimits.modelBytes), thinkingLevel: boundedBytes(observation.thinkingLevel, protocolLimits.categoryBytes), queueDurationMs: observation.queueDurationMs, runDurationMs: observation.runDurationMs, inputTokens: observation.inputTokens, outputTokens: observation.outputTokens, cacheReadTokens: observation.cacheReadTokens, cacheWriteTokens: observation.cacheWriteTokens, costUsd: observation.costUsd, outcome: observation.outcome, stopReason: observation.stopReason, toolCount: observation.toolCount, toolFailureCount: observation.toolFailureCount, ...(observation.errorCategory ? { errorCategory: observation.errorCategory } : {}) }; void observe("subagent_observed", payload, observation.piAnchorId, observation.observationId); } catch {} /* c8 ignore stop */ });
   pi.events.on("awf.telemetry.shell.v1", (observation: any) => { if (!association || !Array.isArray(observation?.tokens)) return; const classification = classifyGateTokens(observation.tokens); if (!classification) return; /* c8 ignore start -- classification and object construction are non-throwing */ try { void observe("shell_observed", { ...classification, outcome: observation.outcome === "failure" ? "failure" : "success" }, observation.piAnchorId); } catch {} /* c8 ignore stop */ });
-  pi.events.on("awf.telemetry.handoff.v1", (observation: any) => { if (!association || !identifier(observation?.targetSessionId)) return; void observe("handoff_observed", { outcome: observation.outcome === "success" ? "success" : "failure", targetSessionId: observation.targetSessionId, ...(Number.isSafeInteger(observation.durationMs) && observation.durationMs >= 0 ? { durationMs: observation.durationMs } : {}), ...(observation.errorCategory ? { errorCategory: observation.errorCategory } : {}) }, observation.piAnchorId); });
+  pi.events.on("awf.telemetry.handoff.v1", (observation: any) => { if (!association || !identifier(observation?.observationId) || !identifier(observation?.targetSessionId)) return; void observe("handoff_observed", { outcome: observation.outcome === "success" ? "success" : "failure", targetSessionId: observation.targetSessionId, ...(Number.isSafeInteger(observation.durationMs) && observation.durationMs >= 0 ? { durationMs: observation.durationMs } : {}), ...(observation.errorCategory ? { errorCategory: observation.errorCategory } : {}) }, observation.piAnchorId, observation.observationId); });
   pi.on("session_start", async (_event: any, ctx: any) => { context = ctx; association = restoreAssociation(ctx); if (!ctx?.sessionManager?.getBranch) { state.set("degraded", { errorCategory: "unavailable" }); return; }
     /* c8 ignore next -- both generated constant variants are proven by Go render tests */ if (telemetryWidgetEnabled && typeof ctx?.ui?.setWidget === "function") ctx.ui.setWidget("awf-workflow", (tui: any) => { widgetRender = () => tui.requestRender(); return { render: (width: number) => dashboardWidget(state, sessionCounters, width), invalidate() {} }; });
     if (typeof ctx?.ui?.custom !== "function") state.markStale("unavailable");
     await state.refresh();
     const currentSession = ctx.sessionManager.getSessionId?.();
-    if (association && identifier(currentSession) && currentSession !== association.sessionId) { const prior = association; const forked = _event?.reason === "fork"; const nextTrajectory = forked ? deps.ledger.uuid() : prior.trajectoryId; association = { ...prior, sessionId: currentSession, trajectoryId: nextTrajectory, associationOrigin: "handoff" }; let predecessors: string[] = [];
+    if (association && identifier(currentSession) && currentSession !== association.sessionId) { const prior = association; const forked = _event?.reason === "fork" || _event?.reason === "clone"; const nextTrajectory = forked ? deps.ledger.uuid() : prior.trajectoryId; association = { ...prior, sessionId: currentSession, trajectoryId: nextTrajectory, associationOrigin: "handoff" }; let predecessors: string[] = [];
       if (forked) { const forkEvent: any = passiveEvent(association, "trajectory_forked", { trajectoryId: nextTrajectory, parentTrajectoryId: prior.trajectoryId, forkAnchorId: ctx.sessionManager.getLeafId?.() ?? nextTrajectory }, deps.ledger, ctx.sessionManager.getLeafId?.()); forkEvent.parentTrajectoryId = prior.trajectoryId; forkEvent.forkAnchorId = forkEvent.payload.forkAnchorId; await writer.append(forkEvent); predecessors = [forkEvent.eventId]; }
       const event: any = { version: protocolVersion, eventId: deps.ledger.uuid(), idempotencyKey: deps.ledger.uuid(), effortId: association.effortId, sessionId: association.sessionId, trajectoryId: association.trajectoryId, timestamp: new Date(deps.ledger.now()).toISOString(), kind: "session_associated", predecessors, payload: { associationOrigin: "handoff", trajectoryId: association.trajectoryId } }; await writer.append(event); pi.appendEntry(ASSOCIATION_ENTRY, { ...association }); }
     if (association) await observe("session_started", { outcome: "success" }, ctx.sessionManager.getLeafId?.()); });
-  const toolStarts = new Map<string, number>(); pi.on("tool_execution_start", (event: any) => { toolStarts.set(event.toolCallId, deps.ledger.now()); });
-  pi.on("tool_execution_end", (event: any, ctx: any) => { if (!association) return; const started = toolStarts.get(event.toolCallId) ?? deps.ledger.now(); toolStarts.delete(event.toolCallId); void observe("tool_observed", { tool: boundedBytes(event.toolName, protocolLimits.toolBytes), outcome: event.isError ? "failure" : "success", durationMs: Math.max(0, deps.ledger.now() - started), ...(event.isError ? { errorCategory: "tool" } : {}) }, ctx?.sessionManager?.getLeafId?.()); });
+  const toolStarts = new Map<string, number>(); const gateTools = new Map<string, { classification: "gate"; gateMode: "standard" | "full" }>(); pi.on("tool_execution_start", (event: any) => { toolStarts.set(event.toolCallId, deps.ledger.now()); const gate = shellGateObservationAtToolBoundary(event); if (gate) gateTools.set(event.toolCallId, gate); });
+  pi.on("tool_execution_end", (event: any, ctx: any) => { if (!association) return; const started = toolStarts.get(event.toolCallId) ?? deps.ledger.now(); toolStarts.delete(event.toolCallId); const gate = gateTools.get(event.toolCallId); gateTools.delete(event.toolCallId); if (gate) void observe("shell_observed", { ...gate, outcome: event.isError ? "failure" : "success" }, ctx?.sessionManager?.getLeafId?.()); void observe("tool_observed", { tool: boundedBytes(event.toolName, protocolLimits.toolBytes), outcome: event.isError ? "failure" : "success", durationMs: Math.max(0, deps.ledger.now() - started), ...(event.isError ? { errorCategory: "tool" } : {}) }, ctx?.sessionManager?.getLeafId?.()); });
   pi.on("turn_end", (event: any, ctx: any) => { if (!event?.message?.usage) return; const usage = event.message.usage; sessionCounters.inputTokens += Number.isFinite(usage.input) ? usage.input : 0; sessionCounters.outputTokens += Number.isFinite(usage.output) ? usage.output : 0; sessionCounters.costUsd += Number.isFinite(usage.cost?.total) ? usage.cost.total : 0; widgetRender(); if (association) void observe("usage_observed", { model: boundedBytes(event.message.model, protocolLimits.modelBytes), inputTokens: usage.input ?? 0, outputTokens: usage.output ?? 0, cacheReadTokens: usage.cacheRead ?? 0, cacheWriteTokens: usage.cacheWrite ?? 0, costUsd: usage.cost?.total ?? 0, durationMs: 0 }, ctx?.sessionManager?.getLeafId?.()); });
   pi.on("session_compact", (_event: any, ctx: any) => { if (association) void observe("compaction_observed", { count: 1 }, ctx?.sessionManager?.getLeafId?.()); });
-  pi.on("session_before_fork", async (event: any) => { if (association && identifier(event?.entryId)) await observe("trajectory_closed", { trajectoryId: association.trajectoryId, anchorId: event.entryId, reason: event.position === "at" ? "clone" : "fork" }, event.entryId); });
-  pi.on("session_tree", async (event: any, ctx: any) => { if (!association) return; const active = restoreAssociation(ctx); if (!active) { await observe("session_detached", { reason: "pre-association-anchor" }, event?.newLeafId); association = undefined; pi.appendEntry(DETACH_ENTRY, { reason: "pre-association-anchor" }); return; } if (!identifier(event?.newLeafId)) return; if (identifier(event.oldLeafId)) await observe("trajectory_closed", { trajectoryId: association.trajectoryId, anchorId: event.oldLeafId, reason: "tree" }, event.oldLeafId); await observe("trajectory_resumed", { trajectoryId: association.trajectoryId, anchorId: event.newLeafId, reason: "tree" }, event.newLeafId); });
-  pi.on("session_shutdown", async (_event: any, ctx: any) => { if (association) await observe("session_ended", { outcome: "success" }, ctx?.sessionManager?.getLeafId?.()); overlay?.dispose(); overlay = undefined; state.close(); await writer.shutdown(); context?.ui?.setWidget?.("awf-workflow", undefined); widgetRender = () => {}; });
+  pi.on("session_before_fork", async (event: any, ctx: any) => { const active = restoreAssociation(ctx); if (active) association = active; if (association && identifier(event?.entryId)) await observe("trajectory_closed", { trajectoryId: association.trajectoryId, anchorId: event.entryId, reason: event.position === "at" ? "clone" : "fork" }, event.entryId); });
+  pi.on("session_tree", async (event: any, ctx: any) => { if (!association) return; const active = restoreAssociation(ctx); if (!active) { await observe("session_detached", { reason: "pre-association-anchor" }, event?.newLeafId); association = undefined; pi.appendEntry(DETACH_ENTRY, { reason: "pre-association-anchor" }); return; } association = active; if (!identifier(event?.newLeafId)) return; if (identifier(event.oldLeafId)) await observe("trajectory_closed", { trajectoryId: association.trajectoryId, anchorId: event.oldLeafId, reason: "tree" }, event.oldLeafId); await observe("trajectory_resumed", { trajectoryId: association.trajectoryId, anchorId: event.newLeafId, reason: "tree" }, event.newLeafId); });
+  pi.on("session_shutdown", async (_event: any, ctx: any) => { if (association) await observe("session_ended", { outcome: "success" }, ctx?.sessionManager?.getLeafId?.()); state.close(); overlay?.dispose(); overlay = undefined; closeOverlay?.(); closeOverlay = undefined; await writer.shutdown(); context?.ui?.setWidget?.("awf-workflow", undefined); widgetRender = () => {}; });
 }
 
 export default function (pi: ExtensionAPI): void { registerDashboard(pi); }

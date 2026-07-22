@@ -26,13 +26,22 @@ export function versionSupported(value: string): boolean {
   return true;
 }
 export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies): boolean {
-  const queueCommandMissing = typeof pi.queueCommand !== "function";
-  if (versionSupported(deps.packageVersion) && !queueCommandMissing) return true;
+  const requirements = {
+    queueCommand: typeof pi.queueCommand === "function",
+    eventHooks: typeof pi.on === "function" && typeof pi.events?.on === "function" && typeof pi.events?.emit === "function",
+    persistedEntries: typeof pi.appendEntry === "function",
+    tools: typeof pi.registerTool === "function",
+    overlayCommands: typeof pi.registerCommand === "function",
+    shutdownHooks: typeof pi.on === "function",
+  };
+  const missing = Object.entries(requirements).filter(([, available]) => !available).map(([name]) => name);
+  if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
+  if (typeof pi.on !== "function") return false;
   pi.on("session_start", async (_event, ctx) => {
     if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
     (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
-    const missingAPI = queueCommandMissing ? " ExtensionAPI.queueCommand is missing." : "";
-    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with ExtensionAPI.queueCommand; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
+    const missingAPI = missing.length > 0 ? ` Missing runtime APIs: ${missing.join(", ")}.` : "";
+    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
   });
   return false;
 }
@@ -88,6 +97,11 @@ export async function validateMemoryPath(memoryPath: string, deps: HandoffDepend
     if (final && !stat.isFile()) throw new Error(`memoryPath is not a regular file: ${current}`);
   }
   return memoryPath;
+}
+
+function emitHandoffObservation(pi: ExtensionAPI, data: { observationId: string; targetSessionId: string; outcome: "success" | "failure"; durationMs: number; errorCategory?: "handoff" }): void {
+  try { pi.events.emit("awf.telemetry.handoff.v1", { version: { major: 1, minor: 0 }, ...data }); }
+  catch { /* telemetry is best-effort and cannot alter handoff */ }
 }
 
 function boundedIdentifier(value: unknown): value is string {
@@ -183,9 +197,10 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
     async handler(args, ctx) {
       const request = pending;
       if (!request || !args || args !== request.id) throw new Error("No matching pending handoff request");
+      const observationId = deps.randomUUID(); const startedAt = Date.now(); let targetSessionId = request.id;
       try {
         const proceed = await countdown(ctx, deps);
-        if (!proceed) { ctx.ui.notify("Fresh-session handoff canceled."); return; }
+        if (!proceed) { emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "failure", durationMs: Math.max(0, Date.now() - startedAt), errorCategory: "handoff" }); ctx.ui.notify("Fresh-session handoff canceled."); return; }
         await validateMemoryPath(request.memoryPath, deps);
         const oldSessionFile = ctx.sessionManager.getSessionFile();
         if (!oldSessionFile) throw new Error("The active session is no longer persisted");
@@ -194,6 +209,7 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
         await ctx.newSession({
           parentSession: oldSessionFile,
           async setup(sessionManager) {
+            const childSessionId = sessionManager.getSessionId?.(); if (boundedIdentifier(childSessionId)) targetSessionId = childSessionId;
             if (!association) return;
             try { sessionManager.appendCustomEntry("awf.telemetry.association.v1", { ...association }); }
             catch { /* association propagation is best-effort */ }
@@ -206,6 +222,10 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
             }
           },
         });
+        emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "success", durationMs: Math.max(0, Date.now() - startedAt) });
+      } catch (error) {
+        emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "failure", durationMs: Math.max(0, Date.now() - startedAt), errorCategory: "handoff" });
+        throw error;
       } finally { if (pending?.id === request.id) pending = undefined; }
     },
   });

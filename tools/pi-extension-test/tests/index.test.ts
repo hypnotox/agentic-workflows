@@ -34,6 +34,7 @@ function harness(options: {
   leaf?: any;
   thinking?: () => string;
   queueCommand?: boolean;
+  telemetryContexts?: unknown[];
 } = {}) {
   const tools = new Map<string, any>();
   const handlers = new Map<string, any>();
@@ -45,11 +46,11 @@ function harness(options: {
   let gitCalls = 0;
   let leaf = options.leaf;
   const pi: any = {
-    registerTool: (tool: any) => tools.set(tool.name, tool),
+    registerTool: (tool: any) => tools.set(tool.name, tool), registerCommand() {}, appendEntry() {},
     on: (name: string, handler: any) => handlers.set(name, handler),
     getThinkingLevel: options.thinking ?? (() => "high"),
     exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
-    events: { emit: (name: string, data: any) => { emitted.push({ name, data }); } },
+    events: { on() {}, emit: (name: string, data: any) => { if (name === "awf.telemetry.context.request.v1") { for (const value of options.telemetryContexts ?? []) data.respond(value); return; } emitted.push({ name, data }); } },
     ...(options.queueCommand === false ? {} : { queueCommand() {} }),
   };
   const deps: ExtensionDependencies = {
@@ -131,11 +132,12 @@ test("version support is strict and ordered", () => {
 });
 
 test("unsupported runtime registers one guarded startup notification and no tools", async () => {
+  registerSubagentTools({} as any, { packageVersion: MIN_PI_VERSION } as any);
   const notice = Symbol.for("awf.pi.minimum-runtime-notified");
   for (const [version, queueCommand, detail] of [
     ["0.81.0", true, ""],
     ["unknown", true, ""],
-    ["0.81.1", false, " ExtensionAPI.queueCommand is missing."],
+    ["0.81.1", false, " Missing runtime APIs: queueCommand."],
   ] as const) {
     delete (globalThis as any)[notice];
     const h = harness({ version, queueCommand });
@@ -143,7 +145,7 @@ test("unsupported runtime registers one guarded startup notification and no tool
     assert.deepEqual([...h.handlers.keys()], ["session_start"]);
     await h.handlers.get("session_start")({}, h.ctx);
     await h.handlers.get("session_start")({}, h.ctx);
-    assert.deepEqual(h.notifications, [[`awf Pi extensions require Pi 0.81.1 or newer with ExtensionAPI.queueCommand; found ${version}.${detail} Upgrade Pi and reload.`, "error"]]);
+    assert.deepEqual(h.notifications, [[`awf Pi extensions require Pi 0.81.1 or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found ${version}.${detail} Upgrade Pi and reload.`, "error"]]);
   }
   delete (globalThis as any)[notice];
 });
@@ -168,7 +170,7 @@ test("both unsupported factories share one precise notification and no functiona
   assert.equal(starts.length, 2);
   const ctx = { ui: { notify: (...args: any[]) => notifications.push(args) } };
   for (const start of starts) await start({}, ctx);
-  assert.deepEqual(notifications, [["awf Pi extensions require Pi 0.81.1 or newer with ExtensionAPI.queueCommand; found 0.81.1. ExtensionAPI.queueCommand is missing. Upgrade Pi and reload.", "error"]]);
+  assert.deepEqual(notifications, [["awf Pi extensions require Pi 0.81.1 or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found 0.81.1. Missing runtime APIs: queueCommand, eventHooks, persistedEntries. Upgrade Pi and reload.", "error"]]);
   delete (globalThis as any)[notice];
 });
 
@@ -306,6 +308,9 @@ test("subagent observations are bounded, private, timed, and listener failures a
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
 
+  const contextual = harness({ telemetryContexts: [{ effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor" }] }); await execute(contextual.tools.get("subagent_grounding"), { task: "context" }, contextual.ctx); assert.deepEqual({ effortId: contextual.emitted[0].data.effortId, sessionId: contextual.emitted[0].data.sessionId, trajectoryId: contextual.emitted[0].data.trajectoryId, piAnchorId: contextual.emitted[0].data.piAnchorId, observationId: contextual.emitted[0].data.observationId }, { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor", observationId: "observation-1" });
+  const invalidContext = harness({ telemetryContexts: [null] }); await execute(invalidContext.tools.get("subagent_grounding"), { task: "invalid context" }, invalidContext.ctx); assert.equal(invalidContext.emitted[0].data.effortId, undefined);
+  const duplicateContext = harness({ telemetryContexts: [{ effortId: "first" }, { effortId: "second" }] }); await execute(duplicateContext.tools.get("subagent_grounding"), { task: "duplicate context" }, duplicateContext.ctx); assert.equal(duplicateContext.emitted[0].data.effortId, undefined);
   const isolated = harness();
   isolated.pi.events.emit = () => { throw new Error("listener failed"); };
   const value = await execute(isolated.tools.get("subagent_grounding"), { task: "still succeeds" }, isolated.ctx);
