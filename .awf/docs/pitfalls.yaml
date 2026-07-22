@@ -13,7 +13,13 @@ data:
         ADR-0147 plan scheduled exactly that standalone phase and it survived the full plan review,
         the verify pass, and the plan-ADR resync; only the parser caught it at execution time. When
         authoring or reviewing a plan for a V2 ADR with incremental batches, check that no phase
-        commits an Implementing event without its paired first Applied event.
+        commits an Implementing event without its paired first Applied event. The terminal edge
+        mirrors this: Implemented requires zero remaining operations while Implementing requires
+        both applied and remaining ones, so the Implemented status event must land in the same
+        staged transaction as the final Applied batch, and it carries the frozen digest but no
+        state-sequence when explicit Applied events exist. The ADR-0148 grounding check caught a
+        design that would have scheduled the Implemented flip as its own commit; plans must pin
+        both ends of the batch choreography, not just the first.
     - title: "A schema-generation bump needs `awf upgrade`, not `awf sync`"
       domains: [config, tooling]
       tags: [schema-migration, upgrade-flow]
