@@ -56,6 +56,32 @@ func TestContextConciseAndFullProjectionBoundaries(t *testing.T) {
 	if conciseTopic.Applicability.MatchedPathCount == 0 || conciseTopic.CoverageCommand != "awf topic alpha/one --coverage" {
 		t.Fatalf("applicability brief = %#v via %q; want a matched-path count with the coverage drilldown", conciseTopic.Applicability, conciseTopic.CoverageCommand)
 	}
+	// A claim marker-selected by two queried paths dedupes into one direct
+	// detail whose sites carry both paths, and the topic still projects once.
+	multi, err := p.ContextFor([]string{"internal/foo/x.go", "internal/foo/y.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(multi.Topics) != 2 {
+		t.Fatalf("multi-path topics = %#v; want alpha/one and core/g once each", multi.Topics)
+	}
+	multiOne, _ := topicByID(multi, "alpha/one")
+	var orderDetails []ClaimDetail
+	for _, d := range multiOne.DirectClaims {
+		if d.ID == "alpha/one:order" {
+			orderDetails = append(orderDetails, d)
+		}
+	}
+	if len(orderDetails) != 1 {
+		t.Fatalf("union detail count for alpha/one:order = %d; want exactly one deduplicated detail", len(orderDetails))
+	}
+	sitePaths := map[string]bool{}
+	for _, s := range orderDetails[0].Sites {
+		sitePaths[s.Path] = true
+	}
+	if !sitePaths["internal/foo/x.go"] || !sitePaths["internal/foo/y.go"] {
+		t.Fatalf("union sites = %#v; want both selecting paths", orderDetails[0].Sites)
+	}
 	encoded, err := json.Marshal(concise)
 	if err != nil {
 		t.Fatal(err)

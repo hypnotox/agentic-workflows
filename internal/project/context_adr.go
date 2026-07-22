@@ -73,7 +73,7 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 		if projection == ContextFull {
 			detail := &ADROperationDetail{History: history, MarkerSites: []topic.MarkerSite{}}
 			if claim, active := topics.ByClaimID(operation.ID); active {
-				current := contextClaimDetail(claim, topics, "", false)
+				current := contextClaimDetail(claim, topics, nil, false)
 				detail.Current = &current
 				detail.MarkerSites = append(detail.MarkerSites, current.Sites...)
 			} else {

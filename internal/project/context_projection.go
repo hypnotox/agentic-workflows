@@ -32,7 +32,7 @@ func projectInvocationTopic(t topic.Topic, corpus topic.Corpus, selectingPaths [
 	if projection == ContextFull {
 		full := &FullTopicContext{Claims: []ClaimDetail{}, Pending: []PendingChange{}}
 		for _, claim := range t.Claims {
-			full.Claims = append(full.Claims, contextClaimDetail(claim, corpus, "", true))
+			full.Claims = append(full.Claims, contextClaimDetail(claim, corpus, nil, true))
 		}
 		slices.SortFunc(full.Claims, func(a, b ClaimDetail) int { return strings.Compare(a.ID, b.ID) })
 		full.Pending = append(full.Pending, pending...)
@@ -44,15 +44,7 @@ func projectInvocationTopic(t topic.Topic, corpus topic.Corpus, selectingPaths [
 		selecting[p] = true
 	}
 	for _, claim := range t.Claims {
-		detail := ClaimDetail{
-			ID: claim.ID, Type: string(claim.Type), Prose: claim.Prose, Backing: string(claim.Backing), Verify: claim.Verify,
-			Sites: []topic.MarkerSite{}, References: ClaimReferences{Incoming: []string{}, Outgoing: []string{}},
-		}
-		for _, site := range corpus.Markers.ForClaim(claim.ID) {
-			if selecting[site.Path] {
-				detail.Sites = append(detail.Sites, site)
-			}
-		}
+		detail := contextClaimDetail(claim, corpus, selecting, false)
 		if len(detail.Sites) > 0 {
 			out.DirectClaims = append(out.DirectClaims, detail)
 		}
@@ -78,13 +70,15 @@ func pathTopicRef(t topic.Topic, corpus topic.Corpus, path string) PathTopicRef 
 	return ref
 }
 
-func contextClaimDetail(claim topic.Claim, corpus topic.Corpus, exactPath string, includeReferences bool) ClaimDetail {
+// contextClaimDetail projects one claim's full detail. A nil selecting set
+// keeps every marker site; a non-nil set filters sites to the selecting paths.
+func contextClaimDetail(claim topic.Claim, corpus topic.Corpus, selecting map[string]bool, includeReferences bool) ClaimDetail {
 	detail := ClaimDetail{
 		ID: claim.ID, Type: string(claim.Type), Prose: claim.Prose, Backing: string(claim.Backing), Verify: claim.Verify,
 		Sites: []topic.MarkerSite{}, References: ClaimReferences{Incoming: []string{}, Outgoing: []string{}},
 	}
 	for _, site := range corpus.Markers.ForClaim(claim.ID) {
-		if exactPath == "" || site.Path == exactPath {
+		if selecting == nil || selecting[site.Path] {
 			detail.Sites = append(detail.Sites, site)
 		}
 	}

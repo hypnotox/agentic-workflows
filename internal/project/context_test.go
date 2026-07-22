@@ -282,7 +282,9 @@ func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
 // TestContextForStateMarkerSelectsDirect proves a state marker under the exact
 // queried path selects the marked claim into the direct-claim union with full
 // detail, while the topic's roster stays uncapped and a topic with no marker at
-// that path renders no direct detail.
+// that path renders no direct detail; the path's own topic collection is an
+// ID-plus-direct-claim-ID attribution while authority lives at invocation level.
+// invariant: tooling/cli:context-path-attribution
 func TestContextForStateMarkerSelectsDirect(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
 	res, err := p.ContextFor([]string{"internal/foo/x.go"})
