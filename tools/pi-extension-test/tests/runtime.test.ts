@@ -335,10 +335,24 @@ test("Pi fork 0.81.1 exposes truthful pre- and post-teardown replacement failure
     try {
       fixture = await realHandoffRuntime(root, { failReplacementCreation: true });
       const oldSession = fixture.runtime.session;
-      await assert.rejects(fixture.runtime.newSession(), /replacement creation failed after teardown/);
-      assert.equal(fixture.order.includes("session_shutdown"), true);
+      let promptSettled = false;
+      const promptTask = oldSession.prompt("fail after replacement teardown").then(
+        () => { promptSettled = true; },
+        () => { promptSettled = true; },
+      );
+      void promptTask.catch(() => {});
+      await waitFor(() => fixture!.creations() === 2, "queued handoff did not attempt replacement creation");
+      await waitFor(() => fixture!.order.includes("session_shutdown"), "old session did not shut down before replacement creation failure");
+      await waitFor(
+        () => fixture!.order.some((entry) => entry.includes("replacement creation failed after teardown")),
+        "post-teardown replacement failure was not reported through the extension",
+      );
+      assert.equal(fixture.toolEnds[0].result.terminate, true);
+      assert.ok(fixture.order.indexOf("agent_settled") > fixture.order.indexOf("tool_execution_end"));
+      assert.ok(fixture.order.indexOf("session_shutdown") > fixture.order.indexOf("agent_settled"));
       assert.equal(fixture.runtime.session, oldSession);
       assert.equal(fixture.creations(), 2);
+      assert.equal(promptSettled, true, "the terminated old-session prompt should settle even though replacement failed");
     } finally {
       await fixture?.runtime.dispose().catch(() => {});
       await rm(root, { recursive: true, force: true });

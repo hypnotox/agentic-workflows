@@ -109,16 +109,16 @@ test("countdown cancellation renders exact bounded text and consumes request", a
 });
 
 test("timer setup, pending-window races, and pre-replacement failures preserve the old session", async () => {
-  const timer = harness({ timerError: new Error("timer setup failed") }); await execute(timer); await assert.rejects(startCommand(timer), /timer setup failed/); assert.equal(timer.newSessions.length, 0);
-  const raced = harness(); await execute(raced); const raceCommand = startCommand(raced); await new Promise((resolve) => setImmediate(resolve)); raced.entries["/repo/.awf/memory/work.md"] = LINK; raced.timeouts[0].callback(); await assert.rejects(raceCommand, /symbolic link/); assert.equal(raced.newSessions.length, 0);
+  const timer = harness({ timerError: new Error("timer setup failed") }); await execute(timer); await assert.rejects(startCommand(timer), /timer setup failed/); assert.equal(timer.newSessions.length, 0); await assert.rejects(startCommand(timer), /matching pending/);
+  const raced = harness(); await execute(raced); const raceCommand = startCommand(raced); await new Promise((resolve) => setImmediate(resolve)); raced.entries["/repo/.awf/memory/work.md"] = LINK; raced.timeouts[0].callback(); await assert.rejects(raceCommand, /symbolic link/); assert.equal(raced.newSessions.length, 0); await assert.rejects(startCommand(raced), /matching pending/);
   const unpersisted = harness(); await execute(unpersisted); const unpersistedCommand = startCommand(unpersisted); await new Promise((resolve) => setImmediate(resolve)); unpersisted.setSessionFile(""); unpersisted.timeouts[0].callback(); await assert.rejects(unpersistedCommand, /no longer persisted/); assert.equal(unpersisted.newSessions.length, 0);
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
-  assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/);
+  assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
   assert.equal(buildKickoffWrapper(".awf/memory/work.md", "next"), "Read .awf/memory/work.md first. Repository sources and current-state documentation are authoritative over the checkpoint. Then continue with this immediate action: next");
 });
 
 test("kickoff rejection leaves exact wrapper in replacement editor and no deletion API exists", async () => {
   const h = harness(); h.setSendError(new Error("kickoff failed")); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
-  assert.match(h.editor[0], /^Read \.awf\/memory\/work\.md first/); assert.deepEqual(h.notifications, [["Automatic kickoff failed; submit the prepared editor text.", "warning"]]);
+  assert.match(h.editor[0], /^Read \.awf\/memory\/work\.md first/); assert.deepEqual(h.notifications, [["Automatic kickoff failed; submit the prepared editor text.", "warning"]]); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE); await assert.rejects(startCommand(h), /matching pending/);
   for (const object of [h.pi, h.ctx, h.deps]) for (const key of Object.keys(object)) assert.doesNotMatch(key, /delete|unlink|rm/i);
 });

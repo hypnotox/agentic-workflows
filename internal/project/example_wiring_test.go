@@ -2,6 +2,7 @@ package project
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -209,11 +210,58 @@ func TestExampleAdoptsRunner(t *testing.T) {
 //
 // invariant: rendering/templates:pi-extension-editor-quiet-strip
 func TestPiExtensionEditorQuietStrip(t *testing.T) {
-	for _, name := range []string{"awf-handoff/index.ts", "awf-subagents/index.ts", "awf-subagents/runner.ts"} {
+	want := map[string]bool{}
+	for _, output := range piTarget.Outputs {
+		if !strings.HasPrefix(output.Path, ".pi/extensions/") || filepath.Ext(output.Path) != ".ts" {
+			t.Fatalf("Pi extension descriptor output is not governed TypeScript: %s", output.Path)
+		}
+		want[output.Path] = true
+		name := strings.TrimPrefix(output.Path, ".pi/extensions/")
 		content := renderPiExtensionFile(t, name)
 		lines := strings.Split(content, "\n")
 		if len(lines) < 2 || lines[1] != "// @ts-nocheck" {
 			t.Errorf("rendered %s must carry // @ts-nocheck on line 2, got:\n%s", name, content)
+		}
+	}
+	for label, root := range map[string]string{"root": "../..", "sundial": "../../examples/sundial"} {
+		got := map[string]bool{}
+		extensionRoot := filepath.Join(root, ".pi/extensions")
+		err := filepath.WalkDir(extensionRoot, func(path string, entry os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if entry.IsDir() {
+				return nil
+			}
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			got[filepath.ToSlash(rel)] = true
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("walk %s governed Pi outputs: %v", label, err)
+		}
+		for path := range want {
+			if !got[path] {
+				t.Errorf("%s checkout is missing descriptor-owned Pi output %s", label, path)
+				continue
+			}
+			content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+			if err != nil {
+				t.Errorf("read %s governed Pi output %s: %v", label, path, err)
+				continue
+			}
+			lines := strings.Split(string(content), "\n")
+			if len(lines) < 2 || lines[1] != "// @ts-nocheck" {
+				t.Errorf("%s governed Pi output %s lacks line-2 directive", label, path)
+			}
+		}
+		for path := range got {
+			if !want[path] {
+				t.Errorf("%s checkout has governed Pi output absent from descriptor: %s", label, path)
+			}
 		}
 	}
 	raw, err := os.ReadFile("../../tools/pi-extension-test/container.sh")
@@ -240,15 +288,16 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	if !strings.Contains(manager, `--include='.pi/extensions/**/*.ts'`) {
 		t.Error("container coverage does not include every Pi extension")
 	}
-	for _, rel := range []string{"../../.pi/extensions/awf-handoff/index.ts", "../../.pi/extensions/awf-subagents/index.ts", "../../.pi/extensions/awf-subagents/runner.ts", "../../examples/sundial/.pi/extensions/awf-handoff/index.ts", "../../examples/sundial/.pi/extensions/awf-subagents/index.ts", "../../examples/sundial/.pi/extensions/awf-subagents/runner.ts"} {
-		content, err := os.ReadFile(rel)
-		if err != nil {
-			t.Errorf("read governed Pi output %s: %v", rel, err)
-			continue
-		}
-		lines := strings.Split(string(content), "\n")
-		if len(lines) < 2 || lines[1] != "// @ts-nocheck" {
-			t.Errorf("governed Pi output %s lacks line-2 directive", rel)
+	tsconfig, err := os.ReadFile("../../tools/pi-extension-test/tsconfig.json")
+	if err != nil {
+		t.Fatalf("read Pi extension tsconfig: %v", err)
+	}
+	if !strings.Contains(string(tsconfig), `"../../.pi/extensions/**/*.ts"`) {
+		t.Error("Pi typecheck does not include every descriptor-owned extension")
+	}
+	for path := range want {
+		if strings.Contains(manager, path) {
+			t.Errorf("container command hard-codes descriptor member %s instead of using the generalized extension glob", path)
 		}
 	}
 }

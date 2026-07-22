@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -80,13 +81,29 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := map[string]string{}
-	for _, file := range files {
-		got[file.Path] = file.Content
+	want := map[string]TargetOutput{}
+	for _, output := range piTarget.Outputs {
+		want[output.Path] = output
 	}
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
-		if !strings.HasPrefix(got[path], "// "+bannerText+"\n") {
-			t.Errorf("Pi extension %s missing TypeScript banner", path)
+	got := map[string]RenderedFile{}
+	for _, file := range files {
+		if strings.HasPrefix(file.Path, ".pi/extensions/") {
+			got[file.Path] = file
+		}
+	}
+	for path, output := range want {
+		file, ok := got[path]
+		if !ok {
+			t.Errorf("Pi target did not render descriptor output %s", path)
+			continue
+		}
+		if output.Provenance != render.SlashComment || !strings.HasPrefix(file.Content, "// "+bannerText+"\n") {
+			t.Errorf("Pi extension %s does not use slash-comment provenance", path)
+		}
+	}
+	for path := range got {
+		if _, ok := want[path]; !ok {
+			t.Errorf("Pi target rendered extension absent from descriptor: %s", path)
 		}
 	}
 	for _, target := range []string{"claude", "codex", "copilot", "cursor", "gemini"} {
@@ -621,10 +638,59 @@ func TestPiImplementationStateBoundary(t *testing.T) {
 func TestPiMinimumRuntimeContract(t *testing.T) {
 	for _, path := range []string{"awf-subagents/index.ts", "awf-handoff/index.ts"} {
 		content := renderPiExtensionFile(t, path)
-		for _, want := range []string{`MIN_PI_VERSION = "0.81.1"`, `Symbol.for("awf.pi.minimum-runtime-notified")`, `typeof pi.queueCommand !== "function"`, `ExtensionAPI.queueCommand is missing`, `pi.on("session_start"`, `if (!guardMinimumRuntime(pi, deps)) return`} {
+		guardStart := strings.Index(content, "export function guardMinimumRuntime")
+		if guardStart < 0 {
+			t.Fatalf("%s does not contain a minimum-runtime guard", path)
+		}
+		guardEnd := strings.Index(content[guardStart:], "\n}\n")
+		if guardEnd < 0 {
+			t.Fatalf("%s does not contain an isolatable minimum-runtime guard", path)
+		}
+		guard := content[guardStart : guardStart+guardEnd]
+		assertOrderedSource(t, path+" minimum-runtime guard", guard,
+			`const queueCommandMissing = typeof pi.queueCommand !== "function";`,
+			`if (versionSupported(deps.packageVersion) && !queueCommandMissing) return true;`,
+			`pi.on("session_start"`,
+			`if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;`,
+			`(globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;`,
+			`ctx.ui.notify(`,
+			`return false;`,
+		)
+		for _, want := range []string{`MIN_PI_VERSION = "0.81.1"`, `Symbol.for("awf.pi.minimum-runtime-notified")`, `ExtensionAPI.queueCommand is missing`, `if (!guardMinimumRuntime(pi, deps)) return`} {
 			if !strings.Contains(content, want) {
 				t.Errorf("%s missing minimum-version contract %q", path, want)
 			}
+		}
+		if strings.Count(guard, `pi.on("session_start"`) != 1 {
+			t.Errorf("%s unsupported guard must register exactly one notification hook", path)
+		}
+		for _, forbidden := range []string{"registerTool(", "registerCommand(", "registerShortcut(", "registerFlag(", "registerMessageRenderer("} {
+			if strings.Contains(guard, forbidden) {
+				t.Errorf("%s unsupported guard contains functional registration %q", path, forbidden)
+			}
+		}
+		guardCall := strings.Index(content, `if (!guardMinimumRuntime(pi, deps)) return`)
+		if guardCall < 0 {
+			t.Errorf("%s has no fail-before-registration guard call", path)
+			continue
+		}
+		functionalRegistrations := 0
+		for _, token := range []string{`pi.on("tool_call"`, "pi.registerCommand(", "pi.registerTool("} {
+			for searchFrom := 0; ; {
+				at := strings.Index(content[searchFrom:], token)
+				if at < 0 {
+					break
+				}
+				at += searchFrom
+				functionalRegistrations++
+				if at < guardCall {
+					t.Errorf("%s performs functional registration %q before the minimum-runtime guard", path, token)
+				}
+				searchFrom = at + len(token)
+			}
+		}
+		if functionalRegistrations == 0 {
+			t.Errorf("%s proof found no functional registrations after the guard", path)
 		}
 	}
 }
@@ -633,30 +699,76 @@ func TestPiMinimumRuntimeContract(t *testing.T) {
 func TestPiSessionHandoffPublicContract(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{
-		`memoryPath: Type.String()`, `kickoff: Type.String({ maxLength: 1000 })`, `{ additionalProperties: false }`,
-		`ctx.mode !== "tui"`, `typeof (ctx.sessionManager as any).isPersisted !== "function"`, `params.kickoff.length > 1000`, `memoryPath.includes("\\")`, `stat.isSymbolicLink()`,
+		`parameters: Type.Object({
+      memoryPath: Type.String(),
+      kickoff: Type.String({ maxLength: 1000 }),
+    }, { additionalProperties: false })`,
+		`const calls = content.filter((item: any) => item?.type === "toolCall")`,
+		`if (!correlated) return event.toolName === "handoff_session"`,
+		`calls.length > 1 && calls.some((call: any) => call.name === "handoff_session")`,
 		`A batch containing handoff_session cannot contain siblings`, `Cannot verify the current tool batch`,
-		`pi.queueCommand("awf-handoff-continue", request.id)`, `terminate: true`, `pending?.id === request.id`,
+		`memoryPath.includes("\\")`, `stat.isSymbolicLink()`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("handoff source missing public contract %q", want)
 		}
 	}
+	assertOrderedSource(t, "handoff persisted-TUI and request contract", content,
+		`if (ctx.mode !== "tui" || typeof (ctx.sessionManager as any).isPersisted !== "function" || !(ctx.sessionManager as any).isPersisted() || !ctx.sessionManager.getSessionFile())`,
+		`if (!params.kickoff.trim())`,
+		`if (params.kickoff.length > 1000)`,
+		`if (pending)`,
+		`await validateMemoryPath(params.memoryPath, deps)`,
+		`const request = { id: deps.randomUUID(), memoryPath: params.memoryPath, kickoff: params.kickoff }`,
+		`pending = request`,
+		`pi.queueCommand("awf-handoff-continue", request.id)`,
+		`terminate: true`,
+	)
 }
 
 // invariant: rendering/catalog-and-targets:pi-session-handoff-lifecycle
 func TestPiSessionHandoffLifecycle(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	if got := strings.Count(content, "await validateMemoryPath("); got != 2 {
+		t.Errorf("handoff source has %d validation request sites, want exactly 2", got)
+	}
 	for _, want := range []string{
-		`Handoff to a fresh session in ${seconds}s - Esc/Ctrl+C to cancel`, `await validateMemoryPath(request.memoryPath, deps)`,
-		`ctx.newSession({`, `parentSession: oldSessionFile`, `replacementCtx.sendUserMessage(wrapper)`,
-		`replacementCtx.ui.setEditorText(wrapper)`, `Automatic kickoff failed; submit the prepared editor text.`,
+		`Handoff to a fresh session in ${seconds}s - Esc/Ctrl+C to cancel`,
+		`if (interval !== undefined) deps.clearInterval(interval)`, `if (timeout !== undefined) deps.clearTimeout(timeout)`,
+		`if (finished) return`, `finally { if (pending?.id === request.id) pending = undefined; }`,
+		`parentSession: oldSessionFile`, `Automatic kickoff failed; submit the prepared editor text.`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("handoff source missing lifecycle contract %q", want)
 		}
 	}
-	for _, forbidden := range []string{"rm(", "unlink(", "deleteSession"} {
+	if got := strings.Count(content, "deps.clearInterval(interval)"); got != 2 {
+		t.Errorf("handoff source clears the countdown interval %d times, want finish and dispose cleanup", got)
+	}
+	if got := strings.Count(content, "deps.clearTimeout(timeout)"); got != 2 {
+		t.Errorf("handoff source clears the countdown timeout %d times, want finish and dispose cleanup", got)
+	}
+	assertOrderedSource(t, "handoff countdown cleanup", content,
+		`const finish = (result: boolean) => {`,
+		`if (finished) return`,
+		`deps.clearInterval(interval)`,
+		`deps.clearTimeout(timeout)`,
+		`done(result)`,
+		`dispose()`,
+		`deps.clearInterval(interval)`,
+		`deps.clearTimeout(timeout)`,
+	)
+	assertOrderedSource(t, "handoff replacement lifecycle", content,
+		`const proceed = await countdown(ctx, deps)`,
+		`await validateMemoryPath(request.memoryPath, deps)`,
+		`const oldSessionFile = ctx.sessionManager.getSessionFile()`,
+		`await ctx.newSession({`,
+		`parentSession: oldSessionFile`,
+		`async withSession(replacementCtx)`,
+		`replacementCtx.sendUserMessage(wrapper)`,
+		`replacementCtx.ui.setEditorText(wrapper)`,
+	)
+	for _, forbidden := range []string{"rm(", "unlink(", "deleteSession", "deleteMemory"} {
 		if strings.Contains(content, forbidden) {
 			t.Errorf("handoff source contains deletion behavior %q", forbidden)
 		}
@@ -665,11 +777,21 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 
 // invariant: rendering/templates:pi-session-handoff-workflow
 func TestPiSessionHandoffWorkflow(t *testing.T) {
-	config := "prefix: example\nskills: [executing-plans, subagent-driven-development, retrospective, reviewing-impl]\nagents: [code-reviewer]\ntargets: [%s]\n"
+	skills := []string{
+		"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
+		"reviewing-plan", "reviewing-plan-resync", "executing-plans",
+		"subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
+	}
+	enabledSkills := []string{
+		"adr-lifecycle", "brainstorming", "bugfix", "debugging", "executing-plans", "exploring",
+		"proposing-adr", "refactor-coupling-audit", "retrospective", "reviewing-adr", "reviewing-impl",
+		"reviewing-plan", "reviewing-plan-resync", "subagent-driven-development", "tdd", "writing-plans",
+	}
+	config := "prefix: example\nskills: [" + strings.Join(enabledSkills, ", ") + "]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	for _, target := range []string{"pi", "claude"} {
 		files := explorationRenderedByPath(t, fmt.Sprintf(config, target))
 		dir := map[string]string{"pi": ".pi/skills", "claude": ".claude/skills"}[target]
-		for _, skill := range []string{"executing-plans", "subagent-driven-development", "reviewing-impl"} {
+		for _, skill := range skills {
 			body := files[dir+"/example-"+skill+"/SKILL.md"]
 			position := 0
 			ordered := []string{"Complete the memory update in its own tool batch", "Display a concise checkpoint summary", "user's intervention point"}
@@ -689,7 +811,26 @@ func TestPiSessionHandoffWorkflow(t *testing.T) {
 			if target != "pi" && strings.Contains(body, "handoff_session") {
 				t.Errorf("%s/%s leaks Pi handoff", target, skill)
 			}
+			if skill == "executing-plans" && !strings.Contains(body, "independently resumable committed task") {
+				t.Errorf("%s/%s lost intermediate implementation checkpoint", target, skill)
+			}
+			if skill == "subagent-driven-development" && !strings.Contains(body, "implemented and reviewed task") {
+				t.Errorf("%s/%s lost intermediate implementation checkpoint", target, skill)
+			}
 		}
+	}
+}
+
+func assertOrderedSource(t *testing.T, label, content string, phrases ...string) {
+	t.Helper()
+	position := 0
+	for _, phrase := range phrases {
+		next := strings.Index(content[position:], phrase)
+		if next < 0 {
+			t.Errorf("%s missing ordered source %q after byte %d", label, phrase, position)
+			return
+		}
+		position += next + len(phrase)
 	}
 }
 
@@ -714,30 +855,53 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 	return ""
 }
 
-func TestPiTargetDescriptorChangesSkillConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\nvars: {testCmd: go test ./..., gateCmd: make gate}\ntargets: [pi]\n")
+func TestPiTargetDescriptorChangesEveryArtifactConfigHash(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\nvars: {testCmd: go test ./..., gateCmd: make gate}\ntargets: [pi, claude]\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
+	renderHashes := func() (map[string]string, map[string]string) {
+		files, err := p.RenderAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		piHashes := map[string]string{}
+		controlHashes := map[string]string{}
+		for _, file := range files {
+			switch {
+			case strings.HasPrefix(file.Path, ".pi/skills/"), strings.HasPrefix(file.Path, ".pi/extensions/"):
+				piHashes[file.Path] = file.ConfigHash
+			case strings.HasPrefix(file.Path, ".claude/skills/"), strings.HasPrefix(file.Path, ".claude/agents/"), file.Path == "CLAUDE.md":
+				controlHashes[file.Path] = file.ConfigHash
+			}
+		}
+		return piHashes, controlHashes
 	}
-	var before string
-	for _, file := range files {
-		if file.Path == ".pi/skills/example-tdd/SKILL.md" {
-			before = file.ConfigHash
+	beforePi, beforeControl := renderHashes()
+	wantPiCount := 1 + 1 + len(piTarget.Outputs)
+	if len(beforePi) != wantPiCount {
+		t.Fatalf("captured %d Pi artifact hashes, want skill + agent + %d outputs", len(beforePi), len(piTarget.Outputs))
+	}
+	p.Targets[0].Capabilities = []Capability{CapabilitySubagentTools}
+	afterPi, afterControl := renderHashes()
+	for path, before := range beforePi {
+		after, ok := afterPi[path]
+		if !ok {
+			t.Errorf("Pi descriptor mutation removed hash for %s", path)
+		} else if after == before {
+			t.Errorf("Pi descriptor mutation did not change config hash for %s", path)
 		}
 	}
-	p.Targets[0].Capabilities = nil
-	files, err = p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
+	if len(afterPi) != len(beforePi) {
+		t.Errorf("Pi artifact hash set changed: before %d, after %d", len(beforePi), len(afterPi))
 	}
-	for _, file := range files {
-		if file.Path == ".pi/skills/example-tdd/SKILL.md" && file.ConfigHash == before {
-			t.Fatal("Pi target descriptor change did not change skill config hash")
+	if len(afterControl) != len(beforeControl) {
+		t.Errorf("non-Pi control hash set changed: before %d, after %d", len(beforeControl), len(afterControl))
+	}
+	for path, before := range beforeControl {
+		if after, ok := afterControl[path]; !ok || after != before {
+			t.Errorf("Pi descriptor mutation changed non-Pi control %s: %q -> %q", path, before, after)
 		}
 	}
 }
