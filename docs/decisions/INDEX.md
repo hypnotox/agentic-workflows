@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0149: Deterministic Effort Lifecycle Accounting and Pi Workflow Routing](0149-deterministic-effort-lifecycle-accounting-and-pi-workflow-routing.md) (Proposed)
+- [ADR-0150: Git Ref Pinned Development Runtime](0150-git-ref-pinned-development-runtime.md) (Proposed)
 
 ## History
 
