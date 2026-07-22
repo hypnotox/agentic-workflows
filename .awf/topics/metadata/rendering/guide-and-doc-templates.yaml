@@ -1,0 +1,4 @@
+title: Guide and doc templates
+summary: "Agent-guide and documentation template contracts."
+paths:
+  - templates/**

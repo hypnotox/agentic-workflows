@@ -1,0 +1,6 @@
+title: Configspec and reference
+summary: "The config-spec model and the generated configuration reference."
+paths:
+  - internal/config/**
+  - internal/configspec/**
+  - internal/pathglob/**

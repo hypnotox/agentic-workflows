@@ -1,0 +1,4 @@
+title: Companion scripts
+summary: "Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads."
+paths:
+  - templates/**

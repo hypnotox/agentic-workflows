@@ -58,7 +58,17 @@ ADR-0100 adds **in-place-editable sections**, a second adopter override channel 
 
 - [Adapter outputs](../topics/rendering/adapter-outputs.md): Generated executable adapter-runtime outputs and their ownership boundary.
 - [Catalog and targets](../topics/rendering/catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
+- [Companion scripts](../topics/rendering/companion-scripts.md): Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
+- [Doc outputs](../topics/rendering/doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
+- [Guide and doc templates](../topics/rendering/guide-and-doc-templates.md): Agent-guide and documentation template contracts.
+- [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
+- [Local artifacts](../topics/rendering/local-artifacts.md): Local skill, agent, and doc declarations and their catalog and render semantics.
+- [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime floor and its boundaries.
+- [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, dashboard, exploration dispatch.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.
+- [Singletons and payloads](../topics/rendering/singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, telemetry, file modes.
+- [Sync and drift](../topics/rendering/sync-and-drift.md): How sync and check detect and report drift: hash inputs, attribution, backups, residue, pruning, and cleanup.
 - [Templates](../topics/rendering/templates.md): The embedded template source and its rendered content contracts.
+- [Workflow skill templates](../topics/rendering/workflow-skill-templates.md): Workflow-chain and task-skill template contracts.
 

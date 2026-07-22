@@ -1,0 +1,5 @@
+title: Pi runtime
+summary: "The Pi runtime floor and its boundaries."
+paths:
+  - internal/catalog/**
+  - .pi/extensions/**

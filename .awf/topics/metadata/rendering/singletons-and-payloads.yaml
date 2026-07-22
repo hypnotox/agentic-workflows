@@ -1,0 +1,4 @@
+title: Singletons and payloads
+summary: "Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, telemetry, file modes."
+paths:
+  - internal/project/**

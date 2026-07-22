@@ -1,0 +1,6 @@
+title: Pi workflows
+summary: "Pi workflow contracts: subagent tools, session handoff, dashboard, exploration dispatch."
+paths:
+  - templates/**
+  - internal/catalog/**
+  - .pi/extensions/**

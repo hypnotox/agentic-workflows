@@ -1,0 +1,6 @@
+title: Context and topic
+summary: "The read-only orientation surfaces: context, topic, describe, uncovered."
+paths:
+  - cmd/**
+  - internal/clispec/**
+  - internal/initspec/**

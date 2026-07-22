@@ -94,9 +94,12 @@ Working assembly uses `ContextFor`; staged assembly enters through `StagedContex
 [All topics](../topics/tooling/index.md)
 
 - [Audit and snapshots](../topics/tooling/audit-and-snapshots.md): Workflow-conformance auditing and the immutable git snapshot layer.
+- [Audit commands](../topics/tooling/audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
 - [CLI](../topics/tooling/cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](../topics/tooling/changelog-and-release.md): The changelog pipeline and release-notes contracts.
+- [Context and topic](../topics/tooling/context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
+- [Init and enablement](../topics/tooling/init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, and the command-runner gate machinery.
 - [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.

@@ -1,0 +1,4 @@
+title: Local artifacts
+summary: "Local skill, agent, and doc declarations and their catalog and render semantics."
+paths:
+  - internal/project/**

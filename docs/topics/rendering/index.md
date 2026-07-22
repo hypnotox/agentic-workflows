@@ -3,6 +3,16 @@
 
 - [Adapter outputs](adapter-outputs.md): Generated executable adapter-runtime outputs and their ownership boundary.
 - [Catalog and targets](catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
+- [Companion scripts](companion-scripts.md): Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
+- [Doc outputs](doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
+- [Guide and doc templates](guide-and-doc-templates.md): Agent-guide and documentation template contracts.
+- [Inplace and placeholders](inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
+- [Local artifacts](local-artifacts.md): Local skill, agent, and doc declarations and their catalog and render semantics.
+- [Pi runtime](pi-runtime.md): The Pi runtime floor and its boundaries.
+- [Pi workflows](pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, dashboard, exploration dispatch.
 - [Project output plan](project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](render-engine.md): The template overlay render engine and its reference resolution.
+- [Singletons and payloads](singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, telemetry, file modes.
+- [Sync and drift](sync-and-drift.md): How sync and check detect and report drift: hash inputs, attribution, backups, residue, pruning, and cleanup.
 - [Templates](templates.md): The embedded template source and its rendered content contracts.
+- [Workflow skill templates](workflow-skill-templates.md): Workflow-chain and task-skill template contracts.

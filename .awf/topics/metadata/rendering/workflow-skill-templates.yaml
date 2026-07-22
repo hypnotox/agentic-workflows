@@ -1,0 +1,4 @@
+title: Workflow skill templates
+summary: "Workflow-chain and task-skill template contracts."
+paths:
+  - templates/**

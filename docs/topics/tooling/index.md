@@ -2,9 +2,12 @@
 # tooling topics
 
 - [Audit and snapshots](audit-and-snapshots.md): Workflow-conformance auditing and the immutable git snapshot layer.
+- [Audit commands](audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
 - [CLI](cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
+- [Context and topic](context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
+- [Init and enablement](init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
 - [Quality gates](quality-gates.md): Coverage, prose, and the command-runner gate machinery.
 - [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.
