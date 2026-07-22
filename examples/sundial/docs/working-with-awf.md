@@ -9,7 +9,12 @@ awf into a new repo is documented in the awf project itself.
 
 First adoption seals `initializedWithVersion`, both ADR format cutoffs, and gaps in the lock: both cutoffs are 1 for an empty corpus, or highest-plus-one with explicit lower gaps for brownfield history. Schema-15 upgrade preserves an existing V1 cutoff and atomically seals V2 at highest-plus-one without rewriting ADRs. Older migrated adopters may omit initialization provenance; sync and forced re-init preserve authority rather than backfilling history. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
 
-awf also always renders `.awf/memory/.gitignore`: a self-ignoring gitignore that keeps the working-memory directory (per-effort session-state files, described in the agent guide's working-memory section) out of version control. The `.gitignore` itself is rendered and drift-checked; the directory's contents never are.
+awf also always renders `.awf/memory/.gitignore` and `.awf/metrics/.gitignore`. The first keeps
+per-effort checkpoint prose out of version control. The second governs only its own ignore rule;
+workflow ledgers, leases, tombstones, trash, and caches below `.awf/metrics/` are resident data, never
+rendered artifacts. Sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim
+or recursively remove those descendants. If resident metrics remain, uninstall preserves the ignore
+file and reports that fact; only an explicitly confirmed metrics purge removes effort data.
 
 <!-- awf:edit commands: default; create .awf/parts/working-with-awf/commands.md to override -->
 ## Commands
@@ -29,12 +34,14 @@ awf also always renders `.awf/memory/.gitignore`: a self-ignoring gitignore that
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf metrics --json`: print the canonical workflow metrics projection. The `--effort`, `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND. Use `awf metrics export --format json` for that projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
-- `awf doctor --json`: report exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status.
+- `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, phase, trajectory, terminal, waiver, or typed repair operation. A failed validation or durable write is an error, never a claimed success.
+- `awf metrics retain --dry-run --json`: preview deterministic terminal-effort retention. Omit `--dry-run` to apply it. `awf metrics purge --effort <ID> --confirm --json` is the separately confirmed destructive cleanup surface and refuses active efforts.
+- `awf doctor --json`: report exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status. There is no automatic health score, workflow block, waiver, repair, or reconciliation.
 - `awf invariants`: report the current-state topic invariant claims and their backing state.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
 - `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
 - `awf changelog`: query the changelog by version or range.
-- `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place.
+- `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place. Nonempty resident `.awf/metrics/` data and its required ignore file are preserved and reported.
 - `awf version`: print the binary's version.
 
 When the managed runner is enabled, run `./x` without a command to discover its generated awf verbs and project-owned verbs. The generated list follows CLI metadata rather than a copied command list. `init`, `upgrade`, and `uninstall` remain direct `awf` commands because pre-adoption, pinned-bootstrap crossing, and safe self-removal are unsuitable for runner mediation; every other top-level command is forwarded unless later metadata gives a reasoned exclusion.
@@ -186,7 +193,50 @@ enters parent model content.
 Brainstorming uses grounding, while brainstorming, debugging, and coupling audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
 extension files are `awf check` drift; run `awf sync` to repair them.
 
-Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime does not expose the readonly persisted-session query. After a durable checkpoint's visible summary, workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments; it rejects unsupported print, JSON, RPC, ephemeral, and in-memory sessions. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory file are preserved, cleanup is manual, and automatic kickoff uses only the replacement context. If kickoff submission fails, the exact wrapper remains in the new editor for manual submission. Validation and cancellation preserve the old active session, but teardown after replacement begins is not transactional and may terminate the runtime.
+Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime does not expose the readonly persisted-session query. After a durable checkpoint's visible summary, workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments; it rejects unsupported print, JSON, RPC, ephemeral, and in-memory sessions. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory file are preserved, cleanup is manual, and automatic kickoff uses only the replacement context. If kickoff submission fails, the exact wrapper remains in the new editor for manual submission. Validation and cancellation preserve the old active session, but teardown after replacement begins is not transactional and may terminate the runtime. During a successful handoff, the extension synchronously requests the dashboard's validated active association and copies that plain custom entry through `newSession.setup`; absence or incompatibility never guesses from ancestry or working-memory prose.
+
+### Pi workflow telemetry and dashboard
+
+Pi renders a third extension factory under `.pi/extensions/awf-dashboard/`. Together the three Pi
+extensions comprise exactly five generated TypeScript files. `protocol.ts` is derived from awf's
+machine-readable Go descriptor; its vocabulary, bounds, validation, input attribution, rendered hash,
+and Go/TypeScript parity are not maintained by hand in the wrapper template.
+
+Telemetry starts with explicit lifecycle, not inference. Create an `independent` effort in discovery,
+or a `derived` effort with opaque origin effort, trajectory, and anchor IDs. Select one closed route
+only when the work supports it, then explicitly start and finish phases. Investigation is a top-level
+phase, debugging is an investigation activity, bugfix is a route spanning implementation, review,
+and retrospective, and implementation execution style is a mode rather than a phase. A later scope
+change changes route explicitly. Completion checks the selected route and freshness requirements;
+abandonment remains available from discovery or active work.
+
+Association is a bounded custom session entry restored only from Pi's active branch. Tree, fork, and
+clone navigation close the current segment and resume a causally known trajectory or append a fork;
+selecting an anchor before association detaches. Current-path totals follow active ancestry, while
+all-work totals retain discarded branches. Work continuing from a terminal effort should normally
+create a new `derived` effort; `reopen` is an explicit same-effort choice and creates a new trajectory.
+
+The compact widget is display-only and does not replace Pi's footer. `/awf-dashboard` opens overview,
+phase, history, finding, and maintenance views. Canonical reads occur only at startup, overlay open or
+manual refresh, and relevant successful lifecycle changes: the extension resolves the project-pinned
+binary through `.awf/bootstrap.sh` or `awf` on `PATH`, handshakes `awf metrics protocol --json`, then
+runs metrics and doctor in that order. Rendering never spawns, there is no polling or daemon, and
+TypeScript never reimplements historical aggregation or diagnosis. Resolution, version, protocol, or
+query failure leaves the last complete pair visibly stale or exposes a degraded state. Direct
+conforming lifecycle tools remain registered; passive observation failure never interrupts work.
+
+Findings expose their stable rule, evidence, threshold or baseline, confidence, and next action. The
+dashboard has no composite score and never blocks work or applies a repair, waiver, retention purge,
+or association change automatically. Typed repair and waiver actions require confirmation and append
+evidence; maintenance uses fixed argument arrays, with a second confirmation for destructive purge.
+
+Resident events may contain bounded opaque identifiers, timestamps, route/phase/activity values,
+model and tool names, duration, token/cache/cost totals, workflow counters, and categorized outcomes.
+They exclude prompts, assistant text, tasks, tool arguments or previews, raw commands, stdout/stderr,
+free-form waiver prose, and repository paths other than the bounded checkpoint identifier. The
+storage threat model covers accidental truncation or alteration, incompatible writers, traversal,
+unsafe file types, and symlink or reparse redirection. It does not defend against a hostile process
+running as the same user and does not promise cryptographic tamper evidence.
 
 ### Path globs and domain territories
 

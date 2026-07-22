@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -27,6 +28,7 @@ const (
 	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
 	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
 	memoryTID    = "memory/gitignore.tmpl"
+	metricsTID   = "metrics/gitignore.tmpl"
 	runnerTID    = "runner/x.tmpl"
 )
 
@@ -90,15 +92,17 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
-		"prefix":        p.Cfg.Prefix,
-		"vars":          nonNil(p.Cfg.Vars),
-		"data":          nonNil(sc.Data),
-		"layout":        p.layout().templateMap(),
-		"version":       Version,
-		"skills":        p.effSkills,
-		"taskSkills":    p.taskSkillsDisplay(),
-		"commitScopes":  p.commitScopesDisplay(),
-		"gatedCommands": gatedCommandsDisplay(),
+		"prefix":                  p.Cfg.Prefix,
+		"vars":                    nonNil(p.Cfg.Vars),
+		"data":                    nonNil(sc.Data),
+		"layout":                  p.layout().templateMap(),
+		"version":                 Version,
+		"skills":                  p.effSkills,
+		"taskSkills":              p.taskSkillsDisplay(),
+		"commitScopes":            p.commitScopesDisplay(),
+		"gatedCommands":           gatedCommandsDisplay(),
+		"telemetryWidgetEnabled":  p.Cfg.WorkflowTelemetry.Widget.Enabled,
+		"telemetryWidgetShowCost": p.Cfg.WorkflowTelemetry.Widget.ShowCost,
 	}
 }
 
@@ -565,6 +569,13 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}
+			switch targetOutput.Producer {
+			case TargetOutputTemplate:
+			case TargetOutputTelemetryProtocol:
+				data["telemetryProtocolBody"] = telemetry.ProjectTypeScript()
+			default: // coverage-ignore: target validation rejects unknown producers
+				return nil, fmt.Errorf("unknown target output producer %q", targetOutput.Producer)
+			}
 			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
 				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{
 					bannerStyle: targetOutput.Provenance,
@@ -578,6 +589,10 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			rf.DeclarerProjection = targetDescriptorProjection(t)
 			rf.Encoder = targetOutput.Encoder
 			rf.Provenance = targetOutput.Provenance
+			for _, input := range targetOutput.Inputs {
+				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput(input))
+			}
+			rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 			out = append(out, rf)
 		}
 	}
@@ -697,6 +712,14 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		return nil, err
 	}
 	out = append(out, mrf)
+	// .awf/metrics/.gitignore is the sole governed node for the dynamic resident
+	// telemetry tree. Runtime descendants are intentionally outside the manifest.
+	metricsRF, err := p.renderTarget("metrics", "", metricsTID,
+		nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/metrics/.gitignore")
+	if err != nil { // coverage-ignore: the metrics gitignore template is static, part-free, and references no vars
+		return nil, err
+	}
+	out = append(out, metricsRF)
 	// Duplicate declarations are deliberately retained for OutputPlan to
 	// coalesce or reject from normalized recipes.
 	return out, nil

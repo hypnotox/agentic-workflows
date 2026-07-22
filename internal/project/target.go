@@ -29,10 +29,24 @@ const (
 	CapabilitySessionHandoff Capability = "session-handoff"
 )
 
+type TargetOutputProducer string
+
+const (
+	TargetOutputTemplate          TargetOutputProducer = "template"
+	TargetOutputTelemetryProtocol TargetOutputProducer = "telemetry-protocol"
+)
+
+type TargetOutputInput struct {
+	Path string
+	Role ArtifactRole
+}
+
 // TargetOutput declares a target-owned non-catalog output such as a project extension.
 type TargetOutput struct {
 	Path           string
 	TemplateID     string
+	Producer       TargetOutputProducer
+	Inputs         []TargetOutputInput
 	Encoder        AgentDialect
 	Provenance     render.CommentStyle
 	Policy         OutputPolicy
@@ -84,6 +98,18 @@ func (t Target) validate() error {
 	for _, out := range t.Outputs {
 		if out.Path == "" || out.TemplateID == "" || !filepath.IsLocal(filepath.FromSlash(out.Path)) {
 			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
+		}
+		if out.Producer != TargetOutputTemplate && out.Producer != TargetOutputTelemetryProtocol {
+			return fmt.Errorf("target %q output %q has unknown producer %q", t.Name, out.Path, out.Producer)
+		}
+		if out.Producer == TargetOutputTemplate && len(out.Inputs) != 0 {
+			return fmt.Errorf("target %q template output %q declares producer inputs", t.Name, out.Path)
+		}
+		if out.Producer == TargetOutputTelemetryProtocol {
+			want := []TargetOutputInput{{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}}
+			if !slices.Equal(out.Inputs, want) {
+				return fmt.Errorf("target %q protocol output %q has invalid inputs", t.Name, out.Path)
+			}
 		}
 		if out.Encoder != MarkdownAgentDialect && out.Encoder != TOMLAgentDialect && out.Encoder != PlainAgentDialect {
 			return fmt.Errorf("target %q output %q has unknown encoder %q", t.Name, out.Path, out.Encoder)
@@ -191,9 +217,11 @@ var piTarget = Target{
 	AgentDialect: MarkdownAgentDialect,
 	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
 	Outputs: []TargetOutput{
-		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-dashboard/index.ts", TemplateID: "pi/awf-dashboard/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-dashboard/protocol.ts", TemplateID: "pi/awf-dashboard/protocol.ts.tmpl", Producer: TargetOutputTelemetryProtocol, Inputs: []TargetOutputInput{{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}}, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 	},
 }
 

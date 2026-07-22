@@ -12,11 +12,14 @@ import (
 // lock). It deliberately leaves the authored .awf/ config (config.yaml,
 // sidecars, convention parts) in place.
 func runUninstall(root string, stdout io.Writer) error {
-	removed, err := project.Uninstall(root)
+	report, err := project.Uninstall(root)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(stdout, "awf uninstall: removed %d generated file(s) and the lock\n", removed)
+	fmt.Fprintf(stdout, "awf uninstall: removed %d generated file(s) and the lock\n", report.Removed)
+	if report.MetricsPreserved {
+		fmt.Fprintln(stdout, "preserved resident workflow metrics under .awf/metrics")
+	}
 	fmt.Fprintln(stdout, "awf uninstall: left the .awf/ config in place (delete it to fully remove)")
 	return nil
 }

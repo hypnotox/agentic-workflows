@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -93,46 +94,93 @@ func copyFile(src, dst string) error {
 	return os.WriteFile(dst, data, info.Mode().Perm())
 }
 
-// Uninstall removes awf's generated footprint from root: every file recorded in
-// the lock, the directories left empty by their removal, and the now-stale lock
-// itself. It leaves the authored .awf/ config in place and returns the count of
-// files removed. It is a free function (not a *Project method) so a broken
-// config.yaml does not block uninstall - only the lock and root are needed.
+type UninstallReport struct {
+	Removed          int
+	MetricsPreserved bool
+}
+
+// inspectResidentMetrics inspects only the direct children of the dynamic
+// telemetry root. It never follows a metrics-root symlink, and any child other
+// than the governed ignore file counts as resident data regardless of its type.
+func inspectResidentMetrics(root string) (bool, error) {
+	metricsRoot := filepath.Join(root, config.DirName, "metrics")
+	info, err := os.Lstat(metricsRoot)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil { // coverage-ignore: Lstat errors other than absence require a permission fault that the root gate cannot induce
+		return false, fmt.Errorf("inspect resident workflow metrics: %w", err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
+		return false, fmt.Errorf("unsafe resident workflow metrics root %s", filepath.Join(config.DirName, "metrics"))
+	}
+	entries, err := os.ReadDir(metricsRoot)
+	if err != nil {
+		return false, fmt.Errorf("inspect resident workflow metrics: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.Name() != ".gitignore" {
+			return true, nil
+		}
+		info, err := entry.Info()
+		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return false, errors.New("unsafe resident workflow metrics ignore file")
+		}
+	}
+	return false, nil
+}
+
+func preserveMetricsRemoval(path string, resident bool) bool {
+	path = filepath.ToSlash(filepath.Clean(path))
+	if !isMetricsResidentPath(path) {
+		return false
+	}
+	return path != config.DirName+"/metrics/.gitignore" || resident
+}
+
+// Uninstall removes awf's generated footprint while preserving dynamic resident
+// workflow metrics. It is a free function so a broken config does not block it.
 // touches-state: rendering/project-output-plan:uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
-func Uninstall(root string) (int, error) {
+func Uninstall(root string) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
 	lock, found, err := manifest.LoadOptional(lockPath)
 	if err != nil {
-		return 0, err
+		return UninstallReport{}, err
 	}
 	if !found {
-		return 0, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
+		return UninstallReport{}, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
-	removed := 0
+	resident, err := inspectResidentMetrics(root)
+	if err != nil {
+		return UninstallReport{}, err
+	}
+	report := UninstallReport{MetricsPreserved: resident}
 	dirs := map[string]bool{}
 	for path := range lock.Files {
 		// A non-local entry (corrupted or malicious lock) would delete outside
-		// the root and send the ancestor walk below it, never reaching root.
-		if !filepath.IsLocal(filepath.FromSlash(path)) {
+		// the root. Runtime-shaped metrics entries are corrupt and never removed.
+		if !filepath.IsLocal(filepath.FromSlash(path)) || preserveMetricsRemoval(path, resident) {
 			continue
 		}
 		abs := filepath.Join(root, path)
 		if err := os.Remove(abs); err == nil {
-			removed++
+			report.Removed++
 		}
 		for d := filepath.Dir(abs); d != root; d = filepath.Dir(d) {
+			if resident && d == filepath.Join(root, config.DirName, "metrics") { // coverage-ignore: resident metrics paths are rejected by preserveMetricsRemoval before this ancestor walk
+				break
+			}
 			dirs[d] = true
 		}
 	}
-	// Remove now-empty directories deepest-first (a child path is always longer
-	// than its parent, so descending-length order attempts children first).
+	// Remove now-empty directories deepest-first.
 	dirList := slices.Collect(maps.Keys(dirs))
 	slices.SortFunc(dirList, func(a, b string) int { return len(b) - len(a) })
 	for _, d := range dirList {
-		_ = os.Remove(d) // removes only if now empty
+		_ = os.Remove(d)
 	}
 	if err := os.Remove(lockPath); err != nil { // coverage-ignore: lock was just loaded, so removal fails only on a permission fault root bypasses
-		return removed, fmt.Errorf("remove lock: %w", err)
+		return report, fmt.Errorf("remove lock: %w", err)
 	}
-	return removed, nil
+	return report, nil
 }

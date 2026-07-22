@@ -1220,6 +1220,37 @@ func TestDocArchitectureTemplate(t *testing.T) {
 	}
 }
 
+func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"data":   map[string]any{},
+		"skills": map[string]bool{},
+		"layout": testLayout(),
+	}
+	cases := []struct {
+		tmpl string
+		want string
+		ban  string
+	}{
+		{"docs/architecture.md.tmpl", "resident-data boundaries", ""},
+		{"docs/workflow.md.tmpl", "# Workflow", "generated Pi telemetry tools"},
+		{"docs/testing.md.tmpl", "minimum-runtime smoke tests", ""},
+		{"docs/releasing.md.tmpl", "generated runtime smoke", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.tmpl, func(t *testing.T) {
+			out := renderGolden(t, tc.tmpl, data)
+			if !strings.Contains(out, tc.want) {
+				t.Errorf("missing publication contract %q:\n%s", tc.want, out)
+			}
+			if strings.Contains(out, "<no value>") || tc.ban != "" && strings.Contains(out, tc.ban) {
+				t.Errorf("empty-data render is not coherent:\n%s", out)
+			}
+		})
+	}
+}
+
 func TestRoadmapGraduationTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

@@ -261,6 +261,15 @@ func TestTelemetryQueryInputAndSelectorFailures(t *testing.T) {
 	}
 	telemetryStorageLstat = originalLstat
 
+	emptyStorage := telemetryProject(t)
+	if err := os.RemoveAll(filepath.Join(emptyStorage, ".awf", "metrics")); err != nil {
+		t.Fatal(err)
+	}
+	reads, cfg, err := readTelemetryQueryInputs(emptyStorage)
+	if err != nil || len(reads) != 0 || cfg == nil {
+		t.Fatalf("missing telemetry storage reads=%#v cfg=%v err=%v", reads, cfg, err)
+	}
+
 	invalidStorage := telemetryProject(t)
 	metricsPath := filepath.Join(invalidStorage, ".awf", "metrics")
 	if err := os.RemoveAll(metricsPath); err != nil {

@@ -26,7 +26,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks a suite of multi-runtime skills, review agents, docs, and this agent guide into any project from a committed `.awf/` config tree, supplying a default way to set things up and the deterministic checks that guard the probabilistic agent's output rather than its behaviour (drift, frontmatter, current-state claim provenance and invariant backing). The workflow chain is project-owned target-native skill files and reviewer definitions; Pi receives four generated, optionally role-routed project-extension tools (`subagent_grounding`, `subagent_explore`, `subagent_review`, and `subagent_implement`) that run isolated no-session child processes for grounding, bounded-parallel exploration, governed review, and sequential implementation, with bounded inline progress kept out of parent model content; a separate generated Pi extension performs parent-linked main-session handoffs from durable checkpoints; a hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks multi-runtime skills, review agents, docs, and this agent guide from a committed `.awf/` config tree, and mechanically guards drift, frontmatter, current-state provenance, and invariant backing. The project-owned workflow chain is rendered in each target's native form. Pi receives generated subagent, handoff, and workflow-dashboard extensions: four governed child tools, parent-linked continuation from durable checkpoints, explicit effort/route/phase lifecycle, privacy-minimal resident telemetry, canonical metrics and diagnostics, and a trajectory-aware widget and overlay. The Go-owned ledger and diagnostic engine remain authoritative; Pi writes conforming events and refreshes canonical projections without collecting prompts, assistant text, tool arguments, or command output. A hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
@@ -93,7 +93,10 @@ awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered
 `--effort`, `--session`, `--phase`, `--since`, and `--until`; export the same projection with
 `awf metrics export --format json`, or validated normalized ledger events with `--format jsonl`.
 `awf doctor --json` applies exact rules plus the configured heuristics to the same selector and is
-read-only and advisory: findings do not change its exit status.
+read-only and advisory: findings do not change its exit status. `awf metrics retain --dry-run --json`
+previews deterministic terminal-effort retention; applying retention or confirmed `awf metrics purge`
+is explicit maintenance, never an agent query action. Lifecycle, repair, and waiver writes use the
+closed `awf metrics lifecycle --request <FILE|-> --json` contract and fail unless durably appended.
 
 Before every commit, stage the complete transaction, run `awf check --staged`, then run `./x gate`.
 Commit only after both commands pass. The pre-commit hook repeats the staged check as defense in depth;

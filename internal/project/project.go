@@ -161,6 +161,10 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
 		}
 	}
+	metricsResident, err := inspectResidentMetrics(p.Root)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	op, err := p.OutputPlan()
 	if err != nil {
 		return nil, nil, nil, err
@@ -208,8 +212,14 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	want := map[string]bool{}
 	for _, f := range files {
 		abs := filepath.Join(p.Root, f.Path)
-		if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		dir := filepath.Dir(abs)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, nil, nil, err
+		}
+		if f.Path == config.DirName+"/metrics/.gitignore" {
+			if err := os.Chmod(dir, 0o700); err != nil { // coverage-ignore: MkdirAll just established the confined directory; a permission race is not deterministic under the root gate
+				return nil, nil, nil, err
+			}
 		}
 		if !prior[f.Path] {
 			if _, statErr := os.Stat(abs); statErr == nil {
@@ -259,7 +269,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	if old != nil {
 		dirs := map[string]bool{}
 		for path := range old.Files {
-			if want[path] {
+			if want[path] || preserveMetricsRemoval(path, metricsResident) {
 				continue
 			}
 			// A non-local entry (corrupted or malicious lock) would delete outside

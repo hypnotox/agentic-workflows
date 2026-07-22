@@ -177,8 +177,8 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 
 // sweepConfigTree walks .awf/ and reports every entry outside the
 // claimed-path model (ADR-0086 Decision 1), collapsing to the highest
-// fully-unclaimed directory. memory/** is session scratch and wholly exempt
-// (ADR-0069). It subsumes the pre-ADR-0086 orphan sweep: wrong-name
+// fully-unclaimed directory. memory/** is session scratch and metrics/** is
+// dynamic resident telemetry; both are wholly exempt. It subsumes the pre-ADR-0086 orphan sweep: wrong-name
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
 func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error) {
@@ -200,7 +200,7 @@ func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error
 			return nil
 		}
 		if de.IsDir() {
-			if rel == config.DirName+"/memory" {
+			if rel == config.DirName+"/memory" || rel == config.DirName+"/metrics" {
 				return filepath.SkipDir
 			}
 			if m.claimedDir(rel) {

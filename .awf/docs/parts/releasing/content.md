@@ -107,14 +107,44 @@ broken release config fails CI before any tag is pushed.
 
 ## Real Pi extension smoke
 
-On the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later build first verified to expose both `ExtensionAPI.queueCommand` and the `ReadonlySessionManager.isPersisted` query, run one successful exploration call with a named task, `targeted` breadth,
-`paths` detail, and an explicit authenticated lower-cost child model. Then run more than ten
-independent exploration calls and confirm the excess queue makes FIFO progress as slots release.
-Run a named task with `bounded` breadth that returns not-found and follow it with a new fresh-context
-call using a corrected task or `broad` breadth; every call must name task, breadth, and detail.
-Finally, emit an implementation call beside a sibling and confirm Pi rejects the whole batch with a
-retry-alone error. Confirm intermediate activity stays in tool details and only the final report
-enters model-visible content. Then create a durable checkpoint, invoke `handoff_session` alone with its exact memory path and immediate kickoff, cancel once during the five-second window, and confirm the old session stays active. Invoke it again and complete the handoff; verify the new persisted session records the old session as parent, the old history remains navigable, and the kickoff reads the exact memory path before continuing. Session and memory cleanup remain manual. Also exercise kickoff submission failure and confirm the wrapper is prepared in the new session editor; failures after replacement teardown begins are nontransactional and may terminate the runtime.
+Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later build first verified
+to expose the queued-command, persisted-session, custom-entry, widget, overlay, and shutdown APIs
+required by all three extension factories.
+
+1. Run one successful exploration call with a named task, `targeted` breadth, `paths` detail, and an
+   explicit authenticated lower-cost child model. Run more than ten independent exploration calls
+   and confirm FIFO progress as slots release. Follow a bounded not-found with a fresh corrected or
+   broader call. Emit an implementation call beside a sibling and confirm whole-batch retry-alone
+   rejection. Intermediate activity must remain in tool details; only the final report enters
+   model-visible content.
+2. Create an independent telemetry effort in discovery, explicitly select its route, and start and
+   finish the applicable phases. Debugging is an investigation activity; bugfix is a route rather
+   than a phase. Confirm `/awf-dashboard` opens, manual refresh runs a protocol handshake followed by
+   canonical metrics then doctor, the widget appears without replacing the footer, and findings show
+   rule, evidence, threshold or baseline, confidence, and next action without a composite score.
+3. Create a durable checkpoint and invoke `handoff_session` alone. Cancel once during the five-second
+   window and confirm the old session stays active. Complete a second handoff and verify parent
+   lineage, preserved history, exact kickoff memory path, and copied active association. Also exercise
+   kickoff submission failure and editor fallback; replacement teardown remains nontransactional.
+4. Fork a trajectory, record work, resume the prior branch, and confirm current-path and all-work
+   totals differ without losing the discarded branch. From a terminal effort, create a derived effort
+   and confirm its opaque origin groups history without adding the parent totals; exercise `reopen`
+   separately only as an explicit same-effort choice.
+5. Open findings and maintenance. Cancel one waiver or repair confirmation and one destructive purge
+   confirmation and verify no write or process action occurs. Run retention dry-run, then an approved
+   apply against terminal candidates. Complete the effort, shut down Pi, and verify queued events were
+   drained and retained history remains readable.
+6. Repeat canonical refresh with both bootstrap and `awf` on `PATH` intentionally unavailable. Direct
+   conforming lifecycle registration and passive work must remain non-blocking, while metrics, doctor,
+   widget, and overlay visibly report degraded or stale state. No render path may spawn a process.
+
+Inspect `.awf/metrics/` after the smoke. Persisted events may contain bounded opaque identifiers,
+models and tool names, timestamps, phases and activities, duration, token/cache/cost totals, counters,
+and categorized outcomes. They must not contain prompts, assistant text, tasks, tool arguments,
+command strings or output, stderr, free-form waiver prose, or repository paths other than the bounded
+checkpoint identifier. This verifies accidental-corruption, compatibility, confinement, and symlink
+posture only; it is not a defense against a hostile same-user process and provides no cryptographic
+tamper evidence.
 
 ## Notes
 

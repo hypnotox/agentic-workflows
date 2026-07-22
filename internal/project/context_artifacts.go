@@ -12,16 +12,17 @@ import (
 type ArtifactRole string
 
 const (
-	ArtifactConfig         ArtifactRole = "config"
-	ArtifactLock           ArtifactRole = "lock"
-	ArtifactManifest       ArtifactRole = "manifest"
-	ArtifactTemplate       ArtifactRole = "template"
-	ArtifactConventionPart ArtifactRole = "convention-part"
-	ArtifactAuthoredData   ArtifactRole = "authored-data"
-	ArtifactTopicMetadata  ArtifactRole = "topic-metadata"
-	ArtifactClaimPart      ArtifactRole = "claim-part"
-	ArtifactDecisionRecord ArtifactRole = "decision-record"
-	ArtifactManagedOutput  ArtifactRole = "managed-output"
+	ArtifactConfig             ArtifactRole = "config"
+	ArtifactLock               ArtifactRole = "lock"
+	ArtifactManifest           ArtifactRole = "manifest"
+	ArtifactTemplate           ArtifactRole = "template"
+	ArtifactConventionPart     ArtifactRole = "convention-part"
+	ArtifactAuthoredData       ArtifactRole = "authored-data"
+	ArtifactTopicMetadata      ArtifactRole = "topic-metadata"
+	ArtifactClaimPart          ArtifactRole = "claim-part"
+	ArtifactDecisionRecord     ArtifactRole = "decision-record"
+	ArtifactManagedOutput      ArtifactRole = "managed-output"
+	ArtifactProtocolDescriptor ArtifactRole = "protocol-descriptor"
 )
 
 type ArtifactLink struct {
@@ -121,7 +122,7 @@ func artifactRecords(path string, declarations []OutputDeclaration, authorities 
 			records[i].Navigation = append([]ArtifactLink{{Path: ".awf/config.yaml", Label: "project config"}}, linkIfDeclared(configReference, "configuration reference")...)
 		case ArtifactManifest:
 			records[i].Navigation = linkIfDeclared(configReference, "configuration reference")
-		case ArtifactTemplate, ArtifactConventionPart, ArtifactAuthoredData:
+		case ArtifactTemplate, ArtifactConventionPart, ArtifactAuthoredData, ArtifactProtocolDescriptor:
 			records[i].Navigation = cloneArtifactLinks(records[i].Outputs)
 		case ArtifactTopicMetadata, ArtifactClaimPart:
 			id := records[i].Identity
@@ -140,7 +141,7 @@ func artifactRecords(path string, declarations []OutputDeclaration, authorities 
 		records[i].Outputs = mergeArtifactLinks(nil, records[i].Outputs)
 		records[i].Navigation = mergeArtifactLinks(nil, records[i].Navigation)
 	}
-	roleOrder := map[ArtifactRole]int{ArtifactConfig: 0, ArtifactLock: 1, ArtifactManifest: 2, ArtifactTemplate: 3, ArtifactConventionPart: 4, ArtifactAuthoredData: 5, ArtifactTopicMetadata: 6, ArtifactClaimPart: 7, ArtifactDecisionRecord: 8, ArtifactManagedOutput: 9}
+	roleOrder := map[ArtifactRole]int{ArtifactConfig: 0, ArtifactLock: 1, ArtifactManifest: 2, ArtifactTemplate: 3, ArtifactProtocolDescriptor: 4, ArtifactConventionPart: 5, ArtifactAuthoredData: 6, ArtifactTopicMetadata: 7, ArtifactClaimPart: 8, ArtifactDecisionRecord: 9, ArtifactManagedOutput: 10}
 	slices.SortFunc(records, func(a, b ArtifactRecord) int {
 		if a.Role != b.Role {
 			return roleOrder[a.Role] - roleOrder[b.Role]
@@ -156,6 +157,8 @@ func artifactSourceLabel(role ArtifactRole) string {
 		return "project config"
 	case ArtifactTemplate:
 		return "render template"
+	case ArtifactProtocolDescriptor:
+		return "protocol descriptor"
 	case ArtifactConventionPart:
 		return "convention part"
 	case ArtifactAuthoredData:

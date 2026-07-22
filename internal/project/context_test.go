@@ -4,11 +4,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -93,6 +95,30 @@ func TestContextForUniverseSetupErrors(t *testing.T) {
 				t.Fatal("context accepted invalid selected universe")
 			}
 		})
+	}
+}
+
+func TestContextExcludesMetricsResidentNestedAdopter(t *testing.T) {
+	files := ctxFiles()
+	const adversarial = ".awf/metrics/efforts/e/.awf/config.yaml"
+	files[adversarial] = "prefix: nested\n"
+	p := csRepo(t, ctxConfig, files)
+	res, err := p.ContextFor([]string{adversarial})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Paths) != 1 {
+		t.Fatalf("context paths = %#v", res.Paths)
+	}
+	if res.Paths[0].Classification == PathNestedAdopter {
+		t.Fatalf("resident metrics path classified as nested adopter: %#v", res.Paths[0])
+	}
+	tree, err := snapshot.WorkingTree(p.Root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(p.eligibleCoveragePaths(tree, nil), adversarial) {
+		t.Fatal("resident metrics path entered current-state eligibility")
 	}
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
+	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -186,7 +187,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, inputs(t.BridgeTemplate), false)
 		}
 		for _, o := range t.Outputs {
-			add(o.Path, o.TemplateID, t.Name, inputs(o.TemplateID), false)
+			declaredInputs := inputs(o.TemplateID)
+			for _, input := range o.Inputs {
+				declaredInputs = append(declaredInputs, OutputInput(input))
+			}
+			add(o.Path, o.TemplateID, t.Name, declaredInputs, false)
 		}
 	}
 	for name, e := range cat.Docs {
@@ -289,6 +294,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 	}
 	add(".awf/memory/.gitignore", "memory/gitignore.tmpl", "memory/gitignore.tmpl", inputs("memory/gitignore.tmpl"), false)
+	add(".awf/metrics/.gitignore", "metrics/gitignore.tmpl", "metrics/gitignore.tmpl", inputs("metrics/gitignore.tmpl"), false)
 	for i := range decls {
 		switch decls[i].TemplateID {
 		case "topics/topic.md.tmpl", "topics/index.md.tmpl":
@@ -423,7 +429,15 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 			if err != nil { // coverage-ignore: no target output has parts and its descriptor projection is marshalable
 				return nil, err
 			}
-			recipe := OutputRecipe{TemplateID: o.TemplateID, TemplateHash: manifest.Hash([]byte(expanded)), ConfigHash: configHash, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
+			templateInput := []byte(expanded)
+			switch o.Producer {
+			case TargetOutputTemplate:
+			case TargetOutputTelemetryProtocol:
+				templateInput = append(templateInput, telemetry.DescriptorBytes()...)
+			default: // coverage-ignore: target validation rejects unknown producers above
+				return nil, fmt.Errorf("unknown target output producer %q", o.Producer)
+			}
+			recipe := OutputRecipe{TemplateID: o.TemplateID, TemplateHash: manifest.Hash(templateInput), ConfigHash: configHash, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
 			decl := out[o.Path]
 			if decl.canonical != "" && decl.recipe != recipe {
 				return nil, fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", o.Path)

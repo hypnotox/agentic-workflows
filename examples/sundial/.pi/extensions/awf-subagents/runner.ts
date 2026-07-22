@@ -82,6 +82,8 @@ export interface RunResult {
   modelChanged: boolean;
   latestCacheHitRate?: number;
   stopReason?: string;
+  toolCount?: number;
+  toolFailureCount?: number;
   failed: boolean;
   failureMessage?: string;
 }
@@ -204,6 +206,8 @@ export function createRunner(deps: RunnerDependencies): Runner {
         let latestCacheHitRate: number | undefined;
         let childErrorMessage: string | undefined;
         let stopReason: string | undefined;
+        let toolCount = 0;
+        let toolFailureCount = 0;
         let buffer = "";
         let closed = false;
         let timer: ReturnType<typeof setTimeout> | undefined;
@@ -225,6 +229,8 @@ export function createRunner(deps: RunnerDependencies): Runner {
             modelChanged,
             latestCacheHitRate,
             stopReason,
+            toolCount,
+            toolFailureCount,
             failed,
             failureMessage: failureMessage ? truncateFailure(failureMessage) : undefined,
           });
@@ -294,9 +300,11 @@ export function createRunner(deps: RunnerDependencies): Runner {
               else publishUpdate();
             }
             if (event.type === "tool_execution_start") {
+              toolCount++;
               appendDisplayEvent({ kind: "tool-start", toolCallId: String(event.toolCallId ?? ""), toolName: String(event.toolName ?? "tool"), argsPreview: JSON.stringify(event.args ?? {}) });
             }
             if (event.type === "tool_execution_end") {
+              if (event.isError) toolFailureCount++;
               appendDisplayEvent({ kind: "tool-end", toolCallId: String(event.toolCallId ?? ""), toolName: String(event.toolName ?? "tool"), isError: Boolean(event.isError) });
             }
           };

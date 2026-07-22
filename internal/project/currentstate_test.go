@@ -2,6 +2,7 @@ package project
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -57,6 +58,27 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	}
 	if got := reader.Paths(""); len(got) != 1 || got[0] != "config.yaml" {
 		t.Fatalf("snapshot config paths=%v", got)
+	}
+}
+
+func TestMetricsResidentPathsAreNeverEligibleOrNested(t *testing.T) {
+	const adversarial = ".awf/metrics/efforts/e/.awf/config.yaml"
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\n")},
+		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := eligiblePaths(tree, nil, nil)
+	if slices.Contains(got, adversarial) {
+		t.Fatalf("resident path is eligible: %v", got)
+	}
+	if !slices.Contains(got, "internal/owned.go") {
+		t.Fatalf("ordinary source was filtered: %v", got)
+	}
+	if !isMetricsResidentPath(adversarial) || isMetricsResidentPath(".awf/metric/other") {
+		t.Fatal("metrics resident path predicate is not closed to .awf/metrics")
 	}
 }
 

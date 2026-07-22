@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -82,9 +83,11 @@ func TestPiTargetRendersExtension(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantPaths := map[string]struct{}{
-		".pi/extensions/awf-handoff/index.ts":    {},
-		".pi/extensions/awf-subagents/index.ts":  {},
-		".pi/extensions/awf-subagents/runner.ts": {},
+		".pi/extensions/awf-handoff/index.ts":      {},
+		".pi/extensions/awf-subagents/index.ts":    {},
+		".pi/extensions/awf-subagents/runner.ts":   {},
+		".pi/extensions/awf-dashboard/index.ts":    {},
+		".pi/extensions/awf-dashboard/protocol.ts": {},
 	}
 	if len(piTarget.Outputs) != len(wantPaths) {
 		t.Fatalf("Pi target output count = %d, want exactly %d", len(piTarget.Outputs), len(wantPaths))
@@ -134,6 +137,10 @@ func TestPiTargetRendersExtension(t *testing.T) {
 			t.Errorf("Pi target rendered extension outside independently pinned set: %s", path)
 		}
 	}
+	protocol := got[".pi/extensions/awf-dashboard/protocol.ts"].Content
+	if !strings.HasPrefix(protocol, "// "+bannerText+"\n// @ts-nocheck\n") || strings.Count(protocol, bannerText) != 1 {
+		t.Fatalf("protocol TypeScript prefix is not the exact two-line provenance prefix: %q", protocol[:min(len(protocol), 100)])
+	}
 	for _, target := range []string{"claude", "codex", "copilot", "cursor", "gemini"} {
 		other := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: ["+target+"]\n")
 		op, err := Open(other)
@@ -148,6 +155,136 @@ func TestPiTargetRendersExtension(t *testing.T) {
 			if strings.HasPrefix(file.Path, ".pi/extensions/") {
 				t.Errorf("target %s unexpectedly rendered %s", target, file.Path)
 			}
+		}
+	}
+}
+
+func TestDashboardProtocolDescriptorAttribution(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	const output = ".pi/extensions/awf-dashboard/protocol.ts"
+	want := OutputInput{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}
+	found := false
+	for _, node := range op.Nodes {
+		if node.Path == output {
+			found = slices.Contains(node.ConsumedInputs, want)
+		}
+	}
+	if !found {
+		t.Fatal("protocol output does not consume the descriptor")
+	}
+	corpus, err := p.Corpus()
+	if err != nil {
+		t.Fatal(err)
+	}
+	decls, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: root}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	records := artifactRecords(output, decls, artifactAuthorities{Layout: p.layout(), ADRs: corpus})
+	var labeled bool
+	for _, record := range records {
+		for _, source := range record.Sources {
+			if source.Path == want.Path && source.Label == "protocol descriptor" {
+				labeled = true
+			}
+		}
+	}
+	if !labeled {
+		t.Fatalf("protocol descriptor attribution missing: %#v", records)
+	}
+}
+
+func TestDashboardWidgetConfigHashIsolation(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	render := func() map[string]RenderedFile {
+		files, err := p.RenderAll()
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]RenderedFile{}
+		for _, file := range files {
+			if strings.HasPrefix(file.Path, ".pi/extensions/") {
+				out[file.Path] = file
+			}
+		}
+		return out
+	}
+	before := render()
+	p.Cfg.WorkflowTelemetry.Widget.Enabled = !p.Cfg.WorkflowTelemetry.Widget.Enabled
+	afterEnabled := render()
+	p.Cfg.WorkflowTelemetry.Widget.ShowCost = !p.Cfg.WorkflowTelemetry.Widget.ShowCost
+	afterCost := render()
+	const dashboard = ".pi/extensions/awf-dashboard/index.ts"
+	for _, after := range []map[string]RenderedFile{afterEnabled, afterCost} {
+		if after[dashboard].ConfigHash == before[dashboard].ConfigHash || after[dashboard].Content == before[dashboard].Content {
+			t.Fatal("dashboard widget config did not change dashboard bytes and config hash")
+		}
+	}
+	for path, file := range before {
+		if path == dashboard {
+			continue
+		}
+		if afterEnabled[path].ConfigHash != file.ConfigHash || afterEnabled[path].Content != file.Content || afterCost[path].ConfigHash != file.ConfigHash || afterCost[path].Content != file.Content {
+			t.Errorf("widget config changed unrelated output %s", path)
+		}
+	}
+}
+
+// invariant: rendering/adapter-outputs:pi-workflow-dashboard-runtime
+func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
+	content := renderPiExtensionFile(t, "awf-dashboard/index.ts")
+	for _, want := range []string{
+		`export function createLedgerWriter`,
+		`export function restoreAssociation`,
+		`ctx?.sessionManager?.getBranch?.()`,
+		`name: "awf_lifecycle"`,
+		`[["awf_metrics", "metrics"], ["awf_doctor", "doctor"]]`,
+		`pi.registerCommand("awf-dashboard"`,
+		`export class DashboardOverlay`,
+		`pi.on("session_shutdown"`,
+		`await writer.shutdown()`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("dashboard runtime missing contract %q", want)
+		}
+	}
+	for _, forbidden := range []string{"promptText", "assistantText", "toolArguments", "commandOutput"} {
+		if strings.Contains(content, forbidden) {
+			t.Errorf("dashboard runtime contains forbidden telemetry field %q", forbidden)
+		}
+	}
+}
+
+// invariant: rendering/templates:pi-workflow-dashboard-public-contract
+func TestPiWorkflowDashboardPublicContract(t *testing.T) {
+	dashboard := renderPiExtensionFile(t, "awf-dashboard/index.ts")
+	protocol := renderPiExtensionFile(t, "awf-dashboard/protocol.ts")
+	for _, want := range []string{
+		`export const telemetryWidgetEnabled`,
+		`export const telemetryWidgetShowCost`,
+		`export const DASHBOARD_VIEWS = ["overview", "phases", "history", "findings", "maintenance"] as const`,
+		`this.state.runFixed(["metrics", "retain", "--dry-run", "--json"])`,
+		`this.state.runFixed(["metrics", "purge", "--effort", pending.action.effortId, "--confirm", "--json"])`,
+	} {
+		if !strings.Contains(dashboard, want) {
+			t.Errorf("dashboard public contract missing %q", want)
+		}
+	}
+	for _, want := range []string{"export const protocolDescriptor", "export function validateTelemetryEvent", "export function validateLifecycleRequest"} {
+		if !strings.Contains(protocol, want) {
+			t.Errorf("projected protocol missing public contract %q", want)
 		}
 	}
 }
@@ -228,7 +365,7 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 		`const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { breadth: params.breadth, detail: params.detail });`,
 		`publishState(onUpdate, "explore", params.task, "queued", metadata);`,
 		`const release = await explorationLimiter.acquire(signal);`,
-		`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate), metadata);`,
+		`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate, queuedAt), metadata);`,
 		`thinkingLevel: metadata.thinkingLevel`,
 		`content: [{ type: "text", text: "(running...)" }]`,
 		`events: update.events`, `result.output`,
@@ -296,20 +433,20 @@ func TestPiSubagentModelRouting(t *testing.T) {
 	}{
 		"grounding": {
 			[]string{`await run("grounding"`},
-			[]string{`return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate), metadata);`},
+			[]string{`return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate, queuedAt), metadata);`},
 		},
 		"explore": {
 			[]string{`explorationLimiter.acquire(signal)`, `await run("explore"`},
-			[]string{`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate), metadata);`},
+			[]string{`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate, queuedAt), metadata);`},
 		},
 		"review": {
 			[]string{`loadReviewer(deps, root, params.kind)`, `await run("review"`},
-			[]string{`return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, metadata, signal, onUpdate), { ...metadata, kind: params.kind });`},
+			[]string{`return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, metadata, signal, onUpdate, queuedAt), { ...metadata, kind: params.kind });`},
 		},
 		"implement": {
 			[]string{`implementationTail = new Promise`, `snapshot(pi, root)`, `await run("implement"`},
 			[]string{
-				`const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, metadata, signal, onUpdate);`,
+				`const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, metadata, signal, onUpdate, queuedAt);`,
 				`const gitDetails = { ...metadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };`,
 				`return toolResult("implement", params.task, result, gitDetails);`,
 			},
@@ -668,7 +805,7 @@ func TestPiMinimumRuntimeContract(t *testing.T) {
 		"registerTool(", "registerCommand(", "registerShortcut(", "registerFlag(",
 		"registerMessageRenderer(", "registerEntryRenderer(", "registerProvider(",
 	}
-	for _, path := range []string{"awf-subagents/index.ts", "awf-handoff/index.ts"} {
+	for _, path := range []string{"awf-subagents/index.ts", "awf-handoff/index.ts", "awf-dashboard/index.ts"} {
 		content := renderPiExtensionFile(t, path)
 		guardStart := strings.Index(content, "export function guardMinimumRuntime")
 		if guardStart < 0 {

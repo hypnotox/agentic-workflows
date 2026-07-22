@@ -114,6 +114,7 @@ async function realHandoffRuntime(root: string, options: { cancel?: boolean; pre
   await mkdir(join(root, ".pi/extensions"), { recursive: true });
   await cp(join(process.cwd(), ".pi/extensions/awf-handoff"), join(root, ".pi/extensions/awf-handoff"), { recursive: true });
   await cp(join(process.cwd(), ".pi/extensions/awf-subagents"), join(root, ".pi/extensions/awf-subagents"), { recursive: true });
+  await cp(join(process.cwd(), ".pi/extensions/awf-dashboard"), join(root, ".pi/extensions/awf-dashboard"), { recursive: true });
   await symlink(join(process.cwd(), "node_modules"), join(root, "node_modules"), "dir");
   const sessionDir = join(root, "sessions");
   await mkdir(sessionDir, { recursive: true });
@@ -129,6 +130,7 @@ async function realHandoffRuntime(root: string, options: { cancel?: boolean; pre
     const uiContext: any = {
       notify: (...args: any[]) => notifications.push(args),
       setEditorText: (text: string) => editor.push(text),
+      setWidget() {},
       custom: async (factory: any) => new Promise((resolve, reject) => {
         try {
           const done = (value: unknown) => resolve(value);

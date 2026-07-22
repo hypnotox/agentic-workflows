@@ -582,6 +582,63 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	}
 }
 
+func TestSyncNeverPrunesResidentMetricsDescendants(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	const rel = ".awf/metrics/efforts/e/sessions/s.jsonl"
+	path := filepath.Join(root, filepath.FromSlash(rel))
+	testsupport.WriteFile(t, path, "resident\n")
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.Files[rel] = manifest.Entry{}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, pruned, err := p.SyncReport()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(pruned, rel) {
+		t.Fatalf("resident path reported pruned: %v", pruned)
+	}
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("resident path removed: %v", err)
+	}
+}
+
+func TestSyncRejectsUnsafeResidentMetricsRoot(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	metrics := filepath.Join(root, ".awf", "metrics")
+	if err := os.RemoveAll(metrics); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), metrics); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	if _, _, _, err := p.SyncReport(); err == nil {
+		t.Fatal("sync accepted an unsafe resident metrics root")
+	}
+}
+
 func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := Open(root)

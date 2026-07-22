@@ -187,7 +187,7 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 	files := tree.List()
 	nested := []string{}
 	for _, f := range files {
-		if f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
+		if !isMetricsResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
 			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
 	}

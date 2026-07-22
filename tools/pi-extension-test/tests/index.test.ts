@@ -39,6 +39,7 @@ function harness(options: {
   const handlers = new Map<string, any>();
   const requests: RunRequest[] = [];
   const notifications: unknown[][] = [];
+  const emitted: Array<{ name: string; data: any }> = [];
   const git = [...(options.git ?? [])];
   let reviewerReads = 0;
   let gitCalls = 0;
@@ -48,6 +49,7 @@ function harness(options: {
     on: (name: string, handler: any) => handlers.set(name, handler),
     getThinkingLevel: options.thinking ?? (() => "high"),
     exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
+    events: { emit: (name: string, data: any) => { emitted.push({ name, data }); } },
     ...(options.queueCommand === false ? {} : { queueCommand() {} }),
   };
   const deps: ExtensionDependencies = {
@@ -63,6 +65,8 @@ function harness(options: {
     } },
     packageVersion: options.version ?? MIN_PI_VERSION,
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
+    now: (() => { let value = 0; return () => (value += 100); })(),
+    observationId: () => "observation-1",
   };
   registerSubagentTools(pi, deps);
   const models = new Map([
@@ -80,7 +84,7 @@ function harness(options: {
     ui: { notify: (...args: unknown[]) => notifications.push(args) },
   };
   return {
-    pi, deps, tools, handlers, requests, notifications, ctx,
+    pi, deps, tools, handlers, requests, notifications, emitted, ctx,
     setLeaf: (value: any) => { leaf = value; },
     reviewerReads: () => reviewerReads,
     gitCalls: () => gitCalls,
@@ -274,6 +278,41 @@ test("invalid explicit models reject before every role side effect", async () =>
   }
   const noParent = harness();
   await assert.rejects(execute(noParent.tools.get("subagent_grounding"), { task: "ground" }, { ...noParent.ctx, model: undefined }), /active parent model/);
+});
+
+test("subagent observations are bounded, private, timed, and listener failures are isolated", async () => {
+  const h = harness({ run: async () => ({
+    ...result,
+    model: "actual/model",
+    stopReason: "stop",
+    toolCount: 42,
+    toolFailureCount: 7,
+    usage: { input: 11, output: 12, cacheRead: 13, cacheWrite: 14, cost: 0.5, turns: 2 },
+  }) });
+  const completed = await execute(h.tools.get("subagent_grounding"), { task: "private task", model: "cheap/model/with/slash" }, h.ctx);
+  assert.equal(completed.value.content[0].text, "child output");
+  assert.equal(h.emitted.length, 1);
+  const observation = h.emitted[0];
+  assert.equal(observation.name, "awf.telemetry.subagent.v1");
+  assert.deepEqual(observation.data, {
+    version: { major: 1, minor: 0 }, observationId: "observation-1", role: "grounding",
+    requestedModel: "cheap/model/with/slash", resolvedModel: "actual/model", thinkingLevel: "high",
+    queueDurationMs: 100, runDurationMs: 100,
+    inputTokens: 11, outputTokens: 12, cacheReadTokens: 13, cacheWriteTokens: 14, costUsd: 0.5,
+    outcome: "success", stopReason: "complete", toolCount: 42, toolFailureCount: 7,
+  });
+  const serialized = JSON.stringify(observation.data);
+  for (const forbidden of ["private task", "child output", "stderr", "events", "tools", "args", "failureMessage"]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
+
+  const isolated = harness();
+  isolated.pi.events.emit = () => { throw new Error("listener failed"); };
+  const value = await execute(isolated.tools.get("subagent_grounding"), { task: "still succeeds" }, isolated.ctx);
+  assert.equal(value.value.content[0].text, "child output");
+  for (const [source, bounded] of [["end", "complete"], ["tool", "tool"], ["length", "length"], ["canceled", "canceled"], [undefined, "unknown"]] as const) { const alias = harness({ run: async () => ({ ...result, stopReason: source }) }); await execute(alias.tools.get("subagent_grounding"), { task: "alias" }, alias.ctx); assert.equal(alias.emitted[0].data.stopReason, bounded); }
+  const aborted = harness({ run: async () => { throw new Error("aborted child"); } }); const controller = new AbortController(); controller.abort(); await assert.rejects(execute(aborted.tools.get("subagent_grounding"), { task: "aborted" }, aborted.ctx, controller.signal), /aborted child/); assert.equal(aborted.emitted[0].data.outcome, "canceled"); assert.equal(aborted.emitted[0].data.stopReason, "canceled");
+  const failedListener = harness({ run: async () => { throw new Error("failed child"); } }); failedListener.pi.events.emit = () => { throw new Error("listener failed"); }; await assert.rejects(execute(failedListener.tools.get("subagent_grounding"), { task: "failed" }, failedListener.ctx), /failed child/);
 });
 
 test("exploration limiter starts ten, queues FIFO, removes aborts, and releases on every exit", async () => {

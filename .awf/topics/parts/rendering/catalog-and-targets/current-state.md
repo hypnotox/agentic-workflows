@@ -66,9 +66,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling the Pi target renders exactly three governed extension files with valid TypeScript provenance comments and target-sensitive config hashes: two under awf-subagents and the separate awf-handoff entrypoint. A target set without Pi renders none, and all participate in ordinary check, sync, and manifest-cleanup semantics.
+Enabling the Pi target renders exactly five governed extension files with valid TypeScript provenance comments and target-sensitive config hashes: two under awf-subagents, the separate awf-handoff entrypoint, and the awf-dashboard index plus its descriptor-derived protocol projection. The protocol output declares and hashes the Go-owned descriptor as an attributed input, only the dashboard index consumes widget configuration, a target set without Pi renders none, and every output participates in ordinary check, sync, and manifest-cleanup semantics.
 Origin: ADR-0123
-Revised-by: ADR-0145
+Revised-by: ADR-0145, ADR-0146
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -79,18 +79,18 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-Both generated Pi extension factories require Pi 0.81.1 or newer with `ExtensionAPI.queueCommand` and share one actionable compatibility notification on an older or API-incompatible runtime, failing before either factory registers commands, tools, or other functional hooks.
+All three generated Pi extension factory entrypoints require Pi 0.81.1 or newer with the event, queued-command, persisted custom-entry, widget, overlay, and shutdown APIs their contracts use. They share one actionable compatibility notification on an older or core-API-incompatible runtime and fail before registering commands, tools, or other functional hooks; context-only APIs are checked before use and degrade visibly rather than being guessed.
 Origin: ADR-0123
-Revised-by: ADR-0145
+Revised-by: ADR-0145, ADR-0146
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-The containerized fixtures are the deterministic gate for every Pi extension, and release readiness additionally requires subagent and handoff smoke runs on the exact compatible fork for Pi 0.81.1 or a later build verified to expose the queued-command and persisted-session APIs, covering countdown cancellation, parent lineage, preserved old history, and kickoff continuation.
+The containerized fixtures are the deterministic gate for every Pi extension, and release readiness additionally requires subagent, handoff, and dashboard smoke runs on the exact compatible fork for Pi 0.81.1 or a later build verified to expose the required queued-command, persisted-session, custom-entry, widget, overlay, and shutdown APIs. The smoke covers association across a parent handoff, dashboard refresh, widget and overlay behavior, durable lifecycle writes, shutdown drain, and visible degraded operation when canonical binary resolution is unavailable.
 Origin: ADR-0123
-Revised-by: ADR-0145
+Revised-by: ADR-0145, ADR-0146
 Backing: unbacked
-Verify: Before a release, perform the documented real-Pi smoke on `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or on a later build after verifying `ExtensionAPI.queueCommand` and `ReadonlySessionManager.isPersisted`: run a subagent child, create a checkpoint, cancel one handoff, complete one handoff, verify parent lineage and preserved old history, and confirm the kickoff reads the exact memory path before continuing; record any compatibility finding in the release work.
+Verify: Before a release, follow the documented real-Pi smoke on `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or on a later compatible build: create and route an effort, cross one parent handoff and verify active-branch association, fork and resume a trajectory, open and refresh the dashboard, exercise its widget and overlay plus a canceled destructive action, durably complete the lifecycle, verify shutdown drain and retained history, then repeat with canonical binary resolution unavailable and confirm visible degraded non-blocking telemetry; record any compatibility finding in the release work.
 
 ### `invariant: pi-session-handoff-lifecycle`
 

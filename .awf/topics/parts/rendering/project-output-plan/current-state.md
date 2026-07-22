@@ -230,6 +230,12 @@ With multiple targets enabled, each adapter artifact (skill, agent) renders once
 Origin: ADR-0037
 Backing: test
 
+### `invariant: workflow-telemetry-governed-outputs-and-resident-data`
+
+The output plan governs `.awf/metrics/.gitignore` as the only resident-tree output and never claims dynamic metrics descendants. Sync, check, current-state discovery, nested-adopter discovery, sweep, target disable, and ordinary uninstall preserve resident telemetry; uninstall reports preserved data, while deterministic retention and confirmed purge remain the only recursive cleanup surfaces.
+Origin: ADR-0146
+Backing: test
+
 ### `invariant: output-plan-complete`
 
 The single deterministic output plan contains every producer class: catalog and local skills, target-owned bridge files, neutral singletons such as the memory-directory ignore file, generated index and domain docs, and the generated config-reference with its non-self dependencies, plus pre-render reservation nodes for skills. Reservation nodes are excluded from the files actually written.

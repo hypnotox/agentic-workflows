@@ -47,7 +47,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", ".awf/metrics/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
@@ -68,6 +68,35 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 }
 
+// invariant: rendering/project-output-plan:workflow-telemetry-governed-outputs-and-resident-data
+func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", nil)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	op, err := p.OutputPlan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var matches []OutputNode
+	for _, node := range op.Nodes {
+		if isMetricsResidentPath(node.Path) {
+			matches = append(matches, node)
+		}
+	}
+	if len(matches) != 1 || matches[0].Path != ".awf/metrics/.gitignore" || matches[0].Reservation {
+		t.Fatalf("metrics output nodes = %#v", matches)
+	}
+	if matches[0].Recipe.TemplateID != metricsTID || !slices.Contains(matches[0].ConsumedInputs, OutputInput{Path: "templates/metrics/gitignore.tmpl", Role: ArtifactTemplate}) {
+		t.Fatalf("metrics output declaration = %#v", matches[0])
+	}
+	got := renderedByPath(t, op.writeFiles(), ".awf/metrics/.gitignore")
+	if got != "# "+bannerText+"\n*\n!.gitignore\n" {
+		t.Fatalf("metrics ignore bytes = %q", got)
+	}
+}
+
 // invariant: rendering/project-output-plan:target-capabilities-closed
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
@@ -75,11 +104,14 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		{Name: "bad", Capabilities: []Capability{"unknown"}},
 		{Name: "bad", AgentDialect: "unknown"},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "../bad", TemplateID: "x"}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: "unknown", Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: MarkdownAgentDialect, Provenance: 99, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: true}, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: "unknown"}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: "unexpected", Role: ArtifactTemplate}}}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTelemetryProtocol}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: "unknown", Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: 99, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: true}, PolicyDeclared: true}}},
 	} {
 		if err := target.validate(); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)

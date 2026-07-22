@@ -66,9 +66,10 @@ instead of rotting.
   [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
-- **A working-memory directory** (`.awf/memory/`): always rendered with a
-  self-ignoring `.gitignore`; agents keep per-effort session notes there without ever
-  committing them.
+- **Working-memory and workflow-metrics directories** (`.awf/memory/`, `.awf/metrics/`): each has
+  a governed self-ignoring `.gitignore`. Memory holds temporary checkpoint prose. Metrics holds
+  privacy-minimal append-only effort ledgers that survive checkpoints and sessions; only the ignore
+  file is rendered, while resident descendants remain outside drift and ordinary uninstall ownership.
 
 awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
 Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native
@@ -76,7 +77,9 @@ paths and dialect: Codex agents are TOML profiles, while Claude Code and Gemini 
 bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your team
 uses.
 
-A compatible Pi 0.81.1+ build exposing `ExtensionAPI.queueCommand` automatically receives trusted project extensions with `subagent_grounding`,
+A compatible Pi 0.81.1+ build exposing the required queued-command, persisted-session, custom-entry,
+widget, overlay, and shutdown APIs receives three trusted project-extension factories across exactly
+five generated TypeScript files. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
 `model` selection and otherwise inherits the parent. Exploration requires `{task, breadth, detail}`:
 breadth is `targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`;
@@ -84,7 +87,14 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. A separate `handoff_session` tool continues from an exact durable `.awf/memory/` checkpoint in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
+activity stays outside parent model content. A separate `handoff_session` tool continues from an exact durable `.awf/memory/` checkpoint in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional. The dashboard extension adds
+explicit discovery, route, phase, association, trajectory, terminal, waiver, and repair lifecycle;
+a compact widget; and `/awf-dashboard` views over canonical `awf metrics` and `awf doctor` results.
+Its protocol file is derived from the Go-owned descriptor. Parent handoff copies only the validated
+active-branch association, and controlled refresh remains visibly stale or degraded when the pinned
+binary or handshake is unavailable. Telemetry excludes prompts, assistant text, tool arguments,
+command output, and repository paths other than the bounded checkpoint identifier. Diagnostics are
+advisory evidence, never an automatic score, workflow block, or reconciliation.
 
 ## How it works
 
@@ -213,6 +223,8 @@ disk.
 | `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
+| `awf metrics [selectors] [--json]` | Query canonical effort/session/phase/time-window metrics; export the same projection or validated normalized JSONL, append closed lifecycle requests, preview/apply terminal retention, or explicitly confirm one terminal-effort purge. |
+| `awf doctor [selectors] [--json]` | Read canonical exact and heuristic workflow findings. Findings are advisory and do not change exit status. |
 | `awf invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report owning domains, topic summaries, applicable rules and invariants with backing contracts, and Accepted or Implementing pending changes and progress. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits the same data. `--uncovered` reports eligible unowned and uncovered paths. |
@@ -220,7 +232,7 @@ disk.
 | `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
-| `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config). |
+| `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config and preserves nonempty resident `.awf/metrics/` data plus its ignore file). |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
 | `awf version` | Print the awf version. |
 

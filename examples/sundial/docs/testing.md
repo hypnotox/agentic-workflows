@@ -4,12 +4,12 @@
 <!-- awf:edit gate: default; create .awf/docs/parts/testing/gate.md to override -->
 ## The gate
 
-A single gate command runs the project's checks (tests, vet/lint, and any drift verification) and must be green before every commit. A red gate blocks the commit: fix the cause or revert.
+A single gate command runs the project's checks (tests, vet/lint, rendered-file drift, and any generated executable-extension lanes) and must be green before every commit. A red gate blocks the commit: fix the cause or revert. When Pi is enabled, keep strict TypeScript, protocol-parity, coverage, and minimum-runtime smoke tests in the same deterministic gate.
 
 <!-- awf:edit tiers: default; create .awf/docs/parts/testing/tiers.md to override -->
 ## Tiers
 
-The gate has tiers. A fast tier runs on every commit and covers the common path cheaply; a fuller tier runs the slower, broader checks before merging or releasing. Reach for the fuller tier when a change is risky or cross-cutting, and always before integrating.
+The gate has tiers. A fast tier runs on every commit and covers the common path cheaply; a fuller tier runs the slower, broader checks before merging or releasing. Reach for the fuller tier when a change is risky or cross-cutting, and always before integrating. Generated runtime tests belong in the tier that can enforce them consistently, never in an undocumented manual exception.
 
 <!-- awf:edit layout: from .awf/docs/parts/testing/layout.md -->
 ## Layout

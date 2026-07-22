@@ -2,7 +2,10 @@
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.
-- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse and fingerprint the normative telemetry descriptor, implement its confined durable append-only resident ledger, and produce canonical metrics, normalized exports, and diagnostic results without a database or daemon.
+- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse,
+  fingerprint, and project the normative telemetry descriptor, implement its confined durable
+  append-only resident ledger, and produce canonical metrics, normalized exports, and diagnostic
+  results without a database, background daemon, or TypeScript aggregation engine.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s
@@ -20,9 +23,12 @@
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
 - **Pi ai/TUI 0.81.1, compatible coding-agent 0.81.1, and TypeBox 1.1.38**: peer APIs used only by the generated Pi
   extensions at runtime; they are supplied by the adopter's Pi installation and are not dependencies
-  of the awf binary. The test package pins pi-ai and pi-tui directly at 0.81.1, TypeBox directly at
-  1.1.38, and coding-agent to the checksummed `hypnotox/pi` `fork-v0.81.1-awf.3` release URL because
-  the official coding-agent 0.81.1 artifact lacks `ExtensionAPI.queueCommand`. Its lockfile SRI is
+  of the awf binary. The dashboard additionally requires custom session entries, widget and overlay
+  APIs, lifecycle events, and shutdown notification; all three extension factories fail closed before
+  functional registration when their required minimum surface is absent. The test package pins pi-ai
+  and pi-tui directly at 0.81.1, TypeBox directly at 1.1.38, and coding-agent to the checksummed
+  `hypnotox/pi` `fork-v0.81.1-awf.3` release URL because the official coding-agent 0.81.1 artifact
+  lacks `ExtensionAPI.queueCommand`. Its lockfile SRI is
   `sha512-Xk34jkheEgNwBPMfT00+jmhY3YHcMkq5xL3C+a1Cr9yR0hsN76J5am6RJkZVQSxwAdHS2GKgzREElp0awve/sQ==`.
 - **Docker, Node, TypeScript, and c8**: pinned repo-only test dependencies under
   `tools/pi-extension-test/`; no host npm installation is used.

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-22
 adrs: [146]
-status: Proposed
+status: Implemented
 ---
 # Plan: Pi Workflow Telemetry and Dashboard
 
@@ -228,3 +228,4 @@ Tasks 4.1 through 4.8 are one coupled final application transaction and one clos
 - The initial CLI intentionally omits `awf doctor --fail-on`; ADR-0146 permits a later explicit opt-in failure policy but keeps this implementation non-blocking.
 - Privacy and generated-artifact guidance extend existing architecture and working-with-awf documents; no new catalog document is introduced.
 - Every Applied batch must use the digest/sequence reported by the checker at execution time rather than a plan-time corpus count.
+- Implementation findings: none.

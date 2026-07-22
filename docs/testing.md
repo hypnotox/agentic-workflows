@@ -7,7 +7,8 @@
 `./x gate` runs the project's checks and must be green before every commit: the test suite
 with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
 blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
-coverage, `go vet`, `golangci-lint`, a whole-program dead-code check (ADR-0063),
+coverage across all five generated Pi TypeScript files, descriptor cross-runtime parity, `go vet`,
+`golangci-lint`, a whole-program dead-code check (ADR-0063),
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan
 (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
 
@@ -55,7 +56,8 @@ needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 ## Tiers
 
 awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
-identical Go and containerized TypeScript steps; the `full` argument is accepted only so the rendered pre-push hook
+identical Go and containerized TypeScript steps, including protocol parity and the pinned real-Pi
+three-factory smoke; the `full` argument is accepted only so the rendered pre-push hook
 payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
 tier to reach for; the whole gate is fast enough to run before every commit.
 
@@ -95,14 +97,23 @@ golden-completeness guard machine-enforcing the one-golden-per-artifact conventi
 
 Pi-extension tests live under `tools/pi-extension-test/`. A digest-pinned container keeps locked
 dependencies in a named volume, snapshots the read-only checkout inside the container for each run,
-and executes strict TypeScript and coverage checks without host npm state. Every rendered extension
-file carries a `// @ts-nocheck` directive (ADR-0126) that keeps adopter IDEs quiet without a
-resolvable `@types/node`; the container strips that line from its snapshot before `tsc` runs, so the
-type-check still covers the real extension code. Runner tests cover
+and executes strict TypeScript plus 100% statement, branch, function, and line coverage checks without
+host npm state. Every rendered extension file carries a `// @ts-nocheck` directive (ADR-0126) that
+keeps adopter IDEs quiet without a resolvable `@types/node`; the container strips that line from its
+snapshot before `tsc` runs, so the type-check still covers the real extension code. Descriptor golden
+and fixture tests compare Go and TypeScript vocabulary, event acceptance, creation and append recovery,
+and gate classification. Dashboard tests cover confined owner-only storage, leases, tombstones,
+serialized drain, explicit versus passive failure, active-branch association, trajectory navigation,
+closed lifecycle schemas, controlled binary handshake and refresh, atomic stale/degraded state,
+widget and overlay rendering, fixed maintenance arrays, confirmation, privacy exclusions, and no-spawn
+rendering. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
-in-memory pinned-fork Pi 0.81.1 runtime proves that partial details, result-middleware error patches, and
-current-leaf mixed-implementation blocking survive the real runtime event seam without entering
-model-visible content. Compatibility tests reject an official-0.81.1-shaped API that lacks the required queued-command or persisted-session surface. Handoff tests cover the closed schema, path and symlink boundaries, exclusivity, pending token, countdown cleanup and cancellation, pending-window revalidation, parent-linked replacement, teardown failures, kickoff, and editor fallback. The container type-check and c8 coverage globs include every extension TypeScript file. Unit tests cover exact all-role model routing and rejection, inherited
+in-memory pinned-fork Pi 0.81.1 runtime loads all three extension factories and proves that partial details,
+result-middleware error patches, producer observations, association copying, widget and overlay
+registration, lifecycle durability, shutdown drain, canonical refresh degradation, and current-leaf
+mixed-implementation blocking survive the real runtime seam without entering model-visible content.
+Compatibility tests reject an official-0.81.1-shaped API that lacks any required queued-command,
+persisted-session, custom-entry, widget, overlay, or shutdown surface. Handoff tests cover the closed schema, path and symlink boundaries, exclusivity, pending token, countdown cleanup and cancellation, pending-window revalidation, parent-linked replacement, teardown failures, kickoff, and editor fallback. The container type-check and c8 coverage globs include every extension TypeScript file. Unit tests cover exact all-role model routing and rejection, inherited
 thinking, and the ten-active FIFO limiter's abort and release lifecycle including runner setup
 failure. Grounding schema/prompt tests and shared-renderer tests cover every role and state at narrow
 and normal widths, including omissions, diagnostics, usage, malformed details, and configurable

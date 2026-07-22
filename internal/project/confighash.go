@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -53,6 +54,9 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		vs[r] = p.Cfg.Vars[r]
 	}
 	proj["vars"] = vs
+	if strings.Contains(assembled, ".telemetryWidgetEnabled") || strings.Contains(assembled, ".telemetryWidgetShowCost") {
+		proj["workflowTelemetry.widget"] = p.Cfg.WorkflowTelemetry.Widget
+	}
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).

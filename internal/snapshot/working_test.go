@@ -96,6 +96,35 @@ func TestWorkingTree(t *testing.T) {
 	}
 }
 
+func TestWorkingTreeExcludesIgnoredMetricsDescendants(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeStage(t, wt, dir, ".awf/metrics/.gitignore", "*\n!.gitignore\n", 0o644)
+	if _, err := wt.Commit("metrics ignore", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, ".awf", "metrics", "efforts", "e", "sessions", "s.jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte("resident\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	tree, err := snapshot.WorkingTree(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := tree.Lookup(".awf/metrics/.gitignore"); !ok {
+		t.Fatal("governed metrics ignore missing from snapshot")
+	}
+	if _, ok := tree.Lookup(".awf/metrics/efforts/e/sessions/s.jsonl"); ok {
+		t.Fatal("ignored resident metrics descendant entered snapshot")
+	}
+}
+
 // invariant: tooling/cli:init-unborn-head-supported
 func TestWorkingTreeUnborn(t *testing.T) {
 	_, dir := gitfixture.InitRepo(t)

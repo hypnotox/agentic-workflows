@@ -3,7 +3,7 @@
 
 Generated executable adapter-runtime outputs and their ownership boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Current matched paths: `.pi/extensions/awf-handoff/index.ts`, `.pi/extensions/awf-subagents/index.ts`, `.pi/extensions/awf-subagents/runner.ts`. Marker sites: `internal/project/output_plan_test.go:168 [invariant] rendering/adapter-outputs:generated-adapter-runtime-ownership`.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Current matched paths: `.pi/extensions/awf-dashboard/index.ts`, `.pi/extensions/awf-dashboard/protocol.ts`, `.pi/extensions/awf-handoff/index.ts`, `.pi/extensions/awf-subagents/index.ts`, `.pi/extensions/awf-subagents/runner.ts`. Marker sites: `internal/project/output_plan_test.go:200 [invariant] rendering/adapter-outputs:generated-adapter-runtime-ownership`, `internal/project/target_test.go:245 [invariant] rendering/adapter-outputs:pi-workflow-dashboard-runtime`.
 
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 
@@ -13,4 +13,10 @@ This topic records the current ownership contract for generated executable adapt
 
 Enabled target extension outputs under `.pi/extensions/**` are owned by this topic even though their generated-output classification excludes them from whole-tree coverage eligibility.
 Origin: ADR-0144
+Backing: test
+
+### `invariant: pi-workflow-dashboard-runtime`
+
+The generated awf-dashboard runtime restores only active-branch association, validates and appends the descriptor protocol through confined owner-only leased storage, drains serialized writes on shutdown, and keeps passive failures non-blocking while explicit lifecycle failures remain visible. Its closed lifecycle, metrics, and doctor tools, trajectory handling, controlled canonical refresh, widget, overlay, confirmed fixed-argument maintenance, and bounded observations neither infer workflow state nor persist conversational content, raw tool arguments, commands, output, or unrestricted paths.
+Origin: ADR-0146
 Backing: test

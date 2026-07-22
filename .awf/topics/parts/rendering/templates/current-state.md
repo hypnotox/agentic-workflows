@@ -154,6 +154,12 @@ The rendered plan-authoring skill, plan reviewer, implementation-plans README, a
 Origin: ADR-0142
 Backing: test
 
+### `invariant: pi-workflow-dashboard-public-contract`
+
+The Pi templates publish one descriptor-derived telemetry vocabulary and a five-file extension surface whose three factories exchange only bounded versioned observations and validated active-branch association. The dashboard exposes explicit lifecycle and query-only metrics/doctor tools, a compact optional widget, an on-demand overview/phases/history/findings/maintenance overlay, controlled canonical refresh with visible stale or degraded state, and confirmed fixed-argument repair, waiver, retention, and purge actions; it provides no automatic score, blocking diagnosis, reconciliation, daemon, or local historical aggregation.
+Origin: ADR-0146
+Backing: test
+
 ### `invariant: pi-dedicated-grounding-dispatch`
 
 In the generated Pi extension and skills, brainstorming's grounding check dispatches through the dedicated grounding tool while general exploration and coupling audits use the exploration tool, and no non-Pi target's rendered output contains either Pi subagent tool name.

@@ -3,7 +3,8 @@
 `./x gate` runs the project's checks and must be green before every commit: the test suite
 with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
 blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
-coverage, `go vet`, `golangci-lint`, a whole-program dead-code check (ADR-0063),
+coverage across all five generated Pi TypeScript files, descriptor cross-runtime parity, `go vet`,
+`golangci-lint`, a whole-program dead-code check (ADR-0063),
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan
 (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
 

@@ -214,6 +214,8 @@ test("runner bounds every event and counts omissions", async () => {
   const result = await pending;
   assert.equal(result.events.length, MAX_DISPLAY_EVENTS);
   assert.equal(result.omittedEvents, 8);
+  assert.equal(result.toolCount, 26);
+  assert.equal(result.toolFailureCount, 0);
   assert.match(updates[0].events[0].text, /event truncated/);
   assert.match(updates[1].events[1].toolCallId, /toolCallId truncated/);
   assert.match(updates[1].events[1].toolName, /toolName truncated/);

@@ -95,7 +95,7 @@
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
-- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models.
+- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, its deterministic TypeScript projection, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
@@ -147,7 +147,13 @@
   regeneration-checked) and the `awf config` CLI command (gated live mode, static pre-adoption
   fallback).
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
-  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension, while `templates/pi/awf-handoff/` contains the separate main-session handoff state machine. The latter validates durable memory paths, queues a single-use private command after settlement, runs the cancellable countdown and revalidation, creates a parent-linked session, and submits kickoff only through the replacement context. Pi-rendered workflow
+  `templates/pi/awf-subagents/` contains the two-file Pi delegation extension,
+  `templates/pi/awf-handoff/` contains the main-session handoff state machine, and
+  `templates/pi/awf-dashboard/` contains the writer, tools, widget, overlay, and publication wrapper
+  for the descriptor-derived protocol. The handoff extension validates durable memory paths, queues a
+  single-use private command after settlement, runs the cancellable countdown and revalidation,
+  creates a parent-linked session, copies a validated active association during `newSession.setup`,
+  and submits kickoff only through the replacement context. Pi-rendered workflow
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
   language. Exploration requires task, breadth, and detail, which feed Pi's dynamic fixed prompt;
@@ -159,9 +165,12 @@
   Bounded structured details drive one shared inline renderer for all four tools, while only final
   report or failure-summary content reaches the parent model. The catalog itself is the
   compile-time `catalog.Standard` value in `internal/catalog`.
-- **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% coverage harness for
-  every dogfooded generated extension, including real pinned-runtime replacement lifecycle proofs. Its repo-keyed persistent container snapshots current source
-  and keeps npm dependencies off the host.
+- **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% statement, branch,
+  function, and line coverage harness for every dogfooded generated extension. Cross-language tests
+  hold descriptor validation and recovery behavior in parity; an in-memory pinned Pi runtime loads all
+  three factories and exercises producer exchange, handoff association, widget and overlay
+  registration, lifecycle append and shutdown drain, canonical refresh, and degraded mode. Its
+  repo-keyed persistent container snapshots current source and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.
 - **`internal/changelog/`**: parses the embedded changelog into filterable entries; powers `awf

@@ -496,6 +496,11 @@ func (p *Project) eligibleCoveragePaths(tree *snapshot.Tree, lock *manifest.Lock
 // lock entry) nor matched by one of the contextIgnore globs. It takes the
 // contextIgnore list explicitly so the staged check can filter the index
 // universe by the index config rather than the working config.
+func isMetricsResidentPath(path string) bool {
+	path = filepath.ToSlash(filepath.Clean(path))
+	return path == config.DirName+"/metrics" || strings.HasPrefix(path, config.DirName+"/metrics/")
+}
+
 func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
 	generated := map[string]bool{}
 	if lock != nil {
@@ -506,7 +511,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	files := tree.List()
 	var nested []string
 	for _, f := range files {
-		if !f.Scannable() {
+		if !f.Scannable() || isMetricsResidentPath(f.Path) {
 			continue
 		}
 		const suffix = "/" + config.DirName + "/config.yaml"
@@ -516,7 +521,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	}
 	var out []string
 	for _, f := range files {
-		if !f.Scannable() {
+		if !f.Scannable() || isMetricsResidentPath(f.Path) {
 			continue
 		}
 		insideNested := false

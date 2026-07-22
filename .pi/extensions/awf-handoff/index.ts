@@ -42,6 +42,13 @@ export interface HandoffPathOps {
   dirname(path: string): string; isAbsolute(path: string): boolean; normalize(path: string): string;
   relative(from: string, to: string): string; resolve(...paths: string[]): string; sep: string;
 }
+export interface TelemetryAssociation {
+  effortId: string;
+  sessionId: string;
+  trajectoryId: string;
+  associationOrigin: "created" | "handoff" | "manual" | "repair";
+}
+
 export interface HandoffDependencies extends MinimumRuntimeDependencies {
   extensionFile: string;
   lstat(path: string): Promise<HandoffStat>;
@@ -81,6 +88,38 @@ export async function validateMemoryPath(memoryPath: string, deps: HandoffDepend
     if (final && !stat.isFile()) throw new Error(`memoryPath is not a regular file: ${current}`);
   }
   return memoryPath;
+}
+
+function boundedIdentifier(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && Buffer.byteLength(value, "utf8") <= 128 && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
+}
+
+export function validateTelemetryAssociation(value: unknown): value is TelemetryAssociation {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Record<string, unknown>;
+  const keys = Object.keys(candidate).sort();
+  if (keys.join(",") !== "associationOrigin,effortId,sessionId,trajectoryId") return false;
+  return boundedIdentifier(candidate.effortId) && boundedIdentifier(candidate.sessionId) && boundedIdentifier(candidate.trajectoryId)
+    && ["created", "handoff", "manual", "repair"].includes(String(candidate.associationOrigin));
+}
+
+export function requestHandoffAssociation(pi: ExtensionAPI): TelemetryAssociation | undefined {
+  let open = true;
+  let responses = 0;
+  let association: TelemetryAssociation | undefined;
+  const respond = (value: unknown): void => {
+    if (!open) return;
+    responses++;
+    if (responses !== 1 || !value || typeof value !== "object" || (value as any).version?.major !== 1 || (value as any).version?.minor !== 0 || !validateTelemetryAssociation((value as any).association)) {
+      association = undefined;
+      return;
+    }
+    association = { ...(value as any).association };
+  };
+  try { pi.events.emit("awf.telemetry.association.request.v1", { version: { major: 1, minor: 0 }, respond }); }
+  catch { association = undefined; }
+  open = false;
+  return responses === 1 ? association : undefined;
 }
 
 export function buildKickoffWrapper(memoryPath: string, kickoff: string): string {
@@ -151,8 +190,14 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
         const oldSessionFile = ctx.sessionManager.getSessionFile();
         if (!oldSessionFile) throw new Error("The active session is no longer persisted");
         const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
+        const association = requestHandoffAssociation(pi);
         await ctx.newSession({
           parentSession: oldSessionFile,
+          async setup(sessionManager) {
+            if (!association) return;
+            try { sessionManager.appendCustomEntry("awf.telemetry.association.v1", { ...association }); }
+            catch { /* association propagation is best-effort */ }
+          },
           async withSession(replacementCtx) {
             try { await replacementCtx.sendUserMessage(wrapper); }
             catch {

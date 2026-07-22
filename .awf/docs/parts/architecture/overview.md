@@ -29,15 +29,26 @@ hardcoded literal. A project selects adapters through the `targets` array (defau
 resolved against a built-in registry of adapters (`claude`, `codex`, `copilot`, `cursor`, `gemini`,
 `pi`), each rendering skills and agents into its own runtime layout: `claude` and `gemini` add a
 bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cursor reads
-`AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog
-outputs: Pi automatically renders the two-file project-local `.pi/extensions/awf-subagents/` TypeScript
-delegation extension and the separate `.pi/extensions/awf-handoff/index.ts` checkpoint handoff extension. awf's own config tree lives at `.awf/`, decoupled from any one runtime's
-directory.
+`AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog outputs. Pi renders exactly five project-local TypeScript files:
+the two-file `.pi/extensions/awf-subagents/` delegation extension, the checkpoint handoff extension,
+and the two-file `.pi/extensions/awf-dashboard/` telemetry runtime. The dashboard protocol file is
+projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. awf's
+own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
-Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union; Go validates and appends one JSONL stream per session, projects causal lifecycle and trajectory state, performs leased deterministic retention, and serves canonical selector-driven metrics and diagnosis without treating ledger descendants as rendered artifacts. `awf metrics` queries or exports that model, while read-only `awf doctor` reports exact violations and configured versioned heuristics without blocking on findings.
+Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. Only its self-ignoring
+`.gitignore` is governed output; effort ledgers, leases, tombstones, trash, and caches are ignored
+resident data that sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim.
+An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union.
+Go validates and appends one JSONL stream per session, projects explicit discovery, route, phase,
+handoff, and trajectory state, performs leased deterministic terminal-effort retention, and serves
+canonical selector-driven metrics and diagnosis. `awf metrics` queries or exports that model, while
+read-only `awf doctor` reports exact violations and configured versioned heuristics without a score,
+automatic repair, blocking verdict, or daemon. The Pi dashboard writes conforming events and refreshes
+both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
+stale or degraded.
 
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
-ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools and session-handoff capabilities), validate bridge/output declarations before planning, and retain declarers on shared recipes for deterministic diagnostics and hashes.
+ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools and session-handoff capabilities), validate bridge/output declarations before planning, and retain declarers, producer kinds, and exact protocol inputs on shared recipes for deterministic diagnostics, attribution, and hashes.
