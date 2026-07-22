@@ -16,9 +16,9 @@ The generated Pi extensions are executable standard artifacts installed into ado
 
 ## Decision
 
-1. awf will ship workflow telemetry and its Pi dashboard as standard functionality for Pi-enabled adopter projects. The implementation introduces a Go telemetry package as the canonical storage, validation, projection, selection, aggregation, retention, and diagnostic engine, and a generated `.pi/extensions/awf-dashboard/index.ts` extension as the Pi runtime surface.
+1. awf will ship workflow telemetry and its Pi dashboard as standard functionality for Pi-enabled adopter projects. The implementation introduces a Go telemetry package as the canonical protocol, reader, projection, selection, aggregation, retention, and diagnostic engine, and a generated `.pi/extensions/awf-dashboard/index.ts` extension as the Pi runtime writer and UI surface. TypeScript writes are conforming protocol implementations, not a second projection or diagnostic engine.
 
-2. The authoritative history is an append-only, versioned JSONL event ledger under `.awf/metrics/efforts/<effort-id>/sessions/`, with one stream per Pi session to avoid cross-session writer contention. Optional aggregate caches are disposable and never authoritative. `.awf/metrics/**` is ignored resident runtime data and receives an explicit closed-tree ownership or exemption model rather than being mistaken for undeclared config-tree input.
+2. The authoritative history is an append-only, versioned JSONL event ledger under `.awf/metrics/efforts/<effort-id>/sessions/`, with one stream per Pi session to avoid cross-session writer contention. Optional aggregate caches are disposable and never authoritative. `.awf/metrics/**` is an explicit ignored dynamic-resident closed-tree exemption. Only its generated `.gitignore` is governed output; runtime descendants never enter the manifest, drift set, or cleanup ownership.
 
 3. A single machine-readable protocol descriptor owned by the Go telemetry package is normative for protocol versions, event kinds, routes, phases, activities, bounded categories, identifier limits, and payload shapes. Go validation consumes that descriptor, and Pi target rendering projects it into TypeScript constants, types, and validators. The descriptor participates in render input attribution and hashing, with cross-language golden tests preventing protocol drift.
 
@@ -38,7 +38,7 @@ The generated Pi extensions are executable standard artifacts installed into ado
 
 11. Current-path aggregates follow the active trajectory ancestry, while effort totals include every trajectory and retain discarded-branch work. Neither branch navigation nor repair rewrites historical events. Dashboard projections make the distinction visible so discarded work is neither lost nor silently charged twice to the active path.
 
-12. Continuing work from a terminal effort is explicit. The default for tackling a new issue from completed analysis is a new `derived` effort with immutable opaque origin effort, trajectory, and anchor metadata and independent lifecycle and totals. `independent` starts unrelated work, while `reopen` explicitly creates a new trajectory in the same terminal effort. History may group derived families but never double-count parent analysis cost.
+12. Continuing work from a terminal effort is explicit. The default for tackling a new issue from completed analysis is a new `derived` effort with immutable opaque origin effort, trajectory, and anchor metadata and independent lifecycle and totals. `independent` starts unrelated work. `reopen` is allowed only for an unpruned completed effort and explicitly creates a new trajectory in that effort; abandoned and pruned efforts can only be origins for a new effort. History may group derived families but never double-count parent analysis cost.
 
 13. Writers use a serialized append queue per stream and drain it during extension shutdown. Appends are line-oriented and flush safely. Readers ignore and report only a corrupt final partial line, report other integrity failures, and reject unsupported protocol interpretations explicitly rather than guessing. Retention coordinates with late writers to terminal efforts so pruning cannot race an active append into deleted state.
 
@@ -60,15 +60,91 @@ The generated Pi extensions are executable standard artifacts installed into ado
 
 22. The Pi UI consists of a compact always-visible active-effort widget plus an on-demand `/awf-dashboard` interactive overlay for current effort, trajectory, phase usage, history, findings, retention state, and explicit repair or association controls. It does not replace Pi's footer.
 
-23. The TypeScript extension obtains canonical projections by invoking the verified `awf metrics --json` and `awf doctor --json` surfaces at startup, overlay open or refresh, and relevant state changes, then caches results in memory. Rendering never spawns a process. The widget may merge current-session counters into the last canonical projection and clearly marks stale or degraded refreshes; TypeScript does not reimplement historical aggregation or diagnosis, and no daemon is introduced.
+23. The TypeScript extension obtains canonical projections by invoking the verified `awf metrics --json` and `awf doctor --json` surfaces at startup, overlay open or refresh, and relevant state changes, then caches results in memory. It resolves the binary through `.awf/bootstrap.sh` when present and otherwise through `awf` on `PATH`; it never depends on optional `./x`. A protocol handshake precedes projection calls. A missing or incompatible binary leaves direct conforming lifecycle writes registered but disables canonical query and doctor tools with an explicit degraded result. Rendering never spawns a process. The widget may merge current-session counters into the last canonical projection and clearly marks stale or degraded refreshes; TypeScript does not reimplement historical aggregation or diagnosis, and no daemon is introduced.
 
-24. The dashboard extension owns local event writing, passive parent-session telemetry, lifecycle and doctor tools, dashboard commands and overlay, the active widget, retention invocation, shutdown drain, and association restoration. Existing subagent and handoff extensions publish and propagate structured versioned telemetry contracts without taking ownership of the ledger or projections.
+24. The dashboard extension owns local event writing, passive parent-session telemetry, lifecycle and doctor tools, dashboard commands and overlay, the active widget, retention invocation, shutdown drain, and association restoration. Existing subagent and handoff extensions communicate through versioned `pi.events` contracts and never import dashboard modules or own the ledger or projections. The dashboard attaches the active association to privacy-filtered producer observations. Handoff synchronously requests a validated association copy during the handoff and appends it through `newSession.setup`; absence or version mismatch degrades without blocking handoff.
 
-25. Retention limits, widget behavior, diagnostic thresholds, baseline sample size, and heuristic enablement live in tracked `.awf/config.yaml`, with strict validation, schema migration, configspec descriptions, generated reference state, hashing, and lock participation. No ignored local settings file becomes a second authority.
+25. Retention limits, widget behavior, diagnostic thresholds, baseline sample size, baseline percentile, and heuristic enablement live in the exact tracked `workflowTelemetry` config shape below, with strict validation, schema migration, configspec descriptions, generated reference state, hashing, and lock participation. No ignored local settings file becomes a second authority.
 
-26. Pi target output planning, rendering, manifest ownership, cleanup, drift checking, generated checkout fixtures, and example projects govern the dashboard extension and projected protocol artifacts alongside the existing Pi extensions. Tests cover target exclusion, protocol parity, runtime registration, privacy exclusions, association and handoff propagation, trajectories and derived efforts, append integrity and races, deterministic retention, selector and JSON parity, diagnostic evidence, UI refresh boundaries, and degraded passive telemetry.
+26. Pi target output planning, rendering, manifest ownership, cleanup, drift checking, generated checkout fixtures, and example projects govern exactly two new Pi target outputs, `.pi/extensions/awf-dashboard/index.ts` and `.pi/extensions/awf-dashboard/protocol.ts`, taking the Pi target from three to five extension files. The neutral generated `.awf/metrics/.gitignore` is the third new governed output overall. Current-state metadata adds `internal/telemetry/**` to tooling domain territory and adds `internal/project/target.go` and `internal/project/target_test.go` to the catalog-and-targets topic; the Pi runtime contract belongs to rendering topics rather than the Go telemetry topic. Tests cover target exclusion, protocol parity, runtime registration, publication-safe empty values, privacy exclusions, association and handoff propagation, trajectories and derived efforts, append integrity and races, deterministic retention, selector and JSON parity, diagnostic evidence, UI refresh boundaries, and degraded passive telemetry.
 
-27. Implementation updates architecture, workflow, working-with-awf, configuration, testing, privacy, and generated artifact documentation in the same checked batches as behavior. The doctor is documented as an expansion point for later repository adherence and quality diagnostics, but this decision does not authorize automatic reconciliation or collection of conversational content.
+27. Implementation updates architecture, workflow, working-with-awf, configuration, testing, privacy, generated artifact documentation, and the authored AGENTS.md convention parts in the same checked batches as behavior. Every Applied batch carries exactly its matching current-state claim mutations and provenance. Every config or lifecycle transition runs `./x sync`, stages generated documentation including `docs/decisions/INDEX.md`, and passes the staged check and gate. All new templates preserve `missingkey=zero` publication safety and have deterministic empty-data tests. The doctor is documented as an expansion point for later repository adherence and quality diagnostics, but this decision does not authorize automatic reconciliation or collection of conversational content.
+
+### Writer, protocol, and extension contracts
+
+The descriptor defines the complete event envelope and payload union. Every event has a protocol version, bounded unique event ID, bounded idempotency key, effort and session IDs, trajectory and Pi anchor IDs when associated, timestamp, event kind, and a causal predecessor frontier. A lifecycle retry with the same idempotency key and identical payload is a success without a second logical mutation; reuse with a different payload is an integrity violation. Passive observations may be duplicated physically after a crash, but their observation ID makes aggregation deduplicate them deterministically.
+
+The dashboard's per-stream queue validates against generated `protocol.ts`, appends one complete JSON line, flushes it, and acknowledges an explicit lifecycle operation only after durable completion. The Go reader validates against the same descriptor and remains normative when projections disagree. Protocol evolution may add event kinds or fields only under declared compatibility rules; an unsupported major version is rejected, while unknown optional fields in a compatible version are preserved but not interpreted.
+
+The inter-extension event names are versioned. Subagents publish only a bounded envelope of role, requested and resolved model, thinking level, queue and run duration, usage totals, categorized outcome and stop reason, tool count, and tool-failure count. They never publish their task, output, stderr, display text, tool arguments, or argument previews to telemetry. The handoff association request carries a callback and accepts exactly one validated response. Because the request occurs during an actual handoff after extension loading, it is independent of factory load order; no response means no copied association. Shutdown ordering is irrelevant to producers because published observations are best effort, while the dashboard owns its queue drain.
+
+Binary resolution starts at the project root derived from the extension path. When `.awf/bootstrap.sh` exists, the extension runs it with `bash`, requires a zero exit and exactly one non-empty stdout path, and uses that binary. Otherwise it resolves `awf` through `PATH`. Before a canonical read it invokes `awf metrics protocol --json` and requires a binary allowed by the existing project version gate plus an exactly supported telemetry protocol major. Resolution, handshake, or projection failure is cached as a visible degraded state and retried only at the controlled refresh boundaries.
+
+### Lifecycle and causal-order contract
+
+Effort lifecycle state is `discovery`, `active`, `completed`, or `abandoned`. Creation starts `discovery`; route selection moves it to `active`; route change remains `active`; completion and abandonment are terminal events. Reopen moves only an unpruned `completed` effort back to `active`, starts a new trajectory and terminal epoch, and preserves all earlier totals. An abandoned effort is never reopened. A missing pruned origin can be referenced opaquely by a new derived effort but cannot be reconstructed or reopened.
+
+The legal lifecycle mutations are closed: create, associate or detach session, select or change route, start or finish phase, start or resume or close trajectory, complete, abandon, reopen, waive, and repair. A phase finish must name its causally visible unmatched start. A start must observe no other open top-level phase in its frontier. Duplicate identical retries are idempotent. A finish without its start, a second competing start from the same frontier, a mutation after terminal state other than allowed reopen, and causally ordered phase overlap are exact violations. Repairs name the rejected or superseded event and append a typed correction; they never make the source event disappear.
+
+Per-session order plus predecessor frontiers, explicit handoff links, trajectory parent and fork anchors, and transitive closure define a partial order. No wall-clock total order is invented across sessions. Exact ordering rules evaluate causally comparable events. Competing mutations from a shared frontier are reported as concurrent-state violations rather than ordered by timestamp. Timestamps remain authoritative only for durations when both endpoints are in one causally linked interval; negative or implausible clock results are integrity findings and are excluded from duration baselines.
+
+The route requirements are:
+
+| Route | Required ordered phases before completion |
+|---|---|
+| `direct` | brainstorming, implementation, implementation review, retrospective |
+| `adr` | brainstorming, ADR authoring, ADR review, implementation, implementation review, retrospective |
+| `plan` | brainstorming, planning, plan review, implementation, implementation review, retrospective |
+| `adr-plan` | brainstorming, ADR authoring, ADR review, planning, plan review, ADR-plan resync, implementation, implementation review, retrospective |
+| `bugfix` | brainstorming, implementation, implementation review, retrospective |
+| `investigation-only` | investigation, retrospective |
+
+Investigation is optional before any implementation route. Reentry is legal and counted, but it invalidates stale downstream evidence: ADR authoring after ADR review requires another ADR review; planning after plan review requires another plan review; either change after ADR-plan resync requires another resync; implementation after implementation review requires another implementation review. Completion requires the latest terminal epoch to satisfy its route and freshness rules. `investigation-only` may be selected only when no implementation phase exists. Route changes cause the final route's requirements to apply to the full causally ordered history. A waiver has a closed reason code, exact rule code, scope, and referenced evidence; it changes the matching finding to informational but does not change lifecycle state.
+
+### Integrity, retention, and resident-data contract
+
+The threat model covers accidental truncation or alteration, incompatible writers, path traversal, unsafe file types, and symlink or reparse-point redirection by repository content. It does not defend against a hostile process running as the same user, and the ledger has no cryptographic tamper-evidence guarantee. Readers distinguish a final partial line from malformed complete lines, invalid schemas, broken causal references, duplicate conflicts, and unsupported versions. All identifiers are single path components after validation. On POSIX, directories and new files use owner-only permissions, existing paths must be owned by the current user, and ledger, metadata, lease, cache, and pruning targets must be confined regular files or directories with no symlink traversal. Platforms without POSIX ownership enforce their closest regular-file and no-reparse equivalent. Explicit mutations fail closed on an unsafe path; passive telemetry degrades and reports it.
+
+Every append and prune operation takes a short cross-process effort lease using atomic creation, a random nonce, owner identity, a 30-second expiry, and a heartbeat every 10 seconds. A contender may recover an expired lease only after a further 30-second grace interval and a compare-before-remove check on its nonce. Under the lease, an append revalidates the effort path, appends and flushes, then releases. A pruner revalidates terminal state, atomically renames the effort into a private trash directory, writes a tombstone, and then releases before recursive deletion. The rename is the append/prune linearization point: a later writer observes the missing effort or tombstone and refuses rather than recreating it. Recovery completes deletion for a tombstoned trash entry, restores a renamed entry only when no tombstone was committed, and reports ambiguous states. Retry is idempotent by prune nonce.
+
+Only completed and abandoned efforts are retention candidates; active and discovery efforts are preserved. The `maxCompletedEffort*` config names use completed in this retention sense to include either terminal outcome. Age uses the latest terminal event timestamp. Count applies repository-wide to terminal efforts. Zero disables that retention dimension. An effort is selected if it exceeds enabled maximum age or falls beyond enabled maximum count after sorting newest first by terminal timestamp, creation timestamp, then effort ID. Pruning executes oldest candidates first with the inverse stable keys. Reopening must win the effort lease and append before candidate selection can remain valid; pruning rechecks terminal state under the same lease.
+
+The generated `.awf/metrics/.gitignore` self-ignores the resident tree. Project open, sync, check, and nested-adopter discovery skip runtime descendants without claiming them. Uninstall preserves the ignore file whenever resident metrics remain and removes it only with an empty directory or an explicitly confirmed metrics purge. Ordinary cleanup never deletes ledger, cache, trash, tombstone, or lease state.
+
+### Configuration and heuristic contract
+
+Schema migration and fresh scaffolds materialize this complete default block:
+
+```yaml
+workflowTelemetry:
+  retention:
+    maxCompletedEffortAgeDays: 90
+    maxCompletedEffortCount: 100
+  widget:
+    enabled: true
+    showCost: true
+  diagnostics:
+    heuristicsEnabled: true
+    minimumBaselineSamples: 10
+    baselinePercentile: 95
+    thresholds:
+      phaseReentryCount: 2
+      phaseDurationSeconds: 14400
+      phaseTokens: 200000
+      compactionCount: 3
+      handoffCount: 3
+      toolFailureCount: 3
+      gateFailureCount: 2
+      cacheReadPercentBelow: 10
+      subagentQueueWaitSeconds: 60
+      implementationReworkCount: 2
+```
+
+Retention zero values disable their individual dimension. Other counts and durations are positive integers; percentages are integers from 0 through 100. Disabling the widget hides only the widget. Disabling heuristics leaves exact diagnostics, collection, tools, and the overlay active. `showCost` suppresses cost display but not collection or export. Migration from every supported earlier schema adds this block without changing any unrelated configured value.
+
+Initial heuristic rule version 1 evaluates: reentries per named phase; duration and tokens per phase interval; compactions and handoffs per effort; categorized tool failures and failed gates per implementation segment; cache-read percentage as `cacheReadTokens / (inputTokens + cacheReadTokens) * 100` when the denominator is positive; queue wait per subagent invocation; and implementation rework as each return to implementation after an implementation review. The narrow shell classifier counts a gate only for an exact supported awf gate command shape; ambiguity is unclassified.
+
+An absolute signal fires when a value reaches an upper threshold or falls to the cache lower threshold. A historical signal is available only from at least `minimumBaselineSamples` completed comparable efforts with the same route, rule version, and available metric. Its baseline is the configured nearest-rank percentile; cache reuse uses the complementary lower percentile. Historical and absolute evidence are reported independently. Confidence is `medium` for one applicable trigger and `high` when both trigger; insufficient sample produces no historical trigger and is stated in evidence. Exact rules have confidence `certain`. Thresholds, cohort keys, sample count, percentile, observed value, and contributing event or counter IDs are present in every finding. No values from a newer or incompatible protocol enter a cohort.
 
 ## State changes
 
@@ -77,10 +153,12 @@ The generated Pi extensions are executable standard artifacts installed into ado
 - add `tooling/workflow-telemetry:trajectory-and-derived-effort-model`
 - add `tooling/workflow-telemetry:privacy-integrity-and-retention`
 - add `tooling/workflow-telemetry:canonical-projections-and-diagnostics`
-- add `tooling/workflow-telemetry:pi-dashboard-runtime`
 - add `tooling/cli:metrics-and-doctor-command-contract`
 - add `config/configuration:workflow-telemetry-settings`
+- add `config/migrations-and-locks:workflow-telemetry-config-migration`
 - update `rendering/catalog-and-targets:pi-extension-target-render`
+- add `rendering/project-output-plan:workflow-telemetry-governed-outputs-and-resident-data`
+- add `rendering/adapter-outputs:pi-workflow-dashboard-runtime`
 - add `rendering/templates:pi-workflow-dashboard-public-contract`
 
 ## Consequences
