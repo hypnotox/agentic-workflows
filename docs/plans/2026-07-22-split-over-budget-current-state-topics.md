@@ -128,15 +128,12 @@ Post-check for the rewrite (zero output required):
 
 ```bash
 cat /tmp/old_ids.txt | while read -r old; do
-  git grep -F "$old" -- ':!docs/decisions' ':!docs/plans' ':!.awf/memory' || true
+  git grep -F "$old" -- ':!docs/decisions' ':!docs/plans' ':!docs/topics' ':!docs/domains' ':!.awf/memory' || true
 done
 ```
 
-(`docs/topics` and `docs/domains` regenerate on sync, so any hit there disappears after
-the sync step; a hit anywhere else is an unconverted site.)
-
 Each batch's closing steps are identical: `./x sync`, stage the complete transaction
-(`git add -A -- .awf docs internal cmd templates .pi` plus any other rewritten paths the
+(`git add -- .awf docs internal cmd templates .pi` plus any other rewritten paths the
 post-check surfaced), `./x check --staged` clean, `./x gate` exit 0, commit. The Applied
 event's `state-sequence` is the next contiguous global sequence; `awf check` reports the
 expected value on mismatch and is the authority (at authoring time the next five are
@@ -155,7 +152,11 @@ expected value on mismatch and is the authority (at authoring time the next five
   Run `./x check`; it fails naming the computed digest ("does not match the computed
   digest"); replace the 64-zero placeholder with the reported digest; re-run `./x check`
   until the digest error is gone. Use the real date if it is no longer 2026-07-22.
-- [ ] **Task 1.2: Verify and commit.** `./x sync` (INDEX regenerates), stage
+- [ ] **Task 1.2: Capture the uncovered baseline.** Run
+  `./x context --uncovered > <scratchpad>/uncovered-before.txt` (any session-scratch
+  path; the file is throwaway tooling, never committed). The whole-effort Verification
+  section diffs against it.
+- [ ] **Task 1.3: Verify and commit.** `./x sync` (INDEX regenerates), stage
   `docs/decisions/0148-*.md docs/decisions/INDEX.md .awf/awf.lock`, `./x check --staged`
   clean, `./x gate` exit 0, commit:
 
@@ -270,7 +271,8 @@ expected value on mismatch and is the authority (at authoring time the next five
 ## Verification
 
 - `./x check` on the clean working tree prints no `above maxClaimsPerTopic` note.
-- `./x context --uncovered` reports no newly unowned paths compared to before the effort.
+- `./x context --uncovered` output diffs empty against the Task 1.2 baseline (no selector
+  changes occur in this plan).
 - `git grep -F "<old-id>"` for every removed id, excluding `docs/decisions` and
   `docs/plans`, returns no matches.
 - `awf topic rendering/pi-runtime` (and any other destination) lists its claims;
