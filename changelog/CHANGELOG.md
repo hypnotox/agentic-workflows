@@ -52,6 +52,10 @@ query a single version or a range.
   are mechanically blocked before any member executes. Active tool rows now show queued/running
   state, resolved and actual models, thinking level, role options, and cumulative per-turn usage with
   Pi-style cache-hit statistics.
+- Pi targets now render a guarded `handoff_session` extension and checkpoint guidance that can replace
+  a persisted TUI session with a parent-linked fresh session after a cancelable countdown. The Pi
+  extension fixture pins the checksummed `hypnotox/pi` 0.81.1 awf.3 fork that provides queued extension
+  commands.
 
 ### Bug fixes
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:
