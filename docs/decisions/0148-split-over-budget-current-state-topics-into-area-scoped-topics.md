@@ -31,9 +31,9 @@ Mechanics that constrain the split, verified against the checker:
   rejects any other value), and every `Revised-by:` entry must match an applied update
   operation on that exact id. A moved claim therefore lands with `Origin:` naming this ADR
   and an empty `Revised-by:`, regardless of its prior provenance. The prior trail stays
-  reachable through `awf topic <old-id> --history` on the removed id. Nineteen moved claims
-  currently carry `Revised-by` entries (templates 5, cli 8, catalog-and-targets 5,
-  configuration 1); their revision provenance survives only in history.
+  reachable through `awf topic <old-id> --history` on the removed id. Sixteen moved claims
+  currently carry `Revised-by` entries (templates 5, cli 7, catalog-and-targets 4); their
+  revision provenance survives only in history.
 - Precondition at freeze time, verified: zero `References:` lines exist in the claim
   corpus, so no reference edges need repointing and none may be authored against old ids
   while this ADR is in flight.
@@ -68,11 +68,13 @@ Mechanics that constrain the split, verified against the checker:
      contracts (8).
    - `rendering/catalog-and-targets` keeps the catalog and target seam (16); new
      `rendering/pi-runtime` takes the Pi runtime floor and boundaries (6).
-   - `tooling/cli` keeps command dispatch, version gating, and cross-command contracts
-     (15); new `tooling/context-and-topic` takes the read-only orientation surfaces (14);
-     new `tooling/init-and-enablement` takes init, add, remove, and new (13); new
-     `tooling/audit-commands` takes audit, repoaudit, and mutants (7). The audit claims
-     stay out of `tooling/audit-and-snapshots`, which already holds 14 claims.
+   - `tooling/cli` keeps command dispatch, version gating, and cross-command contracts,
+     including the topic-claim-budget advisory, which describes `awf check` output rather
+     than an orientation surface and stays under its stable id for the planned severity
+     follow-up (16); new `tooling/context-and-topic` takes the read-only orientation
+     surfaces (13); new `tooling/init-and-enablement` takes init, add, remove, and new
+     (13); new `tooling/audit-commands` takes audit, repoaudit, and mutants (7). The audit
+     claims stay out of `tooling/audit-and-snapshots`, which already holds 14 claims.
    - `config/configuration` keeps core schema semantics (15); new
      `config/configspec-and-reference` takes the config-spec model and the generated
      reference (7); new `config/validation` takes name, glob, target, and tag validation
@@ -94,7 +96,9 @@ Mechanics that constrain the split, verified against the checker:
 5. Application: V2 incremental batches, one per source topic, smallest first:
    catalog-and-targets, configuration, cli, templates, project-output-plan. Each batch is
    one staged transaction containing exactly its claim moves, every marker-site rewrite for
-   the moved claims (proof comments, `touches-state:`, `state:`), and the rendered fallout.
+   the moved claims (proof comments, `touches-state:`, `state:`), and the rendered fallout:
+   each batch runs `./x sync` in the same transaction, so rendered topic and domain docs,
+   and `docs/decisions/INDEX.md` on status-carrying batches, regenerate with it.
    The Implementing status event travels with the first Applied batch; the Implemented
    status event lands in the same transaction as the final Applied batch.
 6. Out of scope: in-part claim grouping (a part-format change), and promoting the
@@ -170,8 +174,6 @@ Mechanics that constrain the split, verified against the checker:
 - add `tooling/context-and-topic:context-static-fallback`
 - remove `tooling/cli:describe-read-only`
 - add `tooling/context-and-topic:describe-read-only`
-- remove `tooling/cli:topic-claim-budget-advisory`
-- add `tooling/context-and-topic:topic-claim-budget-advisory`
 - remove `tooling/cli:uncovered-collapses-directories`
 - add `tooling/context-and-topic:uncovered-collapses-directories`
 - remove `tooling/cli:uncovered-output-parity`
@@ -425,9 +427,13 @@ Mechanics that constrain the split, verified against the checker:
 
 - The budget advisory goes quiet only after the final batch; intermediate states keep it
   firing for not-yet-split offenders, which is acceptable because it is non-failing.
-- Provenance flattening is accepted: 158 claims will show this ADR as `Origin:`, and 19 of
+- Provenance flattening is accepted: 157 claims will show this ADR as `Origin:`, and 16 of
   them lose active `Revised-by` entries. The original rationale is one drilldown away via
   history on the removed id, and this ADR records the full mapping.
+- Mirrored selectors leave `awf context --full` packet volume for broad-selector paths
+  unchanged: an `internal/project/**` path still matches all six successor topics, so the
+  same claims apply, only better grouped. Drilldowns, topic docs, and the budget advisory
+  improve now; packet shrinkage arrives with the follow-up selector narrowing.
 - Every move is one-way: removed ids are never reused, so a claim cannot return to its old
   id. Old-id history reachability depends on the source topics staying alive; all five
   survive as core seams, and retiring one later would orphan its removed-id history.
@@ -438,15 +444,17 @@ Mechanics that constrain the split, verified against the checker:
   because no template, CLI, or schema behavior changes.
 - The 15 new topic shells (metadata plus empty-claim parts) land with this proposal so the
   ADR can be accepted; claims land only as batches apply.
-- Post-split, every topic holds at most 17 claims, leaving headroom under the budget of 20
-  and unblocking the follow-up severity-promotion ADR.
+- Post-split, every topic touched by this split holds at most 17 claims (sync-and-drift),
+  and the corpus-wide maximum becomes 18, under the budget of 20, unblocking the follow-up
+  severity-promotion ADR.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
 | One ADR per offender (5 ADRs) | Five review cycles restating the same criteria and provenance convention; the Pi regrouping spans two offenders and would entangle two ADRs anyway. |
-| Single big-bang transaction | A 158-claim, 300-plus-site diff in one commit is unreviewable and unresumable. |
+| Single big-bang transaction | A 157-claim, 300-plus-site diff in one commit is unreviewable and unresumable. |
+| Provenance-preserving move operation in the checker | A schema and lifecycle change to the current-state format for a one-off corpus event; history stays reachable via the removed id, so the tooling investment is not warranted. |
 | In-part claim grouping instead of splitting | The part parser forbids non-claim headings inside the Claims region; grouping is an adopter-facing format change and would not silence the advisory or shrink context packets. |
 | Merge audit claims into `tooling/audit-and-snapshots` | 14 existing plus 7 incoming claims lands at 21, immediately over budget. |
 | One merged Pi topic | 20 claims sits exactly at budget with zero headroom; the runtime floor and the workflow contracts are separable areas. |
