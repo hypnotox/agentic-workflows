@@ -81,29 +81,57 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]TargetOutput{}
-	for _, output := range piTarget.Outputs {
-		want[output.Path] = output
+	wantPaths := map[string]struct{}{
+		".pi/extensions/awf-handoff/index.ts":    {},
+		".pi/extensions/awf-subagents/index.ts":  {},
+		".pi/extensions/awf-subagents/runner.ts": {},
 	}
+	if len(piTarget.Outputs) != len(wantPaths) {
+		t.Fatalf("Pi target output count = %d, want exactly %d", len(piTarget.Outputs), len(wantPaths))
+	}
+	descriptorOutputs := make(map[string]TargetOutput, len(piTarget.Outputs))
+	for _, output := range piTarget.Outputs {
+		descriptorOutputs[output.Path] = output
+	}
+	if len(descriptorOutputs) != len(wantPaths) {
+		t.Fatalf("Pi target contains duplicate output paths: %#v", piTarget.Outputs)
+	}
+	for path := range wantPaths {
+		if _, ok := descriptorOutputs[path]; !ok {
+			t.Errorf("Pi target descriptor missing independently pinned output %s", path)
+		}
+	}
+	for path := range descriptorOutputs {
+		if _, ok := wantPaths[path]; !ok {
+			t.Errorf("Pi target descriptor contains unapproved output %s", path)
+		}
+	}
+
 	got := map[string]RenderedFile{}
+	renderedExtensionCount := 0
 	for _, file := range files {
 		if strings.HasPrefix(file.Path, ".pi/extensions/") {
+			renderedExtensionCount++
 			got[file.Path] = file
 		}
 	}
-	for path, output := range want {
+	if renderedExtensionCount != len(wantPaths) || len(got) != len(wantPaths) {
+		t.Errorf("rendered Pi extension count = %d (%d unique), want exactly %d", renderedExtensionCount, len(got), len(wantPaths))
+	}
+	for path := range wantPaths {
 		file, ok := got[path]
 		if !ok {
-			t.Errorf("Pi target did not render descriptor output %s", path)
+			t.Errorf("Pi target did not render independently pinned output %s", path)
 			continue
 		}
+		output := descriptorOutputs[path]
 		if output.Provenance != render.SlashComment || !strings.HasPrefix(file.Content, "// "+bannerText+"\n") {
 			t.Errorf("Pi extension %s does not use slash-comment provenance", path)
 		}
 	}
 	for path := range got {
-		if _, ok := want[path]; !ok {
-			t.Errorf("Pi target rendered extension absent from descriptor: %s", path)
+		if _, ok := wantPaths[path]; !ok {
+			t.Errorf("Pi target rendered extension outside independently pinned set: %s", path)
 		}
 	}
 	for _, target := range []string{"claude", "codex", "copilot", "cursor", "gemini"} {
@@ -636,6 +664,10 @@ func TestPiImplementationStateBoundary(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-minimum-runtime
 func TestPiMinimumRuntimeContract(t *testing.T) {
+	registrationMethods := []string{
+		"registerTool(", "registerCommand(", "registerShortcut(", "registerFlag(",
+		"registerMessageRenderer(", "registerEntryRenderer(", "registerProvider(",
+	}
 	for _, path := range []string{"awf-subagents/index.ts", "awf-handoff/index.ts"} {
 		content := renderPiExtensionFile(t, path)
 		guardStart := strings.Index(content, "export function guardMinimumRuntime")
@@ -661,23 +693,34 @@ func TestPiMinimumRuntimeContract(t *testing.T) {
 				t.Errorf("%s missing minimum-version contract %q", path, want)
 			}
 		}
-		if strings.Count(guard, `pi.on("session_start"`) != 1 {
-			t.Errorf("%s unsupported guard must register exactly one notification hook", path)
+		if strings.Count(guard, `pi.on(`) != 1 || strings.Count(guard, `pi.on("session_start"`) != 1 || strings.Count(guard, `ctx.ui.notify(`) != 1 {
+			t.Errorf("%s unsupported guard must contain only its one session_start notification registration", path)
 		}
-		for _, forbidden := range []string{"registerTool(", "registerCommand(", "registerShortcut(", "registerFlag(", "registerMessageRenderer("} {
+		for _, forbidden := range registrationMethods {
 			if strings.Contains(guard, forbidden) {
 				t.Errorf("%s unsupported guard contains functional registration %q", path, forbidden)
 			}
 		}
-		guardCall := strings.Index(content, `if (!guardMinimumRuntime(pi, deps)) return`)
+
+		factoryStart := strings.Index(content, "export function register")
+		if factoryStart < 0 {
+			t.Fatalf("%s does not contain a registration factory", path)
+		}
+		factoryEnd := strings.Index(content[factoryStart:], "\n}\n\nexport default")
+		if factoryEnd < 0 {
+			t.Fatalf("%s does not contain an isolatable registration factory", path)
+		}
+		factory := content[factoryStart : factoryStart+factoryEnd]
+		guardCall := strings.Index(factory, `if (!guardMinimumRuntime(pi, deps)) return`)
 		if guardCall < 0 {
 			t.Errorf("%s has no fail-before-registration guard call", path)
 			continue
 		}
 		functionalRegistrations := 0
-		for _, token := range []string{`pi.on("tool_call"`, "pi.registerCommand(", "pi.registerTool("} {
+		registrationTokens := append([]string{`pi.on(`}, registrationMethods...)
+		for _, token := range registrationTokens {
 			for searchFrom := 0; ; {
-				at := strings.Index(content[searchFrom:], token)
+				at := strings.Index(factory[searchFrom:], token)
 				if at < 0 {
 					break
 				}
@@ -704,15 +747,39 @@ func TestPiSessionHandoffPublicContract(t *testing.T) {
       kickoff: Type.String({ maxLength: 1000 }),
     }, { additionalProperties: false })`,
 		`const calls = content.filter((item: any) => item?.type === "toolCall")`,
+		`const correlated = calls.some((call: any) => call.id === event.toolCallId && call.name === event.toolName)`,
 		`if (!correlated) return event.toolName === "handoff_session"`,
 		`calls.length > 1 && calls.some((call: any) => call.name === "handoff_session")`,
 		`A batch containing handoff_session cannot contain siblings`, `Cannot verify the current tool batch`,
-		`memoryPath.includes("\\")`, `stat.isSymbolicLink()`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("handoff source missing public contract %q", want)
 		}
 	}
+	assertOrderedSource(t, "handoff fail-closed exclusive tool batch", content,
+		`const leaf = ctx.sessionManager.getLeafEntry()`,
+		`leaf?.type === "message" && leaf.message?.role === "assistant" && Array.isArray(leaf.message.content)`,
+		`const calls = content.filter((item: any) => item?.type === "toolCall")`,
+		`const correlated = calls.some((call: any) => call.id === event.toolCallId && call.name === event.toolName)`,
+		`if (!correlated) return event.toolName === "handoff_session"`,
+		`calls.length > 1 && calls.some((call: any) => call.name === "handoff_session")`,
+	)
+	assertOrderedSource(t, "handoff canonical confined path validation", content,
+		`if (!memoryPath || path.isAbsolute(memoryPath) || memoryPath.includes("\\"))`,
+		`const components = memoryPath.split("/")`,
+		`components.some((part) => !part || part === "." || part === "..")`,
+		`path.normalize(memoryPath).split(path.sep).join("/") !== memoryPath`,
+		`components.length < 3 || components[0] !== ".awf" || components[1] !== "memory"`,
+		`const root = repositoryRoot(deps)`,
+		`const resolved = path.resolve(root, memoryPath)`,
+		`const relative = path.relative(root, resolved)`,
+		`!relative || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)`,
+		`for (let index = 0; index < components.length; index++)`,
+		`stat = await deps.lstat(current)`,
+		`if (stat.isSymbolicLink())`,
+		`if (!final && !stat.isDirectory())`,
+		`if (final && !stat.isFile())`,
+	)
 	assertOrderedSource(t, "handoff persisted-TUI and request contract", content,
 		`if (ctx.mode !== "tui" || typeof (ctx.sessionManager as any).isPersisted !== "function" || !(ctx.sessionManager as any).isPersisted() || !ctx.sessionManager.getSessionFile())`,
 		`if (!params.kickoff.trim())`,
@@ -723,6 +790,16 @@ func TestPiSessionHandoffPublicContract(t *testing.T) {
 		`pending = request`,
 		`pi.queueCommand("awf-handoff-continue", request.id)`,
 		`terminate: true`,
+	)
+	assertOrderedSource(t, "handoff correlated single-use continuation", content,
+		`let pending: { id: string; memoryPath: string; kickoff: string } | undefined`,
+		`pi.registerCommand("awf-handoff-continue"`,
+		`const request = pending`,
+		`if (!request || !args || args !== request.id)`,
+		`finally { if (pending?.id === request.id) pending = undefined; }`,
+		`if (pending)`,
+		`pending = request`,
+		`pi.queueCommand("awf-handoff-continue", request.id)`,
 	)
 }
 

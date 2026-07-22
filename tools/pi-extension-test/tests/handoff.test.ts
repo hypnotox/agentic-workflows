@@ -10,7 +10,7 @@ const DIR = { isSymbolicLink: () => false, isFile: () => false, isDirectory: () 
 const LINK = { isSymbolicLink: () => true, isFile: () => false, isDirectory: () => false };
 function leaf(calls: Array<{ id: string; name: string }>) { return { type: "message", message: { role: "assistant", content: calls.map((call) => ({ type: "toolCall", ...call })) } }; }
 
-function harness(options: { version?: string; entries?: Record<string, any>; mode?: string; persisted?: boolean; isPersistedAPI?: boolean; file?: string; queueCommandAPI?: boolean; queueError?: Error; uuidError?: Error; timerError?: Error } = {}) {
+function harness(options: { version?: string; entries?: Record<string, any>; mode?: string; persisted?: boolean; isPersistedAPI?: boolean; file?: string; queueCommandAPI?: boolean; queueError?: Error; uuidError?: Error; timerError?: Error; newSessionError?: Error } = {}) {
   const tools = new Map<string, any>(); const commands = new Map<string, any>(); const hooks = new Map<string, any>();
   const queued: any[] = []; const notifications: any[] = []; const newSessions: any[] = []; const editor: string[] = [];
   const intervals: any[] = []; const timeouts: any[] = []; const clearedIntervals: any[] = []; const clearedTimeouts: any[] = [];
@@ -37,7 +37,7 @@ function harness(options: { version?: string; entries?: Record<string, any>; mod
     notify: (...args: any[]) => notifications.push(args), setEditorText: (text: string) => editor.push(text),
     custom: async (factory: any) => new Promise<boolean>((resolve, reject) => { customDone = (value: boolean) => queueMicrotask(() => resolve(value)); try { component = factory({ requestRender() {} }, {}, { matches: (data: string) => { if (inputError) throw inputError; return data === "escape" || data === "ctrl+c"; } }, customDone); } catch (e) { reject(e); } }),
   };
-  const ctx: any = { mode: options.mode ?? "tui", sessionManager, ui, newSession: async (args: any) => { newSessions.push(args); const replacementCtx = { ui, sendUserMessage: async (text: string) => { if (sendError) throw sendError; editor.push("sent:" + text); } }; await args.withSession(replacementCtx); return { cancelled: false }; } };
+  const ctx: any = { mode: options.mode ?? "tui", sessionManager, ui, newSession: async (args: any) => { newSessions.push(args); if (options.newSessionError) throw options.newSessionError; const replacementCtx = { ui, sendUserMessage: async (text: string) => { if (sendError) throw sendError; editor.push("sent:" + text); } }; await args.withSession(replacementCtx); return { cancelled: false }; } };
   return { pi, deps, tools, commands, hooks, queued, notifications, newSessions, editor, intervals, timeouts, clearedIntervals, clearedTimeouts, entries, ctx,
     setLeaf: (value: any) => { currentLeaf = value; }, component: () => component, done: (value: boolean) => customDone(value), setSendError: (error: Error) => { sendError = error; }, setInputError: (error: Error) => { inputError = error; }, setSessionFile: (value: string) => { sessionFile = value; } };
 }
@@ -115,6 +115,11 @@ test("timer setup, pending-window races, and pre-replacement failures preserve t
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
   assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
   assert.equal(buildKickoffWrapper(".awf/memory/work.md", "next"), "Read .awf/memory/work.md first. Repository sources and current-state documentation are authoritative over the checkpoint. Then continue with this immediate action: next");
+});
+
+test("replacement rejection consumes pending without kickoff or memory deletion", async () => {
+  const h = harness({ newSessionError: new Error("replacement failed") }); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback();
+  await assert.rejects(command, /replacement failed/); assert.equal(h.newSessions.length, 1); assert.deepEqual(h.editor, []); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
 });
 
 test("kickoff rejection leaves exact wrapper in replacement editor and no deletion API exists", async () => {
