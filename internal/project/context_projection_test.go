@@ -30,16 +30,31 @@ func TestContextConciseAndFullProjectionBoundaries(t *testing.T) {
 	if concise.Projection != ContextConcise || full.Projection != ContextFull {
 		t.Fatalf("projections = %q, %q", concise.Projection, full.Projection)
 	}
-	conciseTopic := concise.Paths[0].Topics[0]
-	fullTopic := full.Paths[0].Topics[0]
-	if len(conciseTopic.DirectClaims) != 3 || conciseTopic.DirectClaims[0].ID != "alpha/one:aaa" || conciseTopic.DirectClaims[1].ID != "alpha/one:order" || conciseTopic.DirectClaims[2].ID != "alpha/one:stable" || conciseTopic.OmittedClaimCount != 1 || conciseTopic.Full != nil {
+	conciseTopic, ok := topicByID(concise, "alpha/one")
+	if !ok {
+		t.Fatalf("alpha/one absent: %#v", concise.Topics)
+	}
+	fullTopic, _ := topicByID(full, "alpha/one")
+	if len(conciseTopic.DirectClaims) != 3 || conciseTopic.DirectClaims[0].ID != "alpha/one:aaa" || conciseTopic.DirectClaims[1].ID != "alpha/one:order" || conciseTopic.DirectClaims[2].ID != "alpha/one:stable" || conciseTopic.OmittedDetailCount != 1 || conciseTopic.Full != nil {
 		t.Fatalf("concise topic = %#v", conciseTopic)
+	}
+	if len(conciseTopic.ClaimIDs) != 4 {
+		t.Fatalf("concise roster = %#v; want the full uncapped roster", conciseTopic.ClaimIDs)
 	}
 	if len(conciseTopic.DirectClaims[2].References.Incoming) != 0 || len(conciseTopic.DirectClaims[2].References.Outgoing) != 0 {
 		t.Fatalf("concise references leaked: %#v", conciseTopic.DirectClaims[2].References)
 	}
-	if fullTopic.Full == nil || len(fullTopic.Full.Claims) != 4 || len(fullTopic.DirectClaims) != 3 {
+	// The full projection renders each claim's detail exactly once, under Full;
+	// the direct union stays empty and the omission count zero.
+	if fullTopic.Full == nil || len(fullTopic.Full.Claims) != 4 || len(fullTopic.DirectClaims) != 0 || fullTopic.OmittedDetailCount != 0 {
 		t.Fatalf("full topic = %#v", fullTopic)
+	}
+	if got := strings.Join(concise.Paths[0].Topics[0].DirectClaimIDs, ","); got != "alpha/one:aaa,alpha/one:order,alpha/one:stable" {
+		t.Fatalf("path attribution = %q", got)
+	}
+	// invariant: tooling/cli:context-applicability-navigation
+	if conciseTopic.Applicability.MatchedPathCount == 0 || conciseTopic.CoverageCommand != "awf topic alpha/one --coverage" {
+		t.Fatalf("applicability brief = %#v via %q; want a matched-path count with the coverage drilldown", conciseTopic.Applicability, conciseTopic.CoverageCommand)
 	}
 	encoded, err := json.Marshal(concise)
 	if err != nil {

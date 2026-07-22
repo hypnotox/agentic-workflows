@@ -259,7 +259,7 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 		t.Fatalf("extension classification = %#v", result.Paths)
 	}
 	path := result.Paths[0]
-	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic PathTopicContext) bool { return topic.ID == "rendering/adapter-outputs" }) {
+	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic PathTopicRef) bool { return topic.ID == "rendering/adapter-outputs" }) {
 		t.Fatalf("extension ownership = domains %#v topics %#v", path.Domains, path.Topics)
 	}
 	expanded, err := p.ContextFor([]string{".pi/extensions"})

@@ -73,18 +73,18 @@ func TestContextPathRequestsAndClassification(t *testing.T) {
 	if empty.Status != RequestDirectoryEmpty || len(empty.EffectivePaths) != 0 {
 		t.Fatalf("empty=%#v", empty)
 	}
-	b, err := json.Marshal(ContextResult{Projection: ContextConcise, Requests: []ContextRequest{}, Paths: []ContextPath{}})
+	b, err := json.Marshal(ContextResult{Projection: ContextConcise, Requests: []ContextRequest{}, Topics: []InvocationTopicContext{}, Paths: []ContextPath{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(b) != "{\"projection\":\"concise\",\"requests\":[],\"paths\":[]}" {
+	if string(b) != "{\"projection\":\"concise\",\"requests\":[],\"topics\":[],\"paths\":[]}" {
 		t.Fatalf("non-null JSON=%s", b)
 	}
-	nestedJSON, err := json.Marshal(ContextPath{Path: "nested/x.go", Requests: []string{"nested/x.go"}, Classification: PathNestedAdopter, NestedRoot: "nested/.awf/config.yaml", Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: []ArtifactRecord{}})
+	nestedJSON, err := json.Marshal(ContextPath{Path: "nested/x.go", Requests: []string{"nested/x.go"}, Classification: PathNestedAdopter, NestedRoot: "nested/.awf/config.yaml", Domains: []DomainRef{}, Topics: []PathTopicRef{}, Artifacts: []ArtifactRecord{}})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(nestedJSON) != "{\"path\":\"nested/x.go\",\"requests\":[\"nested/x.go\"],\"classification\":\"nested-adopter\",\"nestedRoot\":\"nested/.awf/config.yaml\",\"domains\":[],\"topics\":[],\"pending\":[],\"artifacts\":[]}" {
+	if string(nestedJSON) != "{\"path\":\"nested/x.go\",\"requests\":[\"nested/x.go\"],\"classification\":\"nested-adopter\",\"nestedRoot\":\"nested/.awf/config.yaml\",\"domains\":[],\"topics\":[],\"artifacts\":[]}" {
 		t.Fatalf("nested JSON = %s", nestedJSON)
 	}
 }

@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-22
 ---
 # ADR-0147: Topic-Grouped Context Output and Selectors-Only Rendered Applicability
@@ -66,3 +66,5 @@ The applicability evidence model has exactly three consumers: the context projec
 ## Status history
 
 - 2026-07-22: Proposed
+- 2026-07-22: Implementing; content-sha256: 73f94bfc18c9fcd9f7eb55e4f0c31eff478e76cff3cecea886c17e32f1ee80e2
+- 2026-07-22: Applied; state-sequence: 19; operations: update `tooling/cli:context-full-authority-packet`, update `tooling/cli:context-default-excludes-history`, update `tooling/cli:context-path-attribution`, update `tooling/cli:context-applicability-navigation`

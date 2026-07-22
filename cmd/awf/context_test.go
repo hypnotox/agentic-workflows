@@ -97,9 +97,9 @@ func ctxCmdFixture(t *testing.T) string {
 	return root
 }
 
-// TestRunContextHuman shows owning domains, the applicable scoped and global
-// topics with their current claims (narrowed by the state marker), the Accepted
-// pending change, and the unowned path in its own section.
+// TestRunContextHuman shows the grouped Topics section (each applicable topic
+// once, with roster, count-plus-drilldown, and direct detail), the per-path
+// attribution, and the eligible-unowned remediation hint.
 func TestRunContextHuman(t *testing.T) {
 	root := ctxCmdFixture(t)
 	var out bytes.Buffer
@@ -109,12 +109,22 @@ func TestRunContextHuman(t *testing.T) {
 	got := out.String()
 	for _, want := range []string{
 		"live state for this project", "Projection: concise", "## Requests", "README.md [literal]", "internal/foo/x.go [literal]",
-		"README.md [eligible-unowned]", "internal/foo/x.go [covered]", "Domain: alpha (docs/domains/alpha.md)",
-		"Topic: alpha/one - One", "Topic: core/g - Global", "Both domain and topic selectors must match.", "Matched paths:",
+		"## Topics", "alpha/one - One", "core/g - Global", "Both domain and topic selectors must match.",
+		"(drill down: awf topic alpha/one --coverage)", "Claims (", "Direct claims:", "Details omitted for",
+		"## Effective paths", "README.md [eligible-unowned]",
+		"No domain owns this path; add a domain glob to a configured domain to own it (see: awf context --uncovered)",
+		"internal/foo/x.go [covered]", "Domain: alpha (docs/domains/alpha.md)", "Topic: alpha/one",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("human output missing %q\n%s", want, got)
 		}
+	}
+	// Both queried paths select the global topic, yet its block renders once.
+	if strings.Count(got, "core/g - Global") != 1 {
+		t.Errorf("global topic block not deduplicated:\n%s", got)
+	}
+	if strings.Contains(got, "Matched paths: [") {
+		t.Errorf("census leaked into context output:\n%s", got)
 	}
 	if strings.Contains(got, "pending-rule") {
 		t.Errorf("foundation render leaked claim projection before Phase 5:\n%s", got)
@@ -130,10 +140,11 @@ func TestPrintContextLifecycleGoldens(t *testing.T) {
 	res := project.ContextResult{
 		Projection: project.ContextConcise,
 		Requests:   []project.ContextRequest{{Query: "internal/foo/x.go", Status: project.RequestLiteral, EffectivePaths: []string{"internal/foo/x.go"}}},
+		Topics:     []project.InvocationTopicContext{},
 		Paths: []project.ContextPath{
-			{Path: "internal/foo/x.go", Requests: []string{"internal/foo/x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
-			{Path: "nested/x", Requests: []string{"nested/x"}, Classification: project.PathNestedAdopter, NestedRoot: "nested/.awf/config.yaml", Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}},
-			{Path: "link", Requests: []string{"link"}, Classification: project.PathSymlink, TargetInsideRepository: &inside, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{{Role: project.ArtifactManagedOutput, Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}},
+			{Path: "internal/foo/x.go", Requests: []string{"internal/foo/x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{}, Artifacts: []project.ArtifactRecord{}},
+			{Path: "nested/x", Requests: []string{"nested/x"}, Classification: project.PathNestedAdopter, NestedRoot: "nested/.awf/config.yaml", Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{}, Artifacts: []project.ArtifactRecord{}},
+			{Path: "link", Requests: []string{"link"}, Classification: project.PathSymlink, TargetInsideRepository: &inside, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{}, Artifacts: []project.ArtifactRecord{{Role: project.ArtifactManagedOutput, Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}},
 		},
 	}
 	var human, encoded bytes.Buffer
@@ -165,23 +176,46 @@ func (contextFailWriter) Write([]byte) (int, error) { return 0, errors.New("writ
 
 func TestPrintContextFullHumanAndWriteErrors(t *testing.T) {
 	claim := project.ClaimDetail{ID: "alpha/one:stable", Type: "invariant", Prose: "Stable.", Backing: "unbacked", Verify: "inspect", Sites: []topic.MarkerSite{{Path: "x.go", Line: 3, Kind: topic.TouchesMarker, ClaimID: "alpha/one:stable"}}, References: project.ClaimReferences{Incoming: []string{"beta/two:in"}, Outgoing: []string{"beta/two:out"}}}
-	pathTopic := project.PathTopicContext{
+	fullTopic := project.InvocationTopicContext{
 		ID: "alpha/one", Title: "One",
-		Applicability: topic.TopicApplicability{DomainPaths: []string{"**"}, TopicPaths: []string{"**"}, MatchedPaths: []string{"x.go"}, MarkerSites: []topic.MarkerSite{}},
-		DirectClaims:  []project.ClaimDetail{claim}, OmittedClaimCount: 1, TopicCommand: "awf topic alpha/one",
+		Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{"**"}, TopicPaths: []string{"**"}, MatchedPathCount: 1},
+		ClaimIDs:      []string{"alpha/one:other", "alpha/one:stable"}, DirectClaims: []project.ClaimDetail{},
+		TopicCommand: "awf topic alpha/one", CoverageCommand: "awf topic alpha/one --coverage",
 		Full: &project.FullTopicContext{Claims: []project.ClaimDetail{claim}, Pending: []project.PendingChange{{ADR: "0003", Op: "add", Claim: "alpha/one:new"}}},
+	}
+	conciseGlobal := project.InvocationTopicContext{
+		ID: "core/g", Title: "Global",
+		Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{"**"}, DeclaredGlobal: true},
+		ClaimIDs:      []string{"core/g:everywhere", "core/g:more"}, DirectClaims: []project.ClaimDetail{claim}, OmittedDetailCount: 1,
+		TopicCommand: "awf topic core/g", CoverageCommand: "awf topic core/g --coverage",
 	}
 	artifact := project.ArtifactRecord{Role: project.ArtifactManagedOutput, Identity: "managed", Sources: []project.ArtifactLink{{Path: "source", Label: "source"}}, Outputs: []project.ArtifactLink{{Path: "output", Label: "output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "nav"}}}
 	adrContext := &project.ADRArtifactContext{Number: "0002", Title: "Example", Status: "Implemented", Mutability: "frozen", AuthorityRole: "decision history, never current authority", Operations: []project.ADROperationContext{{Operation: "add", Claim: "alpha/one:stable", Topic: "alpha/one", Progress: "applied", StateSequence: 4, ClaimState: "active-current", Detail: &project.ADROperationDetail{Current: &claim, MarkerSites: []topic.MarkerSite{}}}}}
-	res := project.ContextResult{Projection: project.ContextFull, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{{Path: "x.go", Requests: []string{"x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Pending: []project.PendingChange{}, Topics: []project.PathTopicContext{pathTopic}, Artifacts: []project.ArtifactRecord{artifact}, ADR: adrContext}}}
+	res := project.ContextResult{Projection: project.ContextFull, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{fullTopic, conciseGlobal}, Paths: []project.ContextPath{{Path: "x.go", Requests: []string{"x.go"}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{{ID: "alpha/one", DirectClaimIDs: []string{"alpha/one:stable"}}}, Artifacts: []project.ArtifactRecord{artifact}, ADR: adrContext}}}
 	var out bytes.Buffer
 	if err := printContext(&out, res, false, "header"); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"Direct claim", "Full authority", "Pending: ADR-0003", "Source: source", "Output: output", "Navigate: nav", "ADR navigation", "state-sequence 4", "References: incoming"} {
+	for _, want := range []string{
+		"## Topics", "Full authority", "Pending: ADR-0003", "Matched paths: 1 (drill down: awf topic alpha/one --coverage)",
+		"Claims (2): alpha/one:other, alpha/one:stable", "Global topic within owning domain selectors:",
+		"Direct claim", "Details omitted for 1 claim(s); drill down: awf topic core/g",
+		"Topic: alpha/one", "Direct claims: alpha/one:stable",
+		"Source: source", "Output: output", "Navigate: nav", "ADR navigation", "state-sequence 4", "References: incoming",
+	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("full human missing %q:\n%s", want, out.String())
 		}
+	}
+	// A topic with a Full block renders each claim's detail exactly once and no
+	// omission line; the omission line belongs to the concise topic only. The
+	// third occurrence is the per-path ADR operation's Current detail, which
+	// stays outside the topic group by design.
+	if strings.Count(out.String(), "alpha/one:stable [invariant] Stable.") != 3 {
+		t.Errorf("claim detail count (full topic once + concise direct once + ADR operation once) wrong:\n%s", out.String())
+	}
+	if strings.Contains(out.String(), "drill down: awf topic alpha/one\n") {
+		t.Errorf("omission line rendered alongside full authority:\n%s", out.String())
 	}
 	if err := printContext(contextFailWriter{}, res, false, "header"); err == nil || !strings.Contains(err.Error(), "write context") {
 		t.Fatalf("human write error = %v", err)
@@ -192,13 +226,16 @@ func TestPrintContextFullHumanAndWriteErrors(t *testing.T) {
 }
 
 func TestPrintContextTitlelessTopic(t *testing.T) {
-	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{{Path: "x", Requests: []string{}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicContext{{ID: "alpha/untitled", Applicability: topic.TopicApplicability{DomainPaths: []string{}, TopicPaths: []string{}, MatchedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}, DirectClaims: []project.ClaimDetail{}}}, Pending: []project.PendingChange{}, Artifacts: []project.ArtifactRecord{}}}}
+	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{{ID: "alpha/untitled", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{}, TopicPaths: []string{}}, ClaimIDs: []string{}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic alpha/untitled", CoverageCommand: "awf topic alpha/untitled --coverage"}}, Paths: []project.ContextPath{{Path: "x", Requests: []string{}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{{ID: "alpha/untitled", DirectClaimIDs: []string{}}}, Artifacts: []project.ArtifactRecord{}}}}
 	var out bytes.Buffer
 	if err := printContext(&out, res, false, "header"); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "Topic: alpha/untitled -") {
-		t.Fatalf("topic missing: %s", out.String())
+	if !strings.Contains(out.String(), "alpha/untitled -") || !strings.Contains(out.String(), "Claims (0):") {
+		t.Fatalf("titleless topic block missing: %s", out.String())
+	}
+	if strings.Contains(out.String(), "Details omitted") {
+		t.Fatalf("zero-claim topic rendered an omission line: %s", out.String())
 	}
 }
 

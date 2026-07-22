@@ -83,11 +83,11 @@ Backing: test
 
 ### `invariant: context-default-excludes-history`
 
-Concise path context returns only claims selected directly by exact-path state, touches-state, or invariant proof markers, reports omitted topic-wide claims with a topic drilldown, and never expands Implemented ADRs, historical plans, referenced claim bodies, or unrelated ADR history.
+Concise path context renders full detail only for claims selected directly by exact-path state, touches-state, or invariant proof markers, reports every remaining rostered claim as an ID with a detail-omission line and topic drilldown, and never expands Implemented ADRs, historical plans, referenced claim bodies, or unrelated ADR history.
 Origin: ADR-0134
-Revised-by: ADR-0144
+Revised-by: ADR-0144, ADR-0147
 Backing: unbacked
-Verify: On a fixture with claim provenance, ADR tags and relations, linked plans, and claim references, concise context reports direct claims and omissions but differs from both context --full and explicit awf topic <claim-id> --history output.
+Verify: On a fixture with claim provenance, ADR tags and relations, linked plans, and claim references, grouped concise context reports the claim-ID roster and direct-claim detail but differs from both context --full and explicit awf topic <claim-id> --history output.
 
 ### `invariant: context-output-parity`
 
@@ -105,8 +105,9 @@ Backing: test
 
 ### `invariant: context-path-attribution`
 
-Context preserves normalized request queries separately from sorted effective paths, records directory expansion status, and emits each unique effective path once with every sorted request that selected it and non-null result collections.
+Context preserves normalized request queries separately from sorted effective paths, records directory expansion status, and emits each unique effective path once with every sorted request that selected it and non-null result collections; a path's topic collection is an attribution of topic IDs and direct-claim IDs, while topic authority lives in the sorted invocation-level topic collection.
 Origin: ADR-0144
+Revised-by: ADR-0147
 Backing: test
 
 ### `invariant: context-path-classification`
@@ -123,8 +124,9 @@ Backing: test
 
 ### `invariant: context-applicability-navigation`
 
-Topic and context applicability share one evidence model that lists owning-domain selectors and topic selectors separately, states that both must match, and reports sorted current matched paths and marker sites without claiming symbolic glob intersection.
+Topic and context applicability share one evidence model that lists owning-domain selectors and topic selectors separately and states that both must match; awf topic --coverage reports the sorted concrete matched paths and marker sites, while context reports the matched-path count with a coverage drilldown, and neither claims symbolic glob intersection.
 Origin: ADR-0144
+Revised-by: ADR-0147
 Backing: test
 
 ### `invariant: context-adr-operation-projection`
@@ -135,8 +137,9 @@ Backing: test
 
 ### `invariant: context-full-authority-packet`
 
-Concise context emits exact-path marker-selected claims plus explicit omission counts and topic drilldowns, while context --full emits every applicable current claim with backing, Verify text, marker sites, direct reference IDs, and Remaining operations from the same non-recursive semantic model; managed complete-authority callers request --full explicitly.
+Context assembles one topic entry per applicable topic per invocation: concise entries carry the uncapped current claim-ID roster, the full detail of exactly the marker-selected direct-claim union, and, when any rostered claim's detail is omitted, an explicit detail-omission line with the topic drilldown, while context --full renders every current claim's full detail and pending operations once per topic with no omission line, from the same non-recursive semantic model; managed complete-authority callers request --full explicitly.
 Origin: ADR-0144
+Revised-by: ADR-0147
 Backing: test
 
 ### `invariant: context-static-fallback`

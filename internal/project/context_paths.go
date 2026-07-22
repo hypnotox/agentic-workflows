@@ -40,15 +40,10 @@ const (
 )
 
 type ContextResult struct {
-	Projection ContextProjection `json:"projection"`
-	Requests   []ContextRequest  `json:"requests"`
-	Paths      []ContextPath     `json:"paths"`
-	// Deprecated: in-memory aggregates keep internal callers source-compatible
-	// during the projection transition; they are never serialized.
-	Domains []DomainRef     `json:"-"`
-	Topics  []TopicContext  `json:"-"`
-	Pending []PendingChange `json:"-"`
-	Unowned []string        `json:"-"`
+	Projection ContextProjection        `json:"projection"`
+	Requests   []ContextRequest         `json:"requests"`
+	Topics     []InvocationTopicContext `json:"topics"`
+	Paths      []ContextPath            `json:"paths"`
 }
 type ContextRequest struct {
 	Query          string        `json:"query"`
@@ -62,20 +57,45 @@ type ContextPath struct {
 	TargetInsideRepository *bool               `json:"targetInsideRepository,omitempty"`
 	NestedRoot             string              `json:"nestedRoot,omitempty"`
 	Domains                []DomainRef         `json:"domains"`
-	Topics                 []PathTopicContext  `json:"topics"`
-	Pending                []PendingChange     `json:"pending"`
+	Topics                 []PathTopicRef      `json:"topics"`
 	Artifacts              []ArtifactRecord    `json:"artifacts"`
 	ADR                    *ADRArtifactContext `json:"adr,omitempty"`
 }
-type PathTopicContext struct {
-	ID                string                   `json:"id"`
-	Title             string                   `json:"title"`
-	Summary           string                   `json:"summary"`
-	Applicability     topic.TopicApplicability `json:"applicability"`
-	DirectClaims      []ClaimDetail            `json:"directClaims"`
-	OmittedClaimCount int                      `json:"omittedClaimCount"`
-	TopicCommand      string                   `json:"topicCommand"`
-	Full              *FullTopicContext        `json:"full,omitempty"`
+
+// InvocationTopicContext is one applicable topic rendered exactly once per
+// invocation: its selectors reduced to a brief with a matched-path count, the
+// uncapped claim-ID roster, and, in the concise projection, the full detail of
+// the invocation's marker-selected direct-claim union (ADR-0147). The full
+// projection leaves DirectClaims empty and carries every claim under Full.
+type InvocationTopicContext struct {
+	ID                 string                  `json:"id"`
+	Title              string                  `json:"title"`
+	Summary            string                  `json:"summary"`
+	Applicability      TopicApplicabilityBrief `json:"applicability"`
+	ClaimIDs           []string                `json:"claimIDs"`
+	DirectClaims       []ClaimDetail           `json:"directClaims"`
+	OmittedDetailCount int                     `json:"omittedDetailCount"`
+	TopicCommand       string                  `json:"topicCommand"`
+	CoverageCommand    string                  `json:"coverageCommand"`
+	Full               *FullTopicContext       `json:"full,omitempty"`
+}
+
+// TopicApplicabilityBrief is the selectors-plus-count reduction of the shared
+// applicability evidence model; the concrete census stays in `awf topic
+// --coverage` (ADR-0147).
+type TopicApplicabilityBrief struct {
+	DomainPaths      []string `json:"domainPaths"`
+	TopicPaths       []string `json:"topicPaths"`
+	DeclaredGlobal   bool     `json:"declaredGlobal"`
+	MatchedPathCount int      `json:"matchedPathCount"`
+}
+
+// PathTopicRef attributes one applicable topic to one effective path: the
+// topic's domain-qualified ID and the path's own directly marker-selected claim
+// IDs; topic authority lives in the invocation-level collection (ADR-0147).
+type PathTopicRef struct {
+	ID             string   `json:"id"`
+	DirectClaimIDs []string `json:"directClaimIDs"`
 }
 
 // ClaimReferences is the stable reference shape populated by the projection batch.

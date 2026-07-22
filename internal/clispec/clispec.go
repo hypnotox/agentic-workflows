@@ -208,12 +208,14 @@ sidecar.local, or a data key name).
 		BoolFlags: []string{"--json", "--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf context <path>... [--json] [--full] [--staged] [--range <a>..<b>] [--uncovered]
 
-Report concise current-state orientation for normalized request paths and their
-classified effective paths. Direct state, touches, and proof markers select the
-default claims; omitted topic-wide claims carry drilldowns. Use --full for every
-applicable current claim, backing and direct reference IDs, without truncation.
-Explicit ADR paths report lifecycle operation progress without treating ADR prose
-as current authority. The command is read-only. Outside a project, both projections
+Report current-state orientation grouped by topic: each applicable topic renders
+once per invocation with its selectors, matched-path count and coverage
+drilldown, uncapped claim-ID roster, and the full detail of the direct claims
+selected by exact-path state, touches, and proof markers; effective paths carry
+classification and attribution. Use --full for every applicable current claim,
+backing and direct reference IDs, once per topic, without truncation. Explicit
+ADR paths report lifecycle operation progress without treating ADR prose as
+current authority. The command is read-only. Outside a project, both projections
 print the same static pre-adoption reference.
 
 Provide paths explicitly, or resolve them from git with --staged (the staged
@@ -225,7 +227,9 @@ but covered by no scoped topic. Positional args become optional scan roots.
 Combine with --staged to read the index universe; --range is not accepted.
 
 Flags:
-  --json               emit the selected projection as JSON
+  --json               emit the selected projection as JSON for machine
+                       consumption; agents reading output should prefer the
+                       text form
   --full               emit the complete applicable authority packet
   --staged             use the staged index universe
   --range <a>..<b>     use the paths changed between revisions a and b

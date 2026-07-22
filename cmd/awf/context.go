@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -77,7 +78,7 @@ func runContextProjection(cwd string, paths []string, staged bool, rng string, a
 		if full {
 			projection = project.ContextFull
 		}
-		return printContext(stdout, project.ContextResult{Projection: projection, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{}}, asJSON,
+		return printContext(stdout, project.ContextResult{Projection: projection, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{}, Paths: []project.ContextPath{}}, asJSON,
 			"context (static: not inside an awf project; live classification and authority require an adopted project)")
 	}
 	if err := gate(cwd); err != nil {
@@ -191,6 +192,35 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 	for _, r := range res.Requests {
 		fmt.Fprintf(&out, "  %s [%s]: %v\n", r.Query, r.Status, r.EffectivePaths)
 	}
+	fmt.Fprintln(&out, "\n## Topics")
+	for _, t := range res.Topics {
+		fmt.Fprintf(&out, "\n%s - %s\n", t.ID, t.Title)
+		if t.Applicability.DeclaredGlobal {
+			fmt.Fprintf(&out, "  Global topic within owning domain selectors: %v\n", t.Applicability.DomainPaths)
+		} else {
+			fmt.Fprintf(&out, "  Domain paths: %v\n  Topic paths: %v\n  Both domain and topic selectors must match.\n", t.Applicability.DomainPaths, t.Applicability.TopicPaths)
+		}
+		fmt.Fprintf(&out, "  Matched paths: %d (drill down: %s)\n", t.Applicability.MatchedPathCount, t.CoverageCommand)
+		fmt.Fprintf(&out, "  Claims (%d): %s\n", len(t.ClaimIDs), strings.Join(t.ClaimIDs, ", "))
+		if len(t.DirectClaims) > 0 {
+			fmt.Fprintln(&out, "  Direct claims:")
+			for _, claim := range t.DirectClaims {
+				printClaimDetail(&out, "Direct claim", claim)
+			}
+		}
+		if t.OmittedDetailCount > 0 {
+			fmt.Fprintf(&out, "  Details omitted for %d claim(s); drill down: %s\n", t.OmittedDetailCount, t.TopicCommand)
+		}
+		if t.Full != nil {
+			fmt.Fprintln(&out, "  Full authority:")
+			for _, claim := range t.Full.Claims {
+				printClaimDetail(&out, "Claim", claim)
+			}
+			for _, pending := range t.Full.Pending {
+				fmt.Fprintf(&out, "      Pending: ADR-%s %s %s\n", pending.ADR, pending.Op, pending.Claim)
+			}
+		}
+	}
 	fmt.Fprintln(&out, "\n## Effective paths")
 	for _, p := range res.Paths {
 		fmt.Fprintf(&out, "\n%s [%s] (requests: %v)\n", p.Path, p.Classification, p.Requests)
@@ -200,26 +230,16 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		if p.TargetInsideRepository != nil {
 			fmt.Fprintf(&out, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
 		}
+		if p.Classification == project.PathEligibleUnowned {
+			fmt.Fprintln(&out, "  No domain owns this path; add a domain glob to a configured domain to own it (see: awf context --uncovered)")
+		}
 		for _, d := range p.Domains {
 			fmt.Fprintf(&out, "  Domain: %s (%s)\n", d.Name, d.CurrentState)
 		}
 		for _, t := range p.Topics {
-			fmt.Fprintf(&out, "  Topic: %s - %s\n", t.ID, t.Title)
-			fmt.Fprintf(&out, "    Domain paths: %v\n    Topic paths: %v\n    Both domain and topic selectors must match.\n    Matched paths: %v\n", t.Applicability.DomainPaths, t.Applicability.TopicPaths, t.Applicability.MatchedPaths)
-			for _, claim := range t.DirectClaims {
-				printClaimDetail(&out, "Direct claim", claim)
-			}
-			if t.OmittedClaimCount > 0 {
-				fmt.Fprintf(&out, "    %d topic-wide claim(s) omitted; drill down: %s\n", t.OmittedClaimCount, t.TopicCommand)
-			}
-			if t.Full != nil {
-				fmt.Fprintln(&out, "    Full authority:")
-				for _, claim := range t.Full.Claims {
-					printClaimDetail(&out, "Claim", claim)
-				}
-				for _, pending := range t.Full.Pending {
-					fmt.Fprintf(&out, "      Pending: ADR-%s %s %s\n", pending.ADR, pending.Op, pending.Claim)
-				}
+			fmt.Fprintf(&out, "  Topic: %s\n", t.ID)
+			if len(t.DirectClaimIDs) > 0 {
+				fmt.Fprintf(&out, "    Direct claims: %s\n", strings.Join(t.DirectClaimIDs, ", "))
 			}
 		}
 		for _, a := range p.Artifacts {

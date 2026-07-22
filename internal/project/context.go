@@ -24,28 +24,6 @@ type DomainRef struct {
 	CurrentState string `json:"currentState"`
 }
 
-// TopicContext is one topic applicable to the queried paths with the claims that
-// apply: a topic's whole claim set unless a state marker under a queried path
-// narrows the selection to the marked claims (ADR-0134). Global is set for an
-// `applies: global` topic, which is always selected.
-type TopicContext struct {
-	ID      string     `json:"id"`
-	Title   string     `json:"title"`
-	Summary string     `json:"summary"`
-	Global  bool       `json:"global,omitempty"`
-	Claims  []ClaimRef `json:"claims"`
-}
-
-// ClaimRef is one current-state claim: its full `<domain>/<topic>:<slug>` ID,
-// type (rule or invariant), prose, and invariant backing contract.
-type ClaimRef struct {
-	ID      string `json:"id"`
-	Type    string `json:"type"`
-	Prose   string `json:"prose"`
-	Backing string `json:"backing,omitempty"`
-	Verify  string `json:"verify,omitempty"`
-}
-
 // PendingChange is one remaining governed ADR operation targeting a matched
 // topic. It is not yet current and renders separately from current claims.
 type PendingChange struct {
@@ -194,99 +172,40 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 	slices.Sort(nested)
 	set := contextPathSet{tree: tree, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore), nested: nested, outputs: outputs, ignores: cfg.ContextIgnore, domainPaths: loaded.Topics.DomainPaths}
 	requests, attribution := buildContextRequests(queries, gitSelected, set)
-	res := ContextResult{Projection: projection, Requests: requests, Paths: []ContextPath{}}
+	res := ContextResult{Projection: projection, Requests: requests, Topics: []InvocationTopicContext{}, Paths: []ContextPath{}}
 	lay := p.layout()
 	currentPaths := safelyMatchablePaths(tree)
+	applicableByID := map[string]topic.Topic{}
+	selectingByID := map[string][]string{}
 	for _, path := range slices.Sorted(maps.Keys(attribution)) {
 		class, nestedRoot, targetInside := classifyContextPath(path, set)
 		selectedADRs := adr.NewCorpus(loaded.ADRs)
-		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicContext{}, Pending: []PendingChange{}, Artifacts: artifactRecords(path, declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})}
+		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicRef{}, Artifacts: artifactRecords(path, declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})}
 		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
-		matchedTopics := map[string]bool{}
 		if safe {
 			for _, d := range slices.Sorted(maps.Keys(loaded.Topics.DomainPaths)) {
 				if pathMatchesAny(loaded.Topics.DomainPaths[d], path) {
 					cp.Domains = append(cp.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
 				}
 			}
-			applicable := topic.TopicsForPath(loaded.Topics, path)
-			for _, t := range applicable {
-				matchedTopics[t.ID.String()] = true
-			}
-			cp.Pending = pendingChanges(loaded.ADRs, matchedTopics)
-			for _, t := range applicable {
-				cp.Topics = append(cp.Topics, projectPathTopic(t, loaded.Topics, path, currentPaths, cp.Pending, projection))
+			for _, t := range topic.TopicsForPath(loaded.Topics, path) {
+				id := t.ID.String()
+				applicableByID[id] = t
+				selectingByID[id] = append(selectingByID[id], path)
+				cp.Topics = append(cp.Topics, pathTopicRef(t, loaded.Topics, path))
 			}
 		}
 		if explicitContextPath(requests, path) {
 			cp.ADR = projectADRArtifact(path, lay.ADRDir, adr.NewCorpus(loaded.ADRs), loaded.Topics, projection)
 		}
 		res.Paths = append(res.Paths, cp)
-		for _, d := range cp.Domains {
-			if !slices.Contains(res.Domains, d) {
-				res.Domains = append(res.Domains, d)
-			}
-		}
-		if class == PathEligibleUnowned || class == PathNotFound {
-			res.Unowned = append(res.Unowned, path)
-		}
-		for _, pt := range cp.Topics {
-			idx := -1
-			for i := range res.Topics {
-				if res.Topics[i].ID == pt.ID {
-					idx = i
-					break
-				}
-			}
-			if idx < 0 {
-				res.Topics = append(res.Topics, TopicContext{ID: pt.ID, Title: pt.Title, Summary: pt.Summary})
-				idx = len(res.Topics) - 1
-			}
-			if t, ok := loaded.Topics.ByTopicID(pt.ID); ok {
-				res.Topics[idx].Global = t.Metadata.Applies == "global"
-				selected := applicableClaims(t, loaded.Topics.Markers, path)
-				for _, claim := range t.Claims {
-					if slices.Contains(selected, claim.ID) {
-						ref := ClaimRef{ID: claim.ID, Type: string(claim.Type), Prose: claim.Prose, Backing: string(claim.Backing), Verify: claim.Verify}
-						if !slices.Contains(res.Topics[idx].Claims, ref) {
-							res.Topics[idx].Claims = append(res.Topics[idx].Claims, ref)
-						}
-					}
-				}
-			}
-		}
-		for _, pending := range cp.Pending {
-			if !slices.Contains(res.Pending, pending) {
-				res.Pending = append(res.Pending, pending)
-			}
-		}
+	}
+	for _, id := range slices.Sorted(maps.Keys(applicableByID)) {
+		pending := pendingChanges(loaded.ADRs, map[string]bool{id: true})
+		res.Topics = append(res.Topics, projectInvocationTopic(applicableByID[id], loaded.Topics, selectingByID[id], currentPaths, pending, projection))
 	}
 	return res
-}
-
-// applicableClaims returns the IDs of the claims of t that apply at path. A state
-// marker under path for one of t's claims narrows the selection to the marked
-// claims (never expanding beyond the topic - the topic already matched path);
-// absent any such marker every claim of t applies.
-func applicableClaims(t topic.Topic, markers topic.MarkerIndex, path string) []string {
-	var narrowed []string
-	for _, cl := range t.Claims {
-		for _, s := range markers.ForClaim(cl.ID) {
-			if s.Kind == topic.StateMarker && s.Path == path {
-				narrowed = append(narrowed, cl.ID)
-				break
-			}
-		}
-	}
-	if len(narrowed) > 0 {
-		return narrowed
-	}
-	all := make([]string, len(t.Claims))
-	for i, cl := range t.Claims {
-		all[i] = cl.ID
-	}
-	return all
 }
 
 // pendingChanges returns remaining Accepted and Implementing operations whose

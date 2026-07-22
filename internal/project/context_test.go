@@ -51,22 +51,27 @@ func ctxFiles() map[string]string {
 	}
 }
 
-// claimIDs joins a topic context's claim IDs for compact assertions.
-func claimIDs(tc TopicContext) string {
+// claimRoster joins an invocation topic's claim-ID roster for compact assertions.
+func claimRoster(tc InvocationTopicContext) string {
+	return strings.Join(tc.ClaimIDs, ",")
+}
+
+// directIDs joins an invocation topic's direct-claim IDs for compact assertions.
+func directIDs(tc InvocationTopicContext) string {
 	var ids []string
-	for _, c := range tc.Claims {
+	for _, c := range tc.DirectClaims {
 		ids = append(ids, c.ID)
 	}
 	return strings.Join(ids, ",")
 }
 
-func topicByID(res ContextResult, id string) (TopicContext, bool) {
+func topicByID(res ContextResult, id string) (InvocationTopicContext, bool) {
 	for _, t := range res.Topics {
 		if t.ID == id {
 			return t, true
 		}
 	}
-	return TopicContext{}, false
+	return InvocationTopicContext{}, false
 }
 
 // TestContextForAssembles proves the topic-centric assembly over the working
@@ -146,16 +151,17 @@ func TestContextAndTopicShareApplicability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var got topic.TopicApplicability
-	for _, path := range ctx.Paths {
-		for _, pt := range path.Topics {
-			if pt.ID == "alpha/one" {
-				got = pt.Applicability
-			}
-		}
+	one, ok := topicByID(ctx, "alpha/one")
+	if !ok {
+		t.Fatalf("alpha/one absent from context topics: %#v", ctx.Topics)
 	}
-	if !reflect.DeepEqual(got, query.Coverage.Applicability) {
-		t.Fatalf("context=%#v topic=%#v", got, query.Coverage.Applicability)
+	a := query.Coverage.Applicability
+	want := TopicApplicabilityBrief{DomainPaths: a.DomainPaths, TopicPaths: a.TopicPaths, DeclaredGlobal: a.DeclaredGlobal, MatchedPathCount: len(a.MatchedPaths)}
+	if !reflect.DeepEqual(one.Applicability, want) {
+		t.Fatalf("context brief=%#v topic-derived=%#v", one.Applicability, want)
+	}
+	if one.CoverageCommand != "awf topic alpha/one --coverage" {
+		t.Fatalf("coverage drilldown = %q", one.CoverageCommand)
 	}
 }
 
@@ -165,34 +171,45 @@ func TestContextForAssembles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ContextFor: %v", err)
 	}
-	if len(res.Domains) != 1 || res.Domains[0].Name != "alpha" || res.Domains[0].CurrentState != "docs/domains/alpha.md" {
-		t.Fatalf("domains = %#v; want just alpha with its current-state pointer", res.Domains)
+	for _, cp := range res.Paths {
+		if len(cp.Domains) != 1 || cp.Domains[0].Name != "alpha" || cp.Domains[0].CurrentState != "docs/domains/alpha.md" {
+			t.Fatalf("path %s domains = %#v; want just alpha with its current-state pointer", cp.Path, cp.Domains)
+		}
+		if cp.Classification != PathCovered {
+			t.Fatalf("path %s classification = %s; want covered", cp.Path, cp.Classification)
+		}
 	}
 	if len(res.Topics) != 2 || res.Topics[0].ID != "alpha/one" || res.Topics[1].ID != "core/g" {
 		t.Fatalf("topics = %#v; want [alpha/one core/g] sorted", res.Topics)
 	}
-	// A directory query has no exact-path state marker, so the whole topic applies.
-	if got := claimIDs(res.Topics[0]); got != "alpha/one:order,alpha/one:tested,alpha/one:stable" {
-		t.Errorf("alpha/one claims = %q; want all three", got)
-	}
 	one := res.Topics[0]
+	if got := claimRoster(one); got != "alpha/one:order,alpha/one:stable,alpha/one:tested" {
+		t.Errorf("alpha/one roster = %q; want all three sorted", got)
+	}
 	if one.Summary != "The one topic." {
 		t.Errorf("topic summary = %q", one.Summary)
 	}
-	if one.Claims[0].Backing != "" || one.Claims[0].Verify != "" {
-		t.Errorf("rule invented backing metadata: %#v", one.Claims[0])
+	// The expanded paths carry a state marker (x.go) and an invariant proof
+	// marker (y_test.go), so those two claims form the direct-claim union with
+	// full detail; the third claim's detail is omitted with the drilldown.
+	if got := directIDs(one); got != "alpha/one:order,alpha/one:tested" {
+		t.Errorf("alpha/one direct union = %q", got)
 	}
-	if one.Claims[1].Backing != "test" || one.Claims[1].Verify != "" {
-		t.Errorf("test-backed projection = %#v", one.Claims[1])
+	if one.DirectClaims[0].Backing != "" || one.DirectClaims[0].Verify != "" {
+		t.Errorf("rule invented backing metadata: %#v", one.DirectClaims[0])
 	}
-	if one.Claims[2].Backing != "unbacked" || one.Claims[2].Verify != "by hand." {
-		t.Errorf("unbacked projection = %#v", one.Claims[2])
+	if one.DirectClaims[1].Backing != "test" || one.DirectClaims[1].Verify != "" {
+		t.Errorf("test-backed projection = %#v", one.DirectClaims[1])
 	}
-	if !res.Topics[1].Global || claimIDs(res.Topics[1]) != "core/g:everywhere" {
-		t.Errorf("core/g = %#v; want the global everywhere claim", res.Topics[1])
+	if one.OmittedDetailCount != 1 || one.TopicCommand != "awf topic alpha/one" {
+		t.Errorf("omission = %d via %q; want 1 via the topic drilldown", one.OmittedDetailCount, one.TopicCommand)
 	}
-	if len(res.Unowned) != 0 || len(res.Pending) != 0 {
-		t.Errorf("unowned=%v pending=%v; want neither", res.Unowned, res.Pending)
+	g := res.Topics[1]
+	if !g.Applicability.DeclaredGlobal || claimRoster(g) != "core/g:everywhere" {
+		t.Errorf("core/g = %#v; want the global everywhere claim roster", g)
+	}
+	if len(g.DirectClaims) != 0 || g.OmittedDetailCount != 1 {
+		t.Errorf("core/g detail = %#v; want none direct, one omitted", g)
 	}
 }
 
@@ -219,8 +236,8 @@ func TestContextForNonexistentPathRemainsLiteral(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Join(contextPathNames(res.Paths), ",") != "missing/path.go" || strings.Join(res.Unowned, ",") != "missing/path.go" {
-		t.Fatalf("nonexistent literal result = paths %v, unowned %v", res.Paths, res.Unowned)
+	if strings.Join(contextPathNames(res.Paths), ",") != "missing/path.go" || res.Paths[0].Classification != PathNotFound {
+		t.Fatalf("nonexistent literal result = %#v; want the literal classified not-found", res.Paths)
 	}
 }
 
@@ -233,8 +250,8 @@ func TestContextForAllIneligibleDirectoryExpandsToNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Paths) != 0 || len(res.Unowned) != 0 {
-		t.Fatalf("all-ineligible directory result = paths %v, unowned %v; want neither", res.Paths, res.Unowned)
+	if len(res.Paths) != 0 || len(res.Topics) != 0 {
+		t.Fatalf("all-ineligible directory result = paths %v, topics %v; want neither", res.Paths, res.Topics)
 	}
 }
 
@@ -257,40 +274,47 @@ func TestContextForDirectoryExpandsEligibleDescendants(t *testing.T) {
 		t.Fatalf("expanded paths = %s; want only eligible x.go", got)
 	}
 	one, _ := topicByID(res, "alpha/one")
-	if got := claimIDs(one); got != "alpha/one:order" {
-		t.Fatalf("directory marker narrowing = %s", got)
+	if got := directIDs(one); got != "alpha/one:order" {
+		t.Fatalf("directory direct-claim union = %s; want only the eligible x.go state marker", got)
 	}
 }
 
-// TestContextForStateMarkerNarrows proves a state marker under the exact queried
-// path narrows its already-applicable topic to the marked claim, while a topic
-// with no marker at that path keeps its whole claim set.
-func TestContextForStateMarkerNarrows(t *testing.T) {
+// TestContextForStateMarkerSelectsDirect proves a state marker under the exact
+// queried path selects the marked claim into the direct-claim union with full
+// detail, while the topic's roster stays uncapped and a topic with no marker at
+// that path renders no direct detail.
+func TestContextForStateMarkerSelectsDirect(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
 	res, err := p.ContextFor([]string{"internal/foo/x.go"})
 	if err != nil {
 		t.Fatalf("ContextFor: %v", err)
 	}
 	one, ok := topicByID(res, "alpha/one")
-	if !ok || claimIDs(one) != "alpha/one:order" {
-		t.Fatalf("alpha/one = %#v; want narrowed to the marked order claim", one)
+	if !ok || directIDs(one) != "alpha/one:order" {
+		t.Fatalf("alpha/one = %#v; want the marked order claim as the direct union", one)
+	}
+	if claimRoster(one) != "alpha/one:order,alpha/one:stable,alpha/one:tested" || one.OmittedDetailCount != 2 {
+		t.Fatalf("alpha/one roster = %#v; want the full roster with two details omitted", one)
+	}
+	if len(res.Paths) != 1 || len(res.Paths[0].Topics) != 2 || res.Paths[0].Topics[0].ID != "alpha/one" || strings.Join(res.Paths[0].Topics[0].DirectClaimIDs, ",") != "alpha/one:order" {
+		t.Fatalf("path attribution = %#v; want alpha/one attributed with its direct claim ID", res.Paths)
 	}
 	g, ok := topicByID(res, "core/g")
-	if !ok || claimIDs(g) != "core/g:everywhere" {
-		t.Fatalf("core/g = %#v; want the whole global topic (no marker narrows it)", g)
+	if !ok || claimRoster(g) != "core/g:everywhere" || len(g.DirectClaims) != 0 {
+		t.Fatalf("core/g = %#v; want the whole roster and no direct detail", g)
 	}
 }
 
-// TestContextForUnownedWithGlobal proves an unowned queried path lands in Unowned
-// yet still receives the always-applicable global topic.
+// TestContextForUnownedWithGlobal proves an unowned queried path is classified
+// eligible-unowned yet still receives the always-applicable global topic.
 func TestContextForUnownedWithGlobal(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
 	res, err := p.ContextFor([]string{"README.md"})
 	if err != nil {
 		t.Fatalf("ContextFor: %v", err)
 	}
-	if len(res.Domains) != 0 || strings.Join(res.Unowned, ",") != "README.md" {
-		t.Fatalf("domains=%#v unowned=%v; want no domain and README.md unowned", res.Domains, res.Unowned)
+	if len(res.Paths) != 1 || res.Paths[0].Classification != PathEligibleUnowned || len(res.Paths[0].Domains) != 0 {
+		t.Fatalf("paths = %#v; want README.md eligible-unowned with no domain", res.Paths)
 	}
 	if len(res.Topics) != 1 || res.Topics[0].ID != "core/g" {
 		t.Fatalf("topics = %#v; want only the global core/g", res.Topics)
@@ -330,16 +354,21 @@ func TestContextForPending(t *testing.T) {
 	// A cutoff of 2 routes ADR-0001 legacy and ADR-0002 as current-state-v1.
 	writeCutoffLock(t, p, 2)
 
-	res, err := p.ContextFor([]string{"internal/foo"})
+	res, err := p.ContextForFull([]string{"internal/foo"})
 	if err != nil {
-		t.Fatalf("ContextFor: %v", err)
+		t.Fatalf("ContextForFull: %v", err)
 	}
-	if len(res.Pending) != 1 {
-		t.Fatalf("pending = %#v; want the one Accepted operation", res.Pending)
+	one, ok := topicByID(res, "alpha/one")
+	if !ok || one.Full == nil || len(one.Full.Pending) != 1 {
+		t.Fatalf("alpha/one full = %#v; want the one Accepted pending operation", one)
 	}
-	pc := res.Pending[0]
+	pc := one.Full.Pending[0]
 	if pc.ADR != "0002" || pc.Title != "Later" || pc.Status != "Accepted" || pc.Applied != 0 || pc.Declared != 1 || pc.Op != "add" || pc.Claim != "alpha/one:pending-rule" {
 		t.Errorf("pending change = %#v", pc)
+	}
+	g, _ := topicByID(res, "core/g")
+	if g.Full == nil || len(g.Full.Pending) != 0 {
+		t.Errorf("core/g pending = %#v; want none (operation targets alpha/one)", g.Full)
 	}
 }
 
@@ -455,11 +484,11 @@ func TestStagedContextFor(t *testing.T) {
 		t.Fatalf("StagedContextFor: %v", err)
 	}
 	one, ok := topicByID(res, "alpha/one")
-	if !ok || claimIDs(one) != "alpha/one:order" {
+	if !ok || claimRoster(one) != "alpha/one:order" {
 		t.Fatalf("staged topics = %#v; want alpha/one from the index", res.Topics)
 	}
 	full, err := StagedContextRootFull(p.Root, []string{"internal/foo/x.go"})
-	if err != nil || full.Projection != ContextFull || full.Paths[0].Topics[0].Full == nil {
+	if err != nil || full.Projection != ContextFull || len(full.Topics) == 0 || full.Topics[0].Full == nil {
 		t.Fatalf("staged full = %#v, %v", full, err)
 	}
 	selected, err := StagedContextRootFullGitSelection(p.Root, []string{"internal/foo/x.go"})
@@ -531,8 +560,8 @@ func TestStagedContextAllIneligibleDirectoryExpandsToNothing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Paths) != 0 || len(res.Unowned) != 0 {
-		t.Fatalf("staged all-ineligible directory result = paths %v, unowned %v; want neither", res.Paths, res.Unowned)
+	if len(res.Paths) != 0 || len(res.Topics) != 0 {
+		t.Fatalf("staged all-ineligible directory result = paths %v, topics %v; want neither", res.Paths, res.Topics)
 	}
 }
 
@@ -562,8 +591,11 @@ func TestStagedContextDirectoryExpandsIndexDescendants(t *testing.T) {
 		t.Fatalf("staged expanded paths = %s", got)
 	}
 	one, _ := topicByID(res, "alpha/one")
-	if got := claimIDs(one); got != "alpha/one:order" {
-		t.Fatalf("staged marker narrowing = %s", got)
+	if got := directIDs(one); got != "alpha/one:order" {
+		t.Fatalf("staged direct-claim union = %s; want the x.go state marker selection", got)
+	}
+	if got := claimRoster(one); got != "alpha/one:order,alpha/one:other" {
+		t.Fatalf("staged roster = %s; want the full uncapped roster", got)
 	}
 }
 
