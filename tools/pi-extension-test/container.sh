@@ -66,9 +66,9 @@ case "$command_name" in
     reset_matching
     exit 0
     ;;
-  run) ;;
+  run|contract) ;;
   *)
-    echo "usage: ./x pi-test <run|stop|reset>" >&2
+    echo "usage: pi-extension-test <run|contract|stop|reset>" >&2
     exit 2
     ;;
 esac
@@ -122,6 +122,14 @@ if [ -n "${CI:-}" ]; then
 fi
 
 test_start=$SECONDS
-"$docker_cmd" exec --workdir /workspace/repo "$container" sh -lc \
-  'find /workspace/repo -mindepth 1 -maxdepth 1 -exec rm -rf {} + && cp -a /source/. /workspace/repo/ && printf "%s\n" "{\"type\":\"module\"}" > /workspace/repo/package.json && ln -s /workspace/node_modules /workspace/repo/node_modules && find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 sed -i "s|^// @ts-nocheck$||" && PATH=/workspace/node_modules/.bin:$PATH tsc -p tools/pi-extension-test/tsconfig.json && PATH=/workspace/node_modules/.bin:$PATH c8 --all --include='.pi/extensions/**/*.ts' --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage --lines=100 --functions=100 --branches=100 node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts'
+if [ "$command_name" = contract ]; then
+  test_command='PATH=/workspace/node_modules/.bin:$PATH node --import tsx --test --experimental-test-isolation=none --test-name-pattern="^invariant:" tools/pi-extension-test/tests/*.test.ts'
+else
+  test_command="PATH=/workspace/node_modules/.bin:\$PATH c8 --all --include='.pi/extensions/**/*.ts' --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage --lines=100 --functions=100 --branches=100 node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts"
+fi
+prepare_command="$(cat <<'COMMAND'
+find /workspace/repo -mindepth 1 -maxdepth 1 -exec rm -rf {} + && cp -a /source/. /workspace/repo/ && printf '%s\n' '{"type":"module"}' > /workspace/repo/package.json && ln -s /workspace/node_modules /workspace/repo/node_modules && find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 sed -i "s|^// @ts-nocheck$||" && PATH=/workspace/node_modules/.bin:$PATH tsc -p tools/pi-extension-test/tsconfig.json
+COMMAND
+)"
+"$docker_cmd" exec --workdir /workspace/repo "$container" sh -lc "$prepare_command && $test_command"
 printf 'pi-extension-test: tests %ss\n' "$((SECONDS - test_start))"

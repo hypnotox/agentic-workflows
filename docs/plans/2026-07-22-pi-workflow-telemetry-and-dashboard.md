@@ -228,4 +228,4 @@ Tasks 4.1 through 4.8 are one coupled final application transaction and one clos
 - The initial CLI intentionally omits `awf doctor --fail-on`; ADR-0146 permits a later explicit opt-in failure policy but keeps this implementation non-blocking.
 - Privacy and generated-artifact guidance extend existing architecture and working-with-awf documents; no new catalog document is introduced.
 - Every Applied batch must use the digest/sequence reported by the checker at execution time rather than a plan-time corpus count.
-- Implementation findings: none.
+- Implementation findings: Pi emits no `shell_observed` events and therefore no automatic gate observations. Pi currently exposes raw shell command text rather than a trusted token-vector API; the runtime deliberately does not parse or split raw command strings. The descriptor event and exact-token classifier remain dormant protocol capability for a future trusted producer or external conforming writer.

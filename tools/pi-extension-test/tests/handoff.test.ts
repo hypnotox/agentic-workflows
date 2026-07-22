@@ -116,6 +116,7 @@ test("countdown cancellation renders exact bounded text and consumes request", a
   h.intervals[0].callback(); assert.match(h.component().render(200)[0], /4s/); h.component().invalidate(); h.component().handleInput("other"); h.component().handleInput("escape"); h.setInputError(new Error("input failed")); assert.throws(() => h.component().handleInput("x"), /input failed/); h.timeouts[0].callback(); await command;
   assert.deepEqual(h.notifications, [["Fresh-session handoff canceled."]]); assert.equal(h.newSessions.length, 0); assert.equal(h.telemetry.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.equal(h.telemetry[0].errorCategory, "handoff"); assert.ok(h.clearedIntervals.length > 0); assert.ok(h.clearedTimeouts.length > 0);
   await assert.rejects(startCommand(h), /matching pending/); h.component().dispose();
+  const listenerFailure = harness({ associationListenerError: new Error("telemetry listener") }); await execute(listenerFailure); const listenerCommand = startCommand(listenerFailure); await new Promise((resolve) => setImmediate(resolve)); listenerFailure.component().handleInput("escape"); await listenerCommand; assert.equal(listenerFailure.notifications.length, 1);
 });
 
 test("timer setup, pending-window races, and pre-replacement failures preserve the old session", async () => {
@@ -123,18 +124,18 @@ test("timer setup, pending-window races, and pre-replacement failures preserve t
   const raced = harness(); await execute(raced); const raceCommand = startCommand(raced); await new Promise((resolve) => setImmediate(resolve)); raced.entries["/repo/.awf/memory/work.md"] = LINK; raced.timeouts[0].callback(); await assert.rejects(raceCommand, /symbolic link/); assert.equal(raced.newSessions.length, 0); await assert.rejects(startCommand(raced), /matching pending/);
   const unpersisted = harness(); await execute(unpersisted); const unpersistedCommand = startCommand(unpersisted); await new Promise((resolve) => setImmediate(resolve)); unpersisted.setSessionFile(""); unpersisted.timeouts[0].callback(); await assert.rejects(unpersistedCommand, /no longer persisted/); assert.equal(unpersisted.newSessions.length, 0);
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
-  assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.deepEqual(Object.keys(h.telemetry[0]).sort(), ["durationMs", "observationId", "outcome", "targetSessionId", "version"]); assert.equal(h.telemetry[0].outcome, "success"); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
+  assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.equal(h.telemetry.length, 0); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
   assert.equal(buildKickoffWrapper(".awf/memory/work.md", "next"), "Read .awf/memory/work.md first. Repository sources and current-state documentation are authoritative over the checkpoint. Then continue with this immediate action: next");
 });
 
-test("handoff copies exactly one validated synchronous association only during setup", async () => {
+test("invariant: handoff transfers exact association and success setup data", async () => {
   assert.equal(validateTelemetryAssociation(association), true);
   for (const invalid of [null, [], { ...association, extra: true }, { ...association, effortId: "../bad" }, { ...association, effortId: "x".repeat(129) }, { ...association, associationOrigin: "guess" }]) {
     assert.equal(validateTelemetryAssociation(invalid), false);
   }
   const h = harness({ associationResponses: [associationResponse], childSessionId: "child-session" });
   await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
-  assert.deepEqual(h.associationEntries, [{ customType: "awf.telemetry.association.v1", data: association }]); assert.equal(h.telemetry[0].targetSessionId, "child-session");
+  assert.deepEqual(h.associationEntries.map((entry) => entry.customType), ["awf.telemetry.association.v1", "awf.telemetry.handoff.pending.v1"]); assert.deepEqual(h.associationEntries[0].data, association); assert.deepEqual(Object.keys(h.associationEntries[1].data).sort(), ["durationMs", "observationId", "startedAt", "version"]); assert.equal(h.telemetry.length, 0);
 
   for (const options of [
     {},

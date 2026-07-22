@@ -143,7 +143,7 @@ function countdown(ctx: any, deps: HandoffDependencies): Promise<boolean> {
 }
 
 export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): void {
-  if (!guardMinimumRuntime(pi, deps)) return;
+  if (!guardMinimumRuntime(pi, deps, ["on", "eventsEmit", "registerTool", "registerCommand", "queueCommand"])) return;
   let pending: { id: string; memoryPath: string; kickoff: string } | undefined;
 
   pi.on("tool_call", (event, ctx) => {
@@ -170,13 +170,15 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
         if (!oldSessionFile) throw new Error("The active session is no longer persisted");
         const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
         const association = requestHandoffAssociation(pi);
+        const handoffSetup = { version: { major: 1, minor: 0 }, observationId, startedAt, durationMs: Math.max(0, Date.now() - startedAt) };
         await ctx.newSession({
           parentSession: oldSessionFile,
           async setup(sessionManager) {
             const childSessionId = sessionManager.getSessionId?.(); if (boundedIdentifier(childSessionId)) targetSessionId = childSessionId;
-            if (!association) return;
-            try { sessionManager.appendCustomEntry("awf.telemetry.association.v1", { ...association }); }
-            catch { /* association propagation is best-effort */ }
+            try { if (association) {
+              sessionManager.appendCustomEntry("awf.telemetry.association.v1", { effortId: association.effortId, sessionId: association.sessionId, trajectoryId: association.trajectoryId, associationOrigin: association.associationOrigin });
+              sessionManager.appendCustomEntry("awf.telemetry.handoff.pending.v1", { version: { major: handoffSetup.version.major, minor: handoffSetup.version.minor }, observationId: handoffSetup.observationId, startedAt: handoffSetup.startedAt, durationMs: handoffSetup.durationMs });
+            } } catch { /* telemetry propagation is best-effort */ }
           },
           async withSession(replacementCtx) {
             try { await replacementCtx.sendUserMessage(wrapper); }
@@ -186,7 +188,6 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
             }
           },
         });
-        emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "success", durationMs: Math.max(0, Date.now() - startedAt) });
       } catch (error) {
         emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "failure", durationMs: Math.max(0, Date.now() - startedAt), errorCategory: "handoff" });
         throw error;

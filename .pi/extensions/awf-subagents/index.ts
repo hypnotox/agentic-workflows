@@ -27,6 +27,7 @@ import {
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }
+export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel";
 function parseVersion(value: string): [number, number, number] | undefined {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
@@ -40,23 +41,20 @@ export function versionSupported(value: string): boolean {
   }
   return true;
 }
-export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies): boolean {
-  const requirements = {
-    queueCommand: typeof pi.queueCommand === "function",
-    eventHooks: typeof pi.on === "function" && typeof pi.events?.on === "function" && typeof pi.events?.emit === "function",
-    persistedEntries: typeof pi.appendEntry === "function",
-    tools: typeof pi.registerTool === "function",
-    overlayCommands: typeof pi.registerCommand === "function",
-    shutdownHooks: typeof pi.on === "function",
+export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies, required: readonly MinimumRuntimeAPI[]): boolean {
+  const requirements: Record<MinimumRuntimeAPI, boolean> = {
+    on: typeof pi.on === "function", eventsOn: typeof pi.events?.on === "function", eventsEmit: typeof pi.events?.emit === "function",
+    appendEntry: typeof pi.appendEntry === "function", registerTool: typeof pi.registerTool === "function", registerCommand: typeof pi.registerCommand === "function",
+    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function",
   };
-  const missing = Object.entries(requirements).filter(([, available]) => !available).map(([name]) => name);
+  const missing = required.filter((name) => !requirements[name]);
   if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
   if (typeof pi.on !== "function") return false;
   pi.on("session_start", async (_event, ctx) => {
     if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
     (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
     const missingAPI = missing.length > 0 ? ` Missing runtime APIs: ${missing.join(", ")}.` : "";
-    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
+    ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with their factory event, persistence, tool, command, process, and thinking APIs; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
   });
   return false;
 }
@@ -259,9 +257,12 @@ function stateFor(failed: boolean, stopReason?: string): SubagentState {
   return stopReason === "aborted" ? "aborted" : "failed";
 }
 
+function telemetryIdentifier(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && Buffer.byteLength(value, "utf8") <= 128 && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
+}
 function requestTelemetryContext(pi: ExtensionAPI): { effortId: string; sessionId: string; trajectoryId: string; piAnchorId?: string } | undefined {
-  let open = true; let responses = 0; let context: any;
-  try { pi.events.emit("awf.telemetry.context.request.v1", { version: { major: 1, minor: 0 }, respond(value: unknown) { /* c8 ignore next -- the synchronous request is deliberately closed before late callbacks */ if (!open) return; responses++; context = responses === 1 && value && typeof value === "object" ? { ...(value as any) } : undefined; } }); } catch { context = undefined; }
+  let open = true; let responses = 0; let context: { effortId: string; sessionId: string; trajectoryId: string; piAnchorId?: string } | undefined;
+  try { pi.events.emit("awf.telemetry.context.request.v1", { version: { major: 1, minor: 0 }, respond(value: unknown) { /* c8 ignore next -- the synchronous request is deliberately closed before late callbacks */ if (!open) return; responses++; context = undefined; if (responses !== 1 || !value || typeof value !== "object" || Array.isArray(value)) return; const response = value as any; if (Object.keys(response).sort().join(",") !== "context,version" || response.version?.major !== 1 || response.version?.minor !== 0 || !response.context || typeof response.context !== "object" || Array.isArray(response.context)) return; const keys = Object.keys(response.context).sort().join(","); if (keys !== "effortId,sessionId,trajectoryId" && keys !== "effortId,piAnchorId,sessionId,trajectoryId") return; if (!telemetryIdentifier(response.context.effortId) || !telemetryIdentifier(response.context.sessionId) || !telemetryIdentifier(response.context.trajectoryId) || (response.context.piAnchorId !== undefined && !telemetryIdentifier(response.context.piAnchorId))) return; context = { effortId: response.context.effortId, sessionId: response.context.sessionId, trajectoryId: response.context.trajectoryId, ...(response.context.piAnchorId === undefined ? {} : { piAnchorId: response.context.piAnchorId }) }; } }); } catch { context = undefined; }
   open = false; return responses === 1 ? context : undefined;
 }
 
@@ -429,7 +430,7 @@ function renderers(role: RunRequest["role"]) {
 }
 
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
-  if (!guardMinimumRuntime(pi, deps)) return;
+  if (!guardMinimumRuntime(pi, deps, ["on", "eventsEmit", "registerTool", "exec", "getThinkingLevel"])) return;
 
   const root = projectRoot(deps.extensionFile);
   const now = deps.now ?? Date.now;

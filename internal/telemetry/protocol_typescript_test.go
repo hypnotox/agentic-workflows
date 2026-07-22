@@ -3,8 +3,10 @@ package telemetry
 import (
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestProjectTypeScriptDerivesProtocolContract(t *testing.T) {
@@ -52,8 +54,76 @@ func TestCrossLanguageRecoveryFixture(t *testing.T) {
 	if effortID, nonce, err := parseStagingName(fixture.StagingName); err != nil || effortID != fixture.EffortID || nonce != fixture.Nonce {
 		t.Fatalf("Go recovery fixture parse = %q %q %v", effortID, nonce, err)
 	}
-	if len(fixture.Recoveries) != 4 || len(fixture.Ambiguous) != 3 {
-		t.Fatalf("shared recovery table incomplete: %#v", fixture)
+	for _, state := range fixture.Recoveries {
+		switch state {
+		case "orphan-staging":
+			ledger, _, _ := createTestEffort(t)
+			path := filepath.Join(ledger.paths.staging, fixture.StagingName)
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			old := time.Now().Add(-2 * time.Hour)
+			if err := os.Chtimes(path, old, old); err != nil {
+				t.Fatal(err)
+			}
+			report, err := ledger.Recover()
+			if err != nil || ledger.pathExists(path) || !containsString(report.Recovered, fixture.EffortID) {
+				t.Fatalf("Go orphan-staging outcome = %#v, %v", report, err)
+			}
+		case "pending-effort":
+			ledger, id, _ := tombstoneRecoveryLedger(t, "pending", true, false)
+			report, err := ledger.Recover()
+			if err != nil || ledger.pathExists(ledger.paths.tombstone(id)) || !containsString(report.Recovered, id) {
+				t.Fatalf("Go pending-effort outcome = %#v, %v", report, err)
+			}
+		case "pending-trash", "committed-trash":
+			status := "pending"
+			if state == "committed-trash" {
+				status = "committed"
+			}
+			ledger, id, trash := tombstoneRecoveryLedger(t, status, false, true)
+			report, err := ledger.Recover()
+			if err != nil || ledger.pathExists(trash) || !containsString(report.Recovered, id) {
+				t.Fatalf("Go %s outcome = %#v, %v", state, report, err)
+			}
+		default:
+			t.Fatalf("unknown shared recovery state %q", state)
+		}
+	}
+	for _, state := range fixture.Ambiguous {
+		ledger, _, _ := createTestEffort(t)
+		switch state {
+		case "active-staging":
+			path := filepath.Join(ledger.paths.staging, fixture.StagingName)
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			report, err := ledger.Recover()
+			if err != nil || !ledger.pathExists(path) || len(report.Ambiguous) != 0 {
+				t.Fatalf("Go active-staging preservation = %#v, %v", report, err)
+			}
+		case "nonce-mismatch":
+			ledger, id, _ := tombstoneRecoveryLedger(t, "pending", false, true)
+			raw, _ := json.Marshal(tombstoneRecord{Nonce: "different", State: "pending"})
+			if err := os.WriteFile(ledger.paths.tombstone(id), raw, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			report, err := ledger.Recover()
+			if err != nil || !hasIntegrityCode(report.Ambiguous, "ambiguous-prune-state") {
+				t.Fatalf("Go nonce-mismatch outcome = %#v, %v", report, err)
+			}
+		case "trash-without-tombstone":
+			path := filepath.Join(ledger.paths.trash, fixture.StagingName)
+			if err := os.Mkdir(path, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			report, err := ledger.Recover()
+			if err != nil || !hasIntegrityCode(report.Ambiguous, "ambiguous-trash-path") {
+				t.Fatalf("Go trash-without-tombstone outcome = %#v, %v", report, err)
+			}
+		default:
+			t.Fatalf("unknown shared ambiguous state %q", state)
+		}
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -300,7 +301,7 @@ var piBehaviorProof struct {
 	output []byte
 }
 
-func provePiDashboardBehavior(t *testing.T) {
+func provePiContractBehavior(t *testing.T, clauses ...string) {
 	t.Helper()
 	piBehaviorProof.Do(func() {
 		root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -308,46 +309,36 @@ func provePiDashboardBehavior(t *testing.T) {
 			piBehaviorProof.err = err
 			return
 		}
-		command := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
+		command := exec.Command(filepath.Join(root, "tools", "pi-extension-test", "container.sh"), "contract")
 		command.Dir = root
 		piBehaviorProof.output, piBehaviorProof.err = command.CombinedOutput()
 	})
 	if piBehaviorProof.err != nil {
-		t.Fatalf("Pi dashboard behavioral proof failed: %v\n%s", piBehaviorProof.err, piBehaviorProof.output)
+		t.Fatalf("focused Pi contract harness failed: %v\n%s", piBehaviorProof.err, piBehaviorProof.output)
+	}
+	for _, clause := range clauses {
+		matched, err := regexp.Match(`(?m)^ok [0-9]+ - invariant: `+regexp.QuoteMeta(clause)+`$`, piBehaviorProof.output)
+		if err != nil || !matched {
+			t.Errorf("focused Pi contract harness did not prove %q\n%s", clause, piBehaviorProof.output)
+		}
 	}
 }
 
 // invariant: rendering/adapter-outputs:pi-workflow-dashboard-runtime
 func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
-	provePiDashboardBehavior(t)
+	provePiContractBehavior(t,
+		"dashboard runtime covers lifecycle, queries, privacy, association, and passive telemetry",
+		"lifecycle projector rejects illegal historical effects and closed transitions",
+		"historical lifecycle projection excludes every illegal effect class",
+		"recovery parity executes staging, tombstone, trash, and ambiguity states",
+		"handoff transfers exact association and success setup data",
+		"subagent context and observations are exact closed bounded and private",
+	)
 }
 
 // invariant: rendering/templates:pi-workflow-dashboard-public-contract
 func TestPiWorkflowDashboardPublicContract(t *testing.T) {
-	provePiDashboardBehavior(t)
-	dashboard := renderPiExtensionFile(t, "awf-dashboard/index.ts")
-	protocol := renderPiExtensionFile(t, "awf-dashboard/protocol.ts")
-	for _, want := range []string{
-		`export const telemetryWidgetEnabled`,
-		`export const telemetryWidgetShowCost`,
-		`export const DASHBOARD_VIEWS = ["overview", "phases", "history", "findings", "maintenance"] as const`,
-		`this.state.runFixed(["metrics", "retain", "--dry-run", "--json"])`,
-		`this.state.runFixed(["metrics", "purge", "--effort", pending.action.effortId, "--confirm", "--json"])`,
-	} {
-		if !strings.Contains(dashboard, want) {
-			t.Errorf("dashboard public contract missing %q", want)
-		}
-	}
-	for _, forbidden := range []string{"healthScore", "autoReconcile", "setInterval(() => state.refresh", "aggregateLocally", "backgroundDaemon"} {
-		if strings.Contains(dashboard, forbidden) {
-			t.Errorf("dashboard public contract contains forbidden local policy %q", forbidden)
-		}
-	}
-	for _, want := range []string{"export const protocolDescriptor", "export function validateTelemetryEvent", "export function validateLifecycleRequest"} {
-		if !strings.Contains(protocol, want) {
-			t.Errorf("projected protocol missing public contract %q", want)
-		}
-	}
+	provePiContractBehavior(t, "dashboard public contract covers overlay, maintenance, widget, and disposal")
 }
 
 func TestTargetOutputRenderError(t *testing.T) {
@@ -862,86 +853,11 @@ func TestPiImplementationStateBoundary(t *testing.T) {
 
 // invariant: rendering/catalog-and-targets:pi-minimum-runtime
 func TestPiMinimumRuntimeContract(t *testing.T) {
-	registrationMethods := []string{
-		"registerTool(", "registerCommand(", "registerShortcut(", "registerFlag(",
-		"registerMessageRenderer(", "registerEntryRenderer(", "registerProvider(",
-	}
-	for _, path := range []string{"awf-subagents/index.ts", "awf-handoff/index.ts", "awf-dashboard/index.ts"} {
-		content := renderPiExtensionFile(t, path)
-		guardStart := strings.Index(content, "export function guardMinimumRuntime")
-		if guardStart < 0 {
-			t.Fatalf("%s does not contain a minimum-runtime guard", path)
-		}
-		guardEnd := strings.Index(content[guardStart:], "\n}\n")
-		if guardEnd < 0 {
-			t.Fatalf("%s does not contain an isolatable minimum-runtime guard", path)
-		}
-		guard := content[guardStart : guardStart+guardEnd]
-		assertOrderedSource(t, path+" minimum-runtime guard", guard,
-			`const requirements = {`,
-			`queueCommand: typeof pi.queueCommand === "function"`,
-			`eventHooks: typeof pi.on === "function" && typeof pi.events?.on === "function" && typeof pi.events?.emit === "function"`,
-			`persistedEntries: typeof pi.appendEntry === "function"`,
-			`tools: typeof pi.registerTool === "function"`,
-			`overlayCommands: typeof pi.registerCommand === "function"`,
-			`shutdownHooks: typeof pi.on === "function"`,
-			`const missing = Object.entries(requirements)`,
-			`if (versionSupported(deps.packageVersion) && missing.length === 0) return true;`,
-			`if (typeof pi.on !== "function") return false;`,
-			`pi.on("session_start"`,
-			`if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;`,
-			`(globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;`,
-			`ctx.ui.notify(`,
-			`return false;`,
-		)
-		for _, want := range []string{`MIN_PI_VERSION = "0.81.1"`, `Symbol.for("awf.pi.minimum-runtime-notified")`, `Missing runtime APIs:`, `widget/overlay commands`, `if (!guardMinimumRuntime(pi, deps)) return`} {
-			if !strings.Contains(content, want) {
-				t.Errorf("%s missing minimum-version contract %q", path, want)
-			}
-		}
-		if strings.Count(guard, `pi.on(`) != 1 || strings.Count(guard, `pi.on("session_start"`) != 1 || strings.Count(guard, `ctx.ui.notify(`) != 1 {
-			t.Errorf("%s unsupported guard must contain only its one session_start notification registration", path)
-		}
-		for _, forbidden := range registrationMethods {
-			if strings.Contains(guard, forbidden) {
-				t.Errorf("%s unsupported guard contains functional registration %q", path, forbidden)
-			}
-		}
-
-		factoryStart := strings.Index(content, "export function register")
-		if factoryStart < 0 {
-			t.Fatalf("%s does not contain a registration factory", path)
-		}
-		factoryEnd := strings.Index(content[factoryStart:], "\n}\n\nexport default")
-		if factoryEnd < 0 {
-			t.Fatalf("%s does not contain an isolatable registration factory", path)
-		}
-		factory := content[factoryStart : factoryStart+factoryEnd]
-		guardCall := strings.Index(factory, `if (!guardMinimumRuntime(pi, deps)) return`)
-		if guardCall < 0 {
-			t.Errorf("%s has no fail-before-registration guard call", path)
-			continue
-		}
-		functionalRegistrations := 0
-		registrationTokens := append([]string{`pi.on(`}, registrationMethods...)
-		for _, token := range registrationTokens {
-			for searchFrom := 0; ; {
-				at := strings.Index(factory[searchFrom:], token)
-				if at < 0 {
-					break
-				}
-				at += searchFrom
-				functionalRegistrations++
-				if at < guardCall {
-					t.Errorf("%s performs functional registration %q before the minimum-runtime guard", path, token)
-				}
-				searchFrom = at + len(token)
-			}
-		}
-		if functionalRegistrations == 0 {
-			t.Errorf("%s proof found no functional registrations after the guard", path)
-		}
-	}
+	provePiContractBehavior(t,
+		"subagent minimum runtime rejects unsupported version before registration",
+		"factory guards reject each missing actual dependency before registration",
+		"dashboard minimum runtime rejects missing factory APIs and degrades context APIs",
+	)
 }
 
 // invariant: rendering/templates:pi-session-handoff-public-contract

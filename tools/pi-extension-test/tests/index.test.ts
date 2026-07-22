@@ -13,7 +13,8 @@ import defaultExtension, {
   type ExtensionDependencies,
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
-import defaultHandoff from "../../../.pi/extensions/awf-handoff/index.ts";
+import defaultHandoff, { registerHandoff } from "../../../.pi/extensions/awf-handoff/index.ts";
+import { defaultLedgerDependencies, registerDashboard } from "../../../.pi/extensions/awf-dashboard/index.ts";
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { Value } from "typebox/value";
@@ -131,13 +132,12 @@ test("version support is strict and ordered", () => {
   assert.equal(versionSupported("invalid"), false);
 });
 
-test("unsupported runtime registers one guarded startup notification and no tools", async () => {
+test("invariant: subagent minimum runtime rejects unsupported version before registration", async () => {
   registerSubagentTools({} as any, { packageVersion: MIN_PI_VERSION } as any);
   const notice = Symbol.for("awf.pi.minimum-runtime-notified");
   for (const [version, queueCommand, detail] of [
     ["0.81.0", true, ""],
     ["unknown", true, ""],
-    ["0.81.1", false, " Missing runtime APIs: queueCommand."],
   ] as const) {
     delete (globalThis as any)[notice];
     const h = harness({ version, queueCommand });
@@ -145,12 +145,12 @@ test("unsupported runtime registers one guarded startup notification and no tool
     assert.deepEqual([...h.handlers.keys()], ["session_start"]);
     await h.handlers.get("session_start")({}, h.ctx);
     await h.handlers.get("session_start")({}, h.ctx);
-    assert.deepEqual(h.notifications, [[`awf Pi extensions require Pi 0.81.1 or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found ${version}.${detail} Upgrade Pi and reload.`, "error"]]);
+    assert.deepEqual(h.notifications, [[`awf Pi extensions require Pi 0.81.1 or newer with their factory event, persistence, tool, command, process, and thinking APIs; found ${version}.${detail} Upgrade Pi and reload.`, "error"]]);
   }
   delete (globalThis as any)[notice];
 });
 
-test("both unsupported factories share one precise notification and no functional surface", async () => {
+test("invariant: factory guards reject each missing actual dependency before registration", async () => {
   const notice = Symbol.for("awf.pi.minimum-runtime-notified");
   delete (globalThis as any)[notice];
   const starts: any[] = [];
@@ -170,7 +170,20 @@ test("both unsupported factories share one precise notification and no functiona
   assert.equal(starts.length, 2);
   const ctx = { ui: { notify: (...args: any[]) => notifications.push(args) } };
   for (const start of starts) await start({}, ctx);
-  assert.deepEqual(notifications, [["awf Pi extensions require Pi 0.81.1 or newer with event hooks, persisted custom entries, tools, widget/overlay commands, and shutdown hooks; found 0.81.1. Missing runtime APIs: queueCommand, eventHooks, persistedEntries. Upgrade Pi and reload.", "error"]]);
+  assert.deepEqual(notifications, [["awf Pi extensions require Pi 0.81.1 or newer with their factory event, persistence, tool, command, process, and thinking APIs; found 0.81.1. Missing runtime APIs: eventsEmit, exec, getThinkingLevel. Upgrade Pi and reload.", "error"]]);
+  delete (globalThis as any)[notice];
+
+  const factories: Array<{ name: string; required: string[]; register(pi: any, version: string): void }> = [
+    { name: "subagent", required: ["on", "events.emit", "registerTool", "exec", "getThinkingLevel"], register(api, version) { registerSubagentTools(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-subagents/index.ts", readFile: async () => "", runner: { run: async () => result } } as any); } },
+    { name: "handoff", required: ["on", "events.emit", "registerTool", "registerCommand", "queueCommand"], register(api, version) { registerHandoff(api, { packageVersion: version } as any); } },
+    { name: "dashboard", required: ["on", "events.on", "events.emit", "appendEntry", "registerTool", "registerCommand", "exec"], register(api, version) { registerDashboard(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-dashboard/index.ts", ledger: defaultLedgerDependencies("/p/.pi/extensions/awf-dashboard/index.ts"), exec: api.exec } as any); } },
+  ];
+  const complete = () => { const registrations: string[] = []; const api: any = { on() { registrations.push("on"); }, events: { on() { registrations.push("events.on"); }, emit() {} }, appendEntry() {}, registerTool() { registrations.push("tool"); }, registerCommand() { registrations.push("command"); }, queueCommand() {}, exec: async () => ({ code: 0, stdout: "", stderr: "" }), getThinkingLevel: () => "high" }; return { api, registrations }; };
+  for (const factory of factories) {
+    for (const missing of factory.required) { delete (globalThis as any)[notice]; const { api, registrations } = complete(); if (missing.includes(".")) { const [owner, field] = missing.split("."); delete api[owner][field]; } else delete api[missing]; factory.register(api, "0.81.1"); assert.deepEqual(registrations.filter((value) => value !== "on"), [], `${factory.name} accepted missing ${missing}`); }
+    const below = complete(); factory.register(below.api, "0.81.0"); assert.deepEqual(below.registrations.filter((value) => value !== "on"), [], `${factory.name} accepted below-minimum version`);
+    const boundary = complete(); factory.register(boundary.api, "0.81.1"); assert.equal(boundary.registrations.some((value) => value !== "on"), true, `${factory.name} rejected minimum version`);
+  }
   delete (globalThis as any)[notice];
 });
 
@@ -282,7 +295,7 @@ test("invalid explicit models reject before every role side effect", async () =>
   await assert.rejects(execute(noParent.tools.get("subagent_grounding"), { task: "ground" }, { ...noParent.ctx, model: undefined }), /active parent model/);
 });
 
-test("subagent observations are bounded, private, timed, and listener failures are isolated", async () => {
+test("invariant: subagent context and observations are exact closed bounded and private", async () => {
   const h = harness({ run: async () => ({
     ...result,
     model: "actual/model",
@@ -308,8 +321,8 @@ test("subagent observations are bounded, private, timed, and listener failures a
     assert.equal(serialized.includes(forbidden), false, forbidden);
   }
 
-  const contextual = harness({ telemetryContexts: [{ effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor" }] }); await execute(contextual.tools.get("subagent_grounding"), { task: "context" }, contextual.ctx); assert.deepEqual({ effortId: contextual.emitted[0].data.effortId, sessionId: contextual.emitted[0].data.sessionId, trajectoryId: contextual.emitted[0].data.trajectoryId, piAnchorId: contextual.emitted[0].data.piAnchorId, observationId: contextual.emitted[0].data.observationId }, { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor", observationId: "observation-1" });
-  const invalidContext = harness({ telemetryContexts: [null] }); await execute(invalidContext.tools.get("subagent_grounding"), { task: "invalid context" }, invalidContext.ctx); assert.equal(invalidContext.emitted[0].data.effortId, undefined);
+  const contextual = harness({ telemetryContexts: [{ version: { major: 1, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor" } }] }); await execute(contextual.tools.get("subagent_grounding"), { task: "context" }, contextual.ctx); assert.deepEqual({ effortId: contextual.emitted[0].data.effortId, sessionId: contextual.emitted[0].data.sessionId, trajectoryId: contextual.emitted[0].data.trajectoryId, piAnchorId: contextual.emitted[0].data.piAnchorId, observationId: contextual.emitted[0].data.observationId }, { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor", observationId: "observation-1" });
+  for (const invalid of [null, { version: { major: 2, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory" } }, { version: { major: 1, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", privatePrompt: "leak" } }, { version: { major: 1, minor: 0 }, context: { effortId: "../bad", sessionId: "session", trajectoryId: "trajectory" } }]) { const invalidContext = harness({ telemetryContexts: [invalid] }); await execute(invalidContext.tools.get("subagent_grounding"), { task: "invalid context" }, invalidContext.ctx); assert.equal(invalidContext.emitted[0].data.effortId, undefined); assert.equal(JSON.stringify(invalidContext.emitted[0].data).includes("leak"), false); }
   const duplicateContext = harness({ telemetryContexts: [{ effortId: "first" }, { effortId: "second" }] }); await execute(duplicateContext.tools.get("subagent_grounding"), { task: "duplicate context" }, duplicateContext.ctx); assert.equal(duplicateContext.emitted[0].data.effortId, undefined);
   const isolated = harness();
   isolated.pi.events.emit = () => { throw new Error("listener failed"); };

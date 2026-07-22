@@ -223,9 +223,12 @@ function stateFor(failed: boolean, stopReason?: string): SubagentState {
   return stopReason === "aborted" ? "aborted" : "failed";
 }
 
+function telemetryIdentifier(value: unknown): value is string {
+  return typeof value === "string" && value.length > 0 && Buffer.byteLength(value, "utf8") <= 128 && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
+}
 function requestTelemetryContext(pi: ExtensionAPI): { effortId: string; sessionId: string; trajectoryId: string; piAnchorId?: string } | undefined {
-  let open = true; let responses = 0; let context: any;
-  try { pi.events.emit("awf.telemetry.context.request.v1", { version: { major: 1, minor: 0 }, respond(value: unknown) { /* c8 ignore next -- the synchronous request is deliberately closed before late callbacks */ if (!open) return; responses++; context = responses === 1 && value && typeof value === "object" ? { ...(value as any) } : undefined; } }); } catch { context = undefined; }
+  let open = true; let responses = 0; let context: { effortId: string; sessionId: string; trajectoryId: string; piAnchorId?: string } | undefined;
+  try { pi.events.emit("awf.telemetry.context.request.v1", { version: { major: 1, minor: 0 }, respond(value: unknown) { /* c8 ignore next -- the synchronous request is deliberately closed before late callbacks */ if (!open) return; responses++; context = undefined; if (responses !== 1 || !value || typeof value !== "object" || Array.isArray(value)) return; const response = value as any; if (Object.keys(response).sort().join(",") !== "context,version" || response.version?.major !== 1 || response.version?.minor !== 0 || !response.context || typeof response.context !== "object" || Array.isArray(response.context)) return; const keys = Object.keys(response.context).sort().join(","); if (keys !== "effortId,sessionId,trajectoryId" && keys !== "effortId,piAnchorId,sessionId,trajectoryId") return; if (!telemetryIdentifier(response.context.effortId) || !telemetryIdentifier(response.context.sessionId) || !telemetryIdentifier(response.context.trajectoryId) || (response.context.piAnchorId !== undefined && !telemetryIdentifier(response.context.piAnchorId))) return; context = { effortId: response.context.effortId, sessionId: response.context.sessionId, trajectoryId: response.context.trajectoryId, ...(response.context.piAnchorId === undefined ? {} : { piAnchorId: response.context.piAnchorId }) }; } }); } catch { context = undefined; }
   open = false; return responses === 1 ? context : undefined;
 }
 
@@ -393,7 +396,7 @@ function renderers(role: RunRequest["role"]) {
 }
 
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
-  if (!guardMinimumRuntime(pi, deps)) return;
+  if (!guardMinimumRuntime(pi, deps, ["on", "eventsEmit", "registerTool", "exec", "getThinkingLevel"])) return;
 
   const root = projectRoot(deps.extensionFile);
   const now = deps.now ?? Date.now;
