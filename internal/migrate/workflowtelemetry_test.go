@@ -45,6 +45,15 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if Current() != 17 {
 		t.Fatalf("current schema = %d, want 17", Current())
 	}
+	versionAuthority, err := os.ReadFile(filepath.Join("..", "project", "project.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, literal := range []string{`const Version = "0.22.0"`, `17: "0.22.0"`} {
+		if !bytes.Contains(versionAuthority, []byte(literal)) {
+			t.Fatalf("project version authority lacks %q", literal)
+		}
+	}
 	first := append([]byte(nil), got...)
 	if out.String() != "workflow-telemetry: added workflowTelemetry defaults\n" {
 		t.Fatalf("output = %q", out.String())

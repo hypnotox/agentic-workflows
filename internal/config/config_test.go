@@ -799,6 +799,24 @@ func TestWorkflowTelemetryConfigContract(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
+	explicit := DefaultWorkflowTelemetryConfig()
+	explicit.Retention = TelemetryRetentionConfig{}
+	explicit.Widget = TelemetryWidgetConfig{}
+	explicit.Diagnostics.HeuristicsEnabled = false
+	explicit.Diagnostics.MinimumBaselineSamples = 1
+	explicit.Diagnostics.BaselinePercentile = 1
+	explicit.Diagnostics.Thresholds = TelemetryThresholdsConfig{PhaseReentryCount: 1, PhaseDurationSeconds: 1, PhaseTokens: 1, CompactionCount: 1, HandoffCount: 1, ToolFailureCount: 1, GateFailureCount: 1, SubagentQueueWaitSeconds: 1, ImplementationReworkCount: 1}
+	if cfg.WorkflowTelemetry != explicit {
+		t.Fatalf("explicit values = %#v, want %#v", cfg.WorkflowTelemetry, explicit)
+	}
+	fresh, err := MarshalSkeleton(Skeleton{Prefix: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const exactBlock = "workflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 90\n    maxCompletedEffortCount: 100\n  widget:\n    enabled: true\n    showCost: true\n  diagnostics:\n    heuristicsEnabled: true\n    minimumBaselineSamples: 10\n    baselinePercentile: 95\n    thresholds:\n      phaseReentryCount: 2\n      phaseDurationSeconds: 14400\n      phaseTokens: 200000\n      compactionCount: 3\n      handoffCount: 3\n      toolFailureCount: 3\n      gateFailureCount: 2\n      cacheReadPercentBelow: 10\n      subagentQueueWaitSeconds: 60\n      implementationReworkCount: 2\n"
+	if !strings.HasSuffix(string(fresh), exactBlock) {
+		t.Fatalf("fresh telemetry block:\n%s", fresh)
+	}
 	for _, bad := range []string{
 		"workflowTelemetry:\n  unknown: true\n",
 		"workflowTelemetry:\n  retention:\n    unknown: 1\n",
