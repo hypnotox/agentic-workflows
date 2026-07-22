@@ -38,8 +38,9 @@ Mechanics that constrain the split, verified against the checker:
   corpus, so no reference edges need repointing and none may be authored against old ids
   while this ADR is in flight.
 - Non-proof markers (`state:`, `touches-state:`) must sit inside the claim's effective
-  topic scope, so each batch rewrites marker sites and lands destination selectors in the
-  same staged transaction.
+  topic scope; each batch rewrites its marker sites in the same staged transaction, and
+  the destination selectors already cover every moved claim because the 15 shells land
+  with this proposal.
 
 ## Decision
 
