@@ -340,4 +340,11 @@ status event, per the pitfall that a flip never travels alone.
   state-sequence for the direct Implemented event is a repo-global counter (the checker
   reported 36, not a per-ADR 1); the checker-reported-value procedure in Task 3.5 absorbed this
   as designed. Commits interleaved with a concurrent session's ADR-0156 work in the same
-  checkout; staging by explicit path snapshot kept every transaction exact.
+  checkout; explicit path-snapshot staging kept Phases 1 and 2 exact, but the Phase 3 commit
+  was a bare `git commit` that swept in the concurrent session's freshly staged plan file (the
+  repo's fifth shared-index sweep, recorded in docs/pitfalls.md). Disposition, per user
+  decision at implementation review: history was split before publication, the foreign file
+  into its own docs(plans) commit and the 0155 transaction recommitted byte-identically.
+- Of the generated files the final sync was predicted to touch, `docs/domains/rendering.md`,
+  `docs/topics/rendering/index.md`, and `docs/topics/tooling/index.md` regenerated
+  byte-identical and so produced no diff in the flip commit; the remainder changed as listed.
