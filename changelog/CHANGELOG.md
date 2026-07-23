@@ -49,12 +49,22 @@ query a single version or a range.
   topic docs reduce their Applicability paragraph to selectors plus the coverage drilldown, so adding
   a file to a matched package no longer rewrites topic docs; existing adopters see one-time topic-doc
   drift resolved by their next `awf sync`.
-- Pi targets now ship a privacy-minimal, trajectory-aware workflow ledger and dashboard with explicit
-  lifecycle tools, active-effort widget, interactive metrics/doctor views, confirmed maintenance,
-  parent-handoff association, and resident history preserved by uninstall. The canonical `awf metrics`
-  and read-only `awf doctor` commands provide selector-scoped human, JSON, and export surfaces. Pi does
-  not currently produce shell/gate observations because its tool API exposes command text rather than
-  a trusted token vector; the typed protocol shape remains reserved.
+- Pi targets now ship a privacy-minimal, trajectory-aware workflow ledger and dashboard on ledger
+  protocol 2, with interactive metrics/doctor views, confirmed maintenance, parent-handoff
+  association, and resident history preserved by uninstall. One discoverable `awf-workflow` router
+  fronts the governed workflow chain: its `awf_workflow` tool settles or resumes effort identity,
+  durably applies the catalog-mapped lifecycle effect as a single transactional protocol-2
+  transition, and only then returns the fixed pre-rendered skill body, so lifecycle telemetry cannot
+  be bypassed. A fresh session shows `[awf:init]` and buffers bounded provisional telemetry in memory
+  until the first router call or an explicit `/awf-resume-effort <effort-id>` settles identity; the
+  muted below-editor widget mirrors Pi footer accounting from unique active-branch assistant entries,
+  nested subagents and restored history included, with `[awf:<phase>]`, `[awf:done]`, and
+  `[awf:abandoned]` badges. Canonical findings carry their owning effort, repair and waiver
+  re-resolve against the current causal frontier, and canonical refreshes apply in generation order.
+  The canonical `awf metrics` and read-only `awf doctor` commands provide selector-scoped human,
+  JSON, and export surfaces. Pi does not currently produce shell/gate observations because its tool
+  API exposes command text rather than a trusted token vector; the typed protocol shape remains
+  reserved.
 - `awf context` now preserves request-to-effective-path attribution, reports one primary path
   classification and known-artifact navigation, defaults to directly relevant concise claims, and
   adds an untruncated `--full` authority packet plus lifecycle-aware explicit ADR navigation.
@@ -70,10 +80,12 @@ query a single version or a range.
   are mechanically blocked before any member executes. Active tool rows now show queued/running
   state, resolved and actual models, thinking level, role options, and cumulative per-turn usage with
   Pi-style cache-hit statistics.
-- Pi targets now render a guarded `handoff_session` extension and checkpoint guidance that can replace
-  a persisted TUI session with a parent-linked fresh session after a cancelable countdown. The Pi
-  extension fixture pins the checksummed `hypnotox/pi` 0.81.1 awf.3 fork that provides queued extension
-  commands.
+- Pi targets now render a guarded `handoff_session` extension that can replace a persisted TUI
+  session with a parent-linked fresh session after a cancelable countdown; it requires a working
+  memory file carrying the active effort's exact `Effort: <id>` line and restores the association
+  before kickoff, while effort creation itself never requires a checkpoint or memory file. The Pi
+  extension fixture pins the checksummed `hypnotox/pi` 0.81.1 awf.3 fork that provides queued
+  extension commands.
 
 ### Bug fixes
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:
