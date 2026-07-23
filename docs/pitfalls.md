@@ -1211,5 +1211,36 @@ failure-path change: only the real-Pi lane exercises the disposal boundary. Same
 related trap: sanity-check template mutations on file copies, not `git checkout --`,
 which silently reverts a working tree full of unstaged sibling edits.
 
+## A Decision amendment discovered mid-implementation must be reviewed before the freeze commit
+
+_Domains: adr-system_
+
+The 0154 effort discovered mid-implementation that anchor references need causally
+forward-only resolution, substantive protocol semantics beyond the reviewed Decision. The
+amendment was correctly authored while the ADR was still Proposed, but it landed in the
+same commit that flipped the ADR to Implemented, so the clause froze without a
+fresh-context ADR review; the implementation review later verified it sound by diligence,
+not by process. This recurs the "record deviations before the terminal artifact
+transaction" family: prose memory did not prevent it. Land a mid-implementation amendment
+as its own docs(adr) commit, re-dispatch the ADR reviewer over the amended section when
+the change is load-bearing, and only then stage the freeze transaction. A deterministic
+catch is deferred to the roadmap: an audit rule flagging a frozen-state status flip whose
+commit also mutates the ADR's digest-covered sections (ADR-0154; 2026-07-23).
+
+## A consumer of a filtered shared map can depend on the filter's accidents
+
+_Domains: tooling_
+
+The trajectory-resume association invalidation read the causal anchor map and only ever
+behaved acceptably because pervasive co-anchoring kept its lookup empty: the ambiguity
+the checker flagged as a violation was silently load-bearing for a second consumer, and
+the consumer's own test staged its claim through an arbitrary event kind, so it kept
+passing right up until the claim restriction inverted the clause (firing on every normal
+tree-resume, never on its intended case). When redefining the semantics of a shared
+projection structure, enumerate every consumer mechanically first (grep the field, not
+the concept) and re-derive each consumer's correctness under the new semantics; the 0154
+grounding check caught this only because the dispatch brief explicitly asked who else
+reads the map (ADR-0154; 2026-07-23).
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
