@@ -254,7 +254,9 @@ feat(tooling): hoist domain selector block in concise context
   marker comment's claim id in place; the tests themselves do not move). A test-backed claim
   needs at least one proof site on a test asserting its obligations; `awf check` fails only
   when a claim has zero proof sites, and multiple proof sites or multiple marker lines on one
-  test are legal.
+  test are legal. Where two claims share one test below, that test fully asserts the
+  obligations of every claim marked on it: ADR-0151 item 6's "exactly its obligations" is
+  per-claim completeness, not test exclusivity.
   - `cmd/awf/dashboardread_test.go:50` (`invariant: tooling/cli:version-compat-gate`) ->
     `invariant: tooling/cli:dashboard-read-dispatch`.
   - `cmd/awf/dashboardread_test.go:51` (`invariant: tooling/cli:metrics-and-doctor-command-contract`):
