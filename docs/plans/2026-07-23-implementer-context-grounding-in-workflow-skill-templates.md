@@ -145,7 +145,20 @@ same line (the spine test scans line-by-line).
 
   Do not add a proof marker in this phase; the claim it would prove lands in Phase 3.
 
-- [ ] **Task 1.9: sync, validate, commit.** Run `./x sync` (rendered skills, sundial mirrors,
+- [ ] **Task 1.9: changelog entry, implementer portion.** In `changelog/CHANGELOG.md`, insert a
+  `### Features` section immediately after the `## [Unreleased]` line (before the existing
+  `### Bug fixes`), so the adopter-visible drift this commit creates is documented in the same
+  commit:
+
+  ```
+  ### Features
+  - Workflow skill templates now ground implementers in current-state authority: seven
+    implementer-chain skills (executing-plans, subagent-driven-development, writing-plans,
+    bugfix, debugging, tdd, refactor-coupling-audit) instruct a concise `awf context` run over
+    their touched paths before editing (ADR-0155).
+  ```
+
+- [ ] **Task 1.10: sync, validate, commit.** Run `./x sync` (rendered skills, sundial mirrors,
   and the lock regenerate). Stage the complete transaction (templates, test, and every regenerated
   file `git status` reports). Run `awf check --staged` (clean), then `./x gate` (passes). Commit:
 
@@ -210,7 +223,19 @@ same line (the spine test scans line-by-line).
   }
   ```
 
-- [ ] **Task 2.6: sync, validate, commit.** Run `./x sync`. Stage the complete transaction. Run
+- [ ] **Task 2.6: changelog entry, reviewer portion.** In `changelog/CHANGELOG.md`, extend the
+  Task 1.9 bullet so this commit's adopter-visible drift travels documented: replace its closing
+  `before editing (ADR-0155).` with:
+
+  ```
+  before editing, the reviewer dispatches (reviewing-impl, reviewing-plan, and the previously
+    packet-free resync) instruct the reviewer to run `awf context --full` itself with
+    parent-resolved arguments instead of pasting packet output into the brief, and the
+    ADR-reviewer brief gains an `awf topic` destination-topic hint (ADR-0155). Adopters see the
+    skill drift resolved by their next `awf sync`.
+  ```
+
+- [ ] **Task 2.7: sync, validate, commit.** Run `./x sync`. Stage the complete transaction. Run
   `awf check --staged` (clean), then `./x gate` (passes). Commit:
 
   ```commit
@@ -221,7 +246,7 @@ same line (the spine test scans line-by-line).
   `templates/skills/brainstorming/SKILL.md.tmpl`, and
   `go test ./internal/project -run TestManagedContextCallersChooseProjection` passes.
 
-## Phase 3: State changes, narrative, changelog, and the direct Implemented flip
+## Phase 3: State changes, narrative, and the direct Implemented flip
 
 One commit; the direct V2 transaction applies both declared operations atomically with the
 status event, per the pitfall that a flip never travels alone.
@@ -266,23 +291,7 @@ status event, per the pitfall that a flip never travels alone.
   Managed complete-authority callers (the reviewer dispatches, plan resync included, and the ADR lifecycle) instruct `--full` runs whose arguments the dispatching parent resolves, implementer skills ground concisely and drill down on demand, and a parent pastes packet output into a child brief only when it already holds that output for its own purposes (ADR-0155). Two omissions are deliberate: the ADR reviewer receives no packet, because an explicit ADR path reports lifecycle progress rather than path-claim grounding (its reviewer queries destination topics via `awf topic`), and the generic exploration skill stays grounding-free because its target paths are unknown up front.
   ```
 
-- [ ] **Task 3.5: changelog entry.** In `changelog/CHANGELOG.md`, under `## [Unreleased]`,
-  insert a `### Features` section immediately after the `## [Unreleased]` line (before the
-  existing `### Bug fixes`):
-
-  ```
-  ### Features
-  - Workflow skill templates now ground implementers in current-state authority: seven
-    implementer-chain skills (executing-plans, subagent-driven-development, writing-plans,
-    bugfix, debugging, tdd, refactor-coupling-audit) instruct a concise `awf context` run over
-    their touched paths before editing, the reviewer dispatches (reviewing-impl, reviewing-plan,
-    and the previously packet-free resync) instruct the reviewer to run `awf context --full`
-    itself with parent-resolved arguments instead of pasting packet output into the brief, and
-    the ADR-reviewer brief gains an `awf topic` destination-topic hint (ADR-0155). Adopters see
-    the skill drift resolved by their next `awf sync`.
-  ```
-
-- [ ] **Task 3.6: direct Implemented transition, plan freeze, sync, commit.** Following
+- [ ] **Task 3.5: direct Implemented transition, plan freeze, sync, commit.** Following
   `awf-adr-lifecycle`'s direct path: in
   `docs/decisions/0155-implementer-side-context-grounding-in-workflow-skill-templates.md`, set
   frontmatter `status: Implemented` and append to Status history the line
