@@ -78,7 +78,7 @@ declined; the generic prose renders).
 - `gateCmd`: Command that runs the full pre-commit gate (tests, lint, coverage). Consumed while an enabled artifact's template references it, and by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel).
   State: set (`./x gate`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push, plans-template, skill adr-lifecycle, skill bugfix, skill debugging, skill executing-plans, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill tdd, skill writing-plans.
 - `gateCmdFull`: Command for the full/extended gate tier, if the project has one. Consumed while an enabled artifact's template references it.
-  State: set (`./x gate full`). Consumed by: agents-doc, doc workflow, hooks pre-push, skill bugfix, skill debugging, skill executing-plans, skill subagent-driven-development.
+  State: set (`./x gate full`). Consumed by: doc workflow, hooks pre-push, skill bugfix, skill debugging, skill executing-plans, skill subagent-driven-development.
 - `checkCmd`: Command that checks rendered output for drift. Leave empty to have the rendered hook payloads run the pinned awf via the bootstrap shim. Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
   State: set (`./x check`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push.
 - `commitGateCmd`: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to have the payload run the pinned awf via the bootstrap shim. Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.

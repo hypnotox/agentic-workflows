@@ -99,11 +99,15 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		"layout":                  p.layout().templateMap(),
 		"version":                 Version,
 		"skills":                  p.effSkills,
-		"taskSkills":              p.taskSkillsDisplay(),
+		"taskSkillRows":           p.taskSkillRows(),
 		"commitScopes":            p.commitScopesDisplay(),
 		"gatedCommands":           gatedCommandsDisplay(),
 		"telemetryWidgetEnabled":  p.Cfg.WorkflowTelemetry.Widget.Enabled,
 		"telemetryWidgetShowCost": p.Cfg.WorkflowTelemetry.Widget.ShowCost,
+		// Project-level session-handoff signal for the neutral (guide/singleton
+		// doc) render; per-target renders overwrite it from targetTemplateData
+		// (ADR-0157 Decision 6).
+		"targetSessionHandoff": anyTargetHasCapability(p.Targets, CapabilitySessionHandoff),
 	}
 }
 
@@ -114,10 +118,6 @@ func (p *Project) runnerRenderData() map[string]any {
 	return data
 }
 
-// taskSkillsDisplay returns the enabled catalog task skills - standard,
-// non-Chain entries of the effective set - as "`<prefix>-<name>`, ...", or ""
-// when none are enabled. Derived from the catalog so a new task skill cannot
-// be dropped from the guide's sentence by a forgotten template edit.
 type workflowRouterEntry struct {
 	Name, Kind, Effect string
 }
@@ -203,15 +203,22 @@ func (p *Project) routedWorkflowNames() ([]string, error) {
 	return names, nil
 }
 
-func (p *Project) taskSkillsDisplay() string {
-	var quoted []string
+// taskSkillRows returns the guide's trigger-table rows for the enabled catalog
+// task skills - standard, non-Chain entries of the effective set - one
+// "- `<prefix>-<name>`: <trigger>." line per skill, sorted by name and joined
+// by newlines, or "" when none are enabled. Derived from the catalog so a new
+// task skill cannot be dropped from the guide's table by a forgotten template
+// edit (ADR-0157).
+func (p *Project) taskSkillRows() string {
+	var rows []string
 	for _, name := range slices.Sorted(maps.Keys(p.effSkills)) {
-		if sp, ok := catalog.Standard.Skills[name]; !ok || sp.Chain {
+		sp, ok := catalog.Standard.Skills[name]
+		if !ok || sp.Chain {
 			continue
 		}
-		quoted = append(quoted, "`"+p.Cfg.Prefix+"-"+name+"`")
+		rows = append(rows, "- `"+p.Cfg.Prefix+"-"+name+"`: "+sp.Trigger+".")
 	}
-	return strings.Join(quoted, ", ")
+	return strings.Join(rows, "\n")
 }
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list

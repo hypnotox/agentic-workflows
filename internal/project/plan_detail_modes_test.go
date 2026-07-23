@@ -34,20 +34,12 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		"vars":   map[string]any{},
 		"layout": testLayout(),
 	})
-	defaultAgentGuide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", map[string]any{
-		"prefix": "example",
-		"vars":   map[string]any{},
-		"layout": testLayout(),
-		"skills": map[string]bool{"brainstorming": true},
-		"data":   map[string]any{},
-	})
 
 	for _, surface := range []planPolicySurface{
 		{"default writing skill", defaultWriter, "- **Tasks:**", "- **Commit subjects"},
 		{"default plan reviewer", defaultReviewer, "1. **executability**", "1. **doc-currency"},
 		{"default plans README", defaultReadme, "- Phases of tasks", "- A commit step"},
 		{"default plan template", defaultPlanTemplate, "- [ ] **Task 1.1", "- [ ] **Task 1.2"},
-		{"default agent guide", defaultAgentGuide, "A plan may use exact content/diffs", "Each written artifact gets"},
 	} {
 		assertPlanTaskDetailContract(t, surface)
 	}
@@ -58,7 +50,6 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
 		{name: "docs/plans/README.md", start: "- Phases of tasks", end: "- A commit step"},
 		{name: "docs/plans/template.md", start: "- [ ] **Task 1.1", end: "- [ ] **Task 1.2"},
-		{name: "AGENTS.md", start: "A plan may use exact content/diffs", end: "Each written artifact gets"},
 	} {
 		body, err := os.ReadFile(filepath.Join(root, surface.name))
 		if err != nil {

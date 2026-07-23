@@ -1176,6 +1176,38 @@ func TestPiSessionHandoffWorkflow(t *testing.T) {
 	}
 }
 
+// TestNeutralSingletonSessionHandoffSignal pins the ADR-0157 Decision 6
+// contract: the neutral (once-rendered) guide and workflow doc receive a
+// project-level targetSessionHandoff signal, true iff any enabled target
+// supports session handoff, so their Pi-gated prose renders for a
+// handoff-capable target set and stays absent otherwise. These are the
+// both-branch assertions the final ADR-0157 batch folds into
+// guide-entry-point-routing's proof set; the marker lands with that batch.
+func TestNeutralSingletonSessionHandoffSignal(t *testing.T) {
+	piGated := []string{
+		"In Pi, enter every governed skill through the `awf_workflow` router",
+		"When Pi workflow telemetry is available",
+		"On the routine clear branch, Pi TUI guidance",
+	}
+	pi := explorationRenderedByPath(t, explorationFixtureConfig("pi"))
+	handoff := pi["AGENTS.md"] + pi["docs/workflow.md"]
+	for _, want := range piGated {
+		if !strings.Contains(handoff, want) {
+			t.Errorf("pi-target neutral render missing Pi-gated prose %q", want)
+		}
+	}
+	claude := explorationRenderedByPath(t, explorationFixtureConfig("claude"))
+	neutral := claude["AGENTS.md"] + claude["docs/workflow.md"]
+	for _, banned := range piGated {
+		if strings.Contains(neutral, banned) {
+			t.Errorf("non-handoff neutral render leaks Pi-gated prose %q", banned)
+		}
+	}
+	if !strings.Contains(claude["docs/workflow.md"], "Target-native continuation follows without an unsupported session-replacement claim") {
+		t.Errorf("non-handoff workflow doc missing the neutral continuation branch:\n%s", claude["docs/workflow.md"])
+	}
+}
+
 func assertOrderedSource(t *testing.T, label, content string, phrases ...string) {
 	t.Helper()
 	position := 0

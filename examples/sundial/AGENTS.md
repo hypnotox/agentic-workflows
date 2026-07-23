@@ -7,12 +7,7 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:edit awf-setup: default; create .awf/parts/agents-doc/awf-setup.md to override -->
 ## Working with awf
 
-This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree, once per enabled adapter runtime. Every rendered file is generated: never hand-edit one; change the config and re-render.
-
-- **Toggle an artifact or adapter:** `awf enable <kind> <name>` / `awf disable <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`), or edit the enable arrays in `.awf/config.yaml` directly. `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a checksum-verified installer that prints the path of this project's pinned awf binary for hooks and CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under `.awf/hooks/`, inert scripts you wire into hook setups you own; awf never touches git config. `runner` toggles the co-owned command-runner `x` at the repo root; awf owns the awf-verb dispatch, you fill the project-verb and setup sections in place. `bootstrap`/`hooks`/`runner` are nameless singleton toggles (`awf enable runner`, no name). The workflow-chain skills reference one another by name; `awf enable` enables a skill's full requirement closure and `awf disable` refuses while enabled skills still require it (`--with-dependents` disables the unit together).
-- **Set a variable:** edit `vars` in `.awf/config.yaml`.
-- **Override one section of a target:** drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. Re-inject the default inside your part with the `sectionDefault` placeholder to *extend* it rather than discard it. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
-- **After any config or part edit:** run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
+This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one. Change the config, a var, or a convention part, then run `awf sync` and `awf check`, and commit the rendered files with the config change. Toggle artifacts and adapters with `awf enable <kind> <name>` / `awf disable <kind> <name>`.
 
 See [docs/working-with-awf.md](docs/working-with-awf.md) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
 
@@ -49,32 +44,26 @@ Hard rules every change must respect:
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
-Canonical chain for non-trivial work:
+Non-trivial work starts with `sundial-brainstorming`: it settles intent and design, then hands off through the chain (ADR and plan when warranted, implementation, review, retrospective), each skill's terminal step naming its successor.
 
-```
-brainstorming → ADR (if warranted) → plan (if warranted) → resync (when both) → implementation → review → retrospective
-```
+Task skills for specific situations:
 
-Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing-ness* (a design decision the project must remember); when warranted it is written **and reviewed to a settled state before planning**, because the plan is execution detail derived from the decision. **Planning** is warranted by *complexity* (multi-commit, interdependent steps). Many tasks need neither, and the ADR↔plan relationship is many-to-one: one plan links zero or more ADRs. A plan may use exact content/diffs or implementation-ready pseudocode. Each task names exact file paths and relevant symbols, exact commands with expected terminal states, and required behavior, branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and deterministic verification. Exact form remains mandatory for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and the specialized batch task's representative and edge; the batch task retains its affected-site set and post-check. Non-contractual prose may use qualifying instructions, and a mixed task may combine both forms. `TBD`, `implement later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode. Every task remains executable by an agent with no prior conversation context. Each written artifact gets a fresh-context review (`sundial-reviewing-adr`, `sundial-reviewing-plan`); when both an ADR and a plan exist, a plan↔ADR **resync** reconciles them before implementation, looping until they converge. `sundial-reviewing-impl` is the terminal review, after which `sundial-retrospective` closes the feedback loop by promoting recurring findings toward deterministic checks.
+- `sundial-adr-lifecycle`: transitioning an ADR between lifecycle states.
+- `sundial-bugfix`: applying a fix whose root cause is already known.
+- `sundial-debugging`: investigating a bug or unexpected behaviour before any fix.
+- `sundial-exploring`: fresh-context repository exploration when inline search would pollute the parent context.
+- `sundial-refactor-coupling-audit`: scoping a refactor that moves files between packages or inverts dependencies.
+- `sundial-roadmap-graduation`: graduating a shipped roadmap item out of the roadmap doc.
+- `sundial-tdd`: writing the failing test before the implementation change.
 
-**Chain skills** (invoke in order): `sundial-brainstorming`, `sundial-proposing-adr`, `sundial-reviewing-adr`, `sundial-writing-plans`, `sundial-reviewing-plan`, `sundial-reviewing-plan-resync`, `sundial-executing-plans` / `sundial-subagent-driven-development`, `sundial-reviewing-impl`, `sundial-retrospective`. **Task skills** (as needed): `sundial-adr-lifecycle`, `sundial-bugfix`, `sundial-debugging`, `sundial-exploring`, `sundial-refactor-coupling-audit`, `sundial-roadmap-graduation`, `sundial-tdd`.
+In Pi, enter every governed skill through the `awf_workflow` router with the semantic skill name; never load a governed body directly.
 
-A V2 ADR may apply its frozen operations across individually checked commits: every first, middle, or final Applied batch and exactly its matching claim mutations form one staged transaction; Applied effects remain authoritative if later Abandoned, while Remaining operations become Canceled.
-
-Use exploration only when both the repository location is unknown and inline search would pollute parent context; keep exact-known-file and genuinely trivial lookups inline. Independent fresh-context exploration may run concurrently where supported, but refinement of an earlier result stays sequential. Select a lower-cost child model deliberately when the runtime supports it; shared-checkout implementation stays alone. Long implementations should favor sequential implementation subagents so the orchestrating parent stays lean: length and parent-context pressure are explicit reasons to prefer subagent implementation, coupling may still justify inline execution, and the orchestrator decides case by case.
-
-Stage the complete transaction, run `awf check --staged`, then run `./x gate` (`./x gate full` is the full tier). Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
+Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
 <!-- awf:edit working-memory: default; create .awf/parts/agents-doc/working-memory.md to override -->
 ## Working memory
 
-Session context is volatile; the chain's working state must not be. `.awf/memory/` (kept out of version control by a rendered self-ignoring `.gitignore`) holds one working-memory file per in-flight effort: `.awf/memory/<effort-slug>.md`.
-
-- **Check `.awf/memory/` on demand: when the work calls for it, not as a fixed startup step.** Read it when the request implies earlier work to continue (an explicit "continue"/"resume", or a reference to an in-flight effort), or as a safety net when a fresh or context-compacted session finds `.awf/memory/` non-empty and you cannot otherwise account for that state. Skip it for a self-contained request you can fully serve without prior context. Whenever you do check: if an effort file matches, resume from its recorded `Phase:`/`Next:` lines instead of restarting; if several files exist, or a file matches no in-flight work you can verify, ask the user which (if any) to resume; never silently resume a stale effort.
-- **While working, prefer just-in-time retrieval.** Hold lightweight identifiers (file paths, ADR numbers, doc names) in the memory file and read the sources on demand rather than preloading them.
-- **Checkpoints are durable; check-ins are deliberate.** A boundary runs three steps in order: persist working memory first (an existing or deliberately created file carries the exact active `Effort: <id>` and updates in its own tool batch), decide whether user attention is required, then either raise a check-in and stop or state a continuity notice and continue. A routine checkpoint summary is a continuity notice, not a stop. The end of brainstorming and the settled ADR review are the two mandatory approval check-ins: present the summary, explicitly request approval, and continue only after approval is granted and persisted. Continue through the target-native successor without claiming session replacement. During a long implementation, checkpoint after any independently resumable committed and reviewed task.
-- **File skeleton** (a convention, not a schema; no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
-- **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue. Delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
+`.awf/memory/<effort-slug>.md` (gitignored) holds one working-memory file per in-flight effort. Check `.awf/memory/` when a request implies earlier work to continue, or when a fresh session finds it non-empty and unaccounted for; resume from the file's `Phase:`/`Next:` lines rather than restarting, and ask before resuming anything you cannot verify. Never commit the file or cite it in an ADR, plan, or commit message; delete it when the effort's chain terminates. The checkpoint protocol, file skeleton, and ground rules live in the workflow doc's working-memory section.
 
 <!-- awf:edit commands: default; create .awf/parts/agents-doc/commands.md to override -->
 ## Commands

@@ -34,6 +34,7 @@ var Standard = &Catalog{
 		}},
 		"tdd": {
 			Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "tdd", RequiresPhases: []string{"implementation"}},
+			Trigger:  "writing the failing test before the implementation change",
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
 				"testSurfaces": []any{
@@ -43,11 +44,11 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"debugging": {Workflow: &WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "investigation", Activity: "debugging"}, RequiresSkills: []string{"exploring"}, Sections: []string{
+		"debugging": {Workflow: &WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "investigation", Activity: "debugging"}, Trigger: "investigating a bug or unexpected behaviour before any fix", RequiresSkills: []string{"exploring"}, Sections: []string{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
 			"devdb-note", "red-flags", "memory-checkpoint",
 		}},
-		"exploring": {Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "exploration"}, Sections: []string{
+		"exploring": {Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "exploration"}, Trigger: "fresh-context repository exploration when inline search would pollute the parent context", Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
 		"proposing-adr": {
@@ -71,6 +72,7 @@ var Standard = &Catalog{
 		},
 		"adr-lifecycle": {
 			Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "adr-lifecycle"},
+			Trigger: "transitioning an ADR between lifecycle states",
 			Sections: []string{
 				"states", "transitions", "state-changes",
 				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
@@ -86,7 +88,7 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"bugfix": {Workflow: &WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "brainstorming", RouteEffect: RouteSelectBugfix}, Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
+		"bugfix": {Workflow: &WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "brainstorming", RouteEffect: RouteSelectBugfix}, Trigger: "applying a fix whose root cause is already known", Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
 		"reviewing-plan": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "plan-review", RequiresPhases: []string{"planning"}}, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"reviewing-plan-resync", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
@@ -107,13 +109,13 @@ var Standard = &Catalog{
 		"retrospective": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "retrospective", RouteEffect: RouteSelectInvestigationIfUnrouted, TerminalEffect: TerminalArmCompletion, RequiresPhases: []string{"implementation-review", "investigation"}}, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
-		"refactor-coupling-audit": {Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "refactor-coupling-audit", RequiresPhases: []string{"brainstorming"}}, RequiresSkills: []string{"exploring"}, Sections: []string{
+		"refactor-coupling-audit": {Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "refactor-coupling-audit", RequiresPhases: []string{"brainstorming"}}, Trigger: "scoping a refactor that moves files between packages or inverts dependencies", RequiresSkills: []string{"exploring"}, Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",
 			"output-format", "scope-shrink-rule", "notes",
 		}},
-		"roadmap-graduation": {Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "roadmap-graduation"}, RequiresDoc: "roadmap", Sections: []string{
+		"roadmap-graduation": {Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "roadmap-graduation"}, Trigger: "graduating a shipped roadmap item out of the roadmap doc", RequiresDoc: "roadmap", Sections: []string{
 			"when-fires", "failure-modes", "identify-entry", "reverify-measurements",
 			"graduate-single-commit", "explicit-drop", "same-commit", "doc-currency", "notes",
 		}},

@@ -35,8 +35,9 @@ Backing: test
 
 ### `invariant: plan-task-detail-modes`
 
-The rendered plan-authoring skill, plan reviewer, implementation-plans README, and agent guide accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, and render coherently with empty variables.
+The rendered plan-authoring skill, plan reviewer, and implementation-plans README accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, and render coherently with empty variables.
 Origin: ADR-0148
+Revised-by: ADR-0157
 Backing: test
 
 ### `invariant: reviewers-report-only`

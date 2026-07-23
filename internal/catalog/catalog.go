@@ -112,6 +112,11 @@ type SkillSpec struct {
 	// template id to the shared base template, not the name-derived catalog path.
 	// Standard skills never set it.
 	Base bool `yaml:"base"`
+	// Trigger is the one-line guide trigger for non-chain (task) skills: the
+	// situation that warrants invoking the skill, rendered as its row in the
+	// agent guide's entry-skill trigger table (ADR-0157). Empty for chain
+	// skills, which route through the chain rather than the table.
+	Trigger string `yaml:"trigger"`
 	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
 	RequiresSkills []string         `yaml:"requiresSkills"`
 	Data           map[string]any   `yaml:"data"`

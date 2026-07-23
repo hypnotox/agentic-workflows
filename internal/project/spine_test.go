@@ -962,7 +962,12 @@ func TestAgentsDocTemplate(t *testing.T) {
 		},
 		"layout": testLayout(),
 		"data":   map[string]any{},
-		"skills": map[string]bool{"brainstorming": true, "adr-lifecycle": true, "tdd": true},
+		"skills": map[string]bool{"brainstorming": true, "adr-lifecycle": true, "tdd": true, "bugfix": true},
+		// The project layer derives this key from the catalog (taskSkillRows);
+		// golden renders supply the equivalent projection for the enabled set.
+		"taskSkillRows": "- `example-adr-lifecycle`: transitioning an ADR between lifecycle states.\n" +
+			"- `example-bugfix`: applying a fix whose root cause is already known.\n" +
+			"- `example-tdd`: writing the failing test before the implementation change.",
 	}
 	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
 	for _, phrase := range []string{
@@ -973,12 +978,67 @@ func TestAgentsDocTemplate(t *testing.T) {
 		"## Commands",
 		"## Document map",
 		"example-brainstorming",
-		"example-reviewing-impl",
-		"example-retrospective",
+		"- `example-bugfix`: applying a fix whose root cause is already known.",
 		"make gate",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, banned := range []string{
+		"brainstorming → ADR",
+		"warranted by",
+		"A plan may use exact content/diffs",
+		"V2 ADR",
+		"pollute parent context",
+		"Chain skills",
+	} {
+		if strings.Contains(out, banned) {
+			t.Errorf("evicted workflow prose %q must not render in the guide:\n%s", banned, out)
+		}
+	}
+}
+
+// TestWorkingMemorySingleHomeSurfaces asserts the ADR-0157 canonical-home
+// shape: the workflow doc carries the working-memory protocol while the guide
+// and the two checkpoint-partial-carrying skill renders (routine via
+// executing-plans, approval via brainstorming) carry only the pointer to it.
+// Proof markers for the two ADR-0157 claims are added with the final Applied
+// batch; a marker naming a not-yet-existing claim ID is a hard error.
+func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
+	workflowDoc := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
+		"vars":   map[string]any{},
+		"layout": testLayout(),
+		"data":   map[string]any{},
+	})
+	for _, want := range []string{"## Working memory", "File skeleton (a convention, not a schema"} {
+		if !strings.Contains(workflowDoc, want) {
+			t.Errorf("workflow doc missing canonical working-memory prose %q:\n%s", want, workflowDoc)
+		}
+	}
+	const pointer = "the workflow doc's working-memory section"
+	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"layout": testLayout(),
+		"data":   map[string]any{},
+		"skills": map[string]bool{"brainstorming": true},
+	})
+	if !strings.Contains(guide, pointer) {
+		t.Errorf("guide must point at the canonical working-memory home:\n%s", guide)
+	}
+	if strings.Contains(guide, "File skeleton") {
+		t.Errorf("guide must not carry the file skeleton:\n%s", guide)
+	}
+	for _, skill := range []string{"executing-plans", "brainstorming"} {
+		out := renderSkillGolden(t, skill, map[string]any{
+			"prefix": "example",
+			"vars":   map[string]any{},
+			"data":   map[string]any{},
+			"layout": testLayout(),
+		})
+		if !strings.Contains(out, pointer) {
+			t.Errorf("%s must point at the canonical working-memory home:\n%s", skill, out)
 		}
 	}
 }
@@ -1306,10 +1366,11 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	}
 }
 
-// The AGENTS.md task-skills sentence derives from the catalog's enabled
-// non-Chain skills - every catalog task skill appears iff enabled (a hand
-// enumeration could never mention a newer one like refactor-coupling-audit),
-// and disabled ones stay absent (ADR-0046 follow-up sweep).
+// The AGENTS.md task-skill trigger table derives from the catalog's enabled
+// non-Chain skills - every catalog task skill's trigger row appears iff enabled
+// (a hand enumeration could never mention a newer one like
+// refactor-coupling-audit), and disabled ones stay absent (ADR-0046 follow-up
+// sweep; table shape per ADR-0157).
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	// brainstorming carries a local sidecar: the guide's chain sentence needs a
 	// chain skill in the effective set, but a non-local one would demand its
@@ -1335,8 +1396,14 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 		t.Fatal(err)
 	}
 	out := string(guide)
-	if !strings.Contains(out, "**Task skills** (as needed): `example-bugfix`, `example-exploring`, `example-refactor-coupling-audit`.") {
-		t.Errorf("expected a catalog-derived task-skills sentence:\n%s", out)
+	for _, row := range []string{
+		"- `example-bugfix`: applying a fix whose root cause is already known.",
+		"- `example-exploring`: fresh-context repository exploration when inline search would pollute the parent context.",
+		"- `example-refactor-coupling-audit`: scoping a refactor that moves files between packages or inverts dependencies.",
+	} {
+		if !strings.Contains(out, row) {
+			t.Errorf("expected catalog-derived trigger row %q:\n%s", row, out)
+		}
 	}
 	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle"} {
 		if strings.Contains(out, banned) {
