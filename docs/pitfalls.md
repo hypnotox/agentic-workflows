@@ -66,6 +66,22 @@ _Domains: tooling_
 
 `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
 
+## go-git status ignores the global and system gitignore
+
+_Domains: tooling_
+
+go-git's `Worktree().Status()` consults only the repository's own `.gitignore` chain and
+`.git/info/exclude`; it never reads `core.excludesfile` from `~/.gitconfig` or
+`/etc/gitconfig`, so untracked files real git treats as ignored show up in the status. Any
+status-derived path universe must inject `internal/git.GlobalExcludePatterns()` into
+`Worktree.Excludes` before calling `Status()`, or route through `git.WorkingPaths`, which
+already does. This bit twice: `awf audit`'s uncommitted-changes rule fixed it locally, but
+`WorkingPaths` (the eligible-path universe behind `awf context --uncovered` and the
+working-tree snapshot) kept the raw semantics and reported globally-ignored files as
+eligible-unowned. Tests that exercise status-based code run under
+`testsupport.RunIsolated`, which points HOME at a temp dir, so fixtures never inherit the
+developer's real global gitignore.
+
 ## Stdout is API in command-substitution scripts
 
 _Domains: rendering_

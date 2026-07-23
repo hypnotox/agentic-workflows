@@ -2,13 +2,10 @@ package audit
 
 import (
 	"fmt"
-	"slices"
 	"strings"
 
-	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/go-git/go-git/v5/plumbing/object"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -16,10 +13,10 @@ import (
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
 // (ADR-0025). It reads live working-tree state via go-git's Worktree().Status(),
-// injecting the user's global and system gitignore patterns - which Status() does
-// not consult on its own (it honours only the repo's .gitignore and
-// .git/info/exclude) - so the rule mirrors `git status` and does not false-positive
-// on globally-ignored files. Run evaluates it (it holds the repo root); it is
+// injecting the user's global and system gitignore patterns
+// (awfgit.GlobalExcludePatterns) - which Status() does not consult on its own -
+// so the rule mirrors `git status` and does not false-positive on
+// globally-ignored files. Run evaluates it (it holds the repo root); it is
 // range-independent, unlike the commit-history rules in evaluate.
 // touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
 func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
@@ -34,10 +31,7 @@ func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 	if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf audit's intended use
 		return nil
 	}
-	root := osfs.New("/")
-	global, _ := gitignore.LoadGlobalPatterns(root)
-	system, _ := gitignore.LoadSystemPatterns(root)
-	wt.Excludes = slices.Concat(global, system)
+	wt.Excludes = awfgit.GlobalExcludePatterns()
 	status, err := wt.Status()
 	if err != nil { // coverage-ignore: Status on the healthy worktree we just opened does not fail
 		return nil

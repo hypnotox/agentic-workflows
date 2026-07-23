@@ -43,6 +43,40 @@ func TestWorkingPaths(t *testing.T) {
 	}
 }
 
+func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	excludes := filepath.Join(home, "global-ignore")
+	if err := os.WriteFile(excludes, []byte("globally-ignored.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitconfig := filepath.Join(home, ".gitconfig")
+	if err := os.WriteFile(gitconfig, []byte("[core]\n\texcludesfile = "+excludes+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(gitconfig)
+		_ = os.Remove(excludes)
+	})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	if err := os.WriteFile(filepath.Join(dir, "globally-ignored.txt"), []byte("junk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "kept.txt"), []byte("kept"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := awfgit.WorkingPaths(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(paths, ","); got != "kept.txt,tracked.txt" {
+		t.Fatalf("working paths with global excludesfile = %q, want %q", got, "kept.txt,tracked.txt")
+	}
+}
+
 func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	if err := os.MkdirAll(filepath.Join(dir, "nested", ".awf"), 0o755); err != nil {

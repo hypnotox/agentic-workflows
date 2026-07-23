@@ -20,6 +20,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/cache"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
@@ -157,12 +158,30 @@ func HeadHash(repoRoot string) (string, error) {
 	return ref.Hash().String(), nil
 }
 
+// GlobalExcludePatterns returns the ignore patterns git applies from outside
+// the repository: core.excludesfile from the system /etc/gitconfig and from
+// the user's ~/.gitconfig. go-git's worktree status consults only the repo's
+// own .gitignore chain and .git/info/exclude, so every status-based path
+// universe must inject these itself to mirror `git status`. Global patterns
+// follow system patterns so the user's rules win where they conflict, matching
+// git's precedence. Absent or unreadable sources contribute no patterns: the
+// callers read repository state, and a missing optional ignore source must not
+// fail them.
+func GlobalExcludePatterns() []gitignore.Pattern {
+	root := osfs.New("/")
+	system, _ := gitignore.LoadSystemPatterns(root)
+	global, _ := gitignore.LoadGlobalPatterns(root)
+	return append(system, global...)
+}
+
 // WorkingPaths returns tracked HEAD paths that still exist plus nonignored
 // untracked paths, rerooted to repoRoot. A specifically unborn HEAD supplies an
 // empty committed baseline; every other repository, reference, or object error
 // still fails. repoRoot may be an adopted project nested inside a containing
-// monorepo; paths outside that project are excluded. Deleted, ignored, and
-// nested-repository files are excluded by go-git's worktree status semantics.
+// monorepo; paths outside that project are excluded. Deleted and
+// nested-repository files are excluded by go-git's worktree status semantics;
+// ignored files are excluded by those semantics plus the injected global and
+// system excludes (GlobalExcludePatterns).
 func WorkingPaths(repoRoot string) ([]string, error) {
 	repo, prefix, err := OpenContainingRepo(repoRoot)
 	if err != nil {
@@ -195,6 +214,7 @@ func WorkingPaths(repoRoot string) ([]string, error) {
 	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
 		return nil, err
 	}
+	wt.Excludes = GlobalExcludePatterns()
 	status, err := wt.Status()
 	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
 		return nil, err
