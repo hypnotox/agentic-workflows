@@ -167,6 +167,22 @@ async function advertisedRunnerLauncher(deps: CanonicalDependencies, signal?: Ab
   const path = resolved.code === 0 ? exactlyOnePath(resolved.stdout) : undefined; if (!path) throw resolutionFailure("resolution", "runner fallback: path resolution failed");
   return handshakeCandidate(deps, { path, projectRootEnvironment: true }, "runner fallback", signal);
 }
+async function resolveMaintenanceLauncher(deps: CanonicalDependencies, signal?: AbortSignal): Promise<CanonicalLauncher> {
+  const bootstrap = join(deps.root, ".awf", "bootstrap.sh"); let bootstrapPresent = false;
+  if (deps.lstat) {
+    try { const stat = await deps.lstat(bootstrap); if (stat.isSymbolicLink() || !stat.isFile()) throw resolutionFailure("resolution", "bootstrap: unsafe path"); bootstrapPresent = true; }
+    catch (error: any) { if (error?.category) throw error; if (error?.code !== "ENOENT") throw resolutionFailure("resolution", "bootstrap: inspection failed"); }
+  } else {
+    let boot: { stdout: string; stderr: string; code: number } | undefined; try { boot = await deps.exec("bash", [bootstrap], signal); } catch {}
+    const path = boot?.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (path) return { path, projectRootEnvironment: false };
+  }
+  if (bootstrapPresent) {
+    let boot: { stdout: string; stderr: string; code: number }; try { boot = await deps.exec("bash", [bootstrap], signal); } catch { throw resolutionFailure("resolution", "bootstrap: resolution failed"); }
+    const path = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (!path) throw resolutionFailure("resolution", "bootstrap: resolution failed");
+    return { path, projectRootEnvironment: false };
+  }
+  return { path: "awf", projectRootEnvironment: false };
+}
 async function resolveLauncher(deps: CanonicalDependencies, signal?: AbortSignal): Promise<CanonicalLauncher> {
   const bootstrap = join(deps.root, ".awf", "bootstrap.sh"); let bootstrapPresent = false;
   if (deps.lstat) {
@@ -203,9 +219,9 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
       const current = ++generation; inFlight?.abort(); const controller = new AbortController(); inFlight = controller; const abort = () => controller.abort(); signal?.addEventListener("abort", abort, { once: true }); const prior = value; const hadCache = value.metrics !== undefined && value.doctor !== undefined; update("loading", { errorCategory: undefined }, true);
         try {
           const launcher = capturedLauncher ?? await resolveLauncher(dependencies, controller.signal); capturedLauncher ??= launcher; const binary = launcher.path; const args = selectorArgs(selectors);
-          const metricsResult = await executeLauncher(dependencies, launcher, ["metrics", ...args, "--json"], controller.signal); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
+          const metricsResult = await executeLauncher(dependencies, launcher, ["metrics", "--json", ...args], controller.signal); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
           let metrics: any; try { metrics = parseCanonicalJSON(metricsResult.stdout); } catch { throw Object.assign(new Error("malformed metrics JSON"), { category: "malformed" }); } if (!validMetrics(metrics)) throw Object.assign(new Error("invalid metrics projection"), { category: "protocol" });
-          const doctorResult = await executeLauncher(dependencies, launcher, ["doctor", ...args, "--json"], controller.signal); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
+          const doctorResult = await executeLauncher(dependencies, launcher, ["doctor", "--json", ...args], controller.signal); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
           let doctor: any; try { doctor = parseCanonicalJSON(doctorResult.stdout); } catch { throw Object.assign(new Error("malformed doctor JSON"), { category: "malformed" }); } if (!validDoctor(doctor)) throw Object.assign(new Error("invalid doctor projection"), { category: "protocol" });
           if (current !== generation || value.status === "closed") return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
           if (controller.signal.aborted && signal?.aborted) { value = prior; onChange(); return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor }; }
@@ -219,7 +235,7 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
     async runFixed(args, signal) {
       if (!dependencies || value.status === "closed" || signal?.aborted) return { ok: false, status: value.status, errorCategory: "unavailable" };
       const controller = new AbortController(); maintenance.add(controller); const abort = () => controller.abort(); signal?.addEventListener("abort", abort, { once: true });
-      try { const launcher = capturedLauncher ?? (value.binary ? { path: value.binary, projectRootEnvironment: false } : await resolveLauncher(dependencies, controller.signal)); capturedLauncher ??= launcher; const result = await executeLauncher(dependencies, launcher, args, controller.signal); if (controller.signal.aborted) throw new Error("maintenance cancelled"); if (result.code !== 0) throw new Error("maintenance failed"); const parsed = parseCanonicalJSON(result.stdout); return { ok: true, status: value.status, binary: launcher.path, metrics: parsed }; }
+      try { const launcher = await resolveMaintenanceLauncher(dependencies, controller.signal); const result = await executeLauncher(dependencies, launcher, args, controller.signal); if (controller.signal.aborted) throw new Error("maintenance cancelled"); if (result.code !== 0) throw new Error("maintenance failed"); const parsed = parseCanonicalJSON(result.stdout); return { ok: true, status: value.status, binary: launcher.path, metrics: parsed }; }
       catch { if (!controller.signal.aborted) api.markStale(args[1] === "retain" ? "retain" : "maintenance"); return { ok: false, status: value.status, errorCategory: controller.signal.aborted ? "cancelled" : args[1] === "retain" ? "retain" : "maintenance" }; }
       finally { signal?.removeEventListener("abort", abort); maintenance.delete(controller); }
     },
@@ -432,7 +448,7 @@ export function createLedgerWriter(deps: LedgerDependencies = defaultLedgerDepen
   };
   const append = (event: TelemetryEvent, signal?: AbortSignal) => enqueue(`${event.effortId}/${event.sessionId}`, async () => { throwIfAborted(signal); if (!validateTelemetryEvent(event)) throw new Error("invalid telemetry event"); return underEffortLease(event.effortId, signal, (paths, effort) => appendUnderLease(event, paths, effort, signal)); });
 
-  const appendCausal = (candidate: TelemetryEvent, signal?: AbortSignal) => enqueue(`${candidate.effortId}/${candidate.sessionId}`, async () => underEffortLease(candidate.effortId, signal, async (paths, effort) => { const projection = await projectLocalLifecycle(deps, candidate.effortId); const event: any = { ...candidate, predecessors: [...new Set([...projection.frontier, ...candidate.predecessors])].sort() }; /* c8 ignore next -- runtime guard unreachable because appendCausal receives descriptor-validated events and only canonical predecessors are added */ if (!validateTelemetryEvent(event)) throw new Error("invalid causal telemetry event"); if ((protocolDescriptor.payloads as any)[event.kind]?.class === "lifecycle") { const candidateProjection = await projectLocalLifecycle(deps, candidate.effortId, [event]); /* c8 ignore next -- runtime guard unreachable because automatic lifecycle candidates are built from the current projection frontier */ if (!candidateProjection.effectApplied.has(event.eventId)) throw new Error("automatic lifecycle event has no valid effect"); } const result = await appendUnderLease(event, paths, effort, signal); if ((protocolDescriptor.payloads as any)[event.kind]?.class === "lifecycle") { const verified = await projectLocalLifecycle(deps, candidate.effortId); /* c8 ignore next -- runtime guard unreachable because the just-appended canonical event was already projection-validated under the same lease */ if (!verified.effectApplied.has(event.eventId)) throw new Error("durable automatic lifecycle append has no applied effect"); } return { ...result, event }; }));
+  const appendCausal = (candidate: TelemetryEvent, signal?: AbortSignal) => enqueue(`${candidate.effortId}/${candidate.sessionId}`, async () => underEffortLease(candidate.effortId, signal, async (paths, effort) => { const projection = await projectLocalLifecycle(deps, candidate.effortId); const event: any = { ...candidate, predecessors: [...new Set([...projection.frontier, ...candidate.predecessors])].sort() }; if (!validateTelemetryEvent(event)) throw new Error("invalid causal telemetry event"); if ((protocolDescriptor.payloads as any)[event.kind]?.class === "lifecycle") { const candidateProjection = await projectLocalLifecycle(deps, candidate.effortId, [event]); /* c8 ignore next -- runtime guard unreachable because automatic lifecycle candidates are built from the current projection frontier */ if (!candidateProjection.effectApplied.has(event.eventId)) throw new Error("automatic lifecycle event has no valid effect"); } const result = await appendUnderLease(event, paths, effort, signal); if ((protocolDescriptor.payloads as any)[event.kind]?.class === "lifecycle") { const verified = await projectLocalLifecycle(deps, candidate.effortId); /* c8 ignore next -- runtime guard unreachable because the just-appended canonical event was already projection-validated under the same lease */ if (!verified.effectApplied.has(event.eventId)) throw new Error("durable automatic lifecycle append has no applied effect"); } return { ...result, event }; }));
   const mutateLifecycle = (request: LifecycleRequest, signal?: AbortSignal) => enqueue(`${request.effortId}/${request.sessionId}`, async () => {
     throwIfAborted(signal); if (!validateLifecycleRequest(request) || request.action === "create") throw new Error("invalid non-create lifecycle request");
 
