@@ -70,6 +70,9 @@ Apply all five lenses to every plan:
 **phase-boundary-is-gateable**: each phase must be able to pass the gate ALONE, which is stronger than dependency order. Two shapes break it silently: a phase that removes or changes an invariant claim while the ADR declaring the `remove`/`update` operation stays Proposed (the claim mutation is checked only in the ADR's Implemented transaction, so a claim edited a phase early is owed-but-mismatched), and a phase that introduces a function before the phase that first calls it (the dead-code gate refuses it). The ADR-0128 plan hit both - Phases 6 and 7 had to merge, and three model methods were written, deleted, and re-added a phase later. Place the claim mutation and the ADR status flip in the same phase, and a model method in the phase that consumes it
 
 
+**v2-batch-partition-legality**: a plan applying a V2 ADR incrementally must keep the Implementing state legal at every intermediate commit: at least one applied AND at least one remaining operation (internal/adr/application.go refuses an all-applied Implementing state), with the final Applied batch paired with the Implemented flip in one commit. The 0157 plan drafted a partition that exhausted all operations two phases before the flip, and the same draft hardcoded state-sequence literals; the sequence is repo-global, unique, and contiguous, so a plan instructs "the next value awf reports at execution time", never a number (a concurrent effort sharing the checkout may advance the counter first). Check both: partition legality per planned commit, and no literal state-sequence value anywhere in the plan
+
+
 **dependency-order**: tasks are ordered so each builds only on already-completed work
 
 

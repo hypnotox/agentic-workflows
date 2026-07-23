@@ -24,3 +24,8 @@
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
   twice is the promotion signal for a deterministic check (needs an ADR: it changes check
   behavior and the plan lifecycle contract).
+- A conditional-key consumption check: extend the ADR-0086 consumption union so a template
+  conditional keyed on a render key that no render path for that artifact sets fails loudly.
+  The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
+  been dead prose since authoring; the fix plumbed the key, but nothing today prevents the
+  next dead conditional (recorded as a rendering pitfall, 2026-07-23).

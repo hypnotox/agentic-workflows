@@ -1278,5 +1278,23 @@ the concept) and re-derive each consumer's correctness under the new semantics; 
 grounding check caught this only because the dispatch brief explicitly asked who else
 reads the map (ADR-0154; 2026-07-23).
 
+## A singleton-template conditional can be dead prose for its whole life
+
+_Domains: rendering_
+
+AGENTS.md and the singleton docs render neutrally, once, through `p.data()`; only
+per-target artifacts receive target-derived render keys. Every
+`targetSessionHandoff` branch authored into the guide and workflow-doc templates was
+therefore dead from birth: authored, reviewed, shipped, and never rendered for any
+project. Nothing failed, because the `else` branch is coherent (publication safety
+holds) and the golden tests pinned only the neutral output. ADR-0157 made the signal
+real (a project-level any-enabled-target capability key) and pinned BOTH branches
+with proof-marked tests. The general trap: a template conditional keyed on a render
+key that no render path for that artifact sets is invisible to every existing gate.
+When authoring a conditional in any template, locate the code that sets the key on
+that artifact's render path, and pin both branches in a test. A deterministic
+conditional-key consumption check (extending the ADR-0086 union) is recorded on the
+roadmap.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

@@ -47,8 +47,8 @@
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:f456d03e8270cf887d942dda92bfad15ca48f4b628503f936c555f208f0ab302",
-      "configHash": "sha256:1a25f6bebf42bf4a764385aa06b38ebe7b8904a043dc0fb1b5dbcfa7465ed58b",
-      "outputHash": "sha256:6413aab3053b6e44271e16428e439972e88c6388f2c104c92c773debcc5eb1a9"
+      "configHash": "sha256:69a3099f82e5f020fddfb208d71827c79baea189bc30d33e3115fe6c69663ada",
+      "outputHash": "sha256:bf180e4f2446e2e36a70a763247f7b07b34affb8ee21dfa3aac596cd6f50cdf2"
     },
     ".claude/skills/awf-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -167,8 +167,8 @@
     ".pi/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:f456d03e8270cf887d942dda92bfad15ca48f4b628503f936c555f208f0ab302",
-      "configHash": "sha256:e5530fa9fa5769a3df93a84409aa8b287825d59d5216d0b67a9c957eca68c8a9",
-      "outputHash": "sha256:6413aab3053b6e44271e16428e439972e88c6388f2c104c92c773debcc5eb1a9"
+      "configHash": "sha256:03c92a5cf44be83a891bcc0f41e0ffd12d0c50b9b16d22952b175adea677ae38",
+      "outputHash": "sha256:bf180e4f2446e2e36a70a763247f7b07b34affb8ee21dfa3aac596cd6f50cdf2"
     },
     ".pi/awf-workflows/adr-lifecycle.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -414,8 +414,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:883e4489c5c797b96524d9994c2faa8b45f070618bc94c5ef658d780aab3f471",
-      "outputHash": "sha256:3be4841ca70ee682865f022e5c848c71d30721adf252c4a3ba85498d233e1b2f"
+      "configHash": "sha256:61de18220ca2bebcbea64fab90924e1787ab030988861f68fce15529d3e1cf6b",
+      "outputHash": "sha256:0ed871e13299e5bec3f90bb2c173b5bd73bedf04f6100a30abad45ba1c256723"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
@@ -438,8 +438,8 @@
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:b93f69c2ecd2c33c4a17c8f1eefceb38447b14cd1281129bf5c05b3aabbcba3f",
-      "outputHash": "sha256:333fc1c5dfda6987f200027237ab3ceaef5df4c8e3164ba3712b35de6c6e5853"
+      "configHash": "sha256:33c5873965ab7fb12c05510ce20453b3af741ff9ca4796676a2dc3e2609afa49",
+      "outputHash": "sha256:39ade5b8669fde678b714dc656a4858a44401cb67fef3d2e66e091e213d1bacf"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
