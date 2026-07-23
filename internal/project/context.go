@@ -182,8 +182,9 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 		selectedADRs := adr.NewCorpus(loaded.ADRs)
 		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicRef{}, Artifacts: artifactRecords(path, declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})}
 		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
+		cp.GlobLiteral = !gitSelected && (class == PathNotFound || class == PathContextIgnored) && globLiteralQuery(path)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
-		if safe {
+		if safe && !cp.GlobLiteral {
 			for _, d := range slices.Sorted(maps.Keys(loaded.Topics.DomainPaths)) {
 				if pathMatchesAny(loaded.Topics.DomainPaths[d], path) {
 					cp.Domains = append(cp.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})

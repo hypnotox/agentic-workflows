@@ -225,6 +225,17 @@ func TestPrintContextFullHumanAndWriteErrors(t *testing.T) {
 	}
 }
 
+func TestPrintContextGlobLiteralHint(t *testing.T) {
+	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{}, Paths: []project.ContextPath{{Path: "internal/foo/*.go", Requests: []string{"internal/foo/*.go"}, Classification: project.PathNotFound, GlobLiteral: true, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{}, Artifacts: []project.ArtifactRecord{}}}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "globs are not expanded; pass a directory or an exact file") {
+		t.Fatalf("glob-literal hint missing: %s", out.String())
+	}
+}
+
 func TestPrintContextTitlelessTopic(t *testing.T) {
 	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{{ID: "alpha/untitled", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{}, TopicPaths: []string{}}, ClaimIDs: []string{}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic alpha/untitled", CoverageCommand: "awf topic alpha/untitled --coverage"}}, Paths: []project.ContextPath{{Path: "x", Requests: []string{}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{{ID: "alpha/untitled", DirectClaimIDs: []string{}}}, Artifacts: []project.ArtifactRecord{}}}}
 	var out bytes.Buffer

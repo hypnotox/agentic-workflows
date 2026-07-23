@@ -76,6 +76,10 @@ query a single version or a range.
   commands.
 
 ### Bug fixes
+- `awf context` no longer attributes domains and topics to a user-typed glob query that matches
+  nothing: the star-containing string previously string-matched domain globs, producing misleading
+  half-answers. Such paths now carry `globLiteral` in JSON and a "globs are not expanded" hint in
+  text.
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:
   cutoff 1 for an empty corpus, or highest-plus-one with explicit gaps for validated brownfield
   history. Sync and forced init preserve that provenance, while unattested older projects are refused

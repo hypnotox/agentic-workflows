@@ -51,8 +51,12 @@ type ContextRequest struct {
 	EffectivePaths []string      `json:"effectivePaths"`
 }
 type ContextPath struct {
-	Path                   string              `json:"path"`
-	Requests               []string            `json:"requests"`
+	Path     string   `json:"path"`
+	Requests []string `json:"requests"`
+	// GlobLiteral is true when a user-typed query containing glob
+	// metacharacters resolved to a missing or context-ignored path: attribution
+	// was suppressed and globs are known to be unexpanded.
+	GlobLiteral            bool                `json:"globLiteral,omitempty"`
 	Classification         PathClassification  `json:"classification"`
 	TargetInsideRepository *bool               `json:"targetInsideRepository,omitempty"`
 	NestedRoot             string              `json:"nestedRoot,omitempty"`
@@ -226,6 +230,12 @@ func buildContextRequests(queries []string, selectedByGit bool, set contextPathS
 
 func outsideContextPath(p string) bool {
 	return filepath.IsAbs(p) || p == ".." || strings.HasPrefix(p, "../")
+}
+
+// globLiteralQuery reports whether p contains glob metacharacters, so a missing
+// or ignored user-typed query must not be attributed by string-matching globs.
+func globLiteralQuery(p string) bool {
+	return strings.ContainsAny(p, "*?[")
 }
 
 func classifyContextPath(p string, set contextPathSet) (PathClassification, string, *bool) {

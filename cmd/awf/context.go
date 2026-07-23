@@ -230,6 +230,9 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		if p.TargetInsideRepository != nil {
 			fmt.Fprintf(&out, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
 		}
+		if p.GlobLiteral {
+			fmt.Fprintln(&out, "  globs are not expanded; pass a directory or an exact file")
+		}
 		if p.Classification == project.PathEligibleUnowned {
 			fmt.Fprintln(&out, "  No domain owns this path; add a domain glob to a configured domain to own it (see: awf context --uncovered)")
 		}
