@@ -39,9 +39,12 @@ implementation) plus a single default child-model fallback shared by all roles.
 
 2. Two JSON preference sources exist, both owned and read by the generated `awf-subagents`
 extension: a user-global `<getAgentDir()>/awf-subagents.json` and an optional project-local
-`<cwd>/<CONFIG_DIR_NAME>/awf-subagents.local.json`. The project-local file is gitignored; the
-ignore rule is placed after the root `.gitignore`'s `!.pi/` re-inclusion so it wins. Each file
-holds only the default and the four role keys; unknown keys are invalid.
+`<cwd>/<CONFIG_DIR_NAME>/awf-subagents.local.json`. The project-local file must be gitignored,
+and the wizard enforces that: on a project-local save it checks the file's ignore status, offers
+to append the exact ignore rule to the repository's `.gitignore` when the file is not ignored
+(placed after any `!.pi/` re-inclusion so it wins), and refuses to save if the offer is declined.
+This repository additionally adds the rule to its own root `.gitignore` in the implementation
+commit. Each file holds only the default and the four role keys; unknown keys are invalid.
 
 3. Implicit routing resolves in strict precedence order: explicit per-call `model` argument,
 project role, global role, project default, global default, then parent inheritance. An explicit
@@ -52,8 +55,11 @@ when nothing else resolves.
 unknown key or role, an invalid canonical `provider/model-id` reference, or a reference to a model
 that is not currently registered or not authenticated produces an immediate, prominent error and
 blocks all implicit (preference-based) routing until the configuration is repaired. Explicit
-per-call models remain usable throughout, because they do not depend on implicit routing. Current
-registry availability is revalidated immediately before every queued child, not merely at startup.
+per-call models remain usable throughout, because they do not depend on implicit routing. While
+either file is invalid, a queued child whose call omits `model` is rejected outright: parent
+inheritance is part of the blocked implicit chain, never a silent fallback past broken
+configuration, so the only working path is an explicit per-call model. Current registry
+availability is revalidated immediately before every queued child, not merely at startup.
 
 5. Routing diagnostics name the source of every child's model: explicit argument, project role,
 global role, project default, global default, or parent inheritance.
@@ -82,7 +88,10 @@ session remains the mastermind responsible for brainstorming and plan authoring.
 and the working-with-awf doc template) is updated to state that long implementations should favor
 sequential implementation subagents so the orchestrating parent stays lean: length and
 parent-context pressure are explicit reasons to prefer subagent implementation, coupling may still
-justify inline execution, and the orchestrator decides case by case.
+justify inline execution, and the orchestrator decides case by case. The shared guidance prose
+stays target-generic: the Pi wizard command and Pi subagent tool names appear only in
+Pi-conditional template branches, preserving the skill-prose-tool-agnostic contract and the
+no-Pi-tool-name-leak boundary.
 
 9. The preference logic and the wizard live in the existing `awf-subagents` index template; the
 governed five-file Pi extension surface is unchanged.
@@ -99,8 +108,9 @@ governed five-file Pi extension surface is unchanged.
 Cost-appropriate child routing becomes the default rather than per-call ceremony: a configured
 machine sends exploration to a cheap model and implementation to a mid-tier one while the parent
 stays on the strongest model, with no change to any call site. Per-developer freedom is preserved:
-preferences never enter version control, and the rendered extension stays publication-safe with no
-machine-specific content.
+no per-developer preference data is ever committed. The embedded recommended preset is the one
+provider-specific piece of committed template content: it is an inert offer gated on live registry
+eligibility, and it will need maintenance as the provider's model lineup changes.
 
 The strict startup gate is deliberately unforgiving: one invalid entry in either file blocks all
 implicit routing until repaired, even for roles whose entries are valid. That is the accepted
@@ -116,8 +126,12 @@ until a later design adds it. Preference files live outside the committed tree, 
 does not govern them; their validation authority is the extension's startup gate.
 
 Downstream work: render tests and Pi extension tests for resolution precedence, startup
-validation, revalidation before queueing, atomic persistence, and wizard behavior; a plan follows
-this ADR; a plan-resync must reconcile with Implementing ADR-0149 before implementation.
+validation, revalidation before queueing, atomic persistence, and wizard behavior. All four
+touched claims, the two updated and the two added, are test-backed invariants (`Backing: test`)
+whose proof markers land with the implementation, matching the destination topics' existing
+convention. `docs/decisions/INDEX.md` is regenerated via `./x sync` at this ADR's status changes.
+A plan follows this ADR; a plan-resync must reconcile with Implementing ADR-0149 before
+implementation.
 
 ## Alternatives Considered
 
@@ -128,6 +142,7 @@ this ADR; a plan-resync must reconcile with Implementing ADR-0149 before impleme
 | Committed project policy (config-tree vars) | Registry contents, authentication, and pricing are per-developer facts; committing them breaks portability and publication safety. |
 | Repeated single-field edit command | This is infrequent setup; an atomic wizard is simpler and leaves no partially-edited file behind. |
 | Silent fall-through past an invalid configured model | Hides misconfiguration until mid-work; violates the errors-early constraint. |
+| No embedded recommended preset (manual selection only) | First-run friction and uninformed choices outweigh the preset's staleness-maintenance cost, given the live-registry eligibility gate and the always-available manual path. |
 
 ## Status history
 
