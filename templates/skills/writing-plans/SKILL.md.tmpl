@@ -71,7 +71,7 @@ Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} n
 <!-- awf:section terminal-step -->
 4. **Terminal step:** {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-plan"`.{{ else }}invoke `{{ .prefix }}-reviewing-plan` via the project's skill-invocation mechanism, passing the plan path.{{ end }} The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes

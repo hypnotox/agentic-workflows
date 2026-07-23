@@ -59,7 +59,7 @@ When the effort warrants working memory, checkpoint the evolving design brief to
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-7. **Decide the terminal step** based on the (reviewed) brainstorm result:
+7. **Stop for approval, then decide the terminal step.** The end of brainstorming, after the single-pass grounding check, is a mandatory approval check-in: complete the approval protocol below and invoke a successor only after explicit user approval. If the user requests changes, revise the design and re-present it for approval without repeating the grounding check. Once approved, route by the brainstorm result:
 {{ if .targetWorkflowRouter }}   - **Load-bearing** -> call `awf_workflow` alone with `skill: "proposing-adr"`; after ADR review, the router continues to planning or direct implementation.
    - **Complex but not load-bearing** -> call `awf_workflow` alone with `skill: "writing-plans"`.
    - **Neither** -> call `awf_workflow` alone with `skill: "executing-direct"`.
@@ -69,7 +69,7 @@ When the effort warrants working memory, checkpoint the evolving design brief to
    - **Neither** → invoke `{{ .prefix }}-executing-direct`.
 {{ end }}
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-approval -->
 <!-- awf:end -->
 
 <!-- awf:section definitions -->

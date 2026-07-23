@@ -17,7 +17,11 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
 4. Follow the project's commit discipline unless the caller explicitly requires a larger authority batch or forbids commits.
-5. {{ if .targetWorkflowRouter }}Call `awf_workflow` alone with `skill: "reviewing-impl"` as the terminal step.{{ else }}Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.{{ end }}
+5. When the effort is memory-backed, after each independently resumable committed and reviewed change run the routine checkpoint below before continuing; checkpoint-less small efforts skip it.
+
+<!-- awf:include checkpoint-routine -->
+
+6. {{ if .targetWorkflowRouter }}Call `awf_workflow` alone with `skill: "reviewing-impl"` as the terminal step.{{ else }}Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.{{ end }}
 
 ## Boundaries
 

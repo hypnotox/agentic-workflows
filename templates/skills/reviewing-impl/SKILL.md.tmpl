@@ -69,7 +69,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:section hand-off -->
 8. **Terminal retrospective.** After the review settles, {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "retrospective"`.{{ else }}invoke `{{ .prefix }}-retrospective`.{{ end }} The main-thread retrospective reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes

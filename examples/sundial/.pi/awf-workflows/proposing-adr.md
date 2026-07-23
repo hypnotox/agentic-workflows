@@ -62,15 +62,15 @@ Load-bearing triggers include:
 6. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass; if the drift test fails, regenerate and re-stage `INDEX.md` before retrying.
 
 <!-- awf:edit autonomous-rule: default; create .awf/skills/parts/proposing-adr/autonomous-rule.md to override -->
-7. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval; once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
+7. **Autonomous continuation into review.** After the commit, continue into ADR review without waiting for approval; the mandatory approval check-in lives at the end of that review, once the ADR settles.
 
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/proposing-adr/terminal-step.md to override -->
 8. **Terminal step:** call `awf_workflow` alone with `skill: "reviewing-adr"`. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
-**Working-memory checkpoint.** Before handing off:
+**Routine checkpoint.** At this boundary:
 1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
-2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
-3. Treat that summary as the user's intervention point. If a validated memory file exists, in the next tool batch invoke `handoff_session` alone with its exact path and a kickoff that states the immediate successor action; continue automatically in the fresh session unless the user cancels during the five-second window. Without a memory file, continue in the current session or use explicit structured effort resume rather than creating memory for handoff. The file skeleton and ground rules live in the agent guide's working-memory section.
+2. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Otherwise state a one-line continuity notice (completed phase, immediate next action, and the exact memory path when a memory file exists) and continue immediately; the notice is informational, never a stop. If a validated memory file exists, in the next tool batch invoke `handoff_session` alone with its exact path and a kickoff that states the immediate successor action; continue automatically in the fresh session unless the user cancels during the five-second window. A failed handoff leaves the checkpoint valid and becomes a check-in, never a silent retry. Without a memory file, continue in the current session or use explicit structured effort resume rather than creating memory for handoff. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

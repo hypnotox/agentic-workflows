@@ -294,80 +294,145 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 	}
 }
 
-// memoryCheckpointSkills are the templates that must carry the working-memory
-// checkpoint (ADR-0069): the nine non-terminal chain nodes plus the bugfix and
-// debugging task skills. The terminal retrospective instead carries the
-// deletion step.
-var memoryCheckpointSkills = []string{
-	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
-	"reviewing-plan", "reviewing-plan-resync", "executing-plans",
-	"subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
+// routineCheckpointSkills are the templates that carry the routine checkpoint
+// protocol (ADR-0152): the non-terminal chain nodes outside the two mandatory
+// approval boundaries, plus the bugfix and debugging task skills. The terminal
+// retrospective instead carries the deletion step.
+var routineCheckpointSkills = []string{
+	"proposing-adr", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
+	"executing-plans", "subagent-driven-development", "reviewing-impl",
+	"bugfix", "debugging",
 }
 
-// TestMemoryCheckpointCoverage asserts every non-terminal chain node and the
-// multi-step task skills instruct the working-memory checkpoint in the rendered
-// full-catalog output, and the chain terminal instructs the deletion (ADR-0069).
+// approvalCheckpointSkills are the two mandatory approval boundaries: the end
+// of brainstorming and the settled ADR review (ADR-0152).
+var approvalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
+
+// assertOrderedBody asserts each phrase appears in body after the previous one.
+func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
+	t.Helper()
+	position := 0
+	for _, phrase := range phrases {
+		next := strings.Index(body[position:], phrase)
+		if next < 0 {
+			t.Errorf("%s missing ordered checkpoint phrase %q", label, phrase)
+			return
+		}
+		position += next + len(phrase)
+	}
+}
+
+// TestMemoryCheckpointCoverage asserts every routine-boundary skill renders the
+// complete routine protocol (persist, classify, then check-in or continue), the
+// implementation skills embed it at their per-task sections, and the chain
+// terminal instructs the deletion (ADR-0152).
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
 func TestMemoryCheckpointCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	ordered := []string{
-		"**Working-memory checkpoint.**",
+		"**Routine checkpoint.**",
 		"Working memory is optional",
 		"do not create a file merely because this checkpoint was reached",
 		"update it in its own tool batch",
 		"Effort: <active-effort-id>",
-		"display a concise checkpoint summary",
-		"completed phase",
-		"immediate next action",
-		"exact memory path",
-		"user's intervention point",
+		"Decide whether user attention is required",
+		"material authority drift",
+		"a blocker, or failed required verification",
+		"raise a check-in that names the issue, the options, a recommendation, and the blocked next action",
+		"then stop and wait",
+		"continuity notice",
+		"never a stop",
 		"If a validated memory file exists",
-		"in the next tool batch",
 		"invoke `handoff_session` alone",
-		"exact path",
-		"kickoff that states the immediate successor action",
 		"continue automatically in the fresh session",
 		"unless the user cancels during the five-second window",
+		"A failed handoff leaves the checkpoint valid and becomes a check-in",
 	}
 	piSkillPath := func(name string) string {
 		return filepath.Join(root, ".pi", "awf-workflows", name+".md")
 	}
-	for _, name := range memoryCheckpointSkills {
+	for _, name := range routineCheckpointSkills {
 		body := read(t, piSkillPath(name))
-		position := 0
-		for _, phrase := range ordered {
-			next := strings.Index(body[position:], phrase)
-			if next < 0 {
-				t.Errorf("skill %q missing ordered checkpoint step %q", name, phrase)
-				break
-			}
-			position += next + len(phrase)
+		assertOrderedBody(t, "pi/"+name, body, ordered)
+		if strings.Contains(body, "explicitly request approval") {
+			t.Errorf("routine skill %q renders an approval stop", name)
 		}
 		if strings.Contains(body, "Delete the effort's working-memory file") {
 			t.Errorf("non-terminal skill %q claims the retrospective's memory deletion", name)
 		}
 	}
-	if body := read(t, piSkillPath("executing-plans")); !strings.Contains(body, "independently resumable committed task") {
-		t.Errorf("executing-plans missing its intermediate checkpoint")
+	perTask := map[string]string{
+		"executing-plans":             "After each independently resumable committed and reviewed task",
+		"subagent-driven-development": "After each implemented and reviewed task",
 	}
-	if body := read(t, piSkillPath("subagent-driven-development")); !strings.Contains(body, "implemented and reviewed task") {
-		t.Errorf("subagent-driven-development missing its intermediate checkpoint")
+	for name, sentence := range perTask {
+		body := read(t, piSkillPath(name))
+		start := strings.Index(body, sentence)
+		if start < 0 {
+			t.Errorf("%s lost its per-task checkpoint sentence", name)
+			continue
+		}
+		end := strings.Index(body[start:], "Terminal step")
+		if end < 0 {
+			end = len(body) - start
+		}
+		if !strings.Contains(body[start:start+end], "**Routine checkpoint.**") {
+			t.Errorf("%s per-task section does not embed the complete routine protocol", name)
+		}
 	}
 	if body := read(t, piSkillPath("retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
 		t.Errorf("retrospective missing the working-memory deletion step")
 	}
 
 	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
-	for _, name := range memoryCheckpointSkills {
+	for _, name := range routineCheckpointSkills {
 		body := read(t, skillPath(nonPiRoot, name))
 		if strings.Contains(body, "handoff_session") {
 			t.Errorf("non-Pi skill %q names handoff_session", name)
 		}
-		checkpoint := strings.Index(body, "user's intervention point")
-		continuation := strings.Index(body, "continue through the target-native successor without claiming session replacement")
-		if checkpoint < 0 || continuation < checkpoint {
-			t.Errorf("non-Pi skill %q does not continue target-natively after the visible checkpoint", name)
+		notice := strings.Index(body, "continuity notice")
+		continuation := strings.Index(body, "Continue through the target-native successor without claiming session replacement")
+		if notice < 0 || continuation < notice {
+			t.Errorf("non-Pi skill %q does not continue target-natively after the continuity notice", name)
+		}
+	}
+}
+
+// TestMandatoryApprovalBoundaries asserts the two approval-boundary skills stop
+// for explicit approval, persist it, and only then continue target-natively,
+// and that the approval stop renders nowhere else (ADR-0152).
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries
+func TestMandatoryApprovalBoundaries(t *testing.T) {
+	cat := loadCatalog(t)
+	root := syncFullCatalogForTarget(t, cat, "pi")
+	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
+	ordered := []string{
+		"**Mandatory approval check-in.**",
+		"Complete the memory update in its own tool batch",
+		"Effort: <active-effort-id>",
+		"explicitly request approval",
+		"end the turn",
+		"Stop even when there is no concern to raise",
+		"request approval again",
+		"After explicit approval, persist the approval and next action before continuing",
+	}
+	for _, name := range approvalCheckpointSkills {
+		piBody := read(t, filepath.Join(root, ".pi", "awf-workflows", name+".md"))
+		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
+			"invoke `handoff_session` alone",
+			"unless the user cancels during the five-second window",
+			"A failed handoff leaves the checkpoint valid and becomes a check-in",
+		))
+		if handoff, approval := strings.Index(piBody, "handoff_session"), strings.Index(piBody, "explicitly request approval"); handoff >= 0 && handoff < approval {
+			t.Errorf("pi/%s names handoff_session before the approval request", name)
+		}
+		claudeBody := read(t, skillPath(nonPiRoot, name))
+		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
+			"Then continue through the target-native successor without claiming session replacement",
+		))
+		if strings.Contains(claudeBody, "handoff_session") {
+			t.Errorf("non-Pi skill %q names handoff_session", name)
 		}
 	}
 }

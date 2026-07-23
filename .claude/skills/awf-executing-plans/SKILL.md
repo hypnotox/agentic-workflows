@@ -34,7 +34,12 @@ If no plan exists, implement directly without a plan workflow, then invoke `awf-
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
    - **Validate.** Stage the complete transaction, run `awf check --staged`, then run `./x gate` (fast tier). Commit only after both commands pass. The hook repeats the staged check as defense in depth. See `docs/workflow.md` for the tier split and when to run the full tier.
    - **Commit.** Use Conventional Commits (`<type>(<scope>): <subject>`), keep the subject under 72 chars, and explain the *why* in the body. When this task applies some frozen V2 ADR operations, append the next Applied event and stage exactly the matching claim mutations in this same checked commit; do not wait for one final all-operation commit. Auto-commit when green (tests pass + lint clean).
-   - **Checkpoint.** After each independently resumable committed task, complete the working-memory checkpoint protocol and its visible summary before starting the next task.
+   - **Checkpoint.** After each independently resumable committed and reviewed task, run the complete routine protocol below before starting the next task.
+
+**Routine checkpoint.** At this boundary:
+1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Otherwise state a one-line continuity notice (completed phase, immediate next action, and the exact memory path when a memory file exists) and continue immediately; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 <!-- awf:edit tdd-opt-in: default; create .awf/skills/parts/executing-plans/tdd-opt-in.md to override -->
 
@@ -51,10 +56,10 @@ If no plan exists, implement directly without a plan workflow, then invoke `awf-
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
 6. **Terminal step:** invoke `awf-reviewing-impl` via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
-**Working-memory checkpoint.** Before handing off:
+**Routine checkpoint.** At this boundary:
 1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
-2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
-3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
+2. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Otherwise state a one-line continuity notice (completed phase, immediate next action, and the exact memory path when a memory file exists) and continue immediately; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

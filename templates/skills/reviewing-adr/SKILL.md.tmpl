@@ -54,9 +54,9 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-resync -->
-8. **Hand off to plan resync.** After the ADR review converges (the ADR remains `Proposed`), check whether a plan exists (a `{{ .layout.plansDir }}/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-plan-resync"`{{ else }}invoke `{{ .prefix }}-reviewing-plan-resync` against that plan{{ end }}. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "writing-plans"` when planning is warranted, or `skill: "executing-direct"` for direct implementation{{ else }}invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation{{ end }}.
+8. **Stop for approval, then hand off to plan resync.** Once the review converges (the ADR remains `Proposed`), the settled ADR is the second mandatory approval check-in: complete the approval protocol below, present the settled-ADR summary, and route onward only after explicit user approval; the review loop itself (dispatch, fix application, verify pass) stays autonomous. After approval, check whether a plan exists (a `{{ .layout.plansDir }}/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-plan-resync"`{{ else }}invoke `{{ .prefix }}-reviewing-plan-resync` against that plan{{ end }}. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "writing-plans"` when planning is warranted, or `skill: "executing-direct"` for direct implementation{{ else }}invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation{{ end }}.
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-approval -->
 <!-- awf:end -->
 
 ## Notes

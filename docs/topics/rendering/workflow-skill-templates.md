@@ -21,11 +21,17 @@ The core exploring skill renders for every target with one semantic breadth-and-
 Origin: ADR-0148
 Backing: test
 
+### `invariant: mandatory-approval-boundaries`
+
+The rendered brainstorming and ADR-review skills close with the mandatory approval protocol: persist memory, present the completed summary, explicitly request approval, and stop; continuation and any session handoff begin only after explicit approval is persisted. No other chain skill renders an approval stop.
+Origin: ADR-0152
+Backing: test
+
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Working memory is optional: every non-terminal chain-node skill plus the bugfix and debugging task skills update an existing or deliberately created memory file in its own tool batch, carry the active `Effort: <id>`, and only then display the completed phase, immediate next action, and exact path as an intervention point. Pi guidance invokes memory-backed handoff only for a validated file and otherwise continues in-session or through structured effort resume; non-Pi guidance remains target-native. The two implementation skills also checkpoint independently resumable tasks, and retrospective alone carries the memory-file deletion step.
+Working memory is optional, a non-trivial brainstormed effort becomes memory-backed when its first settled decision is persisted, and an existing or deliberately created memory file carries the active `Effort: <id>` and updates in its own tool batch. Every checkpoint-carrying skill outside the two mandatory approval boundaries renders the routine protocol: memory persistence first, then the attention classification, then either a raised check-in that stops or a continuity notice that continues without ending the turn. The implementation skills embed the complete routine protocol at their per-task sections, and retrospective alone carries the memory-file deletion step.
 Origin: ADR-0148
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0152
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

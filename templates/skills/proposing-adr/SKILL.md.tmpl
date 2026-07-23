@@ -66,13 +66,13 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 <!-- awf:end -->
 
 <!-- awf:section autonomous-rule -->
-7. **Autonomous continuation.** After the commit, continue to the next chain step without waiting for further approval; once the brainstorm is agreed, the chain runs autonomously until a review surfaces a user-decision finding.
+7. **Autonomous continuation into review.** After the commit, continue into ADR review without waiting for approval; the mandatory approval check-in lives at the end of that review, once the ADR settles.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
 8. **Terminal step:** {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-adr"`.{{ else }}invoke `{{ .prefix }}-reviewing-adr` via the project's skill-invocation mechanism, passing the ADR path.{{ end }} The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes

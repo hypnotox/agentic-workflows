@@ -45,10 +45,10 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:edit hand-off-to-impl: default; create .awf/skills/parts/reviewing-plan-resync/hand-off-to-impl.md to override -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. Invoke `sundial-executing-plans` (for inline execution) or `sundial-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.
 
-**Working-memory checkpoint.** Before handing off:
+**Routine checkpoint.** At this boundary:
 1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
-2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
-3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
+2. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Otherwise state a one-line continuity notice (completed phase, immediate next action, and the exact memory path when a memory file exists) and continue immediately; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

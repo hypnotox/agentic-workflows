@@ -1089,11 +1089,11 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow
 func TestPiSessionHandoffWorkflow(t *testing.T) {
-	skills := []string{
-		"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
-		"reviewing-plan", "reviewing-plan-resync", "executing-plans",
-		"subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
+	routineSkills := []string{
+		"proposing-adr", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
+		"executing-plans", "subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
 	}
+	approvalSkills := []string{"brainstorming", "reviewing-adr"}
 	enabledSkills := []string{
 		"adr-lifecycle", "brainstorming", "bugfix", "debugging", "executing-direct", "executing-plans", "exploring",
 		"proposing-adr", "refactor-coupling-audit", "retrospective", "reviewing-adr", "reviewing-impl",
@@ -1103,35 +1103,62 @@ func TestPiSessionHandoffWorkflow(t *testing.T) {
 	for _, target := range []string{"pi", "claude"} {
 		files := explorationRenderedByPath(t, fmt.Sprintf(config, target))
 		dir := map[string]string{"pi": ".pi/awf-workflows", "claude": ".claude/skills"}[target]
-		for _, skill := range skills {
+		bodyFor := func(skill string) string {
 			path := dir + "/example-" + skill + "/SKILL.md"
 			if target == "pi" {
 				path = dir + "/" + skill + ".md"
 			}
-			body := files[path]
+			return files[path]
+		}
+		checkOrdered := func(skill, body string, ordered []string) {
 			position := 0
-			ordered := []string{"Working memory is optional", "do not create a file merely because this checkpoint was reached", "update it in its own tool batch", "Effort: <active-effort-id>", "display a concise checkpoint summary", "user's intervention point"}
-			if target == "pi" {
-				ordered = append(ordered, "If a validated memory file exists", "in the next tool batch invoke `handoff_session` alone", "exact path", "kickoff that states the immediate successor action", "continue automatically in the fresh session", "unless the user cancels during the five-second window")
-			} else {
-				ordered = append(ordered, "continue through the target-native successor without claiming session replacement")
-			}
 			for _, phrase := range ordered {
 				next := strings.Index(body[position:], phrase)
 				if next < 0 {
 					t.Errorf("%s/%s missing ordered checkpoint phrase %q", target, skill, phrase)
-					break
+					return
 				}
 				position += next + len(phrase)
 			}
+		}
+		for _, skill := range routineSkills {
+			body := bodyFor(skill)
+			ordered := []string{"**Routine checkpoint.**", "Decide whether user attention is required", "continuity notice"}
+			if target == "pi" {
+				ordered = append(ordered, "If a validated memory file exists", "invoke `handoff_session` alone", "unless the user cancels during the five-second window", "A failed handoff leaves the checkpoint valid and becomes a check-in")
+			} else {
+				ordered = append(ordered, "Continue through the target-native successor without claiming session replacement")
+			}
+			checkOrdered(skill, body, ordered)
 			if target != "pi" && strings.Contains(body, "handoff_session") {
 				t.Errorf("%s/%s leaks Pi handoff", target, skill)
 			}
-			if skill == "executing-plans" && !strings.Contains(body, "independently resumable committed task") {
+			if strings.Contains(body, "explicitly request approval") {
+				t.Errorf("%s/%s renders an approval stop", target, skill)
+			}
+			if skill == "executing-plans" && !strings.Contains(body, "independently resumable committed and reviewed task") {
 				t.Errorf("%s/%s lost intermediate implementation checkpoint", target, skill)
 			}
 			if skill == "subagent-driven-development" && !strings.Contains(body, "implemented and reviewed task") {
 				t.Errorf("%s/%s lost intermediate implementation checkpoint", target, skill)
+			}
+		}
+		for _, skill := range approvalSkills {
+			body := bodyFor(skill)
+			ordered := []string{"**Mandatory approval check-in.**", "explicitly request approval", "After explicit approval, persist the approval and next action before continuing"}
+			if target == "pi" {
+				ordered = append(ordered, "invoke `handoff_session` alone")
+			} else {
+				ordered = append(ordered, "Then continue through the target-native successor without claiming session replacement")
+			}
+			checkOrdered(skill, body, ordered)
+			if target != "pi" && strings.Contains(body, "handoff_session") {
+				t.Errorf("%s/%s leaks Pi handoff", target, skill)
+			}
+			if target == "pi" {
+				if handoff, approval := strings.Index(body, "handoff_session"), strings.Index(body, "explicitly request approval"); handoff >= 0 && handoff < approval {
+					t.Errorf("%s/%s names handoff_session before the approval request", target, skill)
+				}
 			}
 		}
 	}

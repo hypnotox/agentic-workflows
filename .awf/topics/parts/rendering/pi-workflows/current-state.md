@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Working memory remains optional and Pi-rendered checkpoint guidance invokes `handoff_session` alone after the durable visible summary only when a validated memory file carrying the active `Effort: <id>` exists. Checkpoint-less Pi efforts continue in-session or through structured resume, while non-Pi targets retain any created checkpoint and continue without naming the unsupported tool.
+Working memory remains optional and Pi-rendered checkpoint guidance invokes `handoff_session` alone only on the routine protocol's clear branch, after persistence and the continuity notice, and only when a validated memory file carrying the active `Effort: <id>` exists, at phase and per-task implementation boundaries. Approval boundaries hand off only after explicit approval, a failed handoff is portrayed as a check-in rather than a success, checkpoint-less Pi efforts continue in-session or through structured resume, and non-Pi targets render both protocols without naming the unsupported tool.
 Origin: ADR-0148
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0152
 Backing: test
 
 ### `invariant: pi-lifecycle-enforcing-workflow-router`

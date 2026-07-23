@@ -66,7 +66,9 @@ If no plan exists, implement directly, then {{ if .targetWorkflowRouter }}call `
 <!-- awf:section per-task-review -->
 {{ if .targetSubagentTools }}6. **After a `DONE` implementer reports, call `subagent_review` once with `kind: "code"`.** Put the task requirements, created SHA(s), enforced invariants, spec-adherence check, and code-quality check in `task` before marking the task done. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 {{ else }}6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
-{{ end }}After each implemented and reviewed task, complete the working-memory checkpoint protocol and its visible summary before advancing.
+{{ end }}After each implemented and reviewed task, run the complete routine protocol below before advancing.
+
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
@@ -76,7 +78,7 @@ If no plan exists, implement directly, then {{ if .targetWorkflowRouter }}call `
 <!-- awf:section terminal-step -->
 8. **Terminal step:** {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-impl"`.{{ else }}invoke `{{ .prefix }}-reviewing-impl` via the project's skill-invocation mechanism.{{ end }} That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes

@@ -59,7 +59,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
    - If at least one linked ADR exists (named in the plan header or the session context), {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-plan-resync"`{{ else }}invoke `{{ .prefix }}-reviewing-plan-resync`{{ end }} to catch plan-vs-finalised-ADR(s) drift.
    - If no ADR exists, the chain proceeds directly to implementation: {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "executing-plans"` or `skill: "subagent-driven-development"` according to task structure.{{ else }}invoke the target-native inline or subagent-driven execution skill according to task structure.{{ end }}
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes

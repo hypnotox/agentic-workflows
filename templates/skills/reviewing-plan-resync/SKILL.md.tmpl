@@ -50,7 +50,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 <!-- awf:section hand-off-to-impl -->
 5. **Hand off after resync settles.** Once the resync review converges (no user-decision findings, or all user decisions resolved), the next chain node is implementation. {{ if .targetWorkflowRouter }}Call `awf_workflow` alone with `skill: "executing-plans"` for inline execution or `skill: "subagent-driven-development"` for subagent-per-task execution, depending on the plan's task structure.{{ else }}Invoke `{{ .prefix }}-executing-plans` (for inline execution) or `{{ .prefix }}-subagent-driven-development` (for subagent-per-task) depending on the plan's task structure.{{ end }}
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes

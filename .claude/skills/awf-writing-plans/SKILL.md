@@ -73,10 +73,10 @@ Start from the canonical skeleton rather than a blank file: run `awf new plan "<
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/writing-plans/terminal-step.md to override -->
 4. **Terminal step:** invoke `awf-reviewing-plan` via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
 
-**Working-memory checkpoint.** Before handing off:
+**Routine checkpoint.** At this boundary:
 1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
-2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
-3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
+2. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Otherwise state a one-line continuity notice (completed phase, immediate next action, and the exact memory path when a memory file exists) and continue immediately; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
 

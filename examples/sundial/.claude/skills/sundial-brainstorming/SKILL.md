@@ -57,17 +57,17 @@ When the effort warrants working memory, checkpoint the evolving design brief to
 
 
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/brainstorming/terminal-step.md to override -->
-7. **Decide the terminal step** based on the (reviewed) brainstorm result:
+7. **Stop for approval, then decide the terminal step.** The end of brainstorming, after the single-pass grounding check, is a mandatory approval check-in: complete the approval protocol below and invoke a successor only after explicit user approval. If the user requests changes, revise the design and re-present it for approval without repeating the grounding check. Once approved, route by the brainstorm result:
    - **Load-bearing + complex** → invoke `sundial-proposing-adr` first (which chains through `sundial-reviewing-adr`); once the ADR(s) are settled, invoke `sundial-writing-plans`.
    - **Load-bearing + simple** → invoke `sundial-proposing-adr` only; implement directly after the ADR is committed, then invoke `sundial-reviewing-impl`.
    - **Complex but not load-bearing** → invoke `sundial-writing-plans` only.
    - **Neither** → invoke `sundial-executing-direct`.
 
 
-**Working-memory checkpoint.** Before handing off:
-1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
-2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
-3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
+**Mandatory approval check-in.** This boundary requires explicit user approval:
+1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md`, require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action pending approval, append one line to `## Handoff log`, and refresh `Updated:`. If this non-trivial effort has no memory file yet, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. Present the completed work summary, explicitly request approval, and end the turn. Stop even when there is no concern to raise; this stop is the protocol, not a judgment call.
+3. If the user rejects or requests changes: revise, persist and commit as applicable, regenerate the summary, and request approval again. After explicit approval, persist the approval and next action before continuing. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 <!-- awf:edit definitions: default; create .awf/skills/parts/brainstorming/definitions.md to override -->
 ## Definitions

@@ -18,7 +18,14 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
 4. Follow the project's commit discipline unless the caller explicitly requires a larger authority batch or forbids commits.
-5. Call `awf_workflow` alone with `skill: "reviewing-impl"` as the terminal step.
+5. When the effort is memory-backed, after each independently resumable committed and reviewed change run the routine checkpoint below before continuing; checkpoint-less small efforts skip it.
+
+**Routine checkpoint.** At this boundary:
+1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
+3. Otherwise state a one-line continuity notice (completed phase, immediate next action, and the exact memory path when a memory file exists) and continue immediately; the notice is informational, never a stop. If a validated memory file exists, in the next tool batch invoke `handoff_session` alone with its exact path and a kickoff that states the immediate successor action; continue automatically in the fresh session unless the user cancels during the five-second window. A failed handoff leaves the checkpoint valid and becomes a check-in, never a silent retry. Without a memory file, continue in the current session or use explicit structured effort resume rather than creating memory for handoff. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the agent guide's working-memory section.
+
+6. Call `awf_workflow` alone with `skill: "reviewing-impl"` as the terminal step.
 
 ## Boundaries
 

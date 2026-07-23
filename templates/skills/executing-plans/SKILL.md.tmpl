@@ -37,7 +37,9 @@ If no plan exists, implement directly without a plan workflow, then {{ if .targe
    - **Implement** following the plan's exact file paths, content, and diff. No drift from the plan; raise to the user if the plan needs an amendment.
    - **Validate.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} (fast tier). Commit only after both commands pass. The hook repeats the staged check as defense in depth. See `{{ .layout.workflowRef }}` for the tier split and when to run the full tier.
    - **Commit.** Use Conventional Commits (`<type>(<scope>): <subject>`), keep the subject under 72 chars, and explain the *why* in the body. When this task applies some frozen V2 ADR operations, append the next Applied event and stage exactly the matching claim mutations in this same checked commit; do not wait for one final all-operation commit. Auto-commit when green (tests pass + lint clean).
-   - **Checkpoint.** After each independently resumable committed task, complete the working-memory checkpoint protocol and its visible summary before starting the next task.
+   - **Checkpoint.** After each independently resumable committed and reviewed task, run the complete routine protocol below before starting the next task.
+
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 <!-- awf:section tdd-opt-in -->
@@ -58,7 +60,7 @@ If no plan exists, implement directly without a plan workflow, then {{ if .targe
 <!-- awf:section terminal-step -->
 6. **Terminal step:** {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-impl"`.{{ else }}invoke `{{ .prefix }}-reviewing-impl` via the project's skill-invocation mechanism.{{ end }} That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
-<!-- awf:include memory-checkpoint -->
+<!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
 
 ## Notes
