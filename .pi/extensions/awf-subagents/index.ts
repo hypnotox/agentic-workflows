@@ -5,6 +5,8 @@ import { readFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  CONFIG_DIR_NAME,
+  getAgentDir,
   getMarkdownTheme,
   getPackageDir,
   keyHint,
@@ -68,6 +70,20 @@ export const REVIEWER_PATHS = {
   code: ".pi/agents/code-reviewer.md",
 } as const;
 
+export const PREFERENCE_ROLES = ["grounding", "exploration", "review", "implementation"] as const;
+export type PreferenceRole = (typeof PREFERENCE_ROLES)[number];
+export const ROLE_PREFERENCE_KEYS: Record<RunRequest["role"], PreferenceRole> = {
+  grounding: "grounding", explore: "exploration", review: "review", implement: "implementation",
+};
+export const GLOBAL_PREFERENCES_FILE = "awf-subagents.json";
+export const LOCAL_PREFERENCES_FILE = "awf-subagents.local.json";
+export interface SubagentModelPreferences {
+  default?: string; grounding?: string; exploration?: string; review?: string; implementation?: string;
+}
+const PREFERENCE_KEYS = new Set<string>(["default", ...PREFERENCE_ROLES]);
+const PREFERENCES_NOTICE = Symbol.for("awf.pi.subagent-preferences-notified");
+const PREFERENCES_BLOCKED = "Subagent model preferences are invalid; implicit routing is blocked.";
+const PREFERENCES_REPAIR = "Run /awf-subagent-models to repair. Explicit per-call model arguments remain available.";
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
 const COLLAPSED_EVENT_COUNT = 10;
 export const MAX_EXPLORATION_CONCURRENCY = 10;
@@ -83,7 +99,7 @@ export type SubagentState = "queued" | "running" | "completed" | "failed" | "abo
 export interface ExecutionMetadata extends Record<string, unknown> {
   resolvedModel: string;
   requestedModel?: string;
-  modelSource: "inherited" | "requested";
+  modelSource: "inherited" | "requested" | "project-role" | "global-role" | "project-default" | "global-default";
   thinkingLevel: ThinkingLevel;
   options: Readonly<Record<string, string | boolean>>;
 }
@@ -109,6 +125,8 @@ export interface ExtensionDependencies {
   runner: Runner;
   packageVersion: string;
   extensionFile: string;
+  agentDir: string;
+  configDirName: string;
   now?: () => number;
   observationId?: () => string;
 }
@@ -124,19 +142,135 @@ function projectRoot(extensionFile: string): string {
   return resolve(dirname(extensionFile), "../../..");
 }
 
-export function resolveChildModel(ctx: any, requested: string | undefined): { model: { provider: string; id: string }; requested: string | undefined } {
-  if (requested === undefined) {
-    if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
-    return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined };
+export interface PreferenceSourceState {
+  path: string;
+  scope: "global" | "project";
+  values: SubagentModelPreferences;
+  errors: string[];
+}
+
+function emptyPreferenceSource(scope: "global" | "project", path: string): PreferenceSourceState {
+  return { scope, path, values: {}, errors: [] };
+}
+
+function exactModelReference(value: string): boolean {
+  const slash = value.indexOf("/");
+  return slash > 0 && slash < value.length - 1;
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function parsePreferenceSource(scope: "global" | "project", path: string, raw: string): PreferenceSourceState {
+  const source = emptyPreferenceSource(scope, path);
+  let parsed: unknown;
+  try { parsed = JSON.parse(raw); }
+  catch (error) {
+    source.errors.push(`${path}: malformed JSON (${errorText(error)}).`);
+    return source;
   }
-  const slash = requested.indexOf("/");
-  if (slash <= 0 || slash === requested.length - 1) throw new Error("Subagent model must be an exact provider/model-id reference");
-  const provider = requested.slice(0, slash);
-  const id = requested.slice(slash + 1);
-  const found = ctx.modelRegistry.find(provider, id);
-  if (!found) throw new Error(`Subagent model ${requested} is not registered`);
-  if (!ctx.modelRegistry.hasConfiguredAuth(found)) throw new Error(`Subagent model ${requested} has no configured authentication`);
-  return { model: { provider: found.provider, id: found.id }, requested };
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    source.errors.push(`${path}: preferences must be a JSON object.`);
+    return source;
+  }
+  const values: SubagentModelPreferences = {};
+  for (const [key, value] of Object.entries(parsed)) {
+    if (!PREFERENCE_KEYS.has(key)) {
+      source.errors.push(`${path}: unknown key "${key}".`);
+      continue;
+    }
+    if (typeof value !== "string" || !exactModelReference(value)) {
+      source.errors.push(`${path}: key "${key}" must be an exact provider/model-id string, got ${JSON.stringify(value)}.`);
+      continue;
+    }
+    (values as Record<string, string>)[key] = value;
+  }
+  if (source.errors.length === 0) source.values = values;
+  return source;
+}
+
+function requireRegistered(ctx: any, reference: string, describe: string): { provider: string; id: string } {
+  const slash = reference.indexOf("/");
+  const found = ctx.modelRegistry.find(reference.slice(0, slash), reference.slice(slash + 1));
+  if (!found) throw new Error(`${describe} ${reference} is not registered`);
+  if (!ctx.modelRegistry.hasConfiguredAuth(found)) throw new Error(`${describe} ${reference} has no configured authentication`);
+  return { provider: found.provider, id: found.id };
+}
+
+export function createPreferenceStore(deps: ExtensionDependencies) {
+  const readFile = deps.readFile;
+  const globalPath = join(deps.agentDir, GLOBAL_PREFERENCES_FILE);
+  const projectPath = join(projectRoot(deps.extensionFile), deps.configDirName, LOCAL_PREFERENCES_FILE);
+  let global = emptyPreferenceSource("global", globalPath);
+  let project = emptyPreferenceSource("project", projectPath);
+  let registryErrors: string[] = [];
+  const read = async (scope: "global" | "project", path: string): Promise<PreferenceSourceState> => {
+    let raw: string;
+    try { raw = await readFile(path, "utf8"); }
+    catch (error) {
+      if ((error as { code?: string }).code === "ENOENT") return emptyPreferenceSource(scope, path);
+      const source = emptyPreferenceSource(scope, path);
+      source.errors.push(`${path}: ${errorText(error)}.`);
+      return source;
+    }
+    return parsePreferenceSource(scope, path, raw);
+  };
+  let ready: Promise<void> = Promise.resolve();
+  const store = {
+    ready(): Promise<void> { return ready; },
+    reload(): Promise<void> {
+      ready = (async () => {
+        global = await read("global", globalPath);
+        project = await read("project", projectPath);
+        registryErrors = [];
+      })();
+      return ready;
+    },
+    validateAgainstRegistry(ctx: any): void {
+      const errors: string[] = [];
+      for (const source of [project, global]) {
+        for (const [key, value] of Object.entries(source.values)) {
+          try { requireRegistered(ctx, value as string, `${source.path}: key "${key}" names model`); }
+          catch (error) { errors.push(`${errorText(error)}.`); }
+        }
+      }
+      registryErrors = errors;
+    },
+    state(): { global: PreferenceSourceState; project: PreferenceSourceState; blocked: boolean; errors: string[] } {
+      const errors = [...global.errors, ...project.errors, ...registryErrors];
+      return { global, project, blocked: errors.length > 0, errors };
+    },
+  };
+  return store;
+}
+
+export type PreferenceStore = ReturnType<typeof createPreferenceStore>;
+
+export function resolveChildModel(ctx: any, role: RunRequest["role"], requested: string | undefined, store: PreferenceStore): { model: { provider: string; id: string }; requested: string | undefined; source: ExecutionMetadata["modelSource"] } {
+  if (requested !== undefined) {
+    if (!exactModelReference(requested)) throw new Error("Subagent model must be an exact provider/model-id reference");
+    return { model: requireRegistered(ctx, requested, "Subagent model"), requested, source: "requested" };
+  }
+  const state = store.state();
+  if (state.blocked) throw new Error(`${PREFERENCES_BLOCKED} ${state.errors.join(" ")} ${PREFERENCES_REPAIR}`);
+  const key = ROLE_PREFERENCE_KEYS[role];
+  const candidates: Array<{ value: string | undefined; source: ExecutionMetadata["modelSource"]; from: PreferenceSourceState; key: string }> = [
+    { value: state.project.values[key], source: "project-role", from: state.project, key },
+    { value: state.global.values[key], source: "global-role", from: state.global, key },
+    { value: state.project.values.default, source: "project-default", from: state.project, key: "default" },
+    { value: state.global.values.default, source: "global-default", from: state.global, key: "default" },
+  ];
+  for (const candidate of candidates) {
+    if (candidate.value === undefined) continue;
+    return {
+      model: requireRegistered(ctx, candidate.value, `Configured subagent model (${candidate.from.path}: key "${candidate.key}")`),
+      requested: undefined,
+      source: candidate.source,
+    };
+  }
+  if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
+  return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined, source: "inherited" };
 }
 
 export function createLimiter(limit: number) {
@@ -246,7 +380,7 @@ function executionMetadata(
   return {
     resolvedModel: `${selected.model.provider}/${selected.model.id}`,
     requestedModel: selected.requested,
-    modelSource: selected.requested === undefined ? "inherited" : "requested",
+    modelSource: selected.source,
     thinkingLevel,
     options,
   };
@@ -436,6 +570,17 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   const root = projectRoot(deps.extensionFile);
   const now = deps.now ?? Date.now;
   const nextObservationId = deps.observationId ?? randomUUID;
+  const preferences = createPreferenceStore(deps);
+  preferences.reload();
+  pi.on("session_start", async (_event, ctx) => {
+    await preferences.ready();
+    preferences.validateAgainstRegistry(ctx);
+    const state = preferences.state();
+    if (!state.blocked) return;
+    if ((globalThis as any)[PREFERENCES_NOTICE]) return;
+    (globalThis as any)[PREFERENCES_NOTICE] = true;
+    ctx.ui.notify(`${PREFERENCES_BLOCKED} ${state.errors.join(" ")} ${PREFERENCES_REPAIR}`, "error");
+  });
   const explorationLimiter = createLimiter(MAX_EXPLORATION_CONCURRENCY);
   let implementationTail: Promise<void> = Promise.resolve();
   const emptyUsage = (): Usage => ({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 0 });
@@ -525,14 +670,16 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_grounding",
     label: "Grounding Subagent",
-    description: "Run one fresh-context, no-mutation grounding check. Optional model uses exact provider/model-id; omission inherits the parent.",
+    description: "Run one fresh-context, no-mutation grounding check. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
     promptSnippet: "Ground an agreed design against source and project constraints",
-    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. model is optional and omission inherits the parent."],
+    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. model is optional and omission resolves configured preferences, then inherits the parent."],
     parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(Type.String()) }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
-      const selected = resolveChildModel(ctx, params.model);
-      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel);
+      const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
+      await preferences.ready();
+      const selected = resolveChildModel(ctx, "grounding", params.model, preferences);
+      const metadata = executionMetadata(selected, thinkingLevel);
       const queuedAt = now();
       return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate, queuedAt), metadata);
     },
@@ -542,9 +689,9 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_explore",
     label: "Explore Subagent",
-    description: "Run one fresh-context, no-mutation exploration child. Optional model uses exact provider/model-id; omission inherits the parent.",
+    description: "Run one fresh-context, no-mutation exploration child. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
     promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context",
-    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. model is optional and omission inherits the parent."],
+    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. model is optional and omission resolves configured preferences, then inherits the parent."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       breadth: StringEnum(["targeted", "bounded", "broad"] as const),
@@ -553,8 +700,10 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
-      const selected = resolveChildModel(ctx, params.model);
-      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { breadth: params.breadth, detail: params.detail });
+      const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
+      await preferences.ready();
+      const selected = resolveChildModel(ctx, "explore", params.model, preferences);
+      const metadata = executionMetadata(selected, thinkingLevel, { breadth: params.breadth, detail: params.detail });
       publishState(onUpdate, "explore", params.task, "queued", metadata);
       const queuedAt = now();
       const release = await explorationLimiter.acquire(signal);
@@ -570,9 +719,9 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_review",
     label: "Review Subagent",
-    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context. Optional model uses exact provider/model-id; omission inherits the parent.",
+    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
     promptSnippet: "Delegate governed ADR, plan, or code review to fresh context",
-    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief. model is optional and omission inherits the parent."],
+    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief. model is optional and omission resolves configured preferences, then inherits the parent."],
     parameters: Type.Object({
       kind: StringEnum(["adr", "plan", "code"] as const),
       task: Type.String({ minLength: 1 }),
@@ -580,8 +729,10 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
-      const selected = resolveChildModel(ctx, params.model);
-      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { kind: params.kind });
+      const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
+      await preferences.ready();
+      const selected = resolveChildModel(ctx, "review", params.model, preferences);
+      const metadata = executionMetadata(selected, thinkingLevel, { kind: params.kind });
       const prompt = await loadReviewer(deps, root, params.kind);
       const queuedAt = now();
       return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, metadata, signal, onUpdate, queuedAt), { ...metadata, kind: params.kind });
@@ -592,9 +743,9 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_implement",
     label: "Implementation Subagent",
-    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch. Optional model uses exact provider/model-id; omission inherits the parent.",
+    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
     promptSnippet: "Delegate one sequential implementation task to fresh context",
-    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. model is optional and omission inherits the parent."],
+    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. model is optional and omission resolves configured preferences, then inherits the parent."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       allowCommits: Type.Boolean(),
@@ -602,8 +753,10 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
-      const selected = resolveChildModel(ctx, params.model);
-      const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { allowCommits: params.allowCommits });
+      const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
+      await preferences.ready();
+      const selected = resolveChildModel(ctx, "implement", params.model, preferences);
+      const metadata = executionMetadata(selected, thinkingLevel, { allowCommits: params.allowCommits });
       const queuedAt = now();
       let release!: () => void;
       const previous = implementationTail;
@@ -639,5 +792,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
     runner: createRunner(productionRunnerDependencies),
     packageVersion: packageJSON.version,
     extensionFile: fileURLToPath(import.meta.url),
+    agentDir: getAgentDir(),
+    configDirName: CONFIG_DIR_NAME,
   });
 }

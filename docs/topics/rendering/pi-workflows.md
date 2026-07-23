@@ -66,10 +66,17 @@ In the generated Pi extension, expected failures that occur after a child proces
 Origin: ADR-0148
 Backing: test
 
+### `invariant: pi-subagent-model-preferences`
+
+The generated Pi extension loads a user-global and a gitignored project-local JSON preference file at session start, strictly validates keys, role names, and canonical registry-authenticated model references, blocks all implicit routing including parent inheritance while either file is invalid, keeps explicit per-call models usable throughout, revalidates current registry availability immediately before every queued child, and names each child's routing source in diagnostics.
+Origin: ADR-0151
+Backing: test
+
 ### `invariant: pi-subagent-model-routing`
 
-Every Pi subagent role accepts an optional exact provider/model-id, inherits the parent on omission, rejects unknown or unauthenticated explicit choices without fallback before queueing, inherits thinking for child clamping, and reports requested and actual models.
+Every Pi subagent role accepts an optional exact provider/model-id; an omitted model resolves configured preferences in explicit, project-role, global-role, project-default, global-default, parent order; unknown, unauthenticated, or unregistered explicit or configured choices reject visibly before queueing without fallback; thinking is inherited for child clamping; and diagnostics report requested, resolved, and actual models with the routing source.
 Origin: ADR-0148
+Revised-by: ADR-0151
 Backing: test
 
 ### `invariant: pi-subagent-progress-bounds`

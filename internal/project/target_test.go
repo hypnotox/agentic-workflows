@@ -440,7 +440,7 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 		`EXPLORE_TOOLS = ["read", "grep", "find", "ls", "bash"]`,
 		`rolePrompt("explore", { breadth: params.breadth, detail: params.detail })`,
 		`MAX_EXPLORATION_CONCURRENCY = 10`, `createLimiter(MAX_EXPLORATION_CONCURRENCY)`,
-		`const metadata = executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel, { breadth: params.breadth, detail: params.detail });`,
+		`const metadata = executionMetadata(selected, thinkingLevel, { breadth: params.breadth, detail: params.detail });`,
 		`publishState(onUpdate, "explore", params.task, "queued", metadata);`,
 		`const release = await explorationLimiter.acquire(signal);`,
 		`return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate, queuedAt), metadata);`,
@@ -478,11 +478,14 @@ func TestPiStructuredExplorationContract(t *testing.T) {
 func TestPiSubagentModelRouting(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
-		`model: Type.Optional(Type.String())`, `requested.indexOf("/")`,
-		`ctx.modelRegistry.find(provider, id)`, `ctx.modelRegistry.hasConfiguredAuth(found)`,
-		`return { model: { provider: found.provider, id: found.id }, requested }`,
-		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
-		`executionMetadata(selected, pi.getThinkingLevel() as ThinkingLevel`, `resolvedModel:`, `modelSource:`,
+		`model: Type.Optional(Type.String())`, `exactModelReference`, `reference.indexOf("/")`,
+		`ctx.modelRegistry.find(reference.slice(0, slash), reference.slice(slash + 1))`, `ctx.modelRegistry.hasConfiguredAuth(found)`,
+		`return { model: requireRegistered(ctx, requested, "Subagent model"), requested, source: "requested" }`,
+		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined, source: "inherited" }`,
+		`"project-role"`, `"global-role"`, `"project-default"`, `"global-default"`,
+		`Subagent model preferences are invalid; implicit routing is blocked.`,
+		`ROLE_PREFERENCE_KEYS`,
+		`const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;`, `executionMetadata(selected, thinkingLevel`, `resolvedModel:`, `modelSource:`,
 		`thinkingLevel: metadata.thinkingLevel`, `usage: result.usage, model: result.model`,
 		`modelChanged: result.modelChanged`,
 		`modelMismatch: Boolean(result.model && result.model !== details.resolvedModel)`,
@@ -532,7 +535,7 @@ func TestPiSubagentModelRouting(t *testing.T) {
 	}
 	for role, contract := range contracts {
 		block := blocks[role]
-		resolvedAt := strings.Index(block, `const selected = resolveChildModel(ctx, params.model)`)
+		resolvedAt := strings.Index(block, fmt.Sprintf("const selected = resolveChildModel(ctx, %q, params.model, preferences)", role))
 		if resolvedAt < 0 {
 			t.Errorf("%s registration does not resolve its model", role)
 			continue
@@ -558,6 +561,39 @@ func TestPiSubagentModelRouting(t *testing.T) {
 		if !strings.Contains(implement, want) {
 			t.Errorf("implementation registration does not preserve the full child result on commit-policy failure %q", want)
 		}
+	}
+}
+
+// invariant: rendering/pi-workflows:pi-subagent-model-preferences
+func TestPiSubagentModelPreferences(t *testing.T) {
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		`GLOBAL_PREFERENCES_FILE = "awf-subagents.json"`,
+		`LOCAL_PREFERENCES_FILE = "awf-subagents.local.json"`,
+		`export const PREFERENCE_ROLES = ["grounding", "exploration", "review", "implementation"] as const;`,
+		`createPreferenceStore`,
+		`validateAgainstRegistry`,
+		`join(deps.agentDir, GLOBAL_PREFERENCES_FILE)`,
+		`join(projectRoot(deps.extensionFile), deps.configDirName, LOCAL_PREFERENCES_FILE)`,
+		`"ENOENT"`,
+		`unknown key`,
+		`must be an exact provider/model-id string`,
+		`Run /awf-subagent-models to repair. Explicit per-call model arguments remain available.`,
+		`pi.on("session_start"`,
+		`Symbol.for("awf.pi.subagent-preferences-notified")`,
+		`agentDir: getAgentDir(),`,
+		`configDirName: CONFIG_DIR_NAME,`,
+		`await preferences.ready();`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("Pi extension missing preference contract %q", want)
+		}
+	}
+	if got := strings.Count(content, `await preferences.ready();`); got != 5 {
+		t.Errorf("preference-ready gate count = %d, want one per governed tool plus session_start (5)", got)
+	}
+	if strings.Contains(content, "fallbackModel") {
+		t.Fatal("Pi preference resolution contains a silent fallback path")
 	}
 }
 
@@ -810,8 +846,10 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 		}
 	}
 	for _, want := range []string{
-		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
-		`return { model: { provider: found.provider, id: found.id }, requested }`,
+		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined, source: "inherited" }`,
+		`return { model: requireRegistered(ctx, requested, "Subagent model"), requested, source: "requested" }`,
+		`requested: undefined,
+      source: candidate.source,`,
 		`thinkingLevel: metadata.thinkingLevel`,
 		`const MAX_TASK_PREVIEW_BYTES = 512;`,
 		`const MAX_FALLBACK_BYTES = 2 * 1024;`,
@@ -819,6 +857,9 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 		if !strings.Contains(index, want) {
 			t.Errorf("extension missing boundary %q", want)
 		}
+	}
+	if strings.Contains(index, "resolveChildModel(ctx, params.model)") {
+		t.Error("extension retains the pre-preference two-argument resolveChildModel call shape")
 	}
 	for _, want := range []string{
 		`export const MAX_OUTPUT_BYTES = 50 * 1024;`,

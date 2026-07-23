@@ -28,6 +28,9 @@ const result: RunResult = {
 };
 const topLevelUsage = (usage = result.usage) => ({ input: usage.input, output: usage.output, cacheRead: usage.cacheRead, cacheWrite: usage.cacheWrite, totalTokens: usage.input + usage.output + usage.cacheRead + usage.cacheWrite, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: usage.cost } });
 
+const GLOBAL_PREFERENCES_PATH = "/agent/awf-subagents.json";
+const PROJECT_PREFERENCES_PATH = "/repo/.pi/awf-subagents.local.json";
+
 function harness(options: {
   version?: string;
   reviewer?: string;
@@ -37,6 +40,7 @@ function harness(options: {
   thinking?: () => string;
   queueCommand?: boolean;
   telemetryContexts?: unknown[];
+  preferences?: Record<string, string | Error | { reject: unknown }>;
 } = {}) {
   const tools = new Map<string, any>();
   const handlers = new Map<string, any>();
@@ -57,7 +61,17 @@ function harness(options: {
     ...(options.queueCommand === false ? {} : { queueCommand() {} }),
   };
   const deps: ExtensionDependencies = {
-    readFile: async (path) => { reviewerPaths.push(path); return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully."; },
+    readFile: async (path: string) => {
+      if (path === GLOBAL_PREFERENCES_PATH || path === PROJECT_PREFERENCES_PATH) {
+        const entry = options.preferences?.[path];
+        if (entry === undefined) throw Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
+        if (entry instanceof Error) throw entry;
+        if (typeof entry === "object") throw entry.reject;
+        return entry;
+      }
+      reviewerPaths.push(path);
+      return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully.";
+    },
     runner: { run: async (request) => {
       requests.push(request);
       request.onUpdate?.({
@@ -69,6 +83,8 @@ function harness(options: {
     } },
     packageVersion: options.version ?? MIN_PI_VERSION,
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
+    agentDir: "/agent",
+    configDirName: ".pi",
     now: (() => { let value = 0; return () => (value += 100); })(),
     observationId: () => "observation-1",
   };
@@ -88,7 +104,7 @@ function harness(options: {
     ui: { notify: (...args: unknown[]) => notifications.push(args) },
   };
   return {
-    pi, deps, tools, handlers, requests, notifications, emitted, telemetryResponders, ctx,
+    pi, deps, tools, handlers, requests, notifications, emitted, telemetryResponders, ctx, models,
     setLeaf: (value: any) => { leaf = value; },
     reviewerPaths,
     reviewerReads: () => reviewerPaths.length,
@@ -177,7 +193,7 @@ test("invariant: factory guards reject each missing actual dependency before reg
   delete (globalThis as any)[notice];
 
   const factories: Array<{ name: string; required: string[]; register(pi: any, version: string): void }> = [
-    { name: "subagent", required: ["on", "events.emit", "registerTool", "exec", "getThinkingLevel"], register(api, version) { registerSubagentTools(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-subagents/index.ts", readFile: async () => "", runner: { run: async () => result } } as any); } },
+    { name: "subagent", required: ["on", "events.emit", "registerTool", "exec", "getThinkingLevel"], register(api, version) { registerSubagentTools(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-subagents/index.ts", agentDir: "/p-agent", configDirName: ".pi", readFile: async () => "", runner: { run: async () => result } } as any); } },
     { name: "handoff", required: ["on", "events.emit", "registerTool", "registerCommand", "queueCommand"], register(api, version) { registerHandoff(api, { packageVersion: version } as any); } },
     { name: "dashboard", required: ["on", "events.on", "events.emit", "appendEntry", "registerTool", "registerCommand", "exec"], register(api, version) { registerDashboard(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-dashboard/index.ts", ledger: defaultLedgerDependencies("/p/.pi/extensions/awf-dashboard/index.ts"), exec: api.exec } as any); } },
   ];
@@ -298,6 +314,117 @@ test("invalid explicit models reject before every role side effect", async () =>
   await assert.rejects(execute(noParent.tools.get("subagent_grounding"), { task: "ground" }, { ...noParent.ctx, model: undefined }), /active parent model/);
 });
 
+function preferenceFiles(global: unknown, project: unknown): Record<string, string> {
+  const files: Record<string, string> = {};
+  if (global !== undefined) files[GLOBAL_PREFERENCES_PATH] = JSON.stringify(global);
+  if (project !== undefined) files[PROJECT_PREFERENCES_PATH] = JSON.stringify(project);
+  return files;
+}
+
+function registerPreferenceModels(h: ReturnType<typeof harness>): void {
+  for (const key of ["p/role", "g/role", "p/def", "g/def"]) {
+    const slash = key.indexOf("/");
+    h.models.set(key, { provider: key.slice(0, slash), id: key.slice(slash + 1) });
+  }
+}
+
+test("preference precedence resolves every configured source with diagnostics", async () => {
+  const cases = [
+    { global: { grounding: "g/role", default: "g/def" }, project: { grounding: "p/role", default: "p/def" }, want: "p/role", source: "project-role" },
+    { global: { grounding: "g/role", default: "g/def" }, project: { default: "p/def" }, want: "g/role", source: "global-role" },
+    { global: { default: "g/def" }, project: { default: "p/def" }, want: "p/def", source: "project-default" },
+    { global: { default: "g/def" }, project: {}, want: "g/def", source: "global-default" },
+    { global: {}, project: {}, want: "test/parent", source: "inherited" },
+  ] as const;
+  for (const item of cases) {
+    const h = harness({ preferences: preferenceFiles(item.global, item.project) });
+    registerPreferenceModels(h);
+    const { value } = await execute(h.tools.get("subagent_grounding"), { task: "ground" }, h.ctx);
+    assert.equal(value.details.modelSource, item.source);
+    assert.equal(value.details.resolvedModel, item.want);
+    assert.equal(`${h.requests[0].model.provider}/${h.requests[0].model.id}`, item.want);
+    assert.equal(value.details.requestedModel, undefined);
+  }
+  const explicit = harness({ preferences: preferenceFiles({ default: "g/def" }, { grounding: "p/role" }) });
+  registerPreferenceModels(explicit);
+  const { value } = await execute(explicit.tools.get("subagent_grounding"), { task: "ground", model: "cheap/model/with/slash" }, explicit.ctx);
+  assert.equal(value.details.modelSource, "requested");
+  assert.equal(value.details.resolvedModel, "cheap/model/with/slash");
+});
+
+test("preference roles map per tool and absent or empty files inherit the parent", async () => {
+  const roleCases = [
+    ["subagent_grounding", { task: "t" }, "grounding"],
+    ["subagent_explore", { task: "t", breadth: "bounded", detail: "paths" }, "exploration"],
+    ["subagent_review", { kind: "code", task: "t" }, "review"],
+    ["subagent_implement", { task: "t", allowCommits: false }, "implementation"],
+  ] as const;
+  for (const [tool, params, key] of roleCases) {
+    const h = harness({ preferences: preferenceFiles(undefined, { [key]: "p/role" }) });
+    registerPreferenceModels(h);
+    const { value } = await execute(h.tools.get(tool), params, h.ctx);
+    assert.equal(value.details.modelSource, "project-role");
+    assert.equal(value.details.resolvedModel, "p/role");
+  }
+  const notice = Symbol.for("awf.pi.subagent-preferences-notified");
+  for (const files of [preferenceFiles(undefined, undefined), preferenceFiles({}, {})]) {
+    delete (globalThis as any)[notice];
+    const h = harness({ preferences: files });
+    await h.handlers.get("session_start")({}, h.ctx);
+    assert.equal(h.notifications.length, 0);
+    const { value } = await execute(h.tools.get("subagent_grounding"), { task: "t" }, h.ctx);
+    assert.equal(value.details.modelSource, "inherited");
+  }
+});
+
+test("invalid preference files block implicit routing visibly while explicit models keep working", async () => {
+  const notice = Symbol.for("awf.pi.subagent-preferences-notified");
+  const bad: Array<[string, string | Error | { reject: unknown }, RegExp]> = [
+    ["malformed JSON", "{", /malformed JSON/],
+    ["unknown key", JSON.stringify({ mystery: "a/b" }), /unknown key "mystery"/],
+    ["malformed value", JSON.stringify({ grounding: "noslash" }), /exact provider\/model-id string/],
+    ["non-object", JSON.stringify(["a/b"]), /must be a JSON object/],
+    ["read failure", new Error("permission denied"), /permission denied/],
+    ["non-error rejection", { reject: "disk offline" }, /disk offline/],
+    ["unregistered model", JSON.stringify({ grounding: "ghost/model" }), /is not registered/],
+    ["unauthenticated model", JSON.stringify({ grounding: "locked/model" }), /no configured authentication/],
+  ];
+  for (const [label, content, pattern] of bad) {
+    delete (globalThis as any)[notice];
+    const h = harness({ preferences: { [GLOBAL_PREFERENCES_PATH]: content } });
+    await h.handlers.get("session_start")({}, h.ctx);
+    await h.handlers.get("session_start")({}, h.ctx);
+    assert.equal(h.notifications.length, 1, `${label}: startup notice fires exactly once`);
+    const [message, severity] = h.notifications[0] as [string, string];
+    assert.equal(severity, "error", label);
+    assert.match(message, /implicit routing is blocked/, label);
+    assert.match(message, pattern, label);
+    assert.match(message, /Run \/awf-subagent-models to repair\. Explicit per-call model arguments remain available\./, label);
+    assert.match(message, /\/agent\/awf-subagents\.json/, label);
+    await assert.rejects(
+      execute(h.tools.get("subagent_grounding"), { task: "t" }, h.ctx),
+      /implicit routing is blocked/,
+      `${label}: omitted-model call is rejected, parent inheritance included`,
+    );
+    assert.equal(h.requests.length, 0, label);
+    const { value } = await execute(h.tools.get("subagent_grounding"), { task: "t", model: "cheap/model/with/slash" }, h.ctx);
+    assert.equal(value.details.modelSource, "requested", `${label}: explicit model stays usable`);
+  }
+});
+
+test("configured models are revalidated against the live registry before every queued child", async () => {
+  const h = harness({ preferences: preferenceFiles(undefined, { exploration: "p/role" }) });
+  registerPreferenceModels(h);
+  await h.handlers.get("session_start")({}, h.ctx);
+  assert.equal(h.notifications.length, 0);
+  const params = { task: "t", breadth: "targeted", detail: "paths" } as const;
+  const first = await execute(h.tools.get("subagent_explore"), params, h.ctx);
+  assert.equal(first.value.details.modelSource, "project-role");
+  h.models.delete("p/role");
+  await assert.rejects(execute(h.tools.get("subagent_explore"), params, h.ctx), /is not registered/);
+  assert.equal(h.requests.length, 1, "no queueing and no parent fall-through after registry removal");
+});
+
 test("invariant: subagent context and observations are exact closed bounded and private", async () => {
   const h = harness({ run: async () => ({
     ...result,
@@ -364,6 +491,7 @@ test("exploration limiter starts ten, queues FIFO, removes aborts, and releases 
 
   const aborted = new AbortController();
   const queuedAbort = call("aborted", aborted.signal);
+  await new Promise((resolve) => setImmediate(resolve));
   aborted.abort();
   await assert.rejects(queuedAbort, /aborted while queued/);
   assert.equal(h.requests.some((request) => request.task === "aborted"), false);

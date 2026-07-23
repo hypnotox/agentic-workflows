@@ -21,4 +21,5 @@
 !.github/
 !.gemini/
 !.pi/
+.pi/awf-subagents.local.json
 !GEMINI.md

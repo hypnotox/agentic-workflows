@@ -184,11 +184,22 @@ required `task` for the workflow's premise and altitude check; `subagent_explore
 selected detail is `paths`, `summary`, or `analysis`; `subagent_review` takes required `kind`
 (`adr`, `plan`, or `code`) and `task`; and `subagent_implement` takes required `task` and
 `allowCommits`. Every closed schema also accepts optional canonical `model` as
-`provider/model-id`. Omission inherits the active parent model, while an explicit value is resolved
-exactly through Pi's model registry and must have configured authentication. Unknown,
-unauthenticated, or malformed selections fail before role queueing with no fallback. The parent's
-thinking level is forwarded unchanged so child Pi can clamp it for the selected model, and details
-report both the requested and actual model.
+`provider/model-id`. Omission resolves configured preferences, then inherits the active parent
+model, while an explicit value is resolved exactly through Pi's model registry and must have
+configured authentication. Unknown, unauthenticated, or malformed selections fail before role
+queueing with no fallback. The parent's thinking level is forwarded unchanged so child Pi can
+clamp it for the selected model, and details report both the requested and actual model.
+
+The extension also reads per-role child model preferences from two local JSON files: a user-global
+`awf-subagents.json` in Pi's agent directory and a gitignored project-local
+`awf-subagents.local.json` in the project's Pi config directory under the project root. Each file
+may set a `default` plus per-role keys (`grounding`, `exploration`, `review`, `implementation`),
+and an omitted per-call model resolves in explicit-argument, project-role, global-role,
+project-default, global-default, then parent-inheritance order. Both files are strictly validated
+at session start: any malformed, unknown, unregistered, or unauthenticated entry raises a
+prominent error and blocks all implicit routing (parent inheritance included) until repaired,
+while explicit per-call models keep working. Configured choices are revalidated against the live
+model registry before every queued child.
 
 Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
 names the project search universe and searched surfaces. After not-found, inconclusive, unverified,

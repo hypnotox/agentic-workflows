@@ -177,10 +177,17 @@ test("real Pi parallel preflight enforces current-leaf implementation batch excl
       model: "runtime-test/runtime-test",
     };
     const deps: ExtensionDependencies = {
-      readFile: async () => "---\nname: reviewer\ndescription: test\n---\nReview.",
+      readFile: async (path: string) => {
+        if (path.endsWith("awf-subagents.json") || path.endsWith("awf-subagents.local.json")) {
+          throw Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
+        }
+        return "---\nname: reviewer\ndescription: test\n---\nReview.";
+      },
       runner: { run: async () => childResult },
       packageVersion: MIN_PI_VERSION,
       extensionFile: join(root, ".pi/extensions/awf-subagents/index.ts"),
+      agentDir: root,
+      configDirName: ".pi",
     };
     const loader = new DefaultResourceLoader({
       cwd: root,
