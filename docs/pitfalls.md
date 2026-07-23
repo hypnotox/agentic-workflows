@@ -675,6 +675,17 @@ breath as `git add`, and read `git show --stat HEAD` before calling the commit d
 Fourth prose failure is the promotion signal; the deterministic follow-up (an advisory
 audit rule flagging a code-scoped commit that also mutates an ADR body) is on the roadmap.
 
+**Fifth occurrence, 2026-07-23, hours after the fourth, from the opposite seat.** The
+ADR-0155 effort's own final commit was a bare `git commit` (no pathspec) that swept the
+concurrent ADR-0156 effort's staged plan file into the 0155 claims commit. The victim
+session had followed every rule above (fresh status, staged its one file, pathspec
+commit); pathspec discipline on one side is powerless against a bare commit on the
+other, and the victim sees only "nothing to commit" afterwards. Detection from the
+victim seat: when a staged file vanishes, `git log --oneline -- <file>` names the commit
+that captured it. The rule gains its converse: **every commit in a shared checkout is a
+pathspec commit, including your effort's final one** - and the audit-rule follow-up on
+the roadmap now has five occurrences behind it.
+
 ## Link ADRs by their on-disk filename, never by constructing one from the title
 
 _Domains: adr-system_
