@@ -110,7 +110,7 @@ async function realHandoffRuntime(root: string, options: { cancel?: boolean; pre
     return { ...created, services, diagnostics: services.diagnostics };
   };
   await mkdir(join(root, ".awf/memory"), { recursive: true });
-  await writeFile(join(root, ".awf/memory/work.md"), "checkpoint");
+  await writeFile(join(root, ".awf/memory/work.md"), "# Runtime checkpoint\nEffort: runtime-effort\nPhase: implementation\n");
   await mkdir(join(root, ".pi/extensions"), { recursive: true });
   await cp(join(process.cwd(), ".pi/extensions/awf-handoff"), join(root, ".pi/extensions/awf-handoff"), { recursive: true });
   await cp(join(process.cwd(), ".pi/extensions/awf-subagents"), join(root, ".pi/extensions/awf-subagents"), { recursive: true });
@@ -118,7 +118,8 @@ async function realHandoffRuntime(root: string, options: { cancel?: boolean; pre
   await symlink(join(process.cwd(), "node_modules"), join(root, "node_modules"), "dir");
   const sessionDir = join(root, "sessions");
   await mkdir(sessionDir, { recursive: true });
-  runtime = await createAgentSessionRuntime(createRuntime, { cwd: root, agentDir: root, sessionManager: SessionManager.create(root, sessionDir) });
+  const initialSessionManager = SessionManager.create(root, sessionDir); initialSessionManager.appendCustomEntry("awf.telemetry.association.v1", { effortId: "runtime-effort", sessionId: initialSessionManager.getSessionId(), trajectoryId: "runtime-trajectory", associationOrigin: "manual" });
+  runtime = await createAgentSessionRuntime(createRuntime, { cwd: root, agentDir: root, sessionManager: initialSessionManager });
   const bind = async (session: any) => {
     session.subscribe((event: any) => {
       if (event.type === "tool_execution_end") {

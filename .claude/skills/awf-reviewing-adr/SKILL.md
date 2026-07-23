@@ -49,8 +49,8 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 8. **Hand off to plan resync.** After the ADR review converges (the ADR remains `Proposed`), check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `awf-reviewing-plan-resync` against that plan. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): invoke `awf-writing-plans` when planning is warranted, else proceed directly to implementation.
 
 **Working-memory checkpoint.** Before handing off:
-1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
-2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
 3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes

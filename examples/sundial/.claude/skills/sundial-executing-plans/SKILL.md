@@ -19,7 +19,7 @@ Invoke when:
 
 The agent picks between this skill and `sundial-subagent-driven-development` by inspecting the plan's phase structure and task coupling. For plans whose tasks are mostly independent and benefit from fresh context per task, use `sundial-subagent-driven-development` instead.
 
-If no plan exists, implement directly without a chain skill, then invoke `sundial-reviewing-impl` at the end.
+If no plan exists, implement directly without a plan workflow, then invoke `sundial-reviewing-impl` at the end.
 
 ## Procedure
 
@@ -49,11 +49,11 @@ If no plan exists, implement directly without a chain skill, then invoke `sundia
 5. **Final commit for non-ADR plans.** Flip the plan's own `status:` frontmatter from `Proposed → Implemented`, recording any implementation findings in the plan's Notes section, the same freeze as ADR-driven plans, keyed on the plan's own status.
 
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/executing-plans/terminal-step.md to override -->
-6. **Terminal step: invoke `sundial-reviewing-impl`** via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
+6. **Terminal step:** invoke `sundial-reviewing-impl` via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
 
 **Working-memory checkpoint.** Before handing off:
-1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
-2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
 3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes

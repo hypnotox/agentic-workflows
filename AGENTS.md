@@ -47,7 +47,7 @@ Hard rules every change must respect:
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
 - **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `metrics`, `doctor`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
-<!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
+<!-- awf:edit workflow: from .awf/parts/agents-doc/workflow.md -->
 ## Workflow
 
 Canonical chain for non-trivial work:
@@ -66,7 +66,10 @@ Use exploration only when both the repository location is unknown and inline sea
 
 Stage the complete transaction, run `awf check --staged`, then run `./x gate` (`./x gate full` is the full tier). Commit only after both commands pass; the hook repeats the staged check as defense in depth. Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
-<!-- awf:edit working-memory: default; create .awf/parts/agents-doc/working-memory.md to override -->
+For Pi, governed workflow and task selection goes through the single discoverable `awf-workflow` router. Call its `awf_workflow` tool alone with a semantic skill name; never load a governed body directly. The tool settles or resumes explicit effort identity, durably applies the catalog-mapped lifecycle effect, and only then returns the fixed body pre-rendered under `.pi/awf-workflows/`. Each Pi chain handoff calls the router for its successor so one protocol-2 transition closes the current phase and enters the next without a committed gap. Non-Pi targets retain their target-native skill entry points.
+
+
+<!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory
 
 Session context is volatile; the chain's working state must not be. `.awf/memory/` (kept out of version control by a rendered self-ignoring `.gitignore`) holds one working-memory file per in-flight effort: `.awf/memory/<effort-slug>.md`.
@@ -76,6 +79,9 @@ Session context is volatile; the chain's working state must not be. `.awf/memory
 - **Make checkpoints durable and visible.** Complete the memory update in its own tool batch, then display the completed phase, immediate next action, and exact memory path as the user's intervention point. Continue through the target-native successor without claiming session replacement. During a long implementation, checkpoint after any independently resumable committed and reviewed task.
 - **File skeleton** (a convention, not a schema; no tool parses it): a header (`# <effort title>`, `Phase:`, `Next:`, `Updated:`), then `## Brief` (the evolving design brief: problem, settled decisions, user constraints verbatim, rejected approaches), `## Handoff log` (one line per completed phase), and `## Scratch` (open questions, references).
 - **Ground rules.** The file is session state, never a design artifact: never commit it (the rendered `.gitignore` makes that mechanical), never cite it in an ADR, plan, or commit message, and delete it when the effort's chain terminates. Files orphaned by an abandoned effort are harmless gitignored residue. Delete them when noticed; `awf uninstall` leaves a non-empty `.awf/memory/` in place.
+
+Working memory remains optional and effort identity is one-way. Do not create a memory file merely to satisfy telemetry or handoff. When an effort does use memory, keep an exact `Effort: <active-effort-id>` line in the file and validate it before structured resume or Pi handoff; the ledger never stores or infers a memory path. In a fresh Pi session, continue an explicitly named active effort with `/awf-resume-effort <effort-id>`; completed efforts must be reopened separately, and abandoned or pruned efforts cannot be resumed. Pi `handoff_session` is only for a validated memory-backed effort whose identity matches the active association; checkpoint-less work stays in-session or uses structured resume.
+
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
 ## Commands

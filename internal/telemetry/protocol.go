@@ -532,6 +532,8 @@ func DecodeLifecycleRequest(raw json.RawMessage) (LifecycleRequest, error) {
 		request = &ForkTrajectoryLifecycleRequest{}
 	case "TerminalLifecycleRequest":
 		request = &TerminalLifecycleRequest{}
+	case "AbandonLifecycleRequest":
+		request = &AbandonLifecycleRequest{}
 	case "ReopenLifecycleRequest":
 		request = &ReopenLifecycleRequest{}
 	case "WaiveLifecycleRequest":

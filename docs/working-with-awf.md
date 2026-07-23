@@ -61,7 +61,7 @@ index universe with the same eligibility and coverage model as staged check.
 projection.
 
 
-<!-- awf:edit config-and-overrides: default; create .awf/parts/working-with-awf/config-and-overrides.md to override -->
+<!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
 ## Config and overrides
 
 Configuration lives in `.awf/`: a `config.yaml` skeleton (prefix, vars, enable arrays, targets,
@@ -278,6 +278,15 @@ When files matching a domain's `paths` change on a branch without a co-change to
 `.awf/domains/parts/<name>/current-state.md`, `awf audit` raises an advisory
 `domain-code-staleness` warning. If anything meaningful changed, document it. Domains without
 `paths` opt out; the rule is disable-able via `audit.domainCodeStaleness: false`.
+
+### Pi lifecycle-enforcing workflow router
+
+Pi renders one discoverable workflow skill at `.pi/skills/awf-workflow/SKILL.md`; use its semantic catalog and call `awf_workflow` alone. Governed bodies are fixed at sync time under `.pi/awf-workflows/`, remain provenance-, lock-, drift-, reference-, and cleanup-owned, and are not Pi-discovered. The loader accepts a closed skill enum, never a path, and returns a body only after explicit effort settlement and the catalog-mapped route, phase, activity, mode, or terminal mutation is durably acknowledged. Competing calls from one frontier have one winner, and direct downstream loads without their causal predecessor fail. Reviewer agents remain independently discoverable, and non-Pi targets keep individually rendered skills.
+
+A fresh Pi session buffers only a bounded provisional window until router selection or explicit continuation resolves identity. Use `/awf-resume-effort <effort-id>` to queue structured replacement into an existing discovery or active effort. Cancellation before setup appends nothing; persisted setup is retryable once. A completed effort must first be explicitly reopened onto a new trajectory, while abandoned and pruned efforts refuse resume. Overflow settlement may close its provisional effort with the closed `provisional-overflow-resume` abandonment reason before associating the selected effort; already committed observations are not reassigned.
+
+Working memory is optional and one-way: creating an effort creates no file and stores no memory path. A deliberately created `.awf/memory/<slug>.md` carries `Effort: <active-effort-id>`. `handoff_session` requires that exact identity to match an independently validated active association, installs the copied association during replacement setup, and restores it before kickoff. Without a validated memory file, continue in-session or use structured resume.
+
 
 <!-- awf:edit placeholders: default; create .awf/parts/working-with-awf/placeholders.md to override -->
 ## Placeholders in overrides

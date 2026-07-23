@@ -12,7 +12,7 @@ coverage across all five generated Pi TypeScript files, descriptor cross-runtime
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan
 (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
 
-Current-state checks also emit a non-failing working-tree note for each topic strictly above `currentState.maxClaimsPerTopic`; equality is quiet, staged checks suppress the advisory, and the example adopter is required to produce no notes. Catalog-derived runner tests require every metadata-forwarded command in both managed and repository runners while preserving declared exclusions; repository-runner tests additionally pin the dashboard development commands while proving the generic runner omits them. Context parity tests require human and JSON output to consume the same concise/full model, complete-authority callers to use `--full`, and topic/context applicability evidence to agree. Dashboard-runtime package and container tests gate immutable cache publication, the closed read dispatch, fallback precedence, bounded diagnostics, and session capture.
+Current-state checks also emit a non-failing working-tree note for each topic strictly above `currentState.maxClaimsPerTopic`; equality is quiet, staged checks suppress the advisory, and the example adopter is required to produce no notes. Catalog-derived runner tests require every metadata-forwarded command in both managed and repository runners while preserving declared exclusions; repository-runner tests additionally pin the dashboard development commands while proving the generic runner omits them. Context parity tests require human and JSON output to consume the same concise/full model, complete-authority callers to use `--full`, and topic/context applicability evidence to agree. Dashboard-runtime package and container tests gate immutable cache publication, the closed read dispatch, fallback precedence, bounded diagnostics, and session capture. Catalog and render tests additionally gate complete lifecycle mappings, one Pi router, fixed hidden-body ownership, no stale discoverable copies, and non-Pi parity. Container tests cover provisional settlement and recovery, structured replacement resume, memory-identity handoff, single-event chain transitions, competing frontier rejection, and retrospective success or retry settlement.
 
 ### Coverage: statement gate vs line reporting
 
@@ -56,10 +56,10 @@ needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 ## Tiers
 
 awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
-identical Go and containerized TypeScript steps, including protocol parity and the pinned real-Pi
-three-factory smoke plus the pinned repository-runtime cache and launcher tests; the `full` argument is accepted only so the rendered pre-push hook
+identical Go and containerized TypeScript steps, including protocol parity and the pinned in-memory Pi 0.81.1
+three-factory runtime seam plus the pinned repository-runtime cache and launcher tests; the `full` argument is accepted only so the rendered pre-push hook
 payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
-tier to reach for; the whole gate is fast enough to run before every commit.
+tier to reach for; the whole gate is fast enough to run before every commit. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
 
 `./x check` (beside the gate at every commit via the pre-commit payload) also
 gates the example adopter (ADR-0090): it re-checks `examples/sundial` with a
@@ -113,19 +113,19 @@ vocabulary, event acceptance, creation and append recovery, transactional phase 
 classification. A repository-resident preflight test refuses automatic cleanup when any protocol-1
 effort exists and proves it changes no resident evidence. Dashboard tests cover confined owner-only
 storage, leases, tombstones, serialized drain, explicit versus passive failure, active-branch
-association, trajectory navigation, closed lifecycle schemas, bootstrap authority,
+association, bounded provisional creation/discard/overflow/graceful/crash behavior, ordered retry recovery, structured replacement resume and cancellation, trajectory navigation, closed lifecycle schemas, bootstrap authority,
 PATH-to-advertised-runner fallback, launcher project-root environment, bounded dual-failure
 diagnostics, one launcher capture per session, controlled binary handshake and refresh, atomic
 stale/degraded state, widget and overlay rendering, fixed maintenance arrays, confirmation, complete
 repository-path privacy exclusion, effort-owned finding re-resolution, stale or empty-frontier and
-cross-effort mutation rejection, and no-spawn rendering. Runner tests cover
+cross-effort mutation rejection, and no-spawn rendering. Workflow-loader tests cover the closed semantic enum, exclusive trustworthy batches, catalog-mapped route, phase, activity, mode, and terminal effects, one-event chain transitions, causal predecessor rejection, winner/conflict retries, fixed-body identity after durable acknowledgement, and retrospective completion, failure, cancellation, shutdown, and recovery. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
 in-memory pinned-fork Pi 0.81.1 runtime loads all three extension factories and proves that partial details,
-result-middleware error patches, producer observations, association copying, widget and overlay
-registration, lifecycle durability, shutdown drain, canonical refresh degradation, and current-leaf
+result-middleware error patches, producer observations, router loading, structured replacement, memory-identity association copying before kickoff, widget and overlay
+registration, lifecycle durability, retrospective settlement, shutdown drain, canonical refresh degradation, and current-leaf
 mixed-implementation blocking survive the real runtime seam without entering model-visible content.
 Compatibility tests reject an official-0.81.1-shaped API that lacks any required queued-command,
-persisted-session, custom-entry, widget, overlay, or shutdown surface. Handoff tests cover the closed schema, path and symlink boundaries, exclusivity, pending token, countdown cleanup and cancellation, pending-window revalidation, parent-linked replacement, teardown failures, kickoff, and editor fallback. The container type-check and c8 coverage globs include every extension TypeScript file. Unit tests cover exact all-role model routing and rejection, inherited
+persisted-session, custom-entry, widget, overlay, or shutdown surface. Handoff tests cover the closed schema, path and symlink boundaries, exact memory `Effort:` parsing, independently validated association match, exclusivity, pending token, countdown cleanup and cancellation, pending-window identity revalidation, parent-linked replacement with setup-time association, restore-before-kickoff ordering, teardown failures, kickoff, and editor fallback. The container type-check and c8 coverage globs include every extension TypeScript file. Unit tests cover exact all-role model routing and rejection, inherited
 thinking, and the ten-active FIFO limiter's abort and release lifecycle including runner setup
 failure. Grounding schema/prompt tests and shared-renderer tests cover every role and state at narrow
 and normal widths, including omissions, diagnostics, usage, malformed details, and configurable
@@ -134,6 +134,8 @@ catalog closure, migration, and cross-target publication safety so Pi-only model
 syntax never leaks to another target. These tests prove schemas and instruction contracts, not
 arbitrary model compliance.
 `./x pi-test stop|reset` controls the container lifecycle.
+
+Release readiness also requires the unbacked real-Pi smoke on `hypnotox/pi` `fork-v0.81.1-awf.3` or a later API-verified build. In a new session, load `brainstorming` through `awf_workflow`, load its routed successor, and verify one transactional phase transition. Cancel and retry `/awf-resume-effort <effort-id>` into a replacement; create matching memory carrying `Effort: <id>`, hand off, and verify association is present before kickoff. Interrupt and retry one provisional or transition settlement to verify idempotent recovery, then fork/resume, refresh the dashboard, exercise widget/overlay and a canceled destructive action, complete, shut down, and inspect retained history. Repeat with canonical binary resolution unavailable and confirm visible non-blocking degradation. Record the exact commands and observed states in the release work; this manual smoke has no invariant proof marker.
 
 Shared test-fixture building (project-config scaffolding, ADR frontmatter fixtures,
 file-writing primitives, the seam-swap idiom, and git-repo fixtures) goes through

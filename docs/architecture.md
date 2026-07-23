@@ -36,8 +36,7 @@ bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cu
 `AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog outputs. Pi renders exactly five project-local TypeScript files:
 the two-file `.pi/extensions/awf-subagents/` delegation extension, the checkpoint handoff extension,
 and the two-file `.pi/extensions/awf-dashboard/` telemetry runtime. The dashboard protocol file is
-projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. awf's
-own config tree lives at `.awf/`, decoupled from any one runtime's directory.
+projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata drives the router and the dashboard's closed `awf_workflow` loader; ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
@@ -55,7 +54,7 @@ reports exact violations and configured versioned heuristics without a score, au
 blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver
 inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The Pi dashboard writes conforming events and refreshes
 both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
-stale or degraded.
+stale or degraded. A fresh session holds its bounded provisional observations only in memory until router selection or `/awf-resume-effort <effort-id>` resolves identity. Working memory is optional and identifies an effort one-way through `Effort: <id>`; no ledger metadata stores a memory path, and only a validated matching file permits Pi handoff.
 
 For from-source development, `refs/awf/dashboard-runtime` pins one committed implementation independently
 of the checkout. `internal/dashboardruntime` materializes that commit privately, builds under a normalized
@@ -103,7 +102,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Its core `exploring`
   skill provides six-target semantic rendering: Pi dispatches the structured extension tool while
-  other targets request native fresh-context delegation. Docs and always-on
+  other targets request native fresh-context delegation. Every governed skill also carries an exact workflow mapping for kind, phase or activity effect, route effect, implementation mode, terminal behavior, and causal predecessor phases; validation rejects incomplete or impossible mappings. Docs and always-on
   singletons are one `Docs` collection: each `DocEntry`'s `Mandatory` flag marks a singleton, and
   `SingletonKinds()` derives from it (ADR-0043, ADR-0061).
 - **`internal/adr/`**: parses the decisions directory and exposes it as one `Corpus` view,
@@ -163,7 +162,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
   The topic producer loads through a lazy invocation cache and contributes ordinary
   managed Markdown nodes, so sync, manifest membership, brownfield backup, drift comparison, and
-  prune all use the shared output plan rather than topic-specific lock state. `CheckCurrentState` and
+  prune all use the shared output plan rather than topic-specific lock state. For Pi, the same plan replaces individually discoverable governed skills with one router and fixed hidden bodies, while retaining reviewer agents and ordinary non-Pi skill layouts; provenance, hashing, drift, reference scans, stale pruning, disable, and uninstall remain shared. `CheckCurrentState` and
   `CheckStaged` run the current-state static and staged checks, and `Audit` evaluates per-commit claim
   transitions across a range.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
@@ -224,10 +223,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension,
   `templates/pi/awf-handoff/` contains the main-session handoff state machine, and
-  `templates/pi/awf-dashboard/` contains the writer, tools, widget, overlay, and publication wrapper
-  for the descriptor-derived protocol. The handoff extension validates durable memory paths, queues a
+  `templates/pi/awf-dashboard/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, provisional identity state machine, tools, widget, overlay, and publication wrapper
+  for the descriptor-derived protocol; `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
   single-use private command after settlement, runs the cancellable countdown and revalidation,
-  creates a parent-linked session, copies a validated active association during `newSession.setup`,
+  creates a parent-linked session, independently validates and copies the matching active association during `newSession.setup`, restores it before kickoff,
   and submits kickoff only through the replacement context. Pi-rendered workflow
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
@@ -243,7 +242,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% statement, branch,
   function, and line coverage harness for every dogfooded generated extension. Cross-language tests
   hold descriptor validation and recovery behavior in parity; an in-memory pinned Pi runtime loads all
-  three factories and exercises producer exchange, handoff association, widget and overlay
+  three factories and exercises producer exchange, provisional settlement, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, widget and overlay
   registration, lifecycle append and shutdown drain, canonical refresh, and degraded mode. Its
   repo-keyed persistent container snapshots current source and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
@@ -342,20 +341,20 @@ re-resolution of the selected finding under its `effortId`, with matching eviden
 eligible reason, and the current nonempty causal frontier. Purge is a separately confirmed destructive
 operation.
 
-The Pi dashboard restores association from the active branch, writes passive observations through a
-serialized durable queue, and drains it at shutdown. An enabled project bootstrap is authoritative.
+The Pi dashboard restores association from the active branch. A fresh root session instead creates a deterministic provisional candidate and buffers at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 protocol encoding in memory. The first `awf_workflow` selection settles creation, association, ordered flush, and its catalog-mapped lifecycle effect before returning the fixed hidden body. `/awf-resume-effort <effort-id>` can discard an uncommitted candidate and queue private replacement setup for a validated discovery or active effort; completed work requires a separate reopen, and abandoned or pruned work refuses resume. Overflow settles the candidate first, then a later resume uses the closed `provisional-overflow-resume` abandonment reason before detach and association, without reassigning committed observations. The dashboard otherwise writes passive observations through a
+serialized durable queue and drains it at shutdown. An enabled project bootstrap is authoritative.
 Without one, the dashboard tries `awf` on `PATH`, then uses the repository runner only when its usage
 advertises `dashboard-awf-path`; absence, execution failure, version refusal, or protocol refusal may
 trigger that fallback. The runner resolves `refs/awf/dashboard-runtime`, initializes an absent ref to
 `HEAD`, materializes only that commit, and reuses or atomically publishes the content-addressed awf,
 launcher, metadata, and policy snapshot. Launcher queries carry the absolute project root in
 `AWF_DASHBOARD_PROJECT_ROOT` and enter the closed private `dashboard-read` grammar; mutation and
-maintenance never do. The dashboard captures one successful handshake for the session, then refreshes
+maintenance never do. The dashboard captures one successful handshake for the session. Its closed-enum workflow loader validates an exclusive trustworthy call, current frontier, route and predecessor, applies one durable mapped phase transition or activity, and reads only the pre-rendered `.pi/awf-workflows/<name>.md` body after acknowledgement. Normal chain successors route through that loader, and successful retrospective agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves retrospective open. The dashboard then refreshes
 metrics followed by doctor at startup, overlay open or manual refresh, and relevant successful
 mutations. Rendering never starts a process. A failed resolution, handshake, query, or retention call
 preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps
 both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is
-visible.
+visible. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

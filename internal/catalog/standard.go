@@ -7,31 +7,33 @@ package catalog
 // produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Core: true, Chain: true, RequiresSkills: []string{"exploring", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
+		"brainstorming": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseStart, Phase: "brainstorming"}, RequiresSkills: []string{"exploring", "executing-direct", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
 			"design-sections", "no-spec-rule", "grounding-check-output-format",
 			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
 		}},
-		"writing-plans": {Core: true, Chain: true, RequiresSkills: []string{"adr-lifecycle", "proposing-adr", "reviewing-plan", "reviewing-plan-resync"}, Sections: []string{
+		"writing-plans": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "planning", RouteEffect: RoutePromoteADRPlan, RequiresPhases: []string{"adr-review", "brainstorming"}}, RequiresSkills: []string{"adr-lifecycle", "proposing-adr", "reviewing-plan", "reviewing-plan-resync"}, Sections: []string{
 			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
 			"conventions-tasks", "conventions-no-placeholders", "gate-tier-note",
 			"conventions-test-first", "procedure-confirm-scope", "plan-template-ref",
 			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
-		"executing-plans": {Core: true, Chain: true, RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
+		"executing-direct": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", RouteEffect: RouteSelectDirect, ImplementationMode: "inline-execution", RequiresPhases: []string{"brainstorming"}}, RequiresSkills: []string{"reviewing-impl"}},
+		"executing-plans": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", ImplementationMode: "inline-execution", RequiresPhases: []string{"adr-plan-resync", "plan-review"}}, RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
 			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
 			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
 		}},
-		"subagent-driven-development": {Core: true, Chain: true, RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
+		"subagent-driven-development": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", ImplementationMode: "subagent-driven-development", RequiresPhases: []string{"adr-plan-resync", "plan-review"}}, RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
 			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
 			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
 		"tdd": {
+			Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "tdd", RequiresPhases: []string{"implementation"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
 				"testSurfaces": []any{
@@ -41,15 +43,15 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"debugging": {RequiresSkills: []string{"exploring"}, Sections: []string{
+		"debugging": {Workflow: &WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "investigation", Activity: "debugging"}, RequiresSkills: []string{"exploring"}, Sections: []string{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
 			"devdb-note", "red-flags", "memory-checkpoint",
 		}},
-		"exploring": {Core: true, Sections: []string{
+		"exploring": {Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "exploration"}, Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
 		"proposing-adr": {
-			Core: true, Chain: true,
+			Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "adr-authoring", RouteEffect: RouteSelectADR, RequiresPhases: []string{"brainstorming"}},
 			RequiresSkills: []string{"adr-lifecycle", "reviewing-adr"},
 			Sections: []string{
 				"positioning", "when-to-invoke", "conventions", "procedure-number", "procedure-write",
@@ -68,7 +70,7 @@ var Standard = &Catalog{
 			},
 		},
 		"adr-lifecycle": {
-			Core: true,
+			Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "adr-lifecycle"},
 			Sections: []string{
 				"states", "transitions", "state-changes",
 				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
@@ -84,34 +86,34 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"bugfix": {Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
-		"reviewing-plan": {Core: true, Chain: true, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"reviewing-plan-resync", "writing-plans"}, Sections: []string{
+		"bugfix": {Workflow: &WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "brainstorming", RouteEffect: RouteSelectBugfix}, Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
+		"reviewing-plan": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "plan-review", RequiresPhases: []string{"planning"}}, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"reviewing-plan-resync", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
 		}},
-		"reviewing-plan-resync": {Core: true, Chain: true, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"executing-plans", "reviewing-adr", "reviewing-plan", "subagent-driven-development"}, Sections: []string{
+		"reviewing-plan-resync": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "adr-plan-resync", RequiresPhases: []string{"plan-review"}}, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"executing-plans", "reviewing-adr", "reviewing-plan", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "dispatch-subagent-narrowed", "classify-route-findings",
 			"apply-fixes-commit", "re-review-loop", "hand-off-to-impl", "notes",
 		}},
-		"reviewing-adr": {Core: true, Chain: true, RequiresAgent: "adr-reviewer", RequiresSkills: []string{"adr-lifecycle", "executing-plans", "proposing-adr", "reviewing-plan-resync", "subagent-driven-development", "writing-plans"}, Sections: []string{
+		"reviewing-adr": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "adr-review", RequiresPhases: []string{"adr-authoring"}}, RequiresAgent: "adr-reviewer", RequiresSkills: []string{"adr-lifecycle", "executing-plans", "proposing-adr", "reviewing-plan-resync", "subagent-driven-development", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Core: true, Chain: true, RequiresAgent: "code-reviewer", RequiresSkills: []string{"executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
+		"reviewing-impl": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation-review", RequiresPhases: []string{"implementation"}}, RequiresAgent: "code-reviewer", RequiresSkills: []string{"executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
-		"retrospective": {Core: true, Chain: true, Sections: []string{
+		"retrospective": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "retrospective", RouteEffect: RouteSelectInvestigationIfUnrouted, TerminalEffect: TerminalArmCompletion, RequiresPhases: []string{"implementation-review", "investigation"}}, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
-		"refactor-coupling-audit": {RequiresSkills: []string{"exploring"}, Sections: []string{
+		"refactor-coupling-audit": {Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "refactor-coupling-audit", RequiresPhases: []string{"brainstorming"}}, RequiresSkills: []string{"exploring"}, Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",
 			"output-format", "scope-shrink-rule", "notes",
 		}},
-		"roadmap-graduation": {RequiresDoc: "roadmap", Sections: []string{
+		"roadmap-graduation": {Workflow: &WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "roadmap-graduation"}, RequiresDoc: "roadmap", Sections: []string{
 			"when-fires", "failure-modes", "identify-entry", "reverify-measurements",
 			"graduate-single-commit", "explicit-drop", "same-commit", "doc-currency", "notes",
 		}},

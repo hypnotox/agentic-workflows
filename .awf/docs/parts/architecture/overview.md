@@ -32,8 +32,7 @@ bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cu
 `AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog outputs. Pi renders exactly five project-local TypeScript files:
 the two-file `.pi/extensions/awf-subagents/` delegation extension, the checkpoint handoff extension,
 and the two-file `.pi/extensions/awf-dashboard/` telemetry runtime. The dashboard protocol file is
-projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. awf's
-own config tree lives at `.awf/`, decoupled from any one runtime's directory.
+projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata drives the router and the dashboard's closed `awf_workflow` loader; ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
@@ -51,7 +50,7 @@ reports exact violations and configured versioned heuristics without a score, au
 blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver
 inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The Pi dashboard writes conforming events and refreshes
 both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
-stale or degraded.
+stale or degraded. A fresh session holds its bounded provisional observations only in memory until router selection or `/awf-resume-effort <effort-id>` resolves identity. Working memory is optional and identifies an effort one-way through `Effort: <id>`; no ledger metadata stores a memory path, and only a validated matching file permits Pi handoff.
 
 For from-source development, `refs/awf/dashboard-runtime` pins one committed implementation independently
 of the checkout. `internal/dashboardruntime` materializes that commit privately, builds under a normalized

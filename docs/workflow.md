@@ -6,7 +6,7 @@
 
 You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
 
-<!-- awf:edit chain: default; create .awf/parts/workflow/chain.md to override -->
+<!-- awf:edit chain: from .awf/parts/workflow/chain.md -->
 ## The chain
 
 Non-trivial work follows one canonical chain:
@@ -20,6 +20,11 @@ Brainstorming is the hard prerequisite. An **ADR** is warranted by *load-bearing
 
 
 For the detailed criteria of when a decision is load-bearing enough to warrant an ADR (and the ADR format itself), see [`docs/decisions/README.md`](decisions/README.md).
+
+On Pi, the canonical chain is entered through the single discoverable `awf-workflow` router rather than individually discoverable governed skills. Invoke `awf_workflow` alone with the semantic skill name. The enforcing loader resolves explicit effort identity, validates the current frontier and route, appends the mapped lifecycle effect, and only after durable acknowledgement returns the fixed pre-rendered body from `.pi/awf-workflows/`. Chain successors use the same router, so each normal edge is one transactional phase transition; retrospective completion is settled mechanically after a successful run. Reviewer agents remain separately discoverable, while non-Pi targets keep their ordinary target-native skills.
+
+Working memory is optional. A file is created only when the effort warrants durable checkpoint state, and then carries an exact `Effort: <active-effort-id>` line. A Pi handoff requires that validated file and a matching active association. Checkpoint-less Pi work continues in the current session or uses `/awf-resume-effort <effort-id>` for explicit fresh-session continuation; the runtime never mines prose or filenames for identity.
+
 
 <!-- awf:edit commit-discipline: from .awf/parts/workflow/commit-discipline.md -->
 ## Commit discipline

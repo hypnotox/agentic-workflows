@@ -59,6 +59,7 @@ export interface TelemetryAssociation {
 export interface HandoffDependencies extends MinimumRuntimeDependencies {
   extensionFile: string;
   lstat(path: string): Promise<HandoffStat>;
+  readFile(path: string, encoding: "utf8"): Promise<string>;
   path: HandoffPathOps;
   randomUUID(): string;
   setInterval(callback: () => void, milliseconds: number): unknown;
@@ -95,6 +96,11 @@ export async function validateMemoryPath(memoryPath: string, deps: HandoffDepend
     if (final && !stat.isFile()) throw new Error(`memoryPath is not a regular file: ${current}`);
   }
   return memoryPath;
+}
+
+export async function validateMemoryEffort(memoryPath: string, deps: HandoffDependencies): Promise<string> {
+  await validateMemoryPath(memoryPath, deps); const absolute = deps.path.resolve(repositoryRoot(deps), memoryPath); const contents = await deps.readFile(absolute, "utf8"); const matches = contents.split(/\r?\n/).filter((line) => line.startsWith("Effort: "));
+  if (matches.length !== 1) throw new Error("memory file must contain exactly one Effort: <id> line"); const effortId = matches[0]!.slice("Effort: ".length); if (!boundedIdentifier(effortId) || matches[0] !== `Effort: ${effortId}`) throw new Error("memory file contains an invalid Effort: <id> line"); return effortId;
 }
 
 function emitHandoffObservation(pi: ExtensionAPI, data: { observationId: string; targetSessionId: string; outcome: "success" | "failure"; durationMs: number; errorCategory?: "handoff" }): void {
@@ -178,7 +184,7 @@ function countdown(ctx: any, deps: HandoffDependencies): Promise<boolean> {
 
 export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): void {
   if (!guardMinimumRuntime(pi, deps, ["on", "eventsEmit", "registerTool", "registerCommand", "queueCommand"])) return;
-  let pending: { id: string; memoryPath: string; kickoff: string } | undefined;
+  let pending: { id: string; memoryPath: string; kickoff: string; effortId: string; association: TelemetryAssociation } | undefined;
 
   pi.on("tool_call", (event, ctx) => {
     const leaf = ctx.sessionManager.getLeafEntry();
@@ -199,20 +205,18 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
       try {
         const proceed = await countdown(ctx, deps);
         if (!proceed) { emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "failure", durationMs: Math.max(0, Date.now() - startedAt), errorCategory: "handoff" }); ctx.ui.notify("Fresh-session handoff canceled."); return; }
-        await validateMemoryPath(request.memoryPath, deps);
+        const memoryEffort = await validateMemoryEffort(request.memoryPath, deps); if (!validateTelemetryAssociation(request.association) || request.association.effortId !== request.effortId || memoryEffort !== request.effortId) throw new Error("memory Effort does not match the copied active association");
         const oldSessionFile = ctx.sessionManager.getSessionFile();
         if (!oldSessionFile) throw new Error("The active session is no longer persisted");
         const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
-        const association = requestHandoffAssociation(pi);
+        const association = { ...request.association };
         const handoffSetup = { version: { major: 2, minor: 0 }, observationId, startedAt, durationMs: Math.max(0, Date.now() - startedAt) };
         await ctx.newSession({
           parentSession: oldSessionFile,
           async setup(sessionManager) {
             const childSessionId = sessionManager.getSessionId?.(); if (boundedIdentifier(childSessionId)) targetSessionId = childSessionId;
-            try { if (association) {
-              sessionManager.appendCustomEntry("awf.telemetry.association.v1", { effortId: association.effortId, sessionId: association.sessionId, trajectoryId: association.trajectoryId, associationOrigin: association.associationOrigin });
-              sessionManager.appendCustomEntry("awf.telemetry.handoff.pending.v1", { version: { major: handoffSetup.version.major, minor: handoffSetup.version.minor }, observationId: handoffSetup.observationId, startedAt: handoffSetup.startedAt, durationMs: handoffSetup.durationMs });
-            } } catch { /* telemetry propagation is best-effort */ }
+            sessionManager.appendCustomEntry("awf.telemetry.association.v1", { effortId: association.effortId, sessionId: association.sessionId, trajectoryId: association.trajectoryId, associationOrigin: association.associationOrigin });
+            sessionManager.appendCustomEntry("awf.telemetry.handoff.pending.v1", { version: { major: handoffSetup.version.major, minor: handoffSetup.version.minor }, observationId: handoffSetup.observationId, startedAt: handoffSetup.startedAt, durationMs: handoffSetup.durationMs });
           },
           async withSession(replacementCtx) {
             try { await replacementCtx.sendUserMessage(wrapper); }
@@ -243,8 +247,8 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
       if (!params.kickoff.trim()) throw new Error("kickoff must contain non-whitespace content");
       if (params.kickoff.length > 1000) throw new Error("kickoff must be at most 1,000 UTF-16 code units");
       if (pending) throw new Error("A handoff request is already pending");
-      await validateMemoryPath(params.memoryPath, deps);
-      const request = { id: deps.randomUUID(), memoryPath: params.memoryPath, kickoff: params.kickoff };
+      const effortId = await validateMemoryEffort(params.memoryPath, deps); const association = requestHandoffAssociation(pi); if (!validateTelemetryAssociation(association)) throw new Error("handoff_session requires one independently copied active association"); if (association.effortId !== effortId) throw new Error("memory Effort does not match the active association");
+      const request = { id: deps.randomUUID(), memoryPath: params.memoryPath, kickoff: params.kickoff, effortId, association: { ...association } };
       pending = request;
       try { pi.queueCommand("awf-handoff-continue", request.id); }
       catch (error) { if (pending?.id === request.id) pending = undefined; throw error; }
@@ -257,7 +261,7 @@ export default async function (pi: ExtensionAPI): Promise<void> {
   const packageJSON = JSON.parse(await readFile(join(getPackageDir(), "package.json"), "utf8")) as { version: string };
   registerHandoff(pi, {
     extensionFile: fileURLToPath(import.meta.url), packageVersion: packageJSON.version,
-    lstat, path: nodePath, randomUUID,
+    lstat, readFile, path: nodePath, randomUUID,
     setInterval: (callback, milliseconds) => globalThis.setInterval(callback, milliseconds),
     clearInterval: (handle) => globalThis.clearInterval(handle as any),
     setTimeout: (callback, milliseconds) => globalThis.setTimeout(callback, milliseconds),

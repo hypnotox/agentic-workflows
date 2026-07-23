@@ -71,11 +71,11 @@ Start from the canonical skeleton rather than a blank file: run `awf new plan "<
 3. **Commit the plan** as soon as it is written: `docs(plans): add YYYY-MM-DD-<topic>`. The review step expects a committed plan; review fixes land as new commits, never `--amend`.
 
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/writing-plans/terminal-step.md to override -->
-4. **Terminal step: invoke `awf-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
+4. **Terminal step:** invoke `awf-reviewing-plan` via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
 
 **Working-memory checkpoint.** Before handing off:
-1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
-2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
 3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.
 
 ## Notes
@@ -85,7 +85,7 @@ Start from the canonical skeleton rather than a blank file: run `awf new plan "<
 - A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** (through review and through implementation, where findings are noted as they surface) and **freezes at `status: Implemented`**, flipped in the implementation's final commit (the same flip for ADR-driven and non-ADR plans). In awf's usual flow a plan and its ADR(s) co-flip in that final commit, but the plan's freeze keys off its own status, not the ADR's.
 
 <!-- awf:edit plan-resync: default; create .awf/skills/parts/writing-plans/plan-resync.md to override -->
-- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `awf-proposing-adr` (or amend a still-`Proposed` ADR via `awf-adr-lifecycle`), let it settle, then resume the plan. The plan↔ADR resync (`awf-reviewing-plan-resync`) reconciles any resulting drift before implementation.
+- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `awf-proposing-adr` (or amend a still-`Proposed` ADR via `awf-adr-lifecycle`), let it settle, then resume the plan; the plan↔ADR resync (`awf-reviewing-plan-resync`) reconciles any resulting drift before implementation.
 
 <!-- awf:edit notes: default; create .awf/skills/parts/writing-plans/notes.md to override -->
 - The plan is the execution record. The design lives in the linked ADR(s), declared in the plan's `adrs:` frontmatter. Do not duplicate design rationale in the plan; link to the ADR(s) instead.

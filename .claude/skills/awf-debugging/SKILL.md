@@ -38,7 +38,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
    - **Print/log debugging**: add `t.Logf(...)` or `fmt.Fprintf(os.Stderr, ...)` inline; remove before committing. For template render bugs, log the `data` map before `tmpl.Execute` to confirm what the renderer sees.
    - **`.awf/awf.lock`**: the lock file records the rendered content hash; `awf check` compares on-disk files against it. Inspect the lock directly if `awf check` reports false drift.
 
-   When the evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring`. Keep an exact-known-file read or genuinely trivial lookup inline.
+   When the evidence location is unknown and inline search would pollute the parent context, use the target-native governed exploration loader. Keep an exact-known-file read or genuinely trivial lookup inline.
 
    Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
 
@@ -82,6 +82,6 @@ These thoughts mean stop. You're rationalizing:
 
 <!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/debugging/memory-checkpoint.md to override -->
 **Working-memory checkpoint.** Before handing off:
-1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md` (create it if missing), set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
-2. Display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path.
+1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: require its exact `Effort: <active-effort-id>` line to match the active effort, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it with the exact active `Effort: <active-effort-id>` line before `Phase:`; never invent or infer an effort ID.
+2. When a memory file exists, display a concise checkpoint summary naming the completed phase, the immediate next action, and the exact memory path. Otherwise display the completed phase and immediate next action without claiming a checkpoint file.
 3. Treat that summary as the user's intervention point. Then continue through the target-native successor without claiming session replacement. The file skeleton and ground rules live in the agent guide's working-memory section.

@@ -173,11 +173,12 @@ func TestTerminalRepairsAndWaiversDoNotReopen(t *testing.T) {
 
 func TestLifecycleClosedMutationMatrixAndTerminalEpochs(t *testing.T) {
 	abandoned := lifecycleBaseEvents()
-	abandoned = appendEvent(abandoned, "abandon", "effort_abandoned", EffortTerminalPayload{TerminalEpoch: 1})
+	abandoned = appendEvent(abandoned, "abandon", "effort_abandoned", EffortAbandonedPayload{TerminalEpoch: 1, Reason: "provisional-overflow-resume"})
+	abandoned = appendEvent(abandoned, "detach-after-abandon", "session_detached", SessionDetachedPayload{Reason: "manual"})
 	abandoned = appendEvent(abandoned, "route-after", "route_selected", RoutePayload{Route: "direct"})
 	abandoned = appendEvent(abandoned, "reopen", "effort_reopened", EffortReopenedPayload{TerminalEpoch: 2, TrajectoryID: "new", AnchorID: "anchor"})
 	projection := ProjectLifecycle(abandoned)
-	if projection.State != EffortAbandoned || !hasInvalidEvent(projection.Invalid, "route-after") || !hasInvalidEvent(projection.Invalid, "reopen") {
+	if projection.State != EffortAbandoned || !projection.EffectApplied["detach-after-abandon"] || len(projection.Associations) != 0 || !hasInvalidEvent(projection.Invalid, "route-after") || !hasInvalidEvent(projection.Invalid, "reopen") {
 		t.Fatalf("abandoned mutation matrix = %#v", projection)
 	}
 

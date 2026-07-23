@@ -1,6 +1,7 @@
 package project
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -117,6 +118,91 @@ func (p *Project) runnerRenderData() map[string]any {
 // non-Chain entries of the effective set - as "`<prefix>-<name>`, ...", or ""
 // when none are enabled. Derived from the catalog so a new task skill cannot
 // be dropped from the guide's sentence by a forgotten template edit.
+type workflowRouterEntry struct {
+	Name, Kind, Effect string
+}
+
+type workflowLoaderEntry struct {
+	Kind               string   `json:"kind"`
+	PhaseEffect        string   `json:"phaseEffect"`
+	Phase              string   `json:"phase,omitempty"`
+	Activity           string   `json:"activity,omitempty"`
+	ImplementationMode string   `json:"implementationMode,omitempty"`
+	RouteEffect        string   `json:"routeEffect,omitempty"`
+	TerminalEffect     string   `json:"terminalEffect,omitempty"`
+	RequiresPhases     []string `json:"requiresPhases"`
+}
+
+func (p *Project) workflowRouterData(names []string) ([]workflowRouterEntry, error) {
+	mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]workflowRouterEntry, 0, len(mappings))
+	for _, name := range slices.Sorted(maps.Keys(mappings)) {
+		mapping := mappings[name]
+		effect := string(mapping.PhaseEffect)
+		if mapping.Phase != "" {
+			effect += " phase " + mapping.Phase
+		}
+		if mapping.Activity != "" {
+			effect += " activity " + mapping.Activity
+		}
+		if mapping.RouteEffect != catalog.RouteNone {
+			effect += " route " + string(mapping.RouteEffect)
+		}
+		if mapping.TerminalEffect != catalog.TerminalNone {
+			effect += " terminal " + string(mapping.TerminalEffect)
+		}
+		entries = append(entries, workflowRouterEntry{Name: name, Kind: string(mapping.Kind), Effect: effect})
+	}
+	return entries, nil
+}
+
+func (p *Project) workflowLoaderData(names []string) (string, error) {
+	mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
+	if err != nil {
+		return "", err
+	}
+	entries := make(map[string]workflowLoaderEntry, len(mappings))
+	for name, mapping := range mappings {
+		entries[name] = workflowLoaderEntry{
+			Kind:               string(mapping.Kind),
+			PhaseEffect:        string(mapping.PhaseEffect),
+			Phase:              mapping.Phase,
+			Activity:           mapping.Activity,
+			ImplementationMode: mapping.ImplementationMode,
+			RouteEffect:        string(mapping.RouteEffect),
+			TerminalEffect:     string(mapping.TerminalEffect),
+			RequiresPhases:     append([]string{}, mapping.RequiresPhases...),
+		}
+	}
+	encoded, err := json.Marshal(entries)
+	if err != nil { // coverage-ignore: the closed string/slice-only metadata shape cannot fail JSON encoding
+		return "", fmt.Errorf("encode workflow loader metadata: %w", err)
+	}
+	return string(encoded), nil
+}
+
+func (p *Project) routedWorkflowNames() ([]string, error) {
+	var names []string
+	for _, name := range p.Cfg.Skills {
+		spec, ok := p.Cat.Skills[name]
+		if !ok || spec.Workflow == nil {
+			continue
+		}
+		sc, err := p.Cfg.Sidecar("skills", name)
+		if err != nil {
+			return nil, err
+		}
+		if !sc.Local {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	return names, nil
+}
+
 func (p *Project) taskSkillsDisplay() string {
 	var quoted []string
 	for _, name := range slices.Sorted(maps.Keys(p.effSkills)) {
@@ -426,6 +512,9 @@ type renderKindSpec struct {
 	// merge, upstream of BOTH renderTarget and artifactConfigHash so the
 	// computation participates in the drift signal (ADR-0089; nil = none).
 	transform func(name string, sc config.Sidecar) (config.Sidecar, error)
+	// workflowRouter selects the Pi-only governed successor instructions for
+	// hidden workflow bodies without changing other target projections.
+	workflowRouter bool
 	// encode projects the rendered instruction body into an output dialect before
 	// provenance injection (nil leaves ordinary skill/doc rendering unchanged).
 	encode func(name, body string, data map[string]any) (string, error)
@@ -477,6 +566,9 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 			}
 		}
 		data := p.data(sc)
+		if spec.workflowRouter {
+			data["targetWorkflowRouter"] = true
+		}
 		var options *renderOutputOptions
 		if spec.target.Name != "" {
 			for key, value := range spec.target.targetTemplateData() {
@@ -535,12 +627,50 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Adapter: skills + agents render once per enabled target (inv: multi-target-render).
 	// touches-state: rendering/project-output-plan:multi-target-render - skills/agents render once per enabled target; proof in target_test.go
 	for _, t := range p.Targets {
-		for _, spec := range []renderKindSpec{
-			{
-				kind: "skills", names: p.Cfg.Skills, target: t,
+		skillNames := p.Cfg.Skills
+		skillPath := func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) }
+		if t.routesWorkflows() {
+			routed, routeErr := p.routedWorkflowNames()
+			if routeErr != nil { // coverage-ignore: effectiveSkills parsed the same enabled sidecars above
+				return nil, routeErr
+			}
+			routedSet := map[string]bool{}
+			for _, name := range routed {
+				routedSet[name] = true
+			}
+			skillNames = slices.DeleteFunc(slices.Clone(p.Cfg.Skills), func(name string) bool { return routedSet[name] })
+			hidden, routeErr := p.renderKind(renderKindSpec{
+				kind: "skills", names: routed, target: t, workflowRouter: true,
 				tid:      p.skillTID,
 				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
-				outPath:  func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) },
+				outPath:  func(t Target, n string) string { return t.HiddenWorkflowPath(n) },
+				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
+			})
+			if routeErr != nil {
+				return nil, routeErr
+			}
+			out = append(out, hidden...)
+			entries, routeErr := p.workflowRouterData(routed)
+			if routeErr != nil { // coverage-ignore: project open validates every catalog mapping before routed names can reach this helper
+				return nil, routeErr
+			}
+			data := p.data(config.Sidecar{})
+			data["workflowSkills"] = entries
+			target := t
+			router, routeErr := p.renderTarget("skills", "awf-workflow", "pi/awf-workflow/SKILL.md.tmpl", nil, config.Sidecar{}, data, t.WorkflowRouterPath(), &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target})
+			if routeErr != nil { // coverage-ignore: the embedded fixed router template and closed string-only data cannot fail after project validation
+				return nil, routeErr
+			}
+			router.Declarer, router.DeclarerProjection = t.Name, targetDescriptorProjection(t)
+			router.Encoder, router.Provenance = MarkdownAgentDialect, render.HTMLComment
+			out = append(out, router)
+		}
+		for _, spec := range []renderKindSpec{
+			{
+				kind: "skills", names: skillNames, target: t,
+				tid:      p.skillTID,
+				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
+				outPath:  skillPath,
 				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
 			},
 			{
@@ -566,6 +696,17 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			}
 			target := t
 			data := p.data(config.Sidecar{})
+			if targetOutput.TemplateID == "pi/awf-dashboard/index.ts.tmpl" {
+				routed, routeErr := p.routedWorkflowNames()
+				if routeErr != nil { // coverage-ignore: effectiveSkills and the earlier routed render parsed the same enabled sidecars in this render pass
+					return nil, routeErr
+				}
+				metadata, routeErr := p.workflowLoaderData(routed)
+				if routeErr != nil { // coverage-ignore: project open validates every catalog mapping before routed names can reach this helper
+					return nil, routeErr
+				}
+				data["workflowMappingsJSON"] = metadata
+			}
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}

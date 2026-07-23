@@ -59,6 +59,7 @@ Backing: test
 
 ### `invariant: workflow-telemetry-governed-outputs-and-resident-data`
 
-The output plan governs `.awf/metrics/.gitignore` as the only resident-tree output and never claims dynamic metrics descendants. Sync, check, current-state discovery, nested-adopter discovery, sweep, target disable, and ordinary uninstall preserve resident telemetry; uninstall reports preserved data, while deterministic retention and confirmed purge remain the only recursive cleanup surfaces.
+The output plan governs `.awf/metrics/.gitignore` as the only resident-tree output and never claims dynamic metrics descendants. It also governs Pi's single discoverable workflow router and every fixed hidden workflow body with provenance, exact inputs, lock hashes, drift and reference checks, stale-output pruning, target-disable cleanup, and ordinary uninstall ownership. Sync, check, current-state discovery, nested-adopter discovery, sweep, target disable, and ordinary uninstall preserve resident telemetry; uninstall reports preserved data, while deterministic retention and confirmed purge remain the only recursive cleanup surfaces.
 Origin: ADR-0148
+Revised-by: ADR-0149
 Backing: test

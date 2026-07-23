@@ -4,8 +4,9 @@ Pi workflow contracts: governed subagent tools, session handoff, the workflow da
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory path, replaces with a persisted parent-linked session, submits kickoff only through the replacement context, retains an editor fallback, and states the truthful nontransactional teardown boundary without deleting sessions or memory.
+The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory file's effort identity and copied active association before replacement, creates a persisted parent-linked session with that association installed during setup, restores it before kickoff through the replacement context, retains an editor fallback, and states the truthful nontransactional teardown boundary without deleting sessions or memory.
 Origin: ADR-0148
+Revised-by: ADR-0149
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -28,14 +29,22 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-The generated Pi handoff extension exposes exactly the closed memoryPath and bounded kickoff schema, confines canonical no-symlink paths to regular files below .awf/memory, requires a persisted TUI and an exclusive trustworthy tool batch, keeps one correlated pending request, queues its private command, and terminates the calling model turn.
+The generated Pi handoff extension exposes exactly the closed memoryPath and bounded kickoff schema, confines canonical no-symlink paths to regular files below .awf/memory, requires an `Effort: <id>` matching the independently validated active dashboard association, a persisted TUI, and an exclusive trustworthy tool batch, keeps one correlated pending request, queues its private command, and terminates the calling model turn; missing or mismatched identity refuses handoff before replacement.
 Origin: ADR-0148
+Revised-by: ADR-0149
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Pi-rendered checkpoint guidance automatically invokes handoff_session alone after the durable visible summary at phase and intermediate implementation checkpoints, while non-Pi targets retain the checkpoint and continue without naming the unsupported tool.
+Working memory remains optional and Pi-rendered checkpoint guidance invokes `handoff_session` alone after the durable visible summary only when a validated memory file carrying the active `Effort: <id>` exists. Checkpoint-less Pi efforts continue in-session or through structured resume, while non-Pi targets retain any created checkpoint and continue without naming the unsupported tool.
 Origin: ADR-0148
+Revised-by: ADR-0149
+Backing: test
+
+### `invariant: pi-lifecycle-enforcing-workflow-router`
+
+Pi publishes one discoverable `awf-workflow` router and separately discoverable reviewer agents, while every enabled governed workflow body is pre-rendered with provenance under the managed non-discovered `.pi/awf-workflows/` tree and no stale individually discoverable copy remains. The closed-enum `awf_workflow` tool runs alone, accepts semantic names rather than paths, validates the current frontier and catalog mapping, settles or resumes explicit effort identity, durably applies one mapped phase, route, activity, mode, or terminal effect before returning the fixed body, and rejects competing or causally invalid loads. Pi chain bodies name the router as their successor mechanism, retrospective completion settles mechanically after successful agent end, and non-Pi targets retain ordinary target-native skills.
+Origin: ADR-0149
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`

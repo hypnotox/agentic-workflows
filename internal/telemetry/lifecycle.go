@@ -221,7 +221,7 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 	if p.State == "" && event.Kind != "effort_created" {
 		return errors.New("mutation requires an existing effort")
 	}
-	if (p.State == EffortCompleted || p.State == EffortAbandoned) && event.Kind != "finding_waived" && event.Kind != "repair_applied" && event.Kind != "effort_reopened" {
+	if (p.State == EffortCompleted || p.State == EffortAbandoned) && event.Kind != "finding_waived" && event.Kind != "repair_applied" && event.Kind != "effort_reopened" && (p.State != EffortAbandoned || event.Kind != "session_detached") {
 		return fmt.Errorf("%s is not legal after terminal state %s", event.Kind, p.State)
 	}
 	switch event.Kind {
@@ -842,14 +842,11 @@ func lifecycleRequestParts(request LifecycleRequest) (LifecycleRequestBase, Even
 		base, kind = typed.LifecycleRequestBase, "trajectory_forked"
 		payload = marshal(TrajectoryForkedPayload{TrajectoryID: typed.TrajectoryID, ParentTrajectoryID: typed.ParentTrajectoryID, ForkAnchorID: typed.ForkAnchorID})
 	case TerminalLifecycleRequest:
-		base = typed.LifecycleRequestBase
-		switch typed.Action {
-		case "complete":
-			kind = "effort_completed"
-		case "abandon":
-			kind = "effort_abandoned"
-		}
+		base, kind = typed.LifecycleRequestBase, "effort_completed"
 		payload = marshal(EffortTerminalPayload{TerminalEpoch: 1})
+	case AbandonLifecycleRequest:
+		base, kind = typed.LifecycleRequestBase, "effort_abandoned"
+		payload = marshal(EffortAbandonedPayload{TerminalEpoch: 1, Reason: typed.Reason})
 	case ReopenLifecycleRequest:
 		base, kind = typed.LifecycleRequestBase, "effort_reopened"
 		payload = marshal(EffortReopenedPayload{TerminalEpoch: 2, TrajectoryID: typed.TrajectoryID, AnchorID: typed.AnchorID})

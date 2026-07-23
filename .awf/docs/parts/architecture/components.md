@@ -30,7 +30,7 @@
 - **`internal/catalog/`**: declares the available skills, agents, docs, and their sections as a
   compile-time Go value (`catalog.Standard`; ADR-0060), with no runtime parse. Its core `exploring`
   skill provides six-target semantic rendering: Pi dispatches the structured extension tool while
-  other targets request native fresh-context delegation. Docs and always-on
+  other targets request native fresh-context delegation. Every governed skill also carries an exact workflow mapping for kind, phase or activity effect, route effect, implementation mode, terminal behavior, and causal predecessor phases; validation rejects incomplete or impossible mappings. Docs and always-on
   singletons are one `Docs` collection: each `DocEntry`'s `Mandatory` flag marks a singleton, and
   `SingletonKinds()` derives from it (ADR-0043, ADR-0061).
 - **`internal/adr/`**: parses the decisions directory and exposes it as one `Corpus` view,
@@ -90,7 +90,7 @@
   identity of the neutral always-on singletons, no hand-authored table (ADR-0043, ADR-0059, ADR-0061).
   The topic producer loads through a lazy invocation cache and contributes ordinary
   managed Markdown nodes, so sync, manifest membership, brownfield backup, drift comparison, and
-  prune all use the shared output plan rather than topic-specific lock state. `CheckCurrentState` and
+  prune all use the shared output plan rather than topic-specific lock state. For Pi, the same plan replaces individually discoverable governed skills with one router and fixed hidden bodies, while retaining reviewer agents and ordinary non-Pi skill layouts; provenance, hashing, drift, reference scans, stale pruning, disable, and uninstall remain shared. `CheckCurrentState` and
   `CheckStaged` run the current-state static and staged checks, and `Audit` evaluates per-commit claim
   transitions across a range.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
@@ -151,10 +151,10 @@
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension,
   `templates/pi/awf-handoff/` contains the main-session handoff state machine, and
-  `templates/pi/awf-dashboard/` contains the writer, tools, widget, overlay, and publication wrapper
-  for the descriptor-derived protocol. The handoff extension validates durable memory paths, queues a
+  `templates/pi/awf-dashboard/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, provisional identity state machine, tools, widget, overlay, and publication wrapper
+  for the descriptor-derived protocol; `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
   single-use private command after settlement, runs the cancellable countdown and revalidation,
-  creates a parent-linked session, copies a validated active association during `newSession.setup`,
+  creates a parent-linked session, independently validates and copies the matching active association during `newSession.setup`, restores it before kickoff,
   and submits kickoff only through the replacement context. Pi-rendered workflow
   skills name its `subagent_grounding`, `subagent_explore`, `subagent_review`, and
   `subagent_implement` tools explicitly; other targets retain their native or generic dispatch
@@ -170,7 +170,7 @@
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% statement, branch,
   function, and line coverage harness for every dogfooded generated extension. Cross-language tests
   hold descriptor validation and recovery behavior in parity; an in-memory pinned Pi runtime loads all
-  three factories and exercises producer exchange, handoff association, widget and overlay
+  three factories and exercises producer exchange, provisional settlement, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, widget and overlay
   registration, lifecycle append and shutdown drain, canonical refresh, and degraded mode. Its
   repo-keyed persistent container snapshots current source and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package

@@ -83,20 +83,20 @@ re-resolution of the selected finding under its `effortId`, with matching eviden
 eligible reason, and the current nonempty causal frontier. Purge is a separately confirmed destructive
 operation.
 
-The Pi dashboard restores association from the active branch, writes passive observations through a
-serialized durable queue, and drains it at shutdown. An enabled project bootstrap is authoritative.
+The Pi dashboard restores association from the active branch. A fresh root session instead creates a deterministic provisional candidate and buffers at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 protocol encoding in memory. The first `awf_workflow` selection settles creation, association, ordered flush, and its catalog-mapped lifecycle effect before returning the fixed hidden body. `/awf-resume-effort <effort-id>` can discard an uncommitted candidate and queue private replacement setup for a validated discovery or active effort; completed work requires a separate reopen, and abandoned or pruned work refuses resume. Overflow settles the candidate first, then a later resume uses the closed `provisional-overflow-resume` abandonment reason before detach and association, without reassigning committed observations. The dashboard otherwise writes passive observations through a
+serialized durable queue and drains it at shutdown. An enabled project bootstrap is authoritative.
 Without one, the dashboard tries `awf` on `PATH`, then uses the repository runner only when its usage
 advertises `dashboard-awf-path`; absence, execution failure, version refusal, or protocol refusal may
 trigger that fallback. The runner resolves `refs/awf/dashboard-runtime`, initializes an absent ref to
 `HEAD`, materializes only that commit, and reuses or atomically publishes the content-addressed awf,
 launcher, metadata, and policy snapshot. Launcher queries carry the absolute project root in
 `AWF_DASHBOARD_PROJECT_ROOT` and enter the closed private `dashboard-read` grammar; mutation and
-maintenance never do. The dashboard captures one successful handshake for the session, then refreshes
+maintenance never do. The dashboard captures one successful handshake for the session. Its closed-enum workflow loader validates an exclusive trustworthy call, current frontier, route and predecessor, applies one durable mapped phase transition or activity, and reads only the pre-rendered `.pi/awf-workflows/<name>.md` body after acknowledgement. Normal chain successors route through that loader, and successful retrospective agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves retrospective open. The dashboard then refreshes
 metrics followed by doctor at startup, overlay open or manual refresh, and relevant successful
 mutations. Rendering never starts a process. A failed resolution, handshake, query, or retention call
 preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps
 both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is
-visible.
+visible. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

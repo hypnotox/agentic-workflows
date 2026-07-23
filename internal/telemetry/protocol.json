@@ -642,7 +642,7 @@
       "privacyPolicy": "long-lived-minimal"
     },
     "effort_abandoned": {
-      "goType": "EffortTerminalPayload",
+      "goType": "EffortAbandonedPayload",
       "class": "lifecycle",
       "repairable": true,
       "additionalProperties": false,
@@ -651,6 +651,11 @@
           "type": "uint64",
           "required": true,
           "minimum": 0
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "format": "category"
         }
       },
       "privacyPolicy": "long-lived-minimal"
@@ -1840,7 +1845,7 @@
       }
     },
     "abandon": {
-      "goType": "TerminalLifecycleRequest",
+      "goType": "AbandonLifecycleRequest",
       "eventKind": "effort_abandoned",
       "additionalProperties": false,
       "fields": {
@@ -1882,6 +1887,11 @@
           },
           "uniqueItems": true,
           "minItems": 0
+        },
+        "reason": {
+          "type": "string",
+          "required": false,
+          "format": "category"
         }
       }
     },

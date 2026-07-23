@@ -1,6 +1,6 @@
 ---
 name: {{ .prefix }}-brainstorming
-description: Use before any non-trivial {{ .prefix }} work (new feature, refactor, bug investigation that changes behaviour, workflow rule change). Explores intent, requirements, and design before any code or doc is written. Hands off to {{ .prefix }}-writing-plans or {{ .prefix }}-proposing-adr at the end.
+description: Use before any non-trivial {{ .prefix }} work (new feature, refactor, bug investigation that changes behaviour, workflow rule change). Explores intent, requirements, and design before any code or doc is written. Hands off to {{ .prefix }}-executing-direct, {{ .prefix }}-writing-plans, or {{ .prefix }}-proposing-adr at the end.
 ---
 
 # {{ .prefix }}-brainstorming
@@ -18,10 +18,10 @@ Per `{{ .layout.workflowRef }}`: hard prerequisite for any non-trivial change. N
 <!-- awf:section procedure -->
 ## Procedure
 
-Throughout, checkpoint the evolving design brief to the working-memory file `.awf/memory/<effort-slug>.md` as each decision settles; create it when the first decision lands (see the agent guide's working-memory section). A session death mid-brainstorm must lose minutes, not the negotiation.
+When the effort warrants working memory, checkpoint the evolving design brief to `.awf/memory/<effort-slug>.md` as each decision settles; create it only for that independent need, include the exact active `Effort: <id>` line, and never infer the ID (see the agent guide's working-memory section). Small efforts may use no memory file. A session death in a memory-backed brainstorm must lose minutes, not the negotiation.
 <!-- awf:end -->
 
-1. **Explore project context.** When both the needed repository information's location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` with one information need, breadth, and detail. Keep an exact-known-file read or genuinely trivial lookup inline. Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `{{ .layout.domainsDir }}`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains and the applicable current-state topic claims (rules and invariants); read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when you need the rationale.
+1. **Explore project context.** When both the needed repository information's location is unknown and inline search would pollute the parent context, {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "exploring"`{{ else }}invoke `{{ .prefix }}-exploring`{{ end }} with one information need, breadth, and detail. Keep an exact-known-file read or genuinely trivial lookup inline. Read `AGENTS.md`, relevant docs (architecture, workflow, testing), recent commits in the affected area (`git log --oneline -20 <path>`). Check domain docs under `{{ .layout.domainsDir }}`. Once you have identified the candidate files the work touches, run `awf context <paths>` to resolve their owning domains and the applicable current-state topic claims (rules and invariants); read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when you need the rationale.
 
 <!-- awf:section example-clarifying-questions -->
 2. **Ask clarifying questions, one at a time.** Prefer multiple-choice questions where your runtime supports them. Each question narrows scope. Avoid asking for everything in one mega-question.
@@ -60,10 +60,14 @@ Throughout, checkpoint the evolving design brief to the working-memory file `.aw
 
 <!-- awf:section terminal-step -->
 7. **Decide the terminal step** based on the (reviewed) brainstorm result:
-   - **Load-bearing + complex** → invoke `{{ .prefix }}-proposing-adr` first (which chains through `{{ .prefix }}-reviewing-adr`); once the ADR(s) are settled, invoke `{{ .prefix }}-writing-plans`.
+{{ if .targetWorkflowRouter }}   - **Load-bearing** -> call `awf_workflow` alone with `skill: "proposing-adr"`; after ADR review, the router continues to planning or direct implementation.
+   - **Complex but not load-bearing** -> call `awf_workflow` alone with `skill: "writing-plans"`.
+   - **Neither** -> call `awf_workflow` alone with `skill: "executing-direct"`.
+{{ else }}   - **Load-bearing + complex** → invoke `{{ .prefix }}-proposing-adr` first (which chains through `{{ .prefix }}-reviewing-adr`); once the ADR(s) are settled, invoke `{{ .prefix }}-writing-plans`.
    - **Load-bearing + simple** → invoke `{{ .prefix }}-proposing-adr` only; implement directly after the ADR is committed, then invoke `{{ .prefix }}-reviewing-impl`.
    - **Complex but not load-bearing** → invoke `{{ .prefix }}-writing-plans` only.
-   - **Neither** → implement directly without a plan or ADR, then invoke `{{ .prefix }}-reviewing-impl`.
+   - **Neither** → invoke `{{ .prefix }}-executing-direct`.
+{{ end }}
 
 <!-- awf:include memory-checkpoint -->
 <!-- awf:end -->

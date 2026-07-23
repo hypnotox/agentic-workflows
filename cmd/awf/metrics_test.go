@@ -574,7 +574,7 @@ func createTerminalEffort(t *testing.T, root, effortID string) {
 	if _, err := ledger.ApplyLifecycle(context.Background(), create); err != nil {
 		t.Fatal(err)
 	}
-	abandon := telemetry.TerminalLifecycleRequest{LifecycleRequestBase: telemetry.LifecycleRequestBase{Action: "abandon", IdempotencyKey: "abandon-key-" + effortID, EventID: "abandon-" + effortID, EffortID: effortID, SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Predecessors: []string{"create-" + effortID}}}
+	abandon := telemetry.AbandonLifecycleRequest{LifecycleRequestBase: telemetry.LifecycleRequestBase{Action: "abandon", IdempotencyKey: "abandon-key-" + effortID, EventID: "abandon-" + effortID, EffortID: effortID, SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Predecessors: []string{"create-" + effortID}}}
 	if _, err := ledger.ApplyLifecycle(context.Background(), abandon); err != nil {
 		t.Fatal(err)
 	}

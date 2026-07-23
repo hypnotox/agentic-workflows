@@ -110,6 +110,11 @@ type EffortTerminalPayload struct {
 	TerminalEpoch uint64 `json:"terminalEpoch"`
 }
 
+type EffortAbandonedPayload struct {
+	TerminalEpoch uint64          `json:"terminalEpoch"`
+	Reason        BoundedCategory `json:"reason,omitempty"`
+}
+
 type EffortReopenedPayload struct {
 	TerminalEpoch uint64 `json:"terminalEpoch"`
 	TrajectoryID  string `json:"trajectoryId"`
@@ -315,6 +320,13 @@ type TerminalLifecycleRequest struct {
 }
 
 func (r TerminalLifecycleRequest) lifecycleAction() string { return r.Action }
+
+type AbandonLifecycleRequest struct {
+	LifecycleRequestBase
+	Reason BoundedCategory `json:"reason,omitempty"`
+}
+
+func (r AbandonLifecycleRequest) lifecycleAction() string { return r.Action }
 
 type ReopenLifecycleRequest struct {
 	LifecycleRequestBase

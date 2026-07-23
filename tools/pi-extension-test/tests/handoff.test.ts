@@ -3,32 +3,33 @@ import test from "node:test";
 import { posix } from "node:path";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { Value } from "typebox/value";
-import defaultHandoff, { MIN_PI_VERSION, buildKickoffWrapper, registerHandoff, requestHandoffAssociation, validateMemoryPath, validateTelemetryAssociation, versionSupported, type HandoffDependencies } from "../../../.pi/extensions/awf-handoff/index.ts";
+import defaultHandoff, { MIN_PI_VERSION, buildKickoffWrapper, registerHandoff, requestHandoffAssociation, validateMemoryEffort, validateMemoryPath, validateTelemetryAssociation, versionSupported, type HandoffDependencies } from "../../../.pi/extensions/awf-handoff/index.ts";
 
 const FILE = { isSymbolicLink: () => false, isFile: () => true, isDirectory: () => false };
 const DIR = { isSymbolicLink: () => false, isFile: () => false, isDirectory: () => true };
 const LINK = { isSymbolicLink: () => true, isFile: () => false, isDirectory: () => false };
 function leaf(calls: Array<{ id: string; name: string }>) { return { type: "message", message: { role: "assistant", content: calls.map((call) => ({ type: "toolCall", ...call })) } }; }
 
-function harness(options: { version?: string; entries?: Record<string, any>; mode?: string; persisted?: boolean; isPersistedAPI?: boolean; file?: string; queueCommandAPI?: boolean; queueError?: Error; uuidError?: Error; timerError?: Error; newSessionError?: Error; associationResponses?: unknown[]; associationListenerError?: Error; associationAppendError?: Error; childSessionId?: string } = {}) {
+function harness(options: { version?: string; entries?: Record<string, any>; memory?: string; mode?: string; persisted?: boolean; isPersistedAPI?: boolean; file?: string; queueCommandAPI?: boolean; queueError?: Error; uuidError?: Error; timerError?: Error; newSessionError?: Error; associationResponses?: unknown[]; associationListenerError?: Error; telemetryListenerError?: Error; associationAppendError?: Error; childSessionId?: string } = {}) {
   const tools = new Map<string, any>(); const commands = new Map<string, any>(); const hooks = new Map<string, any>();
   const queued: any[] = []; const notifications: any[] = []; const newSessions: any[] = []; const editor: string[] = []; const associationEntries: any[] = []; const telemetry: any[] = [];
   const intervals: any[] = []; const timeouts: any[] = []; const clearedIntervals: any[] = []; const clearedTimeouts: any[] = [];
   const entries: Record<string, any> = { "/repo": DIR, "/repo/.awf": DIR, "/repo/.awf/memory": DIR, "/repo/.awf/memory/work.md": FILE, ...options.entries };
-  let currentLeaf: any = leaf([{ id: "handoff", name: "handoff_session" }]); let component: any; let customDone: any; let sendError: Error | undefined; let inputError: Error | undefined; let sessionFile = options.file === undefined ? "/sessions/old.jsonl" : options.file;
+  let currentLeaf: any = leaf([{ id: "handoff", name: "handoff_session" }]); let component: any; let customDone: any; let sendError: Error | undefined; let inputError: Error | undefined; let sessionFile = options.file === undefined ? "/sessions/old.jsonl" : options.file; let memory = options.memory ?? "# Work\nEffort: effort\nPhase: implementation\n";
   const pi: any = {
     on: (name: string, fn: any) => hooks.set(name, fn), registerTool: (tool: any) => tools.set(tool.name, tool), registerCommand: (name: string, command: any) => commands.set(name, command),
     appendEntry() {},
     events: { on() {}, emit: (name: string, request: any) => {
+      if (name === "awf.telemetry.handoff.v1") { if (options.telemetryListenerError) throw options.telemetryListenerError; telemetry.push(request); return; }
       if (options.associationListenerError) throw options.associationListenerError;
-      if (name === "awf.telemetry.handoff.v1") { telemetry.push(request); return; }
-      for (const response of options.associationResponses ?? []) request.respond(response);
+      for (const response of options.associationResponses ?? [associationResponse]) request.respond(response);
     } },
     ...(options.queueCommandAPI === false ? {} : { queueCommand: (name: string, args: string) => { if (options.queueError) throw options.queueError; queued.push([name, args]); } }),
   };
   const deps: HandoffDependencies = {
     packageVersion: options.version ?? MIN_PI_VERSION, extensionFile: "/repo/.pi/extensions/awf-handoff/index.ts", path: posix,
     lstat: async (path) => { if (!(path in entries)) throw new Error(`ENOENT ${path}`); return entries[path]; },
+    readFile: async (path, encoding) => { assert.equal(encoding, "utf8"); if (path !== "/repo/.awf/memory/work.md") throw new Error(`ENOENT ${path}`); return memory; },
     randomUUID: () => { if (options.uuidError) throw options.uuidError; return "uuid"; },
     setInterval: (callback, milliseconds) => { if (options.timerError) throw options.timerError; const handle = { callback, milliseconds }; intervals.push(handle); return handle; },
     clearInterval: (handle) => clearedIntervals.push(handle), setTimeout: (callback, milliseconds) => { const handle = { callback, milliseconds }; timeouts.push(handle); return handle; }, clearTimeout: (handle) => clearedTimeouts.push(handle),
@@ -45,7 +46,7 @@ function harness(options: { version?: string; entries?: Record<string, any>; mod
   };
   const ctx: any = { mode: options.mode ?? "tui", sessionManager, ui, newSession: async (args: any) => { newSessions.push(args); if (options.newSessionError) throw options.newSessionError; await args.setup?.({ ...(options.childSessionId ? { getSessionId: () => options.childSessionId } : {}), appendCustomEntry: (customType: string, data: unknown) => { if (options.associationAppendError) throw options.associationAppendError; associationEntries.push({ customType, data }); } }); const replacementCtx = { ui, sendUserMessage: async (text: string) => { if (sendError) throw sendError; editor.push("sent:" + text); } }; await args.withSession(replacementCtx); return { cancelled: false }; } };
   return { pi, deps, tools, commands, hooks, queued, notifications, newSessions, editor, associationEntries, telemetry, intervals, timeouts, clearedIntervals, clearedTimeouts, entries, ctx,
-    setLeaf: (value: any) => { currentLeaf = value; }, component: () => component, done: (value: boolean) => customDone(value), setSendError: (error: Error) => { sendError = error; }, setInputError: (error: Error) => { inputError = error; }, setSessionFile: (value: string) => { sessionFile = value; } };
+    setLeaf: (value: any) => { currentLeaf = value; }, component: () => component, done: (value: boolean) => customDone(value), setSendError: (error: Error) => { sendError = error; }, setInputError: (error: Error) => { inputError = error; }, setSessionFile: (value: string) => { sessionFile = value; }, setMemory: (value: string) => { memory = value; } };
 }
 
 async function execute(h: ReturnType<typeof harness>, params: any = { memoryPath: ".awf/memory/work.md", kickoff: "continue tests" }) { return h.tools.get("handoff_session").execute("handoff", params, undefined, undefined, h.ctx); }
@@ -76,7 +77,8 @@ test("closed schema and kickoff boundaries", async () => {
 });
 
 test("path validation rejects every confinement, canonical, type, symlink, and missing class", async () => {
-  const base = harness(); assert.equal(await validateMemoryPath(".awf/memory/work.md", base.deps), ".awf/memory/work.md");
+  const base = harness(); assert.equal(await validateMemoryPath(".awf/memory/work.md", base.deps), ".awf/memory/work.md"); assert.equal(await validateMemoryEffort(".awf/memory/work.md", base.deps), "effort");
+  for (const memory of ["# no effort\n", "Effort: effort\nEffort: other\n", "Effort: bad/id\n", " Effort: effort\n"]) await assert.rejects(validateMemoryEffort(".awf/memory/work.md", harness({ memory }).deps), /Effort/);
   for (const value of ["", "/repo/.awf/memory/work.md", ".awf\\memory\\work.md", ".awf/memory", ".awf/memory/../work.md", ".awf/memory//work.md", ".awf/memory/./work.md", "other/work.md"])
     await assert.rejects(validateMemoryPath(value, base.deps));
   await assert.rejects(validateMemoryPath(".awf/memory/missing.md", base.deps), /Cannot access .*missing/);
@@ -116,12 +118,13 @@ test("countdown cancellation renders exact bounded text and consumes request", a
   h.intervals[0].callback(); assert.match(h.component().render(200)[0], /4s/); h.component().invalidate(); h.component().handleInput("other"); h.component().handleInput("escape"); h.setInputError(new Error("input failed")); assert.throws(() => h.component().handleInput("x"), /input failed/); h.timeouts[0].callback(); await command;
   assert.deepEqual(h.notifications, [["Fresh-session handoff canceled."]]); assert.equal(h.newSessions.length, 0); assert.equal(h.telemetry.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.equal(h.telemetry[0].errorCategory, "handoff"); assert.ok(h.clearedIntervals.length > 0); assert.ok(h.clearedTimeouts.length > 0);
   await assert.rejects(startCommand(h), /matching pending/); h.component().dispose();
-  const listenerFailure = harness({ associationListenerError: new Error("telemetry listener") }); await execute(listenerFailure); const listenerCommand = startCommand(listenerFailure); await new Promise((resolve) => setImmediate(resolve)); listenerFailure.component().handleInput("escape"); await listenerCommand; assert.equal(listenerFailure.notifications.length, 1);
+  const listenerFailure = harness({ telemetryListenerError: new Error("telemetry listener") }); await execute(listenerFailure); const listenerCommand = startCommand(listenerFailure); await new Promise((resolve) => setImmediate(resolve)); listenerFailure.component().handleInput("escape"); await listenerCommand; assert.equal(listenerFailure.notifications.length, 1);
 });
 
 test("timer setup, pending-window races, and pre-replacement failures preserve the old session", async () => {
   const timer = harness({ timerError: new Error("timer setup failed") }); await execute(timer); await assert.rejects(startCommand(timer), /timer setup failed/); assert.equal(timer.newSessions.length, 0); await assert.rejects(startCommand(timer), /matching pending/);
   const raced = harness(); await execute(raced); const raceCommand = startCommand(raced); await new Promise((resolve) => setImmediate(resolve)); raced.entries["/repo/.awf/memory/work.md"] = LINK; raced.timeouts[0].callback(); await assert.rejects(raceCommand, /symbolic link/); assert.equal(raced.newSessions.length, 0); await assert.rejects(startCommand(raced), /matching pending/);
+  const mismatched = harness(); await execute(mismatched); const mismatchCommand = startCommand(mismatched); await new Promise((resolve) => setImmediate(resolve)); mismatched.setMemory("Effort: other\n"); mismatched.timeouts[0].callback(); await assert.rejects(mismatchCommand, /does not match/); assert.equal(mismatched.newSessions.length, 0);
   const unpersisted = harness(); await execute(unpersisted); const unpersistedCommand = startCommand(unpersisted); await new Promise((resolve) => setImmediate(resolve)); unpersisted.setSessionFile(""); unpersisted.timeouts[0].callback(); await assert.rejects(unpersistedCommand, /no longer persisted/); assert.equal(unpersisted.newSessions.length, 0);
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
   assert.equal(h.newSessions[0].parentSession, "/sessions/old.jsonl"); assert.equal(h.telemetry.length, 0); assert.match(h.editor[0], /^sent:Read \.awf\/memory\/work\.md first/); assert.match(h.editor[0], /Repository sources and current-state documentation are authoritative/); assert.match(h.editor[0], /continue tests/); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
@@ -138,19 +141,15 @@ test("invariant: handoff transfers exact association and success setup data", as
   assert.deepEqual(h.associationEntries.map((entry) => entry.customType), ["awf.telemetry.association.v1", "awf.telemetry.handoff.pending.v1"]); assert.deepEqual(h.associationEntries[0].data, association); assert.deepEqual(Object.keys(h.associationEntries[1].data).sort(), ["durationMs", "observationId", "startedAt", "version"]); assert.equal(h.telemetry.length, 0);
 
   for (const options of [
-    {},
+    { associationResponses: [] },
     { associationResponses: [{ version: { major: 3, minor: 0 }, association }] },
     { associationResponses: [{ version: { major: 2, minor: 1 }, association }] },
     { associationResponses: [{ version: { major: 2, minor: 0 }, association: { ...association, effortId: "bad/id" } }] },
     { associationResponses: [associationResponse, associationResponse] },
     { associationListenerError: new Error("listener failed") },
-    { associationResponses: [associationResponse], associationAppendError: new Error("append failed") },
-  ]) {
-    const degraded = harness(options as any);
-    await execute(degraded); const next = startCommand(degraded); await new Promise((resolve) => setImmediate(resolve)); degraded.timeouts[0].callback(); await next;
-    assert.deepEqual(degraded.associationEntries, []);
-    assert.equal(degraded.editor.length, 1);
-  }
+    { memory: "Effort: other\n" },
+  ]) { const refused = harness(options as any); await assert.rejects(execute(refused), /association|Effort|listener/); assert.equal(refused.queued.length, 0); assert.equal(refused.newSessions.length, 0); }
+  const appendFailure = harness({ associationAppendError: new Error("append failed") }); await execute(appendFailure); const failedSetup = startCommand(appendFailure); await new Promise((resolve) => setImmediate(resolve)); appendFailure.timeouts[0].callback(); await assert.rejects(failedSetup, /append failed/); assert.deepEqual(appendFailure.editor, []);
 
   let lateRespond: ((value: unknown) => void) | undefined;
   const late: any = { events: { emit: (_name: string, request: any) => { lateRespond = request.respond; } } };

@@ -132,12 +132,12 @@ func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
-		if !namesOnInvocationLine(body, evalPrefix+"-exploring") {
-			t.Errorf("Pi consumer %q does not invoke %q", consumer, evalPrefix+"-exploring")
+		body := read(t, filepath.Join(root, ".pi", "awf-workflows", consumer+".md"))
+		if !strings.Contains(body, "awf_workflow") || !strings.Contains(body, `skill: "exploring"`) {
+			t.Errorf("Pi consumer %q does not route through exploring", consumer)
 		}
 	}
-	exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
+	exploring := read(t, filepath.Join(root, ".pi", "awf-workflows", "exploring.md"))
 	if !namesOnInvocationLine(exploring, "subagent_explore") {
 		t.Error("Pi exploring skill does not invoke subagent_explore")
 	}
@@ -156,11 +156,11 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 		{"reviewing-adr", "adr-reviewer"},
 		{"reviewing-plan", "plan-reviewer"},
 	} {
-		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+tc.skill, "SKILL.md"))
+		body := read(t, filepath.Join(root, ".pi", "awf-workflows", tc.skill+".md"))
 		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
 			t.Errorf("Pi skill %q does not connect subagent_review to %q", tc.skill, tc.agent)
 		}
-		if reviewer := read(t, filepath.Join(root, ".pi", "skills", tc.agent+".md")); !strings.Contains(reviewer, "## Classification rules") {
+		if reviewer := read(t, filepath.Join(root, ".pi", "agents", tc.agent+".md")); !strings.Contains(reviewer, "## Classification rules") {
 			t.Errorf("Pi reviewer %q missing shared spine", tc.agent)
 		}
 	}
@@ -185,7 +185,7 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 // Task skills bugfix/debugging are deliberately NOT nodes - their handoffs are
 // covered by the per-edge positional check above.
 var chainNodes = []string{
-	"brainstorming", "proposing-adr", "reviewing-adr", "writing-plans",
+	"brainstorming", "executing-direct", "proposing-adr", "reviewing-adr", "writing-plans",
 	"reviewing-plan", "reviewing-plan-resync", "executing-plans",
 	"subagent-driven-development", "reviewing-impl", "retrospective",
 }
@@ -313,21 +313,25 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	ordered := []string{
 		"**Working-memory checkpoint.**",
-		"Complete the memory update in its own tool batch",
-		"Display a concise checkpoint summary",
+		"Working memory is optional",
+		"do not create a file merely because this checkpoint was reached",
+		"update it in its own tool batch",
+		"Effort: <active-effort-id>",
+		"display a concise checkpoint summary",
 		"completed phase",
 		"immediate next action",
 		"exact memory path",
 		"user's intervention point",
-		"In the next tool batch",
+		"If a validated memory file exists",
+		"in the next tool batch",
 		"invoke `handoff_session` alone",
-		"exact memory path",
+		"exact path",
 		"kickoff that states the immediate successor action",
-		"Continue automatically in the fresh session",
+		"continue automatically in the fresh session",
 		"unless the user cancels during the five-second window",
 	}
 	piSkillPath := func(name string) string {
-		return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
+		return filepath.Join(root, ".pi", "awf-workflows", name+".md")
 	}
 	for _, name := range memoryCheckpointSkills {
 		body := read(t, piSkillPath(name))

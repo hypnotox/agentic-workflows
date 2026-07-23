@@ -1,0 +1,19 @@
+---
+name: awf-workflow
+description: Select and load an enabled awf workflow through its lifecycle-enforcing router.
+---
+
+# awf-workflow
+
+Use this router for every governed awf workflow. Do not load governed workflow bodies directly.
+
+## Selection catalog
+
+{{ if .workflowSkills }}Call `awf_workflow` alone, with no sibling tool calls, and set its `skill` argument to exactly one semantic enum value below:
+{{ range .workflowSkills }}
+- `{{ .Name }}`: {{ .Kind }}; {{ .Effect }}
+{{ end }}
+Choose by the work's semantic intent, not by a filesystem path. The tool validates lifecycle state, records the mapped effect, and returns the fixed pre-rendered body. Follow that returned body exactly.
+{{ else }}No governed awf workflows are enabled. Do not call `awf_workflow` until the project enables one.
+{{ end }}
+Never pass a path, template text, or workflow body to `awf_workflow`. Never read `.pi/awf-workflows/` as a substitute for the tool.

@@ -543,7 +543,7 @@ func TestPiSubagentModelRouting(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [" + target + "]\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -576,7 +576,13 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 		t.Run(target, func(t *testing.T) {
 			files := explorationRenderedByPath(t, explorationFixtureConfig(target))
 			base := dirs[target] + "/example-"
-			exploring := files[base+"exploring/SKILL.md"]
+			skillBody := func(name string) string {
+				if target == "pi" {
+					return files[".pi/awf-workflows/"+name+".md"]
+				}
+				return files[base+name+"/SKILL.md"]
+			}
+			exploring := skillBody("exploring")
 			if exploring == "" {
 				t.Fatalf("missing rendered exploring skill for %s", target)
 			}
@@ -613,7 +619,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 			}
 			modelGuidanceSkills := []string{"brainstorming", "exploring", "reviewing-adr", "reviewing-impl", "reviewing-plan-resync", "reviewing-plan", "subagent-driven-development"}
 			for _, skill := range modelGuidanceSkills {
-				body := files[base+skill+"/SKILL.md"]
+				body := skillBody(skill)
 				if target == "pi" {
 					if !strings.Contains(body, "provider/model-id") || !strings.Contains(body, "inherits the parent") {
 						t.Errorf("Pi/%s missing optional model guidance", skill)
@@ -623,7 +629,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				}
 			}
 			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-				body := files[base+consumer+"/SKILL.md"]
+				body := skillBody(consumer)
 				for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {
 					if !strings.Contains(body, want) {
 						t.Errorf("%s/%s missing dispatch condition %q", target, consumer, want)
@@ -637,7 +643,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 // invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
 func TestBoundedExplorationReporting(t *testing.T) {
 	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n")
-	guidance := files[".pi/skills/example-exploring/SKILL.md"]
+	guidance := files[".pi/awf-workflows/exploring.md"]
 	prompt := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	contracts := map[string]struct {
 		body  string
@@ -914,14 +920,17 @@ func TestPiSessionHandoffPublicContract(t *testing.T) {
 		`if (!params.kickoff.trim())`,
 		`if (params.kickoff.length > 1000)`,
 		`if (pending)`,
-		`await validateMemoryPath(params.memoryPath, deps)`,
-		`const request = { id: deps.randomUUID(), memoryPath: params.memoryPath, kickoff: params.kickoff }`,
+		`const effortId = await validateMemoryEffort(params.memoryPath, deps)`,
+		`const association = requestHandoffAssociation(pi)`,
+		`if (!validateTelemetryAssociation(association))`,
+		`if (association.effortId !== effortId)`,
+		`const request = { id: deps.randomUUID(), memoryPath: params.memoryPath, kickoff: params.kickoff, effortId, association: { ...association } }`,
 		`pending = request`,
 		`pi.queueCommand("awf-handoff-continue", request.id)`,
 		`terminate: true`,
 	)
 	assertOrderedSource(t, "handoff correlated single-use continuation", content,
-		`let pending: { id: string; memoryPath: string; kickoff: string } | undefined`,
+		`let pending: { id: string; memoryPath: string; kickoff: string; effortId: string; association: TelemetryAssociation } | undefined`,
 		`pi.registerCommand("awf-handoff-continue"`,
 		`const request = pending`,
 		`if (!request || !args || args !== request.id)`,
@@ -935,8 +944,8 @@ func TestPiSessionHandoffPublicContract(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
 func TestPiSessionHandoffLifecycle(t *testing.T) {
 	content := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	if got := strings.Count(content, "await validateMemoryPath("); got != 2 {
-		t.Errorf("handoff source has %d validation request sites, want exactly 2", got)
+	if got := strings.Count(content, "await validateMemoryEffort("); got != 2 {
+		t.Errorf("handoff source has %d memory-effort validation request sites, want exactly 2", got)
 	}
 	for _, want := range []string{
 		`Handoff to a fresh session in ${seconds}s - Esc/Ctrl+C to cancel`,
@@ -966,7 +975,8 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 	)
 	assertOrderedSource(t, "handoff replacement lifecycle", content,
 		`const proceed = await countdown(ctx, deps)`,
-		`await validateMemoryPath(request.memoryPath, deps)`,
+		`const memoryEffort = await validateMemoryEffort(request.memoryPath, deps)`,
+		`if (!validateTelemetryAssociation(request.association)`,
 		`const oldSessionFile = ctx.sessionManager.getSessionFile()`,
 		`await ctx.newSession({`,
 		`parentSession: oldSessionFile`,
@@ -989,20 +999,24 @@ func TestPiSessionHandoffWorkflow(t *testing.T) {
 		"subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
 	}
 	enabledSkills := []string{
-		"adr-lifecycle", "brainstorming", "bugfix", "debugging", "executing-plans", "exploring",
+		"adr-lifecycle", "brainstorming", "bugfix", "debugging", "executing-direct", "executing-plans", "exploring",
 		"proposing-adr", "refactor-coupling-audit", "retrospective", "reviewing-adr", "reviewing-impl",
 		"reviewing-plan", "reviewing-plan-resync", "subagent-driven-development", "tdd", "writing-plans",
 	}
 	config := "prefix: example\nskills: [" + strings.Join(enabledSkills, ", ") + "]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	for _, target := range []string{"pi", "claude"} {
 		files := explorationRenderedByPath(t, fmt.Sprintf(config, target))
-		dir := map[string]string{"pi": ".pi/skills", "claude": ".claude/skills"}[target]
+		dir := map[string]string{"pi": ".pi/awf-workflows", "claude": ".claude/skills"}[target]
 		for _, skill := range skills {
-			body := files[dir+"/example-"+skill+"/SKILL.md"]
-			position := 0
-			ordered := []string{"Complete the memory update in its own tool batch", "Display a concise checkpoint summary", "user's intervention point"}
+			path := dir + "/example-" + skill + "/SKILL.md"
 			if target == "pi" {
-				ordered = append(ordered, "In the next tool batch", "invoke `handoff_session` alone", "exact memory path", "kickoff that states the immediate successor action", "Continue automatically in the fresh session", "unless the user cancels during the five-second window")
+				path = dir + "/" + skill + ".md"
+			}
+			body := files[path]
+			position := 0
+			ordered := []string{"Working memory is optional", "do not create a file merely because this checkpoint was reached", "update it in its own tool batch", "Effort: <active-effort-id>", "display a concise checkpoint summary", "user's intervention point"}
+			if target == "pi" {
+				ordered = append(ordered, "If a validated memory file exists", "in the next tool batch invoke `handoff_session` alone", "exact path", "kickoff that states the immediate successor action", "continue automatically in the fresh session", "unless the user cancels during the five-second window")
 			} else {
 				ordered = append(ordered, "continue through the target-native successor without claiming session replacement")
 			}
@@ -1076,7 +1090,7 @@ func TestPiTargetDescriptorChangesEveryArtifactConfigHash(t *testing.T) {
 		controlHashes := map[string]string{}
 		for _, file := range files {
 			switch {
-			case strings.HasPrefix(file.Path, ".pi/skills/"), strings.HasPrefix(file.Path, ".pi/extensions/"):
+			case strings.HasPrefix(file.Path, ".pi/skills/"), strings.HasPrefix(file.Path, ".pi/agents/"), strings.HasPrefix(file.Path, ".pi/awf-workflows/"), strings.HasPrefix(file.Path, ".pi/extensions/"):
 				piHashes[file.Path] = file.ConfigHash
 			case strings.HasPrefix(file.Path, ".claude/skills/"), strings.HasPrefix(file.Path, ".claude/agents/"), file.Path == "CLAUDE.md":
 				controlHashes[file.Path] = file.ConfigHash
@@ -1085,7 +1099,7 @@ func TestPiTargetDescriptorChangesEveryArtifactConfigHash(t *testing.T) {
 		return piHashes, controlHashes
 	}
 	beforePi, beforeControl := renderHashes()
-	wantPiCount := 1 + 1 + len(piTarget.Outputs)
+	wantPiCount := 1 + 1 + 1 + len(piTarget.Outputs)
 	if len(beforePi) != wantPiCount {
 		t.Fatalf("captured %d Pi artifact hashes, want skill + agent + %d outputs", len(beforePi), len(piTarget.Outputs))
 	}
@@ -1114,7 +1128,7 @@ func TestPiTargetDescriptorChangesEveryArtifactConfigHash(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch
 func TestPiDedicatedGroundingDispatch(t *testing.T) {
-	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
+	config := "prefix: example\nskills: [adr-lifecycle, brainstorming, bugfix, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, tdd, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [%s]\n"
 	dirs := map[string]string{
 		"claude": ".claude/skills", "codex": ".agents/skills", "copilot": ".github/skills",
 		"cursor": ".cursor/skills", "gemini": ".gemini/skills", "pi": ".pi/skills",
@@ -1136,6 +1150,8 @@ func TestPiDedicatedGroundingDispatch(t *testing.T) {
 		brainstorm := got[dirs[target]+"/example-brainstorming/SKILL.md"]
 		audit := got[dirs[target]+"/example-refactor-coupling-audit/SKILL.md"]
 		if target == "pi" {
+			brainstorm = got[".pi/awf-workflows/brainstorming.md"]
+			audit = got[".pi/awf-workflows/refactor-coupling-audit.md"]
 			if !strings.Contains(brainstorm, "`subagent_grounding`") {
 				t.Error("Pi brainstorming does not name subagent_grounding")
 			}

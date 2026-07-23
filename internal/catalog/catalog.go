@@ -3,6 +3,63 @@ package catalog
 
 import "slices"
 
+// WorkflowKind classifies a governed workflow body.
+type WorkflowKind string
+
+const (
+	WorkflowChain   WorkflowKind = "chain"
+	WorkflowTask    WorkflowKind = "task"
+	WorkflowSupport WorkflowKind = "support"
+)
+
+// PhaseEffect describes how loading a workflow body affects phase state.
+type PhaseEffect string
+
+const (
+	PhaseNone       PhaseEffect = ""
+	PhaseStart      PhaseEffect = "start"
+	PhaseTransition PhaseEffect = "transition"
+	PhaseCurrent    PhaseEffect = "current"
+)
+
+// RouteEffect describes the deterministic route operation performed at load.
+type RouteEffect string
+
+const (
+	RouteNone         RouteEffect = ""
+	RouteSelectDirect RouteEffect = "select-direct"
+	RouteSelectADR    RouteEffect = "select-adr"
+	RouteSelectPlan   RouteEffect = "select-plan"
+	RouteSelectBugfix RouteEffect = "select-bugfix"
+	// RouteSelectInvestigationIfUnrouted selects investigation-only only from
+	// investigation with no implementation history; otherwise it preserves the route.
+	RouteSelectInvestigationIfUnrouted RouteEffect = "select-investigation-if-unrouted"
+	// RoutePromoteADRPlan selects plan when unrouted after brainstorming, changes
+	// adr to adr-plan after ADR review, and otherwise requires plan or adr-plan.
+	RoutePromoteADRPlan RouteEffect = "promote-adr-plan"
+)
+
+// TerminalEffect describes deferred terminal behavior armed at load.
+type TerminalEffect string
+
+const (
+	TerminalNone          TerminalEffect = ""
+	TerminalArmCompletion TerminalEffect = "arm-completion"
+)
+
+// WorkflowMapping is the complete lifecycle operation associated with one
+// governed semantic skill.
+type WorkflowMapping struct {
+	Kind               WorkflowKind
+	PhaseEffect        PhaseEffect
+	Phase              string
+	Activity           string
+	ImplementationMode string
+	RouteEffect        RouteEffect
+	TerminalEffect     TerminalEffect
+	RequiresPhases     []string
+}
+
 // TargetSpec declares the render sections of a target that has no further
 // per-target configuration (the domain doc). Data carries the artifact's
 // default render data; sidecars override it per top-level key (ADR-0045).
@@ -56,8 +113,9 @@ type SkillSpec struct {
 	// Standard skills never set it.
 	Base bool `yaml:"base"`
 	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
-	RequiresSkills []string       `yaml:"requiresSkills"`
-	Data           map[string]any `yaml:"data"`
+	RequiresSkills []string         `yaml:"requiresSkills"`
+	Data           map[string]any   `yaml:"data"`
+	Workflow       *WorkflowMapping `yaml:"workflow,omitempty"`
 }
 
 // DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable

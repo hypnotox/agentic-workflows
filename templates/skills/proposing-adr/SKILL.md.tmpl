@@ -70,7 +70,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-8. **Terminal step: invoke `{{ .prefix }}-reviewing-adr`** via the project's skill-invocation mechanism, passing the ADR path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
+8. **Terminal step:** {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-adr"`.{{ else }}invoke `{{ .prefix }}-reviewing-adr` via the project's skill-invocation mechanism, passing the ADR path.{{ end }} The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure.
 
 <!-- awf:include memory-checkpoint -->
 <!-- awf:end -->

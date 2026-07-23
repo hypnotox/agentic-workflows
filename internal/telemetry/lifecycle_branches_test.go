@@ -38,7 +38,7 @@ func TestLifecycleRequestUnionBuildsEveryMutation(t *testing.T) {
 		TrajectoryLifecycleRequest{LifecycleRequestBase: withAction(base, "close-trajectory"), TrajectoryID: "trajectory", AnchorID: "anchor"},
 		ForkTrajectoryLifecycleRequest{LifecycleRequestBase: withAction(base, "fork-trajectory"), TrajectoryID: "child", ParentTrajectoryID: "parent", ForkAnchorID: "anchor"},
 		TerminalLifecycleRequest{LifecycleRequestBase: withAction(base, "complete")},
-		TerminalLifecycleRequest{LifecycleRequestBase: withAction(base, "abandon")},
+		AbandonLifecycleRequest{LifecycleRequestBase: withAction(base, "abandon")},
 		ReopenLifecycleRequest{LifecycleRequestBase: withAction(base, "reopen"), TrajectoryID: "new", AnchorID: "anchor"},
 		WaiveLifecycleRequest{LifecycleRequestBase: withAction(base, "waive"), RuleCode: "WFV1-PHASE-ORDER", Scope: "epoch", EvidenceIDs: []string{"source"}, ReasonCode: "approved-route-deviation"},
 		RepairLifecycleRequest{LifecycleRequestBase: withAction(base, "repair"), Proposal: RepairProposal{Kind: "supersede-event", SourceEventIDs: []string{"source"}, Replacement: RepairReplacement{EventKind: "route_selected", Payload: payload}}},
@@ -391,7 +391,7 @@ func TestApplyLifecycleTerminalEpochAdjustment(t *testing.T) {
 	if _, err := ledger.ApplyLifecycle(context.Background(), create); err != nil {
 		t.Fatal(err)
 	}
-	abandon := TerminalLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "abandon", IdempotencyKey: "abandon-key", EventID: "abandon", EffortID: "terminal-effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Predecessors: []string{"create"}}}
+	abandon := AbandonLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "abandon", IdempotencyKey: "abandon-key", EventID: "abandon", EffortID: "terminal-effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Predecessors: []string{"create"}}}
 	if _, err := ledger.ApplyLifecycle(context.Background(), abandon); err != nil {
 		t.Fatal(err)
 	}

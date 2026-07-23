@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -56,6 +57,17 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 	proj["vars"] = vs
 	if strings.Contains(assembled, ".telemetryWidgetEnabled") || strings.Contains(assembled, ".telemetryWidgetShowCost") {
 		proj["workflowTelemetry.widget"] = p.Cfg.WorkflowTelemetry.Widget
+	}
+	if strings.Contains(assembled, ".workflowSkills") {
+		names, err := p.routedWorkflowNames()
+		if err != nil {
+			return "", err
+		}
+		mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
+		if err != nil { // coverage-ignore: project open validates every catalog mapping before config hashing
+			return "", err
+		}
+		proj["workflowSkills"] = mappings
 	}
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array

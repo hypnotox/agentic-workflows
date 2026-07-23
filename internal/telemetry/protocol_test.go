@@ -593,12 +593,12 @@ func TestDescriptorParsingRejectsInvalidAuthority(t *testing.T) {
 func protocolGoTypes() map[string]reflect.Type {
 	values := []any{
 		EventEnvelope{}, EffortCreatedPayload{}, SessionAssociatedPayload{}, SessionDetachedPayload{}, RoutePayload{},
-		PhaseStartedPayload{}, PhaseTransitionedPayload{}, PhaseFinishedPayload{}, TrajectoryPayload{}, TrajectoryForkedPayload{}, EffortTerminalPayload{},
+		PhaseStartedPayload{}, PhaseTransitionedPayload{}, PhaseFinishedPayload{}, TrajectoryPayload{}, TrajectoryForkedPayload{}, EffortTerminalPayload{}, EffortAbandonedPayload{},
 		EffortReopenedPayload{}, FindingWaivedPayload{}, RepairAppliedPayload{}, UsageObservedPayload{}, ToolObservedPayload{},
 		ShellObservedPayload{}, CompactionObservedPayload{}, HandoffObservedPayload{}, SubagentObservedPayload{}, SessionObservedPayload{},
 		OriginMetadata{}, RepairReplacement{}, RepairProposal{}, EffortMetadata{}, Association{}, CreateLifecycleRequest{}, TransitionPhaseLifecycleRequest{},
 		AssociateLifecycleRequest{}, DetachLifecycleRequest{}, RouteLifecycleRequest{}, StartPhaseLifecycleRequest{},
-		FinishPhaseLifecycleRequest{}, TrajectoryLifecycleRequest{}, ForkTrajectoryLifecycleRequest{}, TerminalLifecycleRequest{},
+		FinishPhaseLifecycleRequest{}, TrajectoryLifecycleRequest{}, ForkTrajectoryLifecycleRequest{}, TerminalLifecycleRequest{}, AbandonLifecycleRequest{},
 		ReopenLifecycleRequest{}, WaiveLifecycleRequest{}, RepairLifecycleRequest{},
 	}
 	result := make(map[string]reflect.Type, len(values))

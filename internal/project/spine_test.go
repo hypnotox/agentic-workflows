@@ -250,6 +250,18 @@ func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
 }
 
+func TestExecutingDirectTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "executing-direct", map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate", "checkCmd": "./x check"},
+		"data": map[string]any{}, "layout": map[string]any{"workflowRef": "docs/workflow.md"},
+	})
+	for _, want := range []string{"name: example-executing-direct", "direct implementation", "example-reviewing-impl"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("executing-direct output missing %q:\n%s", want, out)
+		}
+	}
+}
+
 // invariant: tooling/context-and-topic:context-full-authority-packet
 func TestManagedContextCallersChooseProjection(t *testing.T) {
 	complete := map[string]bool{"adr-lifecycle": true, "reviewing-impl": true, "reviewing-plan": true}
@@ -1015,6 +1027,11 @@ type fallbackCase struct {
 }
 
 var unsetFallbackCases = []fallbackCase{
+	{
+		tmpl: "skills/executing-direct/SKILL.md.tmpl",
+		want: []string{"Invoke `example-reviewing-impl` as the terminal step."},
+		ban:  []string{"awf_workflow"},
+	},
 	{
 		tmpl: "skills/tdd/SKILL.md.tmpl",
 		want: []string{

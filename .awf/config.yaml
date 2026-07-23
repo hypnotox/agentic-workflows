@@ -56,6 +56,7 @@ skills:
   - brainstorming
   - bugfix
   - debugging
+  - executing-direct
   - executing-plans
   - proposing-adr
   - refactor-coupling-audit

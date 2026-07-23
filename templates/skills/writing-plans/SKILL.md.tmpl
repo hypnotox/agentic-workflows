@@ -69,7 +69,7 @@ Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} n
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
-4. **Terminal step: invoke `{{ .prefix }}-reviewing-plan`** via the project's skill-invocation mechanism, passing the plan path. The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
+4. **Terminal step:** {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "reviewing-plan"`.{{ else }}invoke `{{ .prefix }}-reviewing-plan` via the project's skill-invocation mechanism, passing the plan path.{{ end }} The reviewer applies its lenses and reports findings; route them per the reviewing skill's procedure; fixes land as new commits on top of the committed plan.
 
 <!-- awf:include memory-checkpoint -->
 <!-- awf:end -->
@@ -82,7 +82,7 @@ Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} n
 <!-- awf:end -->
 
 <!-- awf:section plan-resync -->
-- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: invoke `{{ .prefix }}-proposing-adr` (or amend a still-`Proposed` ADR via `{{ .prefix }}-adr-lifecycle`), let it settle, then resume the plan. The plan↔ADR resync (`{{ .prefix }}-reviewing-plan-resync`) reconciles any resulting drift before implementation.
+- If planning surfaces a new load-bearing (ADR-worthy) decision, pause: {{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "proposing-adr"` (or use the current-phase ADR-lifecycle support mapping for an amendment), let it settle, then resume the plan through `skill: "reviewing-plan-resync"`{{ else }}invoke `{{ .prefix }}-proposing-adr` (or amend a still-`Proposed` ADR via `{{ .prefix }}-adr-lifecycle`), let it settle, then resume the plan; the plan↔ADR resync (`{{ .prefix }}-reviewing-plan-resync`) reconciles any resulting drift before implementation{{ end }}.
 <!-- awf:end -->
 
 <!-- awf:section notes -->

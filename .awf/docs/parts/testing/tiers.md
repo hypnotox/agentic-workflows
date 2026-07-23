@@ -1,10 +1,10 @@
 ## Tiers
 
 awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
-identical Go and containerized TypeScript steps, including protocol parity and the pinned real-Pi
-three-factory smoke plus the pinned repository-runtime cache and launcher tests; the `full` argument is accepted only so the rendered pre-push hook
+identical Go and containerized TypeScript steps, including protocol parity and the pinned in-memory Pi 0.81.1
+three-factory runtime seam plus the pinned repository-runtime cache and launcher tests; the `full` argument is accepted only so the rendered pre-push hook
 payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
-tier to reach for; the whole gate is fast enough to run before every commit.
+tier to reach for; the whole gate is fast enough to run before every commit. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
 
 `./x check` (beside the gate at every commit via the pre-commit payload) also
 gates the example adopter (ADR-0090): it re-checks `examples/sundial` with a

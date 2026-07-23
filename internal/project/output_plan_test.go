@@ -71,7 +71,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 
 // invariant: rendering/singletons-and-payloads:workflow-telemetry-governed-outputs-and-resident-data
 func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n", nil)
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -91,6 +91,20 @@ func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
 	}
 	if matches[0].Recipe.TemplateID != metricsTID || !slices.Contains(matches[0].ConsumedInputs, OutputInput{Path: "templates/metrics/gitignore.tmpl", Role: ArtifactTemplate}) {
 		t.Fatalf("metrics output declaration = %#v", matches[0])
+	}
+	governed := map[string]bool{
+		".pi/skills/awf-workflow/SKILL.md": false,
+		".pi/awf-workflows/exploring.md":   false,
+	}
+	for _, node := range op.Nodes {
+		if _, ok := governed[node.Path]; ok && !node.Reservation && node.Recipe.TemplateID != "" && len(node.ConsumedInputs) > 0 {
+			governed[node.Path] = true
+		}
+	}
+	for path, complete := range governed {
+		if !complete {
+			t.Errorf("governed Pi workflow output is incomplete: %s", path)
+		}
 	}
 	got := renderedByPath(t, op.writeFiles(), ".awf/metrics/.gitignore")
 	if got != "# "+bannerText+"\n*\n!.gitignore\n" {

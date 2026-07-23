@@ -76,6 +76,9 @@ func Open(root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+	if err := catalog.ValidateWorkflowMappings(catalog.Standard); err != nil { // coverage-ignore: compile-time Standard is exhaustively validated by catalog tests; this keeps production fail-closed
+		return nil, err
+	}
 	targets, err := resolveTargets(cfg.Targets)
 	if err != nil {
 		return nil, err

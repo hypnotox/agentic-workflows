@@ -16,8 +16,9 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Every non-terminal chain-node skill plus the bugfix and debugging task skills complete the working-memory update before displaying the completed phase, immediate next action, and exact memory path as an intervention point. The two implementation skills also checkpoint independently resumable tasks, and retrospective alone carries the memory-file deletion step.
+Working memory is optional: every non-terminal chain-node skill plus the bugfix and debugging task skills update an existing or deliberately created memory file in its own tool batch, carry the active `Effort: <id>`, and only then display the completed phase, immediate next action, and exact path as an intervention point. Pi guidance invokes memory-backed handoff only for a validated file and otherwise continues in-session or through structured effort resume; non-Pi guidance remains target-native. The two implementation skills also checkpoint independently resumable tasks, and retrospective alone carries the memory-file deletion step.
 Origin: ADR-0148
+Revised-by: ADR-0149
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

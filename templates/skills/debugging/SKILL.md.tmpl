@@ -18,7 +18,7 @@ Use when behaviour is wrong and the cause is not yet known: unexpected output, t
 
 ## When to invoke
 
-Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious {{ if .skills.bugfix }}(invoke `{{ .prefix }}-bugfix` directly in that case){{ else }}(fix it directly with a regression test in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}a design discussion before changing behaviour{{ end }} after confirming the root cause.
+Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose failing test already exists and whose cause is obvious {{ if .skills.bugfix }}({{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "bugfix"`{{ else }}invoke `{{ .prefix }}-bugfix`{{ end }} directly in that case){{ else }}(fix it directly with a regression test in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to {{ if .skills.brainstorming }}{{ if .targetWorkflowRouter }}`awf_workflow` with `skill: "brainstorming"` in a singleton call{{ else }}`{{ .prefix }}-brainstorming`{{ end }}{{ else }}a design discussion before changing behaviour{{ end }} after confirming the root cause.
 
 ## Procedure
 
@@ -27,18 +27,18 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
 
 <!-- awf:section debugging-surfaces -->
-3. **Enumerate observable surfaces and validate the hypothesis.** Invoke `{{ .prefix }}-exploring` with one falsifiable evidence need, breadth, and detail only if both the evidence location is unknown and inline search would pollute the parent context; keep exact-known-file and genuinely trivial checks inline. Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
+3. **Enumerate observable surfaces and validate the hypothesis.** {{ if .targetWorkflowRouter }}Call `awf_workflow` alone with `skill: "exploring"`{{ else }}Invoke `{{ .prefix }}-exploring`{{ end }} with one falsifiable evidence need, breadth, and detail only if both the evidence location is unknown and inline search would pollute the parent context; keep exact-known-file and genuinely trivial checks inline. Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
 
 <!-- awf:end -->
 
 <!-- awf:section test-isolation -->
-4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline.{{ else }}Write it test-first.{{ end }}
+4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. {{ if .skills.tdd }}{{ if .targetWorkflowRouter }}Call `awf_workflow` alone with `skill: "tdd"`{{ else }}Invoke `{{ .prefix }}-tdd`{{ end }} for the project's test-first discipline.{{ else }}Write it test-first.{{ end }}
 
 <!-- awf:end -->
 
 5. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }} (fast tier).{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the fast tier does not exercise.{{ end }}
 
-6. **Hand off.** When the root cause is confirmed and the failing test is in place, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix with its regression test and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
+6. **Hand off.** When the root cause is confirmed and the failing test is in place, {{ if .skills.bugfix }}{{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "bugfix"`{{ else }}invoke `{{ .prefix }}-bugfix`{{ end }} for the fix + commit + review discipline{{ else }}apply the fix with its regression test and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}{{ if .targetWorkflowRouter }}call `awf_workflow` alone with `skill: "brainstorming"`{{ else }}invoke `{{ .prefix }}-brainstorming`{{ end }}{{ else }}start a design discussion before changing behaviour{{ end }} instead.
 
 <!-- awf:section oracle-invariant -->
 ## Oracle invariant

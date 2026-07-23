@@ -161,6 +161,18 @@ func (t Target) SkillPath(prefix, name string) string {
 	return fmt.Sprintf("%s/%s-%s/SKILL.md", t.SkillDir, prefix, name)
 }
 
+// HiddenWorkflowPath is the fixed, non-discovered Pi workflow body path.
+func (t Target) HiddenWorkflowPath(name string) string {
+	return fmt.Sprintf(".pi/awf-workflows/%s.md", name)
+}
+
+// WorkflowRouterPath is the sole discoverable Pi workflow skill path.
+func (t Target) WorkflowRouterPath() string {
+	return ".pi/skills/awf-workflow/SKILL.md"
+}
+
+func (t Target) routesWorkflows() bool { return t.Name == "pi" }
+
 // AgentPath is the output path for a rendered agent under this target.
 func (t Target) AgentPath(name string) string {
 	suffix := t.AgentSuffix
@@ -212,7 +224,7 @@ var codexTarget = Target{
 var piTarget = Target{
 	Name:         "pi",
 	SkillDir:     ".pi/skills",
-	AgentDir:     ".pi/skills",
+	AgentDir:     ".pi/agents",
 	AgentSuffix:  ".md",
 	AgentDialect: MarkdownAgentDialect,
 	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},

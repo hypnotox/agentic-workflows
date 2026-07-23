@@ -160,7 +160,16 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				declarer = "skills:" + name
 				tid, input = "", nil
 			}
-			add(t.SkillPath(cfg.Prefix, name), tid, declarer, input, sc.Local)
+			path := t.SkillPath(cfg.Prefix, name)
+			if t.routesWorkflows() && !sc.Local {
+				if spec, ok := cat.Skills[name]; ok && spec.Workflow != nil {
+					path = t.HiddenWorkflowPath(name)
+				}
+			}
+			add(path, tid, declarer, input, sc.Local)
+		}
+		if t.routesWorkflows() {
+			add(t.WorkflowRouterPath(), "pi/awf-workflow/SKILL.md.tmpl", t.Name, inputs("pi/awf-workflow/SKILL.md.tmpl"), false)
 		}
 		for _, name := range cfg.Agents {
 			sc, err := cfg.Sidecar("agents", name)

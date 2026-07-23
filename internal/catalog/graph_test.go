@@ -64,8 +64,8 @@ func TestExploringRequirementsAreOneWay(t *testing.T) {
 	}
 }
 
-// The Chain seeds' closure is exactly the 11-skill chain unit plus its three
-// agents (ADR-0081; counts verified against the catalog on 2026-07-09).
+// The Chain seeds' closure is exactly the lifecycle-mapped chain unit plus its
+// three agents (ADR-0081).
 func TestClosureChainUnit(t *testing.T) {
 	var seeds []Node
 	for name, spec := range Standard.Skills {
@@ -84,7 +84,7 @@ func TestClosureChainUnit(t *testing.T) {
 	}
 	sort.Strings(skills)
 	sort.Strings(agents)
-	wantSkills := []string{"adr-lifecycle", "brainstorming", "executing-plans", "exploring", "proposing-adr",
+	wantSkills := []string{"adr-lifecycle", "brainstorming", "executing-direct", "executing-plans", "exploring", "proposing-adr",
 		"retrospective", "reviewing-adr", "reviewing-impl", "reviewing-plan",
 		"reviewing-plan-resync", "subagent-driven-development", "writing-plans"}
 	wantAgents := []string{"adr-reviewer", "code-reviewer", "plan-reviewer"}
