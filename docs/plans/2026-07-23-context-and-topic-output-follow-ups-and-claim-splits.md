@@ -29,8 +29,8 @@ marker, re-render, and the ADR + plan status flips.
 - **Created:** none.
 - **Modified:** `internal/project/context_paths.go`, `internal/project/context.go`,
   `internal/project/context_test.go`, `cmd/awf/context.go`, `cmd/awf/context_test.go`,
-  `cmd/awf/doctor_test.go`, `cmd/awf/dashboardread_test.go`, `cmd/awf/metrics_test.go`,
-  `internal/project/context_projection_test.go`, `internal/project/spine_test.go`,
+  `cmd/awf/dashboardread_test.go`, `cmd/awf/metrics_test.go`,
+  `internal/project/context_projection_test.go`,
   `templates/docs/working-with-awf.md.tmpl`, `changelog/CHANGELOG.md`,
   `.awf/topics/parts/tooling/cli/current-state.md`,
   `.awf/topics/parts/tooling/context-and-topic/current-state.md`,
@@ -55,11 +55,13 @@ marker, re-render, and the ADR + plan status flips.
   metachar path that is absent from the tree and assert `GlobLiteral` is false and domain
   attribution is present (deleted-path-in-range behavior is preserved). Add a case asserting a
   plain (no metachar) not-found path keeps attribution and `GlobLiteral` false. In
-  `cmd/awf/context_test.go`, extend the constructed-`ContextResult` rendering test with a path
-  whose `GlobLiteral` is true and assert the rendered text contains the exact hint line
+  `cmd/awf/context_test.go`, add `TestPrintContextGlobLiteralHint`: construct a minimal
+  `ContextResult` containing one effective path with `Classification: PathNotFound` and
+  `GlobLiteral: true`, render via the same helper the existing `TestPrintContext*` tests use,
+  and assert the rendered text contains the exact hint line
   `globs are not expanded; pass a directory or an exact file`. Run
-  `go test ./internal/project/ ./cmd/awf/ -run 'TestContext'`; the new tests fail
-  (unknown field `GlobLiteral`), which is the expected red state.
+  `go test ./internal/project/ ./cmd/awf/ -run 'TestContext|TestPrintContext|TestRunContext'`;
+  the new tests fail (unknown field `GlobLiteral` fails compilation), the expected red state.
 - [ ] **Task 1.2: Implement the guard.** In `internal/project/context_paths.go`, add to
   `ContextPath` the field `GlobLiteral bool` with tag `json:"globLiteral,omitempty"`,
   documented as: true when a user-typed query containing glob metacharacters resolved to a
@@ -77,7 +79,8 @@ marker, re-render, and the ADR + plan status flips.
   `  globs are not expanded; pass a directory or an exact file`
   (and in that case skip the eligible-unowned advice branch, which cannot fire because the
   classification is never `eligible-unowned` for these paths - do not add a dead branch).
-  Run `go test ./internal/project/ ./cmd/awf/ -run 'TestContext'`; all tests pass.
+  Run `go test ./internal/project/ ./cmd/awf/ -run 'TestContext|TestPrintContext|TestRunContext'`;
+  all tests pass.
 - [ ] **Task 1.3: Doc currency.** In `templates/docs/working-with-awf.md.tmpl`, in the
   `awf context` bullet, replace the exact sentence fragment
   `classification does not erase safely matchable ownership.`
@@ -106,17 +109,22 @@ fix(tooling): guard context attribution for glob-literal queries
   file, asserting the collapsed entry carries `UnownedCount: 1` and `ExcludedCount` equal to
   the excluded files placed under it. `TestUncoveredCollapsesToRoot` asserts the single entry
   `Path: "."` (no trailing slash, as today) with the fixture's counts.
-  `TestUncoveredScanRoot` gains an assertion that a file outside the scan roots under a
-  reported directory contributes to neither count. Both existing proof-marker comments above
+  `TestUncoveredScanRoot` gains an assertion that, with scan roots restricting the report, an
+  excluded (generated or contextIgnore'd) file outside the scan roots produces no entry and
+  inflates no entry's `ExcludedCount` (a collapse pick can never rise above a scan root, so
+  out-of-scope files under a reported directory cannot occur). Both existing proof-marker comments above
   `TestUncovered` (internal/project/context_test.go:758-759) stay exactly where they are. In
-  `cmd/awf/context_test.go`, update the constructed `UncoveredResult` in the parity/rendering
-  tests: a directory entry renders as the exact line
+  `cmd/awf/context_test.go`, update the constructed `UncoveredResult` values in
+  `TestRunContextUncoveredHuman`, `TestRunContextUncoveredJSONParity`, and
+  `TestRunContextUncoveredStagedHumanAndJSON`: a directory entry renders as the exact line
   `  .pi/ (1 unowned file; 22 files excluded from coverage beneath)`
   (singular/plural per count: `file`/`files`), a directory entry with `ExcludedCount: 0`
-  renders as `  sub/ (2 unowned files)`, and a plain-file entry (`UnownedCount: 1`,
+  renders as `  sub/ (2 unowned files)`, a directory entry with `ExcludedCount: 1` renders its
+  singular clause (`1 file excluded from coverage beneath`), and a plain-file entry (`UnownedCount: 1`,
   `ExcludedCount: 0`, path without trailing slash other than ".") renders bare as today.
   The "." root entry renders with its counts like a directory. Run
-  `go test ./internal/project/ ./cmd/awf/ -run 'TestUncovered'`; red on the missing struct.
+  `go test ./internal/project/ ./cmd/awf/ -run 'TestUncovered|TestRunContextUncovered'`; red on
+  the missing struct.
 - [ ] **Task 2.2: Implement structured entries.** In `internal/project/context.go`: change
   `UncoveredResult.Unowned` to `[]UnownedEntry` and declare
   ```go
@@ -141,7 +149,7 @@ type UnownedEntry struct {
   `printUncovered`, render per Task 2.1's exact shapes: entries whose `Path` ends in `/` or
   equals `.` print the parenthesized counts (omitting the excluded clause when
   `ExcludedCount` is 0), other entries print the bare path. Run
-  `go test ./internal/project/ ./cmd/awf/ -run 'TestUncovered'`; green.
+  `go test ./internal/project/ ./cmd/awf/ -run 'TestUncovered|TestRunContextUncovered'`; green.
 - [ ] **Task 2.3: Doc currency.** `changelog/CHANGELOG.md` `[Unreleased]` `### Features`:
   `- \`awf context --uncovered\` annotates each collapsed unowned directory with how many unowned files it covers and how many files beneath it are excluded from coverage (generated, ignored, or otherwise ineligible), so a mostly-generated directory no longer reads as wholly unowned. The JSON \`unowned\` array becomes structured entries.`
   Check `templates/docs/working-with-awf.md.tmpl` and `docs/glossary.md` for prose asserting
@@ -157,13 +165,15 @@ feat(tooling): annotate collapsed unowned directories with counts
 
 - [ ] **Task 3.1: Failing test for the hoist.** In `cmd/awf/context_test.go`, add
   `TestPrintContextHoistsDomainBlock`: construct a `ContextResult` with three topics in one
-  domain (two selector-scoped, one `DeclaredGlobal`) plus one topic in a second domain, render
-  text, and assert: the exact line pair
-  `  Domain paths: [...]` / `  Both domain and topic selectors must match.` appears exactly
-  once per domain group that contains at least one non-global topic (use
-  `strings.Count(out, "Both domain and topic selectors must match.")` equal to the number of
-  such groups); each non-global topic still prints its own `  Topic paths:`, `  Matched paths:`,
-  and `  Claims (` lines; the global topic prints its
+  domain (two selector-scoped, one `DeclaredGlobal`) plus one selector-scoped topic in a
+  second domain, render text, and assert: for each domain group containing at least one
+  non-global topic, the exact hoisted pair
+  `Domain <name> paths: [...]` (at column zero, preceded by a blank line) and
+  `  Both domain and topic selectors must match.` appears exactly once
+  (`strings.Count(out, "Both domain and topic selectors must match.")` equals the number of
+  such groups, and each `Domain <name> paths:` line appears exactly once); no per-topic
+  `  Domain paths:` line remains; each non-global topic still prints its own
+  `  Topic paths:`, `  Matched paths:`, and `  Claims (` lines; the global topic prints its
   `  Global topic within owning domain selectors:` line unchanged; and a group consisting
   only of global topics prints no hoisted pair. Keep the existing assertion that the
   both-must-match sentence appears at least once overall intact. Run
@@ -172,12 +182,13 @@ feat(tooling): annotate collapsed unowned directories with counts
   the `## Topics` loop: derive each topic's domain as `t.ID` up to the first `/`; iterate
   groups of consecutive same-domain topics (`res.Topics` is sorted by domain-qualified ID, so
   groups are contiguous). Per group: if the group contains at least one non-global topic,
-  print once, from the first non-global topic's brief,
-  `  Domain paths: %v` and `  Both domain and topic selectors must match.`; then per topic
-  print the `\n%s - %s` header, the global-topic line for `DeclaredGlobal` entries or the
-  `  Topic paths: %v` line for the rest, followed by the unchanged matched/claims/detail
-  lines. JSON output and the assembled semantic model are untouched. Run
-  `go test ./cmd/awf/`; green, including untouched parity tests.
+  print once, from the first non-global topic's brief, the blank-line-preceded pair
+  `Domain <name> paths: %v` and `  Both domain and topic selectors must match.`; then per
+  topic print the `\n%s - %s` header, the global-topic line for `DeclaredGlobal` entries or
+  the `  Topic paths: %v` line for the rest, followed by the unchanged matched/claims/detail
+  lines; the per-topic `  Domain paths:` line is removed. JSON output and the assembled
+  semantic model are untouched. Run `go test ./cmd/awf/`; green, including untouched parity
+  tests.
 - [ ] **Task 3.3: Doc currency.** `changelog/CHANGELOG.md` `[Unreleased]` `### Others`:
   `- The concise \`awf context\` text rendering prints each domain's selector block once per domain group instead of repeating it verbatim under every topic of that domain; JSON is unchanged.`
   Run `./x sync` (no template edits expected; sync confirms no drift).
@@ -238,31 +249,29 @@ feat(tooling): hoist domain selector block in concise context
   Backing: test
 
 - [ ] **Task 4.3: Repoint proof markers to follow their obligations.** Marker moves (edit the
-  marker comment's claim id in place; the tests themselves do not move):
+  marker comment's claim id in place; the tests themselves do not move). A test-backed claim
+  needs at least one proof site on a test asserting its obligations; `awf check` fails only
+  when a claim has zero proof sites, and multiple proof sites or multiple marker lines on one
+  test are legal.
   - `cmd/awf/dashboardread_test.go:50` (`invariant: tooling/cli:version-compat-gate`) ->
     `invariant: tooling/cli:dashboard-read-dispatch`.
-  - `cmd/awf/dashboardread_test.go:51` (`invariant: tooling/cli:metrics-and-doctor-command-contract`) ->
-    delete this second marker line if it duplicates the claim now proven at line 50's site;
-    otherwise repoint it to `invariant: tooling/cli:dashboard-read-dispatch` only when the two
-    marker lines sit on distinct tests - one proof marker per claim per test is the shape.
+  - `cmd/awf/dashboardread_test.go:51` (`invariant: tooling/cli:metrics-and-doctor-command-contract`):
+    delete this line (it sits on the same test as line 50, whose repointed marker now proves
+    the dispatch claim).
   - `cmd/awf/gate_test.go:78` stays `invariant: tooling/cli:version-compat-gate` unchanged.
   - `cmd/awf/gate.go:28` `touches-state` marker stays unchanged (advisory).
   - `cmd/awf/metrics_test.go:68` -> `invariant: tooling/cli:metrics-command-contract`.
-  - Add a new proof marker `invariant: tooling/cli:doctor-command-contract` on the test in
-    `cmd/awf/doctor_test.go` that asserts doctor's selector consumption, read-only behavior,
-    and findings-do-not-change-exit-status (locate it by those assertions; if no single test
-    asserts all three, put the marker on the test covering read-only + exit status, the
-    claim's operative obligations).
-  - `internal/project/context_projection_test.go:11` and `internal/project/spine_test.go:253`
-    (both `invariant: tooling/context-and-topic:context-full-authority-packet`): inspect which
-    of the two tests asserts the concise roster/direct-claim/omission behavior and which
-    asserts the `--full` rendering; repoint the concise-asserting site to
-    `invariant: tooling/context-and-topic:context-concise-projection` and keep the
-    full-asserting site on `context-full-authority-packet`. If one test asserts both
-    projections, keep its marker on `context-full-authority-packet` and add the
-    `context-concise-projection` proof marker to the other site (every test-backed claim needs
-    exactly one proof site; `awf check` fails listing any claim left unproven - fix per its
-    output).
+  - Add `invariant: tooling/cli:doctor-command-contract` as a second marker line on the same
+    test (`TestMetricsAndDoctorCommandContract` in `cmd/awf/metrics_test.go`), which asserts
+    doctor's shared-selector consumption, read-only behavior, and that findings do not change
+    exit status.
+  - `internal/project/context_projection_test.go:11` (`TestContextConciseAndFullProjectionBoundaries`,
+    asserts both projections): keep its `invariant: tooling/context-and-topic:context-full-authority-packet`
+    marker and add `invariant: tooling/context-and-topic:context-concise-projection` as a
+    second marker line above the same test. `internal/project/spine_test.go:253`
+    (`TestManagedContextCallersChooseProjection`, asserts managed callers request `--full`)
+    keeps its `context-full-authority-packet` marker unchanged.
+  If `awf check` reports any claim left unproven, fix per its output.
 - [ ] **Task 4.4: ADR and plan status flip.** In
   `docs/decisions/0151-split-overloaded-invariant-claims-into-focused-claims.md`: set
   frontmatter `status: Implemented` and append to `## Status history` the line
