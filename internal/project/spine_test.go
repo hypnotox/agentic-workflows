@@ -1405,7 +1405,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 			t.Errorf("expected catalog-derived trigger row %q:\n%s", row, out)
 		}
 	}
-	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle"} {
+	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle", "example-roadmap-graduation"} {
 		if strings.Contains(out, banned) {
 			t.Errorf("disabled task skill %q must not render:\n%s", banned, out)
 		}
