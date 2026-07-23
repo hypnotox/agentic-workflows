@@ -96,6 +96,33 @@ binary or handshake is unavailable. Telemetry excludes prompts, assistant text, 
 command output, and repository paths other than the bounded checkpoint identifier. Diagnostics are
 advisory evidence, never an automatic score, workflow block, or reconciliation.
 
+## The workflow it renders
+
+The rendered skills and agents walk an agent through one canonical chain. Brainstorming is
+the hard prerequisite; an ADR is added only when a decision is load-bearing, a plan only when
+the work is complex, and a plan-ADR resync runs only when both exist. Every written artifact
+gets an independent fresh-context review, and a closing retrospective promotes recurring
+findings toward deterministic checks.
+
+```mermaid
+flowchart LR
+    B([brainstorm]) --> Q1{load-bearing?}
+    Q1 -->|yes| ADR["ADR:<br/>propose + review"]
+    Q1 -->|no| Q2{complex?}
+    ADR --> Q2
+    Q2 -->|yes| PLAN["plan:<br/>write + review"]
+    Q2 -->|no| IMPL[implementation]
+    PLAN --> Q3{ADR too?}
+    Q3 -->|yes| RS[plan-ADR resync]
+    Q3 -->|no| IMPL
+    RS --> IMPL
+    IMPL --> REV["implementation<br/>review"]
+    REV --> RETRO([retrospective])
+```
+
+Many tasks need neither an ADR nor a plan and go straight from brainstorm to implementation.
+See [`docs/workflow.md`](docs/workflow.md) for the full rules.
+
 ## How it works
 
 ```
@@ -107,37 +134,59 @@ advisory evidence, never an automatic score, workflow block, or reconciliation.
 └── parts/<name>/...  singletons    └── docs/...             project docs
 ```
 
-Current-state topics are awf's active authority. A topic pairs strict metadata at
-`.awf/topics/metadata/<domain>/<topic>.yaml` with constrained Markdown at
-`.awf/topics/parts/<domain>/<topic>/current-state.md`. Metadata permits only a title, one-line summary,
-and either anchored paths or `applies: global`; the authored part has one final `## Claims` section
-with canonical rule/invariant headings, prose, ordered Implemented-ADR provenance (`Origin`/`Revised-by`),
-direct references, and invariant backing metadata. Valid pairs render to `docs/topics/<domain>/<topic>.md`
-and a sorted `docs/topics/<domain>/index.md`, participate in the ordinary output plan, lock, drift,
-brownfield backup, and prune lifecycle, and add compact topic navigation to the owning domain doc.
-`awf new topic <domain> "<title>"` scaffolds the metadata and authored part; `awf topic
-<domain>/<topic>[:<claim>]` reads topics and claims read-only and returns active state by default.
-`--history`, `--references`, and `--coverage` independently add direct ADR operations, claim edges, and
-scope/marker sites. A removed claim identity resolves only with `--history`, as historical-only
-Origin/Revised-by/Removed-by operations without active prose, references, coverage, or a tombstone.
-A legacy-baseline removal reports that its origin is not retained (`legacyBaseline: true` in JSON)
-rather than guessing one.
+Two systems carry the project's living knowledge, and awf mechanically keeps both honest.
 
-ADRs carry decisions through adoption and then become history. Immutable V1 and V2 lock cutoffs route
-legacy, four-state V1, and five-state V2 records. V2 adds Implementing and declaration-ordered Applied
-events so frozen operations can land across individually checked commits. Every batch and exactly its
-claim mutations form one HEAD-to-index transaction; Applied effects remain authoritative after partial
-Abandonment, while Remaining operations become Canceled. The generated index keeps Proposed, Accepted,
-and Implementing records in flight. `awf context <paths>` reports current claims plus Accepted pending
-operations or Implementing remaining operations and applied-to-total progress. Rules carry no backing.
-`contextIgnore` excludes matching paths from working and staged directory expansion and coverage;
-`awf context --uncovered` reports eligible paths no scoped topic covers.
+**Decisions become history; current state stays live.** An architecture decision is recorded
+as an ADR that moves through a five-state lifecycle and then freezes into append-only history.
+Its `Implemented` decisions feed *current-state topics*: per-domain claims about how the code
+works right now, split into **rules** and **invariants**, each carrying `Origin` / `Revised-by`
+provenance back to the ADRs that established or revised it. The topics, not the ADRs, are the
+active authority.
 
-Adopting this release from an older awf is a one-time cutover: the preceding bridge release seals the
-prepared tree into a `bridgeAttestation` lock block, and this binary's plain `awf upgrade` consumes
-that seal, verifying the sealed HEAD and tree digest and journaling the migration approval-file
-deletion and permanent lock; `awf upgrade --recover` handles an interrupted cutover. This binary
-consumes seals; it never produces them.
+```mermaid
+flowchart LR
+    subgraph flight["ADR: in flight"]
+        direction LR
+        PR[Proposed] --> AC[Accepted] --> IM[Implementing]
+    end
+    subgraph hist["ADR: history (frozen, append-only)"]
+        IMP[Implemented]
+        AB[Abandoned]
+    end
+    IM --> IMP
+    PR -.-> IMP
+    AC -.-> IMP
+    PR -.-> AB
+    AC -.-> AB
+    IM -.-> AB
+    IMP ==>|"Origin / Revised-by"| TOPIC[Current-state topic]
+    TOPIC --> RULE[rule claims]
+    TOPIC --> INV[invariant claims]
+    RULE --> AUTH[["awf context:<br/>live authority"]]
+    INV --> AUTH
+    INV -.->|Backing marker| CHECK[["awf check /<br/>awf invariants"]]
+```
+
+A topic pairs strict metadata (`.awf/topics/metadata/<domain>/<topic>.yaml`) with a constrained
+authored part (`.awf/topics/parts/<domain>/<topic>/current-state.md`) and renders to
+`docs/topics/`. `awf new topic` scaffolds the pair; `awf topic <domain>/<topic>` reads it back,
+active by default, with `--history` resolving removed claim identities.
+
+**`awf context` answers "what governs this file?"** Point it at any path and it resolves the
+owning domain(s), the applicable rules and invariants, and any pending ADR operations (with
+applied-to-total progress) for that code, so an agent or reviewer sees the live constraints
+without reading the whole ADR corpus. `--staged` and `--range <a>..<b>` resolve paths from git,
+`--uncovered` reports code no topic owns yet, and `--json` emits the same data.
+
+**Invariants are enforced, not just documented.** An invariant claim declares its backing:
+`Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug>`) on a
+real test, while `Backing: unbacked` is a reasoned contract that must carry a `Verify:` line and
+no marker. `awf check` and `awf invariants` enforce this symmetrically, so an invariant with no
+backing in source fails loudly instead of rotting. Rules carry no backing.
+
+Adopting this release from an older awf is a one-time sealed cutover handled by plain `awf
+upgrade` (with `awf upgrade --recover` for an interrupted one); the mechanics live in
+[`AGENTS.md`](AGENTS.md).
 
 The rendered paths above show the default `claude` target; each enabled runtime gets its
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
