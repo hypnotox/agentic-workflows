@@ -1050,6 +1050,54 @@ compare each ADR's Decision item list before and after (identical), and compare 
 whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
 pre-existing construct as a change and buries the real finding in false positives.
 
+## Within an Applied batch phase, claim mutations land before `awf sync`
+
+_Domains: adr-system_
+
+`awf sync` scans current-state markers and hard-refuses a proof marker naming a claim
+that does not exist yet. In an incremental batch phase everything commits as one staged
+transaction, but the working tree still has an order: the ADR-0151 phase-1 implementation
+wrote the marked render tests first and `./x sync` refused with "unknown claim ID" until
+the topic-part claim mutations were applied. Within each batch phase, edit the claims and
+the ADR status history, then sync, then run the tests; the commit boundary is unchanged.
+
+## A plan must not pre-compute check-named lifecycle values
+
+_Domains: adr-system_
+
+`state-sequence` is a repository-global contiguous namespace and the frozen content
+digest is computed over the ADR body; both are named exactly by `awf check --staged` on
+mismatch, and a concurrently Implementing ADR may interleave batches at any time. The
+ADR-0151 plan initially wrote literal `state-sequence: 1` and `2` while the repository
+stood at 27; plan review caught it before implementation. A plan writes the event shape
+and the instruction "use exactly the value the staged check names", never a number or a
+digest, the same way it already avoids hard-coded counts.
+
+## A pinned template contract string is usually pinned in more than one test
+
+_Domains: rendering_
+
+Render-contract tests pin exact template strings, and the same string is often pinned by
+several tests with different names: the ADR-0151 `resolveChildModel` signature change was
+swept through the two obvious model tests, passed them, and still failed the gate on
+`TestPiStructuredExplorationContract`, which pinned the old `executionMetadata` call
+shape for its own lens. Before refactoring a pinned string, grep the exact old text
+across all of `internal/`, not just the tests whose names match the feature, and treat
+every hit as part of the sweep.
+
+## Skill prose near a skill name must not use invocation verbs it does not mean
+
+_Domains: rendering_
+
+The evals chain checker classifies a rendered skill line as a handoff when it carries
+both a prefixed skill name and an invocation verb (invoke, call, dispatch, hands off,
+chains through). A guidance sentence appended to the executing-plans companion line used
+"the subagent-dispatch companion" and flipped the pinned non-handoff pair
+`executing-plans->subagent-driven-development` into an invocation line, failing
+`TestWorkflowChainHandoffs`. When extending prose on or near a line naming another
+skill, pick verbs outside the checker's list ("run a long plan through the
+subagent-per-task companion") or move the sentence to its own line away from the name.
+
 ## Record implementation deviations before the terminal artifact transaction
 
 _Domains: adr-system_
