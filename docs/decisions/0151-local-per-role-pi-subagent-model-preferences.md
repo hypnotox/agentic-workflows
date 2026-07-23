@@ -39,7 +39,9 @@ implementation) plus a single default child-model fallback shared by all roles.
 
 2. Two JSON preference sources exist, both owned and read by the generated `awf-subagents`
 extension: a user-global `<getAgentDir()>/awf-subagents.json` and an optional project-local
-`<cwd>/<CONFIG_DIR_NAME>/awf-subagents.local.json`. The project-local file must be gitignored,
+`<project root>/<CONFIG_DIR_NAME>/awf-subagents.local.json`, where the project root is derived
+from the extension's own location (the repository root that gitignore enforcement assumes), not
+the process working directory. The project-local file must be gitignored,
 and the wizard enforces that: on a project-local save it checks the file's ignore status, offers
 to append the exact ignore rule to the repository's `.gitignore` when the file is not ignored
 (placed after any `!.pi/` re-inclusion so it wins), and refuses to save if the offer is declined.
