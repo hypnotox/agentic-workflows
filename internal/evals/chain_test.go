@@ -300,8 +300,8 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 // retrospective instead carries the deletion step.
 var routineCheckpointSkills = []string{
 	"proposing-adr", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
-	"executing-plans", "subagent-driven-development", "reviewing-impl",
-	"bugfix", "debugging",
+	"executing-plans", "subagent-driven-development", "executing-direct",
+	"reviewing-impl", "bugfix", "debugging",
 }
 
 // approvalCheckpointSkills are the two mandatory approval boundaries: the end
@@ -365,6 +365,7 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 	perTask := map[string]string{
 		"executing-plans":             "After each independently resumable committed and reviewed task",
 		"subagent-driven-development": "After each implemented and reviewed task",
+		"executing-direct":            "after each independently resumable committed and reviewed change",
 	}
 	for name, sentence := range perTask {
 		body := read(t, piSkillPath(name))
@@ -377,9 +378,7 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		if end < 0 {
 			end = len(body) - start
 		}
-		if !strings.Contains(body[start:start+end], "**Routine checkpoint.**") {
-			t.Errorf("%s per-task section does not embed the complete routine protocol", name)
-		}
+		assertOrderedBody(t, name+" per-task section", body[start:start+end], ordered)
 	}
 	if body := read(t, piSkillPath("retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
 		t.Errorf("retrospective missing the working-memory deletion step")
@@ -433,6 +432,20 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		))
 		if strings.Contains(claudeBody, "handoff_session") {
 			t.Errorf("non-Pi skill %q names handoff_session", name)
+		}
+	}
+
+	rendered, err := os.ReadDir(filepath.Join(root, ".pi", "awf-workflows"))
+	if err != nil {
+		t.Fatalf("list rendered pi workflow bodies: %v", err)
+	}
+	for _, entry := range rendered {
+		name := strings.TrimSuffix(entry.Name(), ".md")
+		if name == entry.Name() || slices.Contains(approvalCheckpointSkills, name) {
+			continue
+		}
+		if strings.Contains(read(t, filepath.Join(root, ".pi", "awf-workflows", entry.Name())), "explicitly request approval") {
+			t.Errorf("skill %q renders an approval stop outside the two mandatory boundaries", name)
 		}
 	}
 }

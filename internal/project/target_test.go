@@ -1102,7 +1102,8 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 func TestPiSessionHandoffWorkflow(t *testing.T) {
 	routineSkills := []string{
 		"proposing-adr", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
-		"executing-plans", "subagent-driven-development", "reviewing-impl", "bugfix", "debugging",
+		"executing-plans", "subagent-driven-development", "executing-direct",
+		"reviewing-impl", "bugfix", "debugging",
 	}
 	approvalSkills := []string{"brainstorming", "reviewing-adr"}
 	enabledSkills := []string{
