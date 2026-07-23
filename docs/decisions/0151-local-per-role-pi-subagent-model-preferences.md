@@ -43,7 +43,9 @@ extension: a user-global `<getAgentDir()>/awf-subagents.json` and an optional pr
 and the wizard enforces that: on a project-local save it checks the file's ignore status, offers
 to append the exact ignore rule to the repository's `.gitignore` when the file is not ignored
 (placed after any `!.pi/` re-inclusion so it wins), and refuses to save if the offer is declined.
-This repository additionally adds the rule to its own root `.gitignore` in the implementation
+Outside a git work tree the ignore check is inapplicable: the wizard saves with a visible notice
+instead of refusing, mirroring the extension's existing outside-a-git-checkout degradation. This
+repository additionally adds the rule to its own root `.gitignore` in the implementation
 commit. Each file holds only the default and the four role keys; unknown keys are invalid.
 
 3. Implicit routing resolves in strict precedence order: explicit per-call `model` argument,
