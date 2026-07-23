@@ -998,6 +998,11 @@ func TestAgentsDocTemplate(t *testing.T) {
 			t.Errorf("evicted workflow prose %q must not render in the guide:\n%s", banned, out)
 		}
 	}
+	// Exactly the invariants-section copy: the workflow section must not
+	// regrow the duplicated gate sentence (ADR-0157 evicted-prose class).
+	if got := strings.Count(out, "Stage the complete transaction"); got != 1 {
+		t.Errorf("guide must carry exactly one gate sentence (invariants section), got %d:\n%s", got, out)
+	}
 }
 
 // TestWorkingMemorySingleHomeSurfaces asserts the ADR-0157 canonical-home
@@ -1011,10 +1016,19 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		"layout": testLayout(),
 		"data":   map[string]any{},
 	})
-	for _, want := range []string{"## Working memory", "File skeleton (a convention, not a schema"} {
+	for _, want := range []string{
+		"## Working memory",
+		"File skeleton (a convention, not a schema",
+		"Ground rules: the file is session state",
+		"prefer just-in-time retrieval",
+		"the working-memory section below is the canonical home",
+	} {
 		if !strings.Contains(workflowDoc, want) {
 			t.Errorf("workflow doc missing canonical working-memory prose %q:\n%s", want, workflowDoc)
 		}
+	}
+	if got := strings.Count(workflowDoc, "File skeleton"); got != 1 {
+		t.Errorf("workflow doc must carry exactly one file-skeleton copy, got %d:\n%s", got, workflowDoc)
 	}
 	const pointer = "the workflow doc's working-memory section"
 	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", map[string]any{

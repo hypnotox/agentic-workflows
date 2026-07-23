@@ -338,7 +338,7 @@ gate the way a mispinned sentinel once mis-gated a healthy tree.
 _Domains: rendering_
 
 `awf check` hashes config bytes and template bytes; a change to the *Go render logic*
-(a new render key, a changed derivation like `taskSkills`) alters what a fresh render
+(a new render key, a changed derivation like `taskSkillRows`) alters what a fresh render
 produces while every hash still matches, so check stays clean over now-stale outputs. This
 shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
 rendered guide was produced by the intermediate version, and nothing flagged it. The gap is
