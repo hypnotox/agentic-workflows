@@ -116,6 +116,12 @@ query a single version or a range.
   nothing: the star-containing string previously string-matched domain globs, producing misleading
   half-answers. Such paths now carry `globLiteral` in JSON and a "globs are not expanded" hint in
   text.
+- Working-tree path universes now honor the user's global and system gitignore
+  (`core.excludesfile` in `~/.gitconfig` and `/etc/gitconfig`), matching `git status`: files real
+  git treats as globally ignored no longer surface as unowned in `awf context --uncovered`, no
+  longer classify as eligible-unowned, and no longer enter working-tree snapshots. One narrow
+  divergence remains: a repository-level `.gitignore` negation cannot re-include a globally-ignored
+  file.
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:
   cutoff 1 for an empty corpus, or highest-plus-one with explicit gaps for validated brownfield
   history. Sync and forced init preserve that provenance, while unattested older projects are refused

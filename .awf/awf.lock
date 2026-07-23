@@ -402,7 +402,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:1a85ae69c4a36a103c4199dc4838424f05f34c2f4c5fbc8c8681039a3aa44f7d",
+      "outputHash": "sha256:51a4f2956f835a995ecc1b797d690f4b67caf272584d59efdfb13f99b4bae925",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -414,8 +414,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:567ad46f07ecb498a389aed37312ee252be6cd83de58d0f9b6b99c5b32c5e8a4",
-      "outputHash": "sha256:55ef3adead81fde48c9ff4c5633a500c8c74022d37ef47a09aa8f8c56988bb5f"
+      "configHash": "sha256:24ca5ec03eb412caa07fb520058d9d92aa0d629a9bacc548f10b74b1aa762671",
+      "outputHash": "sha256:9a4beaa15a6923956b15f1d59b51d8bcae29bd4161591001085c6906bb8ee1bd"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",

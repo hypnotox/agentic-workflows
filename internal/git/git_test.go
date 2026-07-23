@@ -43,6 +43,64 @@ func TestWorkingPaths(t *testing.T) {
 	}
 }
 
+// TestWorktreeStatusInjectsGlobalExcludes fails if a production file calls
+// go-git's Worktree Status() without referencing GlobalExcludePatterns, so a
+// new status-derived path universe cannot silently revert to go-git's
+// repo-local-only ignore semantics (docs/pitfalls.md: "go-git status ignores
+// the global and system gitignore"; the limitation bit audit first and
+// WorkingPaths second). A future staged-only status consumer that never reads
+// untracked entries earns an explicit path exemption here instead.
+func TestWorktreeStatusInjectsGlobalExcludes(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	var offenders []string
+	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
+		if strings.HasPrefix(rel, "examples/") {
+			return
+		}
+		src := string(body)
+		if strings.Contains(src, ".Status()") && !strings.Contains(src, "GlobalExcludePatterns") {
+			offenders = append(offenders, rel)
+		}
+	})
+	if len(offenders) > 0 {
+		t.Errorf("production files calling Worktree().Status() must inject git.GlobalExcludePatterns or carry an exemption in this test: %v", offenders)
+	}
+}
+
+func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	excludes := filepath.Join(home, "global-ignore")
+	if err := os.WriteFile(excludes, []byte("globally-ignored.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitconfig := filepath.Join(home, ".gitconfig")
+	if err := os.WriteFile(gitconfig, []byte("[core]\n\texcludesfile = "+excludes+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(gitconfig)
+		_ = os.Remove(excludes)
+	})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	if err := os.WriteFile(filepath.Join(dir, "globally-ignored.txt"), []byte("junk"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "kept.txt"), []byte("kept"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	paths, err := awfgit.WorkingPaths(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(paths, ","); got != "kept.txt,tracked.txt" {
+		t.Fatalf("working paths with global excludesfile = %q, want %q", got, "kept.txt,tracked.txt")
+	}
+}
+
 func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	if err := os.MkdirAll(filepath.Join(dir, "nested", ".awf"), 0o755); err != nil {
