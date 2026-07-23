@@ -76,6 +76,14 @@ non-failing note for a topic strictly above it, while equality is quiet, staged 
 advisory, and no query output is truncated. Schema generation 16 writes this explicit default during
 init or upgrade; older strict configs must run `awf upgrade`, while an omitted value still reads as 20.
 
+**Toggle kinds.** `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter
+artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf/bootstrap.sh`, a
+checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
+CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under
+`.awf/hooks/`, inert scripts you wire into hook setups you own; awf never touches git config.
+`runner` toggles the co-owned command-runner `x` at the repo root; awf owns the awf-verb dispatch,
+you fill the project-verb and setup sections in place.
+
 **Current-state topic inputs.** A topic is exactly one strict sidecar at
 `.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at
 `.awf/topics/parts/<domain>/<topic>/current-state.md`. Identity comes from lowercase kebab-case path
