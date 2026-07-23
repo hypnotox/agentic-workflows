@@ -107,6 +107,11 @@ query a single version or a range.
 - The permanent pre-commit path no longer accepts the preparation-only bridge bypass, and a
   reintroduced `.awf/current-state-migration.yaml` is reported as unclaimed drift after cutover.
 
+### Others
+- The concise `awf context` text rendering prints each domain's selector block once per domain
+  group (as a named `Domain <name> paths:` header) instead of repeating it verbatim under every
+  topic of that domain; JSON is unchanged.
+
 ## [0.18.0] - 2026-07-20
 
 ### Breaking changes

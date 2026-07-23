@@ -226,6 +226,51 @@ func TestPrintContextFullHumanAndWriteErrors(t *testing.T) {
 	}
 }
 
+// TestPrintContextHoistsDomainBlock proves the concise text render prints each
+// domain group's selector block once (named header plus the both-must-match
+// sentence), keeps per-topic Topic-paths lines, leaves global topics on their
+// own line, and hoists nothing for an all-global group.
+func TestPrintContextHoistsDomainBlock(t *testing.T) {
+	scoped := func(id string) project.InvocationTopicContext {
+		return project.InvocationTopicContext{ID: id, Title: "T", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{"a/**"}, TopicPaths: []string{"a/x/**"}, MatchedPathCount: 1}, ClaimIDs: []string{id + ":c"}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic " + id, CoverageCommand: "awf topic " + id + " --coverage"}
+	}
+	global := func(id string) project.InvocationTopicContext {
+		return project.InvocationTopicContext{ID: id, Title: "G", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{"a/**"}, DeclaredGlobal: true}, ClaimIDs: []string{}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic " + id, CoverageCommand: "awf topic " + id + " --coverage"}
+	}
+	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{},
+		Topics: []project.InvocationTopicContext{global("alpha/g"), scoped("alpha/one"), scoped("alpha/two"), scoped("beta/x"), global("gamma/g")}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if n := strings.Count(got, "Both domain and topic selectors must match."); n != 2 {
+		t.Errorf("both-must-match count = %d; want once per group with a non-global topic", n)
+	}
+	for _, want := range []string{"\nDomain alpha paths: [a/**]\n", "\nDomain beta paths: [a/**]\n"} {
+		if strings.Count(got, want) != 1 {
+			t.Errorf("hoisted header %q count != 1 in\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "Domain gamma paths:") {
+		t.Errorf("all-global group hoisted a selector block:\n%s", got)
+	}
+	if strings.Contains(got, "  Domain paths:") {
+		t.Errorf("per-topic Domain paths line survived the hoist:\n%s", got)
+	}
+	if n := strings.Count(got, "  Topic paths: [a/x/**]\n"); n != 3 {
+		t.Errorf("Topic paths lines = %d; want one per non-global topic", n)
+	}
+	if n := strings.Count(got, "  Global topic within owning domain selectors: [a/**]\n"); n != 2 {
+		t.Errorf("global topic lines = %d; want one per global topic", n)
+	}
+	for _, want := range []string{"  Matched paths: 1", "  Claims (1):"} {
+		if strings.Count(got, want) != 3 {
+			t.Errorf("per-topic line %q count = %d; want one per non-global topic", want, strings.Count(got, want))
+		}
+	}
+}
+
 func TestPrintContextGlobLiteralHint(t *testing.T) {
 	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{}, Paths: []project.ContextPath{{Path: "internal/foo/*.go", Requests: []string{"internal/foo/*.go"}, Classification: project.PathNotFound, GlobLiteral: true, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{}, Artifacts: []project.ArtifactRecord{}}}}
 	var out bytes.Buffer
@@ -302,7 +347,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	if err := runContext(root, []string{"internal/foo/y.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha/one", "Domain paths", "Both domain and topic selectors must match", "core/g", "[covered]"} {
+	for _, want := range []string{"alpha/one", "Domain alpha paths", "Both domain and topic selectors must match", "core/g", "[covered]"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}
