@@ -1,6 +1,7 @@
 package project
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -375,9 +376,11 @@ func TestTagHealthNotes(t *testing.T) {
 	}
 }
 
-func TestTagHealthNotesSkipCurrentStateV1ADRs(t *testing.T) {
+func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  tooling: Tooling\n")
-	writeADR(t, root, "0001-a.md", "---\nformat: current-state-v1\nstatus: Proposed\ndate: 2026-07-20\n---\n# ADR-0001: A\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n")
+	governedBody := "status: Proposed\ndate: 2026-07-20\n---\n# ADR-%s: A\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n"
+	writeADR(t, root, "0001-a.md", "---\nformat: current-state-v1\n"+fmt.Sprintf(governedBody, "0001"))
+	writeADR(t, root, "0002-b.md", "---\nformat: current-state-v2\n"+fmt.Sprintf(governedBody, "0002"))
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -387,7 +390,7 @@ func TestTagHealthNotesSkipCurrentStateV1ADRs(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(notes) != 0 {
-		t.Fatalf("current-state-v1 ADR produced legacy tag-health notes: %v", notes)
+		t.Fatalf("governed current-state ADRs produced legacy tag-health notes: %v", notes)
 	}
 }
 
