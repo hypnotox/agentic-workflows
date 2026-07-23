@@ -32,3 +32,16 @@ array was empty, even though the claim promised direct drilldowns. For navigatio
 contracts, test the semantic payload for every closed role: identity, sources, outputs, navigation
 labels and paths, ordering, relocated roots, disabled artifacts, reservations, and unmanaged
 lookalikes. A structural non-null assertion is only the baseline.
+
+## Print-mode teardown does not wait for late settlement
+
+_Domains: rendering_
+
+Pi print mode ends the process when the final turn's awaited path returns: `agent_settled` and
+other late hooks may never fire, and an asynchronous handler the runtime does not await races
+shutdown. Land any durable terminal lifecycle write inside the final successful turn's awaited
+path, and give every settlement entry point one shared in-flight promise to join rather than a
+second run. ADR-0149's retrospective completion took three fix rounds to learn this: success
+authority first hung on a retired signal, then on an event that teardown outran, and finally two
+invokers could double-append the same terminal event with differing timestamps, which the causal
+append rejects as conflicting identity.
