@@ -145,7 +145,7 @@ One closing commit (same transaction rationale). Applies the final batch (`updat
   The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory path, replaces with a persisted parent-linked session, submits kickoff only through the replacement context, retains an editor fallback, and on a post-queue failure that leaves the old session active surfaces a visible failure notice with the prepared kickoff wrapper in the editor, never auto-retrying and never initiating a model turn, while stating the truthful nontransactional teardown boundary without deleting sessions or memory.
   ```
 
-  keeping its existing `Origin:` line and adding `Revised-by: ADR-0151` beneath it.
+  keeping its existing `Origin:` line and every existing `Revised-by:` line, appending `Revised-by: ADR-0151` after them; the body is subject to Task 0.4 reconciliation like Tasks 1.1/1.2.
 - [ ] **Task 2.6: Apply the final lifecycle transition and close.** Append the final `Applied` event listing exactly `update rendering/pi-workflows:pi-session-handoff-lifecycle`, then the `Implemented; content-sha256: <digest>` event. Flip this plan's frontmatter to `status: Implemented` in the same commit, recording any surfaced findings under Notes. Run `./x sync`, stage the complete transaction, run `awf check --staged`, then `./x gate full`; both must pass before the commit.
 
   ```commit
