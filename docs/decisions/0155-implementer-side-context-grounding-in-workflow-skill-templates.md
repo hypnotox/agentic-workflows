@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0155: Implementer-side context grounding in workflow skill templates
@@ -146,3 +146,4 @@ reviewer bullet, each carrying a one-clause rationale.
 ## Status history
 
 - 2026-07-23: Proposed
+- 2026-07-23: Implemented; content-sha256: 9a4d246018e4eafdb0a003df919cd851a35274d32f0843dea8d810c7881f1be2; state-sequence: 36

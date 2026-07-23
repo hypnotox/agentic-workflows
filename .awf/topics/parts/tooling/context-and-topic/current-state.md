@@ -29,9 +29,9 @@ Backing: test
 
 ### `invariant: context-full-authority-packet`
 
-`context --full` renders every current claim's full detail and pending operations once per applicable topic with no detail-omission line, from the same non-recursive semantic model as the concise projection; managed complete-authority callers request `--full` explicitly.
+`context --full` renders every current claim's full detail and pending operations once per applicable topic with no detail-omission line, from the same non-recursive semantic model as the concise projection; managed complete-authority callers (the reviewer dispatches, plan resync included, and the ADR lifecycle) instruct `--full` runs whose arguments the dispatching parent resolves, while implementer and orientation callers stay concise.
 Origin: ADR-0148
-Revised-by: ADR-0153
+Revised-by: ADR-0153, ADR-0155
 Backing: test
 
 ### `invariant: context-known-artifact-navigation`

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-23
 adrs: [155]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implementer context grounding in workflow skill templates
 
@@ -336,3 +336,8 @@ status event, per the pitfall that a flip never travels alone.
   `awf context` invocation.
 - Out of scope (deferred, tracked elsewhere): topic hygiene for over-budget topics; the shared
   reviewer-spine/template-partials dedup.
+- Implementation findings: execution followed the plan without content deviation. The
+  state-sequence for the direct Implemented event is a repo-global counter (the checker
+  reported 36, not a per-ADR 1); the checker-reported-value procedure in Task 3.5 absorbed this
+  as designed. Commits interleaved with a concurrent session's ADR-0156 work in the same
+  checkout; staging by explicit path snapshot kept every transaction exact.

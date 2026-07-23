@@ -263,6 +263,7 @@ func TestExecutingDirectTemplate(t *testing.T) {
 }
 
 // invariant: tooling/context-and-topic:context-full-authority-packet
+// invariant: rendering/workflow-skill-templates:implementer-context-grounding
 func TestManagedContextCallersChooseProjection(t *testing.T) {
 	complete := map[string]bool{
 		"adr-lifecycle":         true,

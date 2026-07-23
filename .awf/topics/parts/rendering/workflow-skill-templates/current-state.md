@@ -14,6 +14,12 @@ The core exploring skill renders for every target with one semantic breadth-and-
 Origin: ADR-0148
 Backing: test
 
+### `invariant: implementer-context-grounding`
+
+Every implementer-chain skill template (executing-plans, subagent-driven-development, writing-plans, bugfix, debugging, tdd, refactor-coupling-audit) carries a concise `awf context` invocation, and the projection-pinning spine test classifies every grounding-carrying skill template into exactly the concise or complete-authority camp.
+Origin: ADR-0155
+Backing: test
+
 ### `invariant: mandatory-approval-boundaries`
 
 The rendered brainstorming and ADR-review skills close with the mandatory approval protocol: persist memory, present the completed summary, explicitly request approval, and stop; continuation and any session handoff begin only after explicit approval is persisted. No other chain skill renders an approval stop.
