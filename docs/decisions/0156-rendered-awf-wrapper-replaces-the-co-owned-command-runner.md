@@ -74,12 +74,15 @@ Verified couplings that shape the redesign:
    pretends a runner exists. Config validation fails `awf sync` and `awf check` (and therefore the
    terminal sync of `awf upgrade`, deliberately a hard error with an actionable message naming the
    exact var) when: (a) the hooks singleton is enabled and `gateCmd` is unset, or (b) the hooks
-   singleton is enabled, the runner singleton is disabled, and a hook-referenced awf-verb var is
-   unset. Silent gate-skipping degradation is removed.
+   singleton is enabled, the runner singleton is disabled, and a hook-referenced awf-verb var
+   (exactly `checkCmd`, `commitGateCmd`, or `proseGateCmd`) is unset. Silent gate-skipping
+   degradation is removed.
 6. **The per-verb forwarding machinery is removed, not orphaned.** The clispec
    `RunnerDisposition`/`Forwarded` surface, the runner in-place section machinery, the
    runner-usage render data, and the runner command-parity checks lose their purpose and are
-   deleted in the same effort; the dead-code gate enforces completeness of the removal.
+   deleted in the same effort; the dead-code gate enforces completeness of the removal. The
+   `tooling/cli:metrics-command-contract` and `tooling/cli:doctor-command-contract` claims shed
+   their now-meaningless "runner-forwarded" qualifier as part of the same change.
 7. **awf-the-repo adopts the wrapper.** Its config enables the runner with
    `awfInvokeCmd: go run ./cmd/awf`, so `./awf` is the rendered from-source forwarder. The
    hand-maintained `./x` sheds every awf-verb forwarding arm (`invariants`, `audit`, `metrics`,
@@ -96,9 +99,19 @@ Verified couplings that shape the redesign:
    hand-written `./x` carrying its `gate`/`test` bodies with `gateCmd: ./x gate` and
    `testCmd: ./x test`; the hand-written file is added only after the sync that prunes the old
    rendered `x`.
-9. **This redefines the runner contract ADR-0101 established.** ADR-0101 remains frozen history;
-   the change lands entirely through the State changes below, and incremental (batched) V2
-   application is expected given the breadth.
+9. **The three added claims are invariant claims with `Backing: test`.**
+   `runner-pure-forwarder`, `runner-resolution-pinned-first`, and `hooks-commands-resolvable` are
+   each directly testable (wrapper render shape, resolution behaviour, validation errors) and are
+   proven by markers on the corresponding render/validation tests when their prose is authored at
+   application time.
+10. **Documentation travels with the change.** The same effort refreshes every authored and
+    rendered surface that describes the co-owned runner contract: the tooling domain narrative
+    part, the working-with-awf and agents-md-standard template prose on the managed runner, the
+    AGENTS.md runner-toggle sentence, the configspec `runner.enabled` description, and the
+    generated config reference for the new `awfInvokeCmd` descriptor.
+11. **This redefines the runner contract ADR-0101 established.** ADR-0101 remains frozen history;
+    the change lands entirely through the State changes below, and incremental (batched) V2
+    application is expected given the breadth.
 
 ## State changes
 
@@ -111,6 +124,8 @@ Verified couplings that shape the redesign:
 - update `rendering/companion-scripts:dashboard-development-runtime-commands`
 - update `rendering/catalog-and-targets:var-descriptor-set-pinned`
 - update `tooling/cli:cli-command-spec-single-source`
+- update `tooling/cli:metrics-command-contract`
+- update `tooling/cli:doctor-command-contract`
 - remove `rendering/companion-scripts:runner-awf-verbs-owned`
 - remove `rendering/companion-scripts:runner-project-verbs-in-place`
 - remove `tooling/cli:managed-runner-command-parity`
@@ -144,6 +159,10 @@ Harder / accepted trade-offs:
   gates bound it.
 - Adopters who used the co-owned runner's in-place sections (the example adopter is the known
   case) must hand-port their project verbs to their own runner file once.
+- **Runner-absent adopters gain an unsolicited root file on upgrade.** Seeding an absent `runner`
+  key to enabled means an adopter who never opted into a runner receives a new tracked `awf` file
+  at the root; accepted because the wrapper is the new baseline contract the rendered hooks and
+  skills point at, and an explicit `enabled: false` is respected.
 - ADR-0155 (Proposed, in flight) edits some of the same skill templates; textual coordination is a
   sequencing concern for the plans, not a semantic conflict.
 
@@ -155,6 +174,7 @@ Harder / accepted trade-offs:
 | Two singletons (co-owned `x` and a wrapper) | Two overlapping runner concepts to document and maintain; the user rejected coexistence. |
 | Rename the co-owned runner to `awf` without reshaping | Keeps every friction and adds a name that misleadingly suggests pure awf ownership. |
 | Strict bootstrap-only resolution in the wrapper | Breaks runner-on/bootstrap-off adopters at runtime or demands another validation rule; pinned-then-PATH matches the proven hook-shim behaviour. |
+| A non-colliding wrapper path or name (e.g. `bin/awf`, `awfw`) | The user explicitly directed the root `./awf` form; the tool's own name at the root maximises discoverability, and the collision costs are bounded (foreign-file backup, one relocated build output in this repo). |
 | Warn-first rollout of the gate-command validation | Prolongs the silent-gate hazard a full release cycle and needs a second behavioural change; config smell is treated as an error state in this project. |
 | Two ADRs (wrapper reshape vs validation tightening) | The validation tightening is motivated entirely by the reshape; splitting fragments one coherent redefinition of the runner contract. |
 
