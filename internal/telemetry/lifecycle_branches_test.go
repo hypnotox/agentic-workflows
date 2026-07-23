@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -25,7 +26,7 @@ func TestLifecycleRequestUnionBuildsEveryMutation(t *testing.T) {
 	payload, _ := json.Marshal(RoutePayload{Route: "direct"})
 	origin := &OriginMetadata{EffortID: "origin", TrajectoryID: "origin-trajectory", AnchorID: "origin-anchor"}
 	requests := []LifecycleRequest{
-		CreateLifecycleRequest{LifecycleRequestBase: withAction(base, "create"), CheckpointID: "checkpoint.md", CreationMode: "derived", Origin: origin},
+		CreateLifecycleRequest{LifecycleRequestBase: withAction(base, "create"), CreationMode: "derived", Origin: origin},
 		AssociateLifecycleRequest{LifecycleRequestBase: withAction(base, "associate"), TrajectoryID: "trajectory", AssociationOrigin: "handoff", HandoffEventID: "handoff"},
 		DetachLifecycleRequest{LifecycleRequestBase: withAction(base, "detach"), Reason: "manual"},
 		RouteLifecycleRequest{LifecycleRequestBase: withAction(base, "select-route"), Route: "direct"},
@@ -117,6 +118,35 @@ func TestLifecycleAdditionalInvalidBranches(t *testing.T) {
 	mismatch = appendEvent(mismatch, "mismatch-finish", "phase_finished", PhaseFinishedPayload{Phase: "implementation", StartEventID: "mismatch-start"})
 	if projection := ProjectLifecycle(mismatch); !hasInvalidEvent(projection.Invalid, "mismatch-finish") {
 		t.Fatal("mismatched phase finish accepted")
+	}
+	missingTransition := appendEvent(lifecycleBaseEvents(), "missing-transition", "phase_transitioned", PhaseTransitionedPayload{Phase: "planning", StartEventID: "missing", NextPhase: "plan-review"})
+	invisibleTransition := append(lifecycleBaseEvents(), causalEvent("transition-start", "left", "phase_started", []string{"create"}, PhaseStartedPayload{Phase: "planning"}))
+	invisibleTransition = append(invisibleTransition, causalEvent("invisible-transition", "right", "phase_transitioned", []string{"create"}, PhaseTransitionedPayload{Phase: "planning", StartEventID: "transition-start", NextPhase: "plan-review"}))
+	selectActive := appendEvent(active, "select-start", "phase_started", PhaseStartedPayload{Phase: "planning"})
+	selectActive = appendEvent(selectActive, "select-transition", "phase_transitioned", PhaseTransitionedPayload{Phase: "planning", StartEventID: "select-start", NextPhase: "plan-review", RouteAction: "select", Route: "plan"})
+	changeDiscovery := appendEvent(lifecycleBaseEvents(), "change-start", "phase_started", PhaseStartedPayload{Phase: "planning"})
+	changeDiscovery = appendEvent(changeDiscovery, "change-transition", "phase_transitioned", PhaseTransitionedPayload{Phase: "planning", StartEventID: "change-start", NextPhase: "plan-review", RouteAction: "change", Route: "plan"})
+	investigationTransition := appendEvent(implementation, "investigation-start", "phase_started", PhaseStartedPayload{Phase: "planning"})
+	investigationTransition = appendEvent(investigationTransition, "investigation-transition", "phase_transitioned", PhaseTransitionedPayload{Phase: "planning", StartEventID: "investigation-start", NextPhase: "plan-review", RouteAction: "change", Route: "investigation-only"})
+	directOrder, _ := BuildCausalOrder(invisibleTransition)
+	directProjection := LifecycleProjection{State: EffortDiscovery, OpenPhases: map[string]PhaseInterval{"transition-start": {Phase: "planning", StartEventID: "transition-start"}}}
+	if err := directProjection.apply(invisibleTransition[len(invisibleTransition)-1], directOrder); err == nil || !strings.Contains(err.Error(), "causally visible") {
+		t.Fatalf("direct invisible transition = %v", err)
+	}
+	for _, tc := range []struct {
+		name   string
+		events []EventEnvelope
+		badID  string
+	}{
+		{"missing transition start", missingTransition, "missing-transition"},
+		{"invisible transition start", invisibleTransition, "invisible-transition"},
+		{"transition route select while active", selectActive, "select-transition"},
+		{"transition route change while discovery", changeDiscovery, "change-transition"},
+		{"transition investigation after implementation", investigationTransition, "investigation-transition"},
+	} {
+		if projection := ProjectLifecycle(tc.events); !hasInvalidEvent(projection.Invalid, tc.badID) {
+			t.Errorf("%s accepted: %#v", tc.name, projection)
+		}
 	}
 
 	handoff := causalEvent("associate", "child", "session_associated", []string{"create"}, SessionAssociatedPayload{AssociationOrigin: "handoff", TrajectoryID: "trajectory", HandoffEventID: "missing"})
@@ -285,7 +315,7 @@ func TestApplyLifecycleDerivesAssociatedTrajectory(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := LifecycleRequestBase{IdempotencyKey: "create-key", EventID: "create", EffortID: "associated-effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
-	if _, err := ledger.ApplyLifecycle(context.Background(), CreateLifecycleRequest{LifecycleRequestBase: withAction(base, "create"), CheckpointID: "checkpoint.md", CreationMode: "independent"}); err != nil {
+	if _, err := ledger.ApplyLifecycle(context.Background(), CreateLifecycleRequest{LifecycleRequestBase: withAction(base, "create"), CreationMode: "independent"}); err != nil {
 		t.Fatal(err)
 	}
 	base.IdempotencyKey, base.EventID, base.Predecessors = "trajectory-key", "trajectory", []string{"create"}
@@ -320,7 +350,7 @@ func TestApplyLifecycleReopenAdjustsEpoch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	create := CreateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "create", IdempotencyKey: "key-create", EventID: "create", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CheckpointID: "x", CreationMode: "independent"}
+	create := CreateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "create", IdempotencyKey: "key-create", EventID: "create", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "independent"}
 	if _, err := ledger.ApplyLifecycle(context.Background(), create); err != nil {
 		t.Fatal(err)
 	}
@@ -357,7 +387,7 @@ func TestApplyLifecycleTerminalEpochAdjustment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	create := CreateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key", EventID: "create", EffortID: "terminal-effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CheckpointID: "checkpoint.md", CreationMode: "independent"}
+	create := CreateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key", EventID: "create", EffortID: "terminal-effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "independent"}
 	if _, err := ledger.ApplyLifecycle(context.Background(), create); err != nil {
 		t.Fatal(err)
 	}
@@ -418,14 +448,14 @@ func TestApplyLifecycleCreationAndVerificationFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key", EventID: "create", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
-	request := CreateLifecycleRequest{LifecycleRequestBase: base, CheckpointID: "checkpoint.md", CreationMode: "independent"}
+	request := CreateLifecycleRequest{LifecycleRequestBase: base, CreationMode: "independent"}
 	originalReadDir := ledger.ops.readDir
 	ledger.ops.readDir = func(string) ([]os.DirEntry, error) { return nil, errors.New("verify read failed") }
 	if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
 		t.Fatal("lifecycle creation verification read failure was hidden")
 	}
 	ledger.ops.readDir = originalReadDir
-	request.CheckpointID = "different.md"
+	request.Timestamp = "2026-07-22T00:00:01Z"
 	if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
 		t.Fatal("conflicting lifecycle creation retry accepted")
 	}
@@ -437,7 +467,7 @@ func TestApplyLifecycleSuccessfulAppendRetryAndConflict(t *testing.T) {
 		t.Fatal(err)
 	}
 	createBase := LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key", EventID: "create", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
-	if _, err := ledger.ApplyLifecycle(context.Background(), CreateLifecycleRequest{LifecycleRequestBase: createBase, CheckpointID: "checkpoint.md", CreationMode: "independent"}); err != nil {
+	if _, err := ledger.ApplyLifecycle(context.Background(), CreateLifecycleRequest{LifecycleRequestBase: createBase, CreationMode: "independent"}); err != nil {
 		t.Fatal(err)
 	}
 	routeBase := LifecycleRequestBase{Action: "select-route", IdempotencyKey: "route-key", EventID: "route", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Predecessors: []string{"create"}}
@@ -451,6 +481,10 @@ func TestApplyLifecycleSuccessfulAppendRetryAndConflict(t *testing.T) {
 	request.Route = "plan"
 	if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
 		t.Fatal("conflicting lifecycle retry accepted")
+	}
+	transition := causalEvent("transition", "session", "phase_transitioned", []string{"create"}, PhaseTransitionedPayload{Phase: "planning", StartEventID: "start", NextPhase: "plan-review", RouteAction: "select", Route: "plan"})
+	if !lifecycleEventsConflict(transition, causalEvent("other-route", "session", "route_selected", []string{"create"}, RoutePayload{Route: "direct"})) || !lifecycleEventsConflict(causalEvent("other-change", "session", "route_changed", []string{"create"}, RoutePayload{Route: "direct"}), transition) {
+		t.Fatal("transition route effect did not conflict with competing route mutation")
 	}
 
 	invalid := request
@@ -473,7 +507,7 @@ func TestApplyLifecycleSuccessfulAppendRetryAndConflict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := failing.ApplyLifecycle(context.Background(), CreateLifecycleRequest{LifecycleRequestBase: createBase, CheckpointID: "checkpoint.md", CreationMode: "independent"}); err != nil {
+	if _, err := failing.ApplyLifecycle(context.Background(), CreateLifecycleRequest{LifecycleRequestBase: createBase, CreationMode: "independent"}); err != nil {
 		t.Fatal(err)
 	}
 	originalOpen := failing.ops.openFile

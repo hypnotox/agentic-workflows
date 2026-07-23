@@ -14,18 +14,18 @@ func TestAggregateMetricsScopesOrderingAndPrivacy(t *testing.T) {
 	events := lifecycleBaseEvents()
 	events = appendEvent(events, "route", "route_selected", RoutePayload{Route: "direct"})
 	usagePayload, _ := json.Marshal(UsageObservedPayload{Model: "model", InputTokens: 10, OutputTokens: 5, CacheReadTokens: 3, CacheWriteTokens: 2, CostUSD: 0.25, DurationMS: 20, Phase: "implementation"})
-	usage := EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "usage", ObservationID: "same-observation", EffortID: "effort", SessionID: "z-session", Timestamp: "2026-07-22T00:00:02Z", Kind: "usage_observed", Predecessors: []string{"route"}, Payload: usagePayload}
+	usage := EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "usage", ObservationID: "same-observation", EffortID: "effort", SessionID: "z-session", Timestamp: "2026-07-22T00:00:02Z", Kind: "usage_observed", Predecessors: []string{"route"}, Payload: usagePayload}
 	duplicate := usage
 	duplicate.EventID = "usage-duplicate"
 	events = append(events, usage, duplicate)
 	subagentPayload, _ := json.Marshal(SubagentObservedPayload{Role: "reviewer", RequestedModel: "model", ResolvedModel: "model", ThinkingLevel: "medium", QueueDurationMS: 4, RunDurationMS: 30, InputTokens: 7, OutputTokens: 6, CacheReadTokens: 5, CacheWriteTokens: 4, CostUSD: 0.5, Outcome: "failure", StopReason: "error", ToolCount: 3, ToolFailureCount: 2})
-	subagent := EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "subagent", ObservationID: "subagent-observation", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:03Z", Kind: "subagent_observed", Predecessors: []string{"usage"}, Payload: subagentPayload}
+	subagent := EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "subagent", ObservationID: "subagent-observation", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:03Z", Kind: "subagent_observed", Predecessors: []string{"usage"}, Payload: subagentPayload}
 	events = append(events, subagent)
 	compactionPayload, _ := json.Marshal(CompactionObservedPayload{Count: 2})
-	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "compact", ObservationID: "compact-observation", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:04Z", Kind: "compaction_observed", Predecessors: []string{"subagent"}, Payload: compactionPayload})
+	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "compact", ObservationID: "compact-observation", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:04Z", Kind: "compaction_observed", Predecessors: []string{"subagent"}, Payload: compactionPayload})
 
 	read := EffortRead{
-		Metadata:  EffortMetadata{EffortID: "effort", CreatedAt: "2026-07-22T00:00:00Z", CheckpointID: "pi-workflow-dashboard.md", CreationMode: "independent"},
+		Metadata:  EffortMetadata{EffortID: "effort", CreatedAt: "2026-07-22T00:00:00Z", CreationMode: "independent"},
 		Events:    events,
 		Integrity: []IntegrityIssue{{Code: "partial-final-line", Scope: "z-session", EventIDs: []string{"usage"}, Detail: "/secret/repository/path"}},
 	}
@@ -34,7 +34,7 @@ func TestAggregateMetricsScopesOrderingAndPrivacy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Efforts) != 1 || result.Efforts[0].EffortID != "effort" || result.Efforts[0].CheckpointID != "pi-workflow-dashboard.md" {
+	if len(result.Efforts) != 1 || result.Efforts[0].EffortID != "effort" {
 		t.Fatalf("effort projection = %#v", result.Efforts)
 	}
 	all := result.Efforts[0].AllWork
@@ -83,16 +83,16 @@ func TestAggregateMetricsSelectorsTrajectoriesFamiliesAndRetention(t *testing.T)
 	parentEvents = append(parentEvents, passiveProjectionEvent("discarded-work", "discarded"))
 	parentEvents = appendEvent(parentEvents, "resume", "trajectory_resumed", TrajectoryPayload{TrajectoryID: "parent", AnchorID: "anchor"})
 	parentEvents[len(parentEvents)-1].TrajectoryID = "parent"
-	parentRead := EffortRead{Metadata: EffortMetadata{EffortID: "parent-effort", CreatedAt: "2026-07-01T00:00:00Z", CheckpointID: "parent.md", CreationMode: "independent"}, Events: parentEvents}
+	parentRead := EffortRead{Metadata: EffortMetadata{EffortID: "parent-effort", CreatedAt: "2026-07-01T00:00:00Z", CreationMode: "independent"}, Events: parentEvents}
 
 	origin := &OriginMetadata{EffortID: "parent-effort", TrajectoryID: "parent", AnchorID: "anchor"}
-	childRead := EffortRead{Metadata: EffortMetadata{EffortID: "child-effort", CreatedAt: "2026-07-02T00:00:00Z", CheckpointID: "child.md", CreationMode: "derived", Origin: origin}, Events: lifecycleBaseEvents()}
+	childRead := EffortRead{Metadata: EffortMetadata{EffortID: "child-effort", CreatedAt: "2026-07-02T00:00:00Z", CreationMode: "derived", Origin: origin}, Events: lifecycleBaseEvents()}
 	terminalEvents := completedRoute("direct")
 	for index := range terminalEvents {
 		terminalEvents[index].EffortID = "terminal-effort"
 		terminalEvents[index].Timestamp = "2026-01-02T00:00:00Z"
 	}
-	terminalRead := EffortRead{Metadata: EffortMetadata{EffortID: "terminal-effort", CreatedAt: "2026-01-01T00:00:00Z", CheckpointID: "terminal.md", CreationMode: "independent"}, Events: terminalEvents}
+	terminalRead := EffortRead{Metadata: EffortMetadata{EffortID: "terminal-effort", CreatedAt: "2026-01-01T00:00:00Z", CreationMode: "independent"}, Events: terminalEvents}
 
 	generated := time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC)
 	result, err := AggregateMetrics([]EffortRead{terminalRead, childRead, parentRead}, Selector{}, MetricsOptions{GeneratedAt: generated, Retention: RetentionPolicy{MaxCompletedEffortAgeDays: 30}})
@@ -119,12 +119,12 @@ func TestAggregateMetricsSelectorsTrajectoriesFamiliesAndRetention(t *testing.T)
 
 func TestStableMetricsJSONContractAndSaturatingTotals(t *testing.T) {
 	generated := time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC)
-	result := MetricsResult{SchemaVersion: 1, ProtocolMajor: 1, GeneratedAt: generated, Selector: Selector{}, Efforts: []EffortProjection{}, Retention: RetentionState{MaxAgeDays: 90, MaxCount: 100, Candidates: []string{}}, Integrity: []IntegrityNotice{}}
+	result := MetricsResult{SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: generated, Selector: Selector{}, Efforts: []EffortProjection{}, Retention: RetentionState{MaxAgeDays: 90, MaxCount: 100, Candidates: []string{}}, Integrity: []IntegrityNotice{}}
 	raw, err := json.Marshal(result)
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = `{"schemaVersion":1,"protocolMajor":1,"generatedAt":"2026-07-22T00:00:00Z","selector":{},"efforts":[],"retention":{"maxAgeDays":90,"maxCount":100,"terminalEffortCount":0,"candidates":[]},"integrity":[]}`
+	const want = `{"schemaVersion":1,"protocolMajor":2,"generatedAt":"2026-07-22T00:00:00Z","selector":{},"efforts":[],"retention":{"maxAgeDays":90,"maxCount":100,"terminalEffortCount":0,"candidates":[]},"integrity":[]}`
 	if string(raw) != want {
 		t.Fatalf("stable JSON = %s\nwant %s", raw, want)
 	}

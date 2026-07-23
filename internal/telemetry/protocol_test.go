@@ -40,12 +40,13 @@ func TestDescriptorIsNormativeAndMatchesGoTypes(t *testing.T) {
 		assertFields(schema.GoType, schema.Fields)
 	}
 
-	if descriptor.Version != (ProtocolVersion{Major: 1, Minor: 0}) || descriptor.Envelope.AdditionalProperties {
+	if descriptor.Version != (ProtocolVersion{Major: 2, Minor: 0}) || descriptor.Envelope.AdditionalProperties {
 		t.Fatal("descriptor version or closed envelope differs")
 	}
-	if descriptor.Limits.IdentifierBytes != 128 || descriptor.Limits.EventIDBytes != 128 || descriptor.Limits.IdempotencyKeyBytes != 128 || descriptor.Limits.ObservationIDBytes != 128 || descriptor.Limits.ModelBytes != 128 || descriptor.Limits.ToolBytes != 128 || descriptor.Limits.CategoryBytes != 128 || descriptor.Limits.CheckpointIDBytes != 256 {
+	if descriptor.Limits.IdentifierBytes != 128 || descriptor.Limits.EventIDBytes != 128 || descriptor.Limits.IdempotencyKeyBytes != 128 || descriptor.Limits.ObservationIDBytes != 128 || descriptor.Limits.ModelBytes != 128 || descriptor.Limits.ToolBytes != 128 || descriptor.Limits.CategoryBytes != 128 {
 		t.Fatal("descriptor bounds differ")
 	}
+	assertProtocol2Descriptor(t)
 	for vocabulary, values := range descriptor.Vocabularies {
 		seen := map[string]bool{}
 		for _, value := range values {
@@ -87,6 +88,110 @@ func TestDescriptorIsNormativeAndMatchesGoTypes(t *testing.T) {
 	if !reflect.DeepEqual(descriptor.Vocabularies["eventKinds"], orderedPayloadKinds()) {
 		t.Fatal("eventKinds is not the descriptor payload order")
 	}
+}
+
+func assertProtocol2Descriptor(t *testing.T) {
+	t.Helper()
+	if descriptor.Privacy.AllowedRepositoryPathField != "" {
+		t.Fatalf("protocol 2 retains repository-path privacy exception %q", descriptor.Privacy.AllowedRepositoryPathField)
+	}
+	oldField := "checkpoint" + "Id"
+	if _, ok := descriptor.LimitsJSONFieldForTest(oldField + "Bytes"); ok {
+		t.Fatal("protocol 2 retains protocol-1 path limit")
+	}
+	for _, activity := range []string{"adr-lifecycle", "refactor-coupling-audit", "roadmap-graduation"} {
+		if !containsString(descriptor.Vocabularies["activities"], activity) {
+			t.Errorf("protocol 2 activity %q is absent", activity)
+		}
+	}
+	if !reflect.DeepEqual(descriptor.Vocabularies["routeActions"], []string{"select", "change"}) {
+		t.Fatalf("routeActions = %v", descriptor.Vocabularies["routeActions"])
+	}
+	payload, ok := descriptor.Payloads["phase_transitioned"]
+	if !ok || payload.GoType != "PhaseTransitionedPayload" || payload.Class != "lifecycle" || !payload.Repairable || payload.AdditionalProperties {
+		t.Fatalf("phase_transitioned payload authority = %#v", payload)
+	}
+	request, ok := descriptor.LifecycleRequests["transition-phase"]
+	if !ok || request.GoType != "TransitionPhaseLifecycleRequest" || request.EventKind != "phase_transitioned" || request.AdditionalProperties {
+		t.Fatalf("transition-phase request authority = %#v", request)
+	}
+	for _, field := range []string{"phase", "startEventId", "nextPhase"} {
+		if !payload.Fields[field].Required {
+			t.Errorf("phase_transitioned.%s is not required", field)
+		}
+	}
+	for _, field := range []string{"routeAction", "route"} {
+		if payload.Fields[field].Required {
+			t.Errorf("phase_transitioned.%s is not optional", field)
+		}
+	}
+	if len(payload.Constraints) != 1 || payload.Constraints[0].Kind != "paired-presence" || !reflect.DeepEqual(payload.Constraints[0].Fields, []string{"routeAction", "route"}) {
+		t.Fatalf("phase_transitioned route constraint = %#v", payload.Constraints)
+	}
+	if len(request.Constraints) != 1 || request.Constraints[0].Kind != "paired-presence" || !reflect.DeepEqual(request.Constraints[0].Fields, []string{"routeAction", "route"}) {
+		t.Fatalf("transition-phase route constraint = %#v", request.Constraints)
+	}
+	for _, location := range []struct {
+		name   string
+		fields map[string]fieldDescriptor
+	}{
+		{"effort_created", descriptor.Payloads["effort_created"].Fields},
+		{"create request", descriptor.LifecycleRequests["create"].Fields},
+		{"effort metadata", descriptor.Objects["EffortMetadata"].Fields},
+	} {
+		if _, ok := location.fields[oldField]; ok {
+			t.Errorf("%s retains protocol-1 path field", location.name)
+		}
+	}
+}
+
+func (p protocolDescriptor) LimitsJSONFieldForTest(name string) (json.RawMessage, bool) {
+	raw, _ := json.Marshal(p.Limits)
+	var fields map[string]json.RawMessage
+	_ = json.Unmarshal(raw, &fields)
+	value, ok := fields[name]
+	return value, ok
+}
+
+func TestValidateProtocol2PhaseTransitionShape(t *testing.T) {
+	t.Parallel()
+	event := protocol2TransitionEvent("transition", "brainstorm-start", []string{"brainstorm-start"}, "brainstorming", "implementation", "select", "direct")
+	if _, err := ValidateEvent(mustJSON(t, event)); err != nil {
+		t.Fatalf("protocol 2 transition rejected: %v", err)
+	}
+	delete(event["payload"].(map[string]any), "route")
+	if _, err := ValidateEvent(mustJSON(t, event)); err == nil {
+		t.Fatal("transition accepted routeAction without route")
+	}
+	request := protocol2TransitionRequest("transition", "brainstorm-start", []string{"brainstorm-start"}, "brainstorming", "implementation", "change", "plan")
+	if _, err := DecodeLifecycleRequest(mustJSON(t, request)); err != nil {
+		t.Fatalf("protocol 2 transition request rejected: %v", err)
+	}
+}
+
+func protocol2TransitionEvent(eventID, startEventID string, predecessors []string, phase, nextPhase, routeAction, route string) map[string]any {
+	payload := map[string]any{"phase": phase, "startEventId": startEventID, "nextPhase": nextPhase}
+	if routeAction != "" {
+		payload["routeAction"], payload["route"] = routeAction, route
+	}
+	return map[string]any{
+		"version": map[string]any{"major": 2, "minor": 0}, "eventId": eventID, "idempotencyKey": "key-" + eventID,
+		"effortId": "effort-id", "sessionId": "session-id", "timestamp": "2026-07-22T00:00:01Z",
+		"kind": "phase_transitioned", "predecessors": predecessors, "payload": payload,
+	}
+}
+
+func protocol2TransitionRequest(eventID, startEventID string, predecessors []string, phase, nextPhase, routeAction, route string) map[string]any {
+	request := protocol2TransitionEvent(eventID, startEventID, predecessors, phase, nextPhase, routeAction, route)
+	payload := request["payload"].(map[string]any)
+	delete(request, "version")
+	delete(request, "kind")
+	delete(request, "payload")
+	request["action"] = "transition-phase"
+	for key, value := range payload {
+		request[key] = value
+	}
+	return request
 }
 
 func TestValidateEventExhaustiveDescriptorContract(t *testing.T) {
@@ -171,7 +276,7 @@ func TestValidateEventCompatibilityExtensionsAndIdentity(t *testing.T) {
 	}
 
 	unsupported := validEvent("usage_observed", 0)
-	unsupported["version"] = map[string]any{"major": 2, "minor": 0}
+	unsupported["version"] = map[string]any{"major": 3, "minor": 0}
 	if _, err := ValidateEvent(mustJSON(t, unsupported)); err == nil {
 		t.Error("unsupported major accepted")
 	}
@@ -189,6 +294,28 @@ func TestValidateEventCompatibilityExtensionsAndIdentity(t *testing.T) {
 	collision["effortId"] = 42
 	if _, err := ValidateEvent(mustJSON(t, collision)); err == nil {
 		t.Error("known-field type collision accepted")
+	}
+}
+
+func TestProtocol2PairedPresenceConstraintAuthority(t *testing.T) {
+	cloneRaw, err := json.Marshal(descriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var clone protocolDescriptor
+	if err := json.Unmarshal(cloneRaw, &clone); err != nil {
+		t.Fatal(err)
+	}
+	transition := clone.Payloads["phase_transitioned"]
+	invalidMetadata := transition.Constraints[0]
+	invalidMetadata.Field = "route"
+	if err := validateConstraintAuthority(clone, "payload phase_transitioned", transition.Fields, []constraintDescriptor{invalidMetadata}); err == nil {
+		t.Fatal("invalid paired-presence metadata accepted")
+	}
+	unknownField := transition.Constraints[0]
+	unknownField.Fields = []string{"routeAction", "missing"}
+	if err := validateConstraintAuthority(clone, "payload phase_transitioned", transition.Fields, []constraintDescriptor{unknownField}); err == nil {
+		t.Fatal("unknown paired-presence field accepted")
 	}
 }
 
@@ -358,7 +485,7 @@ func TestDuplicateJSONKeysAreRejectedRecursively(t *testing.T) {
 	base := mustJSON(t, validEvent("repair_applied", 0))
 	for name, raw := range map[string]json.RawMessage{
 		"envelope":    bytes.Replace(base, []byte(`"eventId":"event-id"`), []byte(`"eventId":"shadow","eventId":"event-id"`), 1),
-		"version":     bytes.Replace(base, []byte(`"major":1`), []byte(`"major":1,"major":1`), 1),
+		"version":     bytes.Replace(base, []byte(`"major":2`), []byte(`"major":2,"major":2`), 1),
 		"payload":     bytes.Replace(base, []byte(`"proposalKind":`), []byte(`"proposalKind":"supersede-event","proposalKind":`), 1),
 		"replacement": bytes.Replace(base, []byte(`"eventKind":`), []byte(`"eventKind":"phase_started","eventKind":`), 1),
 	} {
@@ -431,7 +558,7 @@ func TestDescriptorParsingRejectsInvalidAuthority(t *testing.T) {
 		return mustJSON(t, value)
 	}
 	cases := map[string][]byte{
-		"duplicate key": bytes.Replace(valid, []byte(`"major": 1`), []byte(`"major": 1, "major": 1`), 1),
+		"duplicate key": bytes.Replace(valid, []byte(`"major": 2`), []byte(`"major": 2, "major": 2`), 1),
 		"unknown key": mutate(func(value map[string]any) {
 			value["unknown"] = true
 		}),
@@ -466,10 +593,10 @@ func TestDescriptorParsingRejectsInvalidAuthority(t *testing.T) {
 func protocolGoTypes() map[string]reflect.Type {
 	values := []any{
 		EventEnvelope{}, EffortCreatedPayload{}, SessionAssociatedPayload{}, SessionDetachedPayload{}, RoutePayload{},
-		PhaseStartedPayload{}, PhaseFinishedPayload{}, TrajectoryPayload{}, TrajectoryForkedPayload{}, EffortTerminalPayload{},
+		PhaseStartedPayload{}, PhaseTransitionedPayload{}, PhaseFinishedPayload{}, TrajectoryPayload{}, TrajectoryForkedPayload{}, EffortTerminalPayload{},
 		EffortReopenedPayload{}, FindingWaivedPayload{}, RepairAppliedPayload{}, UsageObservedPayload{}, ToolObservedPayload{},
 		ShellObservedPayload{}, CompactionObservedPayload{}, HandoffObservedPayload{}, SubagentObservedPayload{}, SessionObservedPayload{},
-		OriginMetadata{}, RepairReplacement{}, RepairProposal{}, EffortMetadata{}, Association{}, CreateLifecycleRequest{},
+		OriginMetadata{}, RepairReplacement{}, RepairProposal{}, EffortMetadata{}, Association{}, CreateLifecycleRequest{}, TransitionPhaseLifecycleRequest{},
 		AssociateLifecycleRequest{}, DetachLifecycleRequest{}, RouteLifecycleRequest{}, StartPhaseLifecycleRequest{},
 		FinishPhaseLifecycleRequest{}, TrajectoryLifecycleRequest{}, ForkTrajectoryLifecycleRequest{}, TerminalLifecycleRequest{},
 		ReopenLifecycleRequest{}, WaiveLifecycleRequest{}, RepairLifecycleRequest{},
@@ -550,6 +677,8 @@ func goFieldMetadata(name string, typeOf reflect.Type) (fieldType, format, vocab
 		return "string", "", "eventKinds"
 	case "Route":
 		return "string", "", "routes"
+	case "RouteAction":
+		return "string", "", "routeActions"
 	case "Phase":
 		return "string", "", "phases"
 	case "Activity":
@@ -600,8 +729,6 @@ func goFieldMetadata(name string, typeOf reflect.Type) (fieldType, format, vocab
 		switch name {
 		case "action":
 			return "string", "", ""
-		case "checkpointId":
-			return "string", "checkpoint", ""
 		case "timestamp", "createdAt":
 			return "string", "timestamp", ""
 		default:

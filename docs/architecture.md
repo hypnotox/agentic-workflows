@@ -44,12 +44,16 @@ Context assembly uses one selected-universe boundary. A request path is normaliz
 Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. Only its self-ignoring
 `.gitignore` is governed output; effort ledgers, leases, tombstones, trash, and caches are ignored
 resident data that sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim.
-An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union.
-Go validates and appends one JSONL stream per session, projects explicit discovery, route, phase,
-handoff, and trajectory state, performs leased deterministic terminal-effort retention, and serves
-canonical selector-driven metrics and diagnosis. `awf metrics` queries or exports that model, while
-read-only `awf doctor` reports exact violations and configured versioned heuristics without a score,
-automatic repair, blocking verdict, or daemon. The Pi dashboard writes conforming events and refreshes
+An embedded machine-readable protocol-2 descriptor governs the privacy-minimal event envelope,
+payload union, and closed lifecycle requests without any repository-path field. Go validates and
+appends one JSONL stream per session; one `phase_transitioned` event transactionally closes an
+unmatched phase start, enters its successor, and optionally applies a route effect from the current
+causal frontier. The same engine projects discovery, route, phase, handoff, and trajectory state,
+performs leased deterministic terminal-effort retention, and serves canonical selector-driven
+metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor`
+reports exact violations and configured versioned heuristics without a score, automatic repair,
+blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver
+inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The Pi dashboard writes conforming events and refreshes
 both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
 stale or degraded.
 
@@ -165,7 +169,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
-- **`internal/telemetry/`**: owns the embedded version-1 event descriptor, its deterministic TypeScript projection, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
+- **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
 - **`internal/dashboardruntime/`**: resolves and compare-and-swap advances `refs/awf/dashboard-runtime`, materializes only the pinned commit, derives the complete validated telemetry policy snapshot, and publishes or verifies private immutable XDG cache entries under an OS advisory lock. Stable sentinels distinguish unsafe paths, refs, builds, collisions, snapshots, and concurrent advances.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
@@ -312,10 +316,13 @@ private byte copy in one path-sorted, tamper-proof view, so the scan and its `.a
 lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
 and range universes the current-state checks compare.
 
-An explicit lifecycle request creates an undecided discovery effort, selects or changes a closed route,
-starts and finishes named phases, manages session association and trajectories, or records a terminal,
-waiver, or typed repair operation. It is validated against the embedded descriptor and current causal
-frontier before a confined, leased, flushed JSONL append acknowledges success. Investigation is an
+An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
+closed route, starts the first named phase, transactionally closes an unmatched phase start and enters
+its successor, manages session association and trajectories, or records a terminal, waiver, or typed
+repair operation. A normal chain edge is one `phase_transitioned` event carrying both phase effects and
+any route effect. Each request is validated against the embedded descriptor and current causal frontier
+before a confined, leased, flushed JSONL append acknowledges success; an identical retry succeeds
+idempotently while conflicting concurrent state remains evidence. Investigation is an
 optional phase and debugging activity; bugfix is a route whose implementation, review, and
 retrospective requirements remain explicit. Parent handoff copies only the active-branch association.
 Tree navigation closes or resumes a known trajectory or forks one; work derived from a terminal effort
@@ -329,9 +336,11 @@ metrics` and JSON export aggregate resident efforts through the shared effort/se
 selector into deterministic current-path, all-work, session, phase, trajectory, integrity, and
 retention projections; JSONL export emits only validated normalized envelopes in stable stream order.
 `awf doctor` reads the same state, evaluates exact rules and configured comparable-route heuristics,
-and renders advisory evidence without writing resident state or changing exit status because of a
-finding. Waivers and typed repairs append only after explicit confirmation; purge is a separately
-confirmed destructive operation.
+and renders advisory effort-owned evidence without writing resident state or changing exit status
+because of a finding. Waivers and typed repairs append only after explicit confirmation and
+re-resolution of the selected finding under its `effortId`, with matching evidence and scope, an
+eligible reason, and the current nonempty causal frontier. Purge is a separately confirmed destructive
+operation.
 
 The Pi dashboard restores association from the active branch, writes passive observations through a
 serialized durable queue, and drains it at shutdown. An enabled project bootstrap is authoritative.

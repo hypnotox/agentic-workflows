@@ -16,7 +16,6 @@ import (
 	"time"
 )
 
-// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
 func TestProtocolLedgerContract(t *testing.T) {
 	// The protocol ledger atomically creates an effort, preserves immutable
 	// metadata, and appends complete durable lines without recreating state.
@@ -26,7 +25,7 @@ func TestProtocolLedgerContract(t *testing.T) {
 		t.Fatalf("identical retry = (%v, %v), want idempotent success", result, err)
 	}
 	changed := metadata
-	changed.CheckpointID = "different.md"
+	changed.CreatedAt = "2026-07-22T12:34:57Z"
 	if _, err := ledger.CreateEffort(changed, first); err == nil {
 		t.Fatal("conflicting immutable retry accepted")
 	}
@@ -105,6 +104,52 @@ func TestProtocolLedgerContract(t *testing.T) {
 	corrupt, err := ledger.ReadEffort(metadata.EffortID)
 	if err != nil || !hasIntegrityCode(corrupt.Integrity, "partial-final-line") || len(corrupt.Events) != 2 {
 		t.Fatalf("partial stream evidence was not isolated: events=%d integrity=%#v err=%v", len(corrupt.Events), corrupt.Integrity, err)
+	}
+}
+
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+func TestProtocol2TransitionAppendRetryAndConflict(t *testing.T) {
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	create := map[string]any{
+		"action": "create", "idempotencyKey": "create-key", "eventId": "create-event", "effortId": "effort-id", "sessionId": "session-id",
+		"timestamp": "2026-07-22T00:00:00Z", "predecessors": []string{}, "creationMode": "independent",
+	}
+	applyProtocol2Request := func(request map[string]any) (AppendResult, error) {
+		t.Helper()
+		decoded, decodeErr := DecodeLifecycleRequest(mustJSON(t, request))
+		if decodeErr != nil {
+			return AppendResult{}, decodeErr
+		}
+		return ledger.ApplyLifecycle(context.Background(), decoded)
+	}
+	if result, err := applyProtocol2Request(create); err != nil || result.Idempotent {
+		t.Fatalf("protocol 2 create = %#v, %v", result, err)
+	}
+	start := map[string]any{
+		"action": "start-phase", "idempotencyKey": "start-key", "eventId": "brainstorm-start", "effortId": "effort-id", "sessionId": "session-id",
+		"timestamp": "2026-07-22T00:00:01Z", "predecessors": []string{"create-event"}, "phase": "brainstorming",
+	}
+	if _, err := applyProtocol2Request(start); err != nil {
+		t.Fatalf("start first phase: %v", err)
+	}
+	transition := protocol2TransitionRequest("transition", "brainstorm-start", []string{"brainstorm-start"}, "brainstorming", "implementation", "select", "direct")
+	if result, err := applyProtocol2Request(transition); err != nil || result.Idempotent {
+		t.Fatalf("transition append = %#v, %v", result, err)
+	}
+	if result, err := applyProtocol2Request(transition); err != nil || !result.Idempotent {
+		t.Fatalf("identical transition retry = %#v, %v", result, err)
+	}
+	conflict := cloneMap(t, transition)
+	conflict["nextPhase"] = "planning"
+	if _, err := applyProtocol2Request(conflict); err == nil {
+		t.Fatal("conflicting transition idempotency reuse accepted")
+	}
+	read, err := ledger.ReadEffort("effort-id")
+	if err != nil || len(read.Events) != 3 || read.Events[2].Kind != "phase_transitioned" {
+		t.Fatalf("transition durability = events %#v, %v", read.Events, err)
 	}
 }
 
@@ -560,7 +605,6 @@ func testCreation(t *testing.T) (EffortMetadata, json.RawMessage) {
 	metadata := EffortMetadata{
 		EffortID:     event["effortId"].(string),
 		CreatedAt:    event["timestamp"].(string),
-		CheckpointID: payload["checkpointId"].(string),
 		CreationMode: CreationMode(payload["creationMode"].(string)),
 		Origin: &OriginMetadata{
 			EffortID:     payload["originEffortId"].(string),

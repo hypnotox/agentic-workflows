@@ -48,7 +48,7 @@ func runMetrics(c *cmdCtx) error {
 			DescriptorSHA256 string                    `json:"descriptorSha256"`
 			AWFVersion       string                    `json:"awfVersion"`
 			ProjectVersion   string                    `json:"projectVersion"`
-		}{1, telemetry.ProtocolVersion{Major: 1, Minor: 0}, 1, telemetry.DescriptorSHA256(), awfVersion(), project.Version}
+		}{1, telemetry.ProtocolVersion{Major: 2, Minor: 0}, 2, telemetry.DescriptorSHA256(), awfVersion(), project.Version}
 		return writeMetricsJSON(c.stdout, result)
 	case "lifecycle":
 		return runMetricsLifecycle(c)

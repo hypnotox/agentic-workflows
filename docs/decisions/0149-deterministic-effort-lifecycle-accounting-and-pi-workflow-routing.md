@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-23
 ---
 # ADR-0149: Deterministic Effort Lifecycle Accounting and Pi Workflow Routing
@@ -108,3 +108,5 @@ Repairs and waivers become stricter and may reject actions that the current UI a
 ## Status history
 
 - 2026-07-23: Proposed
+- 2026-07-23: Implementing; content-sha256: 557409a6606bfbf4a6c8273747d5584f9f728feecfd443bb4198f6cc7d167c8e
+- 2026-07-23: Applied; state-sequence: 27; operations: update `tooling/workflow-telemetry:event-protocol-and-ledger`, update `tooling/workflow-telemetry:effort-lifecycle-and-routes`, update `tooling/workflow-telemetry:privacy-integrity-and-retention`, update `tooling/workflow-telemetry:canonical-projections-and-diagnostics`

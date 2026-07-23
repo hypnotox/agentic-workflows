@@ -18,7 +18,15 @@ func TestCreationAndAppendRejectionMatrix(t *testing.T) {
 		{},
 		func() EffortMetadata { value := metadata; value.CreatedAt = "bad"; return value }(),
 		func() EffortMetadata { value := metadata; value.EffortID = "other"; return value }(),
+		func() EffortMetadata { value := metadata; value.CreationMode = "independent"; return value }(),
 		func() EffortMetadata { value := metadata; value.Origin = nil; return value }(),
+		func() EffortMetadata {
+			value := metadata
+			origin := *value.Origin
+			origin.AnchorID = "other-anchor"
+			value.Origin = &origin
+			return value
+		}(),
 	}
 	for index, candidate := range invalidMetadata {
 		if _, err := validateCreation(candidate, first); err == nil {
@@ -40,7 +48,7 @@ func TestCreationAndAppendRejectionMatrix(t *testing.T) {
 	if err := json.Unmarshal(first, &changed); err != nil {
 		t.Fatal(err)
 	}
-	changed["payload"].(map[string]any)["checkpointId"] = "other.md"
+	changed["payload"].(map[string]any)["creationMode"] = "independent"
 	if _, err := validateCreation(metadata, mustJSON(t, changed)); err == nil {
 		t.Fatal("mismatched creation payload accepted")
 	}
@@ -147,7 +155,7 @@ func TestMetadataAndRetryComparisonBranches(t *testing.T) {
 		}
 	}
 	changed := metadata
-	changed.CheckpointID = "different.md"
+	changed.CreatedAt = "2026-07-22T12:34:57Z"
 	changedRaw, _ := json.Marshal(changed)
 	if err := os.WriteFile(metadataPath, changedRaw, 0o600); err != nil {
 		t.Fatal(err)

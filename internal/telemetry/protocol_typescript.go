@@ -1,6 +1,7 @@
 package telemetry
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -11,13 +12,13 @@ import (
 // ProjectTypeScript projects the normative descriptor into the generated Pi
 // runtime. The descriptor remains the sole vocabulary and shape authority.
 func ProjectTypeScript() string {
-	raw, err := json.Marshal(descriptor)
-	if err != nil { // coverage-ignore: the validated embedded descriptor is JSON-marshalable
+	var raw bytes.Buffer
+	if err := json.Compact(&raw, descriptorJSON); err != nil { // coverage-ignore: embedded descriptor validation proved valid JSON
 		panic(err)
 	}
 	var b strings.Builder
 	b.WriteString("// @ts-nocheck\n")
-	fmt.Fprintf(&b, "export const protocolDescriptor = %s as const;\n", raw)
+	fmt.Fprintf(&b, "export const protocolDescriptor = %s as const;\n", raw.Bytes())
 	b.WriteString("export const protocolVersion = protocolDescriptor.version;\n")
 	b.WriteString("export const protocolLimits = protocolDescriptor.limits;\n")
 
@@ -134,10 +135,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function formattedString(field: any, value: unknown): boolean {
   if (typeof value !== "string" || value.length === 0) return false;
   const bytes = new TextEncoder().encode(value).length;
-  const maximum = field.format === "checkpoint" ? protocolLimits.checkpointIdBytes : field.format === "model" ? protocolLimits.modelBytes : field.format === "tool" ? protocolLimits.toolBytes : field.format === "category" ? protocolLimits.categoryBytes : protocolLimits.identifierBytes;
+  const maximum = field.format === "model" ? protocolLimits.modelBytes : field.format === "tool" ? protocolLimits.toolBytes : field.format === "category" ? protocolLimits.categoryBytes : protocolLimits.identifierBytes;
   if (bytes > maximum) return false;
   if (field.format === "timestamp") return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && !Number.isNaN(Date.parse(value));
-  if (field.format === "checkpoint") return !value.startsWith("/") && !value.includes("\\") && value.split("/").every((part) => part && part !== "." && part !== "..");
   if (field.format === "identifier") return value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
   return true;
 }
@@ -191,6 +191,7 @@ function constraintValid(constraint: any, value: Record<string, unknown>): boole
     case "fields-required-when": return value[constraint.discriminator] !== constraint.value || constraint.fields.every(present);
     case "fields-forbidden-when": return value[constraint.discriminator] !== constraint.value || constraint.fields.every((name: string) => !present(name));
     case "field-allowed-when": return !present(constraint.field) || value[constraint.discriminator] === constraint.value;
+    case "paired-presence": return present(constraint.fields[0]) === present(constraint.fields[1]);
     case "waiver-eligibility": return ((protocolDescriptor.waiverRules as any)[value[constraint.ruleField] as string] ?? []).includes(value[constraint.reasonField]);
     default: return false;
   }

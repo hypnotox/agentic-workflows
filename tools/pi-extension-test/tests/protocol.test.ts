@@ -11,7 +11,7 @@ import {
 
 function valueFor(field: any): any {
   if (field.vocabulary) return (protocolDescriptor.vocabularies as any)[field.vocabulary][0];
-  if (field.type === "string") return field.format === "timestamp" ? "2026-07-22T00:00:00Z" : field.format === "checkpoint" ? ".awf/memory/work.md" : "x";
+  if (field.type === "string") return field.format === "timestamp" ? "2026-07-22T00:00:00Z" : "x";
   if (field.type === "uint16" || field.type === "uint64" || field.type === "number") return 0;
   if (field.type === "array") return Array.from({ length: field.minItems ?? 0 }, () => valueFor(field.items));
   if (field.type === "object") return shapeValue({ fields: field.fields });
@@ -47,11 +47,34 @@ test("descriptor validators accept every closed event and lifecycle shape", () =
   }
 });
 
+test("protocol 2 descriptor and generated TypeScript stay in exact parity", () => {
+  assert.deepEqual(protocolVersion, { major: 2, minor: 0 });
+  const oldField = "checkpoint" + "Id";
+  assert.equal(`${oldField}Bytes` in protocolLimits, false);
+  assert.equal(protocolDescriptor.privacy.allowedRepositoryPathField, "");
+  assert.deepEqual((protocolDescriptor.vocabularies as any).routeActions, ["select", "change"]);
+  for (const activity of ["adr-lifecycle", "refactor-coupling-audit", "roadmap-graduation"]) assert.equal(protocolDescriptor.vocabularies.activities.includes(activity as any), true, activity);
+  assert.equal(oldField in (protocolDescriptor.payloads.effort_created as any).fields, false);
+  assert.equal(oldField in (protocolDescriptor.lifecycleRequests.create as any).fields, false);
+  assert.equal(oldField in (protocolDescriptor.objects.EffortMetadata as any).fields, false);
+  const payload: any = (protocolDescriptor.payloads as any).phase_transitioned;
+  const request: any = (protocolDescriptor.lifecycleRequests as any)["transition-phase"];
+  assert.equal(payload.goType, "PhaseTransitionedPayload"); assert.equal(payload.class, "lifecycle"); assert.equal(payload.repairable, true);
+  assert.equal(request.goType, "TransitionPhaseLifecycleRequest"); assert.equal(request.eventKind, "phase_transitioned");
+  assert.deepEqual(payload.constraints, [{ kind: "paired-presence", fields: ["routeAction", "route"] }]);
+  assert.deepEqual(request.constraints, [{ kind: "paired-presence", fields: ["routeAction", "route"] }]);
+  const transition = validEvent("phase_transitioned"); Object.assign(transition.payload, { phase: "brainstorming", startEventId: "start", nextPhase: "implementation", routeAction: "select", route: "direct" });
+  assert.equal(validateTelemetryEvent(transition), true); delete transition.payload.route; assert.equal(validateTelemetryEvent(transition), false);
+  const transitionRequest = shapeValue(request); transitionRequest.action = "transition-phase"; Object.assign(transitionRequest, { phase: "brainstorming", startEventId: "start", nextPhase: "implementation", routeAction: "change", route: "plan" });
+  assert.equal(validateLifecycleRequest(transitionRequest), true); delete transitionRequest.routeAction; assert.equal(validateLifecycleRequest(transitionRequest), false);
+  assert.equal(JSON.stringify(protocolDescriptor).includes(oldField), false);
+});
+
 test("event validator rejects malformed envelopes, fields, constraints, and identities", () => {
   assert.equal(validateTelemetryEvent(null), false); assert.equal(validateTelemetryEvent({ version: null }), false);
   const base = validEvent("effort_created");
   for (const mutation of [
-    { version: { major: 2, minor: 0 } }, { version: { major: 1, minor: "0" } }, { extra: true }, { kind: 1 }, { kind: "future" }, { payload: null }, { payload: { ...base.payload, extra: true } },
+    { version: { major: 1, minor: 0 } }, { version: { major: 2, minor: "0" } }, { extra: true }, { kind: 1 }, { kind: "future" }, { payload: null }, { payload: { ...base.payload, extra: true } },
     { eventId: "" }, { eventId: "a".repeat(protocolLimits.identifierBytes + 1) }, { eventId: "a/b" }, { timestamp: "bad" }, { predecessors: ["x", "x"] }, { idempotencyKey: undefined }, { observationId: "both" },
   ]) assert.equal(validateTelemetryEvent({ ...base, ...mutation }), false, JSON.stringify(mutation));
   const passive = validEvent("tool_observed"); delete passive.observationId; assert.equal(validateTelemetryEvent(passive), false); passive.observationId = "o"; passive.idempotencyKey = "i"; assert.equal(validateTelemetryEvent(passive), false);
@@ -60,7 +83,7 @@ test("event validator rejects malformed envelopes, fields, constraints, and iden
   const shell = validEvent("shell_observed"); shell.payload.gateMode = "full"; assert.equal(validateTelemetryEvent(shell), true); shell.payload.classification = "unclassified"; assert.equal(validateTelemetryEvent(shell), false);
   const waiver = validEvent("finding_waived"); waiver.payload.reasonCode = "approved-clock-skew"; assert.equal(validateTelemetryEvent(waiver), false);
   const repair = validEvent("repair_applied"); repair.payload.replacement = { eventKind: "tool_observed", payload: validPayload("tool_observed") }; assert.equal(validateTelemetryEvent(repair), false); repair.payload.replacement = { eventKind: "session_detached", payload: {} }; assert.equal(validateTelemetryEvent(repair), false);
-  const newer = { ...base, version: { major: 1, minor: 1 }, extension: { safe: true }, payload: { ...base.payload, extension: 1 } }; assert.equal(validateTelemetryEvent(newer), true);
+  const newer = { ...base, version: { major: 2, minor: 1 }, extension: { safe: true }, payload: { ...base.payload, extension: 1 } }; assert.equal(validateTelemetryEvent(newer), true);
   const constraints = (protocolDescriptor.payloads.effort_created as any).constraints; constraints.push({ kind: "future-constraint" }); assert.equal(validateTelemetryEvent(base), false); constraints.pop();
 });
 
@@ -74,8 +97,8 @@ test("field type branches and lifecycle constraints reject invalid values", () =
   const passiveNewer = validEvent("usage_observed"); passiveNewer.version.minor = 1; (passiveNewer as any).extension = true; passiveNewer.payload.extension = true; assert.equal(validateTelemetryEvent(passiveNewer), true);
   assert.equal(validateLifecycleRequest(null), false); assert.equal(validateLifecycleRequest({ action: 1 }), false); assert.equal(validateLifecycleRequest({ action: "future" }), false);
   const badTimestamp = validEvent("usage_observed"); badTimestamp.timestamp = "July 22 2026"; assert.equal(validateTelemetryEvent(badTimestamp), false);
-  const create: any = shapeValue(protocolDescriptor.lifecycleRequests.create); create.action = "create"; create.creationMode = "derived"; assert.equal(validateLifecycleRequest(create), false); create.origin = { effortId: "e", trajectoryId: "t", anchorId: "a" }; assert.equal(validateLifecycleRequest(create), true); create.extra = true; assert.equal(validateLifecycleRequest(create), false);
-  create.creationMode = "independent"; assert.equal(validateLifecycleRequest(create), false); delete create.origin; create.checkpointId = "/absolute"; assert.equal(validateLifecycleRequest(create), false); create.checkpointId = "a/../b"; assert.equal(validateLifecycleRequest(create), false);
+  const create: any = shapeValue(protocolDescriptor.lifecycleRequests.create); create.action = "create"; create.creationMode = "derived"; assert.equal(validateLifecycleRequest(create), false); create.origin = { effortId: "e", trajectoryId: "t", anchorId: "a" }; assert.equal(validateLifecycleRequest(create), true); create.extra = true; assert.equal(validateLifecycleRequest(create), false); delete create.extra;
+  create.creationMode = "independent"; assert.equal(validateLifecycleRequest(create), false); delete create.origin; assert.equal(validateLifecycleRequest(create), true); create["checkpoint" + "Id"] = "legacy"; assert.equal(validateLifecycleRequest(create), false);
 });
 
 test("projected gate classifier persists only exact verified token shapes", () => {

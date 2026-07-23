@@ -390,7 +390,7 @@ func testWriterPruneLinearization(t *testing.T, operation string, writerFirst bo
 }
 
 func TestConcurrentMutationsConflictAcrossPassiveTips(t *testing.T) {
-	create := causalEvent("create", "root", "effort_created", nil, EffortCreatedPayload{CheckpointID: "x", CreationMode: "independent"})
+	create := causalEvent("create", "root", "effort_created", nil, EffortCreatedPayload{CreationMode: "independent"})
 	leftTip := passiveProjectionEvent("left-tip", "")
 	leftTip.SessionID, leftTip.Predecessors = "left", []string{"create"}
 	rightTip := passiveProjectionEvent("right-tip", "")
@@ -406,7 +406,7 @@ func TestConcurrentMutationsConflictAcrossPassiveTips(t *testing.T) {
 
 func TestCausalLifecycleIsInvariantUnderEventIDRenaming(t *testing.T) {
 	build := func(ids map[string]string) []EventEnvelope {
-		create := causalEvent(ids["create"], "root", "effort_created", nil, EffortCreatedPayload{CheckpointID: "x", CreationMode: "independent"})
+		create := causalEvent(ids["create"], "root", "effort_created", nil, EffortCreatedPayload{CreationMode: "independent"})
 		started := causalEvent(ids["started"], "tree", "trajectory_started", []string{ids["create"]}, TrajectoryPayload{TrajectoryID: "parent", AnchorID: "parent-anchor"})
 		started.TrajectoryID = "parent"
 		associated := causalEvent(ids["associated"], "session", "session_associated", []string{ids["started"]}, SessionAssociatedPayload{AssociationOrigin: "manual", TrajectoryID: "parent"})

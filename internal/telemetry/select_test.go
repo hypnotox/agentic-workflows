@@ -30,7 +30,7 @@ func TestSelectorCombinationsAndTimeEdges(t *testing.T) {
 	events = appendEvent(events, "start", "phase_started", PhaseStartedPayload{Phase: "implementation"})
 	events[len(events)-1].Timestamp = "2026-07-22T00:00:01Z"
 	payload, _ := json.Marshal(ToolObservedPayload{Tool: "read", Outcome: "success", DurationMS: 1})
-	inside := EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "inside", ObservationID: "inside-observation", EffortID: effortID, SessionID: sessionID, Timestamp: "2026-07-22T00:00:03Z", Kind: "tool_observed", Predecessors: []string{"start"}, Payload: payload}
+	inside := EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "inside", ObservationID: "inside-observation", EffortID: effortID, SessionID: sessionID, Timestamp: "2026-07-22T00:00:03Z", Kind: "tool_observed", Predecessors: []string{"start"}, Payload: payload}
 	events = append(events, inside)
 	events = appendEvent(events, "finish", "phase_finished", PhaseFinishedPayload{Phase: "implementation", StartEventID: "start"})
 	events[len(events)-1].Timestamp = "2026-07-22T00:00:03.000000001Z"

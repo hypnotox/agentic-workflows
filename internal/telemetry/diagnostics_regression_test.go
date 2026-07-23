@@ -64,7 +64,7 @@ func TestDiagnosticsEffortSelectorAndHandoffTrajectoryCopy(t *testing.T) {
 	selected := renameDiagnosticEffort(diagnosticRead(lifecycleBaseEvents()), "selected")
 	brokenEvents := lifecycleBaseEvents()
 	handoffPayload, _ := json.Marshal(HandoffObservedPayload{Outcome: "success", TargetSessionID: "child"})
-	brokenEvents = append(brokenEvents, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "broken-handoff", ObservationID: "broken-observation", EffortID: "other", SessionID: "session", TrajectoryID: "source", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"create"}, Payload: handoffPayload})
+	brokenEvents = append(brokenEvents, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "broken-handoff", ObservationID: "broken-observation", EffortID: "other", SessionID: "session", TrajectoryID: "source", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"create"}, Payload: handoffPayload})
 	other := renameDiagnosticEffort(diagnosticRead(brokenEvents), "other")
 	effortID := "selected"
 	result, err := DiagnoseExact([]EffortRead{selected, other}, Selector{EffortID: &effortID}, time.Time{})
@@ -80,7 +80,7 @@ func TestDiagnosticsEffortSelectorAndHandoffTrajectoryCopy(t *testing.T) {
 	events[len(events)-1].TrajectoryID = "source"
 	events = appendEvent(events, "wrong-trajectory", "trajectory_started", TrajectoryPayload{TrajectoryID: "wrong", AnchorID: "wrong-anchor"})
 	events[len(events)-1].TrajectoryID = "wrong"
-	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "handoff", ObservationID: "handoff-observation", EffortID: "effort", SessionID: "session", TrajectoryID: "source", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"wrong-trajectory"}, Payload: handoffPayload})
+	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "handoff", ObservationID: "handoff-observation", EffortID: "effort", SessionID: "session", TrajectoryID: "source", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"wrong-trajectory"}, Payload: handoffPayload})
 	association := causalEvent("association", "child", "session_associated", []string{"handoff"}, SessionAssociatedPayload{AssociationOrigin: "handoff", TrajectoryID: "wrong", HandoffEventID: "handoff"})
 	association.TrajectoryID = "wrong"
 	events = append(events, association)

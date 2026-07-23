@@ -25,7 +25,7 @@ func TestMetricsProtocolAndGrammar(t *testing.T) {
 	if err := runMetrics(c); err != nil {
 		t.Fatal(err)
 	}
-	wantProtocol := fmt.Sprintf("{\"schemaVersion\":1,\"protocol\":{\"major\":1,\"minor\":0},\"compatibleMajor\":1,\"descriptorSha256\":%q,\"awfVersion\":%q,\"projectVersion\":%q}\n", telemetry.DescriptorSHA256(), awfVersion(), awfVersion())
+	wantProtocol := fmt.Sprintf("{\"schemaVersion\":1,\"protocol\":{\"major\":2,\"minor\":0},\"compatibleMajor\":2,\"descriptorSha256\":%q,\"awfVersion\":%q,\"projectVersion\":%q}\n", telemetry.DescriptorSHA256(), awfVersion(), awfVersion())
 	if out.String() != wantProtocol {
 		t.Fatalf("protocol output = %q, want %q", out.String(), wantProtocol)
 	}
@@ -94,13 +94,13 @@ func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	if err := runMetrics(query); err != nil {
 		t.Fatal(err)
 	}
-	wantMetrics := "{\"schemaVersion\":1,\"protocolMajor\":1,\"generatedAt\":\"2026-07-22T01:02:03Z\",\"selector\":{},\"efforts\":[],\"retention\":{\"maxAgeDays\":90,\"maxCount\":100,\"terminalEffortCount\":0,\"candidates\":[]},\"integrity\":[]}\n"
+	wantMetrics := "{\"schemaVersion\":1,\"protocolMajor\":2,\"generatedAt\":\"2026-07-22T01:02:03Z\",\"selector\":{},\"efforts\":[],\"retention\":{\"maxAgeDays\":90,\"maxCount\":100,\"terminalEffortCount\":0,\"candidates\":[]},\"integrity\":[]}\n"
 	if out.String() != wantMetrics {
 		t.Fatalf("metrics JSON = %q, want %q", out.String(), wantMetrics)
 	}
 	out.Reset()
 	query.inv.bools["--json"] = false
-	if err := runMetrics(query); err != nil || out.String() != "workflow metrics schema 1 protocol 1 generated 2026-07-22T01:02:03Z\nretention terminal=0 candidates=0 max-age-days=90 max-count=100\n" {
+	if err := runMetrics(query); err != nil || out.String() != "workflow metrics schema 1 protocol 2 generated 2026-07-22T01:02:03Z\nretention terminal=0 candidates=0 max-age-days=90 max-count=100\n" {
 		t.Fatalf("metrics human = %q, %v", out.String(), err)
 	}
 
@@ -109,13 +109,13 @@ func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	if err := runDoctor(doctor); err != nil {
 		t.Fatal(err)
 	}
-	wantDoctor := "{\"schemaVersion\":1,\"protocolMajor\":1,\"generatedAt\":\"2026-07-22T01:02:03Z\",\"selector\":{},\"findings\":[],\"integrity\":[]}\n"
+	wantDoctor := "{\"schemaVersion\":1,\"protocolMajor\":2,\"generatedAt\":\"2026-07-22T01:02:03Z\",\"selector\":{},\"findings\":[],\"integrity\":[]}\n"
 	if out.String() != wantDoctor {
 		t.Fatalf("doctor JSON = %q, want %q", out.String(), wantDoctor)
 	}
 	out.Reset()
 	doctor.inv.bools["--json"] = false
-	if err := runDoctor(doctor); err != nil || out.String() != "workflow doctor schema 1 protocol 1 generated 2026-07-22T01:02:03Z\n" {
+	if err := runDoctor(doctor); err != nil || out.String() != "workflow doctor schema 1 protocol 2 generated 2026-07-22T01:02:03Z\n" {
 		t.Fatalf("doctor human = %q, %v", out.String(), err)
 	}
 }
@@ -129,8 +129,8 @@ func TestMetricsJSONLGoldenOrderingAndNoCorruptRaw(t *testing.T) {
 	if err := runMetrics(c); err != nil {
 		t.Fatal(err)
 	}
-	wantJSONL := "{\"version\":{\"major\":1,\"minor\":0},\"eventId\":\"a-create\",\"idempotencyKey\":\"key-a-create\",\"effortId\":\"a-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"checkpointId\":\"checkpoint.md\",\"creationMode\":\"independent\"}}\n" +
-		"{\"version\":{\"major\":1,\"minor\":0},\"eventId\":\"z-create\",\"idempotencyKey\":\"key-z-create\",\"effortId\":\"z-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"checkpointId\":\"checkpoint.md\",\"creationMode\":\"independent\"}}\n"
+	wantJSONL := "{\"version\":{\"major\":2,\"minor\":0},\"eventId\":\"a-create\",\"idempotencyKey\":\"key-a-create\",\"effortId\":\"a-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"creationMode\":\"independent\"}}\n" +
+		"{\"version\":{\"major\":2,\"minor\":0},\"eventId\":\"z-create\",\"idempotencyKey\":\"key-z-create\",\"effortId\":\"z-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"creationMode\":\"independent\"}}\n"
 	if out.String() != wantJSONL {
 		t.Fatalf("JSONL = %q, want %q", out.String(), wantJSONL)
 	}
@@ -192,7 +192,7 @@ func TestDoctorUsesConfiguredHeuristicsAndIsReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	observation := `{"version":{"major":1,"minor":0},"eventId":"compact","observationId":"compact-observation","effortId":"effort","sessionId":"session-id","timestamp":"2026-07-22T00:00:01Z","kind":"compaction_observed","predecessors":["create"],"payload":{"count":3}}`
+	observation := `{"version":{"major":2,"minor":0},"eventId":"compact","observationId":"compact-observation","effortId":"effort","sessionId":"session-id","timestamp":"2026-07-22T00:00:01Z","kind":"compaction_observed","predecessors":["create"],"payload":{"count":3}}`
 	if _, err := ledger.Append(context.Background(), []byte(observation)); err != nil {
 		t.Fatal(err)
 	}
@@ -201,8 +201,15 @@ func TestDoctorUsesConfiguredHeuristicsAndIsReadOnly(t *testing.T) {
 	if err := runDoctor(&cmdCtx{root: root, inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &out}); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), `"code":"WFH1-COMPACTIONS"`) {
-		t.Fatalf("configured heuristic absent: %s", out.String())
+	if !strings.Contains(out.String(), `"effortId":"effort"`) || !strings.Contains(out.String(), `"code":"WFH1-COMPACTIONS"`) {
+		t.Fatalf("configured owned heuristic absent: %s", out.String())
+	}
+	out.Reset()
+	if err := runDoctor(&cmdCtx{root: root, inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "finding WFH1-COMPACTIONS effort=effort") {
+		t.Fatalf("human finding ownership absent: %s", out.String())
 	}
 	after := snapshotTelemetryTree(t, root)
 	if fmt.Sprint(before) != fmt.Sprint(after) {
@@ -338,7 +345,7 @@ func TestProtocolLedgerContract(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	request := `{"action":"create","idempotencyKey":"create-key","eventId":"create-event","effortId":"effort-id","sessionId":"session-id","timestamp":"2026-07-22T00:00:00Z","predecessors":[],"checkpointId":"checkpoint.md","creationMode":"independent"}`
+	request := `{"action":"create","idempotencyKey":"create-key","eventId":"create-event","effortId":"effort-id","sessionId":"session-id","timestamp":"2026-07-22T00:00:00Z","predecessors":[],"creationMode":"independent"}`
 	requestPath := filepath.Join(root, "request.json")
 	if err := os.WriteFile(requestPath, []byte(request), 0o600); err != nil {
 		t.Fatal(err)
@@ -367,7 +374,7 @@ func TestMetricsLifecycleStdinAndErrors(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	request := `{"action":"create","idempotencyKey":"key","eventId":"event","effortId":"effort","sessionId":"session","timestamp":"2026-07-22T00:00:00Z","predecessors":[],"checkpointId":"checkpoint.md","creationMode":"independent"}`
+	request := `{"action":"create","idempotencyKey":"key","eventId":"event","effortId":"effort","sessionId":"session","timestamp":"2026-07-22T00:00:00Z","predecessors":[],"creationMode":"independent"}`
 	c := &cmdCtx{root: root, sub: "lifecycle", inv: invocation{bools: map[string]bool{}, values: map[string]string{"--request": "-"}}, stdin: strings.NewReader(request), stdout: io.Discard}
 	if err := runMetrics(c); err != nil {
 		t.Fatal(err)
@@ -547,7 +554,7 @@ func telemetryProject(t *testing.T) string {
 }
 
 func validCreateRequest(effortID, eventID string) string {
-	return fmt.Sprintf(`{"action":"create","idempotencyKey":"key-%s","eventId":"%s","effortId":"%s","sessionId":"session-id","timestamp":"2026-07-22T00:00:00Z","predecessors":[],"checkpointId":"checkpoint.md","creationMode":"independent"}`, eventID, eventID, effortID)
+	return fmt.Sprintf(`{"action":"create","idempotencyKey":"key-%s","eventId":"%s","effortId":"%s","sessionId":"session-id","timestamp":"2026-07-22T00:00:00Z","predecessors":[],"creationMode":"independent"}`, eventID, eventID, effortID)
 }
 
 func createRequest(t *testing.T, root, effortID, eventID string) {
@@ -563,7 +570,7 @@ func createTerminalEffort(t *testing.T, root, effortID string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	create := telemetry.CreateLifecycleRequest{LifecycleRequestBase: telemetry.LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key-" + effortID, EventID: "create-" + effortID, EffortID: effortID, SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CheckpointID: "checkpoint.md", CreationMode: "independent"}
+	create := telemetry.CreateLifecycleRequest{LifecycleRequestBase: telemetry.LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key-" + effortID, EventID: "create-" + effortID, EffortID: effortID, SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "independent"}
 	if _, err := ledger.ApplyLifecycle(context.Background(), create); err != nil {
 		t.Fatal(err)
 	}

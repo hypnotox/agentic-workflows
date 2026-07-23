@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"path"
 	"reflect"
 	"strconv"
 	"strings"
@@ -41,7 +40,6 @@ type descriptorLimits struct {
 	ModelBytes          int `json:"modelBytes"`
 	ToolBytes           int `json:"toolBytes"`
 	CategoryBytes       int `json:"categoryBytes"`
-	CheckpointIDBytes   int `json:"checkpointIdBytes"`
 }
 
 type privacyDescriptor struct {
@@ -132,7 +130,7 @@ func validateDescriptor(parsed protocolDescriptor) error {
 			return fmt.Errorf("limits.%s must be positive", limits.Type().Field(i).Name)
 		}
 	}
-	if parsed.Privacy.Policy == "" || parsed.Privacy.AllowedRepositoryPathField != "checkpointId" {
+	if parsed.Privacy.Policy == "" || parsed.Privacy.AllowedRepositoryPathField != "" {
 		return errors.New("privacy policy or allowed repository path field is invalid")
 	}
 	forbiddenFields := stringSet(parsed.Privacy.ForbiddenFields)
@@ -346,6 +344,15 @@ func validateConstraintAuthority(parsed protocolDescriptor, location string, fie
 			if discriminator.Type != "string" || !contains(parsed.Vocabularies[discriminator.Vocabulary], constraint.Value) || len(constraint.Fields) != 0 || constraint.RuleField != "" || constraint.ReasonField != "" {
 				return fmt.Errorf("%s has invalid allowed-when metadata", constraintLocation)
 			}
+		case "paired-presence":
+			if len(constraint.Fields) != 2 || constraint.Discriminator != "" || constraint.Value != "" || constraint.Field != "" || constraint.RuleField != "" || constraint.ReasonField != "" {
+				return fmt.Errorf("%s has invalid paired-presence metadata", constraintLocation)
+			}
+			for _, name := range constraint.Fields {
+				if _, err := requireField(name, "paired"); err != nil {
+					return err
+				}
+			}
 		case "waiver-eligibility":
 			rule, err := requireField(constraint.RuleField, "rule")
 			if err != nil {
@@ -515,6 +522,8 @@ func DecodeLifecycleRequest(raw json.RawMessage) (LifecycleRequest, error) {
 		request = &RouteLifecycleRequest{}
 	case "StartPhaseLifecycleRequest":
 		request = &StartPhaseLifecycleRequest{}
+	case "TransitionPhaseLifecycleRequest":
+		request = &TransitionPhaseLifecycleRequest{}
 	case "FinishPhaseLifecycleRequest":
 		request = &FinishPhaseLifecycleRequest{}
 	case "TrajectoryLifecycleRequest":
@@ -811,6 +820,12 @@ func validateConstraints(location string, object map[string]json.RawMessage, con
 			if value != constraint.Value {
 				return fmt.Errorf("%s: %s is allowed only when %s=%q", location, constraint.Field, constraint.Discriminator, constraint.Value)
 			}
+		case "paired-presence":
+			_, left := object[constraint.Fields[0]]
+			_, right := object[constraint.Fields[1]]
+			if left != right {
+				return fmt.Errorf("%s: %s and %s must be present together", location, constraint.Fields[0], constraint.Fields[1])
+			}
 		case "waiver-eligibility":
 			rule, _ := rawString(object[constraint.RuleField], location+"."+constraint.RuleField)
 			reason, _ := rawString(object[constraint.ReasonField], location+"."+constraint.ReasonField)
@@ -834,16 +849,6 @@ func validateStringFormat(location, value, format string) error {
 		limit = identifierLimit(location)
 		if value == "." || value == ".." || strings.ContainsAny(value, "/\\") || strings.IndexByte(value, 0) >= 0 {
 			return fmt.Errorf("%s: unsafe identifier", location)
-		}
-	case "checkpoint":
-		limit = descriptor.Limits.CheckpointIDBytes
-		if strings.Contains(value, "\\") || strings.IndexByte(value, 0) >= 0 || strings.HasPrefix(value, "/") || path.Clean(value) != value || value == "." {
-			return fmt.Errorf("%s: checkpointId must be a safe repository-relative identifier", location)
-		}
-		for _, component := range strings.Split(value, "/") {
-			if component == "" || component == "." || component == ".." {
-				return fmt.Errorf("%s: checkpointId contains an unsafe path component", location)
-			}
 		}
 	case "model":
 		limit = descriptor.Limits.ModelBytes

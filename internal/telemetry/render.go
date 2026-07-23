@@ -12,7 +12,7 @@ func RenderMetricsHuman(out io.Writer, result MetricsResult) error {
 		return err
 	}
 	for _, effort := range result.Efforts {
-		if _, err := fmt.Fprintf(out, "effort %s state=%s route=%s trajectory=%s checkpoint=%s\n", effort.EffortID, effort.State, effort.Route, effort.ActiveTrajectoryID, effort.CheckpointID); err != nil {
+		if _, err := fmt.Fprintf(out, "effort %s state=%s route=%s trajectory=%s\n", effort.EffortID, effort.State, effort.Route, effort.ActiveTrajectoryID); err != nil {
 			return err
 		}
 		for _, scope := range append([]ScopeProjection{effort.CurrentPath, effort.AllWork}, append(append([]ScopeProjection{}, effort.Sessions...), append(effort.Phases, effort.Trajectories...)...)...) {
@@ -41,8 +41,8 @@ func RenderDoctorHuman(out io.Writer, result DoctorResult) error {
 		return err
 	}
 	for _, finding := range result.Findings {
-		if _, err := fmt.Fprintf(out, "finding %s type=%s severity=%s confidence=%s scope=%s waived=%t\n  evidence events=%v counters=%v",
-			finding.Code, finding.Type, finding.Severity, finding.Confidence, finding.Scope, finding.Waived, finding.Evidence.EventIDs, finding.Evidence.CounterIDs); err != nil {
+		if _, err := fmt.Fprintf(out, "finding %s effort=%s type=%s severity=%s confidence=%s scope=%s waived=%t\n  evidence events=%v counters=%v",
+			finding.Code, finding.EffortID, finding.Type, finding.Severity, finding.Confidence, finding.Scope, finding.Waived, finding.Evidence.EventIDs, finding.Evidence.CounterIDs); err != nil {
 			return err
 		}
 		if finding.Evidence.ObservedValue != nil {

@@ -64,7 +64,7 @@ export async function validateMemoryPath(memoryPath: string, deps: HandoffDepend
 }
 
 function emitHandoffObservation(pi: ExtensionAPI, data: { observationId: string; targetSessionId: string; outcome: "success" | "failure"; durationMs: number; errorCategory?: "handoff" }): void {
-  try { pi.events.emit("awf.telemetry.handoff.v1", { version: { major: 1, minor: 0 }, ...data }); }
+  try { pi.events.emit("awf.telemetry.handoff.v1", { version: { major: 2, minor: 0 }, ...data }); }
   catch { /* telemetry is best-effort and cannot alter handoff */ }
 }
 
@@ -88,13 +88,13 @@ export function requestHandoffAssociation(pi: ExtensionAPI): TelemetryAssociatio
   const respond = (value: unknown): void => {
     if (!open) return;
     responses++;
-    if (responses !== 1 || !value || typeof value !== "object" || (value as any).version?.major !== 1 || (value as any).version?.minor !== 0 || !validateTelemetryAssociation((value as any).association)) {
+    if (responses !== 1 || !value || typeof value !== "object" || (value as any).version?.major !== 2 || (value as any).version?.minor !== 0 || !validateTelemetryAssociation((value as any).association)) {
       association = undefined;
       return;
     }
     association = { ...(value as any).association };
   };
-  try { pi.events.emit("awf.telemetry.association.request.v1", { version: { major: 1, minor: 0 }, respond }); }
+  try { pi.events.emit("awf.telemetry.association.request.v1", { version: { major: 2, minor: 0 }, respond }); }
   catch { association = undefined; }
   open = false;
   return responses === 1 ? association : undefined;
@@ -170,7 +170,7 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
         if (!oldSessionFile) throw new Error("The active session is no longer persisted");
         const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
         const association = requestHandoffAssociation(pi);
-        const handoffSetup = { version: { major: 1, minor: 0 }, observationId, startedAt, durationMs: Math.max(0, Date.now() - startedAt) };
+        const handoffSetup = { version: { major: 2, minor: 0 }, observationId, startedAt, durationMs: Math.max(0, Date.now() - startedAt) };
         await ctx.newSession({
           parentSession: oldSessionFile,
           async setup(sessionManager) {

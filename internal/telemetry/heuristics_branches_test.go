@@ -33,7 +33,7 @@ func TestHeuristicEntryPointAndDefensiveBranches(t *testing.T) {
 	}
 	unsupportedMajor := read
 	unsupportedMajor.Events = append([]EventEnvelope(nil), read.Events...)
-	unsupportedMajor.Events[0].Version.Major = 2
+	unsupportedMajor.Events[0].Version.Major = 3
 	if heuristicCohortCompatible(unsupportedMajor) {
 		t.Fatal("unsupported protocol major entered cohort")
 	}
@@ -88,6 +88,17 @@ func TestHeuristicMalformedAndInvalidIntervalBranches(t *testing.T) {
 	if got := implementationSegmentMetrics("effort", "direct", events, []EventEnvelope{causalEvent("open", "session", "phase_started", nil, PhaseStartedPayload{Phase: "implementation"})}, map[string]EventEnvelope{}, order, HeuristicThresholds{}); len(got) != 0 {
 		t.Fatalf("open implementation segment produced metrics: %#v", got)
 	}
+	transitionEvents := lifecycleBaseEvents()
+	transitionEvents = appendEvent(transitionEvents, "transition-review", "phase_started", PhaseStartedPayload{Phase: "implementation-review"})
+	transitionEvents = appendEvent(transitionEvents, "transition-finish", "phase_transitioned", PhaseTransitionedPayload{Phase: "implementation-review", StartEventID: "transition-review", NextPhase: "planning"})
+	transitionEvents = appendEvent(transitionEvents, "transition-rework", "phase_transitioned", PhaseTransitionedPayload{Phase: "planning", StartEventID: "transition-finish", NextPhase: "implementation"})
+	transitionOrder, _ := BuildCausalOrder(transitionEvents)
+	if ids := implementationReworkIDs(transitionEvents, transitionOrder); len(ids) != 1 || ids[0] != "transition-rework" {
+		t.Fatalf("transition rework IDs = %#v", ids)
+	}
+	transitionRead := EffortRead{Metadata: EffortMetadata{EffortID: "transition-effort"}, Events: transitionEvents, EffectApplied: allEffects(transitionEvents)}
+	_ = effortHeuristicMetrics(transitionRead, HeuristicThresholds{})
+
 	metrics := effortHeuristicMetrics(read, HeuristicThresholds{})
 	for _, metric := range metrics {
 		if metric.code == "WFH1-PHASE-DURATION" && metric.scope == intervalScope("effort", "start", "finish") {

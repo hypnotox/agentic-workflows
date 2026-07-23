@@ -76,7 +76,6 @@ func aggregateEffort(read EffortRead, workflow WorkflowProjection, events []Even
 	allEvents := eventsForIDs(byID, workflow.AllWorkEventIDs)
 	result := EffortProjection{
 		EffortID:           workflow.Metadata.EffortID,
-		CheckpointID:       workflow.Metadata.CheckpointID,
 		State:              string(workflow.Lifecycle.State),
 		Route:              string(workflow.Lifecycle.Route),
 		ActiveTrajectoryID: workflow.Lifecycle.ActiveTrajectoryID,
@@ -192,6 +191,11 @@ func aggregateScope(scopeID string, events []EventEnvelope) ScopeProjection {
 			if json.Unmarshal(event.Payload, &payload) == nil && payload.Phase == "implementation" && hasPriorImplementationReview(event, events, order) {
 				result.Counters.ImplementationRework++
 			}
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(event.Payload, &payload) == nil && payload.NextPhase == "implementation" && (payload.Phase == "implementation-review" || hasPriorImplementationReview(event, events, order)) {
+				result.Counters.ImplementationRework++
+			}
 		}
 	}
 	sort.Strings(result.EventIDs)
@@ -200,12 +204,20 @@ func aggregateScope(scopeID string, events []EventEnvelope) ScopeProjection {
 
 func hasPriorImplementationReview(start EventEnvelope, events []EventEnvelope, order *CausalOrder) bool {
 	for _, candidate := range events {
-		if candidate.Kind != "phase_finished" || !order.HappensBefore(candidate.EventID, start.EventID) {
+		if !order.HappensBefore(candidate.EventID, start.EventID) {
 			continue
 		}
-		var payload PhaseFinishedPayload
-		if json.Unmarshal(candidate.Payload, &payload) == nil && payload.Phase == "implementation-review" {
-			return true
+		switch candidate.Kind {
+		case "phase_finished":
+			var payload PhaseFinishedPayload
+			if json.Unmarshal(candidate.Payload, &payload) == nil && payload.Phase == "implementation-review" {
+				return true
+			}
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(candidate.Payload, &payload) == nil && payload.Phase == "implementation-review" {
+				return true
+			}
 		}
 	}
 	return false

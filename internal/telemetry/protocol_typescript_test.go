@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -18,6 +19,8 @@ func TestProjectTypeScriptDerivesProtocolContract(t *testing.T) {
 		"export const protocolDescriptor = ",
 		"export interface EventEnvelope",
 		"export interface UsageObservedPayload",
+		"export interface PhaseTransitionedPayload",
+		"export interface TransitionPhaseLifecycleRequest",
 		"export type LifecycleRequest = ",
 		"export function validateTelemetryEvent",
 		"export function classifyGateTokens",
@@ -33,6 +36,36 @@ func TestProjectTypeScriptDerivesProtocolContract(t *testing.T) {
 	}
 	if got != ProjectTypeScript() {
 		t.Fatal("TypeScript projection is nondeterministic")
+	}
+}
+
+func TestProjectedTypeScriptEmbedsCompleteProtocol2Descriptor(t *testing.T) {
+	projected := ProjectTypeScript()
+	const prefix = "export const protocolDescriptor = "
+	start := strings.Index(projected, prefix)
+	end := strings.Index(projected[start:], " as const;\n")
+	if start < 0 || end < 0 {
+		t.Fatal("projected TypeScript descriptor declaration is absent")
+	}
+	generatedJSON := projected[start+len(prefix) : start+end]
+	var generated, normative any
+	if err := json.Unmarshal([]byte(generatedJSON), &generated); err != nil {
+		t.Fatalf("projected descriptor is not JSON: %v", err)
+	}
+	if err := json.Unmarshal(DescriptorBytes(), &normative); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(generated, normative) {
+		t.Fatal("projected TypeScript descriptor differs from normative JSON")
+	}
+	object := generated.(map[string]any)
+	version := object["version"].(map[string]any)
+	if version["major"] != float64(2) || version["minor"] != float64(0) {
+		t.Fatalf("projected protocol version = %#v", version)
+	}
+	encoded, _ := json.Marshal(generated)
+	if strings.Contains(string(encoded), "checkpoint"+"Id") || strings.Contains(projected, "format === \"check"+"point\"") {
+		t.Fatal("projected TypeScript retains protocol-1 checkpoint contract")
 	}
 }
 

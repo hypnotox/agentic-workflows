@@ -77,6 +77,9 @@ func diagnoseEffort(read EffortRead, workflow WorkflowProjection) []Finding {
 	findings = append(findings, diagnosePhaseOverlap(read, order)...)
 	findings = append(findings, diagnoseClockIntegrity(read, order)...)
 	findings = append(findings, diagnoseTerminalRoutes(read, workflow, order)...)
+	for index := range findings {
+		findings[index].EffortID = read.Metadata.EffortID
+	}
 	return stableFindings(findings)
 }
 
@@ -224,7 +227,12 @@ func diagnoseTerminalRoutes(read EffortRead, workflow WorkflowProjection, order 
 func effectiveRouteBefore(events []EventEnvelope, applied map[string]bool, terminal EventEnvelope, order *CausalOrder) (Route, string) {
 	var candidates []EventEnvelope
 	for _, event := range events {
-		if (event.Kind == "route_selected" || event.Kind == "route_changed") && applied[event.EventID] && order.HappensBefore(event.EventID, terminal.EventID) {
+		routeMutation := event.Kind == "route_selected" || event.Kind == "route_changed"
+		if event.Kind == "phase_transitioned" {
+			var payload PhaseTransitionedPayload
+			routeMutation = json.Unmarshal(event.Payload, &payload) == nil && payload.RouteAction != ""
+		}
+		if routeMutation && applied[event.EventID] && order.HappensBefore(event.EventID, terminal.EventID) {
 			candidates = append(candidates, event)
 		}
 	}
@@ -241,6 +249,11 @@ func effectiveRouteBefore(events []EventEnvelope, applied map[string]bool, termi
 		return "", ""
 	}
 	selected := candidates[len(candidates)-1]
+	if selected.Kind == "phase_transitioned" {
+		var payload PhaseTransitionedPayload
+		_ = json.Unmarshal(selected.Payload, &payload)
+		return payload.Route, selected.EventID
+	}
 	var payload RoutePayload
 	_ = json.Unmarshal(selected.Payload, &payload)
 	return payload.Route, selected.EventID
@@ -249,25 +262,49 @@ func effectiveRouteBefore(events []EventEnvelope, applied map[string]bool, termi
 func completedIntervalsBefore(events []EventEnvelope, applied map[string]bool, epoch uint64, terminalID string, order *CausalOrder) []PhaseInterval {
 	starts := map[string]EventEnvelope{}
 	for _, event := range events {
-		if event.Kind == "phase_started" {
+		if event.Kind == "phase_started" || event.Kind == "phase_transitioned" {
 			starts[event.EventID] = event
 		}
 	}
 	result := []PhaseInterval{}
 	for _, finish := range events {
-		if finish.Kind != "phase_finished" || !applied[finish.EventID] || !order.HappensBefore(finish.EventID, terminalID) {
+		if (finish.Kind != "phase_finished" && finish.Kind != "phase_transitioned") || !applied[finish.EventID] || !order.HappensBefore(finish.EventID, terminalID) {
 			continue
 		}
-		var payload PhaseFinishedPayload
-		if json.Unmarshal(finish.Payload, &payload) != nil {
-			continue
+		var phase Phase
+		var startEventID string
+		if finish.Kind == "phase_transitioned" {
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(finish.Payload, &payload) != nil {
+				continue
+			}
+			phase, startEventID = payload.Phase, payload.StartEventID
+		} else {
+			var payload PhaseFinishedPayload
+			if json.Unmarshal(finish.Payload, &payload) != nil {
+				continue
+			}
+			phase, startEventID = payload.Phase, payload.StartEventID
 		}
-		start, ok := starts[payload.StartEventID]
+		start, ok := starts[startEventID]
 		if !ok || !applied[start.EventID] || !order.HappensBefore(start.EventID, finish.EventID) {
 			continue
 		}
-		var startPayload PhaseStartedPayload
-		if json.Unmarshal(start.Payload, &startPayload) != nil || startPayload.Phase != payload.Phase {
+		var startPhase Phase
+		if start.Kind == "phase_transitioned" {
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(start.Payload, &payload) != nil {
+				continue
+			}
+			startPhase = payload.NextPhase
+		} else {
+			var payload PhaseStartedPayload
+			if json.Unmarshal(start.Payload, &payload) != nil {
+				continue
+			}
+			startPhase = payload.Phase
+		}
+		if startPhase != phase {
 			continue
 		}
 		// Epoch one is the initial history. Each reopen starts the next epoch;
@@ -282,7 +319,7 @@ func completedIntervalsBefore(events []EventEnvelope, applied map[string]bool, e
 			}
 		}
 		if intervalEpoch == epoch {
-			result = append(result, PhaseInterval{Phase: payload.Phase, StartEventID: start.EventID, FinishEventID: finish.EventID, TrajectoryID: start.TrajectoryID, TerminalEpoch: epoch})
+			result = append(result, PhaseInterval{Phase: phase, StartEventID: start.EventID, FinishEventID: finish.EventID, TrajectoryID: start.TrajectoryID, TerminalEpoch: epoch})
 		}
 	}
 	return result
@@ -526,9 +563,11 @@ func diagnoseHandoffs(reads []EffortRead) []Finding {
 				valid = valid || sourceTrajectory != "" && association.applied && association.effortID == read.Metadata.EffortID && association.payload.AssociationOrigin == "handoff" && association.payload.TrajectoryID == sourceTrajectory
 			}
 			if !valid {
-				result = append(result, exactFinding("WFV1-HANDOFF-ASSOCIATION", "warning", sessionLinkScope(read.Metadata.EffortID, handoff.SessionID, payload.TargetSessionID), sortedUnique(evidence),
+				finding := exactFinding("WFV1-HANDOFF-ASSOCIATION", "warning", sessionLinkScope(read.Metadata.EffortID, handoff.SessionID, payload.TargetSessionID), sortedUnique(evidence),
 					"a successful handoff has no validated same-effort association copy",
-					"append an explicit association or detach correction, or approve the missing copy"))
+					"append an explicit association or detach correction, or approve the missing copy")
+				finding.EffortID = read.Metadata.EffortID
+				result = append(result, finding)
 			}
 		}
 	}
@@ -603,15 +642,15 @@ func stableFindings(findings []Finding) []Finding {
 	for _, finding := range findings {
 		finding.Evidence.EventIDs = sortedUnique(finding.Evidence.EventIDs)
 		finding.Evidence.CounterIDs = sortedUnique(finding.Evidence.CounterIDs)
-		key := finding.Code + "\x00" + finding.Scope + "\x00" + strings.Join(finding.Evidence.EventIDs, "\x00") + "\x00" + strings.Join(finding.Evidence.CounterIDs, "\x00")
+		key := finding.EffortID + "\x00" + finding.Code + "\x00" + finding.Scope + "\x00" + strings.Join(finding.Evidence.EventIDs, "\x00") + "\x00" + strings.Join(finding.Evidence.CounterIDs, "\x00")
 		if !seen[key] {
 			seen[key] = true
 			result = append(result, finding)
 		}
 	}
 	sort.Slice(result, func(i, j int) bool {
-		left := result[i].Code + "\x00" + result[i].Scope + "\x00" + strings.Join(result[i].Evidence.EventIDs, "\x00")
-		right := result[j].Code + "\x00" + result[j].Scope + "\x00" + strings.Join(result[j].Evidence.EventIDs, "\x00")
+		left := result[i].EffortID + "\x00" + result[i].Code + "\x00" + result[i].Scope + "\x00" + strings.Join(result[i].Evidence.EventIDs, "\x00")
+		right := result[j].EffortID + "\x00" + result[j].Code + "\x00" + result[j].Scope + "\x00" + strings.Join(result[j].Evidence.EventIDs, "\x00")
 		return left < right
 	})
 	return result
@@ -687,38 +726,23 @@ func uintString(value uint64) string {
 	return string(digits[position:])
 }
 
-func findingBelongsToEffort(finding Finding, reads []EffortRead, effortID string) bool {
-	for _, read := range reads {
-		if read.Metadata.EffortID != effortID {
-			continue
-		}
-		byID := eventsByID(read.Events)
-		for _, eventID := range finding.Evidence.EventIDs {
-			if event, exists := byID[eventID]; exists && event.Kind == "handoff_observed" {
-				return true
-			}
-		}
-	}
-	return false
+func findingBelongsToEffort(finding Finding, _ []EffortRead, effortID string) bool {
+	return finding.EffortID == effortID
 }
 
 func selectedForFinding(finding Finding, selectedByEffort map[string]map[string]bool) map[string]bool {
 	result := map[string]bool{}
-	for _, selected := range selectedByEffort {
-		for _, eventID := range finding.Evidence.EventIDs {
-			result[eventID] = result[eventID] || selected[eventID]
-		}
+	selected := selectedByEffort[finding.EffortID]
+	for _, eventID := range finding.Evidence.EventIDs {
+		result[eventID] = selected[eventID]
 	}
 	return result
 }
 
 func lifecycleForFinding(reads []EffortRead, finding Finding) LifecycleProjection {
 	for _, read := range reads {
-		byID := eventsByID(read.Events)
-		for _, eventID := range finding.Evidence.EventIDs {
-			if _, exists := byID[eventID]; exists {
-				return projectLifecycleFromRead(read)
-			}
+		if read.Metadata.EffortID == finding.EffortID {
+			return projectLifecycleFromRead(read)
 		}
 	}
 	return newLifecycleProjection()

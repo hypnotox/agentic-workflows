@@ -9,7 +9,7 @@ import (
 
 func otherEffortWithHandoff() EffortRead {
 	payload, _ := json.Marshal(HandoffObservedPayload{Outcome: "success", TargetSessionID: "child"})
-	event := EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "broken-handoff", ObservationID: "observation", EffortID: "other", SessionID: "session", TrajectoryID: "trajectory", Timestamp: "2026-07-22T00:00:00Z", Kind: "handoff_observed", Predecessors: []string{}, Payload: payload}
+	event := EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "broken-handoff", ObservationID: "observation", EffortID: "other", SessionID: "session", TrajectoryID: "trajectory", Timestamp: "2026-07-22T00:00:00Z", Kind: "handoff_observed", Predecessors: []string{}, Payload: payload}
 	return EffortRead{Metadata: EffortMetadata{EffortID: "other"}, Events: []EventEnvelope{event}}
 }
 
@@ -181,10 +181,13 @@ func TestDiagnosticsDefensiveAndHelperBranches(t *testing.T) {
 		t.Fatalf("uintString zero = %q", got)
 	}
 
-	if !findingBelongsToEffort(exactFinding("WFV1-HANDOFF-ASSOCIATION", "warning", "scope", []string{"broken-handoff"}, "why", "next"), []EffortRead{otherEffortWithHandoff()}, "other") {
-		t.Fatal("handoff finding was not attributed to its source effort")
+	handoffFinding := exactFinding("WFV1-HANDOFF-ASSOCIATION", "warning", "scope", []string{"broken-handoff"}, "why", "next")
+	handoffFinding.EffortID = "other"
+	if !findingBelongsToEffort(handoffFinding, []EffortRead{otherEffortWithHandoff()}, "other") {
+		t.Fatal("handoff finding was not attributed to its canonical owner")
 	}
 	finding := exactFinding("code", "warning", "scope", []string{"missing"}, "why", "next")
+	finding.EffortID = "effort"
 	selected := selectedForFinding(finding, map[string]map[string]bool{"effort": {"missing": true}})
 	if !selected["missing"] {
 		t.Fatalf("selected evidence union = %#v", selected)
@@ -192,4 +195,35 @@ func TestDiagnosticsDefensiveAndHelperBranches(t *testing.T) {
 	if projection := lifecycleForFinding(nil, finding); projection.State != "" {
 		t.Fatalf("missing finding lifecycle = %#v", projection)
 	}
+}
+
+func TestProtocol2DiagnosticTransitionBranches(t *testing.T) {
+	events := lifecycleBaseEvents()
+	events = appendEvent(events, "brainstorm", "phase_started", PhaseStartedPayload{Phase: "brainstorming"})
+	events = appendEvent(events, "to-implementation", "phase_transitioned", PhaseTransitionedPayload{Phase: "brainstorming", StartEventID: "brainstorm", NextPhase: "implementation", RouteAction: "select", Route: "direct"})
+	events = appendEvent(events, "to-review", "phase_transitioned", PhaseTransitionedPayload{Phase: "implementation", StartEventID: "to-implementation", NextPhase: "implementation-review"})
+	events = appendEvent(events, "to-retrospective", "phase_transitioned", PhaseTransitionedPayload{Phase: "implementation-review", StartEventID: "to-review", NextPhase: "retrospective"})
+	terminal := causalEvent("terminal", "session", "effort_completed", []string{"to-retrospective"}, EffortTerminalPayload{TerminalEpoch: 1})
+	events = append(events, terminal)
+	order, _ := BuildCausalOrder(events)
+	applied := allEffects(events)
+	if route, eventID := effectiveRouteBefore(events, applied, terminal, order); route != "direct" || eventID != "to-implementation" {
+		t.Fatalf("transition route = %q %q", route, eventID)
+	}
+	intervals := completedIntervalsBefore(events, applied, 1, terminal.EventID, order)
+	if len(intervals) != 3 {
+		t.Fatalf("transition intervals = %#v", intervals)
+	}
+
+	malformed := causalEvent("malformed-transition", "session", "phase_transitioned", []string{"brainstorm"}, PhaseTransitionedPayload{})
+	malformed.Payload = json.RawMessage("{")
+	missing := causalEvent("missing-transition", "session", "phase_transitioned", []string{"brainstorm"}, PhaseTransitionedPayload{Phase: "brainstorming", StartEventID: "missing", NextPhase: "planning"})
+	badStart := causalEvent("bad-start-transition", "session", "phase_transitioned", []string{"create"}, PhaseTransitionedPayload{Phase: "brainstorming", StartEventID: "create", NextPhase: "planning"})
+	badStart.Payload = json.RawMessage("{")
+	finishBadStart := causalEvent("finish-bad-start", "session", "phase_finished", []string{"bad-start-transition"}, PhaseFinishedPayload{Phase: "planning", StartEventID: "bad-start-transition"})
+	defensiveTerminal := causalEvent("defensive-terminal", "session", "effort_completed", []string{"finish-bad-start"}, EffortTerminalPayload{TerminalEpoch: 1})
+	defensive := append(lifecycleBaseEvents(), malformed, missing, badStart, finishBadStart, defensiveTerminal)
+	defensiveOrder, _ := BuildCausalOrder(defensive)
+	_, _ = effectiveRouteBefore(defensive, allEffects(defensive), defensiveTerminal, defensiveOrder)
+	_ = completedIntervalsBefore(defensive, allEffects(defensive), 1, defensiveTerminal.EventID, defensiveOrder)
 }

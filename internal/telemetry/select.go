@@ -98,6 +98,12 @@ func projectEventPhases(events []EventEnvelope) map[string]map[string]bool {
 			if json.Unmarshal(event.Payload, &payload) == nil {
 				result[event.EventID][string(payload.Phase)] = true
 			}
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(event.Payload, &payload) == nil {
+				result[event.EventID][string(payload.Phase)] = true
+				result[event.EventID][string(payload.NextPhase)] = true
+			}
 		case "usage_observed":
 			var payload UsageObservedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil && payload.Phase != "" {
@@ -108,34 +114,58 @@ func projectEventPhases(events []EventEnvelope) map[string]map[string]bool {
 	order, _ := BuildCausalOrder(events)
 	finishedStarts := map[string]bool{}
 	for _, finish := range events {
-		if finish.Kind != "phase_finished" {
+		var phase Phase
+		var startEventID string
+		switch finish.Kind {
+		case "phase_finished":
+			var payload PhaseFinishedPayload
+			if json.Unmarshal(finish.Payload, &payload) != nil {
+				continue
+			}
+			phase, startEventID = payload.Phase, payload.StartEventID
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(finish.Payload, &payload) != nil {
+				continue
+			}
+			phase, startEventID = payload.Phase, payload.StartEventID
+		default:
 			continue
 		}
-		var payload PhaseFinishedPayload
-		if json.Unmarshal(finish.Payload, &payload) != nil {
+		if _, exists := byID[startEventID]; !exists {
 			continue
 		}
-		if _, exists := byID[payload.StartEventID]; !exists {
-			continue
-		}
-		finishedStarts[payload.StartEventID] = true
+		finishedStarts[startEventID] = true
 		for _, event := range events {
-			if (event.EventID == payload.StartEventID || order.HappensBefore(payload.StartEventID, event.EventID)) && (event.EventID == finish.EventID || order.HappensBefore(event.EventID, finish.EventID)) {
-				result[event.EventID][string(payload.Phase)] = true
+			if (event.EventID == startEventID || order.HappensBefore(startEventID, event.EventID)) && (event.EventID == finish.EventID || order.HappensBefore(event.EventID, finish.EventID)) {
+				result[event.EventID][string(phase)] = true
 			}
 		}
 	}
 	for _, start := range events {
-		if start.Kind != "phase_started" || finishedStarts[start.EventID] {
+		if finishedStarts[start.EventID] {
 			continue
 		}
-		var payload PhaseStartedPayload
-		if json.Unmarshal(start.Payload, &payload) != nil {
+		var phase Phase
+		switch start.Kind {
+		case "phase_started":
+			var payload PhaseStartedPayload
+			if json.Unmarshal(start.Payload, &payload) != nil {
+				continue
+			}
+			phase = payload.Phase
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(start.Payload, &payload) != nil {
+				continue
+			}
+			phase = payload.NextPhase
+		default:
 			continue
 		}
 		for _, event := range events {
 			if event.EventID == start.EventID || order.HappensBefore(start.EventID, event.EventID) {
-				result[event.EventID][string(payload.Phase)] = true
+				result[event.EventID][string(phase)] = true
 			}
 		}
 	}

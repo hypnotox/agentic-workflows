@@ -430,7 +430,7 @@ func validateCreation(metadata EffortMetadata, raw json.RawMessage) (EventEnvelo
 	if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: protocol validation proved payload shape
 		return EventEnvelope{}, err
 	}
-	if payload.CheckpointID != metadata.CheckpointID || payload.CreationMode != metadata.CreationMode {
+	if payload.CreationMode != metadata.CreationMode {
 		return EventEnvelope{}, errors.New("first event creation payload differs from metadata")
 	}
 	wantOrigin := OriginMetadata{EffortID: payload.OriginEffortID, TrajectoryID: payload.OriginTrajectoryID, AnchorID: payload.OriginAnchorID}
@@ -478,7 +478,7 @@ func (l *Ledger) identicalCreation(metadata EffortMetadata, event EventEnvelope,
 }
 
 func metadataEqual(left, right EffortMetadata) bool {
-	if left.EffortID != right.EffortID || left.CreatedAt != right.CreatedAt || left.CheckpointID != right.CheckpointID || left.CreationMode != right.CreationMode {
+	if left.EffortID != right.EffortID || left.CreatedAt != right.CreatedAt || left.CreationMode != right.CreationMode {
 		return false
 	}
 	if left.Origin == nil || right.Origin == nil {

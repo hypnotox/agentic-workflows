@@ -285,6 +285,38 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 		interval.FinishEventID = event.EventID
 		delete(p.OpenPhases, payload.StartEventID)
 		p.PhaseIntervals = append(p.PhaseIntervals, interval)
+	case "phase_transitioned":
+		var payload PhaseTransitionedPayload
+		_ = json.Unmarshal(event.Payload, &payload)
+		interval, ok := p.OpenPhases[payload.StartEventID]
+		if !ok || interval.Phase != payload.Phase {
+			return errors.New("phase transition does not name an unmatched matching start")
+		}
+		if !order.HappensBefore(payload.StartEventID, event.EventID) {
+			return errors.New("phase start is not causally visible to transition")
+		}
+		switch payload.RouteAction {
+		case "":
+		case "select":
+			if p.State != EffortDiscovery {
+				return errors.New("route selection requires discovery state")
+			}
+			p.Route, p.State = payload.Route, EffortActive
+			p.RouteHistory = append(p.RouteHistory, RouteSelection{Route: payload.Route, EventID: event.EventID})
+		case "change":
+			if p.State != EffortActive || p.Route == "" {
+				return errors.New("route change requires an active selected route")
+			}
+			p.Route = payload.Route
+			p.RouteHistory = append(p.RouteHistory, RouteSelection{Route: payload.Route, EventID: event.EventID})
+		}
+		if payload.Route == "investigation-only" && p.hasPhase("implementation") {
+			return errors.New("investigation-only cannot include implementation")
+		}
+		interval.FinishEventID = event.EventID
+		delete(p.OpenPhases, payload.StartEventID)
+		p.PhaseIntervals = append(p.PhaseIntervals, interval)
+		p.OpenPhases[event.EventID] = PhaseInterval{Phase: payload.NextPhase, StartEventID: event.EventID, TrajectoryID: event.TrajectoryID, TerminalEpoch: p.TerminalEpoch}
 	case "trajectory_started", "trajectory_resumed", "trajectory_closed":
 		var payload TrajectoryPayload
 		_ = json.Unmarshal(event.Payload, &payload)
@@ -417,7 +449,7 @@ func (p LifecycleProjection) validateRouteCompletion(terminal EventEnvelope, ord
 			if interval.TerminalEpoch != p.TerminalEpoch || interval.Phase != phase || interval.FinishEventID == "" || !order.HappensBefore(interval.FinishEventID, terminal.EventID) {
 				continue
 			}
-			if last != "" && !order.HappensBefore(last, interval.StartEventID) {
+			if last != "" && last != interval.StartEventID && !order.HappensBefore(last, interval.StartEventID) {
 				continue
 			}
 			if selected == "" {
@@ -474,6 +506,9 @@ func (p LifecycleProjection) validateRouteCompletion(terminal EventEnvelope, ord
 }
 
 func lifecycleEventsConflict(left, right EventEnvelope) bool {
+	if transitionHasRouteEffect(left) && (right.Kind == "route_selected" || right.Kind == "route_changed") || transitionHasRouteEffect(right) && (left.Kind == "route_selected" || left.Kind == "route_changed") {
+		return true
+	}
 	if left.Kind == "repair_applied" && right.Kind == "repair_applied" {
 		return repairSourcesOverlap(left, right)
 	}
@@ -484,11 +519,19 @@ func lifecycleEventsConflict(left, right EventEnvelope) bool {
 	return isTerminalMutation(left.Kind) && isMutableLifecycle(right.Kind) || isTerminalMutation(right.Kind) && isMutableLifecycle(left.Kind)
 }
 
+func transitionHasRouteEffect(event EventEnvelope) bool {
+	if event.Kind != "phase_transitioned" {
+		return false
+	}
+	var payload PhaseTransitionedPayload
+	return json.Unmarshal(event.Payload, &payload) == nil && payload.RouteAction != ""
+}
+
 func lifecycleConflictKey(event EventEnvelope) string {
 	switch event.Kind {
 	case "route_selected", "route_changed", "effort_completed", "effort_abandoned", "effort_reopened":
 		return "effort-state"
-	case "phase_started":
+	case "phase_started", "phase_transitioned":
 		return "phase-open"
 	case "phase_finished":
 		var payload PhaseFinishedPayload
@@ -553,7 +596,7 @@ func validateRepair(event EventEnvelope, payload RepairAppliedPayload, byID map[
 	case "supersede-event":
 		allowed = true
 	case "correct-phase":
-		allowed = kind == "phase_started" || kind == "phase_finished"
+		allowed = kind == "phase_started" || kind == "phase_transitioned" || kind == "phase_finished"
 	case "correct-association":
 		allowed = kind == "session_associated" || kind == "session_detached"
 	case "correct-trajectory":
@@ -765,8 +808,8 @@ func lifecycleRequestParts(request LifecycleRequest) (LifecycleRequestBase, Even
 		if typed.Origin != nil {
 			origin = *typed.Origin
 		}
-		payload = marshal(EffortCreatedPayload{CheckpointID: typed.CheckpointID, CreationMode: typed.CreationMode, OriginEffortID: origin.EffortID, OriginTrajectoryID: origin.TrajectoryID, OriginAnchorID: origin.AnchorID})
-		metadata = EffortMetadata{EffortID: base.EffortID, CreatedAt: base.Timestamp, CheckpointID: typed.CheckpointID, CreationMode: typed.CreationMode, Origin: typed.Origin}
+		payload = marshal(EffortCreatedPayload{CreationMode: typed.CreationMode, OriginEffortID: origin.EffortID, OriginTrajectoryID: origin.TrajectoryID, OriginAnchorID: origin.AnchorID})
+		metadata = EffortMetadata{EffortID: base.EffortID, CreatedAt: base.Timestamp, CreationMode: typed.CreationMode, Origin: typed.Origin}
 	case AssociateLifecycleRequest:
 		base, kind = typed.LifecycleRequestBase, "session_associated"
 		payload = marshal(SessionAssociatedPayload{AssociationOrigin: typed.AssociationOrigin, TrajectoryID: typed.TrajectoryID, HandoffEventID: typed.HandoffEventID})
@@ -788,6 +831,9 @@ func lifecycleRequestParts(request LifecycleRequest) (LifecycleRequestBase, Even
 	case FinishPhaseLifecycleRequest:
 		base, kind = typed.LifecycleRequestBase, "phase_finished"
 		payload = marshal(PhaseFinishedPayload{Phase: typed.Phase, StartEventID: typed.StartEventID, Outcome: typed.Outcome})
+	case TransitionPhaseLifecycleRequest:
+		base, kind = typed.LifecycleRequestBase, "phase_transitioned"
+		payload = marshal(PhaseTransitionedPayload{Phase: typed.Phase, StartEventID: typed.StartEventID, NextPhase: typed.NextPhase, Outcome: typed.Outcome, Activity: typed.Activity, ImplementationMode: typed.ImplementationMode, RouteAction: typed.RouteAction, Route: typed.Route})
 	case TrajectoryLifecycleRequest:
 		base = typed.LifecycleRequestBase
 		kind = map[string]EventKind{"start-trajectory": "trajectory_started", "resume-trajectory": "trajectory_resumed", "close-trajectory": "trajectory_closed"}[typed.Action]

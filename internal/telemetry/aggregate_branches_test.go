@@ -29,7 +29,7 @@ func TestAggregateScopeEveryCounterAndMalformedPayloadBranch(t *testing.T) {
 	events := []EventEnvelope{}
 	appendPassive := func(id string, kind EventKind, payload any) {
 		raw, _ := json.Marshal(payload)
-		events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: id, ObservationID: "observation-" + id, EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Kind: kind, Predecessors: []string{}, Payload: raw})
+		events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: id, ObservationID: "observation-" + id, EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Kind: kind, Predecessors: []string{}, Payload: raw})
 	}
 	appendPassive("handoff", "handoff_observed", HandoffObservedPayload{Outcome: "failure", TargetSessionID: "target"})
 	appendPassive("tool", "tool_observed", ToolObservedPayload{Tool: "read", Outcome: "failure", DurationMS: 1})
@@ -39,13 +39,16 @@ func TestAggregateScopeEveryCounterAndMalformedPayloadBranch(t *testing.T) {
 	reviewStart := causalEvent("review-start", "session", "phase_started", nil, PhaseStartedPayload{Phase: "implementation-review"})
 	reviewFinish := causalEvent("review-finish", "session", "phase_finished", []string{"review-start"}, PhaseFinishedPayload{Phase: "implementation-review", StartEventID: "review-start"})
 	implementation := causalEvent("implementation-again", "session", "phase_started", []string{"review-finish"}, PhaseStartedPayload{Phase: "implementation"})
-	events = append(events, reviewStart, reviewFinish, implementation)
+	transitionReviewStart := causalEvent("transition-review-start", "session", "phase_started", []string{"implementation-again"}, PhaseStartedPayload{Phase: "implementation-review"})
+	transitionFromReview := causalEvent("transition-from-review", "session", "phase_transitioned", []string{"transition-review-start"}, PhaseTransitionedPayload{Phase: "implementation-review", StartEventID: "transition-review-start", NextPhase: "planning"})
+	transitionToImplementation := causalEvent("transition-to-implementation", "session", "phase_transitioned", []string{"transition-from-review"}, PhaseTransitionedPayload{Phase: "planning", StartEventID: "transition-from-review", NextPhase: "implementation"})
+	events = append(events, reviewStart, reviewFinish, implementation, transitionReviewStart, transitionFromReview, transitionToImplementation)
 	events = append(events, EventEnvelope{EventID: "duplicate-id"}, EventEnvelope{EventID: "duplicate-id"})
-	for _, kind := range []EventKind{"usage_observed", "subagent_observed", "compaction_observed", "tool_observed", "shell_observed", "phase_started"} {
+	for _, kind := range []EventKind{"usage_observed", "subagent_observed", "compaction_observed", "tool_observed", "shell_observed", "phase_started", "phase_transitioned"} {
 		events = append(events, EventEnvelope{EventID: "malformed-" + string(kind), Kind: kind, Payload: json.RawMessage("{")})
 	}
 	scope := aggregateScope("scope", events)
-	if scope.Counters.Handoffs != 1 || scope.Counters.ToolFailures != 1 || scope.Counters.GateFailures != 1 || scope.Counters.ImplementationRework != 1 {
+	if scope.Counters.Handoffs != 1 || scope.Counters.ToolFailures != 1 || scope.Counters.GateFailures != 1 || scope.Counters.ImplementationRework != 2 {
 		t.Fatalf("counter branches = %#v", scope.Counters)
 	}
 	if countString(scope.EventIDs, "duplicate-id") != 1 {
@@ -123,7 +126,7 @@ func TestRetentionProjectionCountLastRunAndInvalidCandidate(t *testing.T) {
 }
 
 func TestRenderMetricsHumanWriteFailures(t *testing.T) {
-	result := MetricsResult{SchemaVersion: 1, ProtocolMajor: 1, GeneratedAt: time.Now(), Efforts: []EffortProjection{{EffortID: "effort", CurrentPath: ScopeProjection{ScopeID: "current"}, AllWork: ScopeProjection{ScopeID: "all"}}}, Retention: RetentionState{Candidates: []string{}}, Integrity: []IntegrityNotice{{Code: "code", Severity: "warning", Scope: "scope", EventIDs: []string{}, Explanation: "explanation"}}}
+	result := MetricsResult{SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: time.Now(), Efforts: []EffortProjection{{EffortID: "effort", CurrentPath: ScopeProjection{ScopeID: "current"}, AllWork: ScopeProjection{ScopeID: "all"}}}, Retention: RetentionState{Candidates: []string{}}, Integrity: []IntegrityNotice{{Code: "code", Severity: "warning", Scope: "scope", EventIDs: []string{}, Explanation: "explanation"}}}
 	for failAt := range 6 {
 		writer := &failAtWriter{failAt: failAt}
 		if err := RenderMetricsHuman(writer, result); err == nil {

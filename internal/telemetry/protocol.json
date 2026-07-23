@@ -1,6 +1,6 @@
 {
   "version": {
-    "major": 1,
+    "major": 2,
     "minor": 0
   },
   "limits": {
@@ -10,8 +10,7 @@
     "observationIdBytes": 128,
     "modelBytes": 128,
     "toolBytes": 128,
-    "categoryBytes": 128,
-    "checkpointIdBytes": 256
+    "categoryBytes": 128
   },
   "vocabularies": {
     "routes": [
@@ -21,6 +20,10 @@
       "adr-plan",
       "bugfix",
       "investigation-only"
+    ],
+    "routeActions": [
+      "select",
+      "change"
     ],
     "phases": [
       "investigation",
@@ -39,7 +42,10 @@
       "tdd",
       "exploration",
       "inline-execution",
-      "subagent-driven-development"
+      "subagent-driven-development",
+      "adr-lifecycle",
+      "refactor-coupling-audit",
+      "roadmap-graduation"
     ],
     "terminalOutcomes": [
       "completed",
@@ -130,6 +136,7 @@
       "route_selected",
       "route_changed",
       "phase_started",
+      "phase_transitioned",
       "phase_finished",
       "trajectory_started",
       "trajectory_resumed",
@@ -151,7 +158,7 @@
     ]
   },
   "privacy": {
-    "allowedRepositoryPathField": "checkpointId",
+    "allowedRepositoryPathField": "",
     "forbiddenFields": [
       "prompt",
       "prompts",
@@ -307,11 +314,6 @@
       "repairable": true,
       "additionalProperties": false,
       "fields": {
-        "checkpointId": {
-          "type": "string",
-          "required": true,
-          "format": "checkpoint"
-        },
         "creationMode": {
           "type": "string",
           "required": true,
@@ -445,6 +447,64 @@
           "format": "category"
         }
       },
+      "privacyPolicy": "long-lived-minimal"
+    },
+    "phase_transitioned": {
+      "goType": "PhaseTransitionedPayload",
+      "class": "lifecycle",
+      "repairable": true,
+      "additionalProperties": false,
+      "fields": {
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "startEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "nextPhase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "outcome": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "outcomes"
+        },
+        "activity": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "activities"
+        },
+        "implementationMode": {
+          "type": "string",
+          "required": false,
+          "format": "category"
+        },
+        "routeAction": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "routeActions"
+        },
+        "route": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "routes"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "paired-presence",
+          "fields": [
+            "routeAction",
+            "route"
+          ]
+        }
+      ],
       "privacyPolicy": "long-lived-minimal"
     },
     "phase_finished": {
@@ -1029,11 +1089,6 @@
           "uniqueItems": true,
           "minItems": 0
         },
-        "checkpointId": {
-          "type": "string",
-          "required": true,
-          "format": "checkpoint"
-        },
         "creationMode": {
           "type": "string",
           "required": true,
@@ -1337,6 +1392,101 @@
           "format": "category"
         }
       }
+    },
+    "transition-phase": {
+      "goType": "TransitionPhaseLifecycleRequest",
+      "eventKind": "phase_transitioned",
+      "additionalProperties": false,
+      "fields": {
+        "action": {
+          "type": "string",
+          "required": true
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "effortId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "sessionId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "required": true,
+          "format": "timestamp"
+        },
+        "predecessors": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "string",
+            "format": "identifier"
+          },
+          "uniqueItems": true,
+          "minItems": 0
+        },
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "startEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "nextPhase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "outcome": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "outcomes"
+        },
+        "activity": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "activities"
+        },
+        "implementationMode": {
+          "type": "string",
+          "required": false,
+          "format": "category"
+        },
+        "routeAction": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "routeActions"
+        },
+        "route": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "routes"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "paired-presence",
+          "fields": [
+            "routeAction",
+            "route"
+          ]
+        }
+      ]
     },
     "finish-phase": {
       "goType": "FinishPhaseLifecycleRequest",
@@ -1996,11 +2146,6 @@
           "type": "string",
           "required": true,
           "format": "timestamp"
-        },
-        "checkpointId": {
-          "type": "string",
-          "required": true,
-          "format": "checkpoint"
         },
         "creationMode": {
           "type": "string",

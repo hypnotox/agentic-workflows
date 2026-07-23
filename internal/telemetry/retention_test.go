@@ -13,8 +13,6 @@ import (
 
 // invariant: tooling/workflow-telemetry:privacy-integrity-and-retention
 func TestPrivacyIntegrityAndRetention(t *testing.T) {
-	// invariant marker is added with the Phase 2 current-state transaction in
-	// Task 2.5; this task proves the behavior before that claim is applied.
 	ledger := newRetentionLedger(t)
 	now := time.Date(2026, 1, 10, 0, 0, 0, 0, time.UTC)
 	ledger.ops.now = func() time.Time { return now }
@@ -104,7 +102,7 @@ func TestRetentionUsesEffectiveRepairedTerminalTimestamp(t *testing.T) {
 			projection := ProjectLifecycle(events)
 			projection.EffectApplied["rejected-passive"] = false
 			read := EffortRead{
-				Metadata:        EffortMetadata{EffortID: "repaired", CreatedAt: "2026-07-22T00:00:00Z", CheckpointID: "checkpoint.md", CreationMode: "independent"},
+				Metadata:        EffortMetadata{EffortID: "repaired", CreatedAt: "2026-07-22T00:00:00Z", CreationMode: "independent"},
 				Events:          events,
 				EffectApplied:   projection.EffectApplied,
 				RejectedEffects: map[string]bool{"rejected-passive": true},
@@ -175,8 +173,8 @@ func TestRetentionPruneDurabilityNonceAndWriterLinearization(t *testing.T) {
 	if _, err := ledger.Append(context.Background(), passiveEvent(t, "late", "late-observation", "terminal", nil)); err == nil {
 		t.Fatal("late append recreated a pruned effort")
 	}
-	retryMetadata := EffortMetadata{EffortID: "terminal", CreatedAt: now.Format(time.RFC3339Nano), CheckpointID: "checkpoint", CreationMode: "independent"}
-	retryEvent := causalEvent("retry-create", "session", "effort_created", []string{}, EffortCreatedPayload{CheckpointID: "checkpoint", CreationMode: "independent"})
+	retryMetadata := EffortMetadata{EffortID: "terminal", CreatedAt: now.Format(time.RFC3339Nano), CreationMode: "independent"}
+	retryEvent := causalEvent("retry-create", "session", "effort_created", []string{}, EffortCreatedPayload{CreationMode: "independent"})
 	retryEvent.EffortID = "terminal"
 	retryEvent.Timestamp = retryMetadata.CreatedAt
 	retryRaw, _ := json.Marshal(retryEvent)
@@ -280,7 +278,7 @@ func writeRetentionEffort(t *testing.T, ledger *Ledger, effortID string, created
 	if err := os.MkdirAll(filepath.Join(effortPath, "sessions"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	metadata := EffortMetadata{EffortID: effortID, CreatedAt: created.Format(time.RFC3339Nano), CheckpointID: "checkpoint", CreationMode: "independent"}
+	metadata := EffortMetadata{EffortID: effortID, CreatedAt: created.Format(time.RFC3339Nano), CreationMode: "independent"}
 	metadataRaw, _ := json.Marshal(metadata)
 	if err := os.WriteFile(filepath.Join(effortPath, "effort.json"), append(metadataRaw, '\n'), 0o600); err != nil {
 		t.Fatal(err)
@@ -301,7 +299,7 @@ func writeRetentionEffort(t *testing.T, ledger *Ledger, effortID string, created
 		}
 		events[index].Timestamp = created.Add(time.Duration(index) * time.Second).Format(time.RFC3339Nano)
 		if index == 0 {
-			events[index].Payload, _ = json.Marshal(EffortCreatedPayload{CheckpointID: "checkpoint", CreationMode: "independent"})
+			events[index].Payload, _ = json.Marshal(EffortCreatedPayload{CreationMode: "independent"})
 		}
 	}
 	if !terminal.IsZero() {

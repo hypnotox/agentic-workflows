@@ -8,7 +8,7 @@ import (
 )
 
 func lifecycleBaseEvents() []EventEnvelope {
-	return []EventEnvelope{causalEvent("create", "session", "effort_created", nil, EffortCreatedPayload{CheckpointID: "x", CreationMode: "independent"})}
+	return []EventEnvelope{causalEvent("create", "session", "effort_created", nil, EffortCreatedPayload{CreationMode: "independent"})}
 }
 
 func appendEvent(events []EventEnvelope, id string, kind EventKind, payload any) []EventEnvelope {
@@ -37,7 +37,6 @@ func completedRoute(route Route) []EventEnvelope {
 	return events
 }
 
-// invariant: tooling/workflow-telemetry:effort-lifecycle-and-routes
 func TestEffortLifecycleAndRoutes(t *testing.T) {
 	for route := range routeRequirements {
 		projection := ProjectLifecycle(completedRoute(route))
@@ -115,6 +114,50 @@ func TestEffortLifecycleAndRoutes(t *testing.T) {
 	if projection := ProjectLifecycle(reopened); projection.State != EffortActive || projection.TerminalEpoch != 2 || projection.ActiveTrajectoryID != "reopened-trajectory" {
 		t.Fatalf("reopen did not establish a new terminal epoch and trajectory: %#v", projection)
 	}
+}
+
+// invariant: tooling/workflow-telemetry:effort-lifecycle-and-routes
+func TestProtocol2SingleEventPhaseTransitionAndRouteEffect(t *testing.T) {
+	events := lifecycleBaseEvents()
+	events = appendEvent(events, "brainstorm-start", "phase_started", PhaseStartedPayload{Phase: "brainstorming"})
+	transition := protocol2TransitionEnvelope(t, "transition", []string{"brainstorm-start"}, "implementation", "direct")
+	projection := ProjectLifecycle(append(events, transition))
+	if projection.State != EffortActive || projection.Route != "direct" {
+		t.Fatalf("transition route effect = state %q route %q invalid %#v", projection.State, projection.Route, projection.Invalid)
+	}
+	if len(projection.PhaseIntervals) != 1 || projection.PhaseIntervals[0].Phase != "brainstorming" || projection.PhaseIntervals[0].FinishEventID != "transition" {
+		t.Fatalf("transition did not close predecessor phase: %#v", projection.PhaseIntervals)
+	}
+	interval, ok := projection.OpenPhases["transition"]
+	if !ok || interval.Phase != "implementation" || interval.StartEventID != "transition" {
+		t.Fatalf("transition did not open successor phase: %#v", projection.OpenPhases)
+	}
+}
+
+func TestProtocol2CompetingTransitionsRemainConcurrentEvidence(t *testing.T) {
+	events := lifecycleBaseEvents()
+	events = appendEvent(events, "brainstorm-start", "phase_started", PhaseStartedPayload{Phase: "brainstorming"})
+	left := protocol2TransitionEnvelope(t, "left-transition", []string{"brainstorm-start"}, "implementation", "direct")
+	right := protocol2TransitionEnvelope(t, "right-transition", []string{"brainstorm-start"}, "planning", "plan")
+	right.SessionID = "other-session"
+	projection := ProjectLifecycle(append(events, left, right))
+	if !hasInvalidEvent(projection.Invalid, left.EventID) || !hasInvalidEvent(projection.Invalid, right.EventID) || !hasIssue(projection.Invalid, "concurrent-state") {
+		t.Fatalf("competing transitions did not remain concurrent evidence: %#v", projection)
+	}
+	if projection.Route != "" || len(projection.PhaseIntervals) != 0 || len(projection.OpenPhases) != 1 {
+		t.Fatalf("competing transition effects were invented: %#v", projection)
+	}
+}
+
+func protocol2TransitionEnvelope(t *testing.T, eventID string, predecessors []string, nextPhase, route string) EventEnvelope {
+	t.Helper()
+	event := protocol2TransitionEvent(eventID, "brainstorm-start", predecessors, "brainstorming", nextPhase, "select", route)
+	raw := mustJSON(t, event)
+	var envelope EventEnvelope
+	if err := json.Unmarshal(raw, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	return envelope
 }
 
 func TestTerminalRepairsAndWaiversDoNotReopen(t *testing.T) {
@@ -288,7 +331,7 @@ func TestLifecycleAppendIsDurableValidatedAndIdempotent(t *testing.T) {
 		t.Fatal(err)
 	}
 	base := LifecycleRequestBase{Action: "create", IdempotencyKey: "create-key", EventID: "create-event", EffortID: "effort-id", SessionID: "session-id", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
-	create := CreateLifecycleRequest{LifecycleRequestBase: base, CheckpointID: "checkpoint.md", CreationMode: "independent"}
+	create := CreateLifecycleRequest{LifecycleRequestBase: base, CreationMode: "independent"}
 	if result, err := ledger.ApplyLifecycle(context.Background(), create); err != nil || result.Idempotent {
 		t.Fatalf("create = %#v, %v", result, err)
 	}
@@ -335,7 +378,7 @@ func TestReaderRetainsExternalIllegalLifecycleEvidence(t *testing.T) {
 func lifecycleRaw(t *testing.T, eventID, key, effortID string, kind EventKind, predecessors []string, payload any) []byte {
 	t.Helper()
 	rawPayload, _ := json.Marshal(payload)
-	raw, err := json.Marshal(EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: eventID, IdempotencyKey: key, EffortID: effortID, SessionID: "session-id", Timestamp: "2026-07-22T00:00:01Z", Kind: kind, Predecessors: predecessors, Payload: rawPayload})
+	raw, err := json.Marshal(EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: eventID, IdempotencyKey: key, EffortID: effortID, SessionID: "session-id", Timestamp: "2026-07-22T00:00:01Z", Kind: kind, Predecessors: predecessors, Payload: rawPayload})
 	if err != nil {
 		t.Fatal(err)
 	}

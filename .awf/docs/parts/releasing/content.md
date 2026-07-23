@@ -125,7 +125,9 @@ captured launcher.
    finish the applicable phases. Debugging is an investigation activity; bugfix is a route rather
    than a phase. Confirm `/awf-dashboard` opens, manual refresh runs a protocol handshake followed by
    canonical metrics then doctor, the widget appears without replacing the footer, and findings show
-   rule, evidence, threshold or baseline, confidence, and next action without a composite score.
+   owning effort, rule, evidence, threshold or baseline, confidence, and next action without a
+   composite score. Confirm a normal chain edge produces one protocol-2 transition event with both
+   closing and successor phase effects.
 3. Create a durable checkpoint and invoke `handoff_session` alone. Cancel once during the five-second
    window and confirm the old session stays active. Complete a second handoff and verify parent
    lineage, preserved history, exact kickoff memory path, and copied active association. Also exercise
@@ -135,9 +137,10 @@ captured launcher.
    and confirm its opaque origin groups history without adding the parent totals; exercise `reopen`
    separately only as an explicit same-effort choice.
 5. Open findings and maintenance. Cancel one waiver or repair confirmation and one destructive purge
-   confirmation and verify no write or process action occurs. Run retention dry-run, then an approved
-   apply against terminal candidates. Complete the effort, shut down Pi, and verify queued events were
-   drained and retained history remains readable.
+   confirmation and verify no write or process action occurs. Confirm stale-frontier, empty-frontier,
+   cross-effort, mismatched-evidence, and ineligible-reason repair or waiver attempts append nothing.
+   Run retention dry-run, then an approved apply against terminal candidates. Complete the effort,
+   shut down Pi, and verify queued events were drained and retained history remains readable.
 6. With bootstrap disabled and `awf` absent from `PATH`, confirm the repository runner advertises
    `dashboard-awf-path`, canonical protocol, metrics, and doctor reads succeed through the pinned
    launcher, and a second refresh reuses the same launcher without rebuilding. Dirty an unrelated
@@ -149,10 +152,11 @@ captured launcher.
 Inspect `.awf/metrics/` after the smoke. Persisted events may contain bounded opaque identifiers,
 models and tool names, timestamps, phases and activities, duration, token/cache/cost totals, counters,
 and categorized outcomes. They must not contain prompts, assistant text, tasks, tool arguments,
-command strings or output, stderr, free-form waiver prose, or repository paths other than the bounded
-checkpoint identifier. This verifies accidental-corruption, compatibility, confinement, and symlink
-posture only; it is not a defense against a hostile same-user process and provides no cryptographic
-tamper evidence.
+command strings or output, stderr, free-form waiver prose, or any repository path. Before accepting a
+protocol-major replacement, run the repository-resident preflight and stop for explicit confirmed
+purge if it reports protocol-1 effort data; never rewrite or automatically delete that evidence. This
+verifies accidental-corruption, compatibility, confinement, and symlink posture only; it is not a
+defense against a hostile same-user process and provides no cryptographic tamper evidence.
 
 ## Notes
 

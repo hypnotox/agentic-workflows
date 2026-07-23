@@ -21,7 +21,7 @@ func TestTrajectoryAndDerivedEffortModel(t *testing.T) {
 	activeWork := passiveProjectionEvent("active-work", "parent")
 	events = append(events, activeWork)
 
-	metadata := EffortMetadata{EffortID: "parent-effort", CreatedAt: "2026-07-22T00:00:00Z", CheckpointID: "checkpoint.md", CreationMode: "independent"}
+	metadata := EffortMetadata{EffortID: "parent-effort", CreatedAt: "2026-07-22T00:00:00Z", CreationMode: "independent"}
 	projection := ProjectWorkflow(EffortRead{Metadata: metadata, Events: events, Integrity: []IntegrityIssue{}})
 	if projection.Lifecycle.ActiveTrajectoryID != "parent" || !containsString(projection.CurrentPathEventIDs, "parent-work") || !containsString(projection.CurrentPathEventIDs, "active-work") {
 		t.Fatalf("active path missing ancestry work: %#v", projection)
@@ -34,7 +34,7 @@ func TestTrajectoryAndDerivedEffortModel(t *testing.T) {
 	}
 
 	origin := &OriginMetadata{EffortID: "parent-effort", TrajectoryID: "parent", AnchorID: "anchor-parent"}
-	child := ProjectWorkflow(EffortRead{Metadata: EffortMetadata{EffortID: "derived-effort", CreatedAt: "2026-07-22T01:00:00Z", CheckpointID: "child.md", CreationMode: "derived", Origin: origin}, Events: lifecycleBaseEvents()})
+	child := ProjectWorkflow(EffortRead{Metadata: EffortMetadata{EffortID: "derived-effort", CreatedAt: "2026-07-22T01:00:00Z", CreationMode: "derived", Origin: origin}, Events: lifecycleBaseEvents()})
 	grandchildOrigin := &OriginMetadata{EffortID: "derived-effort", TrajectoryID: "child-trajectory", AnchorID: "child-anchor"}
 	grandchild := ProjectWorkflow(EffortRead{Metadata: EffortMetadata{EffortID: "grandchild-effort", CreationMode: "derived", Origin: grandchildOrigin}, Events: lifecycleBaseEvents()})
 	family := GroupDerivedFamilies([]WorkflowProjection{projection, child, grandchild})
@@ -65,6 +65,29 @@ func TestTrajectoryAndDerivedEffortModel(t *testing.T) {
 	if len(segmentProjection.Invalid) != 0 || segmentProjection.ActiveTrajectoryID != "" || !segmentProjection.closedTrajectories["segment"] || !segmentProjection.EffectApplied["segment-close-b"] {
 		t.Fatalf("close-resume-close segment lifecycle = %#v", segmentProjection)
 	}
+}
+
+func TestProtocol2TransitionProjectsBothPhaseEffectsOnce(t *testing.T) {
+	events := lifecycleBaseEvents()
+	events = appendEvent(events, "brainstorm-start", "phase_started", PhaseStartedPayload{Phase: "brainstorming"})
+	transition := protocol2TransitionEnvelope(t, "transition", []string{"brainstorm-start"}, "planning", "plan")
+	projection := ProjectWorkflow(EffortRead{Metadata: EffortMetadata{EffortID: "effort-id", CreationMode: "independent"}, Events: append(events, transition)})
+	if projection.Lifecycle.Route != "plan" || len(projection.Lifecycle.PhaseIntervals) != 1 || projection.Lifecycle.OpenPhases["transition"].Phase != "planning" {
+		t.Fatalf("transition projection did not atomically close and open phases: %#v", projection.Lifecycle)
+	}
+	if countProjectionString(projection.EvidenceEventIDs, "transition") != 1 || countProjectionString(projection.AllWorkEventIDs, "transition") != 1 {
+		t.Fatalf("transition was not projected exactly once: evidence=%v all=%v", projection.EvidenceEventIDs, projection.AllWorkEventIDs)
+	}
+}
+
+func countProjectionString(values []string, wanted string) int {
+	count := 0
+	for _, value := range values {
+		if value == wanted {
+			count++
+		}
+	}
+	return count
 }
 
 func TestProjectionUsesAssociationAndActiveAncestry(t *testing.T) {
@@ -126,5 +149,5 @@ func TestProjectionIndependentOriginAndUnknownDerivedParent(t *testing.T) {
 
 func passiveProjectionEvent(id, trajectory string) EventEnvelope {
 	payload, _ := json.Marshal(UsageObservedPayload{Model: "model", InputTokens: 1, OutputTokens: 1, DurationMS: 1})
-	return EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: id, ObservationID: "observation-" + id, EffortID: "effort", SessionID: "session", TrajectoryID: trajectory, Timestamp: "2026-07-22T00:00:00Z", Kind: "usage_observed", Predecessors: []string{}, Payload: payload}
+	return EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: id, ObservationID: "observation-" + id, EffortID: "effort", SessionID: "session", TrajectoryID: trajectory, Timestamp: "2026-07-22T00:00:00Z", Kind: "usage_observed", Predecessors: []string{}, Payload: payload}
 }

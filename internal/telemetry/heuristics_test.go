@@ -165,10 +165,10 @@ func heuristicSignalRead(effortID string) EffortRead {
 	for index := range events {
 		events[index].EffortID = effortID
 	}
-	return EffortRead{Metadata: EffortMetadata{EffortID: effortID, CreatedAt: "2026-07-22T00:00:00Z", CheckpointID: "checkpoint.md", CreationMode: "independent"}, Events: events}
+	return EffortRead{Metadata: EffortMetadata{EffortID: effortID, CreatedAt: "2026-07-22T00:00:00Z", CreationMode: "independent"}, Events: events}
 }
 
 func heuristicPassive(id, predecessor string, kind EventKind, payload any) EventEnvelope {
 	raw, _ := json.Marshal(payload)
-	return EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: id, ObservationID: "observation-" + id, EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Kind: kind, Predecessors: []string{predecessor}, Payload: raw}
+	return EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: id, ObservationID: "observation-" + id, EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Kind: kind, Predecessors: []string{predecessor}, Payload: raw}
 }

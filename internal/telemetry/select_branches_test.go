@@ -23,7 +23,7 @@ func TestSelectorFilteringBranchesAndOpenPhaseProjection(t *testing.T) {
 	events = appendEvent(events, "open", "phase_started", PhaseStartedPayload{Phase: "planning"})
 	events[len(events)-1].Timestamp = "2026-07-22T00:00:01Z"
 	payload, _ := json.Marshal(ToolObservedPayload{Tool: "read", Outcome: "success", DurationMS: 1})
-	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "inside", ObservationID: "inside", EffortID: "effort", SessionID: "other-session", Timestamp: "2026-07-22T00:00:02Z", Kind: "tool_observed", Predecessors: []string{"open"}, Payload: payload})
+	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "inside", ObservationID: "inside", EffortID: "effort", SessionID: "other-session", Timestamp: "2026-07-22T00:00:02Z", Kind: "tool_observed", Predecessors: []string{"open"}, Payload: payload})
 	phases := projectEventPhases(events)
 	if !phases["inside"]["planning"] {
 		t.Fatalf("open phase projection = %#v", phases)
@@ -40,14 +40,20 @@ func TestSelectorFilteringBranchesAndOpenPhaseProjection(t *testing.T) {
 
 func TestProjectEventPhasesMalformedAndMissingReferences(t *testing.T) {
 	malformed := json.RawMessage("{")
+	transitionStart := causalEvent("transition-start", "session", "phase_started", nil, PhaseStartedPayload{Phase: "planning"})
+	transition := causalEvent("transition", "session", "phase_transitioned", []string{"transition-start"}, PhaseTransitionedPayload{Phase: "planning", StartEventID: "transition-start", NextPhase: "plan-review"})
+	inside := causalEvent("inside-transition", "session", "tool_observed", []string{"transition"}, ToolObservedPayload{Tool: "read", Outcome: "success", DurationMS: 1})
 	events := []EventEnvelope{
 		{EventID: "bad-start", Kind: "phase_started", Payload: malformed},
 		{EventID: "bad-finish", Kind: "phase_finished", Payload: malformed},
+		{EventID: "bad-transition", Kind: "phase_transitioned", Payload: malformed},
 		{EventID: "bad-usage", Kind: "usage_observed", Payload: malformed},
 		causalEvent("missing-finish", "session", "phase_finished", nil, PhaseFinishedPayload{Phase: "planning", StartEventID: "missing"}),
+		causalEvent("missing-transition", "session", "phase_transitioned", nil, PhaseTransitionedPayload{Phase: "planning", StartEventID: "missing", NextPhase: "plan-review"}),
+		transitionStart, transition, inside,
 	}
 	phases := projectEventPhases(events)
-	if len(phases) != len(events) || !phases["missing-finish"]["planning"] {
+	if len(phases) != len(events) || !phases["missing-finish"]["planning"] || !phases["transition"]["planning"] || !phases["transition"]["plan-review"] || !phases["inside-transition"]["plan-review"] {
 		t.Fatalf("malformed phase evidence projection = %#v", phases)
 	}
 }

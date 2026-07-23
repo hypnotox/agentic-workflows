@@ -12,6 +12,7 @@ type ProtocolVersion struct {
 
 type EventKind string
 type Route string
+type RouteAction string
 type Phase string
 type Activity string
 type TerminalOutcome string
@@ -50,7 +51,6 @@ type EventEnvelope struct {
 }
 
 type EffortCreatedPayload struct {
-	CheckpointID       string       `json:"checkpointId"`
 	CreationMode       CreationMode `json:"creationMode"`
 	OriginEffortID     string       `json:"originEffortId,omitempty"`
 	OriginTrajectoryID string       `json:"originTrajectoryId,omitempty"`
@@ -81,6 +81,17 @@ type PhaseFinishedPayload struct {
 	Phase        Phase   `json:"phase"`
 	StartEventID string  `json:"startEventId"`
 	Outcome      Outcome `json:"outcome,omitempty"`
+}
+
+type PhaseTransitionedPayload struct {
+	Phase              Phase           `json:"phase"`
+	StartEventID       string          `json:"startEventId"`
+	NextPhase          Phase           `json:"nextPhase"`
+	Outcome            Outcome         `json:"outcome,omitempty"`
+	Activity           Activity        `json:"activity,omitempty"`
+	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
+	RouteAction        RouteAction     `json:"routeAction,omitempty"`
+	Route              Route           `json:"route,omitempty"`
 }
 
 type TrajectoryPayload struct {
@@ -193,7 +204,6 @@ type OriginMetadata struct {
 type EffortMetadata struct {
 	EffortID     string          `json:"effortId"`
 	CreatedAt    string          `json:"createdAt"`
-	CheckpointID string          `json:"checkpointId"`
 	CreationMode CreationMode    `json:"creationMode"`
 	Origin       *OriginMetadata `json:"origin,omitempty"`
 }
@@ -221,7 +231,6 @@ type LifecycleRequestBase struct {
 
 type CreateLifecycleRequest struct {
 	LifecycleRequestBase
-	CheckpointID string          `json:"checkpointId"`
 	CreationMode CreationMode    `json:"creationMode"`
 	Origin       *OriginMetadata `json:"origin,omitempty"`
 }
@@ -268,6 +277,20 @@ type FinishPhaseLifecycleRequest struct {
 }
 
 func (r FinishPhaseLifecycleRequest) lifecycleAction() string { return r.Action }
+
+type TransitionPhaseLifecycleRequest struct {
+	LifecycleRequestBase
+	Phase              Phase           `json:"phase"`
+	StartEventID       string          `json:"startEventId"`
+	NextPhase          Phase           `json:"nextPhase"`
+	Outcome            Outcome         `json:"outcome,omitempty"`
+	Activity           Activity        `json:"activity,omitempty"`
+	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
+	RouteAction        RouteAction     `json:"routeAction,omitempty"`
+	Route              Route           `json:"route,omitempty"`
+}
+
+func (r TransitionPhaseLifecycleRequest) lifecycleAction() string { return r.Action }
 
 type TrajectoryLifecycleRequest struct {
 	LifecycleRequestBase
@@ -377,7 +400,6 @@ type RetentionState struct {
 
 type EffortProjection struct {
 	EffortID           string            `json:"effortId"`
-	CheckpointID       string            `json:"checkpointId"`
 	State              string            `json:"state"`
 	Route              string            `json:"route"`
 	ActiveTrajectoryID string            `json:"activeTrajectoryId"`
@@ -431,6 +453,7 @@ type ReconciliationProposal struct {
 }
 
 type Finding struct {
+	EffortID       string                  `json:"effortId"`
 	Code           string                  `json:"code"`
 	Type           string                  `json:"type"`
 	Severity       string                  `json:"severity"`

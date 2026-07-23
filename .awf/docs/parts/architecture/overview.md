@@ -40,12 +40,16 @@ Context assembly uses one selected-universe boundary. A request path is normaliz
 Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. Only its self-ignoring
 `.gitignore` is governed output; effort ledgers, leases, tombstones, trash, and caches are ignored
 resident data that sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim.
-An embedded machine-readable descriptor governs the privacy-minimal event envelope and payload union.
-Go validates and appends one JSONL stream per session, projects explicit discovery, route, phase,
-handoff, and trajectory state, performs leased deterministic terminal-effort retention, and serves
-canonical selector-driven metrics and diagnosis. `awf metrics` queries or exports that model, while
-read-only `awf doctor` reports exact violations and configured versioned heuristics without a score,
-automatic repair, blocking verdict, or daemon. The Pi dashboard writes conforming events and refreshes
+An embedded machine-readable protocol-2 descriptor governs the privacy-minimal event envelope,
+payload union, and closed lifecycle requests without any repository-path field. Go validates and
+appends one JSONL stream per session; one `phase_transitioned` event transactionally closes an
+unmatched phase start, enters its successor, and optionally applies a route effect from the current
+causal frontier. The same engine projects discovery, route, phase, handoff, and trajectory state,
+performs leased deterministic terminal-effort retention, and serves canonical selector-driven
+metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor`
+reports exact violations and configured versioned heuristics without a score, automatic repair,
+blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver
+inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The Pi dashboard writes conforming events and refreshes
 both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
 stale or degraded.
 

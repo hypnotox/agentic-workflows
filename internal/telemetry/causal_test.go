@@ -7,7 +7,7 @@ import (
 
 func causalEvent(id, session string, kind EventKind, predecessors []string, payload any) EventEnvelope {
 	raw, _ := json.Marshal(payload)
-	return EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: id, IdempotencyKey: "key-" + id, EffortID: "effort", SessionID: session, Timestamp: "2026-07-22T00:00:00Z", Kind: kind, Predecessors: predecessors, Payload: raw}
+	return EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: id, IdempotencyKey: "key-" + id, EffortID: "effort", SessionID: session, Timestamp: "2026-07-22T00:00:00Z", Kind: kind, Predecessors: predecessors, Payload: raw}
 }
 
 func trajectoryAncestryForTest(nodes map[string]TrajectoryNode, trajectoryID string) ([]string, bool) {
@@ -29,7 +29,7 @@ func trajectoryAncestryForTest(nodes map[string]TrajectoryNode, trajectoryID str
 }
 
 func TestCausalPartialOrderUsesProtocolEdgesOnly(t *testing.T) {
-	created := causalEvent("created", "parent", "effort_created", nil, EffortCreatedPayload{CheckpointID: "x", CreationMode: "independent"})
+	created := causalEvent("created", "parent", "effort_created", nil, EffortCreatedPayload{CreationMode: "independent"})
 	first := causalEvent("first", "parent", "route_selected", []string{"created"}, RoutePayload{Route: "direct"})
 	left := causalEvent("z-left", "left", "session_detached", []string{"first"}, SessionDetachedPayload{Reason: "manual"})
 	right := causalEvent("a-right", "right", "session_detached", []string{"first"}, SessionDetachedPayload{Reason: "manual"})

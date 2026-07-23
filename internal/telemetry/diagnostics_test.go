@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// invariant: tooling/workflow-telemetry:canonical-projections-and-diagnostics
 func TestCanonicalProjectionsAndDiagnostics(t *testing.T) {
 	badTransition := lifecycleBaseEvents()
 	badTransition = appendEvent(badTransition, "bad-change", "route_changed", RoutePayload{Route: "direct"})
@@ -38,7 +37,7 @@ func TestCanonicalProjectionsAndDiagnostics(t *testing.T) {
 
 	handoff := lifecycleBaseEvents()
 	handoffPayload, _ := json.Marshal(HandoffObservedPayload{Outcome: "success", TargetSessionID: "child-session"})
-	handoff = append(handoff, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "handoff", ObservationID: "handoff-observation", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"create"}, Payload: handoffPayload})
+	handoff = append(handoff, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "handoff", ObservationID: "handoff-observation", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"create"}, Payload: handoffPayload})
 
 	reads := []EffortRead{
 		diagnosticRead(badTransition),
@@ -47,7 +46,7 @@ func TestCanonicalProjectionsAndDiagnostics(t *testing.T) {
 		diagnosticRead(concurrent),
 		diagnosticRead(clock),
 		diagnosticRead(handoff),
-		{Metadata: EffortMetadata{EffortID: "effort", CheckpointID: "checkpoint.md"}, Events: lifecycleBaseEvents(), Integrity: []IntegrityIssue{
+		{Metadata: EffortMetadata{EffortID: "effort"}, Events: lifecycleBaseEvents(), Integrity: []IntegrityIssue{
 			{Code: "malformed-complete-line", Scope: "session", Line: 2, EventIDs: []string{"available"}},
 			{Code: "unsupported-protocol", Scope: "session", Line: 3, EventIDs: []string{}},
 		}},
@@ -116,6 +115,114 @@ func TestCanonicalProjectionsAndDiagnostics(t *testing.T) {
 	if err != nil || hasFindingCode(negative.Findings, "WFV1-HANDOFF-ASSOCIATION") {
 		t.Fatalf("validated handoff produced finding %#v, err %v", negative.Findings, err)
 	}
+}
+
+// invariant: tooling/workflow-telemetry:canonical-projections-and-diagnostics
+func TestProtocol2CanonicalFindingsCarryOwningEffort(t *testing.T) {
+	exactRead := diagnosticRead(appendEvent(lifecycleBaseEvents(), "bad-change", "route_changed", RoutePayload{Route: "direct"}))
+	heuristicRead := heuristicSignalRead("heuristic-effort")
+	result, err := Diagnose([]EffortRead{exactRead, heuristicRead}, Selector{}, HeuristicOptions{
+		Enabled: true, MinimumBaselineSamples: 1, BaselinePercentile: 95,
+		Thresholds: HeuristicThresholds{CompactionCount: 1},
+	}, time.Date(2026, 7, 22, 2, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Findings) == 0 {
+		t.Fatal("diagnosis produced no findings")
+	}
+	for _, finding := range result.Findings {
+		raw, err := json.Marshal(finding)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var projected map[string]any
+		if err := json.Unmarshal(raw, &projected); err != nil {
+			t.Fatal(err)
+		}
+		effortID, ok := projected["effortId"].(string)
+		if !ok || effortID == "" {
+			t.Fatalf("canonical finding has no owning effort: %s", raw)
+		}
+		if effortID != "effort" && effortID != "heuristic-effort" {
+			t.Fatalf("canonical finding has foreign owning effort %q: %s", effortID, raw)
+		}
+	}
+}
+
+func TestProtocol2FindingMutationsUseSelectedEffortAndCurrentFrontier(t *testing.T) {
+	badEvents := appendEvent(lifecycleBaseEvents(), "bad-change", "route_changed", RoutePayload{Route: "direct"})
+	repairResult, err := DiagnoseExact([]EffortRead{diagnosticRead(badEvents)}, Selector{}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	repairFinding := findingByCode(t, repairResult.Findings, "WFV1-LIFECYCLE-TRANSITION")
+	repairEffort := findingEffortID(t, repairFinding)
+	if repairFinding.Reconciliation == nil {
+		t.Fatal("selected repair finding has no eligible proposal")
+	}
+	repairRequest := map[string]any{
+		"action": "repair", "idempotencyKey": "repair-key", "eventId": "repair-event", "effortId": repairEffort, "sessionId": "session-id",
+		"timestamp": "2026-07-22T00:00:02Z", "predecessors": currentFrontier(badEvents), "proposal": repairFinding.Reconciliation,
+	}
+	if _, err := DecodeLifecycleRequest(mustJSON(t, repairRequest)); err != nil {
+		t.Fatalf("selected finding repair request rejected: %v", err)
+	}
+
+	waiverEvents := lifecycleBaseEvents()
+	waiverEvents = appendEvent(waiverEvents, "route", "route_selected", RoutePayload{Route: "direct"})
+	for index, phase := range []Phase{"brainstorming", "implementation", "implementation-review"} {
+		waiverEvents = appendFinishedPhase(waiverEvents, "phase-"+uintString(uint64(index)), phase, "")
+	}
+	waiverEvents = appendEvent(waiverEvents, "complete", "effort_completed", EffortTerminalPayload{TerminalEpoch: 1})
+	waiverResult, err := DiagnoseExact([]EffortRead{diagnosticRead(waiverEvents)}, Selector{}, time.Time{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiverFinding := findingByCode(t, waiverResult.Findings, "WFV1-RETROSPECTIVE")
+	waiverRequest := map[string]any{
+		"action": "waive", "idempotencyKey": "waive-key", "eventId": "waive-event", "effortId": findingEffortID(t, waiverFinding), "sessionId": "session-id",
+		"timestamp": "2026-07-22T00:00:03Z", "predecessors": currentFrontier(waiverEvents), "ruleCode": waiverFinding.Code,
+		"scope": waiverFinding.Scope, "evidenceIds": waiverFinding.Evidence.EventIDs, "reasonCode": "approved-route-deviation",
+	}
+	if _, err := DecodeLifecycleRequest(mustJSON(t, waiverRequest)); err != nil {
+		t.Fatalf("selected finding waiver request rejected: %v", err)
+	}
+}
+
+func findingEffortID(t *testing.T, finding Finding) string {
+	t.Helper()
+	raw, err := json.Marshal(finding)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projected struct {
+		EffortID string `json:"effortId"`
+	}
+	if err := json.Unmarshal(raw, &projected); err != nil {
+		t.Fatal(err)
+	}
+	if projected.EffortID == "" {
+		t.Fatalf("selected finding has no effortId: %s", raw)
+	}
+	return projected.EffortID
+}
+
+func currentFrontier(events []EventEnvelope) []string {
+	predecessors := map[string]bool{}
+	for _, event := range events {
+		for _, predecessor := range event.Predecessors {
+			predecessors[predecessor] = true
+		}
+	}
+	frontier := []string{}
+	for _, event := range events {
+		if !predecessors[event.EventID] {
+			frontier = append(frontier, event.EventID)
+		}
+	}
+	sort.Strings(frontier)
+	return frontier
 }
 
 func TestDiagnosticsWaiversRequireExactEligibleMatch(t *testing.T) {
@@ -244,7 +351,7 @@ func TestDiagnosticsSelectorsAndCausalOrderingOnly(t *testing.T) {
 }
 
 func diagnosticRead(events []EventEnvelope) EffortRead {
-	return EffortRead{Metadata: EffortMetadata{EffortID: "effort", CreatedAt: "2026-07-22T00:00:00Z", CheckpointID: "checkpoint.md", CreationMode: "independent"}, Events: events}
+	return EffortRead{Metadata: EffortMetadata{EffortID: "effort", CreatedAt: "2026-07-22T00:00:00Z", CreationMode: "independent"}, Events: events}
 }
 
 func validHandoffRead() EffortRead {
@@ -252,7 +359,7 @@ func validHandoffRead() EffortRead {
 	events = appendEvent(events, "trajectory", "trajectory_started", TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "anchor"})
 	events[len(events)-1].TrajectoryID = "trajectory"
 	handoffPayload, _ := json.Marshal(HandoffObservedPayload{Outcome: "success", TargetSessionID: "child-session"})
-	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 1}, EventID: "handoff", ObservationID: "handoff-observation", EffortID: "effort", SessionID: "session", TrajectoryID: "trajectory", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"trajectory"}, Payload: handoffPayload})
+	events = append(events, EventEnvelope{Version: ProtocolVersion{Major: 2}, EventID: "handoff", ObservationID: "handoff-observation", EffortID: "effort", SessionID: "session", TrajectoryID: "trajectory", Timestamp: "2026-07-22T00:00:01Z", Kind: "handoff_observed", Predecessors: []string{"trajectory"}, Payload: handoffPayload})
 	association := causalEvent("association", "child-session", "session_associated", []string{"handoff"}, SessionAssociatedPayload{AssociationOrigin: "handoff", TrajectoryID: "trajectory", HandoffEventID: "handoff"})
 	association.TrajectoryID = "trajectory"
 	events = append(events, association)

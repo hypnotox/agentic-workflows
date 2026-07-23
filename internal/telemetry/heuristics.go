@@ -33,6 +33,7 @@ type HeuristicOptions struct {
 }
 
 type heuristicMetric struct {
+	effortID   string
 	code       string
 	scope      string
 	key        string
@@ -129,6 +130,15 @@ func effortHeuristicMetrics(read EffortRead, thresholds HeuristicThresholds) []h
 			if json.Unmarshal(event.Payload, &payload) == nil {
 				finishesByStart[payload.StartEventID] = event
 			}
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			// coverage-ignore: malformed lifecycle events are excluded by projectLifecycleFromRead above
+			if json.Unmarshal(event.Payload, &payload) == nil {
+				finishesByStart[payload.StartEventID] = event
+				start := event
+				start.Payload, _ = json.Marshal(PhaseStartedPayload{Phase: payload.NextPhase, Activity: payload.Activity, ImplementationMode: payload.ImplementationMode})
+				startsByPhase[payload.NextPhase] = append(startsByPhase[payload.NextPhase], start)
+			}
 		}
 	}
 	for phase, starts := range startsByPhase {
@@ -177,6 +187,9 @@ func effortHeuristicMetrics(read EffortRead, thresholds HeuristicThresholds) []h
 		}
 	}
 	metrics = append(metrics, implementationSegmentMetrics(effortID, route, events, startsByPhase["implementation"], finishesByStart, order, thresholds)...)
+	for index := range metrics {
+		metrics[index].effortID = effortID
+	}
 	sort.Slice(metrics, func(i, j int) bool {
 		return metrics[i].code+"\x00"+metrics[i].scope < metrics[j].code+"\x00"+metrics[j].scope
 	})
@@ -318,7 +331,8 @@ func heuristicFinding(metric heuristicMetric, cohort []float64, options Heuristi
 		confidence = "high"
 	}
 	finding := Finding{
-		Code: metric.code, Type: "heuristic", Severity: "warning", Scope: metric.scope,
+		EffortID: metric.effortID,
+		Code:     metric.code, Type: "heuristic", Severity: "warning", Scope: metric.scope,
 		Evidence:   FindingEvidence{EventIDs: metric.eventIDs, CounterIDs: sortedUnique(counterIDs), ObservedValue: &observed, Unit: metric.unit},
 		Threshold:  &FindingThreshold{Kind: "absolute", Comparator: comparator, Value: metric.threshold, Unit: metric.unit},
 		Baseline:   &FindingBaseline{Route: metric.route, RuleVersion: heuristicRuleVersion, SampleCount: len(cohort), Percentile: percentile, Value: baseline, Unit: metric.unit},
@@ -382,9 +396,15 @@ func usageEventIDs(events []EventEnvelope) []string {
 func implementationReworkIDs(events []EventEnvelope, order *CausalOrder) []string {
 	ids := []string{}
 	for _, event := range events {
-		if event.Kind == "phase_started" {
+		switch event.Kind {
+		case "phase_started":
 			var payload PhaseStartedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil && payload.Phase == "implementation" && hasPriorImplementationReview(event, events, order) {
+				ids = append(ids, event.EventID)
+			}
+		case "phase_transitioned":
+			var payload PhaseTransitionedPayload
+			if json.Unmarshal(event.Payload, &payload) == nil && payload.NextPhase == "implementation" && (payload.Phase == "implementation-review" || hasPriorImplementationReview(event, events, order)) {
 				ids = append(ids, event.EventID)
 			}
 		}

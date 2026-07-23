@@ -38,15 +38,17 @@ dependencies in a named volume, snapshots the read-only checkout inside the cont
 and executes strict TypeScript plus 100% statement, branch, function, and line coverage checks without
 host npm state. Every rendered extension file carries a `// @ts-nocheck` directive (ADR-0126) that
 keeps adopter IDEs quiet without a resolvable `@types/node`; the container strips that line from its
-snapshot before `tsc` runs, so the type-check still covers the real extension code. Descriptor golden
-and fixture tests compare Go and TypeScript vocabulary, event acceptance, creation and append recovery,
-and gate classification. Dashboard tests cover confined owner-only storage, leases, tombstones,
-serialized drain, explicit versus passive failure, active-branch association, trajectory navigation,
-closed lifecycle schemas, bootstrap authority, PATH-to-advertised-runner fallback, launcher project-root
-environment, bounded dual-failure diagnostics, one launcher capture per session, controlled binary
-handshake and refresh, atomic stale/degraded state,
-widget and overlay rendering, fixed maintenance arrays, confirmation, privacy exclusions, and no-spawn
-rendering. Runner tests cover
+snapshot before `tsc` runs, so the type-check still covers the real extension code. Descriptor golden and fixture tests compare the complete protocol-2 Go and generated TypeScript
+vocabulary, event acceptance, creation and append recovery, transactional phase transitions, and gate
+classification. A repository-resident preflight test refuses automatic cleanup when any protocol-1
+effort exists and proves it changes no resident evidence. Dashboard tests cover confined owner-only
+storage, leases, tombstones, serialized drain, explicit versus passive failure, active-branch
+association, trajectory navigation, closed lifecycle schemas, bootstrap authority,
+PATH-to-advertised-runner fallback, launcher project-root environment, bounded dual-failure
+diagnostics, one launcher capture per session, controlled binary handshake and refresh, atomic
+stale/degraded state, widget and overlay rendering, fixed maintenance arrays, confirmation, complete
+repository-path privacy exclusion, effort-owned finding re-resolution, stale or empty-frontier and
+cross-effort mutation rejection, and no-spawn rendering. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An
 in-memory pinned-fork Pi 0.81.1 runtime loads all three extension factories and proves that partial details,
 result-middleware error patches, producer observations, association copying, widget and overlay

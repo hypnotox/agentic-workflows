@@ -57,10 +57,13 @@ private byte copy in one path-sorted, tamper-proof view, so the scan and its `.a
 lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
 and range universes the current-state checks compare.
 
-An explicit lifecycle request creates an undecided discovery effort, selects or changes a closed route,
-starts and finishes named phases, manages session association and trajectories, or records a terminal,
-waiver, or typed repair operation. It is validated against the embedded descriptor and current causal
-frontier before a confined, leased, flushed JSONL append acknowledges success. Investigation is an
+An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
+closed route, starts the first named phase, transactionally closes an unmatched phase start and enters
+its successor, manages session association and trajectories, or records a terminal, waiver, or typed
+repair operation. A normal chain edge is one `phase_transitioned` event carrying both phase effects and
+any route effect. Each request is validated against the embedded descriptor and current causal frontier
+before a confined, leased, flushed JSONL append acknowledges success; an identical retry succeeds
+idempotently while conflicting concurrent state remains evidence. Investigation is an
 optional phase and debugging activity; bugfix is a route whose implementation, review, and
 retrospective requirements remain explicit. Parent handoff copies only the active-branch association.
 Tree navigation closes or resumes a known trajectory or forks one; work derived from a terminal effort
@@ -74,9 +77,11 @@ metrics` and JSON export aggregate resident efforts through the shared effort/se
 selector into deterministic current-path, all-work, session, phase, trajectory, integrity, and
 retention projections; JSONL export emits only validated normalized envelopes in stable stream order.
 `awf doctor` reads the same state, evaluates exact rules and configured comparable-route heuristics,
-and renders advisory evidence without writing resident state or changing exit status because of a
-finding. Waivers and typed repairs append only after explicit confirmation; purge is a separately
-confirmed destructive operation.
+and renders advisory effort-owned evidence without writing resident state or changing exit status
+because of a finding. Waivers and typed repairs append only after explicit confirmation and
+re-resolution of the selected finding under its `effortId`, with matching evidence and scope, an
+eligible reason, and the current nonempty causal frontier. Purge is a separately confirmed destructive
+operation.
 
 The Pi dashboard restores association from the active branch, writes passive observations through a
 serialized durable queue, and drains it at shutdown. An enabled project bootstrap is authoritative.

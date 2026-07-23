@@ -48,9 +48,9 @@ func TestReadAllEffortsAndNormalizedExport(t *testing.T) {
 
 func TestNormalizedExportOrdersSessionsAndLines(t *testing.T) {
 	events := []EventEnvelope{
-		causalEvent("z-event", "z-session", "effort_created", []string{}, EffortCreatedPayload{CheckpointID: "z.md", CreationMode: "independent"}),
-		{Version: ProtocolVersion{Major: 1}, EventID: "a-later", ObservationID: "observation-later", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:02Z", Kind: "tool_observed", Predecessors: []string{}, Payload: json.RawMessage(`{"tool":"read","outcome":"success","durationMs":2}`)},
-		{Version: ProtocolVersion{Major: 1}, EventID: "a-first", ObservationID: "observation-first", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:01Z", Kind: "tool_observed", Predecessors: []string{}, Payload: json.RawMessage(`{"tool":"read","outcome":"success","durationMs":1}`)},
+		causalEvent("z-event", "z-session", "effort_created", []string{}, EffortCreatedPayload{CreationMode: "independent"}),
+		{Version: ProtocolVersion{Major: 2}, EventID: "a-later", ObservationID: "observation-later", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:02Z", Kind: "tool_observed", Predecessors: []string{}, Payload: json.RawMessage(`{"tool":"read","outcome":"success","durationMs":2}`)},
+		{Version: ProtocolVersion{Major: 2}, EventID: "a-first", ObservationID: "observation-first", EffortID: "effort", SessionID: "a-session", Timestamp: "2026-07-22T00:00:01Z", Kind: "tool_observed", Predecessors: []string{}, Payload: json.RawMessage(`{"tool":"read","outcome":"success","durationMs":1}`)},
 	}
 	read := EffortRead{Metadata: EffortMetadata{EffortID: "effort"}, Events: events, Records: []LedgerRecord{
 		{SessionID: "z-session", Line: 1, Event: &events[0]},
@@ -77,7 +77,7 @@ func TestNormalizedExportOrdersSessionsAndLines(t *testing.T) {
 func TestRenderDoctorHumanDeterministicAndWriteFailures(t *testing.T) {
 	observed := 3.0
 	result := DoctorResult{
-		SchemaVersion: 1, ProtocolMajor: 1, GeneratedAt: time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC),
+		SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC),
 		Findings: []Finding{{
 			Code: "WFH1-TEST", Type: "heuristic", Severity: "warning", Scope: "effort", Confidence: "high", Waived: false,
 			Evidence:       FindingEvidence{EventIDs: []string{"event"}, CounterIDs: []string{}, ObservedValue: &observed, Unit: "count"},

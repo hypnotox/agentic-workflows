@@ -34,9 +34,9 @@ file and reports that fact; only an explicitly confirmed metrics purge removes e
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf metrics --json`: print the canonical workflow metrics projection. The `--effort`, `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND. Use `awf metrics export --format json` for that projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
-- `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, phase, trajectory, terminal, waiver, or typed repair operation. A failed validation or durable write is an error, never a claimed success.
+- `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, transactional phase transition, trajectory, terminal, waiver, or typed repair operation. Protocol 2 uses `transition-phase` for a normal chain edge so one event closes the named start and enters its successor, optionally with a route effect. Repair and waiver requests name the selected finding's owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible input is rejected without append. A failed validation or durable write is an error, never a claimed success.
 - `awf metrics retain --dry-run --json`: preview deterministic terminal-effort retention. Omit `--dry-run` to apply it. `awf metrics purge --effort <ID> --confirm --json` is the separately confirmed destructive cleanup surface and refuses active efforts.
-- `awf doctor --json`: report exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status. There is no automatic health score, workflow block, waiver, repair, or reconciliation.
+- `awf doctor --json`: report effort-owned exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status. There is no automatic health score, workflow block, waiver, repair, or reconciliation.
 - `awf invariants`: report the current-state topic invariant claims and their backing state.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
 - `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
@@ -202,13 +202,15 @@ extensions comprise exactly five generated TypeScript files. `protocol.ts` is de
 machine-readable Go descriptor; its vocabulary, bounds, validation, input attribution, rendered hash,
 and Go/TypeScript parity are not maintained by hand in the wrapper template.
 
-Telemetry starts with explicit lifecycle, not inference. Create an `independent` effort in discovery,
-or a `derived` effort with opaque origin effort, trajectory, and anchor IDs. Select one closed route
-only when the work supports it, then explicitly start and finish phases. Investigation is a top-level
-phase, debugging is an investigation activity, bugfix is a route spanning implementation, review,
-and retrospective, and implementation execution style is a mode rather than a phase. A later scope
-change changes route explicitly. Completion checks the selected route and freshness requirements;
-abandonment remains available from discovery or active work.
+Telemetry uses protocol 2 and explicit lifecycle, not inference. Create an `independent` effort in
+discovery, or a `derived` effort with opaque origin effort, trajectory, and anchor IDs. Select one
+closed route only when the work supports it, start the first phase, then use one `transition-phase`
+request for each normal chain edge. Its single event names the unmatched start, closes that phase,
+enters its successor, and optionally applies a route effect from the current causal frontier.
+Investigation is a top-level phase, debugging is an investigation activity, bugfix is a route spanning
+implementation, review, and retrospective, and implementation execution style is a mode rather than
+a phase. A later scope change changes route explicitly. Completion checks the selected route and
+freshness requirements; abandonment remains available from discovery or active work.
 
 Association is a bounded custom session entry restored only from Pi's active branch. Tree, fork, and
 clone navigation close the current segment and resume a causally known trajectory or append a fork;
@@ -225,17 +227,20 @@ TypeScript never reimplements historical aggregation or diagnosis. Resolution, v
 query failure leaves the last complete pair visibly stale or exposes a degraded state. Direct
 conforming lifecycle tools remain registered; passive observation failure never interrupts work.
 
-Findings expose their stable rule, evidence, threshold or baseline, confidence, and next action. The
-dashboard has no composite score and never blocks work or applies a repair, waiver, retention purge,
-or association change automatically. Typed repair and waiver actions require confirmation and append
-evidence; maintenance uses fixed argument arrays, with a second confirmation for destructive purge.
+Findings expose their owning `effortId`, stable rule, evidence, threshold or baseline, confidence, and
+next action. The dashboard has no composite score and never blocks work or applies a repair, waiver,
+retention purge, or association change automatically. Typed repair and waiver actions require
+confirmation, re-resolve the selected finding under its effort, and append only with matching evidence
+and scope, an eligible reason, and the current nonempty causal frontier. Maintenance uses fixed
+argument arrays, with a second confirmation for destructive purge.
 
 Resident events may contain bounded opaque identifiers, timestamps, route/phase/activity values,
 model and tool names, duration, token/cache/cost totals, workflow counters, and categorized outcomes.
 They exclude prompts, assistant text, tasks, tool arguments or previews, raw commands, stdout/stderr,
-free-form waiver prose, and repository paths other than the bounded checkpoint identifier. The
-storage threat model covers accidental truncation or alteration, incompatible writers, traversal,
-unsafe file types, and symlink or reparse redirection. It does not defend against a hostile process
+free-form waiver prose, and every repository path. Protocol-1 resident data is never rewritten or
+automatically deleted; the repository preflight stops for explicit confirmed purge if any such effort
+exists. The storage threat model covers accidental truncation or alteration, incompatible writers,
+traversal, unsafe file types, and symlink or reparse redirection. It does not defend against a hostile process
 running as the same user and does not promise cryptographic tamper evidence.
 
 ### Path globs and domain territories

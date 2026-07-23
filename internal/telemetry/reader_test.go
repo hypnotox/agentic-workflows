@@ -192,7 +192,7 @@ func TestReaderInvalidTransitionSeamRetainsWithoutApplying(t *testing.T) {
 func TestReaderRetainsUnappliedCreationThatDiffersFromImmutableMetadata(t *testing.T) {
 	t.Parallel()
 	ledger, metadata, _ := createTestEffort(t)
-	metadata.CheckpointID = "changed.md"
+	metadata.CreatedAt = "2026-07-22T12:34:57Z"
 	raw, err := json.Marshal(metadata)
 	if err != nil {
 		t.Fatal(err)

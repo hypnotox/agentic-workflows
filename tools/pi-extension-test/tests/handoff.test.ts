@@ -52,7 +52,7 @@ async function execute(h: ReturnType<typeof harness>, params: any = { memoryPath
 async function startCommand(h: ReturnType<typeof harness>, id = "uuid") { return h.commands.get("awf-handoff-continue").handler(id, h.ctx); }
 
 const association = { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", associationOrigin: "handoff" } as const;
-const associationResponse = { version: { major: 1, minor: 0 }, association };
+const associationResponse = { version: { major: 2, minor: 0 }, association };
 
 const notice = Symbol.for("awf.pi.minimum-runtime-notified");
 test("minimum guard and default factory use exact Pi 0.81.1", async () => {
@@ -139,9 +139,9 @@ test("invariant: handoff transfers exact association and success setup data", as
 
   for (const options of [
     {},
-    { associationResponses: [{ version: { major: 2, minor: 0 }, association }] },
-    { associationResponses: [{ version: { major: 1, minor: 1 }, association }] },
-    { associationResponses: [{ version: { major: 1, minor: 0 }, association: { ...association, effortId: "bad/id" } }] },
+    { associationResponses: [{ version: { major: 3, minor: 0 }, association }] },
+    { associationResponses: [{ version: { major: 2, minor: 1 }, association }] },
+    { associationResponses: [{ version: { major: 2, minor: 0 }, association: { ...association, effortId: "bad/id" } }] },
     { associationResponses: [associationResponse, associationResponse] },
     { associationListenerError: new Error("listener failed") },
     { associationResponses: [associationResponse], associationAppendError: new Error("append failed") },
