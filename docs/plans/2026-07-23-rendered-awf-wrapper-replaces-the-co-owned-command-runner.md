@@ -261,7 +261,10 @@ splitting the template swap from the adoptions).
   rework `TestExampleAdoptsRunner` (the proof marker for
   `rendering/companion-scripts:runner-example-adopted` lands on it) to assert sundial's config
   enables the runner, `examples/sundial/awf` is rendered (bootstrap-then-PATH body, no in-place
-  marker), and the hand-written `examples/sundial/x` exists with `gate` and `test` arms. Update
+  marker), the hand-written `examples/sundial/x` exists with `gate` and `test` arms, and
+  `examples/sundial/.awf/config.yaml` carries none of `activeMdRegenCmd`, `checkCmd`,
+  `commitGateCmd`, or `proseGateCmd` (the amended ADR item 8 var-drop is guarded, not just
+  executed). Update
   the remaining `x.tmpl`/path-`x` references in `internal/project/` tests
   (`context_artifacts_test.go:109`, `spine_test.go`, `inplace_test.go`, `target_test.go`,
   `notes_test.go`, `project_test.go`) to the new template id and path; `cmd/repoaudit` fixture
@@ -284,7 +287,10 @@ splitting the template swap from the adoptions).
     `awf upgrade`, respecting an explicit false." Update `runner-example-adopted` to: "The
     bundled sundial example enables the runner singleton, and its rendered `awf` wrapper is
     drift-free, invariant-clean, and free of advisory notes; its project verbs live in a
-    hand-written `./x` outside the render set." Remove the `runner-awf-verbs-owned` and
+    hand-written `./x` outside the render set, and its config carries no awf-verb command
+    vars, so it dogfoods the rendered defaults." (Var absence only, not `./awf` forms: the
+    runner-aware fallbacks land in Phase 4, after this Phase 2 claim update.) Remove the
+    `runner-awf-verbs-owned` and
     `runner-project-verbs-in-place` claim blocks.
   - `.awf/topics/parts/rendering/catalog-and-targets/current-state.md`: update
     `var-descriptor-set-pinned`, inserting `awfInvokeCmd` into the pinned functional set list.
@@ -323,9 +329,15 @@ splitting the template swap from the adoptions).
     it describes is deleted here), and the `./x build`/`./x install` table row updates to
     `go build -o bin/awf ./cmd/awf` (Task 2.7(c) changes the arm in this commit); the
     remaining ./x-verb-set prose is Phase 3's (Task 3.2).
-  Post-check: `grep -rn "co-owned" templates/ .awf/domains/parts/ .awf/parts/` and
-  `grep -rn "runner-forwarded" templates/ .awf/` return no matches (`docs/decisions/` history
-  hits are expected and exempt).
+  - `templates/docs/agents-md-standard.md.tmpl:33`: the sentence "The managed runner discovers
+    forwarded verbs from CLI metadata; reasoned exclusions remain direct `awf` commands." is
+    rewritten to the wrapper contract (the managed runner is a pure `./awf` wrapper forwarding
+    every CLI verb; project verbs live in the adopter's own runner). The rendered
+    `docs/agents-md-standard.md` regenerates via `./x sync`.
+  Post-check: `grep -rn "co-owned" templates/ .awf/domains/parts/ .awf/parts/`,
+  `grep -rn "runner-forwarded" templates/ .awf/`, and
+  `grep -rn "discovers forwarded verbs" templates/ docs/` return no matches
+  (`docs/decisions/` history hits are expected and exempt).
 - [ ] **Task 2.12: Lifecycle, verify, commit.** Append
   `Applied; state-sequence: 2; operations: add rendering/companion-scripts:runner-pure-forwarder, add rendering/companion-scripts:runner-resolution-pinned-first, update rendering/companion-scripts:runner-singleton-toggle, update rendering/companion-scripts:runner-example-adopted, update rendering/catalog-and-targets:var-descriptor-set-pinned, update tooling/cli:cli-command-spec-single-source, update tooling/cli:metrics-command-contract, update tooling/cli:doctor-command-contract, remove rendering/companion-scripts:runner-awf-verbs-owned, remove rendering/companion-scripts:runner-project-verbs-in-place, remove tooling/cli:managed-runner-command-parity`
   per `awf-adr-lifecycle`. `./x sync`; fresh `git status`; stage this phase's paths (including
