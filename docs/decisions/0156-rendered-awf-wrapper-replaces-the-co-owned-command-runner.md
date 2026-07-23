@@ -101,9 +101,10 @@ Verified couplings that shape the redesign:
    rendered `x`.
 9. **The outgoing co-owned runner is backed up, not silently deleted.** When a sync's lock prune
    removes the previously rendered co-owned runner path `x` (the only output that carried
-   in-place sections), the file is backed up to `x-bak` in place of deletion, mirroring the
-   foreign-file backup precedent, so an adopter's hand-authored in-place verb bodies stay on disk
-   for the one-time hand-port instead of vanishing into git history.
+   in-place sections), the file is backed up in place of deletion through the standard backup
+   path (`x.awf-bak`, collision-suffixed like every awf backup), so an adopter's hand-authored
+   in-place verb bodies stay on disk for the one-time hand-port instead of vanishing into git
+   history.
 10. **The four added claims are invariant claims with `Backing: test`.**
     `runner-pure-forwarder`, `runner-resolution-pinned-first`, `runner-prune-backup`, and
     `hooks-commands-resolvable` are each directly testable (wrapper render shape, resolution
@@ -116,18 +117,18 @@ Verified couplings that shape the redesign:
     generated config reference for the new `awfInvokeCmd` descriptor.
 12. **This redefines the runner contract ADR-0101 established.** ADR-0101 remains frozen history;
     the change lands entirely through the State changes below, and incremental (batched) V2
-    application is expected given the breadth.
+    application is expected given the breadth. The declaration order is the batched application
+    order: the prune-backup mechanism lands first (it must exist before any tree's sync prunes a
+    co-owned runner), the core reshape and both adoptions follow, this repository's runner
+    slimming next, and the hook-payload/validation rework closes the sequence.
 
 ## State changes
 
+- add `rendering/companion-scripts:runner-prune-backup`
 - add `rendering/companion-scripts:runner-pure-forwarder`
 - add `rendering/companion-scripts:runner-resolution-pinned-first`
-- add `rendering/companion-scripts:runner-prune-backup`
-- add `config/validation:hooks-commands-resolvable`
 - update `rendering/companion-scripts:runner-singleton-toggle`
 - update `rendering/companion-scripts:runner-example-adopted`
-- update `rendering/companion-scripts:hook-payloads-fallback-safe`
-- update `rendering/companion-scripts:dashboard-development-runtime-commands`
 - update `rendering/catalog-and-targets:var-descriptor-set-pinned`
 - update `tooling/cli:cli-command-spec-single-source`
 - update `tooling/cli:metrics-command-contract`
@@ -135,6 +136,9 @@ Verified couplings that shape the redesign:
 - remove `rendering/companion-scripts:runner-awf-verbs-owned`
 - remove `rendering/companion-scripts:runner-project-verbs-in-place`
 - remove `tooling/cli:managed-runner-command-parity`
+- update `rendering/companion-scripts:dashboard-development-runtime-commands`
+- add `config/validation:hooks-commands-resolvable`
+- update `rendering/companion-scripts:hook-payloads-fallback-safe`
 
 ## Consequences
 
@@ -165,7 +169,7 @@ Harder / accepted trade-offs:
   gates bound it.
 - Adopters who used the co-owned runner's in-place sections (the example adopter is the known
   case) must hand-port their project verbs to their own runner file once; the pruned file stays
-  on disk as `x-bak` (Decision item 9), with git history as the durable fallback.
+  on disk as `x.awf-bak` (Decision item 9), with git history as the durable fallback.
 - **Runner-absent adopters gain an unsolicited root file on upgrade.** Seeding an absent `runner`
   key to enabled means an adopter who never opted into a runner receives a new tracked `awf` file
   at the root; accepted because the wrapper is the new baseline contract the rendered hooks and
