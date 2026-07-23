@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0155: Implementer-side context grounding in workflow skill templates](0155-implementer-side-context-grounding-in-workflow-skill-templates.md) (Proposed)
+- [ADR-0156: Rendered awf wrapper replaces the co-owned command runner](0156-rendered-awf-wrapper-replaces-the-co-owned-command-runner.md) (Proposed)
 
 ## History
 
