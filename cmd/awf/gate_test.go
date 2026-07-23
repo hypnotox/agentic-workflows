@@ -59,6 +59,7 @@ func TestGateCorruptLockError(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:version-compat-gate
 func TestGateAheadSchemaErrors(t *testing.T) {
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	err := gate(root)
@@ -84,6 +85,7 @@ func TestGateBehindVersionErrors(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:version-compat-gate
 func TestGateAtOrAheadVersionPermitted(t *testing.T) {
 	// project.Version is the equal boundary; "0.0.1" is below any real release.
 	for _, v := range []string{project.Version, "0.0.1"} {

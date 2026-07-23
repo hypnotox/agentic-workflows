@@ -182,8 +182,9 @@ func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snap
 		selectedADRs := adr.NewCorpus(loaded.ADRs)
 		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicRef{}, Artifacts: artifactRecords(path, declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})}
 		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
+		cp.GlobLiteral = !gitSelected && (class == PathNotFound || class == PathContextIgnored) && globLiteralQuery(path)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
-		if safe {
+		if safe && !cp.GlobLiteral {
 			for _, d := range slices.Sorted(maps.Keys(loaded.Topics.DomainPaths)) {
 				if pathMatchesAny(loaded.Topics.DomainPaths[d], path) {
 					cp.Domains = append(cp.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
@@ -270,8 +271,18 @@ func pathMatchesAny(globs []string, path string) bool {
 // ScanRoots echoes the requested roots (empty = whole repository).
 type UncoveredResult struct {
 	ScanRoots []string         `json:"scanRoots"`
-	Unowned   []string         `json:"unowned"`
+	Unowned   []UnownedEntry   `json:"unowned"`
 	Uncovered []UncoveredTopic `json:"uncovered"`
+}
+
+// UnownedEntry is one collapsed unowned node: UnownedCount is the in-scope
+// eligible unowned paths it covers, ExcludedCount the in-scope scannable paths
+// beneath it that coverage excludes (generated, context-ignored, metrics-resident,
+// or nested-adopter). Plain file entries keep ExcludedCount zero.
+type UnownedEntry struct {
+	Path          string `json:"path"`
+	UnownedCount  int    `json:"unownedCount"`
+	ExcludedCount int    `json:"excludedCount"`
 }
 
 // UncoveredTopic is one domain-owned path lacking a scoped topic that covers it.
@@ -289,7 +300,7 @@ func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
 	if err != nil {
 		return UncoveredResult{}, err
 	}
-	return assembleUncovered(ws.Loaded.Topics, p.eligibleCoveragePaths(ws.Tree, ws.Lock), scanRoots), nil
+	return assembleUncovered(ws.Loaded.Topics, p.eligibleCoveragePaths(ws.Tree, ws.Lock), safelyMatchablePaths(ws.Tree), scanRoots), nil
 }
 
 // StagedUncoveredRoot reports coverage entirely from the index universe.
@@ -298,10 +309,10 @@ func StagedUncoveredRoot(root string, scanRoots []string) (UncoveredResult, erro
 	if err != nil {
 		return UncoveredResult{}, err
 	}
-	return assembleUncovered(state.Loaded.Topics, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore), scanRoots), nil
+	return assembleUncovered(state.Loaded.Topics, eligiblePaths(state.Tree, state.Lock, state.Cfg.ContextIgnore), safelyMatchablePaths(state.Tree), scanRoots), nil
 }
 
-func assembleUncovered(corpus topic.Corpus, eligible, scanRoots []string) UncoveredResult {
+func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) UncoveredResult {
 	roots := NormalizeContextPaths(scanRoots)
 	res := UncoveredResult{ScanRoots: roots}
 	inScope := func(path string) bool {
@@ -360,7 +371,7 @@ func assembleUncovered(corpus topic.Corpus, eligible, scanRoots []string) Uncove
 		}
 		unowned = append(unowned, path)
 	}
-	entries := map[string]bool{}
+	entries := map[string]*UnownedEntry{}
 	for _, u := range unowned {
 		pick := u
 		for _, a := range ancestors(u) {
@@ -373,12 +384,38 @@ func assembleUncovered(corpus topic.Corpus, eligible, scanRoots []string) Uncove
 				break
 			}
 		}
-		entries[pick] = true
+		e := entries[pick]
+		if e == nil {
+			e = &UnownedEntry{Path: pick}
+			entries[pick] = e
+		}
+		e.UnownedCount++
 	}
-	for e := range entries {
-		res.Unowned = append(res.Unowned, e)
+	// Directory entries additionally count the in-scope scannable paths beneath
+	// them that coverage excludes, so a mostly-generated directory never reads
+	// as wholly unowned. Only counts render; excluded paths are never listed.
+	eligibleSet := map[string]bool{}
+	for _, p := range scoped {
+		eligibleSet[p] = true
 	}
-	sort.Strings(res.Unowned)
+	for _, e := range entries {
+		if e.Path != "." && !strings.HasSuffix(e.Path, "/") {
+			continue
+		}
+		prefix := strings.TrimSuffix(e.Path, "/") + "/"
+		for _, p := range all {
+			if !inScope(p) || eligibleSet[p] {
+				continue
+			}
+			if e.Path == "." || strings.HasPrefix(p, prefix) {
+				e.ExcludedCount++
+			}
+		}
+	}
+	for _, e := range entries {
+		res.Unowned = append(res.Unowned, *e)
+	}
+	sort.Slice(res.Unowned, func(i, j int) bool { return res.Unowned[i].Path < res.Unowned[j].Path })
 	return res
 }
 

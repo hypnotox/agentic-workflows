@@ -241,6 +241,69 @@ func TestContextForNonexistentPathRemainsLiteral(t *testing.T) {
 	}
 }
 
+// TestContextGlobLiteralQuerySuppressesAttribution proves a user-typed query
+// containing glob metacharacters that resolves to a missing or context-ignored
+// path carries GlobLiteral, reports no domain or topic attribution, and feeds
+// no invocation-level topic entry.
+func TestContextGlobLiteralQuerySuppressesAttribution(t *testing.T) {
+	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/foo/gen/**\ncurrentState:", 1)
+	p := csRepo(t, cfg, ctxFiles())
+	res, err := p.ContextFor([]string{"internal/foo/*.go", "internal/foo/gen/*.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Topics) != 0 {
+		t.Fatalf("glob-literal queries populated invocation topics: %#v", res.Topics)
+	}
+	if got := strings.Join(contextPathNames(res.Paths), ","); got != "internal/foo/*.go,internal/foo/gen/*.go" {
+		t.Fatalf("paths = %q", got)
+	}
+	for i, want := range []PathClassification{PathNotFound, PathContextIgnored} {
+		cp := res.Paths[i]
+		if cp.Classification != want || !cp.GlobLiteral {
+			t.Errorf("path %s = [%s] globLiteral=%t; want [%s] globLiteral=true", cp.Path, cp.Classification, cp.GlobLiteral, want)
+		}
+		if len(cp.Domains) != 0 || len(cp.Topics) != 0 {
+			t.Errorf("path %s carries attribution: domains %v topics %v", cp.Path, cp.Domains, cp.Topics)
+		}
+	}
+}
+
+// TestContextGitSelectedMetacharPathKeepsAttribution proves the guard never
+// fires for git-selected paths: a deleted tracked file whose name contains glob
+// metacharacters keeps its domain attribution under --range/--staged selection.
+func TestContextGitSelectedMetacharPathKeepsAttribution(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	res, err := p.ContextForGitSelection([]string{"internal/foo/*.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cp := res.Paths[0]
+	if cp.GlobLiteral || cp.Classification != PathNotFound {
+		t.Fatalf("git-selected metachar path = %#v; want not-found without globLiteral", cp)
+	}
+	if len(cp.Domains) != 1 || cp.Domains[0].Name != "alpha" {
+		t.Fatalf("git-selected metachar path lost attribution: %#v", cp.Domains)
+	}
+}
+
+// TestContextPlainNotFoundKeepsAttribution proves a metachar-free missing path
+// keeps today's attribution (the deleted-path-in-range shape).
+func TestContextPlainNotFoundKeepsAttribution(t *testing.T) {
+	p := csRepo(t, ctxConfig, ctxFiles())
+	res, err := p.ContextFor([]string{"internal/foo/missing.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cp := res.Paths[0]
+	if cp.GlobLiteral || cp.Classification != PathNotFound {
+		t.Fatalf("plain missing path = %#v; want not-found without globLiteral", cp)
+	}
+	if len(cp.Domains) != 1 || cp.Domains[0].Name != "alpha" {
+		t.Fatalf("plain missing path lost attribution: %#v", cp.Domains)
+	}
+}
+
 func TestContextForAllIneligibleDirectoryExpandsToNothing(t *testing.T) {
 	cfg := strings.Replace(ctxConfig, "currentState:", "contextIgnore:\n  - internal/ignored/**\ncurrentState:", 1)
 	files := ctxFiles()
@@ -758,7 +821,16 @@ func uncoveredFiles() map[string]string {
 // invariant: invariants/current-state-authority:uncovered-lists-unowned-unignored
 // invariant: tooling/context-and-topic:uncovered-collapses-directories
 func TestUncovered(t *testing.T) {
-	p := csRepo(t, uncoveredConfig, uncoveredFiles())
+	cfg := strings.Replace(uncoveredConfig, "contextIgnore:\n  - .awf/**", "contextIgnore:\n  - .awf/**\n  - gen/skipped.md", 1)
+	files := uncoveredFiles()
+	files["gen/real.md"] = "unowned eligible\n"
+	files["gen/output.md"] = "generated\n"
+	files["gen/skipped.md"] = "ignored\n"
+	p := csRepo(t, cfg, files)
+	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"gen/output.md": {}}}
+	if err := lock.Save(lockFile(p.Root)); err != nil {
+		t.Fatal(err)
+	}
 	res, err := p.Uncovered(nil)
 	if err != nil {
 		t.Fatalf("Uncovered: %v", err)
@@ -766,9 +838,16 @@ func TestUncovered(t *testing.T) {
 	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" || res.Uncovered[0].Domain != "alpha" {
 		t.Fatalf("uncovered = %#v; want internal/bar.go owned by alpha", res.Uncovered)
 	}
-	// docs/ and the committed README.md are owned by no domain; docs collapses.
-	if strings.Join(res.Unowned, ",") != "README.md,docs/" {
-		t.Errorf("unowned = %v; want [README.md docs/]", res.Unowned)
+	// docs/ (two unowned files beneath) and the committed README.md are owned by
+	// no domain; gen/ collapses around one unowned file while its generated and
+	// ignored siblings count as excluded, never listed.
+	want := []UnownedEntry{
+		{Path: "README.md", UnownedCount: 1, ExcludedCount: 0},
+		{Path: "docs/", UnownedCount: 2, ExcludedCount: 0},
+		{Path: "gen/", UnownedCount: 1, ExcludedCount: 2},
+	}
+	if !reflect.DeepEqual(res.Unowned, want) {
+		t.Errorf("unowned = %#v; want %#v", res.Unowned, want)
 	}
 }
 
@@ -785,8 +864,11 @@ func TestUncoveredCollapsesToRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Uncovered: %v", err)
 	}
-	if strings.Join(res.Unowned, ",") != "." {
-		t.Errorf("unowned = %v; want just \".\"", res.Unowned)
+	// top.txt, the committed README.md, and the auto-added decision record are
+	// unowned; the .awf config tree is context-ignored and counts as excluded.
+	want := []UnownedEntry{{Path: ".", UnownedCount: 3, ExcludedCount: 2}}
+	if !reflect.DeepEqual(res.Unowned, want) {
+		t.Errorf("unowned = %#v; want %#v", res.Unowned, want)
 	}
 }
 
@@ -800,6 +882,8 @@ func TestUncoveredScanRoot(t *testing.T) {
 	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" {
 		t.Fatalf("uncovered = %#v; want just internal/bar.go", res.Uncovered)
 	}
+	// With scan roots restricting the report, out-of-scope unowned and excluded
+	// files produce no entry and inflate no entry's counts.
 	if len(res.Unowned) != 0 {
 		t.Errorf("unowned = %v; want none in scope (docs/ and README.md are out of scope)", res.Unowned)
 	}

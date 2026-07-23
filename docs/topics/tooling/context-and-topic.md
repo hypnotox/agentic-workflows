@@ -28,10 +28,17 @@ Origin: ADR-0148
 Backing: unbacked
 Verify: On a fixture with claim provenance, ADR tags and relations, linked plans, and claim references, grouped concise context reports the claim-ID roster and direct-claim detail but differs from both context --full and explicit awf topic <claim-id> --history output.
 
+### `invariant: context-concise-projection`
+
+Context assembles one topic entry per applicable topic per invocation: concise entries carry the uncapped current claim-ID roster, the full detail of exactly the marker-selected direct-claim union, and, when any rostered claim's detail is omitted, an explicit detail-omission line with the topic drilldown.
+Origin: ADR-0153
+Backing: test
+
 ### `invariant: context-full-authority-packet`
 
-Context assembles one topic entry per applicable topic per invocation: concise entries carry the uncapped current claim-ID roster, the full detail of exactly the marker-selected direct-claim union, and, when any rostered claim's detail is omitted, an explicit detail-omission line with the topic drilldown, while context --full renders every current claim's full detail and pending operations once per topic with no omission line, from the same non-recursive semantic model; managed complete-authority callers request --full explicitly.
+`context --full` renders every current claim's full detail and pending operations once per applicable topic with no detail-omission line, from the same non-recursive semantic model as the concise projection; managed complete-authority callers request `--full` explicitly.
 Origin: ADR-0148
+Revised-by: ADR-0153
 Backing: test
 
 ### `invariant: context-known-artifact-navigation`

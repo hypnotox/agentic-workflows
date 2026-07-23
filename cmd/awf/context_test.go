@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -225,6 +226,62 @@ func TestPrintContextFullHumanAndWriteErrors(t *testing.T) {
 	}
 }
 
+// TestPrintContextHoistsDomainBlock proves the concise text render prints each
+// domain group's selector block once (named header plus the both-must-match
+// sentence), keeps per-topic Topic-paths lines, leaves global topics on their
+// own line, and hoists nothing for an all-global group.
+func TestPrintContextHoistsDomainBlock(t *testing.T) {
+	scoped := func(id string) project.InvocationTopicContext {
+		return project.InvocationTopicContext{ID: id, Title: "T", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{"a/**"}, TopicPaths: []string{"a/x/**"}, MatchedPathCount: 1}, ClaimIDs: []string{id + ":c"}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic " + id, CoverageCommand: "awf topic " + id + " --coverage"}
+	}
+	global := func(id string) project.InvocationTopicContext {
+		return project.InvocationTopicContext{ID: id, Title: "G", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{"a/**"}, DeclaredGlobal: true}, ClaimIDs: []string{}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic " + id, CoverageCommand: "awf topic " + id + " --coverage"}
+	}
+	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Paths: []project.ContextPath{},
+		Topics: []project.InvocationTopicContext{global("alpha/g"), scoped("alpha/one"), scoped("alpha/two"), scoped("beta/x"), global("gamma/g")}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	if n := strings.Count(got, "Both domain and topic selectors must match."); n != 2 {
+		t.Errorf("both-must-match count = %d; want once per group with a non-global topic", n)
+	}
+	for _, want := range []string{"\nDomain alpha paths: [a/**]\n", "\nDomain beta paths: [a/**]\n"} {
+		if strings.Count(got, want) != 1 {
+			t.Errorf("hoisted header %q count != 1 in\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "Domain gamma paths:") {
+		t.Errorf("all-global group hoisted a selector block:\n%s", got)
+	}
+	if strings.Contains(got, "  Domain paths:") {
+		t.Errorf("per-topic Domain paths line survived the hoist:\n%s", got)
+	}
+	if n := strings.Count(got, "  Topic paths: [a/x/**]\n"); n != 3 {
+		t.Errorf("Topic paths lines = %d; want one per non-global topic", n)
+	}
+	if n := strings.Count(got, "  Global topic within owning domain selectors: [a/**]\n"); n != 2 {
+		t.Errorf("global topic lines = %d; want one per global topic", n)
+	}
+	for _, want := range []string{"  Matched paths: 1", "  Claims (1):"} {
+		if strings.Count(got, want) != 3 {
+			t.Errorf("per-topic line %q count = %d; want one per non-global topic", want, strings.Count(got, want))
+		}
+	}
+}
+
+func TestPrintContextGlobLiteralHint(t *testing.T) {
+	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{}, Paths: []project.ContextPath{{Path: "internal/foo/*.go", Requests: []string{"internal/foo/*.go"}, Classification: project.PathNotFound, GlobLiteral: true, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{}, Artifacts: []project.ArtifactRecord{}}}}
+	var out bytes.Buffer
+	if err := printContext(&out, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "globs are not expanded; pass a directory or an exact file") {
+		t.Fatalf("glob-literal hint missing: %s", out.String())
+	}
+}
+
 func TestPrintContextTitlelessTopic(t *testing.T) {
 	res := project.ContextResult{Projection: project.ContextConcise, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{{ID: "alpha/untitled", Applicability: project.TopicApplicabilityBrief{DomainPaths: []string{}, TopicPaths: []string{}}, ClaimIDs: []string{}, DirectClaims: []project.ClaimDetail{}, TopicCommand: "awf topic alpha/untitled", CoverageCommand: "awf topic alpha/untitled --coverage"}}, Paths: []project.ContextPath{{Path: "x", Requests: []string{}, Classification: project.PathCovered, Domains: []project.DomainRef{}, Topics: []project.PathTopicRef{{ID: "alpha/untitled", DirectClaimIDs: []string{}}}, Artifacts: []project.ArtifactRecord{}}}}
 	var out bytes.Buffer
@@ -290,7 +347,7 @@ func TestRunContextJSONParity(t *testing.T) {
 	if err := runContext(root, []string{"internal/foo/y.go"}, false, "", false, false, &humanOut); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"alpha/one", "Domain paths", "Both domain and topic selectors must match", "core/g", "[covered]"} {
+	for _, want := range []string{"alpha/one", "Domain alpha paths", "Both domain and topic selectors must match", "core/g", "[covered]"} {
 		if !strings.Contains(humanOut.String(), want) {
 			t.Errorf("human render diverges from JSON: missing %q", want)
 		}
@@ -616,6 +673,31 @@ func TestRunContextUncoveredHuman(t *testing.T) {
 			t.Errorf("uncovered human missing %q\n%s", want, got)
 		}
 	}
+	// Constructed rendering: directory entries (trailing slash or the root ".")
+	// carry counts with singular/plural forms and omit the excluded clause at
+	// zero; plain file entries render bare.
+	res := project.UncoveredResult{Unowned: []project.UnownedEntry{
+		{Path: ".pi/", UnownedCount: 1, ExcludedCount: 22},
+		{Path: "README.md", UnownedCount: 1, ExcludedCount: 0},
+		{Path: "gen/", UnownedCount: 2, ExcludedCount: 1},
+		{Path: "sub/", UnownedCount: 2, ExcludedCount: 0},
+		{Path: ".", UnownedCount: 3, ExcludedCount: 2},
+	}}
+	var constructed bytes.Buffer
+	if err := printUncovered(&constructed, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"  .pi/ (1 unowned file; 22 files excluded from coverage beneath)\n",
+		"  README.md\n",
+		"  gen/ (2 unowned files; 1 file excluded from coverage beneath)\n",
+		"  sub/ (2 unowned files)\n",
+		"  . (3 unowned files; 2 files excluded from coverage beneath)\n",
+	} {
+		if !strings.Contains(constructed.String(), want) {
+			t.Errorf("constructed uncovered render missing %q\n%s", want, constructed.String())
+		}
+	}
 }
 
 // The --uncovered JSON render carries the same set as the human render.
@@ -633,8 +715,9 @@ func TestRunContextUncoveredJSONParity(t *testing.T) {
 	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" {
 		t.Errorf("json uncovered: %+v", res.Uncovered)
 	}
-	if strings.Join(res.Unowned, ",") != "README.md,stray.txt" {
-		t.Errorf("json unowned: %v want [README.md stray.txt]", res.Unowned)
+	want := []project.UnownedEntry{{Path: "README.md", UnownedCount: 1}, {Path: "stray.txt", UnownedCount: 1}}
+	if !reflect.DeepEqual(res.Unowned, want) {
+		t.Errorf("json unowned: %#v want %#v", res.Unowned, want)
 	}
 	var human bytes.Buffer
 	if err := runContext(root, nil, false, "", false, true, &human); err != nil {

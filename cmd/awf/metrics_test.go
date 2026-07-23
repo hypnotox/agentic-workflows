@@ -19,6 +19,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+// invariant: tooling/cli:metrics-command-contract
 func TestMetricsProtocolAndGrammar(t *testing.T) {
 	var out bytes.Buffer
 	c := &cmdCtx{sub: "protocol", inv: invocation{bools: map[string]bool{"--json": true}}, stdout: &out}
@@ -65,7 +66,8 @@ func TestMetricsProtocolAndGrammar(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:metrics-and-doctor-command-contract
+// invariant: tooling/cli:metrics-command-contract
+// invariant: tooling/cli:doctor-command-contract
 func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	root := telemetryProject(t)
 	originalNow := telemetryNow
@@ -120,6 +122,7 @@ func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:metrics-command-contract
 func TestMetricsJSONLGoldenOrderingAndNoCorruptRaw(t *testing.T) {
 	root := telemetryProject(t)
 	createRequest(t, root, "z-effort", "z-create")
@@ -185,6 +188,7 @@ func TestMetricsJSONLRejectsMalformedCompleteInputWithoutOutput(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:doctor-command-contract
 func TestDoctorUsesConfiguredHeuristicsAndIsReadOnly(t *testing.T) {
 	root := telemetryProject(t)
 	createRequest(t, root, "effort", "create")
@@ -316,6 +320,7 @@ func TestTelemetryQueryFailuresWriteNoPartialOutputAndAreBounded(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:doctor-command-contract
 func TestMetricsAndDoctorExitMappingAndBinaryGating(t *testing.T) {
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

@@ -157,3 +157,4 @@ _No decisions are in flight._
 - [ADR-0150: Git Ref Pinned Development Runtime](0150-git-ref-pinned-development-runtime.md) (Implemented)
 - [ADR-0151: Local per-role Pi subagent model preferences](0151-local-per-role-pi-subagent-model-preferences.md) (Implemented)
 - [ADR-0152: Checkpoint, check-in, and handoff semantics](0152-checkpoint-check-in-and-handoff-semantics.md) (Implemented)
+- [ADR-0153: Split overloaded invariant claims into focused claims](0153-split-overloaded-invariant-claims-into-focused-claims.md) (Implemented)

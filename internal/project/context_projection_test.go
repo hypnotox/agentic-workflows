@@ -9,6 +9,7 @@ import (
 )
 
 // invariant: tooling/context-and-topic:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-concise-projection
 func TestContextConciseAndFullProjectionBoundaries(t *testing.T) {
 	files := ctxFiles()
 	files["internal/foo/y.go"] = "package foo\n// touches-state: alpha/one:stable - direct implementation\n// touches-state: alpha/one:order - direct ordering\n// touches-state: alpha/one:aaa - direct early claim\n"

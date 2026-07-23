@@ -57,6 +57,10 @@ query a single version or a range.
   with a registry-gated recommended preset, informed per-model pricing selectors, and save-time
   gitignore enforcement for the project-local file. Rendered guidance now steers long
   implementations toward sequential implementation subagents.
+- `awf context --uncovered` annotates each collapsed unowned directory with how many unowned
+  files it covers and how many files beneath it are excluded from coverage (generated, ignored,
+  or otherwise ineligible), so a mostly-generated directory no longer reads as wholly unowned.
+  The JSON `unowned` array becomes structured entries.
 - `awf context` output is grouped by topic: each applicable topic renders its authority exactly once
   per invocation (selectors, a matched-path count with an `awf topic <id> --coverage` drilldown, the
   uncapped claim-ID roster, and the deduplicated direct-claim detail with an explicit detail-omission
@@ -108,6 +112,10 @@ query a single version or a range.
   extension commands.
 
 ### Bug fixes
+- `awf context` no longer attributes domains and topics to a user-typed glob query that matches
+  nothing: the star-containing string previously string-matched domain globs, producing misleading
+  half-answers. Such paths now carry `globLiteral` in JSON and a "globs are not expanded" hint in
+  text.
 - First adoption now records the executing awf version and seals ADR cutoff authority before render:
   cutoff 1 for an empty corpus, or highest-plus-one with explicit gaps for validated brownfield
   history. Sync and forced init preserve that provenance, while unattested older projects are refused
@@ -130,6 +138,14 @@ query a single version or a range.
   newlines so generated topic documents end with exactly one newline.
 - The permanent pre-commit path no longer accepts the preparation-only bridge bypass, and a
   reintroduced `.awf/current-state-migration.yaml` is reported as unclaimed drift after cutover.
+
+### Others
+- Split three overloaded invariant claims (version-compat gate, metrics/doctor command contract,
+  context authority packet) into six focused single-obligation claims (ADR-0153); no behavior
+  change.
+- The concise `awf context` text rendering prints each domain's selector block once per domain
+  group (as a named `Domain <name> paths:` header) instead of repeating it verbatim under every
+  topic of that domain; JSON is unchanged.
 
 ## [0.18.0] - 2026-07-20
 

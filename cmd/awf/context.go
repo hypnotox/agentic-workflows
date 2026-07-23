@@ -168,10 +168,26 @@ func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, 
 	if len(res.Unowned) > 0 {
 		fmt.Fprintln(stdout, "\n## Unowned (configure a domain to own these)")
 		for _, u := range res.Unowned {
-			fmt.Fprintf(stdout, "  %s\n", u)
+			if u.Path != "." && !strings.HasSuffix(u.Path, "/") {
+				fmt.Fprintf(stdout, "  %s\n", u.Path)
+				continue
+			}
+			fmt.Fprintf(stdout, "  %s (%s", u.Path, countNoun(u.UnownedCount, "unowned file"))
+			if u.ExcludedCount > 0 {
+				fmt.Fprintf(stdout, "; %s excluded from coverage beneath", countNoun(u.ExcludedCount, "file"))
+			}
+			fmt.Fprintln(stdout, ")")
 		}
 	}
 	return nil
+}
+
+// countNoun renders "1 <noun>" or "<n> <noun>s" for the uncovered annotations.
+func countNoun(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // printContext renders res as JSON or human-readable text. Both modes read the
@@ -193,33 +209,14 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		fmt.Fprintf(&out, "  %s [%s]: %v\n", r.Query, r.Status, r.EffectivePaths)
 	}
 	fmt.Fprintln(&out, "\n## Topics")
-	for _, t := range res.Topics {
-		fmt.Fprintf(&out, "\n%s - %s\n", t.ID, t.Title)
-		if t.Applicability.DeclaredGlobal {
-			fmt.Fprintf(&out, "  Global topic within owning domain selectors: %v\n", t.Applicability.DomainPaths)
-		} else {
-			fmt.Fprintf(&out, "  Domain paths: %v\n  Topic paths: %v\n  Both domain and topic selectors must match.\n", t.Applicability.DomainPaths, t.Applicability.TopicPaths)
+	for i := 0; i < len(res.Topics); {
+		domain := topicDomain(res.Topics[i].ID)
+		j := i
+		for j < len(res.Topics) && topicDomain(res.Topics[j].ID) == domain {
+			j++
 		}
-		fmt.Fprintf(&out, "  Matched paths: %d (drill down: %s)\n", t.Applicability.MatchedPathCount, t.CoverageCommand)
-		fmt.Fprintf(&out, "  Claims (%d): %s\n", len(t.ClaimIDs), strings.Join(t.ClaimIDs, ", "))
-		if len(t.DirectClaims) > 0 {
-			fmt.Fprintln(&out, "  Direct claims:")
-			for _, claim := range t.DirectClaims {
-				printClaimDetail(&out, "Direct claim", claim)
-			}
-		}
-		if t.OmittedDetailCount > 0 {
-			fmt.Fprintf(&out, "  Details omitted for %d claim(s); drill down: %s\n", t.OmittedDetailCount, t.TopicCommand)
-		}
-		if t.Full != nil {
-			fmt.Fprintln(&out, "  Full authority:")
-			for _, claim := range t.Full.Claims {
-				printClaimDetail(&out, "Claim", claim)
-			}
-			for _, pending := range t.Full.Pending {
-				fmt.Fprintf(&out, "      Pending: ADR-%s %s %s\n", pending.ADR, pending.Op, pending.Claim)
-			}
-		}
+		printTopicGroup(&out, domain, res.Topics[i:j])
+		i = j
 	}
 	fmt.Fprintln(&out, "\n## Effective paths")
 	for _, p := range res.Paths {
@@ -229,6 +226,9 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		}
 		if p.TargetInsideRepository != nil {
 			fmt.Fprintf(&out, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
+		}
+		if p.GlobLiteral {
+			fmt.Fprintln(&out, "  globs are not expanded; pass a directory or an exact file")
 		}
 		if p.Classification == project.PathEligibleUnowned {
 			fmt.Fprintln(&out, "  No domain owns this path; add a domain glob to a configured domain to own it (see: awf context --uncovered)")
@@ -273,6 +273,54 @@ func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, head
 		return fmt.Errorf("write context: %w", err)
 	}
 	return nil
+}
+
+// topicDomain returns the domain segment of a domain-qualified topic ID.
+func topicDomain(id string) string {
+	if i := strings.Index(id, "/"); i >= 0 {
+		return id[:i]
+	}
+	return id // coverage-ignore: every topic ID is a validated domain-qualified ID
+}
+
+// printTopicGroup renders one domain's consecutive topics: the domain-selector
+// block prints once per group (never for an all-global group), each topic keeps
+// its own selector, matched, claim, and detail lines.
+func printTopicGroup(out io.Writer, domain string, group []project.InvocationTopicContext) {
+	for _, t := range group {
+		if !t.Applicability.DeclaredGlobal {
+			fmt.Fprintf(out, "\nDomain %s paths: %v\n  Both domain and topic selectors must match.\n", domain, t.Applicability.DomainPaths)
+			break
+		}
+	}
+	for _, t := range group {
+		fmt.Fprintf(out, "\n%s - %s\n", t.ID, t.Title)
+		if t.Applicability.DeclaredGlobal {
+			fmt.Fprintf(out, "  Global topic within owning domain selectors: %v\n", t.Applicability.DomainPaths)
+		} else {
+			fmt.Fprintf(out, "  Topic paths: %v\n", t.Applicability.TopicPaths)
+		}
+		fmt.Fprintf(out, "  Matched paths: %d (drill down: %s)\n", t.Applicability.MatchedPathCount, t.CoverageCommand)
+		fmt.Fprintf(out, "  Claims (%d): %s\n", len(t.ClaimIDs), strings.Join(t.ClaimIDs, ", "))
+		if len(t.DirectClaims) > 0 {
+			fmt.Fprintln(out, "  Direct claims:")
+			for _, claim := range t.DirectClaims {
+				printClaimDetail(out, "Direct claim", claim)
+			}
+		}
+		if t.OmittedDetailCount > 0 {
+			fmt.Fprintf(out, "  Details omitted for %d claim(s); drill down: %s\n", t.OmittedDetailCount, t.TopicCommand)
+		}
+		if t.Full != nil {
+			fmt.Fprintln(out, "  Full authority:")
+			for _, claim := range t.Full.Claims {
+				printClaimDetail(out, "Claim", claim)
+			}
+			for _, pending := range t.Full.Pending {
+				fmt.Fprintf(out, "      Pending: ADR-%s %s %s\n", pending.ADR, pending.Op, pending.Claim)
+			}
+		}
+	}
 }
 
 func printClaimDetail(out io.Writer, label string, claim project.ClaimDetail) {

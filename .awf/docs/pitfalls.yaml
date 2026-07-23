@@ -1,5 +1,48 @@
 data:
   pitfalls:
+    - title: "A test's name is not its assertions"
+      domains: [invariants]
+      tags: [invariant-backing, plan-taxonomy]
+      body: |
+        The ADR-0153 plan directed a doctor-command-contract proof marker onto
+        TestMetricsAndDoctorCommandContract, justifying it with the claim that the test asserts
+        doctor's read-only behavior and findings-do-not-change-exit-status. It does not: those
+        clauses are asserted by TestDoctorUsesConfiguredHeuristicsAndIsReadOnly and
+        TestMetricsAndDoctorExitMappingAndBinaryGating in the same file. The statement was inferred
+        from the test's name, and it survived the full plan review AND the plan-ADR resync; only
+        the implementation review's clause-by-clause check (the invariant-proof-exercises-its-claim
+        focus item) caught it, in four parallel instances across the split claims. When a plan or
+        ADR asserts what a test covers - especially when repointing proof markers or splitting a
+        claim - open the test body and enumerate its assertions against the claim's clauses; after
+        any claim split, re-check every clause of every successor against its proof sites, because
+        the predecessor's single marker almost certainly proved only a subset.
+    - title: "Sync-then-partial-stage strands the lock update"
+      domains: [rendering]
+      tags: [lock-manifest, active-md]
+      body: |
+        Two ADR-0153 proposal-phase commits staged a regenerated docs/decisions/INDEX.md without
+        the .awf/awf.lock outputHash update that the same `./x sync` had written to the working
+        tree, and `awf check --staged` passed both times: the generated index is
+        regeneration-checked, not hash-checked, so the staged INDEX/lock mismatch is invisible to
+        the staged view while the fresh lock sits dirty on disk. The stranded lock change then
+        pollutes the next unrelated commit or surfaces as confusing drift. After any `./x sync`,
+        stage the lock together with every regenerated output in the same transaction - and if
+        `git status` shows a lone modified .awf/awf.lock, a previous commit almost certainly
+        dropped it.
+    - title: "Concurrent efforts collide on the next ADR number"
+      domains: [adr-system]
+      tags: [adr-lifecycle, adr-scaffolding]
+      body: |
+        The contiguity check (ADR numbers cover 1..max with only sealed legacy gaps) makes it
+        impossible to reserve a number for a concurrent effort: every branch must scaffold the
+        next contiguous number, so parallel efforts each create their own ADR-NNNN with the same
+        NNNN (three separate 0151s existed at once on 2026-07-23). The later-merging efforts must
+        renumber at merge time, and the cost grows sharply once the ADR has left Proposed: the
+        filename, H1, INDEX.md, changelog mentions, and every Origin/Revised-by provenance line in
+        the topic parts name the number, and the Status-history digest must still validate after
+        the rename. Renumber while the ADR is still Proposed whenever merge order is foreseeable,
+        and at merge time run `./x sync && ./x check` immediately after the rename to let the
+        digest and provenance validators enumerate what the renumber missed.
     - title: "A V2 ADR's Implementing flip cannot commit alone"
       domains: [adr-system]
       tags: [adr-lifecycle, plan-taxonomy]
