@@ -55,21 +55,29 @@ subject of an `ambiguous-anchor` finding.
 exclusively by a `trajectory_closed` event and is keyed on that event's `payload.anchorId`.
 This covers both the passive path and the lifecycle request path, which never stamps the
 envelope field. Closing a tree position claims it; `trajectory_resumed`, `trajectory_forked`,
-and `effort_reopened` reference positions, never claim them.
+and `effort_reopened` reference positions, never claim them. The close's `payload.anchorId` is
+claim-only: `trajectory_closed` leaves the reference-resolution set in both the Go checker and
+the TypeScript mirror (self-exclusion plus intra-set ambiguity made its reference branch
+unreachable), so the resolvable references become exactly `trajectory_resumed.anchorId`,
+`trajectory_forked.forkAnchorId`, and `effort_reopened.anchorId`.
 
 3. The claiming set is declared once in the embedded protocol descriptor
 (`internal/telemetry/protocol.json`) as a new vocabulary, `anchorClaimKinds`, initially exactly
 `["trajectory_closed"]`. Descriptor validation enforces that `anchorClaimKinds` is a subset of
-`eventKinds`. The Go checker reads the set from the parsed descriptor and the TypeScript causal
+`eventKinds` and adds it to the required-vocabulary list, so a descriptor missing the
+vocabulary is rejected loudly instead of parsing into an empty claiming set that silently
+disables all anchor resolution. The Go checker reads the set from the parsed descriptor and the TypeScript causal
 projection reads it from the generated descriptor, so the two cannot drift. The protocol
 version stays 2.0: event shapes are unchanged, and the inter-extension handshakes pin
 `minor === 0`, so a minor bump would break compatible consumers rather than protect them.
 
 4. Ambiguity is defined only within the claiming set: two `trajectory_closed` events claiming
 the same entry remain an `ambiguous-anchor` violation, and the contested anchor is still
-dropped from resolution. The known residual is repeat forking from one entry (fork at X, tree
-back, fork at X again), which stays flagged; two forks genuinely branched from the same entry,
-and this record accepts that as honest ambiguity rather than adding causal tie-breaking.
+dropped from resolution. The known residual is repeat departure from one entry, by fork or by
+tree navigation, since the producer closes at the departed entry on both paths (for example
+fork at X, tree back, fork at X again), which stays flagged; two departures genuinely branched
+from the same entry, and this record accepts that as honest ambiguity rather than adding
+causal tie-breaking.
 
 5. The `trajectory_resumed` association-invalidation clause that compares the anchor claimant's
 causal position against the association event is removed from lifecycle validation in both the
@@ -86,8 +94,14 @@ ledger, the accumulated `ambiguous-anchor` findings clear retroactively and cano
 and doctor output over existing ledgers may shift accordingly; no historical event is rewritten.
 
 7. The deferred roadmap item "Anchor uniqueness is contested between producer and checker"
-graduates: this decision resolves it, and the roadmap entry is removed in the implementing
-change, with the usage-observation wording corrected by this record's Context.
+graduates: this decision resolves it, and the implementing change deletes the section from the
+authored part `.awf/docs/parts/roadmap/deferred.md` and re-renders `docs/roadmap.md` via
+`./x sync` (never hand-editing the rendered file), with the usage-observation wording
+corrected by this record's Context.
+
+8. The added claim `tooling/workflow-telemetry:anchor-claims-and-location-metadata` is an
+invariant claim with `Backing: test`, proven by a marker comment on the rewritten
+causal-resolution tests in `internal/telemetry/` when the operation is applied.
 
 ## State changes
 
