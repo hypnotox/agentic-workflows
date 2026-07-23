@@ -6,7 +6,7 @@ description: Use to execute a written {{ .prefix }} plan inline (one task at a t
 # {{ .prefix }}-executing-plans
 
 <!-- awf:section positioning -->
-The `implementation` chain node, inline shape. Wraps `{{ .layout.workflowRef }}` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `{{ .prefix }}-subagent-driven-development`.
+The `implementation` chain node, inline shape. Wraps `{{ .layout.workflowRef }}` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `{{ .prefix }}-subagent-driven-development`. Inline execution suits tightly coupled tasks, but length and parent-context pressure are explicit reasons to run a long plan through the subagent-per-task companion where the runtime supports it.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->

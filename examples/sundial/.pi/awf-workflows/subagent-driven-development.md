@@ -7,7 +7,7 @@ description: Use to execute a written sundial plan by dispatching one subagent p
 # sundial-subagent-driven-development
 
 <!-- awf:edit positioning: default; create .awf/skills/parts/subagent-driven-development/positioning.md to override -->
-The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `sundial-executing-plans`.
+The `implementation` chain node, subagent-dispatch shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `sundial-executing-plans`. Long implementations and parent-context pressure favor this dispatch shape, keeping the orchestrating parent lean, while tight task coupling may still justify the inline companion; the orchestrator decides case by case.
 
 <!-- awf:edit per-task-review-note: default; create .awf/skills/parts/subagent-driven-development/per-task-review-note.md to override -->
 **Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task; catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `sundial-reviewing-impl` as the only quality gate; no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.

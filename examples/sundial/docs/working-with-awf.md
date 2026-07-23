@@ -182,7 +182,10 @@ project-default, global-default, then parent-inheritance order. Both files are s
 at session start: any malformed, unknown, unregistered, or unauthenticated entry raises a
 prominent error and blocks all implicit routing (parent inheritance included) until repaired,
 while explicit per-call models keep working. Configured choices are revalidated against the live
-model registry before every queued child.
+model registry before every queued child. Long implementations should favor sequential
+implementation subagents so the orchestrating parent stays lean: length and parent-context
+pressure are explicit reasons to prefer subagent implementation, while coupling remains the
+residual reason to stay inline.
 
 Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
 names the project search universe and searched surfaces. After not-found, inconclusive, unverified,

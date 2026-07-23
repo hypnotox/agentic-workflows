@@ -7,7 +7,7 @@ description: Use to execute a written awf plan inline (one task at a time, in th
 # awf-executing-plans
 
 <!-- awf:edit positioning: default; create .awf/skills/parts/executing-plans/positioning.md to override -->
-The `implementation` chain node, inline shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `awf-subagent-driven-development`.
+The `implementation` chain node, inline shape. Wraps `docs/workflow.md` step 6 ("Implementation") when a plan exists and the agent has determined that tasks are tightly coupled or sequential. Companion to `awf-subagent-driven-development`. Inline execution suits tightly coupled tasks, but length and parent-context pressure are explicit reasons to run a long plan through the subagent-per-task companion where the runtime supports it.
 
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/executing-plans/when-to-invoke.md to override -->
 ## When to invoke
