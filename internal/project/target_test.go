@@ -77,6 +77,7 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 }
 
 // invariant: rendering/pi-runtime:pi-extension-target-render
+// invariant: rendering/pi-runtime:pi-pinned-development-runtime
 func TestPiTargetRendersExtension(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
@@ -140,6 +141,12 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	for path := range got {
 		if _, ok := wantPaths[path]; !ok {
 			t.Errorf("Pi target rendered extension outside independently pinned set: %s", path)
+		}
+	}
+	dashboard := got[".pi/extensions/awf-dashboard/index.ts"].Content
+	for _, contract := range []string{"dashboard-awf-path", "AWF_DASHBOARD_PROJECT_ROOT=", "runner fallback: dashboard-awf-path is not advertised", "capturedLauncher"} {
+		if !strings.Contains(dashboard, contract) {
+			t.Errorf("Pi dashboard omitted pinned-runtime resolution contract %q", contract)
 		}
 	}
 	protocol := got[".pi/extensions/awf-dashboard/protocol.ts"].Content

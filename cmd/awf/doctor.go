@@ -5,15 +5,23 @@ import (
 )
 
 func runDoctor(c *cmdCtx) error {
+	deps, err := normalMetricsReadDeps(c.root)
+	if err != nil {
+		return boundedTelemetryError(c.root, err)
+	}
+	return runDoctorWith(c, deps)
+}
+
+func runDoctorWith(c *cmdCtx, deps metricsReadDeps) error {
 	selector, err := parseTelemetrySelector(c.inv)
 	if err != nil {
 		return err
 	}
-	reads, cfg, err := readTelemetryQueryInputs(c.root)
+	reads, err := readTelemetryQueryInputs(deps.Root)
 	if err != nil {
-		return boundedTelemetryError(c.root, err)
+		return boundedTelemetryError(deps.Root, err)
 	}
-	diagnostics := cfg.WorkflowTelemetry.Diagnostics
+	diagnostics := deps.Policy.Diagnostics
 	thresholds := diagnostics.Thresholds
 	result, err := telemetry.Diagnose(reads, selector, telemetry.HeuristicOptions{
 		Enabled:                diagnostics.HeuristicsEnabled,

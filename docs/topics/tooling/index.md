@@ -6,6 +6,7 @@
 - [CLI](cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
 - [Context and topic](context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
+- [Dashboard runtime](dashboard-runtime.md): Immutable Git-ref-pinned cache, launcher, and policy snapshot for repository dashboard reads.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
 - [Init and enablement](init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
 - [Quality gates](quality-gates.md): Coverage, prose, and the command-runner gate machinery.

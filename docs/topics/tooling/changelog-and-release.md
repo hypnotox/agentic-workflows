@@ -3,7 +3,7 @@
 
 The changelog pipeline and release-notes contracts.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/changelog/**`. Both domain and topic selectors must match. Run `awf topic tooling/changelog-and-release --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/changelog/**`. Both domain and topic selectors must match. Run `awf topic tooling/changelog-and-release --coverage` for current matched paths and marker sites.
 
 The changelog package parses and validates the changelog and release-notes pipeline. The claims below capture the current changelog and release contracts.
 

@@ -84,6 +84,26 @@ case "$cmd" in
   prose-gate)
     go run ./cmd/awf prose-gate "$@"
     ;;
+  dashboard-awf-path)
+    if [ "$#" -ne 0 ]; then
+      echo "usage: ./x dashboard-awf-path" >&2
+      exit 2
+    fi
+    project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    (cd "$project_root" && go run ./internal/dashboardruntime/runnercmd path "$project_root")
+    ;;
+  dashboard-awf-advance)
+    if [ "$#" -gt 1 ]; then
+      echo "usage: ./x dashboard-awf-advance [commit]" >&2
+      exit 2
+    fi
+    project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ "$#" -eq 1 ]; then
+      (cd "$project_root" && go run ./internal/dashboardruntime/runnercmd advance "$project_root" "$1")
+    else
+      (cd "$project_root" && go run ./internal/dashboardruntime/runnercmd advance "$project_root")
+    fi
+    ;;
   pi-test)
     action="${1:-run}"
     if [ "$#" -gt 1 ]; then
@@ -128,7 +148,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|metrics|doctor|commit-gate|prose-gate|pi-test <run|stop|reset>|new|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|metrics|doctor|commit-gate|prose-gate|dashboard-awf-path|dashboard-awf-advance [commit]|pi-test <run|stop|reset>|new|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

@@ -18,12 +18,25 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 )
 
+type metricsReadDeps struct {
+	Root   string
+	Policy config.WorkflowTelemetryConfig
+}
+
 func runMetrics(c *cmdCtx) error {
 	switch c.sub {
 	case "":
-		return runMetricsQuery(c)
+		deps, err := normalMetricsReadDeps(c.root)
+		if err != nil {
+			return boundedTelemetryError(c.root, err)
+		}
+		return runMetricsQueryWith(c, deps)
 	case "export":
-		return runMetricsExport(c)
+		deps, err := normalMetricsReadDeps(c.root)
+		if err != nil {
+			return boundedTelemetryError(c.root, err)
+		}
+		return runMetricsExportWith(c, deps)
 	case "protocol":
 		if !c.inv.bools["--json"] {
 			return &usageErr{"usage: awf metrics protocol --json"}
@@ -78,20 +91,28 @@ func parseTelemetrySelector(inv invocation) (telemetry.Selector, error) {
 	return selector, nil
 }
 
-func runMetricsQuery(c *cmdCtx) error {
+func normalMetricsReadDeps(root string) (metricsReadDeps, error) {
+	cfg, err := config.Load(filepath.Join(root, config.DirName))
+	if err != nil {
+		return metricsReadDeps{}, err
+	}
+	return metricsReadDeps{Root: root, Policy: cfg.WorkflowTelemetry}, nil
+}
+
+func runMetricsQueryWith(c *cmdCtx, deps metricsReadDeps) error {
 	selector, err := parseTelemetrySelector(c.inv)
 	if err != nil {
 		return err
 	}
-	reads, cfg, err := readTelemetryQueryInputs(c.root)
+	reads, err := readTelemetryQueryInputs(deps.Root)
 	if err != nil {
-		return boundedTelemetryError(c.root, err)
+		return boundedTelemetryError(deps.Root, err)
 	}
 	result, err := telemetry.AggregateMetrics(reads, selector, telemetry.MetricsOptions{
 		GeneratedAt: telemetryNow(),
 		Retention: telemetry.RetentionPolicy{
-			MaxCompletedEffortAgeDays: cfg.WorkflowTelemetry.Retention.MaxCompletedEffortAgeDays,
-			MaxCompletedEffortCount:   cfg.WorkflowTelemetry.Retention.MaxCompletedEffortCount,
+			MaxCompletedEffortAgeDays: deps.Policy.Retention.MaxCompletedEffortAgeDays,
+			MaxCompletedEffortCount:   deps.Policy.Retention.MaxCompletedEffortCount,
 		},
 	})
 	if err != nil { // coverage-ignore: parsing validated the selector used by aggregation
@@ -103,7 +124,7 @@ func runMetricsQuery(c *cmdCtx) error {
 	return telemetry.RenderMetricsHuman(c.stdout, result)
 }
 
-func runMetricsExport(c *cmdCtx) error {
+func runMetricsExportWith(c *cmdCtx, deps metricsReadDeps) error {
 	format := c.inv.values["--format"]
 	if format != "json" && format != "jsonl" {
 		return &usageErr{"usage: awf metrics export [selectors] --format <json|jsonl>"}
@@ -112,16 +133,16 @@ func runMetricsExport(c *cmdCtx) error {
 	if err != nil {
 		return err
 	}
-	reads, cfg, err := readTelemetryQueryInputs(c.root)
+	reads, err := readTelemetryQueryInputs(deps.Root)
 	if err != nil {
-		return boundedTelemetryError(c.root, err)
+		return boundedTelemetryError(deps.Root, err)
 	}
 	if format == "json" {
 		result, aggregateErr := telemetry.AggregateMetrics(reads, selector, telemetry.MetricsOptions{
 			GeneratedAt: telemetryNow(),
 			Retention: telemetry.RetentionPolicy{
-				MaxCompletedEffortAgeDays: cfg.WorkflowTelemetry.Retention.MaxCompletedEffortAgeDays,
-				MaxCompletedEffortCount:   cfg.WorkflowTelemetry.Retention.MaxCompletedEffortCount,
+				MaxCompletedEffortAgeDays: deps.Policy.Retention.MaxCompletedEffortAgeDays,
+				MaxCompletedEffortCount:   deps.Policy.Retention.MaxCompletedEffortCount,
 			},
 		})
 		if aggregateErr != nil { // coverage-ignore: parsing validated the selector used by aggregation
@@ -142,26 +163,22 @@ func runMetricsExport(c *cmdCtx) error {
 	return err
 }
 
-func readTelemetryQueryInputs(root string) ([]telemetry.EffortRead, *config.Config, error) {
-	cfg, err := config.Load(filepath.Join(root, config.DirName))
-	if err != nil {
-		return nil, nil, err
-	}
+func readTelemetryQueryInputs(root string) ([]telemetry.EffortRead, error) {
 	metricsPath := filepath.Join(root, config.DirName, "metrics")
 	if _, err := telemetryStorageLstat(metricsPath); errors.Is(err, os.ErrNotExist) {
-		return []telemetry.EffortRead{}, cfg, nil
+		return []telemetry.EffortRead{}, nil
 	} else if err != nil {
-		return nil, nil, fmt.Errorf("inspect telemetry storage: %w", err)
+		return nil, fmt.Errorf("inspect telemetry storage: %w", err)
 	}
 	ledger, err := telemetry.OpenLedger(root)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	reads, err := ledger.ReadAllEfforts()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return reads, cfg, nil
+	return reads, nil
 }
 
 type telemetryCommandError struct {

@@ -3,7 +3,7 @@
 
 Coverage, prose, and the command-runner gate machinery.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/coverage/**`, `internal/prosegate/**`, `tools/**`, `x`. Both domain and topic selectors must match. Run `awf topic tooling/quality-gates --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/coverage/**`, `internal/prosegate/**`, `tools/**`, `x`. Both domain and topic selectors must match. Run `awf topic tooling/quality-gates --coverage` for current matched paths and marker sites.
 
 These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, and the gate tiers. The claims below capture the current gate contracts.
 

@@ -52,12 +52,16 @@ func TestMetricsProtocolAndGrammar(t *testing.T) {
 	}
 	for _, c := range []*cmdCtx{
 		{sub: "", inv: invocation{}, stdout: io.Discard},
+		{sub: "export", inv: invocation{values: map[string]string{"--format": "json"}}, stdout: io.Discard},
 		{sub: "unknown", inv: invocation{}, stdout: io.Discard},
 		{sub: "protocol", inv: invocation{bools: map[string]bool{}}, stdout: io.Discard},
 	} {
 		if err := runMetrics(c); err == nil {
 			t.Fatal("expected metrics usage error")
 		}
+	}
+	if err := runDoctor(&cmdCtx{root: filepath.Join(t.TempDir(), "missing"), inv: invocation{}, stdout: io.Discard}); err == nil {
+		t.Fatal("doctor accepted missing project config")
 	}
 }
 
@@ -256,7 +260,7 @@ func TestTelemetryQueryInputAndSelectorFailures(t *testing.T) {
 	originalLstat := telemetryStorageLstat
 	t.Cleanup(func() { telemetryStorageLstat = originalLstat })
 	telemetryStorageLstat = func(string) (os.FileInfo, error) { return nil, errors.New("injected lstat failure") }
-	if _, _, err := readTelemetryQueryInputs(lstatRoot); err == nil || !strings.Contains(err.Error(), "inspect telemetry storage") {
+	if _, err := readTelemetryQueryInputs(lstatRoot); err == nil || !strings.Contains(err.Error(), "inspect telemetry storage") {
 		t.Fatalf("telemetry storage inspection failure = %v", err)
 	}
 	telemetryStorageLstat = originalLstat
@@ -265,9 +269,9 @@ func TestTelemetryQueryInputAndSelectorFailures(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(emptyStorage, ".awf", "metrics")); err != nil {
 		t.Fatal(err)
 	}
-	reads, cfg, err := readTelemetryQueryInputs(emptyStorage)
-	if err != nil || len(reads) != 0 || cfg == nil {
-		t.Fatalf("missing telemetry storage reads=%#v cfg=%v err=%v", reads, cfg, err)
+	reads, err := readTelemetryQueryInputs(emptyStorage)
+	if err != nil || len(reads) != 0 {
+		t.Fatalf("missing telemetry storage reads=%#v err=%v", reads, err)
 	}
 
 	invalidStorage := telemetryProject(t)
@@ -278,7 +282,7 @@ func TestTelemetryQueryInputAndSelectorFailures(t *testing.T) {
 	if err := os.WriteFile(metricsPath, []byte("not a directory"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := readTelemetryQueryInputs(invalidStorage); err == nil {
+	if _, err := readTelemetryQueryInputs(invalidStorage); err == nil {
 		t.Fatal("invalid telemetry storage opened")
 	}
 }

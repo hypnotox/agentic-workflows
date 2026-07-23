@@ -89,12 +89,14 @@ Backing: test
 
 ### `invariant: version-compat-gate`
 
-Every gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted.
+Every ordinary gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted. The only bypass is the private closed `dashboard-read` dispatch: before reading telemetry it validates its exact read-only argv, absolute canonical project root, adjacent pinned executable, metadata and policy digests, repository identity, pinned commit, snapshot schema and protocol, and confined metrics root without loading live tracked config; no mutation or maintenance shape can reach dispatch.
 Origin: ADR-0039
+Revised-by: ADR-0150
 Backing: test
 
 ### `invariant: metrics-and-doctor-command-contract`
 
-The gated, runner-forwarded `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags. The gated, runner-forwarded `awf doctor` command consumes the same selectors and storage interpretation, remains read-only, and never changes exit status merely because findings exist.
+The gated, runner-forwarded `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags. The gated, runner-forwarded `awf doctor` command consumes the same selectors and storage interpretation, remains read-only, and never changes exit status merely because findings exist. Their read helpers accept an explicit root and validated telemetry policy so the pinned private dashboard dispatch can invoke only protocol, JSON metrics, JSON export, and JSON doctor shapes against its immutable policy snapshot while ordinary invocations retain live project and version gates.
 Origin: ADR-0146
+Revised-by: ADR-0150
 Backing: test

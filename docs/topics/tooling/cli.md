@@ -3,7 +3,7 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. The command table now includes canonical workflow metrics querying and export plus read-only, non-blocking workflow diagnosis over shared structured selectors.
 
@@ -96,12 +96,14 @@ Backing: test
 
 ### `invariant: version-compat-gate`
 
-Every gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted.
+Every ordinary gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted. The only bypass is the private closed `dashboard-read` dispatch: before reading telemetry it validates its exact read-only argv, absolute canonical project root, adjacent pinned executable, metadata and policy digests, repository identity, pinned commit, snapshot schema and protocol, and confined metrics root without loading live tracked config; no mutation or maintenance shape can reach dispatch.
 Origin: ADR-0039
+Revised-by: ADR-0150
 Backing: test
 
 ### `invariant: metrics-and-doctor-command-contract`
 
-The gated, runner-forwarded `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags. The gated, runner-forwarded `awf doctor` command consumes the same selectors and storage interpretation, remains read-only, and never changes exit status merely because findings exist.
+The gated, runner-forwarded `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags. The gated, runner-forwarded `awf doctor` command consumes the same selectors and storage interpretation, remains read-only, and never changes exit status merely because findings exist. Their read helpers accept an explicit root and validated telemetry policy so the pinned private dashboard dispatch can invoke only protocol, JSON metrics, JSON export, and JSON doctor shapes against its immutable policy snapshot while ordinary invocations retain live project and version gates.
 Origin: ADR-0146
+Revised-by: ADR-0150
 Backing: test

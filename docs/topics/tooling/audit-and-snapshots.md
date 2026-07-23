@@ -3,7 +3,7 @@
 
 Workflow-conformance auditing and the immutable git snapshot layer.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/git/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/git/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
 
 These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. The claims below capture the current audit and snapshot contracts.
 

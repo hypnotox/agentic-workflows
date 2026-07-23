@@ -12,6 +12,8 @@ Runtime dependencies are deliberately few (see `go.mod`):
 - **`github.com/BurntSushi/toml`**: encodes the Codex adapter's TOML agent profiles
   (`internal/project/agent.go`).
 
+The repository-only dashboard fallback shells out to Git for exact commit materialization and ref compare-and-swap, and to the selected Go toolchain for normalized builds. Published cache entries contain no new linked runtime dependency; adopters using bootstrap or PATH resolution do not use this development fallback.
+
 Developer tools are pinned in `go.mod`'s `tool` block for reproducibility:
 `golangci-lint` (lint and format), `deadcode` (the dead-code gate, ADR-0063), and
 `gremlins` (advisory mutation testing, ADR-0066).

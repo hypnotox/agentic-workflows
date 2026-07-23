@@ -98,11 +98,12 @@ export interface LedgerWriter {
 }
 export type DashboardStatus = "loading" | "ready" | "stale" | "degraded" | "closed";
 export type DashboardErrorCategory = "resolution" | "version" | "protocol" | "query" | "malformed" | "retain" | "maintenance" | "unavailable" | "cancelled";
-export interface CanonicalResult { ok: boolean; status: DashboardStatus; metrics?: any; doctor?: any; binary?: string; errorCategory?: DashboardErrorCategory; }
+export interface CanonicalResult { ok: boolean; status: DashboardStatus; metrics?: any; doctor?: any; binary?: string; errorCategory?: DashboardErrorCategory; causes?: readonly string[]; }
 export interface CanonicalDependencies { root: string; lstat?(path: string): Promise<{ isFile(): boolean; isSymbolicLink(): boolean }>; exec(command: string, args: string[], signal?: AbortSignal): Promise<{ stdout: string; stderr: string; code: number }>; }
+interface CanonicalLauncher { path: string; projectRootEnvironment: boolean; }
 export interface DashboardState {
-  readonly status: DashboardStatus; readonly metrics?: any; readonly doctor?: any; readonly errorCategory?: DashboardErrorCategory; readonly binary?: string;
-  set(status: DashboardStatus, values?: { metrics?: unknown; doctor?: unknown; errorCategory?: DashboardErrorCategory; binary?: string }): void;
+  readonly status: DashboardStatus; readonly metrics?: any; readonly doctor?: any; readonly errorCategory?: DashboardErrorCategory; readonly binary?: string; readonly causes?: readonly string[];
+  set(status: DashboardStatus, values?: { metrics?: unknown; doctor?: unknown; errorCategory?: DashboardErrorCategory; binary?: string; causes?: readonly string[] }): void;
   snapshot(): Readonly<DashboardState>; refresh(selectors?: any, signal?: AbortSignal): Promise<CanonicalResult>; runFixed(args: readonly string[], signal?: AbortSignal): Promise<CanonicalResult>; markStale(category: DashboardErrorCategory): void; close(): void;
 }
 
@@ -141,42 +142,63 @@ function validProtocol(value: any): boolean { return value.schemaVersion === 1 &
 function validMetrics(value: any): boolean { return value.schemaVersion === 1 && value.protocolMajor === protocolVersion.major && Array.isArray(value.efforts) && Array.isArray(value.integrity) && !!value.retention && typeof value.retention === "object"; }
 function validDoctor(value: any): boolean { return value.schemaVersion === 1 && value.protocolMajor === protocolVersion.major && Array.isArray(value.findings) && Array.isArray(value.integrity); }
 function exactlyOnePath(stdout: string): string | undefined { const lines = stdout.split(/\r?\n/).filter((line) => line.trim().length > 0); return lines.length === 1 && lines[0]!.trim() === lines[0] ? lines[0] : undefined; }
-async function canonicalBinary(deps: CanonicalDependencies): Promise<string> {
-  const bootstrap = join(deps.root, ".awf", "bootstrap.sh");
-  if (!deps.lstat) { try { const boot = await deps.exec("bash", [bootstrap]); const resolved = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (resolved) return resolved; } catch {} return "awf"; }
-  try {
-    const stat = await deps.lstat(bootstrap);
-    if (stat.isSymbolicLink() || !stat.isFile()) throw Object.assign(new Error("unsafe bootstrap"), { category: "resolution" });
-  } catch (error: any) {
-    if (error?.code === "ENOENT") return "awf";
-    throw Object.assign(new Error("bootstrap inspection failed"), { category: "resolution" });
-  }
-  const boot = await deps.exec("bash", [bootstrap]); const resolved = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined;
-  if (!resolved) throw Object.assign(new Error("bootstrap resolution failed"), { category: "resolution" });
-  return resolved;
+function boundedResolutionCause(value: unknown): string { const text = typeof value === "string" && value ? value : "runtime resolution failed"; let end = text.length; while (end > 0 && Buffer.byteLength(text.slice(0, end), "utf8") > 160) end--; return text.slice(0, end); }
+function resolutionFailure(category: DashboardErrorCategory, cause: string, causes?: readonly string[]): Error { return Object.assign(new Error(cause), { category, causes: (causes ?? [cause]).slice(0, 2).map(boundedResolutionCause) }); }
+function failureCauses(error: any): readonly string[] { return Array.isArray(error?.causes) ? error.causes.slice(0, 2).map(boundedResolutionCause) : [boundedResolutionCause(error?.message)]; }
+function runnerAdvertised(output: string): boolean { return /(?:^|[|<\s])dashboard-awf-path(?:[|>\s]|$)/m.test(output); }
+async function executeLauncher(deps: CanonicalDependencies, launcher: CanonicalLauncher, args: readonly string[], signal?: AbortSignal): Promise<{ stdout: string; stderr: string; code: number }> {
+  return launcher.projectRootEnvironment ? deps.exec("env", [`AWF_DASHBOARD_PROJECT_ROOT=${deps.root}`, launcher.path, ...args], signal) : deps.exec(launcher.path, [...args], signal);
 }
-async function handshake(deps: CanonicalDependencies, signal?: AbortSignal): Promise<string> {
-  const binary = await canonicalBinary({ ...deps, exec: (command, args) => deps.exec(command, args, signal) }); const result = await deps.exec(binary, ["metrics", "protocol", "--json"], signal);
-  if (result.code !== 0) throw Object.assign(new Error("canonical protocol handshake failed"), { category: "resolution" });
-  let parsed: any; try { parsed = parseCanonicalJSON(result.stdout); } catch { throw Object.assign(new Error("malformed protocol handshake"), { category: "malformed" }); }
-  if (!validProtocol(parsed)) throw Object.assign(new Error("incompatible canonical protocol"), { category: parsed?.protocol?.major === protocolVersion.major ? "version" : "protocol" });
-  return binary;
+async function handshakeCandidate(deps: CanonicalDependencies, launcher: CanonicalLauncher, label: string, signal?: AbortSignal): Promise<CanonicalLauncher> {
+  let result: { stdout: string; stderr: string; code: number }; try { result = await executeLauncher(deps, launcher, ["metrics", "protocol", "--json"], signal); } catch { throw resolutionFailure("resolution", `${label}: execution failed`); }
+  if (result.code !== 0) throw resolutionFailure("resolution", `${label}: execution failed`);
+  let parsed: any; try { parsed = parseCanonicalJSON(result.stdout); } catch { throw resolutionFailure("malformed", `${label}: malformed protocol handshake`); }
+  if (!validProtocol(parsed)) { const category = parsed?.protocol?.major === protocolVersion.major ? "version" : "protocol"; throw resolutionFailure(category, `${label}: ${category} refusal`); }
+  return launcher;
+}
+async function advertisedRunnerLauncher(deps: CanonicalDependencies, signal?: AbortSignal): Promise<CanonicalLauncher> {
+  const runner = join(deps.root, "x"); let advertisement: { stdout: string; stderr: string; code: number };
+  try { advertisement = await deps.exec(runner, [], signal); } catch { throw resolutionFailure("resolution", "runner fallback: advertisement failed"); }
+  if (!runnerAdvertised(`${advertisement.stdout}\n${advertisement.stderr}`)) throw resolutionFailure("resolution", "runner fallback: dashboard-awf-path is not advertised");
+  let resolved: { stdout: string; stderr: string; code: number }; try { resolved = await deps.exec(runner, ["dashboard-awf-path"], signal); } catch { throw resolutionFailure("resolution", "runner fallback: path resolution failed"); }
+  const path = resolved.code === 0 ? exactlyOnePath(resolved.stdout) : undefined; if (!path) throw resolutionFailure("resolution", "runner fallback: path resolution failed");
+  return handshakeCandidate(deps, { path, projectRootEnvironment: true }, "runner fallback", signal);
+}
+async function resolveLauncher(deps: CanonicalDependencies, signal?: AbortSignal): Promise<CanonicalLauncher> {
+  const bootstrap = join(deps.root, ".awf", "bootstrap.sh"); let bootstrapPresent = false;
+  if (deps.lstat) {
+    try { const stat = await deps.lstat(bootstrap); if (stat.isSymbolicLink() || !stat.isFile()) throw resolutionFailure("resolution", "bootstrap: unsafe path"); bootstrapPresent = true; }
+    catch (error: any) { if (error?.category) throw error; if (error?.code !== "ENOENT") throw resolutionFailure("resolution", "bootstrap: inspection failed"); }
+  } else {
+    let boot: { stdout: string; stderr: string; code: number } | undefined; try { boot = await deps.exec("bash", [bootstrap], signal); } catch {}
+    const path = boot?.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (path) return handshakeCandidate(deps, { path, projectRootEnvironment: false }, "bootstrap", signal);
+  }
+  if (bootstrapPresent) {
+    let boot: { stdout: string; stderr: string; code: number }; try { boot = await deps.exec("bash", [bootstrap], signal); } catch { throw resolutionFailure("resolution", "bootstrap: resolution failed"); }
+    const path = boot.code === 0 ? exactlyOnePath(boot.stdout) : undefined; if (!path) throw resolutionFailure("resolution", "bootstrap: resolution failed");
+    return handshakeCandidate(deps, { path, projectRootEnvironment: false }, "bootstrap", signal);
+  }
+  let pathFailure: any;
+  try { return await handshakeCandidate(deps, { path: "awf", projectRootEnvironment: false }, "PATH awf", signal); }
+  catch (error: any) { if (!["resolution", "version", "protocol"].includes(error?.category)) throw error; pathFailure = error; }
+  try { return await advertisedRunnerLauncher(deps, signal); }
+  catch (runnerFailure: any) { throw resolutionFailure(pathFailure.category, "canonical runtime resolution failed", [...failureCauses(pathFailure), ...failureCauses(runnerFailure)]); }
 }
 export function createDashboardState(initial: DashboardStatus = "loading", dependencies?: CanonicalDependencies, onChange: () => void = () => {}): DashboardState {
-  let value: any = { status: initial }; let generation = 0; let inFlight: AbortController | undefined; const maintenance = new Set<AbortController>();
+  let value: any = { status: initial }; let generation = 0; let inFlight: AbortController | undefined; let capturedLauncher: CanonicalLauncher | undefined; const maintenance = new Set<AbortController>();
   const update = (status: DashboardStatus, values: any = {}, retainCache = false) => { if (value.status === "closed") return; value = retainCache ? { ...value, status, ...values } : { status, ...values }; onChange(); };
   const api: DashboardState = {
-    get status() { return value.status; }, get metrics() { return value.metrics; }, get doctor() { return value.doctor; }, get errorCategory() { return value.errorCategory; }, get binary() { return value.binary; },
+    get status() { return value.status; }, get metrics() { return value.metrics; }, get doctor() { return value.doctor; }, get errorCategory() { return value.errorCategory; }, get binary() { return value.binary; }, get causes() { return value.causes; },
     set(status, values = {}) { update(status, values); },
     snapshot() { return Object.freeze({ ...value }); },
     async refresh(selectors: any = {}, signal?: AbortSignal) {
       if (!dependencies || value.status === "closed" || signal?.aborted) return { ok: false, status: value.status, errorCategory: value.status === "closed" || signal?.aborted ? "cancelled" : "unavailable", metrics: value.metrics, doctor: value.doctor } as CanonicalResult;
       const current = ++generation; inFlight?.abort(); const controller = new AbortController(); inFlight = controller; const abort = () => controller.abort(); signal?.addEventListener("abort", abort, { once: true }); const prior = value; const hadCache = value.metrics !== undefined && value.doctor !== undefined; update("loading", { errorCategory: undefined }, true);
       try {
-        const binary = await handshake(dependencies, controller.signal); const args = selectorArgs(selectors);
-        const metricsResult = await dependencies.exec(binary, ["metrics", ...args, "--json"], controller.signal); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
+        const launcher = capturedLauncher ?? await resolveLauncher(dependencies, controller.signal); capturedLauncher ??= launcher; const binary = launcher.path; const args = selectorArgs(selectors);
+        const metricsResult = await executeLauncher(dependencies, launcher, ["metrics", ...args, "--json"], controller.signal); if (metricsResult.code !== 0) throw Object.assign(new Error("canonical metrics query failed"), { category: "query" });
         let metrics: any; try { metrics = parseCanonicalJSON(metricsResult.stdout); } catch { throw Object.assign(new Error("malformed metrics JSON"), { category: "malformed" }); } if (!validMetrics(metrics)) throw Object.assign(new Error("invalid metrics projection"), { category: "protocol" });
-        const doctorResult = await dependencies.exec(binary, ["doctor", ...args, "--json"], controller.signal); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
+        const doctorResult = await executeLauncher(dependencies, launcher, ["doctor", ...args, "--json"], controller.signal); if (doctorResult.code !== 0) throw Object.assign(new Error("canonical doctor query failed"), { category: "query" });
         let doctor: any; try { doctor = parseCanonicalJSON(doctorResult.stdout); } catch { throw Object.assign(new Error("malformed doctor JSON"), { category: "malformed" }); } if (!validDoctor(doctor)) throw Object.assign(new Error("invalid doctor projection"), { category: "protocol" });
         if (current !== generation || value.status === "closed") return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
         if (controller.signal.aborted && signal?.aborted) { value = prior; onChange(); return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor }; }
@@ -184,13 +206,13 @@ export function createDashboardState(initial: DashboardStatus = "loading", depen
       } catch (error: any) {
         if (current !== generation || value.status === "closed") return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor };
         if (controller.signal.aborted && signal?.aborted) { value = prior; onChange(); return { ok: false, status: value.status, errorCategory: "cancelled", metrics: value.metrics, doctor: value.doctor }; }
-        const category = (["resolution", "version", "protocol", "query", "malformed"] as const).includes(error?.category) ? error.category : "resolution"; update(hadCache ? "stale" : "degraded", { errorCategory: category }, true); return { ok: false, status: value.status, metrics: value.metrics, doctor: value.doctor, errorCategory: category };
+        const category = (["resolution", "version", "protocol", "query", "malformed"] as const).includes(error?.category) ? error.category : "resolution"; const causes = failureCauses(error); update(hadCache ? "stale" : "degraded", { errorCategory: category, causes }, true); return { ok: false, status: value.status, metrics: value.metrics, doctor: value.doctor, errorCategory: category, causes };
       } finally { signal?.removeEventListener("abort", abort); }
     },
     async runFixed(args, signal) {
       if (!dependencies || value.status === "closed" || signal?.aborted) return { ok: false, status: value.status, errorCategory: "unavailable" };
       const controller = new AbortController(); maintenance.add(controller); const abort = () => controller.abort(); signal?.addEventListener("abort", abort, { once: true });
-      try { const binary = value.binary ?? await handshake(dependencies, controller.signal); const full = [binary, ...args]; const result = await dependencies.exec(full[0]!, full.slice(1), controller.signal); if (controller.signal.aborted) throw new Error("maintenance cancelled"); if (result.code !== 0) throw new Error("maintenance failed"); const parsed = parseCanonicalJSON(result.stdout); return { ok: true, status: value.status, binary, metrics: parsed }; }
+      try { const launcher = capturedLauncher ?? (value.binary ? { path: value.binary, projectRootEnvironment: false } : await resolveLauncher(dependencies, controller.signal)); capturedLauncher ??= launcher; const result = await executeLauncher(dependencies, launcher, args, controller.signal); if (controller.signal.aborted) throw new Error("maintenance cancelled"); if (result.code !== 0) throw new Error("maintenance failed"); const parsed = parseCanonicalJSON(result.stdout); return { ok: true, status: value.status, binary: launcher.path, metrics: parsed }; }
       catch { if (!controller.signal.aborted) api.markStale(args[1] === "retain" ? "retain" : "maintenance"); return { ok: false, status: value.status, errorCategory: controller.signal.aborted ? "cancelled" : args[1] === "retain" ? "retain" : "maintenance" }; }
       finally { signal?.removeEventListener("abort", abort); maintenance.delete(controller); }
     },

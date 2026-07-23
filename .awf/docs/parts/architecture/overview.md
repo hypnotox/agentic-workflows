@@ -49,6 +49,14 @@ automatic repair, blocking verdict, or daemon. The Pi dashboard writes conformin
 both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
 stale or degraded.
 
+For from-source development, `refs/awf/dashboard-runtime` pins one committed implementation independently
+of the checkout. `internal/dashboardruntime` materializes that commit privately, builds under a normalized
+Go environment, and atomically publishes an immutable content-addressed awf binary, closed launcher,
+metadata, and complete telemetry-policy snapshot under the XDG cache. The private launcher admits only
+canonical JSON metrics, export, protocol, and doctor reads; normal mutations and maintenance retain the
+live-project version gate. Pi captures one successful launcher per session, so explicit reviewed ref
+advancement affects only new sessions.
+
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
 ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for every output path. It compiles ordinary target and neutral writes, generated ADR/domain/config-reference documents, and non-writing local reservations into a path-sorted node set. Sync writes and locks only write nodes, while reservations protect local artifacts from prune and declare their direct validation policy. The config reference depends on ordinary and domain metadata, never itself. Nodes carry explicit frontmatter, reference-scan, skill-reference-scan, and regeneration policies, so lifecycle checks do not infer behavior from a template identifier or filename suffix. Target descriptors expose a closed capability projection (currently Pi's subagent-tools and session-handoff capabilities), validate bridge/output declarations before planning, and retain declarers, producer kinds, and exact protocol inputs on shared recipes for deterministic diagnostics, attribution, and hashes.

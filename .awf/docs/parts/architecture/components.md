@@ -2,8 +2,8 @@
 
 - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
   `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
-  `changelog`, `version` subcommands, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
-  `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
+  `changelog`, `version` subcommands, plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+  `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
@@ -11,6 +11,7 @@
   and (for `new`) its subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
   to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
   from the same metadata. Excluded runner commands carry their user-facing safety reason.
+- **`cmd/awf-dashboard-launcher/`**: immutable cached launcher for repository dashboard development. It verifies adjacent metadata, executable, launcher, and policy digests, accepts only the public read shapes, requires `AWF_DASHBOARD_PROJECT_ROOT`, and replaces itself with the sibling awf binary's private `dashboard-read` translation.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
@@ -96,6 +97,7 @@
   workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
   (ADR-0017, ADR-0036).
 - **`internal/telemetry/`**: owns the embedded version-1 event descriptor, its deterministic TypeScript projection, strict privacy and compatibility validation, confined append-only per-session JSONL ledger, causal lifecycle and trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
+- **`internal/dashboardruntime/`**: resolves and compare-and-swap advances `refs/awf/dashboard-runtime`, materializes only the pinned commit, derives the complete validated telemetry policy snapshot, and publishes or verifies private immutable XDG cache entries under an OS advisory lock. Stable sentinels distinguish unsafe paths, refs, builds, collisions, snapshots, and concurrent advances.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:

@@ -3,7 +3,7 @@
 
 Durable effort telemetry, projections, retention, and workflow diagnosis.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/telemetry/**`. Both domain and topic selectors must match. Run `awf topic tooling/workflow-telemetry --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/telemetry/**`. Both domain and topic selectors must match. Run `awf topic tooling/workflow-telemetry --coverage` for current matched paths and marker sites.
 
 The telemetry package owns the versioned privacy-minimal event protocol, confined append-only resident ledger, explicit lifecycle and trajectory model, deterministic terminal-effort retention, and canonical metrics and diagnostic projections. Selectors, aggregation, exact workflow violations, and versioned heuristic signals share one deterministic Go interpretation for CLI and later runtime consumers.
 

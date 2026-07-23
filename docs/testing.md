@@ -12,7 +12,7 @@ coverage across all five generated Pi TypeScript files, descriptor cross-runtime
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan
 (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled in this repo). A red gate blocks the commit: fix the cause or revert.
 
-Current-state checks also emit a non-failing working-tree note for each topic strictly above `currentState.maxClaimsPerTopic`; equality is quiet, staged checks suppress the advisory, and the example adopter is required to produce no notes. Catalog-derived runner tests require every metadata-forwarded command in both managed and repository runners while preserving declared exclusions. Context parity tests require human and JSON output to consume the same concise/full model, complete-authority callers to use `--full`, and topic/context applicability evidence to agree.
+Current-state checks also emit a non-failing working-tree note for each topic strictly above `currentState.maxClaimsPerTopic`; equality is quiet, staged checks suppress the advisory, and the example adopter is required to produce no notes. Catalog-derived runner tests require every metadata-forwarded command in both managed and repository runners while preserving declared exclusions; repository-runner tests additionally pin the dashboard development commands while proving the generic runner omits them. Context parity tests require human and JSON output to consume the same concise/full model, complete-authority callers to use `--full`, and topic/context applicability evidence to agree. Dashboard-runtime package and container tests gate immutable cache publication, the closed read dispatch, fallback precedence, bounded diagnostics, and session capture.
 
 ### Coverage: statement gate vs line reporting
 
@@ -57,7 +57,7 @@ needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 
 awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
 identical Go and containerized TypeScript steps, including protocol parity and the pinned real-Pi
-three-factory smoke; the `full` argument is accepted only so the rendered pre-push hook
+three-factory smoke plus the pinned repository-runtime cache and launcher tests; the `full` argument is accepted only so the rendered pre-push hook
 payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
 tier to reach for; the whole gate is fast enough to run before every commit.
 
@@ -75,7 +75,15 @@ package (`package <pkg>` or the black-box `package <pkg>_test` where a test need
 unexported identifiers). Template golden tests (render assertions against the embedded catalog)
 live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
 command functions directly (not a subprocess) against a temp directory built with `t.TempDir()`,
-in `cmd/awf/*_test.go`.
+in `cmd/awf/*_test.go`. The private dashboard-read tests prove the exact argv allowlist, validation
+ordering, snapshot-backed reads across live schema advancement, and that forbidden mutation shapes
+cannot reach a handler.
+
+`internal/dashboardruntime` tests use temporary Git repositories and XDG caches to cover absent and
+concurrent ref initialization, commit peeling, dirty-checkout isolation, normalized builds, immutable
+reuse, advisory-lock release, interrupted staging recovery, atomic publication, path and collision
+rejection, complete canonical policy snapshots, digest tampering, and compare-and-swap advance races.
+The cached launcher's closed translation is tested separately under `cmd/awf-dashboard-launcher`.
 
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
 files, no production source). Each scenario runs a full `Project.SyncReport` over a fixture config derived
@@ -104,7 +112,9 @@ snapshot before `tsc` runs, so the type-check still covers the real extension co
 and fixture tests compare Go and TypeScript vocabulary, event acceptance, creation and append recovery,
 and gate classification. Dashboard tests cover confined owner-only storage, leases, tombstones,
 serialized drain, explicit versus passive failure, active-branch association, trajectory navigation,
-closed lifecycle schemas, controlled binary handshake and refresh, atomic stale/degraded state,
+closed lifecycle schemas, bootstrap authority, PATH-to-advertised-runner fallback, launcher project-root
+environment, bounded dual-failure diagnostics, one launcher capture per session, controlled binary
+handshake and refresh, atomic stale/degraded state,
 widget and overlay rendering, fixed maintenance arrays, confirmation, privacy exclusions, and no-spawn
 rendering. Runner tests cover
 structured event ordering and bounds, cumulative omissions, setup cleanup, and cancellation. An

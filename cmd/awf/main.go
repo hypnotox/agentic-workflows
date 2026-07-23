@@ -52,6 +52,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "run `awf help` for command details")
 		return 2
 	}
+	// dashboard-read is a private cache-runtime dispatch. Recognize its closed
+	// raw grammar before cwd resolution, public clispec parsing, project-state
+	// guarding, and the normal binary-version gate.
+	if args[1] == "dashboard-read" {
+		if err := runDashboardRead(args[2:], stdout); err != nil {
+			fmt.Fprintln(stderr, err)
+			return 1
+		}
+		return 0
+	}
 	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
 		if a == "help" && len(args) >= 3 {
 			if spec, ok := clispec.Lookup(args[2]); ok {

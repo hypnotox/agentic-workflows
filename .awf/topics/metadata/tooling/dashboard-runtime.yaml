@@ -1,0 +1,4 @@
+title: Dashboard runtime
+summary: Immutable Git-ref-pinned cache, launcher, and policy snapshot for repository dashboard reads.
+paths:
+  - internal/dashboardruntime/**

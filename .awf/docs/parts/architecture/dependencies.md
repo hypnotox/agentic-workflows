@@ -2,10 +2,15 @@
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing of the config tree and ADR frontmatter;
   unknown keys fail fast.
-- **`encoding/json`, `crypto/sha256`, and filesystem primitives** (standard library): parse,
+- **`encoding/json`, `crypto/sha256`, process execution, and filesystem primitives** (standard library): parse,
   fingerprint, and project the normative telemetry descriptor, implement its confined durable
-  append-only resident ledger, and produce canonical metrics, normalized exports, and diagnostic
-  results without a database, background daemon, or TypeScript aggregation engine.
+  append-only resident ledger, produce canonical metrics, normalized exports, and diagnostic
+  results, and publish the locked immutable dashboard development cache without a database,
+  background daemon, or TypeScript aggregation engine.
+- **Git and the Go toolchain**: repository-only dashboard fallback inputs. Git resolves, materializes,
+  and compare-and-swap advances the local pinned ref; the selected Go binary performs two normalized
+  builds from that committed tree. They are development requirements, not runtime dependencies of an
+  installed adopter binary.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s

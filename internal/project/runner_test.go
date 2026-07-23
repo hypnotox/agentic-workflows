@@ -92,6 +92,11 @@ func TestRunnerStructure(t *testing.T) {
 	if strings.Contains(c, "command awf") {
 		t.Errorf("the runner must not carry a PATH fallback:\n%s", c)
 	}
+	for _, repositoryCommand := range []string{"dashboard-awf-path", "dashboard-awf-advance"} {
+		if strings.Contains(c, repositoryCommand) {
+			t.Errorf("generic runner must not publish repository-only command %q:\n%s", repositoryCommand, c)
+		}
+	}
 	// The two adopter regions are #-comment in-place pointers (shell comment
 	// style), never HTML.
 	for _, name := range []string{"runner-setup", "runner-project-verbs"} {

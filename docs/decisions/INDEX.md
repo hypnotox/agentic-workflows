@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0149: Deterministic Effort Lifecycle Accounting and Pi Workflow Routing](0149-deterministic-effort-lifecycle-accounting-and-pi-workflow-routing.md) (Proposed)
-- [ADR-0150: Git Ref Pinned Development Runtime](0150-git-ref-pinned-development-runtime.md) (Proposed)
 
 ## History
 
@@ -154,3 +153,4 @@
 - [ADR-0146: Pi Workflow Telemetry and Dashboard](0146-pi-workflow-telemetry-and-dashboard.md) (Implemented)
 - [ADR-0147: Topic-Grouped Context Output and Selectors-Only Rendered Applicability](0147-topic-grouped-context-output-and-selectors-only-rendered-applicability.md) (Implemented)
 - [ADR-0148: Split over-budget current-state topics into area-scoped topics](0148-split-over-budget-current-state-topics-into-area-scoped-topics.md) (Implemented)
+- [ADR-0150: Git Ref Pinned Development Runtime](0150-git-ref-pinned-development-runtime.md) (Implemented)

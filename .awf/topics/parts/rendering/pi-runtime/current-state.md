@@ -2,6 +2,12 @@ The Pi runtime floor and its boundaries: child-process safety, tool boundaries, 
 
 ## Claims
 
+### `invariant: pi-pinned-development-runtime`
+
+Without an enabled bootstrap, the generated Pi dashboard tries `awf` on PATH and, after absence, execution failure, project-version refusal, or protocol refusal, uses only an advertised repository `dashboard-awf-path` fallback. Bootstrap remains authoritative and never falls through. The fallback receives the absolute project root through `AWF_DASHBOARD_PROJECT_ROOT`, dual failure retains both bounded causes, and one successfully handshaken launcher is captured for the Pi session so a later ref advance cannot hot-swap it.
+Origin: ADR-0150
+Backing: test
+
 ### `invariant: pi-child-process-safety`
 
 In the generated Pi subagent extension, every child exit path removes the temporary role prompt and its listeners, cancellation escalates from TERM to KILL based on the observed process exit, and child errors preserve bounded diagnostics.

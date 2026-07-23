@@ -5,6 +5,7 @@ paths:
   - internal/changelog/**
   - internal/evals/**
   - internal/clispec/**
+  - internal/dashboardruntime/**
   - internal/initspec/**
   - internal/git/**
   - internal/testsupport/**

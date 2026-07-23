@@ -17,6 +17,7 @@ Backing: test
 
 ### `invariant: pi-workflow-dashboard-runtime`
 
-The generated awf-dashboard runtime restores only active-branch association, validates and appends the descriptor protocol through confined owner-only leased storage, drains serialized writes on shutdown, and keeps passive failures non-blocking while explicit lifecycle failures remain visible. Its closed lifecycle, metrics, and doctor tools, trajectory handling, controlled canonical refresh, widget, overlay, confirmed fixed-argument maintenance, and bounded observations neither infer workflow state nor persist conversational content, raw tool arguments, commands, output, or unrestricted paths.
+The generated awf-dashboard runtime restores only active-branch association, validates and appends the descriptor protocol through confined owner-only leased storage, drains serialized writes on shutdown, and keeps passive failures non-blocking while explicit lifecycle failures remain visible. Its closed lifecycle, metrics, and doctor tools, trajectory handling, controlled canonical refresh, widget, overlay, confirmed fixed-argument maintenance, and bounded observations neither infer workflow state nor persist conversational content, raw tool arguments, commands, output, or unrestricted paths. Canonical reads use one session-captured bootstrap, PATH, or advertised pinned launcher; launcher calls carry the absolute project root in `AWF_DASHBOARD_PROJECT_ROOT`, while mutation and maintenance continue through ordinary gated binaries and never through the private read-only fallback.
 Origin: ADR-0146
+Revised-by: ADR-0150
 Backing: test

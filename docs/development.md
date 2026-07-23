@@ -12,6 +12,8 @@ container on first use. Developer tools (`golangci-lint`, `deadcode`, `gremlins`
 is installed by hand. To activate the repo's git hooks, wire them once per clone with
 `git config core.hooksPath .githooks`.
 
+From-source Pi dashboard development also requires the checkout's Git executable and Go toolchain at resolution time. The first `./x dashboard-awf-path` initializes the local `refs/awf/dashboard-runtime` ref to `HEAD` and may build the immutable cache; later queries reuse it even with a dirty checkout. Set `XDG_CACHE_HOME` to relocate the owner-private cache. Advance the ref only with `./x dashboard-awf-advance [commit]` after review; do not edit the ref or published cache entries by hand.
+
 
 <!-- awf:edit command-runner: from .awf/docs/parts/development/command-runner.md -->
 ## Command runner
@@ -27,10 +29,14 @@ dogfooded render always matches the tree, never a stale installed binary.
 | `./x lint` / `./x fmt` | `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | The dead-code check on its own (ADR-0063). |
 | `./x pi-test run|stop|reset` | Run the Pi-extension tests in the persistent Docker container, stop it while retaining cached dependencies, or remove the repo-keyed container, volume, and image. Ordinary gate runs reuse the live container and snapshot current source inside it. |
+| `./x dashboard-awf-path` | Resolve `refs/awf/dashboard-runtime`, initializing an absent ref to `HEAD`, and print only the immutable cached launcher path to standard output. Build and initialization diagnostics go to standard error. |
+| `./x dashboard-awf-advance [commit]` | Build and validate the named commit, or `HEAD` when omitted, then compare-and-swap the local runtime ref and report old commit, new commit, and launcher path. Run only after staged checks, the gate, and implementation review; existing Pi sessions keep their captured launcher. |
 | Metadata-forwarded `awf` commands | Every top-level command declared runner-forwarded by `internal/clispec` delegates through `go run ./cmd/awf`; `init`, `upgrade`, and `uninstall` remain direct-only with declared reasons. Repository-special `sync` additionally re-renders `examples/sundial`, and `check` additionally gates its drift, invariants, advisory notes, and tests. Other project-only verbs remain explicit `x` cases. |
 | `./x mutants [pkg]` | Advisory mutation triage (ADR-0066): the production diff vs `main` by default, or one package with a path argument. Never part of the gate. |
 | `./x audit-local <range>` | Repo-local conformance audit (ADR-0073) via `cmd/repoaudit`: over a required `<base>..<head>`, judged from the range's merge base (a moved base neither blames upstream files nor masks a missing entry), it flags an adopter-facing change with no CHANGELOG `[Unreleased]` entry (Error) and each added-or-touched `coverage-ignore` directive in a production Go file (Warning: re-evaluate the reachability claim). Repo-specific, not rules in the shipped `awf audit`; never gated. |
 | `./x build` / `./x install` | `go build -o awf ./cmd/awf` / `go install ./cmd/awf`. |
+
+The dashboard runtime cache lives under `${XDG_CACHE_HOME:-$HOME/.cache}/awf/dashboard-runtime/v1` and is immutable and content-addressed. Its local Git ref and cache are operational state, never staged outputs. The generic rendered runner deliberately omits both dashboard commands; generated Pi code discovers only an advertised command and assumes no repository source path.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/development/dependencies.md -->
@@ -47,6 +53,8 @@ Runtime dependencies are deliberately few (see `go.mod`):
   `internal/pathglob` (ADR-0077).
 - **`github.com/BurntSushi/toml`**: encodes the Codex adapter's TOML agent profiles
   (`internal/project/agent.go`).
+
+The repository-only dashboard fallback shells out to Git for exact commit materialization and ref compare-and-swap, and to the selected Go toolchain for normalized builds. Published cache entries contain no new linked runtime dependency; adopters using bootstrap or PATH resolution do not use this development fallback.
 
 Developer tools are pinned in `go.mod`'s `tool` block for reproducibility:
 `golangci-lint` (lint and format), `deadcode` (the dead-code gate, ADR-0063), and

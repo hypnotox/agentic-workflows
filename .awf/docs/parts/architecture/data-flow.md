@@ -79,11 +79,18 @@ finding. Waivers and typed repairs append only after explicit confirmation; purg
 confirmed destructive operation.
 
 The Pi dashboard restores association from the active branch, writes passive observations through a
-serialized durable queue, and drains it at shutdown. It resolves a gated binary through the project
-bootstrap or `PATH`, handshakes the protocol, and refreshes metrics then doctor at startup, overlay
-open or manual refresh, and relevant successful mutations. Rendering never starts a process. A failed
-resolution, handshake, query, or retention call preserves the last complete pair as stale or exposes
-a degraded state; passive collection remains non-blocking, while explicit lifecycle failure is
+serialized durable queue, and drains it at shutdown. An enabled project bootstrap is authoritative.
+Without one, the dashboard tries `awf` on `PATH`, then uses the repository runner only when its usage
+advertises `dashboard-awf-path`; absence, execution failure, version refusal, or protocol refusal may
+trigger that fallback. The runner resolves `refs/awf/dashboard-runtime`, initializes an absent ref to
+`HEAD`, materializes only that commit, and reuses or atomically publishes the content-addressed awf,
+launcher, metadata, and policy snapshot. Launcher queries carry the absolute project root in
+`AWF_DASHBOARD_PROJECT_ROOT` and enter the closed private `dashboard-read` grammar; mutation and
+maintenance never do. The dashboard captures one successful handshake for the session, then refreshes
+metrics followed by doctor at startup, overlay open or manual refresh, and relevant successful
+mutations. Rendering never starts a process. A failed resolution, handshake, query, or retention call
+preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps
+both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is
 visible.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run

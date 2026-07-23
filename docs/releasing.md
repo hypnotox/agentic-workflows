@@ -113,7 +113,11 @@ broken release config fails CI before any tag is pushed.
 
 Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later build first verified
 to expose the queued-command, persisted-session, custom-entry, widget, overlay, and shutdown APIs
-required by all three extension factories.
+required by all three extension factories. From a clean reviewed commit, run `./x check`, `./x gate`,
+and the independent implementation review before `./x dashboard-awf-advance <reviewed-commit>`.
+Confirm it reports the old and new pinned commits plus one launcher path. Do not stage the local ref or
+XDG cache. Start a new Pi session after advancement; an already-running session must retain its old
+captured launcher.
 
 1. Run one successful exploration call with a named task, `targeted` breadth, `paths` detail, and an
    explicit authenticated lower-cost child model. Run more than ten independent exploration calls
@@ -138,9 +142,13 @@ required by all three extension factories.
    confirmation and verify no write or process action occurs. Run retention dry-run, then an approved
    apply against terminal candidates. Complete the effort, shut down Pi, and verify queued events were
    drained and retained history remains readable.
-6. Repeat canonical refresh with both bootstrap and `awf` on `PATH` intentionally unavailable. Direct
-   conforming lifecycle registration and passive work must remain non-blocking, while metrics, doctor,
-   widget, and overlay visibly report degraded or stale state. No render path may spawn a process.
+6. With bootstrap disabled and `awf` absent from `PATH`, confirm the repository runner advertises
+   `dashboard-awf-path`, canonical protocol, metrics, and doctor reads succeed through the pinned
+   launcher, and a second refresh reuses the same launcher without rebuilding. Dirty an unrelated
+   checkout file and confirm reads retain the pinned semantics. Then make the advertised fallback
+   unavailable too: direct conforming lifecycle registration and passive work remain non-blocking,
+   while metrics, doctor, widget, and overlay visibly report both bounded resolution causes as degraded
+   or stale. No render path may spawn a process.
 
 Inspect `.awf/metrics/` after the smoke. Persisted events may contain bounded opaque identifiers,
 models and tool names, timestamps, phases and activities, duration, token/cache/cost totals, counters,
