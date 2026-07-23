@@ -168,10 +168,26 @@ func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, 
 	if len(res.Unowned) > 0 {
 		fmt.Fprintln(stdout, "\n## Unowned (configure a domain to own these)")
 		for _, u := range res.Unowned {
-			fmt.Fprintf(stdout, "  %s\n", u)
+			if u.Path != "." && !strings.HasSuffix(u.Path, "/") {
+				fmt.Fprintf(stdout, "  %s\n", u.Path)
+				continue
+			}
+			fmt.Fprintf(stdout, "  %s (%s", u.Path, countNoun(u.UnownedCount, "unowned file"))
+			if u.ExcludedCount > 0 {
+				fmt.Fprintf(stdout, "; %s excluded from coverage beneath", countNoun(u.ExcludedCount, "file"))
+			}
+			fmt.Fprintln(stdout, ")")
 		}
 	}
 	return nil
+}
+
+// countNoun renders "1 <noun>" or "<n> <noun>s" for the uncovered annotations.
+func countNoun(n int, noun string) string {
+	if n == 1 {
+		return "1 " + noun
+	}
+	return fmt.Sprintf("%d %ss", n, noun)
 }
 
 // printContext renders res as JSON or human-readable text. Both modes read the

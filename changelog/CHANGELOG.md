@@ -40,6 +40,10 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- `awf context --uncovered` annotates each collapsed unowned directory with how many unowned
+  files it covers and how many files beneath it are excluded from coverage (generated, ignored,
+  or otherwise ineligible), so a mostly-generated directory no longer reads as wholly unowned.
+  The JSON `unowned` array becomes structured entries.
 - `awf context` output is grouped by topic: each applicable topic renders its authority exactly once
   per invocation (selectors, a matched-path count with an `awf topic <id> --coverage` drilldown, the
   uncapped claim-ID roster, and the deduplicated direct-claim detail with an explicit detail-omission

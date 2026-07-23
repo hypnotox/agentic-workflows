@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -627,6 +628,31 @@ func TestRunContextUncoveredHuman(t *testing.T) {
 			t.Errorf("uncovered human missing %q\n%s", want, got)
 		}
 	}
+	// Constructed rendering: directory entries (trailing slash or the root ".")
+	// carry counts with singular/plural forms and omit the excluded clause at
+	// zero; plain file entries render bare.
+	res := project.UncoveredResult{Unowned: []project.UnownedEntry{
+		{Path: ".pi/", UnownedCount: 1, ExcludedCount: 22},
+		{Path: "README.md", UnownedCount: 1, ExcludedCount: 0},
+		{Path: "gen/", UnownedCount: 2, ExcludedCount: 1},
+		{Path: "sub/", UnownedCount: 2, ExcludedCount: 0},
+		{Path: ".", UnownedCount: 3, ExcludedCount: 2},
+	}}
+	var constructed bytes.Buffer
+	if err := printUncovered(&constructed, res, false, "header"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"  .pi/ (1 unowned file; 22 files excluded from coverage beneath)\n",
+		"  README.md\n",
+		"  gen/ (2 unowned files; 1 file excluded from coverage beneath)\n",
+		"  sub/ (2 unowned files)\n",
+		"  . (3 unowned files; 2 files excluded from coverage beneath)\n",
+	} {
+		if !strings.Contains(constructed.String(), want) {
+			t.Errorf("constructed uncovered render missing %q\n%s", want, constructed.String())
+		}
+	}
 }
 
 // The --uncovered JSON render carries the same set as the human render.
@@ -644,8 +670,9 @@ func TestRunContextUncoveredJSONParity(t *testing.T) {
 	if len(res.Uncovered) != 1 || res.Uncovered[0].Path != "internal/bar.go" {
 		t.Errorf("json uncovered: %+v", res.Uncovered)
 	}
-	if strings.Join(res.Unowned, ",") != "README.md,stray.txt" {
-		t.Errorf("json unowned: %v want [README.md stray.txt]", res.Unowned)
+	want := []project.UnownedEntry{{Path: "README.md", UnownedCount: 1}, {Path: "stray.txt", UnownedCount: 1}}
+	if !reflect.DeepEqual(res.Unowned, want) {
+		t.Errorf("json unowned: %#v want %#v", res.Unowned, want)
 	}
 	var human bytes.Buffer
 	if err := runContext(root, nil, false, "", false, true, &human); err != nil {
