@@ -54,8 +54,10 @@ Modified (authored):
 
 Modified (generated, via `./x sync`; never hand-edited): the rendered skills under
 `.claude/skills/` and `.pi/awf-workflows/` for the eleven templates above, their
-`examples/sundial/` mirrors, `docs/domains/tooling.md`, `docs/decisions/INDEX.md`, and
-`.awf/awf.lock`.
+`examples/sundial/` mirrors, `docs/domains/tooling.md`, `docs/domains/rendering.md`,
+`docs/topics/rendering/workflow-skill-templates.md`, `docs/topics/rendering/index.md`,
+`docs/topics/tooling/context-and-topic.md`, `docs/topics/tooling/index.md`,
+`docs/decisions/INDEX.md`, and `.awf/awf.lock`.
 
 Deleted: none.
 
@@ -93,8 +95,9 @@ same line (the spine test scans line-by-line).
   ```
 
 - [ ] **Task 1.4: bugfix grounding sentence.** In `templates/skills/bugfix/SKILL.md.tmpl`,
-  procedure step 1, append after the existing step-1 text (inside the same numbered item, after
-  the `{{ end }}` of the tdd conditional):
+  procedure step 1, append on the same physical line as step 1, after the outer `{{ end }}` that
+  closes `{{ if .skills.tdd }}` (the line's final token; the nested targetWorkflowRouter
+  conditional closes earlier on that line):
 
   ```
    Before writing the test, run `awf context <the implementation and test paths>` (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix touches a claimed surface).
@@ -108,9 +111,9 @@ same line (the spine test scans line-by-line).
   ```
 
 - [ ] **Task 1.6: debugging grounding sentence.** In
-  `templates/skills/debugging/SKILL.md.tmpl`, section `test-isolation`, step 4: after the first
-  sentence ("Once the defective surface is located, write the smallest possible test that
-  reproduces the failure before touching the fix."), insert:
+  `templates/skills/debugging/SKILL.md.tmpl`, section `test-isolation`, step 4: after the
+  sentence "Once the defective surface is located, write the smallest possible test that
+  reproduces the failure before touching the fix.", insert:
 
   ```
   Run `awf context <the suspect paths>` first (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix will touch a claimed surface).
@@ -230,7 +233,7 @@ status event, per the pitfall that a flip never travels alone.
   ```
   ### `invariant: implementer-context-grounding`
 
-  Every implementer-chain skill template (executing-plans, subagent-driven-development, writing-plans, bugfix, debugging, tdd, refactor-coupling-audit) instructs a concise `awf context` run over its touched paths with an in-place drill-down rationale before editing, and the projection-pinning spine test classifies every grounding-carrying skill template into exactly the concise or complete-authority camp.
+  Every implementer-chain skill template (executing-plans, subagent-driven-development, writing-plans, bugfix, debugging, tdd, refactor-coupling-audit) carries a concise `awf context` invocation, and the projection-pinning spine test classifies every grounding-carrying skill template into exactly the concise or complete-authority camp.
   Origin: ADR-0155
   Backing: test
   ```
@@ -290,7 +293,11 @@ status event, per the pitfall that a flip never travels alone.
   this plan's frontmatter to `status: Implemented`, recording surfaced findings under Notes. Run
   `./x sync` (INDEX.md and `docs/domains/tooling.md` regenerate). Stage the complete transaction,
   run `awf check --staged` (clean; ADR-0155 Implemented with both operations Applied), then
-  `./x gate full` (passes). Commit:
+  `./x gate full` (passes). Besides INDEX.md and `docs/domains/tooling.md`, this sync also
+  regenerates `docs/domains/rendering.md`, `docs/topics/rendering/workflow-skill-templates.md`,
+  `docs/topics/rendering/index.md`, `docs/topics/tooling/context-and-topic.md`, and
+  `docs/topics/tooling/index.md`; stage them as part of the transaction, not as unexpected
+  drift. Commit:
 
   ```commit
   docs(invariants): apply 0155 grounding claims (implements 0155)
