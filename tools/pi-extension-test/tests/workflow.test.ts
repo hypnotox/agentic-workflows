@@ -110,7 +110,7 @@ test("rendered route effects and predecessor validation are closed and determini
   const identity = deterministicWorkflowIdentity("session", [], "skill"); const event: any = { eventId: "event", sessionId: "session", predecessors: [], idempotencyKey: `workflow-${identity}` }; const retryProjection: any = { frontier: ["event"], events: new Map([["event", event]]), effectApplied: new Set(["event"]) }; assert.equal(acknowledgedWorkflowRetry(retryProjection, "session", "skill"), event); assert.equal(acknowledgedWorkflowRetry({ ...retryProjection, frontier: [] }, "session", "skill"), undefined); assert.equal(acknowledgedWorkflowRetry({ ...retryProjection, frontier: ["event", "other"] }, "session", "skill"), undefined); assert.equal(acknowledgedWorkflowRetry({ ...retryProjection, events: new Map() }, "session", "skill"), undefined); assert.equal(acknowledgedWorkflowRetry(retryProjection, "other", "skill"), undefined); assert.equal(acknowledgedWorkflowRetry({ ...retryProjection, effectApplied: new Set() }, "session", "skill"), undefined); event.idempotencyKey = `workflow-${identity}-phase`; assert.equal(acknowledgedWorkflowRetry(retryProjection, "session", "skill"), event); delete event.predecessors; assert.equal(acknowledgedWorkflowRetry(retryProjection, "session", "skill"), event); event.idempotencyKey = "other"; assert.equal(acknowledgedWorkflowRetry(retryProjection, "session", "skill"), undefined);
 });
 
-test("loader durably starts, retries, transitions, and only then returns fixed bodies", async () => {
+test("invariant: workflow router acknowledges durably before returning fixed bodies", async () => {
   const root = await projectRoot(); try {
     await bodies(root, ["brainstorming", "exploring", "executing-direct", "reviewing-impl"]); const association = await seed(defaultLedgerDependencies(join(root, ".pi/extensions/awf-dashboard/index.ts"))); const h = await harness(root, async () => association); const tool = h.tools.get("awf_workflow"); const ctx = context(association);
     const first = await execute(tool, "brainstorming", ctx); assert.equal(first.content[0].text, "fixed body brainstorming\n"); assert.equal(first.details.durable, true); assert.equal(first.details.effortId, "effort"); const firstID = first.details.eventIds[0];
@@ -124,7 +124,7 @@ test("loader durably starts, retries, transitions, and only then returns fixed b
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("every chain edge is one gap-free transition with route changes and both implementation modes", async () => {
+test("invariant: workflow router enforces mapped lifecycle effects", async () => {
   const cases = [
     { effort: "direct-chain", skills: ["brainstorming", "executing-direct", "reviewing-impl", "retrospective"], edges: [["brainstorming", "implementation"], ["implementation", "implementation-review"], ["implementation-review", "retrospective"]], route: "direct", mode: "inline-execution" },
     { effort: "plan-inline", skills: ["brainstorming", "writing-plans", "reviewing-plan", "executing-plans", "reviewing-impl", "retrospective"], edges: [["brainstorming", "planning"], ["planning", "plan-review"], ["plan-review", "implementation"], ["implementation", "implementation-review"], ["implementation-review", "retrospective"]], route: "plan", mode: "inline-execution" },
@@ -142,7 +142,7 @@ test("direct downstream calls, task starts, and current-phase activities enforce
   finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("retrospective settles on the first later successful agent end and retries completion idempotently", async () => {
+test("invariant: workflow router completes retrospective mechanically", async () => {
   const root = await projectRoot(); try { const names = ["brainstorming", "executing-direct", "reviewing-impl", "retrospective"]; await bodies(root, names); const association = await seed(defaultLedgerDependencies(join(root, ".pi/extensions/awf-dashboard/index.ts")), "retro-retry"); const h = await harness(root, async () => association); const tool = h.tools.get("awf_workflow"); for (const skill of names) await execute(tool, skill, context(association)); let failComplete = true; const originalOpen = h.ledger.open; h.ledger.open = async (path: string, flags: any, mode?: number) => { const handle: any = await originalOpen(path, flags, mode); const write = handle.writeFile.bind(handle); handle.writeFile = async (data: string) => { if (failComplete && data.includes(`"kind":"effort_completed"`)) { failComplete = false; throw new Error("completion interruption"); } return write(data); }; return handle; }; await assert.rejects(h.hooks.get("agent_end")(successfulAgentEnd, {}), /completion interruption/); let projection = await projectLocalLifecycle(h.ledger, "retro-retry"); assert.equal(projection.state, "active"); assert.equal(projection.openPhases.size, 0); await h.hooks.get("agent_end")(successfulAgentEnd, {}); projection = await projectLocalLifecycle(h.ledger, "retro-retry"); assert.equal(projection.state, "completed"); const before = (await events(root, "retro-retry")).length; await h.hooks.get("agent_end")(successfulAgentEnd, {}); assert.equal((await events(root, "retro-retry")).length, before); const stream = await events(root, "retro-retry"); assert.equal(stream.filter((event: any) => event.kind === "phase_finished").length, 1); assert.equal(stream.filter((event: any) => event.kind === "effort_completed").length, 1); }
   finally { await rm(root, { recursive: true, force: true }); }
 });
@@ -177,7 +177,7 @@ test("task loaders select bugfix routing and record investigation activity on ph
   finally { await rm(investigation, { recursive: true, force: true }); }
 });
 
-test("loader rejects missing bodies, invalid predecessors, cancellation, and parallel competitors without unsafe reads", async () => {
+test("invariant: workflow router rejects competing frontiers", async () => {
   const root = await projectRoot(); try {
     await bodies(root, ["reviewing-impl", "brainstorming"]); const association = await seed(defaultLedgerDependencies(join(root, ".pi/extensions/awf-dashboard/index.ts")), "reject"); let release!: () => void; let entered!: () => void; const waiting = new Promise<void>((done) => { entered = done; }); const settle = new Promise<void>((done) => { release = done; }); let calls = 0;
     const h = await harness(root, async () => { calls++; entered(); await settle; return association; }); const tool = h.tools.get("awf_workflow"); const ctx = context(association);
@@ -256,7 +256,7 @@ test("invariant: registered provisional overflow associates the settled candidat
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("registered dashboard settles its own provisional candidate and closes resume queue failure branches", async () => {
+test("invariant: workflow router settles provisional identity before loading", async () => {
   const root = await projectRoot(); try { await bodies(root, ["brainstorming"]); const h = await harness(root); const ctx: any = { sessionManager: { getBranch: () => [], getSessionId: () => "session", getLeafId: () => "anchor", getLeafEntry: context({ sessionId: "session" }).sessionManager.getLeafEntry }, ui: {} }; await h.hooks.get("session_start")({}, ctx); const loaded = await execute(h.tools.get("awf_workflow"), "brainstorming", ctx); assert.equal(loaded.details.durable, true); assert.equal(h.entries.some((entry) => entry.type === ASSOCIATION_ENTRY), true);
     await h.commands.get("awf-resume-effort").handler("uuid-1"); await assert.rejects(h.commands.get("awf-resume-effort").handler("uuid-1"), /already pending/); const queuedID = h.queued.at(-1)[1]; const invalidReplacement = { newSession: async (options: any) => { await options.setup({ getSessionId: () => "bad/session", appendCustomEntry() {} }); } }; await h.commands.get("awf-resume-effort-continue").handler(queuedID, invalidReplacement); await assert.rejects(h.commands.get("awf-resume-effort-continue").handler(queuedID, invalidReplacement), /replacement session identity/); h.pi.queueCommand = () => { throw new Error("queue failed"); }; await assert.rejects(h.commands.get("awf-resume-effort").handler("uuid-1"), /queue failed/); await h.hooks.get("session_shutdown")({}, ctx);
   } finally { await rm(root, { recursive: true, force: true }); }

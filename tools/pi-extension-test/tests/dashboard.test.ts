@@ -93,7 +93,7 @@ test("fake executable proves bootstrap binary resolution and pinned canonical ar
   finally { await rm(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 10 }); }
 });
 
-test("fake processes prove advertised runner fallback, launcher environment, and one session capture", async () => {
+test("invariant: pinned runtime passes the project root and captures one launcher per session", async () => {
   const project = await root();
   try {
     const fake = join(process.cwd(), "tools/pi-extension-test/fixtures/fake-awf.mjs"); const launcher = join(project, "fake-dashboard-launcher.mjs"); const runner = join(project, "x");
@@ -119,7 +119,7 @@ test("maintenance bootstrap resolution is authoritative and fail closed", async 
   for (const bootstrap of ["throw", "exit"] as const) { const commands: string[] = []; const noInspection = createDashboardState("ready", { root: "/project", exec: async (command) => { commands.push(command); if (command === "bash") { if (bootstrap === "throw") throw new Error("missing"); return { stdout: "", stderr: "", code: 1 }; } return { stdout: "{}", stderr: "", code: 0 }; } }); assert.equal((await noInspection.runFixed(["metrics", "retain", "--json"])).ok, true); assert.deepEqual(commands, ["bash", "awf"]); }
 });
 
-test("PATH execution, version, and protocol refusal use only an advertised runner fallback", async () => {
+test("invariant: pinned runtime limits repository fallback eligibility and bounded dual causes", async () => {
   const missing: any = new Error("missing"); missing.code = "ENOENT";
   for (const [name, pathProtocol] of [["execution", undefined], ["version", protocolJSON({ awfVersion: "0.21.0", projectVersion: "0.22.0" })], ["protocol", protocolJSON({ protocol: { major: 3, minor: 0 } })]] as const) {
     const calls: any[] = []; const deps: any = { root: "/project", lstat: async () => { throw missing; }, exec: async (command: string, args: string[]) => { calls.push([command, args]); if (command === "awf") return pathProtocol === undefined ? { stdout: "", stderr: "", code: 127 } : { stdout: pathProtocol, stderr: "", code: 0 }; if (command === "/project/x" && args.length === 0) return { stdout: "", stderr: "usage: ./x <dashboard-awf-path|test>", code: 2 }; if (command === "/project/x") return { stdout: "/cache/launcher\n", stderr: "", code: 0 }; if (command === "env" && args.includes("protocol")) return { stdout: protocolJSON(), stderr: "", code: 0 }; if (command === "env" && args.includes("metrics")) return { stdout: metricsJSON(), stderr: "", code: 0 }; if (command === "env") return { stdout: doctorJSON(), stderr: "", code: 0 }; throw new Error("unexpected process"); } };
@@ -183,7 +183,7 @@ test("canonical validators and maintenance cover every malformed field and execu
   for (const args of [["metrics", "retain", "--json"], ["metrics", "purge", "--effort", "x", "--confirm", "--json"]]) { const state = createDashboardState("ready", { root: "/p", exec: async () => ({ stdout: "bad", stderr: "", code: args[1] === "retain" ? 1 : 0 }) }); state.set("ready", { binary: "/bin/awf", metrics: {}, doctor: {} }); const result = await state.runFixed(args); assert.equal(result.ok, false); assert.equal(result.errorCategory, args[1] === "retain" ? "retain" : "maintenance"); assert.equal(state.status, "stale"); }
 });
 
-test("bootstrap presence is authoritative and newer compatible binaries satisfy the project gate", async () => {
+test("invariant: pinned runtime enforces bootstrap precedence", async () => {
   const file = { isFile: () => true, isSymbolicLink: () => false }; const missing: any = new Error("missing"); missing.code = "ENOENT";
   for (const [name, lstatResult, bootstrap, expected, fallback] of [
     ["absent", missing, undefined, true, true], ["failed", file, { stdout: "", code: 1 }, false, false], ["malformed", file, { stdout: "/one\n/two\n", code: 0 }, false, false], ["unsafe", { isFile: () => false, isSymbolicLink: () => true }, undefined, false, false],

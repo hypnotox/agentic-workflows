@@ -77,7 +77,6 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 }
 
 // invariant: rendering/pi-runtime:pi-extension-target-render
-// invariant: rendering/pi-runtime:pi-pinned-development-runtime
 func TestPiTargetRendersExtension(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
@@ -329,6 +328,15 @@ func provePiContractBehavior(t *testing.T, clauses ...string) {
 			t.Errorf("focused Pi contract harness did not prove %q\n%s", clause, piBehaviorProof.output)
 		}
 	}
+}
+
+// invariant: rendering/pi-runtime:pi-pinned-development-runtime
+func TestPiPinnedDevelopmentRuntimeBehavioralProof(t *testing.T) {
+	provePiContractBehavior(t,
+		"pinned runtime enforces bootstrap precedence",
+		"pinned runtime limits repository fallback eligibility and bounded dual causes",
+		"pinned runtime passes the project root and captures one launcher per session",
+	)
 }
 
 // invariant: rendering/adapter-outputs:pi-workflow-dashboard-runtime

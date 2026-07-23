@@ -95,7 +95,6 @@ func goBinary(t *testing.T) string {
 	return path
 }
 
-// invariant: tooling/dashboard-runtime:pinned-development-runtime-cache
 func TestResolveInitializesAbsentRefAtHEADAtomically(t *testing.T) {
 	fixture := newRuntimeFixture(t)
 	var stderr bytes.Buffer
@@ -117,6 +116,20 @@ func TestResolveInitializesAbsentRefAtHEADAtomically(t *testing.T) {
 	if got := gitOutput(t, fixture.root, "rev-parse", "refs/awf/dashboard-runtime^{commit}"); got != fixture.head.String() {
 		t.Fatalf("runtime ref = %s, want %s", got, fixture.head)
 	}
+}
+
+// invariant: tooling/dashboard-runtime:pinned-development-runtime-cache
+func TestPinnedDevelopmentRuntimeCacheBehavioralProof(t *testing.T) {
+	t.Run("ref initialization", TestResolveInitializesAbsentRefAtHEADAtomically)
+	t.Run("ref advance compare and swap", TestAdvanceUsesCompareAndSwapAgainstCapturedRef)
+	t.Run("isolated dirty-tree-independent build", TestResolveBuildsPinnedCommitInIsolationFromDirtyCheckout)
+	t.Run("normalized build environment", TestResolveUsesNormalizedGoEnvironment)
+	t.Run("complete policy snapshot", TestResolvePublishesCompleteCanonicalPolicySnapshot)
+	t.Run("publication lock", TestResolveConcurrentAbsentRefInitializationConverges)
+	t.Run("staging recovery", TestResolveRecoversOnlyIncompleteSameKeyStaging)
+	t.Run("atomic publication", TestResolvePublishesExactEntryAtomically)
+	t.Run("immutable reuse", TestResolveReusesContentAddressedPublishedEntry)
+	t.Run("digest validation", TestResolveDetectsArtifactAndPolicyDigestTampering)
 }
 
 func TestResolveConcurrentAbsentRefInitializationConverges(t *testing.T) {

@@ -11,7 +11,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
-// invariant: rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router
 func TestPiWorkflowRouterExactOutputSet(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [exploring, tdd]\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
@@ -66,6 +65,17 @@ func TestPiWorkflowRouterExactOutputSet(t *testing.T) {
 	if strings.Contains(dashboard, `"brainstorming":{"kind":"chain"`) {
 		t.Error("dashboard workflow loader advertised a disabled mapping")
 	}
+}
+
+// invariant: rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router
+func TestPiWorkflowRouterBehavioralProof(t *testing.T) {
+	provePiContractBehavior(t,
+		"workflow router enforces mapped lifecycle effects",
+		"workflow router settles provisional identity before loading",
+		"workflow router rejects competing frontiers",
+		"workflow router acknowledges durably before returning fixed bodies",
+		"workflow router completes retrospective mechanically",
+	)
 }
 
 func TestPiWorkflowRouterErrorPropagation(t *testing.T) {
