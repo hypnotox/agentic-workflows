@@ -73,6 +73,7 @@ func TestDashboardReadIsRecognizedBeforeWorkingDirectoryAndProjectGuard(t *testi
 	}
 }
 
+// invariant: tooling/cli:dashboard-read-dispatch
 func TestSnapshotBackedReadDoesNotLoadAdvancedLiveSchema(t *testing.T) {
 	root := telemetryProject(t)
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("schemaGeneration: 999999\nunknownFutureAuthority: true\n"), 0o600); err != nil {
@@ -105,6 +106,7 @@ func TestSnapshotBackedReadDoesNotLoadAdvancedLiveSchema(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:dashboard-read-dispatch
 func TestDashboardReadValidatesSnapshotAndDispatchesEveryReadShape(t *testing.T) {
 	root := telemetryProject(t)
 	directory := t.TempDir()
