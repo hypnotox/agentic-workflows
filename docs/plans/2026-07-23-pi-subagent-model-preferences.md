@@ -20,9 +20,9 @@ All runtime behavior lands in the existing `templates/pi/awf-subagents/index.ts.
 five-file Pi extension surface is unchanged). Phase 1 adds the preference store (two JSON sources,
 strict shape validation, session-start registry validation, blocked-state semantics), rewires
 `resolveChildModel` to the ADR's precedence chain with per-call registry revalidation, extends the
-routing diagnostics, and applies the first ADR batch (operations 1-3, ADR flips to Implementing).
-Phase 2 updates the rendered guidance prose (agent guide, two execution skills, working-with-awf)
-with no claim operations. Phase 3 adds the `/awf-subagent-models` wizard command with atomic
+routing diagnostics, documents the preference behavior in working-with-awf, and applies the first
+ADR batch (operations 1-3, ADR flips to Implementing). Phase 2 updates the rendered dispatch
+guidance (agent guide, two execution skills) with no claim operations. Phase 3 adds the `/awf-subagent-models` wizard command with atomic
 persistence and the recommended preset, applies the final batch (operation 4), and flips the ADR
 to Implemented and this plan to Implemented. Each phase's closing commit is one staged transaction
 validated by `awf check --staged` and `./x gate`.
@@ -41,7 +41,7 @@ validated by `awf check --staged` and `./x gate`.
   - `templates/agents-doc/AGENTS.md.tmpl` (phase 2)
   - `templates/skills/subagent-driven-development/SKILL.md.tmpl` (phase 2)
   - `templates/skills/executing-plans/SKILL.md.tmpl` (phase 2)
-  - `templates/docs/working-with-awf.md.tmpl` (phases 2 and 3)
+  - `templates/docs/working-with-awf.md.tmpl` (phases 1 and 3)
   - Rendered outputs of all of the above via `./x sync` (`.pi/extensions/awf-subagents/index.ts`,
     `AGENTS.md`, `docs/working-with-awf.md`, per-target skill renders, `docs/decisions/INDEX.md`,
     domain/topic docs, `.awf/awf.lock`); stage whatever `git status` shows changed after sync.
@@ -150,7 +150,13 @@ pairing rule is why it cannot be sliced.
   `session_start`. In `TestPiSubagentToolBoundaries` (proof of
   `rendering/pi-runtime:pi-child-tool-boundaries`), keep the allowlist assertions unchanged and
   assert the new four-argument `resolveChildModel` call shape appears for all four tools while
-  the old two-argument shape `resolveChildModel(ctx, params.model)` no longer appears.
+  the old two-argument shape `resolveChildModel(ctx, params.model)` no longer appears. Beyond
+  extending, both tests must have every existing exact-string assertion the task-1.1/1.2 rewrite
+  invalidates updated to the new shapes - at minimum the pinned per-role call shape
+  `const selected = resolveChildModel(ctx, params.model)`, the pinned return shape
+  `return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined }`,
+  and any pinned contract strings that quote the old signature or return object; sweep both tests
+  for stale strings rather than assuming this list is exhaustive.
   Verification: `go test ./internal/project/ -run 'TestPiSubagent' -count=1` passes.
 
 - [ ] **Task 1.5: Add Pi extension tests in `tools/pi-extension-test/tests/index.test.ts`.**
@@ -171,7 +177,21 @@ pairing rule is why it cannot be sliced.
   Verification: `./x gate` (which runs the container extension tests) passes with 100% extension
   coverage.
 
-- [ ] **Task 1.6: Apply the first ADR batch and its claim mutations.** In
+- [ ] **Task 1.6: Document the preference files in the working-with-awf Pi section.** In
+  `templates/docs/working-with-awf.md.tmpl`, in the `### Pi workflow subagents` section's
+  model-routing paragraph, first revise the existing omission sentence (the prose stating that
+  omission inherits the active parent model) to state that omission resolves configured
+  preferences, then inherits the parent (mirroring the tool-description update in task 1.2).
+  Then append a paragraph stating, in qualifying form: the extension also reads per-role model
+  preferences from a user-global `awf-subagents.json` in Pi's agent directory and a gitignored
+  project-local `awf-subagents.local.json` in the project's Pi config directory under the project
+  root; resolution order is explicit argument, project role, global role, project default, global
+  default, then parent inheritance; both files are strictly validated at session start and any
+  error blocks implicit routing visibly until repaired while explicit per-call models keep
+  working; and configured choices are revalidated against the live registry before every queued
+  child.
+
+- [ ] **Task 1.7: Apply the first ADR batch and its claim mutations.** In
   `.awf/topics/parts/rendering/pi-workflows/current-state.md`, replace the
   `pi-subagent-model-routing` claim body and provenance with exactly:
 
@@ -208,19 +228,22 @@ pairing rule is why it cannot be sliced.
   ```
 
   In `docs/decisions/0151-local-per-role-pi-subagent-model-preferences.md`, append to
-  `## Status history`:
+  `## Status history` an Implementing event and an Applied event of the shape:
 
   ```
-  - 2026-07-23: Implementing; content-sha256: `<frozen digest>`
-  - 2026-07-23: Applied; state-sequence: 1; operations: update `rendering/pi-workflows:pi-subagent-model-routing`, update `rendering/pi-runtime:pi-child-tool-boundaries`, add `rendering/pi-workflows:pi-subagent-model-preferences`
+  - <date>: Implementing; content-sha256: <frozen digest>
+  - <date>: Applied; state-sequence: <next>; operations: update `rendering/pi-workflows:pi-subagent-model-routing`, update `rendering/pi-runtime:pi-child-tool-boundaries`, add `rendering/pi-workflows:pi-subagent-model-preferences`
   ```
 
-  where `<frozen digest>` is the content digest `awf check --staged` demands (run the check; on
-  mismatch it names the expected 64-hex value; use that value). Update the file's `status:`
-  frontmatter to `Implementing`.
+  where `<date>` is the commit date, `<frozen digest>` is written bare (64 lowercase hex, no code
+  span, matching every existing Status history line), and `<next>` is the next value in the
+  repository-global contiguous state-sequence namespace. Never pre-compute either value: run
+  `awf check --staged`; on mismatch it names the expected digest and the expected next sequence;
+  use exactly the values it names (Implementing ADR-0149 may interleave batches, so the sequence
+  is only knowable at commit time). Update the file's `status:` frontmatter to `Implementing`.
 
-- [ ] **Task 1.7: Sync, validate, and commit phase 1.** Run `./x sync` (regenerates the rendered
-  extension, INDEX.md, topic docs, and the lock). Stage every changed path from tasks 1.1-1.6
+- [ ] **Task 1.8: Sync, validate, and commit phase 1.** Run `./x sync` (regenerates the rendered
+  extension, INDEX.md, topic docs, and the lock). Stage every changed path from tasks 1.1-1.7
   plus the sync output (`git add` the exact paths `git status --short` shows; no `git add -A`).
   Run `awf check --staged` (clean), then `./x gate` (exit 0). Commit:
 
@@ -252,18 +275,7 @@ pairing rule is why it cannot be sliced.
   form); both must stay target-generic with no Pi command or tool name (the existing
   `skill-prose-tool-agnostic` render test fails otherwise).
 
-- [ ] **Task 2.3: Document the preference files in the working-with-awf Pi section.** In
-  `templates/docs/working-with-awf.md.tmpl`, at the end of the `### Pi workflow subagents`
-  section's model-routing paragraph (the prose around "must have configured authentication"),
-  append a paragraph stating, in qualifying form: the extension also reads per-role model
-  preferences from a user-global `awf-subagents.json` in Pi's agent directory and a gitignored
-  project-local `awf-subagents.local.json` in the project's Pi config directory; resolution order
-  is explicit argument, project role, global role, project default, global default, then parent
-  inheritance; both files are strictly validated at session start and any error blocks implicit
-  routing visibly until repaired while explicit per-call models keep working; and configured
-  choices are revalidated against the live registry before every queued child.
-
-- [ ] **Task 2.4: Sync, validate, and commit phase 2.** Run `./x sync`; stage the template edits
+- [ ] **Task 2.3: Sync, validate, and commit phase 2.** Run `./x sync`; stage the template edits
   plus rendered outputs; run `awf check --staged` (clean) and `./x gate` (exit 0). Commit:
 
   ```commit
@@ -367,7 +379,7 @@ as phase 1.
   Verification: `./x gate` passes with 100% extension coverage.
 
 - [ ] **Task 3.4: Document the wizard in working-with-awf.** In
-  `templates/docs/working-with-awf.md.tmpl`, append to the paragraph added in task 2.3 (qualifying
+  `templates/docs/working-with-awf.md.tmpl`, append to the paragraph added in task 1.6 (qualifying
   form): the `/awf-subagent-models` TUI wizard is the setup and repair path; it selects scope,
   shows current state and errors, offers an embedded recommended preset only when every referenced
   model is currently registered and authenticated, presents per-model pricing with request-wide
@@ -387,14 +399,16 @@ as phase 1.
   ```
 
   In `docs/decisions/0151-local-per-role-pi-subagent-model-preferences.md`, append to
-  `## Status history` (repeating the phase-1 frozen digest):
+  `## Status history` a final Applied event and the terminal status event of the shape:
 
   ```
-  - 2026-07-23: Applied; state-sequence: 2; operations: add `rendering/pi-workflows:pi-subagent-model-wizard`
-  - 2026-07-23: Implemented; content-sha256: `<frozen digest>`
+  - <date>: Applied; state-sequence: <next>; operations: add `rendering/pi-workflows:pi-subagent-model-wizard`
+  - <date>: Implemented; content-sha256: <frozen digest>
   ```
 
-  and set the frontmatter `status:` to `Implemented`. In this plan file, set the frontmatter
+  with `<frozen digest>` the same bare 64-hex value as the phase-1 Implementing event and
+  `<next>` the next global state-sequence exactly as `awf check --staged` names it (as in task
+  1.6, never pre-computed). Set the frontmatter `status:` to `Implemented`. In this plan file, set the frontmatter
   `status:` to `Implemented` and record any implementation findings under `## Notes`.
 
 - [ ] **Task 3.6: Sync, validate, and commit phase 3.** Run `./x sync`; stage every changed path;
@@ -427,6 +441,18 @@ as phase 1.
   on main before this branch merges, this effort's ADR renumbers (the contiguity check forces it)
   and every `0151` reference in this plan, the topic provenance lines, and the ADR filename moves
   with it.
+- Accepted transient window: phase 1 ships the error-message repair pointer naming
+  `/awf-subagent-models` while the command itself lands in phase 3. Between the two commits the
+  extension names a not-yet-existing command; this is the accepted cost of keeping the batch
+  pairing sliceable, and phase 3 closes the window in the same effort.
+- Path anchoring: the project-local preference file anchors at the project root derived from the
+  extension location (`projectRoot(deps.extensionFile)`), not the process working directory - the
+  gitignore enforcement assumes the repository root, and Pi may run from a subdirectory. ADR-0151
+  Decision item 2 is amended to match while Proposed.
+- Dependency verification (done at plan review): the pinned fork tarball
+  `pi-coding-agent-fork-v0.81.1-awf.3` exports both `getAgentDir(): string` and
+  `CONFIG_DIR_NAME: string` from the package root (`dist/index.d.ts` re-exporting
+  `dist/config.d.ts:68,76`), so the task-1.1 production wiring is sound.
 - Out of scope, deliberately: noninteractive wizard mode (revisit only with an explicit design),
   awf-side validation of preference files, and any change to inline-vs-subagent execution routing
   (ADR-0149).
