@@ -16,7 +16,9 @@ query a single version or a range.
   co-anchoring as `ambiguous-anchor` (previously accreted on every real session and defeated
   fork resolution), accumulated findings clear retroactively without any ledger rewrite, and
   the unsound anchor-based association invalidation on trajectory resume is removed from both
-  the Go projection and the dashboard mirror (ADR-0154).
+  the Go projection and the dashboard mirror (ADR-0154). For external protocol writers this is
+  a semantics change, not only a fix: events of non-claiming kinds are no longer
+  anchor-resolution targets.
 
 ### Breaking changes
 - awf 0.22.0 advances to schema generation 17 with a strict, tracked `workflowTelemetry`

@@ -95,6 +95,9 @@ func assertProtocol2Descriptor(t *testing.T) {
 	if descriptor.Privacy.AllowedRepositoryPathField != "" {
 		t.Fatalf("protocol 2 retains repository-path privacy exception %q", descriptor.Privacy.AllowedRepositoryPathField)
 	}
+	if !reflect.DeepEqual(descriptor.Vocabularies["anchorClaimKinds"], []string{"trajectory_closed"}) {
+		t.Fatalf("anchor claims are owned by exactly trajectory_closed, got %v", descriptor.Vocabularies["anchorClaimKinds"])
+	}
 	oldField := "checkpoint" + "Id"
 	if _, ok := descriptor.LimitsJSONFieldForTest(oldField + "Bytes"); ok {
 		t.Fatal("protocol 2 retains protocol-1 path limit")

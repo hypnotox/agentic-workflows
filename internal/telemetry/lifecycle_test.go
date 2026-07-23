@@ -283,6 +283,7 @@ func TestLifecycleConcurrencyDoesNotInventOrder(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:anchor-claims-and-location-metadata
 func TestTrajectoryResumeKeepsAssociationAcrossPriorAnchors(t *testing.T) {
 	// Normal tree navigation resumes at a tip whose close predates the freshly
 	// re-asserted association; anchor causal position is never a detach signal,

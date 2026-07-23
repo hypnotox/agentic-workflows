@@ -150,8 +150,8 @@ func BuildCausalOrder(events []EventEnvelope) (*CausalOrder, []IntegrityIssue) {
 			order.ancestors[id] = ancestors
 			return ancestors
 		}
-		for id := range order.events {
-			visit(id)
+		for _, event := range events {
+			visit(event.EventID)
 		}
 	}
 	// Anchor references resolve causally forward only: an edge lands only when the

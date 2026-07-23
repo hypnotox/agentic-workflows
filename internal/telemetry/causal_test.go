@@ -54,7 +54,6 @@ func TestCausalPerSessionHandoffAndTrajectoryAncestry(t *testing.T) {
 	handoff.IdempotencyKey, handoff.ObservationID = "", "obs-handoff"
 	associated := causalEvent("associated", "two", "session_associated", nil, SessionAssociatedPayload{AssociationOrigin: "handoff", TrajectoryID: "child", HandoffEventID: "handoff"})
 	parent := causalEvent("parent", "one", "trajectory_started", []string{"create"}, TrajectoryPayload{TrajectoryID: "parent", AnchorID: "anchor"})
-	parent.PiAnchorID = "fork-anchor"
 	fork := causalEvent("fork", "two", "trajectory_forked", []string{"associated"}, TrajectoryForkedPayload{TrajectoryID: "child", ParentTrajectoryID: "parent", ForkAnchorID: "fork-anchor"})
 	order, issues := BuildCausalOrder([]EventEnvelope{created, handoff, associated, parent, fork})
 	if len(issues) != 0 || !order.HappensBefore(created.EventID, handoff.EventID) || !order.HappensBefore(handoff.EventID, associated.EventID) || !order.HappensBefore(parent.EventID, fork.EventID) {
@@ -83,6 +82,7 @@ func TestCausalAnchorClaimsAreCloseOwnedAndPayloadKeyed(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:anchor-claims-and-location-metadata
 func TestCausalEnvelopeAnchorsAreLocationMetadataOnly(t *testing.T) {
 	// Parallel tool observations in one batch, the final-turn usage observation
 	// with session end, and a resumed session start at the prior end's leaf all
@@ -108,6 +108,7 @@ func TestCausalEnvelopeAnchorsAreLocationMetadataOnly(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:anchor-claims-and-location-metadata
 func TestCausalRepeatDepartureAnchorStaysAmbiguous(t *testing.T) {
 	closeLeft := causalEvent("close-left", "one", "trajectory_closed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "entry"})
 	closeRight := causalEvent("close-right", "two", "trajectory_closed", nil, TrajectoryPayload{TrajectoryID: "other", AnchorID: "entry"})
@@ -118,6 +119,7 @@ func TestCausalRepeatDepartureAnchorStaysAmbiguous(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:anchor-claims-and-location-metadata
 func TestCausalAnchorResolutionIsForwardOnly(t *testing.T) {
 	// Resume at a mid-branch entry, then depart at that entry: the later close
 	// claims the anchor the resume referenced, and the reference must not invert
