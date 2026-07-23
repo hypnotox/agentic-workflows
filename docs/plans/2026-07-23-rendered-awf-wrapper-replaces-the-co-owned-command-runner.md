@@ -310,14 +310,19 @@ splitting the template swap from the adoptions).
     `templates/docs/working-with-awf.md.tmpl:68` ("`runner` toggles the co-owned
     command-runner `x` ...") is rewritten to the wrapper description.
   - `.awf/domains/parts/tooling/current-state.md` narrative drops the "runner-forwarded in
-    internal/clispec" description in favor of the wrapper + project-runner split;
+    internal/clispec" description in favor of the wrapper + project-runner split, and its
+    second occurrence at line 3 ("The gated, runner-forwarded `awf metrics` family") loses
+    the words "runner-forwarded ", mirroring Task 2.10's rewording of the metrics/doctor
+    contract claims;
     `.awf/domains/parts/config/current-state.md:15` and
     `.awf/domains/parts/rendering/current-state.md:48` update their current-shape sentences
     (default-on wrapper, no in-place sections, awf-the-repo adopts) while leaving ADR-0101
     history references intact.
   - `.awf/docs/parts/development/command-runner.md`: the sentence describing commands
     "declared runner-forwarded by internal/clispec" is rewritten in THIS phase (the machinery
-    it describes is deleted here); the remaining ./x-verb-set prose is Phase 3's (Task 3.2).
+    it describes is deleted here), and the `./x build`/`./x install` table row updates to
+    `go build -o bin/awf ./cmd/awf` (Task 2.7(c) changes the arm in this commit); the
+    remaining ./x-verb-set prose is Phase 3's (Task 3.2).
   Post-check: `grep -rn "co-owned" templates/ .awf/domains/parts/ .awf/parts/` and
   `grep -rn "runner-forwarded" templates/ .awf/` return no matches (`docs/decisions/` history
   hits are expected and exempt).
@@ -451,10 +456,15 @@ refactor(tooling): slim ./x to project verbs (applies 0156)
     `checkCmd`, `commitGateCmd`, `proseGateCmd` (checked in that fixed order, first missing
     reported) unset -> error exactly: `hooks.enabled without the runner singleton requires
     vars.<name>: set it in .awf/config.yaml or enable the runner (awf enable runner)`.
-  Wire it at the sync and check command entries (and therefore upgrade's terminal sync) - NOT
-  inside the shared `RenderAll` path - so that rendering itself stays reachable with vars
-  unset: Task 4.5's fallback test renders hook payloads via `RenderAll` below this validation
-  choke point and must keep working on a hooks-enabled, all-vars-unset config. Both commands
+  Wire it at exactly two call sites in `internal/project`: the top of `Project.SyncReport` and
+  the working-tree `Project.Check` path (so `runSync`/`runCheck` and upgrade's terminal sync
+  inherit it), NOT inside the shared `RenderAll` path - rendering itself stays reachable with
+  vars unset: Task 4.5's fallback test renders hook payloads via `RenderAll` below this
+  validation choke point and must keep working on a hooks-enabled, all-vars-unset config.
+  Explicitly not validated: `awf init`'s scaffold sync (`InitializeReport`; a fresh init with
+  an empty interactive gateCmd answer must not hard-fail) and the staged check path
+  (`check --staged` reads the index snapshot; the working-tree check in the same gate run
+  covers the config), matching ADR-0156 item 5, which names sync and check. Both commands
   fail; no other command's behavior changes. Tests (in `internal/project`, proof marker
   `// invariant: config/validation:hooks-commands-resolvable` on the covering test): both
   rules fire under sync and check; rule (a) clears when `gateCmd` is set; rule (b) clears when
