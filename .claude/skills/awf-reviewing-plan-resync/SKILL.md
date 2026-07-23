@@ -24,6 +24,7 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 
    - The absolute plan path.
    - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
+   - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --full <those paths>` itself (`--full`: the reviewer needs the complete authority packet) so the doc-currency lens knows the owning domains and applicable current-state claims. Pass the resolved paths, not pasted packet output.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.

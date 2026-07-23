@@ -264,7 +264,12 @@ func TestExecutingDirectTemplate(t *testing.T) {
 
 // invariant: tooling/context-and-topic:context-full-authority-packet
 func TestManagedContextCallersChooseProjection(t *testing.T) {
-	complete := map[string]bool{"adr-lifecycle": true, "reviewing-impl": true, "reviewing-plan": true}
+	complete := map[string]bool{
+		"adr-lifecycle":         true,
+		"reviewing-impl":        true,
+		"reviewing-plan":        true,
+		"reviewing-plan-resync": true,
+	}
 	concise := map[string]bool{
 		"brainstorming":               true,
 		"bugfix":                      true,

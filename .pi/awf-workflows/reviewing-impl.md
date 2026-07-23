@@ -32,7 +32,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
-   - The affected context (paste the output of `awf context --full $(git diff --name-only ${baseSha}..${headSha})`) so the doc-currency and convention lenses know the owning domains, the applicable current-state claims (rules and invariants), and any Accepted pending changes without re-deriving them.
+   - The affected context instruction: with the concrete SHAs substituted, direct the reviewer to run `awf context --full $(git diff --name-only ${baseSha}..${headSha})` itself (`--full`: the reviewer needs the complete authority packet) so the doc-currency and convention lenses know the owning domains, the applicable current-state claims (rules and invariants), and any Accepted pending changes without re-deriving them. Pass the resolved SHA range, not pasted packet output.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer owns lens application, finding classification, and the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.

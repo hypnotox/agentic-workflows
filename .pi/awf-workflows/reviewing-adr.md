@@ -26,6 +26,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
 3. **Call `subagent_review` with `kind: "adr"`.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
    - The absolute ADR path.
+   - The hint that the reviewer may run `awf topic <domain>/<topic>` on each destination topic named in the ADR's State changes when it needs current claim text. No context packet accompanies this dispatch: an explicit ADR path reports lifecycle progress, not path-claim grounding.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.

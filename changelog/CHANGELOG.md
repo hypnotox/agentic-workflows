@@ -12,7 +12,11 @@ query a single version or a range.
 - Workflow skill templates now ground implementers in current-state authority: seven
   implementer-chain skills (executing-plans, subagent-driven-development, writing-plans,
   bugfix, debugging, tdd, refactor-coupling-audit) instruct a concise `awf context` run over
-  their touched paths before editing (ADR-0155).
+  their touched paths before editing, the reviewer dispatches (reviewing-impl, reviewing-plan,
+  and the previously packet-free resync) instruct the reviewer to run `awf context --full`
+  itself with parent-resolved arguments instead of pasting packet output into the brief, and
+  the ADR-reviewer brief gains an `awf topic` destination-topic hint (ADR-0155). Adopters see
+  the skill drift resolved by their next `awf sync`.
 
 ### Bug fixes
 - `awf check` no longer emits the "carries no tags: add a narrow topic tag" advisory for
