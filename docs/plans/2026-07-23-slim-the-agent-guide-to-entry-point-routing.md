@@ -26,7 +26,7 @@ Design rationale lives in ADR-0157. Execution order: (1) build the canonical hom
   - `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`
   - `.awf/parts/agents-doc/awf-setup.md`, `.awf/parts/agents-doc/commands.md`, `.awf/parts/agents-doc/identity.md`, `.awf/parts/workflow/chain.md`, `.awf/parts/working-with-awf/commands.md`
   - `changelog/CHANGELOG.md`, `docs/decisions/0157-slim-the-agent-guide-to-entry-point-routing.md`, this plan (status flip)
-  - Rendered outputs via `./x sync` in every phase: `AGENTS.md`, `docs/workflow.md`, `docs/working-with-awf.md`, `docs/agents-md-standard.md`, `docs/decisions/INDEX.md`, `docs/topics/rendering/workflow-skill-templates.md`, `docs/topics/rendering/guide-and-doc-templates.md`, `docs/domains/rendering.md`, `.awf/awf.lock`, `.claude/skills/**`, `.pi/awf-workflows/**`
+  - Rendered outputs via `./x sync` in every phase: `AGENTS.md`, `docs/workflow.md`, `docs/working-with-awf.md`, `docs/agents-md-standard.md`, `docs/decisions/INDEX.md`, `docs/topics/rendering/workflow-skill-templates.md`, `docs/topics/rendering/guide-and-doc-templates.md`, `docs/domains/rendering.md`, `.awf/awf.lock`, `.claude/skills/**`, `.pi/awf-workflows/**`, and the `examples/sundial` adopter renders (`examples/sundial/AGENTS.md`, `examples/sundial/docs/workflow.md`, `examples/sundial/docs/working-with-awf.md`, `examples/sundial/docs/agents-md-standard.md`, its five target skill trees, and `examples/sundial/.awf/awf.lock`)
 - **Deleted:**
   - `.awf/parts/agents-doc/workflow.md` (superseded by the template Pi branch; recorded against ADR Decision 9 at resync)
 
@@ -93,7 +93,7 @@ Repo-part dispositions (phase 4): `commands.md` extension prose moves to `.awf/p
 
 - [ ] **Task 1.6: Apply claim batch 1.** In `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, rewrite the `workflow-chain-adr-before-plan` claim text to exactly `The rendered workflow.md workflow-chain string presents the ADR step before the plan step.` and append `Revised-by: ADR-0157` after its existing provenance lines. In `docs/decisions/0157-slim-the-agent-guide-to-entry-point-routing.md`, append to Status history the `Implementing` event with the frozen content digest, then an `Applied` event whose `state-sequence` is the next repo-global value awf reports at execution time (never a hardcoded number) and whose operations list reads `update \`rendering/workflow-skill-templates:workflow-chain-adr-before-plan\`` with the qualified ID in an inline code span, per the ADR template's event format. This leaves one applied and three remaining operations, keeping the Implementing state legal.
 
-- [ ] **Task 1.7: Sync, verify, commit.** Fresh `git status --short` (the 0156 effort shares this checkout), `./x sync`, stage all phase files plus rendered outputs and `.awf/awf.lock` by explicit pathspec, `./x check --staged` reports clean, `./x gate` reports green.
+- [ ] **Task 1.7: Sync, verify, commit.** Fresh `git status --short` (the 0156 effort shares this checkout), `./x sync`, stage all phase files plus rendered outputs (including every regenerated `examples/sundial` render) and `.awf/awf.lock` by explicit pathspec, `./x check --staged` reports clean, `./x gate` reports green.
 
 ```commit
 feat(rendering): move the working-memory protocol to the workflow doc
@@ -158,7 +158,7 @@ feat(rendering): move the working-memory protocol to the workflow doc
 
 - [ ] **Task 2.7: Apply the middle claim batch.** In `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, rewrite the `plan-task-detail-modes` claim text to exactly `The rendered plan-authoring skill, plan reviewer, and implementation-plans README accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, and render coherently with empty variables.` and append `Revised-by: ADR-0157`. In the ADR, append an `Applied` event with the next repo-global `state-sequence` and operations `update \`rendering/workflow-skill-templates:plan-task-detail-modes\`` (inline code span). This leaves two applied and two remaining operations; the two `add` operations stay Remaining until phase 4.
 
-- [ ] **Task 2.8: Sync, verify, commit.** Fresh `git status --short`, `./x sync`, explicit pathspec staging, `./x check --staged` clean, `./x gate` green.
+- [ ] **Task 2.8: Sync, verify, commit.** Fresh `git status --short`, `./x sync`, explicit pathspec staging (including every regenerated `examples/sundial` render), `./x check --staged` clean, `./x gate` green.
 
 ```commit
 feat(rendering): slim the agent guide to entry-point routing
@@ -170,7 +170,7 @@ feat(rendering): slim the agent guide to entry-point routing
 
 - [ ] **Task 3.2: Verify disposition row 1 and fold gaps.** For each clause of pre-change guide L11 (kind list, adapter targets, bootstrap/hooks/runner singleton semantics, requirement closure, `--with-dependents`), confirm it appears in `templates/docs/working-with-awf.md.tmpl` (overview, commands, or config-and-overrides sections); fold any missing clause into the config-and-overrides section verbatim. Post-check: `grep` the rendered `docs/working-with-awf.md` for each of `requirement closure`, `--with-dependents`, `nameless singleton`, `once per enabled target` returns a match.
 
-- [ ] **Task 3.3: Sync, verify, commit.** Fresh `git status --short`, `./x sync`, explicit pathspec staging, `./x check --staged` clean, `./x gate` green.
+- [ ] **Task 3.3: Sync, verify, commit.** Fresh `git status --short`, `./x sync`, explicit pathspec staging (including every regenerated `examples/sundial` render), `./x check --staged` clean, `./x gate` green.
 
 ```commit
 docs(rendering): codify entry-point routing in the authoring standard
@@ -187,7 +187,7 @@ docs(rendering): codify entry-point routing in the authoring standard
 - [ ] **Task 4.4: Apply the final claim batch and close out.** In `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, append the two claims with `Origin: ADR-0157` and `Backing: test`, exact texts:
   - `### \`invariant: guide-entry-point-routing\``: `The rendered guide's workflow section is a catalog-derived entry-skill trigger table: every catalog entry and task skill appears iff enabled with its catalog trigger line, and none of the evicted prose classes renders (chain diagram, warrant definitions, plan-form contract, V2 batch semantics, exploration/subagent policy, duplicated gate sentence).`
   - `### \`invariant: working-memory-single-home\``: `The file skeleton, ground rules, and just-in-time retrieval prose render canonically in the workflow doc's working-memory section; the guide, the shared checkpoint partials, and the chain section point to that content rather than carrying copies of it.`
-  In `internal/project/spine_test.go`, add the proof markers deferred from task 2.5: `// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing` on the trigger-table assertions and `// invariant: rendering/guide-and-doc-templates:working-memory-single-home` on the single-home assertions. In the ADR, append the final `Applied` event (next repo-global `state-sequence`; operations `add \`rendering/guide-and-doc-templates:guide-entry-point-routing\`, add \`rendering/guide-and-doc-templates:working-memory-single-home\`` in inline code spans) and then the `Implemented` status event with the content digest in the same commit (the final pair; INDEX regenerates via sync, ADR item 11). Flip this plan's `status:` to `Implemented`. Fresh `git status --short`, `./x sync`, explicit pathspec staging, `./x check --staged` clean, `./x gate` green.
+  In `internal/project/spine_test.go`, add the proof markers deferred from task 2.5: `// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing` on the trigger-table assertions and `// invariant: rendering/guide-and-doc-templates:working-memory-single-home` on the single-home assertions. In the ADR, append the final `Applied` event (next repo-global `state-sequence`; operations `add \`rendering/guide-and-doc-templates:guide-entry-point-routing\`, add \`rendering/guide-and-doc-templates:working-memory-single-home\`` in inline code spans) and then the `Implemented` status event with the content digest in the same commit (the final pair; INDEX regenerates via sync, ADR item 11). Flip this plan's `status:` to `Implemented`. Fresh `git status --short`, `./x sync`, explicit pathspec staging (including every regenerated `examples/sundial` render), `./x check --staged` clean, `./x gate` green.
 
 ```commit
 docs(config): conform awf's own guide parts to 0157 and close out
@@ -197,7 +197,7 @@ docs(config): conform awf's own guide parts to 0157 and close out
 
 - `./x check` clean and `./x gate` green at HEAD (each phase already gated).
 - `grep "A plan may use exact content/diffs" AGENTS.md` returns no output; `grep -c "workflow doc's working-memory section" AGENTS.md` returns at least 1.
-- `grep -r "agent guide's working-memory section" templates/ .claude/ .pi/ docs/ AGENTS.md` returns no output.
+- `git grep -l "agent guide's working-memory section" -- templates .claude .pi docs AGENTS.md examples/sundial ':!docs/decisions' ':!docs/plans'` returns no output (tracked files only, so the untracked 0156 worktree under `.claude/worktrees/` is skipped, and the pathspec exclusions skip frozen ADR/plan history, which legitimately retains the old phrase).
 - `./x topic rendering/guide-and-doc-templates` lists `guide-entry-point-routing` and `working-memory-single-home` with test backing; `./x topic rendering/workflow-skill-templates` shows both updated claims with `Revised-by: ADR-0157`.
 - Disposition spot-checks (rows 10, 15, 17, 18): `grep` `docs/workflow.md` for `lower-cost child model`, `just-in-time`, `File skeleton`, `harmless gitignored residue` each returns a match.
 - Indicative, not gated: `wc -c AGENTS.md` reports roughly a third of the pre-change size.
