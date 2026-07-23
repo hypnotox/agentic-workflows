@@ -4,9 +4,9 @@ Pi workflow contracts: governed subagent tools, session handoff, the workflow da
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory file's effort identity and copied active association before replacement, creates a persisted parent-linked session with that association installed during setup, restores it before kickoff through the replacement context, retains an editor fallback, and states the truthful nontransactional teardown boundary without deleting sessions or memory.
+The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory file's effort identity and copied active association before replacement, creates a persisted parent-linked session with that association installed during setup, restores it before kickoff through the replacement context, retains an editor fallback, and on a post-queue failure that leaves the old session active surfaces a visible failure notice with the prepared kickoff wrapper in the editor, never auto-retrying and never initiating a model turn, while stating the truthful nontransactional teardown boundary without deleting sessions or memory.
 Origin: ADR-0148
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0152
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`

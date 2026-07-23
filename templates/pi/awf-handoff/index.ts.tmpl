@@ -167,6 +167,7 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
     async handler(args, ctx) {
       const request = pending;
       if (!request || !args || args !== request.id) throw new Error("No matching pending handoff request");
+      const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
       const observationId = deps.randomUUID(); const startedAt = Date.now(); let targetSessionId = request.id;
       try {
         const proceed = await countdown(ctx, deps);
@@ -174,7 +175,6 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
         const memoryEffort = await validateMemoryEffort(request.memoryPath, deps); if (!validateTelemetryAssociation(request.association) || request.association.effortId !== request.effortId || memoryEffort !== request.effortId) throw new Error("memory Effort does not match the copied active association");
         const oldSessionFile = ctx.sessionManager.getSessionFile();
         if (!oldSessionFile) throw new Error("The active session is no longer persisted");
-        const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff);
         const association = { ...request.association };
         const handoffSetup = { version: { major: 2, minor: 0 }, observationId, startedAt, durationMs: Math.max(0, Date.now() - startedAt) };
         await ctx.newSession({
@@ -194,6 +194,10 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
         });
       } catch (error) {
         emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "failure", durationMs: Math.max(0, Date.now() - startedAt), errorCategory: "handoff" });
+        try {
+          ctx.ui.notify("Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error");
+          ctx.ui.setEditorText(wrapper);
+        } catch { /* post-teardown: the old-session UI is unavailable; the rethrow reports the failure */ }
         throw error;
       } finally { if (pending?.id === request.id) pending = undefined; }
     },

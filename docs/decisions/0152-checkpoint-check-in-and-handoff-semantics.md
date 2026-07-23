@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0152: Checkpoint, check-in, and handoff semantics
@@ -71,3 +71,5 @@ The Pi handoff extension widens: the post-queue recovery path adds visible failu
 - 2026-07-23: Proposed
 - 2026-07-23: Implementing; content-sha256: c62ee8b393fb06f3921cef27340588b1e7dfed269ee62db39d9ad798747db982
 - 2026-07-23: Applied; state-sequence: 32; operations: add `rendering/workflow-skill-templates:mandatory-approval-boundaries`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/pi-workflows:pi-session-handoff-workflow`
+- 2026-07-23: Applied; state-sequence: 33; operations: update `rendering/pi-workflows:pi-session-handoff-lifecycle`
+- 2026-07-23: Implemented; content-sha256: c62ee8b393fb06f3921cef27340588b1e7dfed269ee62db39d9ad798747db982

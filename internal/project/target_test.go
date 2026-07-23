@@ -1048,11 +1048,21 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 		`if (interval !== undefined) deps.clearInterval(interval)`, `if (timeout !== undefined) deps.clearTimeout(timeout)`,
 		`if (finished) return`, `finally { if (pending?.id === request.id) pending = undefined; }`,
 		`parentSession: oldSessionFile`, `Automatic kickoff failed; submit the prepared editor text.`,
+		`Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("handoff source missing lifecycle contract %q", want)
 		}
 	}
+	assertOrderedSource(t, "handoff post-queue recovery", content,
+		`const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff)`,
+		`const proceed = await countdown(ctx, deps)`,
+		`await validateMemoryEffort(request.memoryPath, deps)`,
+		`} catch (error) {`,
+		`Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.`,
+		`ctx.ui.setEditorText(wrapper)`,
+		`throw error;`,
+	)
 	if got := strings.Count(content, "deps.clearInterval(interval)"); got != 2 {
 		t.Errorf("handoff source clears the countdown interval %d times, want finish and dispose cleanup", got)
 	}
@@ -1070,6 +1080,7 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 		`deps.clearTimeout(timeout)`,
 	)
 	assertOrderedSource(t, "handoff replacement lifecycle", content,
+		`const wrapper = buildKickoffWrapper(request.memoryPath, request.kickoff)`,
 		`const proceed = await countdown(ctx, deps)`,
 		`const memoryEffort = await validateMemoryEffort(request.memoryPath, deps)`,
 		`if (!validateTelemetryAssociation(request.association)`,

@@ -286,9 +286,9 @@
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:db0d648ad2f1b52c0c0dc09f8a5bdee963874cc40d7e6e614c74b4d4eb131678",
+      "templateHash": "sha256:0cbfaf0bca835913b08137267fe1c7d3a1e1fa2737d03b410c1245f655eb076f",
       "configHash": "sha256:99caaa2a84c7018bb3a61513ad8b1cd8469216504d69e93c92091600d56ebf47",
-      "outputHash": "sha256:2b3f3694b329a1e674dd0e69d7a10bbfdbc38f1c2c87eabc5c3dd62721f0e540"
+      "outputHash": "sha256:2ad77e0c7306f830ab67f85daa605ab061e0e817a101741e5b51090d36656f13"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
@@ -343,7 +343,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:27b2cbdba1fd99c44abb50e70946647154a079b4d663a142cf210f92e0670464",
+      "outputHash": "sha256:54a060a66c8707bc493d98ee12334f4eff372b28827f6f5875753649f51b7131",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -576,8 +576,8 @@
     "docs/topics/rendering/pi-workflows.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:e09aa75060d313f23054869fb482de7df25e8208254f14a269d4b646dbf4ef7d",
-      "outputHash": "sha256:a7e8b900eaf00391de385460cc8e330db9a34c21dc812f8adc37a49c7d4a8857"
+      "configHash": "sha256:731df07dff38a87583a1d3a4fd7a65f1e3cb9e96a39da44962bcb6bc1eb31465",
+      "outputHash": "sha256:46b5d8f34c20cc9f8496c489cb5396e0dbacf28babea8b574e3ba52ac8f44e0d"
     },
     "docs/topics/rendering/project-output-plan.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -701,9 +701,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:cd620a32041862457ba2b706dda530c3b73b3c7fddc1886334d7d12214b371a5",
+      "templateHash": "sha256:09c854a39b6a72afd5845e1226a095cece619fcbd3f38acfbf59f3eda3bfe46f",
       "configHash": "sha256:1bc2b9ebc8fbbdae7131e2ceda200195bfc09cc9597aa724d875f8df687595df",
-      "outputHash": "sha256:aa3594ae88c709243cec6ee05b95e68a3dc89fa7ae668c08f58472b16589de39"
+      "outputHash": "sha256:70b4f0f029ed230c6786e80618387c78c1fc8b2a68b8b2e4257f8d19c1a7f1a8"
     }
   },
   "adrFormatV1From": 137,

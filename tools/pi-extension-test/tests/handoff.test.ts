@@ -116,7 +116,7 @@ test("countdown cancellation renders exact bounded text and consumes request", a
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve));
   assert.deepEqual(h.component().render(200), ["Handoff to a fresh session in 5s - Esc/Ctrl+C to cancel"]); assert.ok(visibleWidth(h.component().render(12)[0]) <= 12);
   h.intervals[0].callback(); assert.match(h.component().render(200)[0], /4s/); h.component().invalidate(); h.component().handleInput("other"); h.component().handleInput("escape"); h.setInputError(new Error("input failed")); assert.throws(() => h.component().handleInput("x"), /input failed/); h.timeouts[0].callback(); await command;
-  assert.deepEqual(h.notifications, [["Fresh-session handoff canceled."]]); assert.equal(h.newSessions.length, 0); assert.equal(h.telemetry.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.equal(h.telemetry[0].errorCategory, "handoff"); assert.ok(h.clearedIntervals.length > 0); assert.ok(h.clearedTimeouts.length > 0);
+  assert.deepEqual(h.notifications, [["Fresh-session handoff canceled."]]); assert.deepEqual(h.editor, []); assert.equal(h.newSessions.length, 0); assert.equal(h.telemetry.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.equal(h.telemetry[0].errorCategory, "handoff"); assert.ok(h.clearedIntervals.length > 0); assert.ok(h.clearedTimeouts.length > 0);
   await assert.rejects(startCommand(h), /matching pending/); h.component().dispose();
   const listenerFailure = harness({ telemetryListenerError: new Error("telemetry listener") }); await execute(listenerFailure); const listenerCommand = startCommand(listenerFailure); await new Promise((resolve) => setImmediate(resolve)); listenerFailure.component().handleInput("escape"); await listenerCommand; assert.equal(listenerFailure.notifications.length, 1);
 });
@@ -124,6 +124,7 @@ test("countdown cancellation renders exact bounded text and consumes request", a
 test("timer setup, pending-window races, and pre-replacement failures preserve the old session", async () => {
   const timer = harness({ timerError: new Error("timer setup failed") }); await execute(timer); await assert.rejects(startCommand(timer), /timer setup failed/); assert.equal(timer.newSessions.length, 0); await assert.rejects(startCommand(timer), /matching pending/);
   const raced = harness(); await execute(raced); const raceCommand = startCommand(raced); await new Promise((resolve) => setImmediate(resolve)); raced.entries["/repo/.awf/memory/work.md"] = LINK; raced.timeouts[0].callback(); await assert.rejects(raceCommand, /symbolic link/); assert.equal(raced.newSessions.length, 0); await assert.rejects(startCommand(raced), /matching pending/);
+  assert.deepEqual(raced.notifications, [["Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error"]]); assert.match(raced.editor[0], /^Read \.awf\/memory\/work\.md first/); assert.equal(raced.queued.length, 1);
   const mismatched = harness(); await execute(mismatched); const mismatchCommand = startCommand(mismatched); await new Promise((resolve) => setImmediate(resolve)); mismatched.setMemory("Effort: other\n"); mismatched.timeouts[0].callback(); await assert.rejects(mismatchCommand, /does not match/); assert.equal(mismatched.newSessions.length, 0);
   const unpersisted = harness(); await execute(unpersisted); const unpersistedCommand = startCommand(unpersisted); await new Promise((resolve) => setImmediate(resolve)); unpersisted.setSessionFile(""); unpersisted.timeouts[0].callback(); await assert.rejects(unpersistedCommand, /no longer persisted/); assert.equal(unpersisted.newSessions.length, 0);
   const h = harness(); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback(); await command;
@@ -149,7 +150,7 @@ test("invariant: handoff transfers exact association and success setup data", as
     { associationListenerError: new Error("listener failed") },
     { memory: "Effort: other\n" },
   ]) { const refused = harness(options as any); await assert.rejects(execute(refused), /association|Effort|listener/); assert.equal(refused.queued.length, 0); assert.equal(refused.newSessions.length, 0); }
-  const appendFailure = harness({ associationAppendError: new Error("append failed") }); await execute(appendFailure); const failedSetup = startCommand(appendFailure); await new Promise((resolve) => setImmediate(resolve)); appendFailure.timeouts[0].callback(); await assert.rejects(failedSetup, /append failed/); assert.deepEqual(appendFailure.editor, []);
+  const appendFailure = harness({ associationAppendError: new Error("append failed") }); await execute(appendFailure); const failedSetup = startCommand(appendFailure); await new Promise((resolve) => setImmediate(resolve)); appendFailure.timeouts[0].callback(); await assert.rejects(failedSetup, /append failed/); assert.match(appendFailure.editor[0], /^Read \.awf\/memory\/work\.md first/); assert.deepEqual(appendFailure.notifications, [["Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error"]]);
 
   let lateRespond: ((value: unknown) => void) | undefined;
   const late: any = { events: { emit: (_name: string, request: any) => { lateRespond = request.respond; } } };
@@ -160,7 +161,9 @@ test("invariant: handoff transfers exact association and success setup data", as
 
 test("replacement rejection consumes pending without kickoff or memory deletion", async () => {
   const h = harness({ newSessionError: new Error("replacement failed") }); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback();
-  await assert.rejects(command, /replacement failed/); assert.equal(h.newSessions.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.deepEqual(h.editor, []); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
+  await assert.rejects(command, /replacement failed/); assert.equal(h.newSessions.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.deepEqual(h.notifications, [["Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error"]]); assert.match(h.editor[0], /^Read \.awf\/memory\/work\.md first/); assert.equal(h.editor.length, 1); assert.equal(h.queued.length, 1); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
+  const torn = harness({ newSessionError: new Error("replacement failed") }); await execute(torn); const tornCommand = startCommand(torn); await new Promise((resolve) => setImmediate(resolve)); torn.ctx.ui.notify = () => { throw new Error("ui unavailable"); }; torn.timeouts[0].callback();
+  await assert.rejects(tornCommand, /replacement failed/); assert.deepEqual(torn.editor, []); assert.equal(torn.telemetry[0].outcome, "failure");
 });
 
 test("kickoff rejection leaves exact wrapper in replacement editor and no deletion API exists", async () => {
