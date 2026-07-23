@@ -52,7 +52,9 @@ only the splits.
 1. A claim is overloaded when its prose binds multiple independently enforceable
    obligations, each verifiable by a distinct test. Splits are meaning-preserving: the
    successor claims' prose together carries every obligation of the predecessor, adding
-   none and dropping none.
+   none and dropping none. Each successor claim's prose is self-contained: it names its
+   own subjects, commands, and shared selectors directly rather than referring to an
+   obligation that now lives in a sibling claim.
 2. `tooling/cli:version-compat-gate` is narrowed to the ordinary gate contract: every
    ordinary gated command routes through the gate, refusal when the binary is behind the
    project on either the config schema generation or the lock `awfVersion` axis,
@@ -63,7 +65,8 @@ only the splits.
    repository identity, pinned commit, snapshot schema and protocol, confined metrics
    root, no live tracked config) moves to the new claim `tooling/cli:dashboard-read-dispatch`,
    which also absorbs the shape closure formerly held by
-   `tooling/cli:metrics-and-doctor-command-contract`: read helpers accept an explicit
+   `tooling/cli:metrics-and-doctor-command-contract`: the `awf metrics` and `awf doctor`
+   read helpers accept an explicit
    root and validated telemetry policy, and the dispatch can invoke only the protocol,
    JSON metrics, JSON export, and JSON doctor shapes against its immutable policy
    snapshot while ordinary invocations retain live project and version gates. No
@@ -74,8 +77,9 @@ only the splits.
    exports validated normalized events through the shared effort, session, phase, and
    time selectors, with mutation and maintenance children closed to their own flags) and
    `tooling/cli:doctor-command-contract` (the gated, runner-forwarded `awf doctor`
-   command consumes the same selectors and storage interpretation, remains read-only,
-   and never changes exit status merely because findings exist).
+   command consumes the same shared effort, session, phase, and time selectors and the
+   same storage interpretation as `awf metrics`, remains read-only, and never changes
+   exit status merely because findings exist).
 5. `tooling/context-and-topic:context-full-authority-packet` is narrowed to the `--full`
    projection contract: `context --full` renders every current claim's full detail and
    pending operations once per applicable topic with no omission line, from the same
@@ -86,11 +90,19 @@ only the splits.
    direct-claim union, and an explicit detail-omission line with the topic drilldown
    whenever any rostered claim's detail is omitted) move to the new claim
    `tooling/context-and-topic:context-concise-projection`.
-6. Proof markers move with obligations: each successor test-backed claim carries its own
-   proof marker on a test asserting exactly its obligations, and every marker site
-   naming a retired or narrowed id is repointed in the same transaction that applies the
+6. All four added claims are invariant claims with `Backing: test`, each proven by its
+   own proof marker on a test asserting exactly its obligations. Markers follow their
+   obligations: a marker site whose asserted obligation stays with a narrowed claim
+   keeps its marker unchanged, while a site whose asserted obligation moved to a
+   successor is repointed to that successor in the same transaction that applies the
    operation.
-7. Surveyed long claims that state one obligation exhaustively (the migration recipes,
+7. Each Applied batch carries exactly its matching claim mutations. The two updated
+   claims preserve their `Origin` and exact prior `Revised-by` prefix and append
+   ADR-0151 to `Revised-by`; the four added claims carry `Origin` ADR-0151.
+8. Every status transition of this ADR regenerates `docs/decisions/INDEX.md` via
+   `./x sync` and stages it within the same transaction, which passes
+   `awf check --staged` and `./x gate` before committing.
+9. Surveyed long claims that state one obligation exhaustively (the migration recipes,
    the audit staleness rules, the in-place readback mechanism) stay whole. No mechanical
    claim-length gate or advisory is introduced; whether length pressure should become a
    doctor heuristic remains a separate future decision.
