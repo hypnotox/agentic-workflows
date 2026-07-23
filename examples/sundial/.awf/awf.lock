@@ -820,9 +820,9 @@
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:cd3e029cff13ac75c79a8e33f5c324b8ea11854a2b7cf031bb0bf5dbea4434e6",
+      "templateHash": "sha256:d12f21fe12fa92c56ccb3ee3b67674b9ed1fa6fbb07395f3c44154376f3b59d1",
       "configHash": "sha256:d25dfd0d8f1f7ef9367018e6602cf260c5acde02462cfcd439e70960ae4be064",
-      "outputHash": "sha256:a76c63427c32e1907cd15b00de147dbf369480dded4db08cca700400a3d34ba9"
+      "outputHash": "sha256:b160053a05b3eb4d8cc2f832989dc829e712d0466078559e020f3d77a4cdbb8a"
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",

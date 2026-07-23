@@ -29,9 +29,9 @@ export const GROUNDING_TOOLS = EXPLORE_TOOLS;
 export const REVIEW_TOOLS = ["read", "grep", "find", "ls", "bash"] as const;
 export const IMPLEMENT_TOOLS = ["read", "bash", "edit", "write", "grep", "find", "ls"] as const;
 export const REVIEWER_PATHS = {
-  adr: ".pi/skills/adr-reviewer.md",
-  plan: ".pi/skills/plan-reviewer.md",
-  code: ".pi/skills/code-reviewer.md",
+  adr: ".pi/agents/adr-reviewer.md",
+  plan: ".pi/agents/plan-reviewer.md",
+  code: ".pi/agents/code-reviewer.md",
 } as const;
 
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);

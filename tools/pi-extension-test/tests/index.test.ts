@@ -45,7 +45,7 @@ function harness(options: {
   const emitted: Array<{ name: string; data: any }> = [];
   const telemetryResponders: Array<(value: unknown) => void> = [];
   const git = [...(options.git ?? [])];
-  let reviewerReads = 0;
+  const reviewerPaths: string[] = [];
   let gitCalls = 0;
   let leaf = options.leaf;
   const pi: any = {
@@ -57,7 +57,7 @@ function harness(options: {
     ...(options.queueCommand === false ? {} : { queueCommand() {} }),
   };
   const deps: ExtensionDependencies = {
-    readFile: async () => { reviewerReads++; return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully."; },
+    readFile: async (path) => { reviewerPaths.push(path); return options.reviewer ?? "---\nname: reviewer\ndescription: test\n---\nReview carefully."; },
     runner: { run: async (request) => {
       requests.push(request);
       request.onUpdate?.({
@@ -90,7 +90,8 @@ function harness(options: {
   return {
     pi, deps, tools, handlers, requests, notifications, emitted, telemetryResponders, ctx,
     setLeaf: (value: any) => { leaf = value; },
-    reviewerReads: () => reviewerReads,
+    reviewerPaths,
+    reviewerReads: () => reviewerPaths.length,
     gitCalls: () => gitCalls,
   };
 }
@@ -216,7 +217,7 @@ test("registers exactly four governed public tools with structured exploration s
   assert.equal(exploreSchema.additionalProperties, false);
   assert.deepEqual(REVIEW_TOOLS, EXPLORE_TOOLS);
   assert.deepEqual(IMPLEMENT_TOOLS, ["read", "bash", "edit", "write", "grep", "find", "ls"]);
-  assert.deepEqual(REVIEWER_PATHS, { adr: ".pi/skills/adr-reviewer.md", plan: ".pi/skills/plan-reviewer.md", code: ".pi/skills/code-reviewer.md" });
+  assert.deepEqual(REVIEWER_PATHS, { adr: ".pi/agents/adr-reviewer.md", plan: ".pi/agents/plan-reviewer.md", code: ".pi/agents/code-reviewer.md" });
 });
 
 test("all role schemas accept optional exact model while preserving closed required fields", () => {
@@ -687,6 +688,7 @@ test("review maps all kinds and reports missing or empty reviewer files", async 
     const h = harness();
     const { value } = await execute(h.tools.get("subagent_review"), { kind, task: "review" }, h.ctx);
     assert.equal(value.details.kind, kind);
+    assert.deepEqual(h.reviewerPaths, [`/repo/.pi/agents/${kind}-reviewer.md`]);
     assert.match(h.requests[0].systemPrompt, new RegExp(`governed ${kind} reviewer`));
     assert.deepEqual(h.requests[0].tools, REVIEW_TOOLS);
   }
