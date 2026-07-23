@@ -43,17 +43,19 @@ function harness(options: {
   preferences?: Record<string, string | Error | { reject: unknown }>;
 } = {}) {
   const tools = new Map<string, any>();
+  const commands = new Map<string, any>();
   const handlers = new Map<string, any>();
   const requests: RunRequest[] = [];
   const notifications: unknown[][] = [];
   const emitted: Array<{ name: string; data: any }> = [];
   const telemetryResponders: Array<(value: unknown) => void> = [];
+  const writes: Array<{ op: string; path: string; data?: string; mode?: number; to?: string }> = [];
   const git = [...(options.git ?? [])];
   const reviewerPaths: string[] = [];
   let gitCalls = 0;
   let leaf = options.leaf;
   const pi: any = {
-    registerTool: (tool: any) => tools.set(tool.name, tool), registerCommand() {}, appendEntry() {},
+    registerTool: (tool: any) => tools.set(tool.name, tool), registerCommand: (name: string, command: any) => commands.set(name, command), appendEntry() {},
     on: (name: string, handler: any) => handlers.set(name, handler),
     getThinkingLevel: options.thinking ?? (() => "high"),
     exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
@@ -62,7 +64,7 @@ function harness(options: {
   };
   const deps: ExtensionDependencies = {
     readFile: async (path: string) => {
-      if (path === GLOBAL_PREFERENCES_PATH || path === PROJECT_PREFERENCES_PATH) {
+      if (path === GLOBAL_PREFERENCES_PATH || path === PROJECT_PREFERENCES_PATH || path === "/repo/.gitignore") {
         const entry = options.preferences?.[path];
         if (entry === undefined) throw Object.assign(new Error(`ENOENT: ${path}`), { code: "ENOENT" });
         if (entry instanceof Error) throw entry;
@@ -85,13 +87,18 @@ function harness(options: {
     extensionFile: "/repo/.pi/extensions/awf-subagents/index.ts",
     agentDir: "/agent",
     configDirName: ".pi",
+    writeFile: async (path: string, data: string, options2: { mode: number }) => { writes.push({ op: "write", path, data, mode: options2.mode }); },
+    mkdir: async (path: string) => { writes.push({ op: "mkdir", path }); },
+    rename: async (from: string, to: string) => { writes.push({ op: "rename", path: from, to }); },
+    unlink: async (path: string) => { writes.push({ op: "unlink", path }); },
     now: (() => { let value = 0; return () => (value += 100); })(),
     observationId: () => "observation-1",
   };
   registerSubagentTools(pi, deps);
-  const models = new Map([
-    ["cheap/model/with/slash", { provider: "cheap", id: "model/with/slash" }],
-    ["locked/model", { provider: "locked", id: "model" }],
+  const baseModelMeta = { name: "base", contextWindow: 1000, maxTokens: 100, reasoning: false, input: ["text"], cost: { input: 0.1, output: 0.2 } };
+  const models = new Map<string, any>([
+    ["cheap/model/with/slash", { provider: "cheap", id: "model/with/slash", ...baseModelMeta }],
+    ["locked/model", { provider: "locked", id: "model", ...baseModelMeta }],
   ]);
   const ctx: any = {
     cwd: "/repo/subdirectory",
@@ -104,7 +111,7 @@ function harness(options: {
     ui: { notify: (...args: unknown[]) => notifications.push(args) },
   };
   return {
-    pi, deps, tools, handlers, requests, notifications, emitted, telemetryResponders, ctx, models,
+    pi, deps, tools, commands, handlers, requests, notifications, emitted, telemetryResponders, ctx, models, writes,
     setLeaf: (value: any) => { leaf = value; },
     reviewerPaths,
     reviewerReads: () => reviewerPaths.length,
@@ -193,7 +200,7 @@ test("invariant: factory guards reject each missing actual dependency before reg
   delete (globalThis as any)[notice];
 
   const factories: Array<{ name: string; required: string[]; register(pi: any, version: string): void }> = [
-    { name: "subagent", required: ["on", "events.emit", "registerTool", "exec", "getThinkingLevel"], register(api, version) { registerSubagentTools(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-subagents/index.ts", agentDir: "/p-agent", configDirName: ".pi", readFile: async () => "", runner: { run: async () => result } } as any); } },
+    { name: "subagent", required: ["on", "events.emit", "registerTool", "registerCommand", "exec", "getThinkingLevel"], register(api, version) { registerSubagentTools(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-subagents/index.ts", agentDir: "/p-agent", configDirName: ".pi", readFile: async () => "", runner: { run: async () => result } } as any); } },
     { name: "handoff", required: ["on", "events.emit", "registerTool", "registerCommand", "queueCommand"], register(api, version) { registerHandoff(api, { packageVersion: version } as any); } },
     { name: "dashboard", required: ["on", "events.on", "events.emit", "appendEntry", "registerTool", "registerCommand", "exec"], register(api, version) { registerDashboard(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-dashboard/index.ts", ledger: defaultLedgerDependencies("/p/.pi/extensions/awf-dashboard/index.ts"), exec: api.exec } as any); } },
   ];
@@ -423,6 +430,300 @@ test("configured models are revalidated against the live registry before every q
   h.models.delete("p/role");
   await assert.rejects(execute(h.tools.get("subagent_explore"), params, h.ctx), /is not registered/);
   assert.equal(h.requests.length, 1, "no queueing and no parent fall-through after registry removal");
+});
+
+const PROJECT_GITIGNORE_PATH = "/repo/.gitignore";
+const GLOBAL_SCOPE_LABEL = `User-global (${GLOBAL_PREFERENCES_PATH})`;
+const PROJECT_SCOPE_LABEL = `Project-local (${PROJECT_PREFERENCES_PATH})`;
+const PRESET_ANSWER = "Apply recommended GPT-5.6 preset";
+const CONFIGURE_ANSWER = "Configure each slot";
+const UNSET_ANSWER = "leave unset (use fallback chain)";
+
+type WizardAnswer = string | boolean | undefined | ((h: any) => string | boolean | undefined);
+
+function wizard(options: Parameters<typeof harness>[0] & { answers?: WizardAnswer[]; mode?: string } = {}) {
+  const h: any = harness(options);
+  const prompts: Array<{ kind: string; title: string; options?: string[]; message?: string }> = [];
+  const answers = [...(options.answers ?? [])];
+  const pop = () => { const next = answers.shift(); return typeof next === "function" ? next(h) : next; };
+  h.ctx.mode = options.mode ?? "tui";
+  h.ctx.ui.select = async (title: string, choices: string[]) => { prompts.push({ kind: "select", title, options: choices }); return pop(); };
+  h.ctx.ui.confirm = async (title: string, message: string) => { prompts.push({ kind: "confirm", title, message }); return pop(); };
+  h.ctx.modelRegistry.getAll = () => [...h.models.values()];
+  h.prompts = prompts;
+  h.run = () => h.commands.get("awf-subagent-models").handler("", h.ctx);
+  return h;
+}
+
+function fullModel(h: any, provider: string, id: string, extra: Record<string, unknown> = {}): void {
+  h.models.set(`${provider}/${id}`, {
+    provider, id, name: id, contextWindow: 272000, maxTokens: 128000, reasoning: true,
+    input: ["text", "image"],
+    cost: { input: 1, output: 6, cacheRead: 0.1, cacheWrite: 1.25, tiers: [{ inputTokensAbove: 272000, input: 2, output: 9 }] },
+    ...extra,
+  });
+}
+
+function registerPresetModels(h: any): void {
+  fullModel(h, "openai-codex", "gpt-5.6-terra");
+  fullModel(h, "openai-codex", "gpt-5.6-sol");
+  fullModel(h, "openai-codex", "gpt-5.6-luna");
+}
+
+test("wizard is TUI-only and refuses other modes", async () => {
+  const print = wizard({ mode: "print" });
+  await print.run();
+  assert.deepEqual(print.notifications, [["awf-subagent-models requires an interactive TUI session.", "error"]]);
+  assert.equal(print.writes.length, 0);
+  const noSelect = wizard({ mode: "tui" });
+  delete noSelect.ctx.ui.select;
+  await noSelect.run();
+  assert.deepEqual(noSelect.notifications, [["awf-subagent-models requires an interactive TUI session.", "error"]]);
+  assert.equal(noSelect.writes.length, 0);
+});
+
+test("wizard cancellation at every step leaves the file unchanged", async () => {
+  const scopeCancel = wizard({ answers: [undefined] });
+  await scopeCancel.run();
+  assert.deepEqual(scopeCancel.notifications.at(-1), ["Subagent model preferences unchanged.", "info"]);
+  assert.equal(scopeCancel.writes.length, 0);
+
+  const stateCancel = wizard({
+    preferences: { [PROJECT_PREFERENCES_PATH]: "{" },
+    answers: [PROJECT_SCOPE_LABEL, false],
+  });
+  await stateCancel.run();
+  assert.deepEqual(stateCancel.notifications.at(-1), ["Subagent model preferences unchanged.", "info"]);
+  assert.match(stateCancel.prompts.at(-1)!.message!, /malformed JSON/);
+  assert.equal(stateCancel.writes.length, 0);
+
+  const modeCancel = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, undefined] });
+  registerPresetModels(modeCancel);
+  await modeCancel.run();
+  assert.deepEqual(modeCancel.notifications.at(-1), ["Subagent model preferences unchanged.", "info"]);
+  assert.match(modeCancel.prompts.at(-2)!.message!, /\(empty\)/);
+  assert.match(modeCancel.prompts.at(-2)!.message!, /parent \(inherited\)/);
+  assert.equal(modeCancel.writes.length, 0);
+
+  const slotCancel = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, undefined] });
+  slotCancel.ctx.model = undefined;
+  await slotCancel.run();
+  assert.match(slotCancel.notifications[0][0] as string, /Recommended preset unavailable:/);
+  assert.match(slotCancel.notifications[0][0] as string, /preset default model openai-codex\/gpt-5\.6-terra is not registered/);
+  assert.equal(slotCancel.prompts.some((prompt: any) => prompt.title === "Configuration mode"), false);
+  assert.deepEqual(slotCancel.notifications.at(-1), ["Subagent model preferences unchanged.", "info"]);
+  assert.equal(slotCancel.writes.length, 0);
+
+  const finalCancel = wizard({
+    answers: [GLOBAL_SCOPE_LABEL, true, CONFIGURE_ANSWER, UNSET_ANSWER, UNSET_ANSWER, UNSET_ANSWER, UNSET_ANSWER, UNSET_ANSWER, false],
+  });
+  registerPresetModels(finalCancel);
+  await finalCancel.run();
+  assert.deepEqual(finalCancel.notifications.at(-1), ["Subagent model preferences unchanged.", "info"]);
+  assert.equal(finalCancel.writes.length, 0);
+});
+
+test("wizard offers the preset only when fully available and applies it atomically", async () => {
+  const unauthenticated = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, undefined] });
+  registerPresetModels(unauthenticated);
+  const luna = unauthenticated.models.get("openai-codex/gpt-5.6-luna");
+  unauthenticated.models.set("openai-codex/gpt-5.6-luna", { ...luna, provider: "locked" });
+  await unauthenticated.run();
+  assert.match(unauthenticated.notifications[0][0] as string, /Recommended preset unavailable:/);
+  assert.match(unauthenticated.notifications[0][0] as string, /preset exploration model openai-codex\/gpt-5\.6-luna has no configured authentication/);
+
+  const applied = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, PRESET_ANSWER, true] });
+  registerPresetModels(applied);
+  await applied.run();
+  assert.equal(applied.gitCalls(), 0);
+  const written = applied.writes.find((entry: any) => entry.op === "write")!;
+  assert.equal(written.path, `${GLOBAL_PREFERENCES_PATH}.observation-1.tmp`);
+  assert.equal(written.mode, 0o600);
+  assert.deepEqual(JSON.parse(written.data!), {
+    default: "openai-codex/gpt-5.6-terra",
+    grounding: "openai-codex/gpt-5.6-sol",
+    exploration: "openai-codex/gpt-5.6-luna",
+    review: "openai-codex/gpt-5.6-sol",
+    implementation: "openai-codex/gpt-5.6-terra",
+  });
+  assert.deepEqual(applied.writes.map((entry: any) => entry.op), ["mkdir", "write", "rename"]);
+  assert.deepEqual(applied.writes.at(-1), { op: "rename", path: written.path, to: GLOBAL_PREFERENCES_PATH });
+  assert.deepEqual(applied.notifications.at(-1), ["Subagent model preferences saved.", "info"]);
+});
+
+test("wizard slot flow writes selections, honors leave-unset, and renders informed labels", async () => {
+  const prefs: Record<string, string> = { [PROJECT_PREFERENCES_PATH]: JSON.stringify({ grounding: "plain/basic" }) };
+  const h = wizard({
+    preferences: prefs,
+    git: [{ code: 0, stdout: "true\n" }, { code: 1, stdout: "" }],
+    answers: [
+      PROJECT_SCOPE_LABEL, true, CONFIGURE_ANSWER,
+      "openai-codex/gpt-5.6-terra", UNSET_ANSWER, "plain/basic", UNSET_ANSWER, UNSET_ANSWER,
+      true, true,
+    ],
+  });
+  registerPresetModels(h);
+  fullModel(h, "plain", "basic", { reasoning: false, input: ["text"], cost: { input: 0.5, output: 1 } });
+  fullModel(h, "test", "parent");
+  await h.run();
+  const slotPrompt = h.prompts.find((prompt: any) => prompt.title.startsWith("default:"))!;
+  assert.match(slotPrompt.title, /mid-tier coding model/);
+  assert.equal(slotPrompt.options![0], UNSET_ANSWER);
+  const terraLabel = slotPrompt.options!.find((option: string) => option.startsWith("openai-codex/gpt-5.6-terra"))!;
+  assert.match(terraLabel, /base \$1\/\$6 per Mtok/);
+  assert.match(terraLabel, /tier above 272000 input tokens \$2\/\$9/);
+  assert.match(terraLabel, /context 272000/);
+  assert.match(terraLabel, /max output 128000/);
+  assert.match(terraLabel, / reasoning/);
+  assert.match(terraLabel, / image/);
+  assert.match(terraLabel, /\[recommended\]/);
+  const plainLabel = slotPrompt.options!.find((option: string) => option.startsWith("plain/basic"))!;
+  assert.match(plainLabel, /no reasoning/);
+  assert.match(plainLabel, /text-only/);
+  assert.equal(plainLabel.includes("tier above"), false);
+  const parentLabel = slotPrompt.options!.find((option: string) => option.startsWith("test/parent"))!;
+  assert.match(parentLabel, /\[current parent\]/);
+  const groundingPrompt = h.prompts.find((prompt: any) => prompt.title.startsWith("grounding:"))!;
+  const configuredLabel = groundingPrompt.options!.find((option: string) => option.startsWith("plain/basic"))!;
+  assert.match(configuredLabel, /\[configured\]/);
+  const summary = h.prompts.find((prompt: any) => prompt.title === "Save subagent model preferences")!;
+  assert.match(summary.message!, /exploration: plain\/basic \(project-role\)/);
+  assert.match(summary.message!, /grounding: openai-codex\/gpt-5\.6-terra \(project-default\)/);
+  const written = h.writes.find((entry: any) => entry.op === "write" && entry.path.endsWith(".tmp"))!;
+  assert.deepEqual(JSON.parse(written.data!), { default: "openai-codex/gpt-5.6-terra", exploration: "plain/basic" });
+  const ignoreWrite = h.writes.find((entry: any) => entry.path === PROJECT_GITIGNORE_PATH)!;
+  assert.equal(ignoreWrite.data, ".pi/awf-subagents.local.json\n");
+  assert.equal(ignoreWrite.mode, 0o644);
+  assert.deepEqual(h.notifications.at(-1), ["Subagent model preferences saved.", "info"]);
+});
+
+test("wizard gitignore enforcement covers decline, existing rules, and non-work-tree saves", async () => {
+  const declined = wizard({
+    git: [{ code: 0, stdout: "true\n" }, { code: 1, stdout: "" }],
+    answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, true, false],
+  });
+  registerPresetModels(declined);
+  await declined.run();
+  assert.deepEqual(declined.notifications.at(-1), ["Save canceled: the project-local preference file must be gitignored.", "error"]);
+  assert.equal(declined.writes.length, 0);
+
+  const alreadyIgnored = wizard({
+    git: [{ code: 0, stdout: "true\n" }, { code: 0, stdout: "" }],
+    answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, true],
+  });
+  registerPresetModels(alreadyIgnored);
+  await alreadyIgnored.run();
+  assert.equal(alreadyIgnored.writes.some((entry: any) => entry.path === PROJECT_GITIGNORE_PATH), false);
+  assert.deepEqual(alreadyIgnored.notifications.at(-1), ["Subagent model preferences saved.", "info"]);
+
+  const noWorkTree = wizard({
+    git: [{ code: 1, stdout: "" }],
+    answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, true],
+  });
+  registerPresetModels(noWorkTree);
+  await noWorkTree.run();
+  assert.deepEqual(noWorkTree.notifications[0], ["Not a git work tree; skipping ignore check.", "info"]);
+  assert.deepEqual(noWorkTree.notifications.at(-1), ["Subagent model preferences saved.", "info"]);
+
+  for (const [existing, expected] of [
+    ["one\n", "one\n.pi/awf-subagents.local.json\n"],
+    ["one", "one\n.pi/awf-subagents.local.json\n"],
+  ] as const) {
+    const appended = wizard({
+      preferences: { [PROJECT_GITIGNORE_PATH]: existing },
+      git: [{ code: 0, stdout: "true\n" }, { code: 1, stdout: "" }],
+      answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, true, true],
+    });
+    registerPresetModels(appended);
+    await appended.run();
+    const ignoreWrite = appended.writes.find((entry: any) => entry.path === PROJECT_GITIGNORE_PATH)!;
+    assert.equal(ignoreWrite.data, expected);
+  }
+});
+
+test("wizard detects stale concurrent writers and surfaces every filesystem failure", async () => {
+  const prefs: Record<string, string> = { [PROJECT_PREFERENCES_PATH]: "{}" };
+  const stale = wizard({
+    preferences: prefs,
+    git: [{ code: 1, stdout: "" }],
+    answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, (h: any) => { prefs[PROJECT_PREFERENCES_PATH] = JSON.stringify({ default: "p/def" }); return true; }],
+  });
+  registerPresetModels(stale);
+  await stale.run();
+  assert.match(stale.notifications.at(-1)![0] as string, /modified concurrently; rerun \/awf-subagent-models/);
+  assert.deepEqual(stale.writes.map((entry: any) => entry.op), ["mkdir"]);
+
+  const snapshotError = wizard({
+    preferences: { [PROJECT_PREFERENCES_PATH]: new Error("device locked") } as any,
+    answers: [PROJECT_SCOPE_LABEL],
+  });
+  await snapshotError.run();
+  assert.match(snapshotError.notifications.at(-1)![0] as string, /Cannot read \/repo\/\.pi\/awf-subagents\.local\.json: device locked/);
+
+  const gitignoreReadError = wizard({
+    preferences: { [PROJECT_GITIGNORE_PATH]: new Error("io stall") } as any,
+    git: [{ code: 0, stdout: "true\n" }, { code: 1, stdout: "" }],
+    answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, true, true],
+  });
+  registerPresetModels(gitignoreReadError);
+  await gitignoreReadError.run();
+  assert.match(gitignoreReadError.notifications.at(-1)![0] as string, /Cannot read \/repo\/\.gitignore: io stall/);
+  assert.equal(gitignoreReadError.writes.length, 0);
+
+  const gitignoreWriteError = wizard({
+    git: [{ code: 0, stdout: "true\n" }, { code: 1, stdout: "" }],
+    answers: [PROJECT_SCOPE_LABEL, true, PRESET_ANSWER, true, true],
+  });
+  registerPresetModels(gitignoreWriteError);
+  gitignoreWriteError.deps.writeFile = async () => { throw new Error("readonly filesystem"); };
+  await gitignoreWriteError.run();
+  assert.match(gitignoreWriteError.notifications.at(-1)![0] as string, /Cannot update \/repo\/\.gitignore: readonly filesystem/);
+
+  const mkdirError = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, PRESET_ANSWER, true] });
+  registerPresetModels(mkdirError);
+  mkdirError.deps.mkdir = async () => { throw new Error("no permission"); };
+  await mkdirError.run();
+  assert.match(mkdirError.notifications.at(-1)![0] as string, /Cannot create \/agent: no permission/);
+
+  const rereadPrefs: Record<string, string | Error> = { [GLOBAL_PREFERENCES_PATH]: "{}" };
+  const rereadError = wizard({
+    preferences: rereadPrefs as any,
+    answers: [GLOBAL_SCOPE_LABEL, true, PRESET_ANSWER, (h: any) => { rereadPrefs[GLOBAL_PREFERENCES_PATH] = new Error("device gone"); return true; }],
+  });
+  registerPresetModels(rereadError);
+  await rereadError.run();
+  assert.match(rereadError.notifications.at(-1)![0] as string, /Cannot re-read \/agent\/awf-subagents\.json: device gone/);
+
+  const writeError = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, PRESET_ANSWER, true] });
+  registerPresetModels(writeError);
+  writeError.deps.writeFile = async (path: string) => { throw new Error(`disk full at ${path}`); };
+  await writeError.run();
+  assert.match(writeError.notifications.at(-1)![0] as string, /Save failed: disk full at \/agent\/awf-subagents\.json\.observation-1\.tmp/);
+  assert.deepEqual(writeError.writes.at(-1), { op: "unlink", path: `${GLOBAL_PREFERENCES_PATH}.observation-1.tmp` });
+
+  const renameError = wizard({ answers: [GLOBAL_SCOPE_LABEL, true, PRESET_ANSWER, true] });
+  registerPresetModels(renameError);
+  renameError.deps.rename = async () => { throw new Error("cross-device link"); };
+  renameError.deps.unlink = async () => { throw new Error("already gone"); };
+  await renameError.run();
+  assert.match(renameError.notifications.at(-1)![0] as string, /Save failed: cross-device link/);
+});
+
+test("wizard success refreshes the store so omitted models route by the new preferences", async () => {
+  const prefs: Record<string, string> = {};
+  const h = wizard({
+    preferences: prefs,
+    answers: [GLOBAL_SCOPE_LABEL, true, PRESET_ANSWER, true],
+  });
+  registerPresetModels(h);
+  let lastWrite = "";
+  h.deps.writeFile = async (path: string, data: string, options2: { mode: number }) => { lastWrite = data; h.writes.push({ op: "write", path, data, mode: options2.mode }); };
+  h.deps.rename = async (from: string, to: string) => { prefs[to] = lastWrite; h.writes.push({ op: "rename", path: from, to }); };
+  await h.run();
+  assert.deepEqual(h.notifications.at(-1), ["Subagent model preferences saved.", "info"]);
+  const { value } = await execute(h.tools.get("subagent_grounding"), { task: "ground" }, h.ctx);
+  assert.equal(value.details.modelSource, "global-role");
+  assert.equal(value.details.resolvedModel, "openai-codex/gpt-5.6-sol");
 });
 
 test("invariant: subagent context and observations are exact closed bounded and private", async () => {

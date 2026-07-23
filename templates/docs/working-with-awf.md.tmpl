@@ -183,7 +183,13 @@ project-default, global-default, then parent-inheritance order. Both files are s
 at session start: any malformed, unknown, unregistered, or unauthenticated entry raises a
 prominent error and blocks all implicit routing (parent inheritance included) until repaired,
 while explicit per-call models keep working. Configured choices are revalidated against the live
-model registry before every queued child. Long implementations should favor sequential
+model registry before every queued child. The `/awf-subagent-models` command is the setup and
+repair path: a TUI-only wizard that selects the scope, shows current preferences and validation
+errors, offers an embedded recommended preset only when every referenced model is currently
+registered and authenticated, presents per-model pricing with request-wide tiers distinguished
+from base rates alongside context and output limits and capability markers, enforces the
+project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
+cancellation. Long implementations should favor sequential
 implementation subagents so the orchestrating parent stays lean: length and parent-context
 pressure are explicit reasons to prefer subagent implementation, while coupling remains the
 residual reason to stay inline.

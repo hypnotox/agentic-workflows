@@ -188,6 +188,10 @@ test("real Pi parallel preflight enforces current-leaf implementation batch excl
       extensionFile: join(root, ".pi/extensions/awf-subagents/index.ts"),
       agentDir: root,
       configDirName: ".pi",
+      writeFile: async () => {},
+      mkdir: async () => {},
+      rename: async () => {},
+      unlink: async () => {},
     };
     const loader = new DefaultResourceLoader({
       cwd: root,

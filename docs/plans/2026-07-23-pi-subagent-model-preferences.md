@@ -1,7 +1,7 @@
 ---
 date: 2026-07-23
 adrs: [151]
-status: Proposed
+status: Implemented
 ---
 # Plan: Pi subagent model preferences
 
@@ -465,3 +465,15 @@ as phase 1.
 - Out of scope, deliberately: noninteractive wizard mode (revisit only with an explicit design),
   awf-side validation of preference files, and any change to inline-vs-subagent execution routing
   (ADR-0149).
+- Implementation findings (recorded at the freeze): `awf sync` refuses a proof marker naming a
+  not-yet-existing claim, so within each batch phase the claim mutations must land in the working
+  tree before the sync step, not after the tests. The thinking level must be snapshotted
+  synchronously before awaiting the preference store, or the queued-children thinking-snapshot
+  contract breaks. The preference store captures `deps.readFile` at creation so a test replacing
+  the dependency after registration cannot corrupt the in-flight initial load. The task-2.2
+  executing-plans sentence says "run a long plan through the subagent-per-task companion" instead
+  of the drafted "hand ... to the subagent-dispatch companion": the evals chain checker treats
+  "dispatch" on a line naming a skill as an invocation line. The wizard uses Pi's built-in
+  `ctx.ui.select`/`ctx.ui.confirm` dialogs (cancel = undefined/false) rather than a `ui.custom`
+  component, with the TUI gate on `ctx.mode !== "tui"`; the resolution chain and the wizard's
+  routing preview share one `preferredReference` helper so the precedence logic exists once.

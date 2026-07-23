@@ -79,6 +79,12 @@ Origin: ADR-0148
 Revised-by: ADR-0151
 Backing: test
 
+### `invariant: pi-subagent-model-wizard`
+
+The /awf-subagent-models command is a TUI-only atomic wizard that selects scope, surfaces current preferences and validation errors, offers the embedded recommended preset only when every referenced model is currently registered and authenticated, presents informed model selectors distinguishing base from request-wide tier pricing, enforces the project-local gitignore rule at save with a visible-notice degradation outside a git work tree, persists with owner-only permissions and stale-writer detection via sibling-temp rename, refreshes in-memory preferences after success, and leaves the existing file unchanged on cancellation or failure.
+Origin: ADR-0151
+Backing: test
+
 ### `invariant: pi-subagent-progress-bounds`
 
 The generated Pi extension retains at most 20 display events of at most 2 KiB each, reports cumulative omitted-event counts and truncation explicitly, and never keeps a second raw child-transcript store.

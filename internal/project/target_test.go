@@ -589,11 +589,46 @@ func TestPiSubagentModelPreferences(t *testing.T) {
 			t.Errorf("Pi extension missing preference contract %q", want)
 		}
 	}
-	if got := strings.Count(content, `await preferences.ready();`); got != 5 {
-		t.Errorf("preference-ready gate count = %d, want one per governed tool plus session_start (5)", got)
+	if got := strings.Count(content, `await preferences.ready();`); got != 6 {
+		t.Errorf("preference-ready gate count = %d, want one per governed tool plus session_start and the wizard (6)", got)
 	}
 	if strings.Contains(content, "fallbackModel") {
 		t.Fatal("Pi preference resolution contains a silent fallback path")
+	}
+}
+
+// invariant: rendering/pi-workflows:pi-subagent-model-wizard
+func TestPiSubagentModelWizard(t *testing.T) {
+	content := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		`pi.registerCommand("awf-subagent-models", {`,
+		`export const RECOMMENDED_PRESET: Required<SubagentModelPreferences> = {`,
+		`default: "openai-codex/gpt-5.6-terra",`,
+		`grounding: "openai-codex/gpt-5.6-sol",`,
+		`exploration: "openai-codex/gpt-5.6-luna",`,
+		`review: "openai-codex/gpt-5.6-sol",`,
+		`implementation: "openai-codex/gpt-5.6-terra",`,
+		`requires an interactive TUI session`,
+		`ctx.mode !== "tui"`,
+		`Apply recommended GPT-5.6 preset`,
+		`tier above ${tier.inputTokensAbove} input tokens`,
+		`["rev-parse", "--is-inside-work-tree"]`,
+		`["check-ignore", "-q", relative]`,
+		`Save canceled: the project-local preference file must be gitignored.`,
+		`Not a git work tree; skipping ignore check.`,
+		`.${nextObservationId()}.tmp`,
+		`{ mode: 0o600 }`,
+		`await deps.rename(temp, scope.path);`,
+		`modified concurrently`,
+		`Subagent model preferences unchanged.`,
+		`Subagent model preferences saved.`,
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf("Pi extension missing wizard contract %q", want)
+		}
+	}
+	if strings.Contains(content, "writeFileSync") {
+		t.Fatal("Pi wizard uses a synchronous write path")
 	}
 }
 
@@ -849,7 +884,7 @@ func TestPiSubagentToolBoundaries(t *testing.T) {
 		`return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined, source: "inherited" }`,
 		`return { model: requireRegistered(ctx, requested, "Subagent model"), requested, source: "requested" }`,
 		`requested: undefined,
-      source: candidate.source,`,
+      source: preferred.source,`,
 		`thinkingLevel: metadata.thinkingLevel`,
 		`const MAX_TASK_PREVIEW_BYTES = 512;`,
 		`const MAX_FALLBACK_BYTES = 2 * 1024;`,

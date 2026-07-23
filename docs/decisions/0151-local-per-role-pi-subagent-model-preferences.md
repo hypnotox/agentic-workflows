@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0151: Local per-role Pi subagent model preferences
@@ -153,3 +153,5 @@ implementation.
 - 2026-07-23: Proposed
 - 2026-07-23: Implementing; content-sha256: a35edd9061799281d4e537ad1a91af80ce351465a4999239d670017f20ae64c2
 - 2026-07-23: Applied; state-sequence: 30; operations: update `rendering/pi-workflows:pi-subagent-model-routing`, update `rendering/pi-runtime:pi-child-tool-boundaries`, add `rendering/pi-workflows:pi-subagent-model-preferences`
+- 2026-07-23: Applied; state-sequence: 31; operations: add `rendering/pi-workflows:pi-subagent-model-wizard`
+- 2026-07-23: Implemented; content-sha256: a35edd9061799281d4e537ad1a91af80ce351465a4999239d670017f20ae64c2
