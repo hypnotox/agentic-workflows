@@ -162,8 +162,8 @@ test("invariant: handoff transfers exact association and success setup data", as
 test("replacement rejection consumes pending without kickoff or memory deletion", async () => {
   const h = harness({ newSessionError: new Error("replacement failed") }); await execute(h); const command = startCommand(h); await new Promise((resolve) => setImmediate(resolve)); h.timeouts[0].callback();
   await assert.rejects(command, /replacement failed/); assert.equal(h.newSessions.length, 1); assert.equal(h.telemetry[0].outcome, "failure"); assert.deepEqual(h.notifications, [["Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error"]]); assert.match(h.editor[0], /^Read \.awf\/memory\/work\.md first/); assert.equal(h.editor.length, 1); assert.equal(h.queued.length, 1); await assert.rejects(startCommand(h), /matching pending/); assert.equal(h.entries["/repo/.awf/memory/work.md"], FILE);
-  const torn = harness({ newSessionError: new Error("replacement failed") }); await execute(torn); const tornCommand = startCommand(torn); await new Promise((resolve) => setImmediate(resolve)); torn.ctx.ui.notify = () => { throw new Error("ui unavailable"); }; torn.timeouts[0].callback();
-  await assert.rejects(tornCommand, /replacement failed/); assert.deepEqual(torn.editor, []); assert.equal(torn.telemetry[0].outcome, "failure");
+  const torn = harness({ newSessionError: new Error("replacement failed") }); await execute(torn); const tornCommand = startCommand(torn); await new Promise((resolve) => setImmediate(resolve)); torn.ctx.ui.setEditorText = () => { throw new Error("ui unavailable"); }; torn.timeouts[0].callback();
+  await assert.rejects(tornCommand, /replacement failed/); assert.deepEqual(torn.notifications, []); assert.equal(torn.telemetry[0].outcome, "failure");
 });
 
 test("kickoff rejection leaves exact wrapper in replacement editor and no deletion API exists", async () => {

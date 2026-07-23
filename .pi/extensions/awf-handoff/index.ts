@@ -229,8 +229,8 @@ export function registerHandoff(pi: ExtensionAPI, deps: HandoffDependencies): vo
       } catch (error) {
         emitHandoffObservation(pi, { observationId, targetSessionId, outcome: "failure", durationMs: Math.max(0, Date.now() - startedAt), errorCategory: "handoff" });
         try {
-          ctx.ui.notify("Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error");
           ctx.ui.setEditorText(wrapper);
+          ctx.ui.notify("Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.", "error");
         } catch { /* post-teardown: the old-session UI is unavailable; the rethrow reports the failure */ }
         throw error;
       } finally { if (pending?.id === request.id) pending = undefined; }

@@ -1059,8 +1059,8 @@ func TestPiSessionHandoffLifecycle(t *testing.T) {
 		`const proceed = await countdown(ctx, deps)`,
 		`await validateMemoryEffort(request.memoryPath, deps)`,
 		`} catch (error) {`,
-		`Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.`,
 		`ctx.ui.setEditorText(wrapper)`,
+		`Fresh-session handoff failed; the durable checkpoint remains valid. Recovery text is in the editor.`,
 		`throw error;`,
 	)
 	if got := strings.Count(content, "deps.clearInterval(interval)"); got != 2 {
