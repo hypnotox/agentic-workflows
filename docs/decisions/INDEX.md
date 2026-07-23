@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-0156: Rendered awf wrapper replaces the co-owned command runner](0156-rendered-awf-wrapper-replaces-the-co-owned-command-runner.md) (Proposed)
-- [ADR-0157: Slim the agent guide to entry-point routing](0157-slim-the-agent-guide-to-entry-point-routing.md) (Proposed)
+- [ADR-0157: Slim the agent guide to entry-point routing](0157-slim-the-agent-guide-to-entry-point-routing.md) (Implementing)
 
 ## History
 

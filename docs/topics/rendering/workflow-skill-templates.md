@@ -60,8 +60,9 @@ Backing: test
 
 ### `invariant: workflow-chain-adr-before-plan`
 
-The rendered AGENTS.md and workflow.md workflow-chain string presents the ADR step before the plan step.
+The rendered workflow.md workflow-chain string presents the ADR step before the plan step.
 Origin: ADR-0148
+Revised-by: ADR-0157
 Backing: test
 
 ### `invariant: workflow-chain-surfaces-resync`

@@ -981,14 +981,6 @@ func TestAgentsDocTemplate(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan
-	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
-		t.Errorf("Workflow chain must present ADR before plan:\n%s", out)
-	}
-	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync
-	if !strings.Contains(out, "resync (when both)") {
-		t.Errorf("Workflow chain must surface the resync step:\n%s", out)
-	}
 }
 
 func TestAgentsDocTemplateConfigDriven(t *testing.T) {

@@ -123,6 +123,25 @@ func TestAgentsDocSectionParity(t *testing.T) {
 	}
 }
 
+// TestWorkflowDocChainOrder asserts the workflow doc's default render carries
+// the canonical chain string: the ADR step precedes the plan step and the
+// resync step is surfaced explicitly.
+func TestWorkflowDocChainOrder(t *testing.T) {
+	out := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
+		"vars":   map[string]any{},
+		"layout": testLayout(),
+		"data":   map[string]any{},
+	})
+	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan
+	if !strings.Contains(out, "ADR (if warranted) → plan (if warranted)") {
+		t.Errorf("workflow chain must present ADR before plan:\n%s", out)
+	}
+	// invariant: rendering/workflow-skill-templates:workflow-chain-surfaces-resync
+	if !strings.Contains(out, "resync (when both)") {
+		t.Errorf("workflow chain must surface the resync step:\n%s", out)
+	}
+}
+
 // invariant: rendering/catalog-and-targets:adr-singleton-section-parity
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard
