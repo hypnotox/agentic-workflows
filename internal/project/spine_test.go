@@ -306,6 +306,9 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 			case !complete[name] && !concise[name]:
 				t.Errorf("%s:%d has an unclassified context invocation: %s", templateID, lineNumber+1, line)
 			}
+			if complete[name] && strings.Contains(line, "paste the output of") {
+				t.Errorf("%s:%d complete-authority dispatch must instruct the reviewer-run command, not paste output: %s", templateID, lineNumber+1, line)
+			}
 		}
 	}
 	for name := range complete {
