@@ -236,13 +236,15 @@ all-work totals retain discarded branches. Work continuing from a terminal effor
 create a new `derived` effort; `reopen` is an explicit same-effort choice and creates a new trajectory.
 
 The compact widget is display-only and does not replace Pi's footer. `/awf-dashboard` opens overview,
-phase, history, finding, and maintenance views. Canonical reads occur only at startup, overlay open or
-manual refresh, and relevant successful lifecycle changes: the extension resolves the project-pinned
-binary through `.awf/bootstrap.sh` or `awf` on `PATH`, handshakes `awf metrics protocol --json`, then
-runs metrics and doctor in that order. Rendering never spawns, there is no polling or daemon, and
-TypeScript never reimplements historical aggregation or diagnosis. Resolution, version, protocol, or
-query failure leaves the last complete pair visibly stale or exposes a degraded state. Direct
-conforming lifecycle tools remain registered; passive observation failure never interrupts work.
+phase, history, finding, and maintenance views. Canonical reads occur at startup, overlay open,
+lifecycle settlement, bounded passive boundaries, and manual refresh. An enabled `.awf/bootstrap.sh`
+is authoritative. Otherwise the extension tries `awf` on `PATH` and, after absence, execution failure,
+project-version refusal, or protocol refusal, uses only an advertised repository
+`dashboard-awf-path` fallback. It captures one successfully handshaken launcher for the session, then
+runs metrics followed by doctor. Rendering never spawns, there is no polling or daemon, and TypeScript
+never reimplements historical aggregation or diagnosis. Resolution, version, protocol, or query
+failure leaves the last complete pair visibly stale or exposes a degraded state. Direct conforming
+lifecycle tools remain registered; passive observation failure never interrupts work.
 
 Findings expose their owning `effortId`, stable rule, evidence, threshold or baseline, confidence, and
 next action. The dashboard has no composite score and never blocks work or applies a repair, waiver,
