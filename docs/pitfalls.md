@@ -51,6 +51,19 @@ invokers could double-append the same terminal event with differing timestamps, 
 append rejects as conflicting identity.
 
 
+## The pi-extension container test races concurrent git activity
+
+_Domains: tooling_
+
+One `./x gate` run during the ADR-0155 effort failed in the pi-extension-test lane with
+tsc reporting every listed input file missing under /workspace/repo, while the same gate
+passed clean immediately before and after. The lane's container.sh copies the checkout
+(`cp -a /source/. /workspace/repo/`) and a concurrent session's git operations mid-copy
+can produce a partial tree, so the compiler sees a file list whose members vanished. In a
+shared checkout, treat a pi-extension lane failure whose errors are missing-file TS6053
+lines under /workspace/repo as this race: rerun the gate before diagnosing, and only
+investigate if the failure reproduces on a quiet tree.
+
 ## A test's name is not its assertions
 
 _Domains: invariants_
