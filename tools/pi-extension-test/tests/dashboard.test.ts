@@ -587,3 +587,44 @@ test("invariant: dashboard minimum runtime rejects missing factory APIs and degr
     await assert.rejects(execute(h.tools.get("awf_lifecycle"), { action: "bad" }), /invalid lifecycle/); const canceled = new AbortController(); canceled.abort(); await assert.rejects(h.tools.get("awf_lifecycle").execute("id", { action: "create", idempotencyKey: "cancel", eventId: "cancel", effortId: "cancel", sessionId: "session", timestamp: "2026-07-22T00:00:00Z", predecessors: [], creationMode: "independent" }, canceled.signal), /canceled/);
   } finally { await rm(project, { recursive: true, force: true, maxRetries: 5, retryDelay: 10 }); }
 });
+
+test("invariant: structured resume preserves selected-effort association without candidate creation or stale-ctx error", async () => {
+  const project = await root();
+  try {
+    const h = harness(project); const tool = h.tools.get("awf_lifecycle");
+    await execute(tool, { action: "create", idempotencyKey: "target-create-key", eventId: "target-create", effortId: "target", sessionId: "origin", timestamp: "2026-07-22T00:00:00Z", predecessors: [], creationMode: "independent" });
+    await execute(tool, { action: "start-trajectory", idempotencyKey: "target-traj-key", eventId: "target-traj", effortId: "target", sessionId: "origin", timestamp: "2026-07-22T00:00:01Z", predecessors: ["target-create"], trajectoryId: "target-traj", anchorId: "target-anchor" });
+    let gracefulCalls = 0; h.deps.gracefulProvisional = async (identity: any) => { gracefulCalls++; return identity.graceful(); };
+    await h.hooks.get("session_start")({}, { sessionManager: { getBranch: () => [], getSessionId: () => "resume-session" }, ui: {} });
+    let queuedArgs: string | undefined; (h.pi as any).queueCommand = (_name: string, args: string) => { queuedArgs = args; };
+    await h.commands.get("awf-resume-effort").handler("target"); assert.ok(queuedArgs);
+    const setupEntries: any[] = [];
+    await h.commands.get("awf-resume-effort-continue").handler(queuedArgs!, { newSession: async ({ setup, withSession }: any) => { await setup({ getSessionId: () => "replacement-session", appendCustomEntry: (type: string, data: any) => { setupEntries.push({ type, data }); } }); await h.hooks.get("session_shutdown")({}, { sessionManager: { getLeafId: () => "old-leaf" } }); await withSession({ sessionManager: { getBranch: () => setupEntries.map((e: any) => ({ type: "custom", customType: e.type, data: e.data })), getSessionId: () => "replacement-session", getLeafId: () => "new-leaf" }, ui: {} }); return {}; } });
+    assert.equal(gracefulCalls, 0, "graceful settlement must not fire during pending replacement");
+    let response: any; h.bus.get("awf.telemetry.association.request.v1")({ respond: (value: any) => { response = value; } }); assert.equal(response.association.effortId, "target"); assert.equal(response.association.sessionId, "replacement-session");
+    assert.deepEqual((await readdir(join(project, ".awf/metrics/efforts"))).sort(), ["target"]);
+    const metrics = await execute(h.tools.get("awf_metrics"), {}); assert.equal(metrics.details.degraded, undefined, "dashboard state must not be closed during replacement");
+    await h.hooks.get("session_shutdown")({}, {});
+  } finally { await rm(project, { recursive: true, force: true }); }
+});
+
+test("invariant: structured resume handles cancellation-before-setup and retries once after persisted setup", async () => {
+  const project = await root();
+  try {
+    const h = harness(project); const tool = h.tools.get("awf_lifecycle");
+    await execute(tool, { action: "create", idempotencyKey: "retry-create-key", eventId: "retry-create", effortId: "retry-target", sessionId: "origin", timestamp: "2026-07-22T00:00:00Z", predecessors: [], creationMode: "independent" });
+    await execute(tool, { action: "start-trajectory", idempotencyKey: "retry-traj-key", eventId: "retry-traj", effortId: "retry-target", sessionId: "origin", timestamp: "2026-07-22T00:00:01Z", predecessors: ["retry-create"], trajectoryId: "retry-traj", anchorId: "retry-anchor" });
+    await h.hooks.get("session_start")({}, { sessionManager: { getBranch: () => [], getSessionId: () => "retry-session" }, ui: {} });
+    let queuedArgs: string | undefined; let queueCount = 0; (h.pi as any).queueCommand = (_name: string, args: string) => { queuedArgs = args; queueCount++; };
+    await h.commands.get("awf-resume-effort").handler("retry-target"); const cancelArgs = queuedArgs!;
+    await h.commands.get("awf-resume-effort-continue").handler(cancelArgs, { newSession: async () => ({ cancelled: true }) });
+    await h.commands.get("awf-resume-effort").handler("retry-target"); queueCount = 0; const retryArgs = queuedArgs!;
+    await h.commands.get("awf-resume-effort-continue").handler(retryArgs, { newSession: async ({ setup }: any) => { await setup({ getSessionId: () => "retry-session", appendCustomEntry: () => {} }); throw new Error("replacement interrupted"); } });
+    assert.equal(queueCount, 1, "must re-queue after persisted setup failure");
+    const setupEntries: any[] = [];
+    await h.commands.get("awf-resume-effort-continue").handler(retryArgs, { newSession: async ({ setup, withSession }: any) => { await setup({ getSessionId: () => "retry-replacement", appendCustomEntry: (type: string, data: any) => { setupEntries.push({ type, data }); } }); await h.hooks.get("session_shutdown")({}, { sessionManager: { getLeafId: () => "retry-old-leaf" } }); await withSession({ sessionManager: { getBranch: () => setupEntries.map((e: any) => ({ type: "custom", customType: e.type, data: e.data })), getSessionId: () => "retry-replacement", getLeafId: () => "retry-new-leaf" }, ui: {} }); return {}; } });
+    let response: any; h.bus.get("awf.telemetry.association.request.v1")({ respond: (value: any) => { response = value; } }); assert.equal(response.association.effortId, "retry-target");
+    const metrics = await execute(h.tools.get("awf_metrics"), {}); assert.equal(metrics.details.degraded, undefined, "state must survive retry with shutdown");
+    await h.hooks.get("session_shutdown")({}, {});
+  } finally { await rm(project, { recursive: true, force: true }); }
+});
