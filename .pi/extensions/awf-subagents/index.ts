@@ -262,7 +262,7 @@ function telemetryIdentifier(value: unknown): value is string {
 }
 function requestTelemetryContext(pi: ExtensionAPI): { effortId: string; sessionId: string; trajectoryId: string; piAnchorId?: string } | undefined {
   let open = true; let responses = 0; let context: { effortId: string; sessionId: string; trajectoryId: string; piAnchorId?: string } | undefined;
-  try { pi.events.emit("awf.telemetry.context.request.v1", { version: { major: 2, minor: 0 }, respond(value: unknown) { /* c8 ignore next -- the synchronous request is deliberately closed before late callbacks */ if (!open) return; responses++; context = undefined; if (responses !== 1 || !value || typeof value !== "object" || Array.isArray(value)) return; const response = value as any; if (Object.keys(response).sort().join(",") !== "context,version" || response.version?.major !== 2 || response.version?.minor !== 0 || !response.context || typeof response.context !== "object" || Array.isArray(response.context)) return; const keys = Object.keys(response.context).sort().join(","); if (keys !== "effortId,sessionId,trajectoryId" && keys !== "effortId,piAnchorId,sessionId,trajectoryId") return; if (!telemetryIdentifier(response.context.effortId) || !telemetryIdentifier(response.context.sessionId) || !telemetryIdentifier(response.context.trajectoryId) || (response.context.piAnchorId !== undefined && !telemetryIdentifier(response.context.piAnchorId))) return; context = { effortId: response.context.effortId, sessionId: response.context.sessionId, trajectoryId: response.context.trajectoryId, ...(response.context.piAnchorId === undefined ? {} : { piAnchorId: response.context.piAnchorId }) }; } }); } catch { context = undefined; }
+  try { pi.events.emit("awf.telemetry.context.request.v1", { version: { major: 2, minor: 0 }, respond(value: unknown) {  if (!open) return; responses++; context = undefined; if (responses !== 1 || !value || typeof value !== "object" || Array.isArray(value)) return; const response = value as any; if (Object.keys(response).sort().join(",") !== "context,version" || response.version?.major !== 2 || response.version?.minor !== 0 || !response.context || typeof response.context !== "object" || Array.isArray(response.context)) return; const keys = Object.keys(response.context).sort().join(","); if (keys !== "effortId,sessionId,trajectoryId" && keys !== "effortId,piAnchorId,sessionId,trajectoryId") return; if (!telemetryIdentifier(response.context.effortId) || !telemetryIdentifier(response.context.sessionId) || !telemetryIdentifier(response.context.trajectoryId) || (response.context.piAnchorId !== undefined && !telemetryIdentifier(response.context.piAnchorId))) return; context = { effortId: response.context.effortId, sessionId: response.context.sessionId, trajectoryId: response.context.trajectoryId, ...(response.context.piAnchorId === undefined ? {} : { piAnchorId: response.context.piAnchorId }) }; } }); } catch { context = undefined; }
   open = false; return responses === 1 ? context : undefined;
 }
 
@@ -276,9 +276,10 @@ function boundedStopReason(value: string | undefined): "complete" | "length" | "
 }
 
 function toolResult(role: RunRequest["role"], task: string, result: Awaited<ReturnType<Runner["run"]>>, details: Record<string, unknown> = {}) {
-  const failed = result.failed;
+  const failed = result.failed; const usage = { input: result.usage.input, output: result.usage.output, cacheRead: result.usage.cacheRead, cacheWrite: result.usage.cacheWrite, totalTokens: result.usage.input + result.usage.output + result.usage.cacheRead + result.usage.cacheWrite, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: result.usage.cost } };
   return {
     content: [{ type: "text" as const, text: failed ? (result.failureMessage ?? "Subagent failed") : result.output }],
+    usage,
     details: {
       role, task, state: stateFor(failed, result.stopReason), events: result.events,
       omittedEvents: result.omittedEvents, ...details, stderr: result.stderr,

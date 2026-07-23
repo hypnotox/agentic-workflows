@@ -26,6 +26,7 @@ const result: RunResult = {
   output: "child output", stderr: "", events: [event], omittedEvents: 0, failed: false, modelChanged: false,
   usage: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 },
 };
+const topLevelUsage = (usage = result.usage) => ({ input: usage.input, output: usage.output, cacheRead: usage.cacheRead, cacheWrite: usage.cacheWrite, totalTokens: usage.input + usage.output + usage.cacheRead + usage.cacheWrite, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: usage.cost } });
 
 function harness(options: {
   version?: string;
@@ -42,6 +43,7 @@ function harness(options: {
   const requests: RunRequest[] = [];
   const notifications: unknown[][] = [];
   const emitted: Array<{ name: string; data: any }> = [];
+  const telemetryResponders: Array<(value: unknown) => void> = [];
   const git = [...(options.git ?? [])];
   let reviewerReads = 0;
   let gitCalls = 0;
@@ -51,7 +53,7 @@ function harness(options: {
     on: (name: string, handler: any) => handlers.set(name, handler),
     getThinkingLevel: options.thinking ?? (() => "high"),
     exec: async () => { gitCalls++; return git.shift() ?? { code: 1, stdout: "", stderr: "" }; },
-    events: { on() {}, emit: (name: string, data: any) => { if (name === "awf.telemetry.context.request.v1") { for (const value of options.telemetryContexts ?? []) data.respond(value); return; } emitted.push({ name, data }); } },
+    events: { on() {}, emit: (name: string, data: any) => { if (name === "awf.telemetry.context.request.v1") { telemetryResponders.push(data.respond); for (const value of options.telemetryContexts ?? []) data.respond(value); return; } emitted.push({ name, data }); } },
     ...(options.queueCommand === false ? {} : { queueCommand() {} }),
   };
   const deps: ExtensionDependencies = {
@@ -86,7 +88,7 @@ function harness(options: {
     ui: { notify: (...args: unknown[]) => notifications.push(args) },
   };
   return {
-    pi, deps, tools, handlers, requests, notifications, emitted, ctx,
+    pi, deps, tools, handlers, requests, notifications, emitted, telemetryResponders, ctx,
     setLeaf: (value: any) => { leaf = value; },
     reviewerReads: () => reviewerReads,
     gitCalls: () => gitCalls,
@@ -306,6 +308,7 @@ test("invariant: subagent context and observations are exact closed bounded and 
   }) });
   const completed = await execute(h.tools.get("subagent_grounding"), { task: "private task", model: "cheap/model/with/slash" }, h.ctx);
   assert.equal(completed.value.content[0].text, "child output");
+  assert.deepEqual(completed.value.usage, topLevelUsage({ input: 11, output: 12, cacheRead: 13, cacheWrite: 14, cost: 0.5, turns: 2 }));
   assert.equal(h.emitted.length, 1);
   const observation = h.emitted[0];
   assert.equal(observation.name, "awf.telemetry.subagent.v1");
@@ -322,6 +325,8 @@ test("invariant: subagent context and observations are exact closed bounded and 
   }
 
   const contextual = harness({ telemetryContexts: [{ version: { major: 2, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor" } }] }); await execute(contextual.tools.get("subagent_grounding"), { task: "context" }, contextual.ctx); assert.deepEqual({ effortId: contextual.emitted[0].data.effortId, sessionId: contextual.emitted[0].data.sessionId, trajectoryId: contextual.emitted[0].data.trajectoryId, piAnchorId: contextual.emitted[0].data.piAnchorId, observationId: contextual.emitted[0].data.observationId }, { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", piAnchorId: "anchor", observationId: "observation-1" });
+  contextual.telemetryResponders[0]({ version: { major: 2, minor: 0 }, context: { effortId: "late", sessionId: "session", trajectoryId: "trajectory" } });
+  const anchorless = harness({ telemetryContexts: [{ version: { major: 2, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory" } }] }); await execute(anchorless.tools.get("subagent_grounding"), { task: "anchorless context" }, anchorless.ctx); assert.equal(anchorless.emitted[0].data.piAnchorId, undefined);
   for (const invalid of [null, { version: { major: 3, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory" } }, { version: { major: 2, minor: 0 }, context: { effortId: "effort", sessionId: "session", trajectoryId: "trajectory", privatePrompt: "leak" } }, { version: { major: 2, minor: 0 }, context: { effortId: "../bad", sessionId: "session", trajectoryId: "trajectory" } }]) { const invalidContext = harness({ telemetryContexts: [invalid] }); await execute(invalidContext.tools.get("subagent_grounding"), { task: "invalid context" }, invalidContext.ctx); assert.equal(invalidContext.emitted[0].data.effortId, undefined); assert.equal(JSON.stringify(invalidContext.emitted[0].data).includes("leak"), false); }
   const duplicateContext = harness({ telemetryContexts: [{ effortId: "first" }, { effortId: "second" }] }); await execute(duplicateContext.tools.get("subagent_grounding"), { task: "duplicate context" }, duplicateContext.ctx); assert.equal(duplicateContext.emitted[0].data.effortId, undefined);
   const isolated = harness();
@@ -667,12 +672,14 @@ test("failed runner results preserve details", async () => {
   assert.equal(value.details.state, "aborted");
   assert.equal(value.details.stderr, "diagnostic");
   assert.equal(value.details.awfFailure, true);
+  assert.deepEqual(value.usage, topLevelUsage());
 
   const fallback = harness();
   fallback.deps.runner = { run: async () => ({ ...result, failed: true, failureMessage: undefined, stopReason: "error" }) };
   const failed = await execute(fallback.tools.get("subagent_explore"), { task: "fail", breadth: "bounded", detail: "summary" }, fallback.ctx);
   assert.equal(failed.value.content[0].text, "Subagent failed");
   assert.equal(failed.value.details.state, "failed");
+  assert.deepEqual(failed.value.usage, topLevelUsage());
 });
 
 test("review maps all kinds and reports missing or empty reviewer files", async () => {
@@ -731,6 +738,7 @@ test("implementation reports git state and commit policy", async () => {
   assert.equal(violated.value.details.stderr, "child diagnostic");
   assert.equal(violated.value.details.stopReason, "stop");
   assert.deepEqual(violated.value.details.usage, violationUsage);
+  assert.deepEqual(violated.value.usage, topLevelUsage(violationUsage));
   assert.equal(violated.value.details.before.head, "aaa");
   assert.equal(violated.value.details.after.head, "bbb");
 

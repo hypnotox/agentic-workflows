@@ -143,11 +143,13 @@ captured launcher.
    shut down Pi, and verify queued events were drained and retained history remains readable.
 6. With bootstrap disabled and `awf` absent from `PATH`, confirm the repository runner advertises
    `dashboard-awf-path`, canonical protocol, metrics, and doctor reads succeed through the pinned
-   launcher, and a second refresh reuses the same launcher without rebuilding. Dirty an unrelated
+   launcher, and a second refresh reuses the same launcher without rebuilding. Compare the muted below-editor widget with Pi's public footer on a restored branch after one nested subagent: unique assistant input, output, cache-read, cache-hit (`cacheRead/(input+cacheRead)`), permitted cost, and current context percentage/window must match, and unavailable subscription or automatic-context labels must be absent. Confirm `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, and `[awf:abandoned]` changes are immediate and an older delayed refresh cannot overwrite a newer local state. Dirty an unrelated
    checkout file and confirm reads retain the pinned semantics. Then make the advertised fallback
    unavailable too: direct conforming lifecycle registration and passive work remain non-blocking,
    while metrics, doctor, widget, and overlay visibly report both bounded resolution causes as degraded
    or stale. No render path may spawn a process.
+
+Before inspecting persisted data, interrupt one unresolved provisional session before its creation commit and confirm the documented loss is confined to its process-local 256-observation/1-MiB window; then exercise overflow and graceful settlement and confirm deterministic recovery or a visible bounded failure. Re-resolve a selected finding and verify cross-effort, stale-evidence, ineligible-reason, and empty-frontier repair or waiver attempts append nothing.
 
 Inspect `.awf/metrics/` after the smoke. Persisted events may contain bounded opaque identifiers,
 models and tool names, timestamps, phases and activities, duration, token/cache/cost totals, counters,

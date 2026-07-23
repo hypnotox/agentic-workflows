@@ -338,6 +338,12 @@ func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
 		"lifecycle projector rejects illegal historical effects and closed transitions",
 		"historical lifecycle projection excludes every illegal effect class",
 		"recovery parity executes staging, tombstone, trash, and ambiguity states",
+		"dashboard storage guards reject injected metadata stream and identity faults",
+		"staging recovery validates an independently inspected surviving lease",
+		"retrospective settlement observes externally finished and completed state",
+		"registered provisional overflow associates the settled candidate",
+		"finding actions require canonical ownership eligibility and a current frontier",
+		"canonical refresh is coalesced generation ordered and cancellation safe",
 		"handoff transfers exact association and success setup data",
 		"subagent context and observations are exact closed bounded and private",
 	)
@@ -345,7 +351,12 @@ func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-workflow-dashboard-public-contract
 func TestPiWorkflowDashboardPublicContract(t *testing.T) {
-	provePiContractBehavior(t, "dashboard public contract covers overlay, maintenance, widget, and disposal")
+	provePiContractBehavior(t,
+		"dashboard public contract covers overlay, maintenance, widget, and disposal",
+		"dashboard registration covers widget refresh and graceful settlement",
+		"footer accounting uses public active-branch and context sources exactly once",
+		"widget badge placement state and exceptional suffixes follow the public contract",
+	)
 }
 
 func TestTargetOutputRenderError(t *testing.T) {

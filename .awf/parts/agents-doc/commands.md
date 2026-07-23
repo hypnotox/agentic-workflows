@@ -11,7 +11,7 @@ is explicit maintenance, never an agent query action. Lifecycle, repair, and wai
 2 normal chain edges use one `transition-phase` request to close the named start and enter its
 successor, optionally with a route effect. Repair and waiver requests must use the selected finding's
 owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible
-input is rejected without append.
+input is rejected without append. In Pi, `[awf:init]` is the bounded provisional state: at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 bytes remain process-local until `awf_workflow` or `/awf-resume-effort <effort-id>` settles identity. The muted below-editor widget totals unique active-branch assistant `input`, `output`, `cacheRead`, `cacheWrite`, and finite permitted cost; cache hit is `cacheRead/(input+cacheRead)`, while `getContextUsage()` supplies only current context percentage and window. Canonical refresh is coalesced, runs metrics then doctor, and rejects completions older than local or canonical generation.
 
 Before every commit, stage the complete transaction, run `awf check --staged`, then run `./x gate`.
 Commit only after both commands pass. The pre-commit hook repeats the staged check as defense in depth;

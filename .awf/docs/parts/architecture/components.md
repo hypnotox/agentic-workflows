@@ -151,7 +151,7 @@
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension,
   `templates/pi/awf-handoff/` contains the main-session handoff state machine, and
-  `templates/pi/awf-dashboard/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, provisional identity state machine, tools, widget, overlay, and publication wrapper
+  `templates/pi/awf-dashboard/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, bounded provisional identity state machine, closed tools, generation-ordered canonical refresh, muted below-editor footer-parity widget, overlay, and publication wrapper
   for the descriptor-derived protocol; `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
   single-use private command after settlement, runs the cancellable countdown and revalidation,
   creates a parent-linked session, independently validates and copies the matching active association during `newSession.setup`, restores it before kickoff,
@@ -170,8 +170,7 @@
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% statement, branch,
   function, and line coverage harness for every dogfooded generated extension. Cross-language tests
   hold descriptor validation and recovery behavior in parity; an in-memory pinned Pi runtime loads all
-  three factories and exercises producer exchange, provisional settlement, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, widget and overlay
-  registration, lifecycle append and shutdown drain, canonical refresh, and degraded mode. Its
+  three factories and exercises producer exchange, provisional settlement and failure bounds, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, unique-entry footer accounting with top-level subagent usage, badge placement and styling, finding-owned mutation rejection, widget and overlay registration, lifecycle append and shutdown drain, canonical generation races and cancellation, and degraded mode. Its
   repo-keyed persistent container snapshots current source and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.
