@@ -54,7 +54,11 @@ packet runs the command itself.
 
 2. **Two caller camps, unchanged in spirit.** Implementer and orientation callers run concise
 `awf context` and drill down with `awf topic` on demand; complete-authority callers (reviewer
-dispatches and `adr-lifecycle`) use `awf context --full`. No third mode is introduced.
+dispatches and `adr-lifecycle`) use `awf context --full`. No third mode is introduced. The
+`tooling/context-and-topic:context-full-authority-packet` claim text changes accordingly: its
+complete-authority caller set grows to include the resync dispatch, and its delivery clause
+becomes instruct-style, the dispatching parent passing resolved arguments rather than pasted
+output.
 
 3. **Seven implementer skills gain a concise instruct-style grounding step**, each placed at
 the natural moment and carrying a one-clause in-place rationale (orient, then drill down with
@@ -87,11 +91,22 @@ reconciliation rule and both deliberate omissions.
 
 7. **Enforcement extends in the same commit as the template edits.**
 `TestManagedContextCallersChooseProjection` adds the seven implementer skills to its concise
-map and `reviewing-plan-resync` to its complete map, and requires a context invocation to be
-present for concise-map skills exactly as it already does for complete-map skills.
+map and `reviewing-plan-resync` to its complete map; the test's existing presence requirement
+then covers all twelve mapped skills, the enlarged maps being the only new enforcement. The
+added claim `rendering/workflow-skill-templates:implementer-context-grounding` is an invariant
+with `Backing: test`, proven by an
+`invariant: rendering/workflow-skill-templates:implementer-context-grounding` marker on that
+same test alongside its existing marker.
 
-8. **Adopter visibility.** The template changes are adopter-visible skill drift resolved by
+8. **Publication safety.** The new and converted grounding prose interpolates no new template
+vars; where a grounding step sits inside an existing conditional branch it degrades to
+coherent generic prose when the var is unset, preserving the no-unresolved-token invariant.
+
+9. **Adopter visibility.** The template changes are adopter-visible skill drift resolved by
 next sync; `changelog/CHANGELOG.md` gains an `[Unreleased]` entry in the same change.
+
+10. **Index currency.** Every status transition of this ADR regenerates
+`docs/decisions/INDEX.md` via `./x sync` in the same commit.
 
 ## State changes
 
@@ -125,6 +140,7 @@ reviewer bullet, each carrying a one-clause rationale.
 | `--full` everywhere, implementers included | Bloats implementer context with detail they may never need; concise plus on-demand drilldown fits the orientation posture. |
 | Core-four scope (executing-plans, subagent-driven-development, writing-plans, bugfix) first | Leaves the chain half-grounded for little savings; each remaining edit is a small template addition following the same pattern. |
 | Promote the reconciliation rule to AGENTS.md | Guide bloat for a rule that becomes self-executing once every skill carries a correctly-projected command; the narrative and spine test are the durable homes. |
+| One shared grounding include instead of seven per-skill steps | The placement moment and the path source differ per skill (task paths, plan header, suspect files, refactor scope); a shared partial cannot parameterize the step without the deferred template-partials work. |
 | Close the `reviewing-adr` gap too | Its reviewer's authority inputs are the ADR text and destination topics; `awf context` on an ADR path answers a different question (lifecycle progress). A topic-query hint serves the actual need. |
 
 ## Status history
