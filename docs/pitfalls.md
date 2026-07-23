@@ -1113,5 +1113,37 @@ the plan one last time, update Notes while the plan is still active, then freeze
 finds an omission afterward, preserve history and record the miss in the retrospective rather
 than making the completed plan falsely look prescient.
 
+## A concurrent-number ADR renumber must fold into the rebase replay
+
+_Domains: adr-system_
+
+When a concurrent effort merges an ADR that takes your number, neither renumber timing
+works as a separate commit: before the rebase the contiguity check fails (your tree lacks
+the other ADR, so 0150 -> 0152 is an illegal gap and recorded gaps are legacy-only), and
+after the rebase `awf check --staged` fails because it loads the HEAD snapshot too, and
+every intermediate rebased commit carries both files under the duplicate number. The
+working move (ADR-0152 renumber, 2026-07-23) is to fold the `git mv` plus content edits
+into the conflict resolution of the ADR's introducing commit during the replay; rename
+detection then carries later ADR-editing commits onto the new path. The residue is one
+advisory `adr-status-cochange` audit error (regenerating INDEX.md mid-replay is impossible
+while duplicates exist, so the introducing commit lands without it) and stale numbers in
+the replayed subjects; either rewrite the unmerged branch again to polish them or accept
+and record the audit error before merge.
+
+## Pi extension failure paths must guard old-session UI calls
+
+_Domains: rendering_
+
+After Pi begins disposing the old session, `ctx.ui` calls on it can throw. An unguarded
+`ctx.ui.notify` added to the awf-handoff catch block masked the rethrown original error,
+and only the pinned-fork container lane caught it ("post-teardown replacement failure was
+not reported through the extension"); the fake harness models a healthy UI and passed.
+In an extension failure path, wrap recovery UI writes in a swallowing try/catch so the
+rethrow stays the single failure report, order the editor content before any notice that
+claims it exists, and run the full gate tier before concluding any extension
+failure-path change: only the real-Pi lane exercises the disposal boundary. Same session,
+related trap: sanity-check template mutations on file copies, not `git checkout --`,
+which silently reverts a working tree full of unstaged sibling edits.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

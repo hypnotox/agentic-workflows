@@ -41,8 +41,8 @@
     ".claude/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:b409e1ae497cf70834721d95e03bbe765e7951cf015dbd5cba81615e41726f7b",
-      "configHash": "sha256:ae048b66aafe5ab823b45190c94846b63f42c03a110eace87726b6130290954c",
-      "outputHash": "sha256:001e2e17bd8459818a42428efa15280b4533fda92c9a084254f05e2a12e062e6"
+      "configHash": "sha256:75d730ff110b4b1966ee0ac5eb098fe3936851478d9740f0e75f92e6803bbde5",
+      "outputHash": "sha256:a1271f7e62ddd0771900cec3fa1f0587894938c1adc21e3c3f8f01663713b976"
     },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
@@ -161,8 +161,8 @@
     ".pi/agents/code-reviewer.md": {
       "templateId": "agents/code-reviewer.md.tmpl",
       "templateHash": "sha256:b409e1ae497cf70834721d95e03bbe765e7951cf015dbd5cba81615e41726f7b",
-      "configHash": "sha256:d073d05fd0fe85747ef8893f70950df04d060a6c07eee54dfa77a039d9620682",
-      "outputHash": "sha256:001e2e17bd8459818a42428efa15280b4533fda92c9a084254f05e2a12e062e6"
+      "configHash": "sha256:c1aacec5fd8467376aa622bc9c4f7a1c9ab0a6c105eb0d34a530536f8a4b95f7",
+      "outputHash": "sha256:a1271f7e62ddd0771900cec3fa1f0587894938c1adc21e3c3f8f01663713b976"
     },
     ".pi/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
@@ -414,8 +414,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:e67288ef6368119de7c29b72be17f1aa7a3a6b7ecbd43d31d75214a152d69cbc",
-      "outputHash": "sha256:588b0bd9508fe9c9d43c9af73088d122d5efa6ab8055d03ea2bffcbaf0dbaa85"
+      "configHash": "sha256:55cf3ff202ca4104b2dedd2cfbcadce67367a6689d2fad86bda26d814b5de2c4",
+      "outputHash": "sha256:4b53adb079f40b0e273c498308088730f256c7272e70375b4b166846f2ae830f"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
