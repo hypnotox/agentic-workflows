@@ -161,12 +161,17 @@ func HeadHash(repoRoot string) (string, error) {
 // GlobalExcludePatterns returns the ignore patterns git applies from outside
 // the repository: core.excludesfile from the system /etc/gitconfig and from
 // the user's ~/.gitconfig. go-git's worktree status consults only the repo's
-// own .gitignore chain and .git/info/exclude, so every status-based path
-// universe must inject these itself to mirror `git status`. Global patterns
-// follow system patterns so the user's rules win where they conflict, matching
-// git's precedence. Absent or unreadable sources contribute no patterns: the
-// callers read repository state, and a missing optional ignore source must not
-// fail them.
+// own .gitignore chain and .git/info/exclude, so a status-based path universe
+// that consumes untracked entries must inject these itself to mirror
+// `git status`. Global patterns follow system patterns so the user's rules win
+// where they conflict, matching git's precedence; the ordering is exercised
+// only against the real root filesystem because LoadSystemPatterns hardcodes
+// /etc/gitconfig. One narrow divergence from git remains, shared with the
+// audit rule this helper was extracted from: go-git composes Excludes after
+// the repo's .gitignore chain, so a repo-level negation cannot re-include a
+// globally-ignored file. Absent or unreadable sources contribute no patterns:
+// the callers read repository state, and a missing optional ignore source must
+// not fail them.
 func GlobalExcludePatterns() []gitignore.Pattern {
 	root := osfs.New("/")
 	system, _ := gitignore.LoadSystemPatterns(root)
