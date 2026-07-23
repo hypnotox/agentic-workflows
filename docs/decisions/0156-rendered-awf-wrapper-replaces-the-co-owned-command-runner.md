@@ -99,17 +99,22 @@ Verified couplings that shape the redesign:
    hand-written `./x` carrying its `gate`/`test` bodies with `gateCmd: ./x gate` and
    `testCmd: ./x test`; the hand-written file is added only after the sync that prunes the old
    rendered `x`.
-9. **The three added claims are invariant claims with `Backing: test`.**
-   `runner-pure-forwarder`, `runner-resolution-pinned-first`, and `hooks-commands-resolvable` are
-   each directly testable (wrapper render shape, resolution behaviour, validation errors) and are
-   proven by markers on the corresponding render/validation tests when their prose is authored at
-   application time.
-10. **Documentation travels with the change.** The same effort refreshes every authored and
+9. **The outgoing co-owned runner is backed up, not silently deleted.** When a sync's lock prune
+   removes the previously rendered co-owned runner path `x` (the only output that carried
+   in-place sections), the file is backed up to `x-bak` in place of deletion, mirroring the
+   foreign-file backup precedent, so an adopter's hand-authored in-place verb bodies stay on disk
+   for the one-time hand-port instead of vanishing into git history.
+10. **The four added claims are invariant claims with `Backing: test`.**
+    `runner-pure-forwarder`, `runner-resolution-pinned-first`, `runner-prune-backup`, and
+    `hooks-commands-resolvable` are each directly testable (wrapper render shape, resolution
+    behaviour, prune backup, validation errors) and are proven by markers on the corresponding
+    render/validation tests when their prose is authored at application time.
+11. **Documentation travels with the change.** The same effort refreshes every authored and
     rendered surface that describes the co-owned runner contract: the tooling domain narrative
     part, the working-with-awf and agents-md-standard template prose on the managed runner, the
     AGENTS.md runner-toggle sentence, the configspec `runner.enabled` description, and the
     generated config reference for the new `awfInvokeCmd` descriptor.
-11. **This redefines the runner contract ADR-0101 established.** ADR-0101 remains frozen history;
+12. **This redefines the runner contract ADR-0101 established.** ADR-0101 remains frozen history;
     the change lands entirely through the State changes below, and incremental (batched) V2
     application is expected given the breadth.
 
@@ -117,6 +122,7 @@ Verified couplings that shape the redesign:
 
 - add `rendering/companion-scripts:runner-pure-forwarder`
 - add `rendering/companion-scripts:runner-resolution-pinned-first`
+- add `rendering/companion-scripts:runner-prune-backup`
 - add `config/validation:hooks-commands-resolvable`
 - update `rendering/companion-scripts:runner-singleton-toggle`
 - update `rendering/companion-scripts:runner-example-adopted`
@@ -158,7 +164,8 @@ Harder / accepted trade-offs:
   fallback-arm rework across 17 templates is a wide mechanical surface; the dead-code and coverage
   gates bound it.
 - Adopters who used the co-owned runner's in-place sections (the example adopter is the known
-  case) must hand-port their project verbs to their own runner file once.
+  case) must hand-port their project verbs to their own runner file once; the pruned file stays
+  on disk as `x-bak` (Decision item 9), with git history as the durable fallback.
 - **Runner-absent adopters gain an unsolicited root file on upgrade.** Seeding an absent `runner`
   key to enabled means an adopter who never opted into a runner receives a new tracked `awf` file
   at the root; accepted because the wrapper is the new baseline contract the rendered hooks and
