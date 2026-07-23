@@ -84,7 +84,7 @@ causal position against the association event is removed from lifecycle validati
 Go projection and the TypeScript mirror. The trajectory-family membership check remains. The
 pre-association-anchor scenario stays enforced where it is actually decidable: the producer
 explicitly appends `session_detached` with reason `pre-association-anchor` (ADR-0146 decision
-9); the ledger-side clause was an unsound causal proxy for tree position and is not replaced.
+10); the ledger-side clause was an unsound causal proxy for tree position and is not replaced.
 
 6. The resulting resolution shifts in both directions are intended. Fork and resume edges that
 ambiguity silently dropped (including the fork edge on every fork today) are restored, and
@@ -120,7 +120,7 @@ to it must be rewritten to the new semantics.
 that resumes a pre-association anchor without the producer's explicit `session_detached` is no
 longer caught by the projection. This is accepted because the clause was unsound under either
 semantics, only ever fired when co-anchoring happened not to suppress it, and the producer
-contract from ADR-0146 decision 9 remains the enforced boundary. The corresponding lifecycle
+contract from ADR-0146 decision 10 remains the enforced boundary. The corresponding lifecycle
 test is removed or rewritten with the clause.
 - `effort_reopened` anchor references lose nothing in practice: the causal link to the origin
 effort travels in the explicit predecessor frontier. A hypothetical event relying solely on the
