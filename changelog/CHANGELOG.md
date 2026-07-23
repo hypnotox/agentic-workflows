@@ -40,6 +40,16 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- The Pi target's governed subagent tools resolve an omitted `model` through extension-owned local
+  per-role preferences before inheriting the parent: a user-global `awf-subagents.json` and a
+  gitignored project-local `awf-subagents.local.json` set a default plus per-role models
+  (grounding, exploration, review, implementation), strictly validated at session start (any
+  invalid entry blocks implicit routing visibly while explicit per-call models keep working) and
+  revalidated against the live registry before every queued child, with routing-source
+  diagnostics. The new `/awf-subagent-models` TUI wizard is the atomic setup and repair path,
+  with a registry-gated recommended preset, informed per-model pricing selectors, and save-time
+  gitignore enforcement for the project-local file. Rendered guidance now steers long
+  implementations toward sequential implementation subagents.
 - `awf context` output is grouped by topic: each applicable topic renders its authority exactly once
   per invocation (selectors, a matched-path count with an `awf topic <id> --coverage` drilldown, the
   uncapped claim-ID roster, and the deduplicated direct-claim detail with an explicit detail-omission
