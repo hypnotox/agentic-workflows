@@ -55,3 +55,15 @@ Backing: test
 No template under templates/ references any of the removed doc-path or project-specific vars (workflowDoc, debuggingDoc, pitfallsDoc, roadmapDoc, stateDocsPath, oracleStateDoc, autonomousAdrRef, hostGitAdrRef, keyInvariantAdrRef, noDivingAdrRef, perTaskReviewAdrRef); doc references are supplied through the layout instead.
 Origin: ADR-0148
 Backing: test
+
+### `invariant: guide-entry-point-routing`
+
+The rendered guide's workflow section is a catalog-derived entry-skill trigger table: every catalog entry and task skill appears iff enabled, and none of the evicted prose classes renders (chain diagram, warrant definitions, plan-form contract, V2 batch semantics, exploration/subagent policy, duplicated gate sentence).
+Origin: ADR-0157
+Backing: test
+
+### `invariant: working-memory-single-home`
+
+The file skeleton, ground rules, and just-in-time retrieval prose render canonically in the workflow doc's working-memory section; the guide, the shared checkpoint partials, and the chain section point to that content rather than carrying copies of it.
+Origin: ADR-0157
+Backing: test

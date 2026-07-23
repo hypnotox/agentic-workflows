@@ -9,6 +9,16 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Features
+- The rendered agent guide is now an entry-point router (ADR-0157): the workflow section becomes a
+  catalog-derived entry-skill trigger table, the working-memory and awf-setup sections shrink to
+  routing minimums, and the working-memory protocol moves to a new canonical working-memory section
+  in the workflow doc, with the shared checkpoint partials, the brainstorming skill, and the chain
+  section re-pointed there. The neutral guide and singleton-doc render now honors a project-level
+  session-handoff signal, so Pi-gated singleton prose renders for session-handoff-capable projects.
+  Adopters re-render a much smaller AGENTS.md on their next `awf sync`. If you replaced the workflow
+  doc's chain section with a full-replacement part, the checkpoint protocol prose relocated to the
+  new working-memory section and your part will not receive it; re-derive your part or adopt the
+  new section.
 - Workflow skill templates now ground implementers in current-state authority: seven
   implementer-chain skills (executing-plans, subagent-driven-development, writing-plans,
   bugfix, debugging, tdd, refactor-coupling-audit) instruct a concise `awf context` run over

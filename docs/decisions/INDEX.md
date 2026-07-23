@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0156: Rendered awf wrapper replaces the co-owned command runner](0156-rendered-awf-wrapper-replaces-the-co-owned-command-runner.md) (Proposed)
-- [ADR-0157: Slim the agent guide to entry-point routing](0157-slim-the-agent-guide-to-entry-point-routing.md) (Implementing)
 
 ## History
 
@@ -161,3 +160,4 @@
 - [ADR-0153: Split overloaded invariant claims into focused claims](0153-split-overloaded-invariant-claims-into-focused-claims.md) (Implemented)
 - [ADR-0154: Trajectory-close-owned anchor claims for causal resolution](0154-trajectory-close-owned-anchor-claims-for-causal-resolution.md) (Implemented)
 - [ADR-0155: Implementer-side context grounding in workflow skill templates](0155-implementer-side-context-grounding-in-workflow-skill-templates.md) (Implemented)
+- [ADR-0157: Slim the agent guide to entry-point routing](0157-slim-the-agent-guide-to-entry-point-routing.md) (Implemented)

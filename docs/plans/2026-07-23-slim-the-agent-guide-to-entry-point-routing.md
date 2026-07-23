@@ -2,7 +2,7 @@
 date: 2026-07-23
 adrs:
   - 0157
-status: Proposed
+status: Implemented
 ---
 # Plan: Slim the agent guide to entry-point routing
 
@@ -209,3 +209,5 @@ docs(config): conform awf's own guide parts to 0157 and close out
 - The 0156 effort shares this checkout and edits `.awf/parts/agents-doc/awf-setup.md` content; task 4.1 carries the ordering rule. Fresh `git status` before every staging step; pathspec staging only.
 - The `Trigger` strings are catalog metadata for the guide table; skill SKILL.md frontmatter descriptions are unchanged.
 - Out of scope: adopter-side part updates (the changelog note covers them); the reviewer-spine dedup backlog item.
+- Phase 2 execution deviations: TestAgentsDocTemplate supplies taskSkillRows directly in golden data because renderGolden bypasses the project layer, with catalog derivation asserted in TestAgentsDocTaskSkillsGating; the 2.2a/2.5 assertions landed as TestNeutralSingletonSessionHandoffSignal in target_test.go and TestWorkingMemorySingleHomeSurfaces in spine_test.go; docs/config-reference.md regenerated as a side effect of the catalog field.
+- Phase 4 execution deviations: the identity part also drops the hand-maintained-git-hook sentence (outside task 4.2's closed keep list; the local-hooks reality is covered by docs/workflow.md); the working-memory part renders `/awf-resume-effort <effort-id>` in an inline code span (the task's sentence is quoted inside a code span and cannot show inner backticks); the commands-part move survives dedup as only two sentences (the `awf check --staged` index-handshake sentence and the retention/purge explicit-maintenance sentence), everything else already rendering in working-with-awf, the guide invariants section, or the rendering-domain surfaces.

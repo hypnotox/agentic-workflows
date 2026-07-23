@@ -1,3 +1,3 @@
 {{=awf:sectionDefault}}
 
-Working memory remains optional and effort identity is one-way. Do not create a memory file merely to satisfy telemetry or handoff. When an effort does use memory, keep an exact `Effort: <active-effort-id>` line in the file and validate it before structured resume or Pi handoff; the ledger never stores or infers a memory path. In a fresh Pi session, continue an explicitly named active effort with `/awf-resume-effort <effort-id>`; completed efforts must be reopened separately, and abandoned or pruned efforts cannot be resumed. Pi `handoff_session` is only for a validated memory-backed effort whose identity matches the active association; checkpoint-less work stays in-session or uses structured resume.
+In a fresh Pi session, continue an explicitly named active effort with `/awf-resume-effort <effort-id>`.

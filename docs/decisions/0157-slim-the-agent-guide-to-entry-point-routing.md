@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0157: Slim the agent guide to entry-point routing
@@ -68,3 +68,5 @@ A verified inventory (fresh-context grounding check, 2026-07-23) established the
 - 2026-07-23: Implementing; content-sha256: ac78c206a345e6fb904b2b90fe65a2aa85097c96aeeffd5a8a97a028742ec39a
 - 2026-07-23: Applied; state-sequence: 37; operations: update `rendering/workflow-skill-templates:workflow-chain-adr-before-plan`
 - 2026-07-23: Applied; state-sequence: 38; operations: update `rendering/workflow-skill-templates:plan-task-detail-modes`
+- 2026-07-23: Applied; state-sequence: 39; operations: add `rendering/guide-and-doc-templates:guide-entry-point-routing`, add `rendering/guide-and-doc-templates:working-memory-single-home`
+- 2026-07-23: Implemented; content-sha256: ac78c206a345e6fb904b2b90fe65a2aa85097c96aeeffd5a8a97a028742ec39a

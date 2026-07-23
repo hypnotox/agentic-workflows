@@ -1,3 +1,0 @@
-{{=awf:sectionDefault}}
-
-For Pi, governed workflow and task selection goes through the single discoverable `awf-workflow` router. Call its `awf_workflow` tool alone with a semantic skill name; never load a governed body directly. The tool settles or resumes explicit effort identity, durably applies the catalog-mapped lifecycle effect, and only then returns the fixed body pre-rendered under `.pi/awf-workflows/`. Each Pi chain handoff calls the router for its successor so one protocol-2 transition closes the current phase and enters the next without a committed gap. Non-Pi targets retain their target-native skill entry points.

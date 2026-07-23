@@ -1180,9 +1180,9 @@ func TestPiSessionHandoffWorkflow(t *testing.T) {
 // contract: the neutral (once-rendered) guide and workflow doc receive a
 // project-level targetSessionHandoff signal, true iff any enabled target
 // supports session handoff, so their Pi-gated prose renders for a
-// handoff-capable target set and stays absent otherwise. These are the
-// both-branch assertions the final ADR-0157 batch folds into
-// guide-entry-point-routing's proof set; the marker lands with that batch.
+// handoff-capable target set and stays absent otherwise. These both-branch
+// assertions belong to guide-entry-point-routing's proof set.
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
 func TestNeutralSingletonSessionHandoffSignal(t *testing.T) {
 	piGated := []string{
 		"In Pi, enter every governed skill through the `awf_workflow` router",

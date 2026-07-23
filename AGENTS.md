@@ -7,14 +7,11 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:edit awf-setup: from .awf/parts/agents-doc/awf-setup.md -->
 ## Working with awf
 
-This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree, once per enabled adapter runtime. Every rendered file is generated: never hand-edit one; change the config and re-render.
-
-- **Toggle an artifact or adapter**: `awf enable <kind> <name>` / `awf disable <kind> <name>` (kinds: `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`), or edit the enable arrays in `.awf/config.yaml` directly. `target` selects an adapter runtime (e.g. `awf enable target cursor`); adapter artifacts render once per enabled target. `bootstrap` toggles the self-pinning `.awf/bootstrap.sh` installer singleton (which awf itself disables, building from source). `hooks` toggles the rendered git-hook payloads under `.awf/hooks/` (enabled here; the executable `.githooks/` stubs delegate to them; awf never activates hooks itself). `runner` toggles the co-owned command-runner `x` (which awf itself disables, keeping its from-source `./x`; the `examples/sundial` adopter demonstrates it). `bootstrap`/`hooks`/`runner` are nameless singleton toggles (`awf enable runner`, no name). The workflow-chain skills reference one another by name; `awf enable` enables a skill's full requirement closure and `awf disable` refuses while enabled skills still require it (`--with-dependents` disables the unit together).
-- **Set a variable**: edit `vars` in `.awf/config.yaml`.
-- **Override one section of a target**: drop a convention part at `.awf/<kind>/parts/<target>/<section>.md`; it replaces that section's body and inherits the rest of the template default. Re-inject the default inside your part with the `sectionDefault` placeholder to *extend* it rather than discard it. For a doc that path is `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton (this guide, the ADR/plans templates) it is `.awf/parts/<kind>/<section>.md`.
-- **After any config or part edit**: run `awf sync` to re-render, then `awf check` to confirm there is no drift, and commit the rendered files alongside the config change.
+This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one. Change the config, a var, or a convention part, then run `awf sync` and `awf check`, and commit the rendered files with the config change. Toggle artifacts and adapters with `awf enable <kind> <name>` / `awf disable <kind> <name>`.
 
 See [docs/working-with-awf.md](docs/working-with-awf.md) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
+
+awf itself disables the `bootstrap` and `runner` singletons, building from source and keeping its from-source `./x`; the `examples/sundial` adopter demonstrates the runner artifact. The rendered git-hook payloads under `.awf/hooks/` are enabled here; the executable `.githooks/` stubs delegate to them, and awf never activates hooks itself.
 
 
 <!-- awf:edit you-and-this-project: from .awf/parts/agents-doc/you-and-this-project.md -->
@@ -26,7 +23,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks multi-runtime skills, review agents, docs, and this agent guide from a committed `.awf/` config tree, and mechanically guards drift, frontmatter, current-state provenance, and invariant backing. The project-owned workflow chain is rendered in each target's native form. Pi receives generated subagent, handoff, and workflow-dashboard extensions: four governed child tools, parent-linked continuation from durable checkpoints, explicit effort/route/phase lifecycle, privacy-minimal resident telemetry, canonical metrics and diagnostics, and a trajectory-aware overlay plus muted below-editor footer-parity widget. The widget uses `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]`, counts unique active-branch assistant usage and public current-context usage exactly once, and never imports private footer state. The Go-owned ledger and diagnostic engine remain authoritative; Pi writes conforming events, re-resolves finding-owned mutations against the current frontier, and applies generation-ordered canonical refreshes without collecting prompts, assistant text, tool arguments, or command output. A hand-maintained local git hook enforces the gate. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks multi-runtime skills, review agents, docs, and this agent guide from a committed `.awf/` config tree, and mechanically guards drift, frontmatter, current-state provenance, and invariant backing. The project-owned workflow chain is rendered in each target's native form, and Pi receives generated subagent, handoff, and workflow-dashboard extensions. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
@@ -47,7 +44,7 @@ Hard rules every change must respect:
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
 - **Binary-version gate.** Every gated command (`sync`, `check`, `invariants`, `audit`, `metrics`, `doctor`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
-<!-- awf:edit workflow: from .awf/parts/agents-doc/workflow.md -->
+<!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
 Non-trivial work starts with `awf-brainstorming`: it settles intent and design, then hands off through the chain (ADR and plan when warranted, implementation, review, retrospective), each skill's terminal step naming its successor.
@@ -65,15 +62,12 @@ In Pi, enter every governed skill through the `awf_workflow` router with the sem
 
 Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
-For Pi, governed workflow and task selection goes through the single discoverable `awf-workflow` router. Call its `awf_workflow` tool alone with a semantic skill name; never load a governed body directly. The tool settles or resumes explicit effort identity, durably applies the catalog-mapped lifecycle effect, and only then returns the fixed body pre-rendered under `.pi/awf-workflows/`. Each Pi chain handoff calls the router for its successor so one protocol-2 transition closes the current phase and enters the next without a committed gap. Non-Pi targets retain their target-native skill entry points.
-
-
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory
 
 `.awf/memory/<effort-slug>.md` (gitignored) holds one working-memory file per in-flight effort. Check `.awf/memory/` when a request implies earlier work to continue, or when a fresh session finds it non-empty and unaccounted for; resume from the file's `Phase:`/`Next:` lines rather than restarting, and ask before resuming anything you cannot verify. Never commit the file or cite it in an ADR, plan, or commit message; delete it when the effort's chain terminates. The checkpoint protocol, file skeleton, and ground rules live in the workflow doc's working-memory section.
 
-Working memory remains optional and effort identity is one-way. Do not create a memory file merely to satisfy telemetry or handoff. When an effort does use memory, keep an exact `Effort: <active-effort-id>` line in the file and validate it before structured resume or Pi handoff; the ledger never stores or infers a memory path. In a fresh Pi session, continue an explicitly named active effort with `/awf-resume-effort <effort-id>`; completed efforts must be reopened separately, and abandoned or pruned efforts cannot be resumed. Pi `handoff_session` is only for a validated memory-backed effort whose identity matches the active association; checkpoint-less work stays in-session or uses structured resume.
+In a fresh Pi session, continue an explicitly named active effort with `/awf-resume-effort <effort-id>`.
 
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
@@ -88,39 +82,7 @@ awf audit: report workflow-conformance findings over an explicit commit range (a
 awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered plans template
 ```
 
-`awf metrics --json` prints the canonical repository-wide metrics projection. Narrow it with
-`--effort`, `--session`, `--phase`, `--since`, and `--until`; export the same projection with
-`awf metrics export --format json`, or validated normalized ledger events with `--format jsonl`.
-`awf doctor --json` applies exact rules plus the configured heuristics to the same selector and is
-read-only and advisory: effort-owned findings do not change its exit status. `awf metrics retain --dry-run --json`
-previews deterministic terminal-effort retention; applying retention or confirmed `awf metrics purge`
-is explicit maintenance, never an agent query action. Lifecycle, repair, and waiver writes use the closed
-`awf metrics lifecycle --request <FILE|-> --json` contract and fail unless durably appended. Protocol
-2 normal chain edges use one `transition-phase` request to close the named start and enter its
-successor, optionally with a route effect. Repair and waiver requests must use the selected finding's
-owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible
-input is rejected without append. In Pi, `[awf:init]` is the bounded provisional state: at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 bytes remain process-local until `awf_workflow` or `/awf-resume-effort <effort-id>` settles identity. The muted below-editor widget totals unique active-branch assistant `input`, `output`, `cacheRead`, `cacheWrite`, and finite permitted cost; cache hit is `cacheRead/(input+cacheRead)`, while `getContextUsage()` supplies only current context percentage and window. Canonical refresh is coalesced, runs metrics then doctor, and rejects completions older than local or canonical generation.
-
-Before every commit, stage the complete transaction, run `awf check --staged`, then run `./x gate`.
-Commit only after both commands pass. The pre-commit hook repeats the staged check as defense in depth;
-it does not replace the agent's explicit validation.
-
-`awf new topic <domain> "<title>"` scaffolds paired current-state metadata and an empty-claim authored
-part without syncing. Replace the anchored path placeholder and generic prose, then author and review
-claims manually. The command prints both repository-relative input paths and does not mutate config,
-the lock, or rendered docs. `awf topic <domain>/<topic>[:<claim>]` queries active state read-only;
-`--history`, `--references`, and `--coverage` independently add direct details, while `--json` changes
-presentation only. Start with `awf context internal/project/context.go` for topic-grouped orientation: each applicable topic renders once with its claim-ID roster, directly marked claim detail, and matched-path count, while effective paths carry classification and attribution; use `awf context --full internal/project/context.go` for the complete applicable authority packet, once per topic, without recursively expanding references or history. Use `awf topic tooling/cli --coverage` to inspect separate domain/topic selectors, current matched paths, and marker sites. `--json` serializes the selected projection for machine consumption (agents should read the text form), and concise JSON has no full block. `awf context --uncovered` reports unowned paths and per-domain uncovered coverage and refuses `--full`; `--staged` evaluates the Git index instead of the working tree. Explicit ADR paths report lifecycle-derived operation progress while treating ADR prose only as pending intent or decision history. Run `./x` without a command to discover the metadata-derived forwarded awf verbs and project-owned verbs available through the runner. `awf check --staged` runs the same index-snapshot
-coverage and the HEAD-to-index claim-transition handshake; the rendered pre-commit hook runs it.
-
-`awf upgrade` migrates the `.awf/` config tree to the current schema and syncs. When the lock carries
-a bridge attestation, plain `awf upgrade` instead performs the final current-state cutover: it verifies
-only the sealed facts (the prepared HEAD and tree digest), journals the deletion of the migration
-approval file and the permanent lock, and promotes the sealed format cutoff and gaps. Attestation and
-readiness reporting live only in the preceding bridge release; this binary consumes seals, it never
-produces them. `awf upgrade --recover` replays the current-state upgrade journal recovery table,
-rolling an interrupted cutover back or cleaning up a committed one, and is the only mode a committed
-journal permits.
+Command specifics, metrics and lifecycle contracts, and upgrade behaviour: see docs/working-with-awf.md.
 
 
 <!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->

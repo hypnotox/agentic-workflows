@@ -9,3 +9,8 @@ unowned or covered by no scoped topic. Add `--staged` to evaluate the immutable
 index universe with the same eligibility and coverage model as staged check.
 `--full --uncovered` is refused because a coverage-gap report is not an authority
 projection.
+
+`awf check --staged` runs the same index-snapshot coverage and the HEAD-to-index
+claim-transition handshake; the rendered pre-commit hook runs it. Applying
+retention or confirmed `awf metrics purge` is explicit maintenance, never an
+agent query action.

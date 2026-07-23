@@ -953,6 +953,7 @@ func TestRefactorCouplingAuditTemplate(t *testing.T) {
 	}
 }
 
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
 func TestAgentsDocTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -1003,8 +1004,7 @@ func TestAgentsDocTemplate(t *testing.T) {
 // shape: the workflow doc carries the working-memory protocol while the guide
 // and the two checkpoint-partial-carrying skill renders (routine via
 // executing-plans, approval via brainstorming) carry only the pointer to it.
-// Proof markers for the two ADR-0157 claims are added with the final Applied
-// batch; a marker naming a not-yet-existing claim ID is a hard error.
+// invariant: rendering/guide-and-doc-templates:working-memory-single-home
 func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	workflowDoc := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
 		"vars":   map[string]any{},
@@ -1371,6 +1371,7 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 // (a hand enumeration could never mention a newer one like
 // refactor-coupling-audit), and disabled ones stay absent (ADR-0046 follow-up
 // sweep; table shape per ADR-0157).
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
 func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	// brainstorming carries a local sidecar: the guide's chain sentence needs a
 	// chain skill in the effective set, but a non-local one would demand its
