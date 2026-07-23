@@ -393,6 +393,7 @@ test("invalid preference files block implicit routing visibly while explicit mod
     ["non-object", JSON.stringify(["a/b"]), /must be a JSON object/],
     ["read failure", new Error("permission denied"), /permission denied/],
     ["non-error rejection", { reject: "disk offline" }, /disk offline/],
+    ["nullish rejection", { reject: null }, /awf-subagents\.json: null/],
     ["unregistered model", JSON.stringify({ grounding: "ghost/model" }), /is not registered/],
     ["unauthenticated model", JSON.stringify({ grounding: "locked/model" }), /no configured authentication/],
   ];
@@ -707,6 +708,24 @@ test("wizard detects stale concurrent writers and surfaces every filesystem fail
   renameError.deps.unlink = async () => { throw new Error("already gone"); };
   await renameError.run();
   assert.match(renameError.notifications.at(-1)![0] as string, /Save failed: cross-device link/);
+});
+
+test("wizard warns immediately when a saved selection blocks implicit routing", async () => {
+  const prefs: Record<string, string> = {};
+  const h = wizard({
+    preferences: prefs,
+    answers: [GLOBAL_SCOPE_LABEL, true, CONFIGURE_ANSWER, "locked/model", UNSET_ANSWER, UNSET_ANSWER, UNSET_ANSWER, UNSET_ANSWER, true],
+  });
+  registerPresetModels(h);
+  let lastWrite = "";
+  h.deps.writeFile = async (path: string, data: string, options2: { mode: number }) => { lastWrite = data; h.writes.push({ op: "write", path, data, mode: options2.mode }); };
+  h.deps.rename = async (from: string, to: string) => { prefs[to] = lastWrite; h.writes.push({ op: "rename", path: from, to }); };
+  await h.run();
+  const [message, severity] = h.notifications.at(-1) as [string, string];
+  assert.equal(severity, "error");
+  assert.match(message, /Preferences saved, but they are invalid and block implicit routing:/);
+  assert.match(message, /locked\/model has no configured authentication/);
+  assert.match(message, /Run \/awf-subagent-models to repair\./);
 });
 
 test("wizard success refreshes the store so omitted models route by the new preferences", async () => {

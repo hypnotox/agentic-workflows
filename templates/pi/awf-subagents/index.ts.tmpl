@@ -139,6 +139,10 @@ function errorText(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function errorCode(error: unknown): string | undefined {
+  return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
+}
+
 function parsePreferenceSource(scope: "global" | "project", path: string, raw: string): PreferenceSourceState {
   const source = emptyPreferenceSource(scope, path);
   let parsed: unknown;
@@ -186,7 +190,7 @@ export function createPreferenceStore(deps: ExtensionDependencies) {
     let raw: string;
     try { raw = await readFile(path, "utf8"); }
     catch (error) {
-      if ((error as { code?: string }).code === "ENOENT") return emptyPreferenceSource(scope, path);
+      if (errorCode(error) === "ENOENT") return emptyPreferenceSource(scope, path);
       const source = emptyPreferenceSource(scope, path);
       source.errors.push(`${path}: ${errorText(error)}.`);
       return source;
@@ -612,7 +616,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       let snapshot: string | undefined;
       try { snapshot = await deps.readFile(scope.path, "utf8"); }
       catch (error) {
-        if ((error as { code?: string }).code !== "ENOENT") { ctx.ui.notify(`Cannot read ${scope.path}: ${errorText(error)}`, "error"); return; }
+        if (errorCode(error) !== "ENOENT") { ctx.ui.notify(`Cannot read ${scope.path}: ${errorText(error)}`, "error"); return; }
         snapshot = undefined;
       }
       const currentLines = scope.errors.length > 0 ? scope.errors : Object.entries(scope.values).map(([key, value]) => `${key}: ${value}`);
@@ -667,7 +671,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
             let existing = "";
             try { existing = await deps.readFile(gitignorePath, "utf8"); }
             catch (error) {
-              if ((error as { code?: string }).code !== "ENOENT") { ctx.ui.notify(`Cannot read ${gitignorePath}: ${errorText(error)}`, "error"); return; }
+              if (errorCode(error) !== "ENOENT") { ctx.ui.notify(`Cannot read ${gitignorePath}: ${errorText(error)}`, "error"); return; }
             }
             const separator = existing === "" || existing.endsWith("\n") ? "" : "\n";
             try { await deps.writeFile(gitignorePath, `${existing}${separator}${relative}\n`, { mode: 0o644 }); }
@@ -680,7 +684,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       let latest: string | undefined;
       try { latest = await deps.readFile(scope.path, "utf8"); }
       catch (error) {
-        if ((error as { code?: string }).code !== "ENOENT") { ctx.ui.notify(`Cannot re-read ${scope.path}: ${errorText(error)}`, "error"); return; }
+        if (errorCode(error) !== "ENOENT") { ctx.ui.notify(`Cannot re-read ${scope.path}: ${errorText(error)}`, "error"); return; }
         latest = undefined;
       }
       if (latest !== snapshot) {
@@ -698,6 +702,11 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       }
       await preferences.reload();
       preferences.validateAgainstRegistry(ctx);
+      const saved = preferences.state();
+      if (saved.blocked) {
+        ctx.ui.notify(`Preferences saved, but they are invalid and block implicit routing: ${saved.errors.join(" ")} ${PREFERENCES_REPAIR}`, "error");
+        return;
+      }
       ctx.ui.notify("Subagent model preferences saved.", "info");
     },
   });

@@ -622,6 +622,7 @@ func TestPiSubagentModelWizard(t *testing.T) {
 		`modified concurrently`,
 		`Subagent model preferences unchanged.`,
 		`Subagent model preferences saved.`,
+		`Preferences saved, but they are invalid and block implicit routing:`,
 	} {
 		if !strings.Contains(content, want) {
 			t.Errorf("Pi extension missing wizard contract %q", want)

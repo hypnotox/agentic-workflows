@@ -477,3 +477,12 @@ as phase 1.
   `ctx.ui.select`/`ctx.ui.confirm` dialogs (cancel = undefined/false) rather than a `ui.custom`
   component, with the TUI gate on `ctx.mode !== "tui"`; the resolution chain and the wizard's
   routing preview share one `preferredReference` helper so the precedence logic exists once.
+- Review-noted deviations: the per-tool four-argument `resolveChildModel` call-shape assertions
+  live in `TestPiSubagentModelRouting`'s per-role block loop rather than
+  `TestPiSubagentToolBoundaries` (equivalent coverage, different home than task 1.4's text). The
+  working-with-awf Pi section documents the wizard command unconditionally, following that doc's
+  established pattern of naming Pi tools in its inherently Pi-scoped section; ADR-0151 Decision
+  8's Pi-conditional-branch constraint governs the shared skill and agent-guide surfaces. The
+  implementation review added a post-save validity notice: a save whose content blocks implicit
+  routing reports the error list and repair pointer immediately instead of a plain success
+  notice.
