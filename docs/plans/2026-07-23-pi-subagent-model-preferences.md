@@ -22,7 +22,7 @@ strict shape validation, session-start registry validation, blocked-state semant
 `resolveChildModel` to the ADR's precedence chain with per-call registry revalidation, extends the
 routing diagnostics, documents the preference behavior in working-with-awf, and applies the first
 ADR batch (operations 1-3, ADR flips to Implementing). Phase 2 updates the rendered dispatch
-guidance (agent guide, two execution skills) with no claim operations. Phase 3 adds the `/awf-subagent-models` wizard command with atomic
+guidance (agent guide, two execution skills, working-with-awf) with no claim operations. Phase 3 adds the `/awf-subagent-models` wizard command with atomic
 persistence and the recommended preset, applies the final batch (operation 4), and flips the ADR
 to Implemented and this plan to Implemented. Each phase's closing commit is one staged transaction
 validated by `awf check --staged` and `./x gate`.
@@ -41,7 +41,7 @@ validated by `awf check --staged` and `./x gate`.
   - `templates/agents-doc/AGENTS.md.tmpl` (phase 2)
   - `templates/skills/subagent-driven-development/SKILL.md.tmpl` (phase 2)
   - `templates/skills/executing-plans/SKILL.md.tmpl` (phase 2)
-  - `templates/docs/working-with-awf.md.tmpl` (phases 1 and 3)
+  - `templates/docs/working-with-awf.md.tmpl` (phases 1, 2, and 3)
   - Rendered outputs of all of the above via `./x sync` (`.pi/extensions/awf-subagents/index.ts`,
     `AGENTS.md`, `docs/working-with-awf.md`, per-target skill renders, `docs/decisions/INDEX.md`,
     domain/topic docs, `.awf/awf.lock`); stage whatever `git status` shows changed after sync.
@@ -275,7 +275,16 @@ pairing rule is why it cannot be sliced.
   form); both must stay target-generic with no Pi command or tool name (the existing
   `skill-prose-tool-agnostic` render test fails otherwise).
 
-- [ ] **Task 2.3: Sync, validate, and commit phase 2.** Run `./x sync`; stage the template edits
+- [ ] **Task 2.3: Append the dispatch steer to working-with-awf.** In
+  `templates/docs/working-with-awf.md.tmpl`, append to the workflow-oriented prose of the
+  `### Pi workflow subagents` section (after the paragraph task 1.6 added) one qualifying-form
+  sentence carrying the same steer as tasks 2.1 and 2.2: long implementations should favor
+  sequential implementation subagents so the orchestrating parent stays lean, with length and
+  parent-context pressure as explicit reasons and coupling as the residual reason to stay inline.
+  Target-generic wording for the steer itself (no new tool names beyond what the section already
+  documents).
+
+- [ ] **Task 2.4: Sync, validate, and commit phase 2.** Run `./x sync`; stage the template edits
   plus rendered outputs; run `awf check --staged` (clean) and `./x gate` (exit 0). Commit:
 
   ```commit
@@ -448,7 +457,7 @@ as phase 1.
 - Path anchoring: the project-local preference file anchors at the project root derived from the
   extension location (`projectRoot(deps.extensionFile)`), not the process working directory - the
   gitignore enforcement assumes the repository root, and Pi may run from a subdirectory. ADR-0151
-  Decision item 2 is amended to match while Proposed.
+  Decision item 2 was amended to match while Proposed (commit 0b8d0db4).
 - Dependency verification (done at plan review): the pinned fork tarball
   `pi-coding-agent-fork-v0.81.1-awf.3` exports both `getAgentDir(): string` and
   `CONFIG_DIR_NAME: string` from the package root (`dist/index.d.ts` re-exporting
