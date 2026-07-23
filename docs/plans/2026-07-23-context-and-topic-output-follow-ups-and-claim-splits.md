@@ -1,7 +1,7 @@
 ---
 date: 2026-07-23
 adrs: [0151]
-status: Proposed
+status: Implemented
 ---
 # Plan: Context and topic output follow-ups and claim splits
 

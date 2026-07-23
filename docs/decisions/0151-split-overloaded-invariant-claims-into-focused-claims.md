@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0151: Split overloaded invariant claims into focused claims
@@ -146,3 +146,4 @@ only the splits.
 ## Status history
 
 - 2026-07-23: Proposed
+- 2026-07-23: Implemented; content-sha256: 9c1bb3013ca4dce4cf88e1b5895009b70a522170615a50beee8457226ca6b07d; state-sequence: 28

@@ -47,8 +47,7 @@ func TestDashboardReadClosedArgvGrammar(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:version-compat-gate
-// invariant: tooling/cli:metrics-and-doctor-command-contract
+// invariant: tooling/cli:dashboard-read-dispatch
 func TestDashboardReadForbiddenArgvCannotReachMutationDispatch(t *testing.T) {
 	originalHandler := handlers["metrics"]
 	t.Cleanup(func() { handlers["metrics"] = originalHandler })

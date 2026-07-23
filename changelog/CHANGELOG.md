@@ -108,6 +108,9 @@ query a single version or a range.
   reintroduced `.awf/current-state-migration.yaml` is reported as unclaimed drift after cutover.
 
 ### Others
+- Split three overloaded invariant claims (version-compat gate, metrics/doctor command contract,
+  context authority packet) into six focused single-obligation claims (ADR-0151); no behavior
+  change.
 - The concise `awf context` text rendering prints each domain's selector block once per domain
   group (as a named `Domain <name> paths:` header) instead of repeating it verbatim under every
   topic of that domain; JSON is unchanged.

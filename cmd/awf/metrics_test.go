@@ -65,7 +65,8 @@ func TestMetricsProtocolAndGrammar(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:metrics-and-doctor-command-contract
+// invariant: tooling/cli:metrics-command-contract
+// invariant: tooling/cli:doctor-command-contract
 func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	root := telemetryProject(t)
 	originalNow := telemetryNow
