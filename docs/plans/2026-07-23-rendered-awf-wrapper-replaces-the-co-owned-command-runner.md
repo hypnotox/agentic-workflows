@@ -47,10 +47,15 @@ staging and commit by explicit pathspec only.
 - **Modified:** `internal/project/render.go`, `internal/project/output_plan.go`,
   `internal/project/sweep.go`, `internal/project/project.go`, `internal/project/scaffold.go`,
   `internal/project/validate.go`, `internal/clispec/clispec.go`, `internal/catalog/standard.go`,
-  `internal/config/config.go`, `internal/configspec/spec.go`, `internal/migrate/migrate.go`,
+  `internal/config/config.go`, `internal/config/edit.go`, `internal/configspec/spec.go`,
+  `internal/migrate/migrate.go`,
   `templates/hooks/pre-commit.sh.tmpl`, `templates/hooks/commit-msg.sh.tmpl`,
   `templates/hooks/pre-push.sh.tmpl`, `templates/agents-doc/AGENTS.md.tmpl`,
   `templates/docs/working-with-awf.md.tmpl`, fallback-arm template sites (batch task, Phase 4),
+  `.awf/parts/agents-doc/awf-setup.md`, `.awf/parts/working-with-awf/commands.md`,
+  `.awf/docs/parts/development/command-runner.md`,
+  `.awf/domains/parts/config/current-state.md`,
+  `.awf/domains/parts/rendering/current-state.md`,
   `.awf/config.yaml`, `.gitignore`, `x`, `examples/sundial/.awf/config.yaml`,
   `.awf/topics/parts/rendering/companion-scripts/current-state.md`,
   `.awf/topics/parts/rendering/catalog-and-targets/current-state.md`,
@@ -132,15 +137,15 @@ splitting the template swap from the adoptions).
   the whitespace-trim markers as needed so the rendered output has no blank-line residue and
   `awf sync` followed by `awf check` is a clean fixpoint; the rendered body under empty data
   must be the bootstrap-then-PATH branch with no template residue.
-- [ ] **Task 2.2: Render unit repath and machinery removal.** In `internal/project/render.go`:
-  `runnerTID` becomes `"runner/awf.tmpl"` (`render.go:33`); `runnerSections` becomes
-  `[]string{"runner-body"}` (`render.go:40`); the render call (`render.go:835-845`) drops
-  `clispec.ValidateRunnerDispositions()` and renders to output path `"awf"` with the plain
-  shared render data (delete `runnerRenderData`, `render.go:110-115`); delete the runner
-  readback/validation block inside `renderTarget` (`render.go:899-907`) and the helpers
-  `runnerProjectVerbLabels`, `validRunnerProjectVerb`, `validateRunnerProjectVerbs`
-  (`render.go:412-461`), plus `sectionDefault` (`render.go:403-410`) if the runner readback was
-  its last caller (the dead-code gate arbitrates). In `internal/project/output_plan.go:292-295`:
+- [ ] **Task 2.2: Render unit repath and machinery removal.** In `internal/project/render.go`
+  (line references are indicative; anchor on the named symbols): `runnerTID` becomes
+  `"runner/awf.tmpl"`; `runnerSections` becomes `[]string{"runner-body"}`; the runner render
+  call (~`render.go:842-852`) drops `clispec.ValidateRunnerDispositions()` and renders to
+  output path `"awf"` with the plain shared render data (delete `runnerRenderData`,
+  ~`render.go:114-119`); delete the runner readback/validation block inside `renderTarget`
+  (~`render.go:906-913`) and the helpers `runnerProjectVerbLabels`, `validRunnerProjectVerb`,
+  `validateRunnerProjectVerbs` (~`render.go:410-465`), plus `sectionDefault` if the runner
+  readback was its last caller (the dead-code gate arbitrates). In `internal/project/output_plan.go:292-295`:
   the declared output becomes path `"awf"`, template `runner/awf.tmpl`, part inputs for the
   single `runner-body` section. In `internal/project/sweep.go:128-138`: the claimed
   convention-part territory becomes `.awf/runner/parts/runner-body.md` only.
@@ -168,7 +173,10 @@ splitting the template swap from the adoptions).
   ... run the pinned awf via the bootstrap shim" clause with "Leave empty to run through the
   rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled)."
   Project-verb descriptors (`gateCmd`, `gateCmdFull`, `testCmd`) are unchanged.
-- [ ] **Task 2.5: Default-on seeding.** (a) `internal/project/scaffold.go` (~`:78-80`): add
+- [ ] **Task 2.5: Default-on seeding.** (a) Extend `config.Skeleton` in
+  `internal/config/edit.go` with a `Runner *RunnerConfig` field (yaml tag `runner,omitempty`),
+  mirroring the existing `Hooks` field, and teach `MarshalSkeleton` to serialize it the same
+  way; then in `internal/project/scaffold.go` (~`:78-80`) add
   `Runner: &config.RunnerConfig{Enabled: true},` to the `config.Skeleton`; extend the scaffold
   test to assert the seeded config contains `runner:` with `enabled: true`. (b) Create
   `internal/migrate/enablerunner.go` mirroring `enablebootstrap.go` exactly: an
@@ -195,9 +203,12 @@ splitting the template swap from the adoptions).
   replace the `/awf` line with `/bin/`. (c) In `x`, change the `build` arm to
   `go build -o bin/awf ./cmd/awf` (only this arm changes in this phase). (d) Run
   `go run ./cmd/awf upgrade` at the repo root: the migration no-ops on the now-present `runner`
-  key and restamps the schema generation; then `./x sync`. The rendered `awf` appears at the
-  repo root (body: `exec go run ./cmd/awf "$@"` inside the generated frame) and is staged like
-  any rendered output. Sanity: `./awf version` prints the version.
+  key and restamps the schema generation; then `./x sync`. Before that sync, run `rm -f awf`
+  after verifying the path is untracked (`git ls-files awf` prints nothing): a stale `./x
+  build` binary at the root would otherwise be foreign-file-backed-up to `awf.awf-bak`, which
+  the sweep then flags. The rendered `awf` appears at the repo root (body:
+  `exec go run ./cmd/awf "$@"` inside the generated frame) and is staged like any rendered
+  output. Sanity: `./awf version` prints the version.
 - [ ] **Task 2.8: sundial adopts the split.** In order: (a) edit
   `examples/sundial/.awf/config.yaml`: delete the `activeMdRegenCmd`, `checkCmd`, and
   `commitGateCmd` vars (keep `gateCmd: ./x gate`, `gateCmdFull: ./x gate full`,
@@ -284,14 +295,29 @@ splitting the template swap from the adoptions).
     deleting the words "runner-forwarded " from each (rest of both texts unchanged). Remove the
     `managed-runner-command-parity` claim block.
 - [ ] **Task 2.11: Doc prose.** Update the authored surfaces that describe the co-owned runner
-  (ADR-0156 Decision item 11): `templates/agents-doc/AGENTS.md.tmpl:11` runner-toggle bullet
-  becomes a description of the pure wrapper (awf-owned forwarder at `awf`; project verbs live
-  in the adopter's own runner; still a nameless singleton toggle);
-  `templates/docs/working-with-awf.md.tmpl:47` managed-runner paragraph now describes `./awf`
-  forwarding every CLI verb verbatim (no metadata-derived verb list; drop the
-  forwarded-unless-excluded sentence); `.awf/domains/parts/tooling/current-state.md` narrative
-  drops the "runner-forwarded in internal/clispec" description in favor of the wrapper +
-  project-runner split. These are non-contractual prose: match each file's surrounding style.
+  (ADR-0156 Decision item 11); these are non-contractual prose - match each file's surrounding
+  style:
+  - `.awf/parts/agents-doc/awf-setup.md:3` (the post-ADR-0157 authored surface; the old
+    AGENTS.md.tmpl runner-toggle bullet no longer exists): the sentence "awf itself disables
+    the `bootstrap` and `runner` singletons, building from source and keeping its from-source
+    `./x`" becomes the enabled-wrapper split: awf keeps `bootstrap` disabled but enables the
+    `runner` singleton with a from-source `awfInvokeCmd`, so `./awf` is the rendered wrapper
+    and `./x` stays the hand-written project runner; sundial still demonstrates the adopter
+    shape.
+  - `templates/docs/working-with-awf.md.tmpl:47` managed-runner paragraph now describes
+    `./awf` forwarding every CLI verb verbatim (no metadata-derived verb list; drop the
+    forwarded-unless-excluded sentence), and the second runner surface at
+    `templates/docs/working-with-awf.md.tmpl:68` ("`runner` toggles the co-owned
+    command-runner `x` ...") is rewritten to the wrapper description.
+  - `.awf/domains/parts/tooling/current-state.md` narrative drops the "runner-forwarded in
+    internal/clispec" description in favor of the wrapper + project-runner split;
+    `.awf/domains/parts/config/current-state.md:15` and
+    `.awf/domains/parts/rendering/current-state.md:48` update their current-shape sentences
+    (default-on wrapper, no in-place sections, awf-the-repo adopts) while leaving ADR-0101
+    history references intact.
+  - `.awf/docs/parts/development/command-runner.md`: the sentence describing commands
+    "declared runner-forwarded by internal/clispec" is rewritten in THIS phase (the machinery
+    it describes is deleted here); the remaining ./x-verb-set prose is Phase 3's (Task 3.2).
   Post-check: `grep -rn "co-owned" templates/ .awf/domains/parts/ .awf/parts/` and
   `grep -rn "runner-forwarded" templates/ .awf/` return no matches (`docs/decisions/` history
   hits are expected and exempt).
@@ -313,26 +339,27 @@ feat(rendering): render the pure awf wrapper (applies 0156)
   (unchanged sundial composite, with its leading `go run ./cmd/awf sync "$@"` becoming
   `./awf sync "$@"`), `check` (same substitution for its leading
   `go run ./cmd/awf check "$@"`; the sundial oracle block keeps its own built binary),
-  `dashboard-awf-path`, `dashboard-awf-advance`, `pi-test`, `build` (already `bin/awf` from
-  Phase 2), `install`, `mutants`, `audit-local`. Delete the arms: `invariants`, `audit`,
-  `commit-gate`, `prose-gate`, `new`, `context`, and the combined
+  `deadcode` (unchanged body), `dashboard-awf-path`, `dashboard-awf-advance`, `pi-test`,
+  `build` (already `bin/awf` from Phase 2), `install`, `mutants`, `audit-local`. Delete the
+  arms: `invariants`, `audit`, `commit-gate`, `prose-gate`, `new`, `context`, and the combined
   `list | config | topic | metrics | doctor | enable | disable | changelog | version` arm.
-  Update the usage line to exactly the kept set. Post-check: `bash -n x` passes, and
-  `grep -n "go run ./cmd/awf" x` matches only the sundial-oracle `go build -o "$bindir/awf"`
-  lines and the `build`/`install` arms.
+  Update the usage line to exactly the kept set. Post-check: `bash -n x` passes;
+  `grep -n "go run ./cmd/awf" x` returns no matches; `grep -n "\./cmd/awf" x` matches only the
+  sundial-oracle `go build -o "$bindir/awf" ./cmd/awf` lines and the `build`/`install` arms.
 - [ ] **Task 3.2: Var flips and repo prose.** `.awf/config.yaml`: `commitGateCmd` becomes
   `./awf commit-gate`, `proseGateCmd` becomes `./awf prose-gate`; the tag-vocabulary
   description at the `command-runner:` key becomes "The ./x project runner and the rendered
-  ./awf wrapper". Update the authored part containing the AGENTS.md Commands sentence "Run
-  `./x` without a command to discover the metadata-derived forwarded awf verbs..." (locate:
-  `grep -rln "metadata-derived" .awf/`) to describe the split ("`./awf` forwards every awf
-  verb; `./x` carries the repo-local verbs; run `./x` without a command to list them"), and the
-  authored development-doc part describing the command runner (locate:
-  `grep -rln "command runner" .awf/`) likewise. Check for hardcoded `./x` awf-verb invocations
-  in Pi templates (locate: `grep -rn "\./x " templates/pi/ .pi/`); dashboard references to
-  `./x dashboard-awf-path`/`dashboard-awf-advance` stay (repo-local verbs kept). Re-render
-  with `./x sync`. Post-check: `grep -n "metadata-derived" AGENTS.md` returns no match, and
-  the rendered `AGENTS.md` and `docs/development.md` describe the split.
+  ./awf wrapper". Update `.awf/parts/working-with-awf/commands.md:3` (the post-ADR-0157 home
+  of the metadata-derived sentence, rendering into `docs/working-with-awf.md`) to describe the
+  split ("`./awf` forwards every awf verb; `./x` carries the repo-local verbs; run `./x`
+  without a command to list them"), and update the ./x-verb-set prose in
+  `.awf/docs/parts/development/command-runner.md` to the slimmed verb list (its
+  clispec-forwarding sentence was already reworked in Task 2.11). Check for hardcoded `./x`
+  awf-verb invocations in Pi templates (locate: `grep -rn "\./x " templates/pi/ .pi/`);
+  dashboard references to `./x dashboard-awf-path`/`dashboard-awf-advance` stay (repo-local
+  verbs kept). Re-render with `./x sync`. Post-check:
+  `grep -n "metadata-derived" docs/working-with-awf.md` returns no match, and the rendered
+  `docs/working-with-awf.md` and `docs/development.md` describe the split.
 - [ ] **Task 3.3: Dashboard claim update (op 13).** In
   `.awf/topics/parts/rendering/companion-scripts/current-state.md`, update
   `dashboard-development-runtime-commands` (append `Revised-by: ADR-0156`) to: "The awf
@@ -354,7 +381,8 @@ refactor(tooling): slim ./x to project verbs (applies 0156)
 ## Phase 4: Resolvable hook commands, validation, finalization
 
 - [ ] **Task 4.1: `runnerEnabled` render data.** In `internal/project/render.go`, in the shared
-  render-data construction (the map built around `render.go:93-115` that sets `"vars"`), add
+  render-data construction (the map that sets `"vars"`; anchor on the symbol, the line has
+  drifted), add
   `data["runnerEnabled"] = p.Cfg.Runner != nil && p.Cfg.Runner.Enabled` so every template sees
   it. Under empty/publication data the key renders falsy (generic `awf` forms).
 - [ ] **Task 4.2: Hook payload templates.** Replace the three templates (comment headers and
@@ -400,18 +428,20 @@ refactor(tooling): slim ./x to project verbs (applies 0156)
   + {{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf sync{{ else }}awf sync{{ end }}{{ end }}
   ```
 
-  Edge (`templates/agents-doc/AGENTS.md.tmpl:95`, variable-assignment form): today
-  `{{ $check := or .vars.checkCmd "" -}}`; replace with an assignment that defaults by runner
-  state:
-  `{{ $check := .vars.checkCmd }}{{ if not $check }}{{ if .runnerEnabled }}{{ $check = "./awf check" }}{{ else }}{{ $check = "awf check" }}{{ end }}{{ end }}`,
-  then verify the downstream uses of `$check` render correctly (`$gate`/`$test` stay
-  empty-default, prose-guarded). Affected-site set: the output of
-  `grep -rln '{{ else }}awf ' templates/` after Task 4.2, plus the AGENTS.md.tmpl edge
-  (indicatively the `activeMdRegenCmd` sites in `templates/agents/adr-reviewer.md.tmpl` and
-  the skills `proposing-adr` (x2), `subagent-driven-development`, `adr-lifecycle` (x2),
-  `executing-plans`, and the `checkCmd` sites in `templates/docs/workflow.md.tmpl:42,66`;
-  re-derive with the grep, do not trust this enumeration). Post-check:
-  `grep -rn '{{ else }}awf ' templates/` returns no matches.
+  Edge (`templates/agents-doc/AGENTS.md.tmpl:76`, variable-assignment form; today the
+  combined line
+  `{{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := or .vars.checkCmd "" -}}`):
+  replace only the `$check` assignment within that line with one that defaults by runner
+  state, e.g.
+  `{{ $check := .vars.checkCmd }}{{ if not $check }}{{ if .runnerEnabled }}{{ $check = "./awf check" }}{{ else }}{{ $check = "awf check" }}{{ end }}{{ end }}`
+  (splice into the combined line, preserving its trim markers), then verify the downstream
+  uses of `$check` render correctly (`$gate`/`$test` stay empty-default, prose-guarded).
+  Affected-site set: the output of `grep -rln '{{ else }}awf ' templates/` after Task 4.2,
+  plus the AGENTS.md.tmpl edge (indicatively the `activeMdRegenCmd` sites in
+  `templates/agents/adr-reviewer.md.tmpl` and the skills `proposing-adr` (x2),
+  `subagent-driven-development`, `adr-lifecycle` (x2), `executing-plans`, and the `checkCmd`
+  sites in `templates/docs/workflow.md.tmpl:54,78`; re-derive with the grep, do not trust
+  this enumeration). Post-check: `grep -rn '{{ else }}awf ' templates/` returns no matches.
 - [ ] **Task 4.4: Validation rules.** In `internal/project/validate.go`, add
   `validateCommandWiring(cfg *config.Config) error`:
   - Rule (a): hooks singleton enabled and `strings.TrimSpace(cfg.Vars["gateCmd"])` empty ->
@@ -421,9 +451,11 @@ refactor(tooling): slim ./x to project verbs (applies 0156)
     `checkCmd`, `commitGateCmd`, `proseGateCmd` (checked in that fixed order, first missing
     reported) unset -> error exactly: `hooks.enabled without the runner singleton requires
     vars.<name>: set it in .awf/config.yaml or enable the runner (awf enable runner)`.
-  Wire it on the shared path both `awf sync` and `awf check` traverse (the render entry at the
-  `render.go:835` region), so both commands fail; no other command's behavior changes. Tests
-  (in `internal/project`, proof marker
+  Wire it at the sync and check command entries (and therefore upgrade's terminal sync) - NOT
+  inside the shared `RenderAll` path - so that rendering itself stays reachable with vars
+  unset: Task 4.5's fallback test renders hook payloads via `RenderAll` below this validation
+  choke point and must keep working on a hooks-enabled, all-vars-unset config. Both commands
+  fail; no other command's behavior changes. Tests (in `internal/project`, proof marker
   `// invariant: config/validation:hooks-commands-resolvable` on the covering test): both
   rules fire under sync and check; rule (a) clears when `gateCmd` is set; rule (b) clears when
   the runner is enabled or the three vars are set; a hooks-disabled config with everything
