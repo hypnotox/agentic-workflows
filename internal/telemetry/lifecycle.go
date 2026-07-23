@@ -60,7 +60,6 @@ type LifecycleProjection struct {
 	SupersededEventIDs map[string]string
 	AppliedEventIDs    []string
 	EffectApplied      map[string]bool
-	associationEvents  map[string]string
 	closedTrajectories map[string]bool
 	Invalid            []IntegrityIssue
 }
@@ -209,7 +208,6 @@ func newLifecycleProjection() LifecycleProjection {
 		AppliedEventIDs:    []string{},
 		EffectApplied:      map[string]bool{},
 		Invalid:            []IntegrityIssue{},
-		associationEvents:  map[string]string{},
 		closedTrajectories: map[string]bool{},
 	}
 }
@@ -239,10 +237,8 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 			return errors.New("session association requires a causally visible trajectory")
 		}
 		p.Associations[event.SessionID] = Association{EffortID: event.EffortID, SessionID: event.SessionID, TrajectoryID: payload.TrajectoryID, AssociationOrigin: payload.AssociationOrigin}
-		p.associationEvents[event.SessionID] = event.EventID
 	case "session_detached":
 		delete(p.Associations, event.SessionID)
-		delete(p.associationEvents, event.SessionID)
 	case "route_selected":
 		if p.State != EffortDiscovery {
 			return errors.New("route selection requires discovery state")
@@ -335,12 +331,8 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 			p.ActiveTrajectoryID = payload.TrajectoryID
 			p.closedTrajectories[payload.TrajectoryID] = false
 			if association, ok := p.Associations[event.SessionID]; ok {
-				associationEventID := p.associationEvents[event.SessionID]
-				anchorEventID := order.anchors[payload.AnchorID]
-				beforeAssociation := anchorEventID != "" && p.EffectApplied[anchorEventID] && order.HappensBefore(anchorEventID, associationEventID)
-				if !trajectoryContains(p.Trajectories, payload.TrajectoryID, association.TrajectoryID) || beforeAssociation {
+				if !trajectoryContains(p.Trajectories, payload.TrajectoryID, association.TrajectoryID) {
 					delete(p.Associations, event.SessionID)
-					delete(p.associationEvents, event.SessionID)
 				}
 			}
 		}

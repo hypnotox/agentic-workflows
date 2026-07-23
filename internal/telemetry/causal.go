@@ -13,7 +13,6 @@ type CausalOrder struct {
 	ancestors    map[string]map[string]bool
 	frontiers    map[string][]string
 	trajectories map[string]TrajectoryNode
-	anchors      map[string]string
 }
 
 type TrajectoryNode struct {
@@ -29,20 +28,29 @@ func BuildCausalOrder(events []EventEnvelope) (*CausalOrder, []IntegrityIssue) {
 		ancestors:    make(map[string]map[string]bool, len(events)),
 		frontiers:    make(map[string][]string, len(events)),
 		trajectories: make(map[string]TrajectoryNode),
-		anchors:      make(map[string]string),
 	}
 	issues := []IntegrityIssue{}
 	previousSession := map[string]string{}
+	// Anchor claims come only from the descriptor's anchorClaimKinds, keyed on the
+	// payload anchor; the envelope piAnchorId is observation-location metadata and
+	// never participates in resolution.
+	claimKinds := stringSet(descriptor.Vocabularies["anchorClaimKinds"])
 	anchorEvents := map[string]string{}
 	ambiguousAnchors := map[string]bool{}
 	trajectoryOrigins := map[string]string{}
+	pendingAnchors := map[string]string{}
 	for _, event := range events {
 		order.events[event.EventID] = event
-		if event.PiAnchorID != "" {
-			if prior := anchorEvents[event.PiAnchorID]; prior != "" && prior != event.EventID {
-				ambiguousAnchors[event.PiAnchorID] = true
-			} else {
-				anchorEvents[event.PiAnchorID] = event.EventID
+		if claimKinds[string(event.Kind)] {
+			var claim struct {
+				AnchorID string `json:"anchorId"`
+			}
+			if json.Unmarshal(event.Payload, &claim) == nil && claim.AnchorID != "" {
+				if prior := anchorEvents[claim.AnchorID]; prior != "" && prior != event.EventID {
+					ambiguousAnchors[claim.AnchorID] = true
+				} else {
+					anchorEvents[claim.AnchorID] = event.EventID
+				}
 			}
 		}
 		switch event.Kind {
@@ -67,9 +75,6 @@ func BuildCausalOrder(events []EventEnvelope) (*CausalOrder, []IntegrityIssue) {
 		delete(anchorEvents, anchor)
 		issues = append(issues, integrity("ambiguous-anchor", anchor, 0, nil, "multiple events claim the same Pi anchor"))
 	}
-	for anchor, eventID := range anchorEvents {
-		order.anchors[anchor] = eventID
-	}
 	for _, event := range events {
 		frontier := append([]string(nil), event.Predecessors...)
 		if prior := previousSession[event.SessionID]; prior != "" && !containsString(frontier, prior) {
@@ -82,27 +87,28 @@ func BuildCausalOrder(events []EventEnvelope) (*CausalOrder, []IntegrityIssue) {
 			}
 		}
 		switch event.Kind {
-		case "trajectory_resumed", "trajectory_closed":
+		case "trajectory_resumed":
 			var payload TrajectoryPayload
 			if json.Unmarshal(event.Payload, &payload) == nil {
-				if anchorEvent := anchorEvents[payload.AnchorID]; anchorEvent != "" && anchorEvent != event.EventID && !containsString(frontier, anchorEvent) {
-					frontier = append(frontier, anchorEvent)
+				if anchorEvent := anchorEvents[payload.AnchorID]; anchorEvent != "" && anchorEvent != event.EventID {
+					pendingAnchors[event.EventID] = anchorEvent
 				}
 			}
 		case "trajectory_forked":
 			var payload TrajectoryForkedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil {
-				for _, linked := range []string{trajectoryOrigins[payload.ParentTrajectoryID], anchorEvents[payload.ForkAnchorID]} {
-					if linked != "" && linked != event.EventID && !containsString(frontier, linked) {
-						frontier = append(frontier, linked)
-					}
+				if origin := trajectoryOrigins[payload.ParentTrajectoryID]; origin != "" && origin != event.EventID && !containsString(frontier, origin) {
+					frontier = append(frontier, origin)
+				}
+				if anchorEvent := anchorEvents[payload.ForkAnchorID]; anchorEvent != "" && anchorEvent != event.EventID {
+					pendingAnchors[event.EventID] = anchorEvent
 				}
 			}
 		case "effort_reopened":
 			var payload EffortReopenedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil {
-				if anchorEvent := anchorEvents[payload.AnchorID]; anchorEvent != "" && anchorEvent != event.EventID && !containsString(frontier, anchorEvent) {
-					frontier = append(frontier, anchorEvent)
+				if anchorEvent := anchorEvents[payload.AnchorID]; anchorEvent != "" && anchorEvent != event.EventID {
+					pendingAnchors[event.EventID] = anchorEvent
 				}
 			}
 		}
@@ -110,37 +116,56 @@ func BuildCausalOrder(events []EventEnvelope) (*CausalOrder, []IntegrityIssue) {
 		order.frontiers[event.EventID] = frontier
 		previousSession[event.SessionID] = event.EventID
 	}
-	visiting := map[string]bool{}
-	visited := map[string]bool{}
-	var visit func(string) map[string]bool
-	visit = func(id string) map[string]bool {
-		if visited[id] {
-			return order.ancestors[id]
-		}
-		if visiting[id] {
-			issues = append(issues, integrity("causal-cycle", id, 0, []string{id}, "causal predecessor cycle"))
-			return map[string]bool{}
-		}
-		visiting[id] = true
-		ancestors := map[string]bool{}
-		for _, predecessor := range order.frontiers[id] {
-			if _, ok := order.events[predecessor]; !ok {
-				issues = append(issues, integrity("broken-predecessor", id, 0, []string{id, predecessor}, "causal predecessor does not exist"))
-				continue
+	computeAncestors := func(record bool) {
+		order.ancestors = make(map[string]map[string]bool, len(order.events))
+		visiting := map[string]bool{}
+		visited := map[string]bool{}
+		var visit func(string) map[string]bool
+		visit = func(id string) map[string]bool {
+			if visited[id] {
+				return order.ancestors[id]
 			}
-			ancestors[predecessor] = true
-			for ancestor := range visit(predecessor) {
-				ancestors[ancestor] = true
+			if visiting[id] {
+				if record {
+					issues = append(issues, integrity("causal-cycle", id, 0, []string{id}, "causal predecessor cycle"))
+				}
+				return map[string]bool{}
 			}
+			visiting[id] = true
+			ancestors := map[string]bool{}
+			for _, predecessor := range order.frontiers[id] {
+				if _, ok := order.events[predecessor]; !ok {
+					if record {
+						issues = append(issues, integrity("broken-predecessor", id, 0, []string{id, predecessor}, "causal predecessor does not exist"))
+					}
+					continue
+				}
+				ancestors[predecessor] = true
+				for ancestor := range visit(predecessor) {
+					ancestors[ancestor] = true
+				}
+			}
+			delete(visiting, id)
+			visited[id] = true
+			order.ancestors[id] = ancestors
+			return ancestors
 		}
-		delete(visiting, id)
-		visited[id] = true
-		order.ancestors[id] = ancestors
-		return ancestors
+		for id := range order.events {
+			visit(id)
+		}
 	}
-	for id := range order.events {
-		visit(id)
+	// Anchor references resolve causally forward only: an edge lands only when the
+	// base order (everything except anchor edges) does not already place the claim
+	// after the referencing event, so a later close at a revisited entry cannot
+	// invert real order into a manufactured cycle.
+	computeAncestors(false)
+	for eventID, anchorEvent := range pendingAnchors {
+		if !order.HappensBefore(eventID, anchorEvent) && !containsString(order.frontiers[eventID], anchorEvent) {
+			order.frontiers[eventID] = append(order.frontiers[eventID], anchorEvent)
+			sort.Strings(order.frontiers[eventID])
+		}
 	}
+	computeAncestors(true)
 	for _, event := range events {
 		switch event.Kind {
 		case "trajectory_started", "trajectory_resumed", "trajectory_closed":

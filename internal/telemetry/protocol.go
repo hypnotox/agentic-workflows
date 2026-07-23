@@ -154,6 +154,11 @@ func validateDescriptor(parsed protocolDescriptor) error {
 	if !reflect.DeepEqual(eventKinds, descriptorKeySet(parsed.Payloads)) {
 		return errors.New("eventKinds and payload declarations differ")
 	}
+	for _, kind := range parsed.Vocabularies["anchorClaimKinds"] {
+		if !eventKinds[kind] {
+			return fmt.Errorf("anchorClaimKinds value %q is not an event kind", kind)
+		}
+	}
 	lifecycleKinds := make(map[string]bool)
 	for kind, payload := range parsed.Payloads {
 		if payload.AdditionalProperties || payload.GoType == "" || payload.PrivacyPolicy != parsed.Privacy.Policy {
@@ -234,7 +239,7 @@ func validateVocabularyAuthority(parsed protocolDescriptor) error {
 			seen[value] = true
 		}
 	}
-	for _, required := range []string{"eventKinds", "diagnosticRuleCodes", "waiverReasonCodes"} {
+	for _, required := range []string{"eventKinds", "diagnosticRuleCodes", "waiverReasonCodes", "anchorClaimKinds"} {
 		if _, ok := parsed.Vocabularies[required]; !ok {
 			return fmt.Errorf("vocabulary %s is required", required)
 		}

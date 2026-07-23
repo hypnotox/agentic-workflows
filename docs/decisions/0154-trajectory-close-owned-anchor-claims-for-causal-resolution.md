@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0154: Trajectory-close-owned anchor claims for causal resolution
@@ -59,7 +59,13 @@ and `effort_reopened` reference positions, never claim them. The close's `payloa
 claim-only: `trajectory_closed` leaves the reference-resolution set in both the Go checker and
 the TypeScript mirror (self-exclusion plus intra-set ambiguity made its reference branch
 unreachable), so the resolvable references become exactly `trajectory_resumed.anchorId`,
-`trajectory_forked.forkAnchorId`, and `effort_reopened.anchorId`.
+`trajectory_forked.forkAnchorId`, and `effort_reopened.anchorId`. A reference resolves
+causally forward only: the base order, computed without anchor edges, decides whether the
+claim already follows the referencing event, and a claim that would invert that order is not
+a resolution target. Resuming at a mid-branch entry and later departing at that same entry is
+legitimate navigation whose close postdates the resume's reference; without the forward-only
+rule the global claim map would hand that resume a backward edge and manufacture a
+`causal-cycle` violation, recreating the exact failure mode this decision removes.
 
 3. The claiming set is declared once in the embedded protocol descriptor
 (`internal/telemetry/protocol.json`) as a new vocabulary, `anchorClaimKinds`, initially exactly
@@ -146,3 +152,4 @@ with them; the change ships as one staged transaction.
 ## Status history
 
 - 2026-07-23: Proposed
+- 2026-07-23: Implemented; content-sha256: 35438c04fd96a6a8414aa1b3f6260ab08d36204ddbae178997a4308b5f4939cf; state-sequence: 35

@@ -8,6 +8,16 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+- Pi anchor claims are now owned exclusively by `trajectory_closed` events keyed on the payload
+  anchor, declared in the protocol descriptor's required `anchorClaimKinds` vocabulary; the
+  envelope `piAnchorId` is observation-location metadata the causal checker never reads, and
+  references resolve causally forward only. The checker stops flagging legitimate producer
+  co-anchoring as `ambiguous-anchor` (previously accreted on every real session and defeated
+  fork resolution), accumulated findings clear retroactively without any ledger rewrite, and
+  the unsound anchor-based association invalidation on trajectory resume is removed from both
+  the Go projection and the dashboard mirror (ADR-0154).
+
 ### Breaking changes
 - awf 0.22.0 advances to schema generation 17 with a strict, tracked `workflowTelemetry`
   configuration block for retention, dashboard widget behavior, diagnostics, and heuristic thresholds.

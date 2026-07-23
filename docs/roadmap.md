@@ -93,16 +93,4 @@ Deferred rather than built because the cost is a new rule plus tests at the
 worth considering at the same time is the inverse direction: a file in the diff
 that no part of the message accounts for, which is what catches a `git add -A`
 sweeping another effort's work.
-## Anchor uniqueness is contested between producer and checker
-
-The causal integrity checker flags every Pi anchor claimed by more than one ledger event as
-`ambiguous-anchor`, because a fork anchor must resolve to one event. The dashboard producer,
-though, legitimately co-anchors observations: parallel tool observations in one batch share the
-leaf entry, the shutdown usage observation shares it with session end, and a resumed session start
-shares it with the prior session end. Every real session therefore accretes violation-severity
-diagnostics (119 across the resident ledger when the ADR-0149 smoke surfaced it on 2026-07-23),
-and each ambiguous anchor is dropped from fork resolution. Reconciling the semantics needs its own
-decision: either the producer uniquely anchors only fork-resolvable lifecycle events, or the
-checker restricts uniqueness to the event kinds forks can target. Deferred because it is a
-load-bearing protocol-semantics choice, not a patch.
 

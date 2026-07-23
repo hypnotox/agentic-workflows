@@ -283,18 +283,21 @@ func TestLifecycleConcurrencyDoesNotInventOrder(t *testing.T) {
 	}
 }
 
-func TestTrajectoryResumeBeforeAssociationDetaches(t *testing.T) {
+func TestTrajectoryResumeKeepsAssociationAcrossPriorAnchors(t *testing.T) {
+	// Normal tree navigation resumes at a tip whose close predates the freshly
+	// re-asserted association; anchor causal position is never a detach signal,
+	// so only a trajectory-family mismatch detaches.
 	events := lifecycleBaseEvents()
-	events = appendEvent(events, "trajectory", "trajectory_started", TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "before-anchor"})
+	events = appendEvent(events, "trajectory", "trajectory_started", TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "start"})
 	events[len(events)-1].TrajectoryID = "trajectory"
-	events[len(events)-1].PiAnchorID = "before-anchor"
+	events = appendEvent(events, "closed", "trajectory_closed", TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "before-anchor"})
+	events[len(events)-1].TrajectoryID = "trajectory"
 	events = appendEvent(events, "associate", "session_associated", SessionAssociatedPayload{AssociationOrigin: "manual", TrajectoryID: "trajectory"})
-	events[len(events)-1].PiAnchorID = "association-anchor"
 	events = appendEvent(events, "resume-before", "trajectory_resumed", TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "before-anchor"})
 	events[len(events)-1].TrajectoryID = "trajectory"
 	projection := ProjectLifecycle(events)
-	if len(projection.Invalid) != 0 || len(projection.Associations) != 0 {
-		t.Fatalf("pre-association anchor did not detach: %#v", projection)
+	if len(projection.Invalid) != 0 || len(projection.Associations) != 1 {
+		t.Fatalf("resume across a prior anchor claim detached the association: %#v", projection)
 	}
 }
 

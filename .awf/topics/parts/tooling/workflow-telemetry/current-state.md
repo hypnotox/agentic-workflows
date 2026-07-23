@@ -29,6 +29,12 @@ Origin: ADR-0146
 Revised-by: ADR-0149
 Backing: test
 
+### `invariant: anchor-claims-and-location-metadata`
+
+An anchor claim, the ability to be the target of a payload anchor reference, is made only by an event kind in the descriptor's required `anchorClaimKinds` vocabulary (exactly `trajectory_closed`), keyed on that event's payload anchor. The envelope `piAnchorId` is observation-location metadata that never participates in resolution or ambiguity. References resolve causally forward only against unambiguous claims, ambiguity within the claiming set remains an `ambiguous-anchor` violation, and association carry-over on trajectory resume is validated by trajectory-family membership alone, never by anchor causal position.
+Origin: ADR-0154
+Backing: test
+
 ### `invariant: canonical-projections-and-diagnostics`
 
 Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, and expose stable exact and heuristic findings with an owning `effortId`, thresholds, baselines, confidence, and typed remediation. Repair and waiver inputs re-resolve that effort-owned finding and require eligible reason, matching evidence and scope, and the current nonempty causal frontier; no projection derives an opaque health score.

@@ -155,6 +155,9 @@
       "subagent_observed",
       "session_started",
       "session_ended"
+    ],
+    "anchorClaimKinds": [
+      "trajectory_closed"
     ]
   },
   "privacy": {

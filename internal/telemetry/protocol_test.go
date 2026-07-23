@@ -569,6 +569,12 @@ func TestDescriptorParsingRejectsInvalidAuthority(t *testing.T) {
 			kinds := value["vocabularies"].(map[string]any)["eventKinds"].([]any)
 			value["vocabularies"].(map[string]any)["eventKinds"] = kinds[1:]
 		}),
+		"missing anchor claim vocabulary": mutate(func(value map[string]any) {
+			delete(value["vocabularies"].(map[string]any), "anchorClaimKinds")
+		}),
+		"anchor claim outside event kinds": mutate(func(value map[string]any) {
+			value["vocabularies"].(map[string]any)["anchorClaimKinds"] = []any{"not-an-event-kind"}
+		}),
 		"lifecycle reference": mutate(func(value map[string]any) {
 			value["lifecycleRequests"].(map[string]any)["create"].(map[string]any)["eventKind"] = "usage_observed"
 		}),

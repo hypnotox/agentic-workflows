@@ -69,21 +69,71 @@ func TestCausalPerSessionHandoffAndTrajectoryAncestry(t *testing.T) {
 	}
 }
 
-func TestCausalTrajectoryAnchorLinksAndAmbiguity(t *testing.T) {
-	anchor := causalEvent("anchor", "one", "phase_started", nil, PhaseStartedPayload{Phase: "planning"})
-	anchor.PiAnchorID = "anchor-id"
-	started := causalEvent("started", "one", "trajectory_started", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "anchor-id"})
-	resumed := causalEvent("resumed", "two", "trajectory_resumed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "anchor-id"})
-	reopened := causalEvent("reopened", "three", "effort_reopened", nil, EffortReopenedPayload{TerminalEpoch: 2, TrajectoryID: "reopened-trajectory", AnchorID: "anchor-id"})
-	order, issues := BuildCausalOrder([]EventEnvelope{anchor, started, resumed, reopened})
-	if len(issues) != 0 || !order.HappensBefore(anchor.EventID, resumed.EventID) || !order.HappensBefore(anchor.EventID, reopened.EventID) {
-		t.Fatalf("resume anchor link missing: %#v", issues)
+// invariant: tooling/workflow-telemetry:anchor-claims-and-location-metadata
+func TestCausalAnchorClaimsAreCloseOwnedAndPayloadKeyed(t *testing.T) {
+	// The close carries no envelope piAnchorId: the lifecycle request path never
+	// stamps it, so claims must key on the payload anchor.
+	closed := causalEvent("closed", "one", "trajectory_closed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "tip"})
+	resumed := causalEvent("resumed", "two", "trajectory_resumed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "tip"})
+	forked := causalEvent("forked", "three", "trajectory_forked", nil, TrajectoryForkedPayload{TrajectoryID: "child", ParentTrajectoryID: "trajectory", ForkAnchorID: "tip"})
+	reopened := causalEvent("reopened", "four", "effort_reopened", nil, EffortReopenedPayload{TerminalEpoch: 2, TrajectoryID: "reopened-trajectory", AnchorID: "tip"})
+	order, issues := BuildCausalOrder([]EventEnvelope{closed, resumed, forked, reopened})
+	if len(issues) != 0 || !order.HappensBefore(closed.EventID, resumed.EventID) || !order.HappensBefore(closed.EventID, forked.EventID) || !order.HappensBefore(closed.EventID, reopened.EventID) {
+		t.Fatalf("close-owned claim did not resolve references: %#v", issues)
 	}
-	duplicate := anchor
-	duplicate.EventID, duplicate.SessionID = "duplicate-anchor", "three"
-	_, issues = BuildCausalOrder([]EventEnvelope{anchor, duplicate})
-	if !hasIssue(issues, "ambiguous-anchor") {
-		t.Fatalf("ambiguous anchor not reported: %#v", issues)
+}
+
+func TestCausalEnvelopeAnchorsAreLocationMetadataOnly(t *testing.T) {
+	// Parallel tool observations in one batch, the final-turn usage observation
+	// with session end, and a resumed session start at the prior end's leaf all
+	// legitimately share one envelope anchor; none of them claims it.
+	toolLeft := causalEvent("tool-left", "one", "tool_observed", nil, ToolObservedPayload{Tool: "read", Outcome: "success"})
+	toolRight := causalEvent("tool-right", "one", "tool_observed", nil, ToolObservedPayload{Tool: "grep", Outcome: "success"})
+	usage := causalEvent("usage", "one", "usage_observed", nil, UsageObservedPayload{})
+	ended := causalEvent("ended", "one", "session_ended", nil, SessionObservedPayload{Outcome: "success"})
+	started := causalEvent("started", "two", "session_started", nil, SessionObservedPayload{Outcome: "success"})
+	resumed := causalEvent("resumed", "three", "trajectory_resumed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "leaf"})
+	events := []EventEnvelope{toolLeft, toolRight, usage, ended, started, resumed}
+	for index := range events {
+		events[index].IdempotencyKey = ""
+		events[index].ObservationID = "obs-" + events[index].EventID
+		events[index].PiAnchorID = "leaf"
+	}
+	order, issues := BuildCausalOrder(events)
+	if len(issues) != 0 {
+		t.Fatalf("location metadata reported as claims: %#v", issues)
+	}
+	if !order.Concurrent("resumed", "tool-left") {
+		t.Fatalf("location metadata resolved an anchor reference")
+	}
+}
+
+func TestCausalRepeatDepartureAnchorStaysAmbiguous(t *testing.T) {
+	closeLeft := causalEvent("close-left", "one", "trajectory_closed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "entry"})
+	closeRight := causalEvent("close-right", "two", "trajectory_closed", nil, TrajectoryPayload{TrajectoryID: "other", AnchorID: "entry"})
+	resumed := causalEvent("resumed", "three", "trajectory_resumed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "entry"})
+	order, issues := BuildCausalOrder([]EventEnvelope{closeLeft, closeRight, resumed})
+	if !hasIssue(issues, "ambiguous-anchor") || !order.Concurrent("close-left", "resumed") {
+		t.Fatalf("repeat departure claim not ambiguous: %#v", issues)
+	}
+}
+
+func TestCausalAnchorResolutionIsForwardOnly(t *testing.T) {
+	// Resume at a mid-branch entry, then depart at that entry: the later close
+	// claims the anchor the resume referenced, and the reference must not invert
+	// real order into a cycle.
+	resumed := causalEvent("resumed", "one", "trajectory_resumed", nil, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "entry"})
+	closed := causalEvent("closed", "one", "trajectory_closed", []string{"resumed"}, TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "entry"})
+	order, issues := BuildCausalOrder([]EventEnvelope{resumed, closed})
+	if len(issues) != 0 || order.HappensBefore(closed.EventID, resumed.EventID) || !order.HappensBefore(resumed.EventID, closed.EventID) {
+		t.Fatalf("anchor reference inverted real order: %#v", issues)
+	}
+	// An explicit predecessor naming the claimant stays deduplicated.
+	explicitClose := causalEvent("explicit-close", "two", "trajectory_closed", nil, TrajectoryPayload{TrajectoryID: "other", AnchorID: "other-entry"})
+	explicitResume := causalEvent("explicit-resume", "two", "trajectory_resumed", []string{"explicit-close"}, TrajectoryPayload{TrajectoryID: "other", AnchorID: "other-entry"})
+	order, issues = BuildCausalOrder([]EventEnvelope{explicitClose, explicitResume})
+	if len(issues) != 0 || len(order.frontiers["explicit-resume"]) != 1 {
+		t.Fatalf("explicit predecessor duplicated by anchor resolution: %v", order.frontiers["explicit-resume"])
 	}
 }
 
