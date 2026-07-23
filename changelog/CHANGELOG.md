@@ -40,6 +40,13 @@ query a single version or a range.
   never produces them.
 
 ### Features
+- Rendered chain skills now carry two boundary protocols (ADR-0152): the end of brainstorming and
+  the settled ADR review render a mandatory approval check-in that stops for explicit user
+  approval, while every other checkpoint boundary persists working memory, classifies whether user
+  attention is required, and either raises a check-in or states a continuity notice and continues.
+  The implementation skills, including the direct route on memory-backed efforts, embed the
+  complete routine protocol at their per-task sections, and a routine checkpoint summary is a
+  continuity notice rather than an intervention point.
 - The Pi target's governed subagent tools resolve an omitted `model` through extension-owned local
   per-role preferences before inheriting the parent: a user-global `awf-subagents.json` and a
   gitignored project-local `awf-subagents.local.json` set a default plus per-role models
@@ -93,7 +100,10 @@ query a single version or a range.
 - Pi targets now render a guarded `handoff_session` extension that can replace a persisted TUI
   session with a parent-linked fresh session after a cancelable countdown; it requires a working
   memory file carrying the active effort's exact `Effort: <id>` line and restores the association
-  before kickoff, while effort creation itself never requires a checkpoint or memory file. The Pi
+  before kickoff, while effort creation itself never requires a checkpoint or memory file. A
+  post-queue failure that leaves the old session active places the prepared kickoff wrapper in
+  that session's editor and raises a visible failure notice; the extension never retries
+  automatically and never starts a model turn (ADR-0152). The Pi
   extension fixture pins the checksummed `hypnotox/pi` 0.81.1 awf.3 fork that provides queued
   extension commands.
 

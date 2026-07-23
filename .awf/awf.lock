@@ -408,8 +408,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
-      "configHash": "sha256:1ffe76b06b75c9c08fd28d64653575437237dd088621f73f897b35608ba60d82",
-      "outputHash": "sha256:370493b8f4f21ce0922a959ae5be9fcd9a63ea843ba3b214208146b801bfec67"
+      "configHash": "sha256:cd22d57cfd5f5de7f592eeec4f6ccd3857601ce884ba08848ab834ef0d5760f7",
+      "outputHash": "sha256:7510e0145a90d655556b85b2ce55b617408559e29ef3ce9e030f1634ade38975"
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
