@@ -9,6 +9,10 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Bug fixes
+- `awf check` no longer emits the "carries no tags: add a narrow topic tag" advisory for
+  governed current-state ADRs (v1 and v2): their closed frontmatter rejects a `tags:` key, so
+  the note was impossible to satisfy. The advisory still fires for tag-capable legacy ADRs and
+  pitfalls under a non-empty tag vocabulary.
 - Pi anchor claims are now owned exclusively by `trajectory_closed` events keyed on the payload
   anchor, declared in the protocol descriptor's required `anchorClaimKinds` vocabulary; the
   envelope `piAnchorId` is observation-location metadata the causal checker never reads, and

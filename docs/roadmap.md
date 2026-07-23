@@ -9,11 +9,11 @@
 - Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
   `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR
   revising `tooling/cli:topic-claim-budget-advisory` and an adopter-facing config key.
-- Fix the unsatisfiable tag advisory for governed ADRs: `awf check` prints "carries no
-  tags: add a narrow topic tag" for `current-state-v2` ADRs, but the governed frontmatter
-  (internal/adr/format.go, `KnownFields(true)`) rejects a `tags:` key, so the advisory can
-  never be satisfied; either accept tags in governed frontmatter or exclude governed ADRs
-  from the tag-coverage scan.
+- Scope the `config/configuration:tag-coverage-note` claim text to tag-capable legacy ADRs
+  ("each legacy ADR and each pitfall"): the tag-coverage scan now skips all governed ADRs
+  (their closed frontmatter rejects a `tags:` key), so the claim's unqualified "each ADR"
+  drifts further from behavior with every new governed ADR; the mutation needs a
+  config-domain ADR.
 - Narrow the ADR-0148 successor topics' mirrored path selectors per area so broad-path
   `awf context --full` packets shrink (deferred by ADR-0148 Decision item 4).
 - Enforce the plan freeze mechanically: `awf check --staged` could refuse a diff that edits a
