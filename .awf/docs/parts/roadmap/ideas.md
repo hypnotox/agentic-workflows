@@ -5,6 +5,12 @@
 - Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
   `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR
   revising `tooling/cli:topic-claim-budget-advisory` and an adopter-facing config key.
+- Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
+  `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
+  pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
+  of the four occurrences folded ADR content into a code commit, which this rule would have
+  flagged deterministically; prose prevention has demonstrably failed (needs an ADR: it
+  changes shipped audit behavior).
 - Scope the `config/configuration:tag-coverage-note` claim text to tag-capable legacy ADRs
   ("each legacy ADR and each pitfall"): the tag-coverage scan now skips all governed ADRs
   (their closed frontmatter rejects a `tags:` key), so the claim's unqualified "each ADR"

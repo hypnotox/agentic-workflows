@@ -579,6 +579,18 @@ data:
         not just that the gate was green.** `git show --stat HEAD` after committing costs nothing
         and is the only thing that catches an edit lost to another writer. A green gate before the
         commit proves the tree was good at that instant; it says nothing about what got captured.
+
+        **Fourth occurrence, 2026-07-23, with a new enabler: the stale session-start snapshot.**
+        A tag-advisory bugfix session staged its two named files and committed, sweeping the
+        concurrent ADR-0155 effort's staged review amendments into a `fix(tooling)` commit. The
+        session had "verified" a clean tree only from its harness's start-of-conversation status
+        snapshot, taken before the other effort staged; it ran no fresh `git status` before
+        committing and no `git show --stat HEAD` after, so the fresh-context impl review, not the
+        committer, caught the sweep. Every prior prevention line existed in this file and none
+        fired. The check that costs nothing and is always current: run `git status` in the same
+        breath as `git add`, and read `git show --stat HEAD` before calling the commit done.
+        Fourth prose failure is the promotion signal; the deterministic follow-up (an advisory
+        audit rule flagging a code-scoped commit that also mutates an ADR body) is on the roadmap.
     - title: "Link ADRs by their on-disk filename, never by constructing one from the title"
       domains: [adr-system]
       tags: [cross-references, link-resolution]
