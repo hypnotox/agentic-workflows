@@ -408,7 +408,7 @@ as phase 1.
 
   with `<frozen digest>` the same bare 64-hex value as the phase-1 Implementing event and
   `<next>` the next global state-sequence exactly as `awf check --staged` names it (as in task
-  1.6, never pre-computed). Set the frontmatter `status:` to `Implemented`. In this plan file, set the frontmatter
+  1.7, never pre-computed). Set the frontmatter `status:` to `Implemented`. In this plan file, set the frontmatter
   `status:` to `Implemented` and record any implementation findings under `## Notes`.
 
 - [ ] **Task 3.6: Sync, validate, and commit phase 3.** Run `./x sync`; stage every changed path;
