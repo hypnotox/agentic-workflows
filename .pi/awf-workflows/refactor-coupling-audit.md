@@ -30,7 +30,7 @@ This is a **task skill**: it sits off the workflow chain and does not gate it. I
 <!-- awf:edit audit-shape-selection: default; create .awf/skills/parts/refactor-coupling-audit/audit-shape-selection.md to override -->
 ### Audit shape
 
-**Pick the audit shape.** When both the coupling evidence location is unknown and inline search would pollute the parent context, call `awf_workflow` alone with `skill: "exploring"` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve all six categories and the structured output contract.
+**Pick the audit shape.** When both the coupling evidence location is unknown and inline search would pollute the parent context, call `awf_workflow` alone with `skill: "exploring"` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve all six categories and the structured output contract. Ground the audit before the categories: run `awf context <the refactor's source and destination paths>` (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a moved surface is claimed) so the coupling findings land in the ADR Context section against current authority.
 
 <!-- awf:edit category-1-top-level-files: default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
 ### 1. Top-level package files

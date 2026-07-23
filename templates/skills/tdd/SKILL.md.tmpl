@@ -16,7 +16,7 @@ The test-first discipline as a project-owned task skill.
 
 ## Procedure
 
-1. Write the failing test capturing the wrong (bug) or missing (feature) behaviour.
+1. Run `awf context <the implementation and test paths>` (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the change touches a claimed surface), then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
 2. Run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}.
 3. Implement the minimal change to pass.
 4. Run the gate{{ with .vars.gateCmd }}: `{{ . }}`{{ end }}.

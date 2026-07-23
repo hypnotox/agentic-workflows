@@ -44,7 +44,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 
 <!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->
-4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
+4. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. Run `awf context <the suspect paths>` first (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix will touch a claimed surface). The test must fail for the right reason on the unfixed code. Invoke `awf-tdd` for the project's test-first discipline.
 
 
 5. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with `./x gate` (fast tier). Run `./x gate full` when the regression test lives in a slower surface that the fast tier does not exercise.

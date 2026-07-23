@@ -265,7 +265,16 @@ func TestExecutingDirectTemplate(t *testing.T) {
 // invariant: tooling/context-and-topic:context-full-authority-packet
 func TestManagedContextCallersChooseProjection(t *testing.T) {
 	complete := map[string]bool{"adr-lifecycle": true, "reviewing-impl": true, "reviewing-plan": true}
-	concise := map[string]bool{"brainstorming": true}
+	concise := map[string]bool{
+		"brainstorming":               true,
+		"bugfix":                      true,
+		"debugging":                   true,
+		"executing-plans":             true,
+		"refactor-coupling-audit":     true,
+		"subagent-driven-development": true,
+		"tdd":                         true,
+		"writing-plans":               true,
+	}
 	seen := map[string]bool{}
 	for name := range catalog.Standard.Skills {
 		templateID := "skills/" + name + "/SKILL.md.tmpl"

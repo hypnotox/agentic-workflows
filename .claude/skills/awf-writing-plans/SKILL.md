@@ -59,7 +59,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 Start from the canonical skeleton rather than a blank file: run `awf new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `docs/plans/template.md`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the three canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
 
 <!-- awf:edit procedure-write-plan: default; create .awf/skills/parts/writing-plans/procedure-write-plan.md to override -->
-2. **Write the plan file in one go.** The plan must be self-contained: every step executable by an agent with no prior conversation context.
+2. **Write the plan file in one go.** The plan must be self-contained: every step executable by an agent with no prior conversation context. While drafting the file-structure header and tasks, run `awf context <the plan's created and modified paths>` (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a task touches a claimed surface) so task content is grounded in current authority rather than reconstructed from memory.
 
 <!-- awf:edit doc-currency-check: default; create .awf/skills/parts/writing-plans/doc-currency-check.md to override -->
 

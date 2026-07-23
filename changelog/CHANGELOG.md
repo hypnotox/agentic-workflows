@@ -8,6 +8,12 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+- Workflow skill templates now ground implementers in current-state authority: seven
+  implementer-chain skills (executing-plans, subagent-driven-development, writing-plans,
+  bugfix, debugging, tdd, refactor-coupling-audit) instruct a concise `awf context` run over
+  their touched paths before editing (ADR-0155).
+
 ### Bug fixes
 - `awf check` no longer emits the "carries no tags: add a narrow topic tag" advisory for
   governed current-state ADRs (v1 and v2): their closed frontmatter rejects a `tags:` key, so
