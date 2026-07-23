@@ -176,8 +176,10 @@ feat(tooling): annotate collapsed unowned directories with counts
   `  Topic paths:`, `  Matched paths:`, and `  Claims (` lines; the global topic prints its
   `  Global topic within owning domain selectors:` line unchanged; and a group consisting
   only of global topics prints no hoisted pair. Keep the existing assertion that the
-  both-must-match sentence appears at least once overall intact. Run
-  `go test ./cmd/awf/ -run 'TestPrintContext'`; red.
+  both-must-match sentence appears at least once overall intact. In the existing
+  `TestRunContextJSONParity` (cmd/awf/context_test.go:293), change the wanted substring
+  `Domain paths` to `Domain alpha paths` to match the hoisted domain-naming header for that
+  fixture's domain. Run `go test ./cmd/awf/ -run 'TestPrintContext'`; red.
 - [ ] **Task 3.2: Implement the hoist.** In `cmd/awf/context.go` `printContext`, restructure
   the `## Topics` loop: derive each topic's domain as `t.ID` up to the first `/`; iterate
   groups of consecutive same-domain topics (`res.Topics` is sorted by domain-qualified ID, so
@@ -187,8 +189,8 @@ feat(tooling): annotate collapsed unowned directories with counts
   topic print the `\n%s - %s` header, the global-topic line for `DeclaredGlobal` entries or
   the `  Topic paths: %v` line for the rest, followed by the unchanged matched/claims/detail
   lines; the per-topic `  Domain paths:` line is removed. JSON output and the assembled
-  semantic model are untouched. Run `go test ./cmd/awf/`; green, including untouched parity
-  tests.
+  semantic model are untouched. Run `go test ./cmd/awf/`; green, including the updated parity
+  test.
 - [ ] **Task 3.3: Doc currency.** `changelog/CHANGELOG.md` `[Unreleased]` `### Others`:
   `- The concise \`awf context\` text rendering prints each domain's selector block once per domain group instead of repeating it verbatim under every topic of that domain; JSON is unchanged.`
   Run `./x sync` (no template edits expected; sync confirms no drift).
