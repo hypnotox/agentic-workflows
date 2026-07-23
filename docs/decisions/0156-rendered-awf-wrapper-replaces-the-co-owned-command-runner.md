@@ -95,10 +95,11 @@ Verified couplings that shape the redesign:
    `commitGateCmd`/`proseGateCmd` move to `./awf` forms, while `checkCmd`/`activeMdRegenCmd` stay
    on the `./x` composites so the sundial oracle remains in the gate path.
 8. **The example adopter models the new split.** `examples/sundial` keeps the runner singleton
-   enabled (now rendering `awf`), flips its awf-verb vars to `./awf` forms, and gains a small
-   hand-written `./x` carrying its `gate`/`test` bodies with `gateCmd: ./x gate` and
-   `testCmd: ./x test`; the hand-written file is added only after the sync that prunes the old
-   rendered `x`.
+   enabled (now rendering `awf`), drops its awf-verb vars entirely so it dogfoods the
+   runner-aware rendered defaults a fresh adopter gets (`./awf` forms supplied by the
+   templates, not by explicit var values), and gains a small hand-written `./x` carrying its
+   `gate`/`test` bodies with `gateCmd: ./x gate` and `testCmd: ./x test`; the hand-written
+   file is added only after the sync that prunes the old rendered `x`.
 9. **The outgoing co-owned runner is backed up, not silently deleted.** When a sync's lock prune
    removes the previously rendered co-owned runner path `x` (the only output that carried
    in-place sections), the file is backed up in place of deletion through the standard backup
