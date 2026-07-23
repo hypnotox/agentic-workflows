@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0149: Deterministic Effort Lifecycle Accounting and Pi Workflow Routing](0149-deterministic-effort-lifecycle-accounting-and-pi-workflow-routing.md) (Implementing)
+- [ADR-0151: Split overloaded invariant claims into focused claims](0151-split-overloaded-invariant-claims-into-focused-claims.md) (Proposed)
 
 ## History
 
