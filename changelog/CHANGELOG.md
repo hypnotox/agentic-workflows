@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-07-24
+
 ### Features
 - New `awfInvokeCmd` var overrides how the rendered `./awf` wrapper invokes awf; unset, it
   resolves the bootstrap-pinned binary and falls back to PATH `awf`.
