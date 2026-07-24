@@ -4,4 +4,4 @@
 # into a hook setup you own, e.g. a .git/hooks/commit-msg stub containing:
 #   exec bash .awf/hooks/commit-msg.sh "$@"
 set -euo pipefail
-./x commit-gate "$1"
+./awf commit-gate "$1"

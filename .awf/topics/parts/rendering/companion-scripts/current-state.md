@@ -4,8 +4,9 @@ Rendered companion script contracts: the bootstrap and upgrade scripts, the comm
 
 ### `invariant: dashboard-development-runtime-commands`
 
-The awf repository's editable runner project-verb region advertises `dashboard-awf-path` and `dashboard-awf-advance [commit]`: path prints only the resolved immutable launcher path to standard output with diagnostics on standard error, while advance reports the old commit, new commit, and launcher path after publish-before-compare-and-swap advancement. The generic rendered runner omits both repository-only commands, so adopters do not acquire source-layout assumptions.
+The awf repository's hand-maintained project runner `./x` advertises `dashboard-awf-path` and `dashboard-awf-advance [commit]`: path prints only the resolved immutable launcher path to standard output with diagnostics on standard error, while advance reports the old commit, new commit, and launcher path after publish-before-compare-and-swap advancement. The rendered wrapper carries no repository-only commands, so adopters do not acquire source-layout assumptions.
 Origin: ADR-0150
+Revised-by: ADR-0156
 Backing: test
 
 ### `invariant: bootstrap-checksum`

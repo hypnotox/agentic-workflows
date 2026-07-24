@@ -1,8 +1,9 @@
 ## Command runner
 
-`./x` at the repo root is the entry point for every repo task; run it with no argument
-for the usage line. awf subcommands run from source (`go run ./cmd/awf`) so the
-dogfooded render always matches the tree, never a stale installed binary.
+`./x` at the repo root carries the repo-local project verbs; run it with no argument
+for the usage line. awf verbs go through the rendered `./awf` wrapper, which runs awf
+from source (`awfInvokeCmd: go run ./cmd/awf`) so the dogfooded render always matches
+the tree, never a stale installed binary.
 
 | Command | What it does |
 |---|---|

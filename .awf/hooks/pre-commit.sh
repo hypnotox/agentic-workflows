@@ -8,4 +8,4 @@ set -euo pipefail
 ./x check
 ./x check --staged
 ./x gate
-./x prose-gate
+./awf prose-gate

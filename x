@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Command runner for the awf repo - the single entry point for repo interactions.
+# Command runner for the awf repo - project verbs only; awf verbs go through ./awf.
 # Usage: ./x <command> [args]
 set -euo pipefail
 
@@ -21,7 +21,7 @@ case "$cmd" in
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck
-    go run ./cmd/awf prose-gate
+    ./awf prose-gate
     ;;
   lint)
     go tool golangci-lint run "$@"
@@ -38,8 +38,9 @@ case "$cmd" in
     go test ./... "$@"
     ;;
   sync)
-    # Run awf from source so the dogfooded render always matches the tree.
-    go run ./cmd/awf sync "$@"
+    # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the
+    # dogfooded render always matches the tree.
+    ./awf sync "$@"
     # ADR-0090: re-render the example adopter with the same source. The example
     # is its own Go module, so build once and run with the example as cwd.
     bindir="$(mktemp -d)"
@@ -48,7 +49,7 @@ case "$cmd" in
     (cd examples/sundial && "$bindir/awf" sync)
     ;;
   check)
-    go run ./cmd/awf check "$@"
+    ./awf check "$@"
     # ADR-0090: the example adopter must be drift-free, invariant-clean, free of
     # advisory notes (the model adopter has zero smells), and its scenery green.
     bindir="$(mktemp -d)"
@@ -65,24 +66,6 @@ case "$cmd" in
     fi
     (cd examples/sundial && "$bindir/awf" invariants)
     (cd examples/sundial && go test ./...)
-    ;;
-  invariants)
-    go run ./cmd/awf invariants "$@"
-    ;;
-  audit)
-    go run ./cmd/awf audit "$@"
-    ;;
-  list | config | topic | metrics | doctor | enable | disable | changelog | version)
-    go run ./cmd/awf "$cmd" "$@"
-    ;;
-  context)
-    go run ./cmd/awf context "$@"
-    ;;
-  commit-gate)
-    go run ./cmd/awf commit-gate "$@"
-    ;;
-  prose-gate)
-    go run ./cmd/awf prose-gate "$@"
     ;;
   dashboard-awf-path)
     if [ "$#" -ne 0 ]; then
@@ -111,10 +94,6 @@ case "$cmd" in
       exit 2
     fi
     tools/pi-extension-test/container.sh "$action"
-    ;;
-  new)
-    # Scaffold a new ADR (or other awf artifact) from source, e.g. ./x new adr "<title>".
-    go run ./cmd/awf new "$@"
     ;;
   build)
     go build -o bin/awf ./cmd/awf
@@ -148,7 +127,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|invariants|audit|metrics|doctor|commit-gate|prose-gate|dashboard-awf-path|dashboard-awf-advance [commit]|pi-test <run|stop|reset>|new|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|dashboard-awf-path|dashboard-awf-advance [commit]|pi-test <run|stop|reset>|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

@@ -90,7 +90,7 @@ tags:
   checksum-verify: Download checksum verification
   cli-dispatch: CLI command dispatch and kind routing
   closed-config-tree: The closed-config-tree drift model
-  command-runner: The ./x command runner
+  command-runner: The ./x project runner and the rendered ./awf wrapper
   commit-conformance: Commit-range workflow conformance
   commit-gate: The deterministic commit-message gate
   commit-scopes: The configured commit-scope vocabulary
@@ -191,11 +191,11 @@ vars:
   activeMdRegenCmd: ./x sync
   awfInvokeCmd: go run ./cmd/awf
   checkCmd: ./x check
-  commitGateCmd: ./x commit-gate
+  commitGateCmd: ./awf commit-gate
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
-  proseGateCmd: ./x prose-gate
+  proseGateCmd: ./awf prose-gate
   testCmd: go test ./...
 bootstrap:
   enabled: false
