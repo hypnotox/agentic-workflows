@@ -4,7 +4,7 @@
 [![coverage: raw](https://img.shields.io/codecov/c/github/hypnotox/agentic-workflows?flag=raw&label=coverage%3A%20raw)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=raw)
 [![coverage: accountable](https://img.shields.io/codecov/c/github/hypnotox/agentic-workflows?flag=covered&label=coverage%3A%20accountable)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=covered)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](go.mod)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#)
 
 `awf` renders an opinionated agentic-development workflow into your repo: a chain of
@@ -345,7 +345,7 @@ work.
 
 ## License
 
-[MIT](LICENSE) © hypnotox.
+[GNU Affero General Public License v3.0 only](LICENSE) © hypnotox.
 
 `awf` renders configuration for, and interoperates with, third-party coding agents. It is
 an independent project, not affiliated with or endorsed by any of their vendors.
