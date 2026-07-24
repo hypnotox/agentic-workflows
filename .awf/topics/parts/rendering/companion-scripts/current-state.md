@@ -56,6 +56,12 @@ The rendered runner's project-verb region and its setup-and-helpers region are e
 Origin: ADR-0148
 Backing: test
 
+### `invariant: runner-prune-backup`
+
+A lock prune that removes a co-owned runner output (an outgoing lock entry whose template id is `runner/x.tmpl`) backs the file up through the standard backup path (`x.awf-bak`, collision-suffixed) instead of deleting it, and still records the path as pruned.
+Origin: ADR-0156
+Backing: test
+
 ### `invariant: runner-render-publication-safe`
 
 The runner template renders leak-free under empty data, producing no unresolved token and no stray section or marker residue, like every other awf template.

@@ -102,6 +102,12 @@ type Backup struct {
 	Index bool   // the file is the generated ADR/domain index (ownership-takeover note)
 }
 
+// coOwnedRunnerTID is the legacy co-owned command-runner template id
+// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry, so
+// the value stays this historic id no matter where the runner render unit
+// moves later (ADR-0156 Decision item 9).
+const coOwnedRunnerTID = "runner/x.tmpl"
+
 // Change records a sync-written file whose rendered output differs from the
 // prior lock's, with the cause the lock's hashes can attribute: "template"
 // (the upstream template source moved), "config" (the project's effective
@@ -117,7 +123,8 @@ type Change struct {
 
 // SyncReport renders and writes the project, additionally backing up any
 // foreign file (on disk but absent from the start-of-sync lock) before overwriting
-// it, and returning those backups (ADR-0035) plus the per-file provenance of
+// it - plus a pruned co-owned runner before removing it (ADR-0156 item 9) -
+// and returning those backups (ADR-0035) plus the per-file provenance of
 // output that changed against the prior lock and the lock-relative paths of the
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
@@ -271,7 +278,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	var pruned []string
 	if old != nil {
 		dirs := map[string]bool{}
-		for path := range old.Files {
+		for path, entry := range old.Files {
 			if want[path] || preserveMetricsRemoval(path, metricsResident) {
 				continue
 			}
@@ -281,6 +288,18 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 				continue
 			}
 			file := filepath.Join(p.Root, path)
+			// The outgoing co-owned runner is the one pruned output an adopter
+			// hand-authored inside (its in-place verb bodies), so it is backed
+			// up before removal for the one-time hand-port instead of vanishing
+			// into git history (ADR-0156 item 9). A backup failure aborts the
+			// prune - never a silent fall-through to deletion.
+			if entry.TemplateID == coOwnedRunnerTID && fileExists(file) {
+				bak, bakErr := p.BackupFile(path)
+				if bakErr != nil { // coverage-ignore: BackupFile only fails on a copyFile permission fault that root bypasses
+					return nil, nil, nil, fmt.Errorf("back up pruned runner %s: %w", path, bakErr)
+				}
+				backups = append(backups, Backup{Path: path, Bak: bak})
+			}
 			// Report only an actual removal - a path whose file is already gone
 			// must not be claimed pruned.
 			if os.Remove(file) == nil {

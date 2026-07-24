@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-23
 ---
 # ADR-0156: Rendered awf wrapper replaces the co-owned command runner
@@ -193,3 +193,5 @@ Harder / accepted trade-offs:
 ## Status history
 
 - 2026-07-23: Proposed
+- 2026-07-24: Implementing; content-sha256: 0c43c72549cffd1c08956711be7ea28978501f690b2aa78836fc651901c4f723
+- 2026-07-24: Applied; state-sequence: 40; operations: add `rendering/companion-scripts:runner-prune-backup`

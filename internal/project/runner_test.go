@@ -176,6 +176,77 @@ func TestRunnerPublicationSafe(t *testing.T) {
 	}
 }
 
+// A sync's lock prune that removes the co-owned runner output (an outgoing
+// lock entry whose template id is runner/x.tmpl) backs the file up through the
+// standard backup path - never clobbering a prior backup - instead of deleting
+// it, and still reports the path as pruned.
+// invariant: rendering/companion-scripts:runner-prune-backup
+func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		staleBak bool // a pre-existing x.awf-bak occupies the plain suffix
+		wantBak  string
+	}{
+		{"plain suffix", false, "x.awf-bak"},
+		{"collision-suffixed", true, "x.awf-bak.1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
+			p, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			before, err := os.ReadFile(filepath.Join(root, "x"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			const stale = "stale prior backup\n"
+			if tc.staleBak {
+				if err := os.WriteFile(filepath.Join(root, "x.awf-bak"), []byte(stale), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			disabled := "prefix: example\nrunner:\n  enabled: false\n"
+			if err := os.WriteFile(configPath(root), []byte(disabled), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			p2, err := Open(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			backups, _, pruned, err := p2.SyncReport()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(filepath.Join(root, "x")); !os.IsNotExist(err) {
+				t.Errorf("pruned runner must be gone from its path, stat err = %v", err)
+			}
+			bak, err := os.ReadFile(filepath.Join(root, tc.wantBak))
+			if err != nil {
+				t.Fatalf("runner backup missing: %v", err)
+			}
+			if string(bak) != string(before) {
+				t.Errorf("backup content differs from the pruned runner:\n%s", bak)
+			}
+			if !slices.Contains(pruned, "x") {
+				t.Errorf("runner must still be reported pruned: %v", pruned)
+			}
+			if !slices.Contains(backups, Backup{Path: "x", Bak: tc.wantBak}) {
+				t.Errorf("runner backup must be reported alongside other backups: %v", backups)
+			}
+			if tc.staleBak {
+				prior, err := os.ReadFile(filepath.Join(root, "x.awf-bak"))
+				if err != nil || string(prior) != stale {
+					t.Errorf("prior backup clobbered: %q, err = %v", prior, err)
+				}
+			}
+		})
+	}
+}
+
 // The runner is a dedicated config-tree render block, not a catalog DocEntry, so it
 // stays out of SingletonKinds() - the unified-doc-model completeness set is
 // unchanged by the runner's existence.
