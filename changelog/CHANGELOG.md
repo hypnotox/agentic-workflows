@@ -9,6 +9,8 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Features
+- New `awfInvokeCmd` var overrides how the rendered `./awf` wrapper invokes awf; unset, it
+  resolves the bootstrap-pinned binary and falls back to PATH `awf`.
 - The rendered agent guide is now an entry-point router (ADR-0157): the workflow section becomes a
   catalog-derived entry-skill trigger table, the working-memory and awf-setup sections shrink to
   routing minimums, and the working-memory protocol moves to a new canonical working-memory section
@@ -45,6 +47,13 @@ query a single version or a range.
   anchor-resolution targets.
 
 ### Breaking changes
+- The runner singleton now renders a pure awf wrapper `awf` at the repo root instead of the
+  co-owned `x`: no per-verb dispatch, no in-place project-verb sections. Project verbs live in
+  the adopter's own runner; a pruned co-owned `x` is backed up to `x.awf-bak` for the one-time
+  hand-port. `awf upgrade` (schema generation 18) seeds the wrapper enabled unless the config
+  carries an explicit `enabled: false`, and hooks with an unset `gateCmd` (or, with the runner
+  disabled, an unset `checkCmd`/`commitGateCmd`/`proseGateCmd`) now fail `awf sync`/`awf check`
+  instead of degrading silently.
 - awf 0.22.0 advances to schema generation 17 with a strict, tracked `workflowTelemetry`
   configuration block for retention, dashboard widget behavior, diagnostics, and heuristic thresholds.
   Existing adopters must run `awf upgrade`; the migration writes the complete defaults.

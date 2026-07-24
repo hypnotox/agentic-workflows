@@ -4,17 +4,14 @@
 # .git/hooks/pre-commit stub containing:
 #   exec bash .awf/hooks/pre-commit.sh "$@"
 set -euo pipefail
-{{ if or (not .vars.checkCmd) (not .vars.proseGateCmd) }}
-# Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
-awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
-{{ end }}
-{{- with .vars.checkCmd }}{{ . }}{{ else }}awf check{{ end }}
 {{- with .vars.checkCmd }}
+{{ . }}
 {{ . }} --staged
 {{- else }}
-awf check --staged
+{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check
+{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check --staged
 {{- end }}
 {{- with .vars.gateCmd }}
 {{ . }}
 {{- end }}
-{{ with .vars.proseGateCmd }}{{ . }}{{ else }}awf prose-gate{{ end }}
+{{ with .vars.proseGateCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} prose-gate{{ end }}

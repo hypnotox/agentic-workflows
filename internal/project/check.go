@@ -389,6 +389,12 @@ func (p *Project) declaredSections(kind, name string) []string {
 }
 
 func (p *Project) Check() ([]manifest.Drift, error) {
+	// Refuse an unresolvable hook-command wiring before checking anything
+	// (ADR-0156 Decision 5); the staged index check stays exempt - the
+	// working-tree check in the same gate run covers the config.
+	if err := validateCommandWiring(p.Cfg); err != nil {
+		return nil, err
+	}
 	p.beginInvocation()
 	lock, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {

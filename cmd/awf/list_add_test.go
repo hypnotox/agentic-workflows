@@ -15,11 +15,13 @@ import (
 )
 
 // scaffoldedProject writes a curated-default scaffold (10 core skills, 3 agents,
-// 0 docs - no doc is core after ADR-0043 - no domains) and syncs it.
+// 0 docs - no doc is core after ADR-0043 - no domains) and syncs it. The
+// gateCmd answer keeps the scaffold's enabled hooks singleton valid under the
+// command-wiring rule (ADR-0156 Decision 5) once ordinary syncs run.
 func scaffoldedProject(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	b, _, err := project.ScaffoldConfig("example", nil, nil, nil)
+	b, _, err := project.ScaffoldConfig("example", map[string]string{"gateCmd": "make gate"}, nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,6 +369,12 @@ func TestRunHooksCLI(t *testing.T) {
 		t.Errorf("expected is-not-enabled error, got %v", err)
 	}
 
+	// The runner satisfies the hooks command-wiring rule (ADR-0156 Decision 5):
+	// minimalYAML sets gateCmd but none of the awf-verb vars.
+	if err := runEnable(root, "runner", "", false, io.Discard); err != nil {
+		t.Fatalf("add runner: %v", err)
+	}
+
 	// add enables it (config gains enabled: true, sync renders the payloads).
 	if err := runEnable(root, "hooks", "", false, io.Discard); err != nil {
 		t.Fatalf("add hooks: %v", err)
@@ -415,6 +423,10 @@ func TestDispatchHooks(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 
 	var out, errb bytes.Buffer
+	// The runner satisfies the hooks command-wiring rule (ADR-0156 Decision 5).
+	if code := run([]string{"awf", "enable", "runner"}, &out, &errb); code != 0 {
+		t.Fatalf("add runner dispatch: code=%d err=%q", code, errb.String())
+	}
 	if code := run([]string{"awf", "enable", "hooks"}, &out, &errb); code != 0 {
 		t.Fatalf("add hooks dispatch: code=%d err=%q", code, errb.String())
 	}

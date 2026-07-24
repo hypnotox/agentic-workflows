@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-23
 ---
 # ADR-0156: Rendered awf wrapper replaces the co-owned command runner
@@ -197,3 +197,5 @@ Harder / accepted trade-offs:
 - 2026-07-24: Applied; state-sequence: 40; operations: add `rendering/companion-scripts:runner-prune-backup`
 - 2026-07-24: Applied; state-sequence: 41; operations: add `rendering/companion-scripts:runner-pure-forwarder`, add `rendering/companion-scripts:runner-resolution-pinned-first`, update `rendering/companion-scripts:runner-singleton-toggle`, update `rendering/companion-scripts:runner-example-adopted`, update `rendering/catalog-and-targets:var-descriptor-set-pinned`, update `tooling/cli:cli-command-spec-single-source`, update `tooling/cli:metrics-command-contract`, update `tooling/cli:doctor-command-contract`, remove `rendering/companion-scripts:runner-awf-verbs-owned`, remove `rendering/companion-scripts:runner-project-verbs-in-place`, remove `tooling/cli:managed-runner-command-parity`
 - 2026-07-24: Applied; state-sequence: 42; operations: update `rendering/companion-scripts:dashboard-development-runtime-commands`
+- 2026-07-24: Applied; state-sequence: 43; operations: add `config/validation:hooks-commands-resolvable`, update `rendering/companion-scripts:hook-payloads-fallback-safe`
+- 2026-07-24: Implemented; content-sha256: 0c43c72549cffd1c08956711be7ea28978501f690b2aa78836fc651901c4f723

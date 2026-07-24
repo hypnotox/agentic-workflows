@@ -65,8 +65,9 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		"parts/bogus-kind/x.md":           "unknown singleton\n",
 		"parts/workflow/bogus.md":         "undeclared singleton section\n",
 	})
-	// hooks enabled so .awf/hooks/*.sh are claimed render units.
-	testsupport.WriteFile(t, configPath(root), "prefix: example\nskills:\n  - tdd\nagents: []\nhooks:\n  enabled: true\n")
+	// hooks enabled so .awf/hooks/*.sh are claimed render units; gateCmd and
+	// the runner keep the enabled hooks command-wiring valid (ADR-0156).
+	testsupport.WriteFile(t, configPath(root), "prefix: example\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n")
 	drift := checkDrift(t, root)
 	got := orphanedByPath(drift)
 
@@ -145,7 +146,7 @@ func TestSweepClaimsSynthesizedLocalParts(t *testing.T) {
 }
 
 func TestSweepBaselineClean(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\nbootstrap:\n  enabled: true\nhooks:\n  enabled: true\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", nil)
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("a hygienic tree with all render units enabled must sweep clean, got %#v", got)
 	}

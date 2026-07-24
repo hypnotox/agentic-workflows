@@ -31,12 +31,18 @@ func agentsDocContent(t *testing.T, configYAML string) string {
 	return ""
 }
 
-// With no commands data and no command vars, the Commands section renders a
-// self-describing placeholder; identical command values render once.
-func TestAgentsDocCommandsPlaceholderAndDedupe(t *testing.T) {
+// With no commands data and no command vars, the Commands section still names
+// the drift check, resolved runner-aware (./awf with the runner singleton
+// enabled, the generic awf otherwise; ADR-0156 Decision 4); identical command
+// values render once.
+func TestAgentsDocCommandsDefaultAndDedupe(t *testing.T) {
 	empty := agentsDocContent(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n")
-	if !strings.Contains(empty, "<!-- No commands configured") {
-		t.Errorf("empty Commands section missing the placeholder:\n%s", empty)
+	if !strings.Contains(empty, "- `awf check`: check rendered files for drift") {
+		t.Errorf("empty Commands section missing the generic awf check default:\n%s", empty)
+	}
+	runner := agentsDocContent(t, "prefix: example\nvars: {}\nskills: []\nagents: []\nrunner:\n  enabled: true\n")
+	if !strings.Contains(runner, "- `./awf check`: check rendered files for drift") {
+		t.Errorf("runner-enabled Commands section missing the ./awf check default:\n%s", runner)
 	}
 	dup := agentsDocContent(t, "prefix: example\nvars:\n  testCmd: make test\n  gateCmd: make test\n  checkCmd: make check\nskills: []\nagents: []\n")
 	if got := strings.Count(dup, "- `make test`: run the test suite"); got != 1 {

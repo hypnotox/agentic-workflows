@@ -306,7 +306,11 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 // TestInitProducesCleanSyncableProject verifies that writing the scaffold to a
 // temp project tree and opening + syncing it produces zero drift.
 func TestInitProducesCleanSyncableProject(t *testing.T) {
-	b, _, err := ScaffoldConfig("testproject", nil, nil, nil)
+	// A gateCmd answer keeps the scaffold's enabled hooks singleton valid under
+	// the command-wiring rule (ADR-0156 Decision 5); an unanswered init still
+	// scaffolds and initializes, but its first ordinary sync/check demands the
+	// gate command (covered by TestValidateCommandWiring).
+	b, _, err := ScaffoldConfig("testproject", map[string]string{"gateCmd": "make gate"}, nil, nil)
 	if err != nil {
 		t.Fatalf("ScaffoldConfig: %v", err)
 	}

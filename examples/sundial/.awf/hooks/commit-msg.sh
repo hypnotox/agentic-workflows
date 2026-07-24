@@ -4,7 +4,4 @@
 # into a hook setup you own, e.g. a .git/hooks/commit-msg stub containing:
 #   exec bash .awf/hooks/commit-msg.sh "$@"
 set -euo pipefail
-
-# Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
-awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
-awf commit-gate "$1"
+./awf commit-gate "$1"

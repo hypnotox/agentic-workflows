@@ -73,7 +73,7 @@ Hard rules every change must respect:
 {{ end -}}
 ```
 {{- else -}}
-{{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := or .vars.checkCmd "" -}}
+{{- $test := or .vars.testCmd "" }}{{ $gate := or .vars.gateCmd "" }}{{ $check := .vars.checkCmd }}{{ if not $check }}{{ if .runnerEnabled }}{{ $check = "./awf check" }}{{ else }}{{ $check = "awf check" }}{{ end }}{{ end -}}
 {{- if or $test $gate $check -}}
 {{ with $test }}- `{{ . }}`: run the test suite
 {{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}`: run the gate before committing

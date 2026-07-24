@@ -173,6 +173,38 @@ func checkSectionsAllowed(kind, name string, declared []string, used map[string]
 	return nil
 }
 
+// validateCommandWiring fails sync and check when the rendered hook payloads
+// could not resolve their commands (ADR-0156 Decision 5): an enabled hooks
+// singleton needs a project gate command, and with the runner singleton
+// disabled the hook-referenced awf-verb vars must be set explicitly. It is
+// deliberately not wired into awf init's scaffold sync (a fresh init with an
+// empty interactive gateCmd answer must not hard-fail) or the staged index
+// check (the working-tree check in the same gate run covers the config).
+func validateCommandWiring(cfg *config.Config) error {
+	if cfg.Hooks == nil || !cfg.Hooks.Enabled {
+		return nil
+	}
+	if commandVarUnset(cfg, "gateCmd") {
+		return errors.New("hooks.enabled requires vars.gateCmd: the rendered hook payloads run the project gate; set vars.gateCmd in .awf/config.yaml")
+	}
+	if cfg.Runner != nil && cfg.Runner.Enabled {
+		return nil
+	}
+	for _, name := range []string{"checkCmd", "commitGateCmd", "proseGateCmd"} {
+		if commandVarUnset(cfg, name) {
+			return fmt.Errorf("hooks.enabled without the runner singleton requires vars.%s: set it in .awf/config.yaml or enable the runner (awf enable runner)", name)
+		}
+	}
+	return nil
+}
+
+// commandVarUnset reports whether a command var carries no usable value: the
+// key is absent, its value is not a string, or it is blank.
+func commandVarUnset(cfg *config.Config, key string) bool {
+	s, _ := cfg.Vars[key].(string)
+	return strings.TrimSpace(s) == ""
+}
+
 // skillFrontmatter is the rendered skill/agent frontmatter contract Claude Code
 // requires.
 type skillFrontmatter struct {

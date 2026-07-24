@@ -28,9 +28,41 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	if code := run([]string{"awf", "init"}, &initOut, &initErr); code != 0 {
 		t.Fatalf("init before first commit: exit %d (%s)", code, initErr.String())
 	}
+	// A no-answer init leaves gateCmd unset, so the first ordinary check stops
+	// at the loud command-wiring error (ADR-0156 Decision 5) - init itself must
+	// not hard-fail, the follow-up commands name the exact var to set.
+	var wiredOut, wiredErr bytes.Buffer
+	if code := run([]string{"awf", "check"}, &wiredOut, &wiredErr); code == 0 ||
+		!strings.Contains(wiredErr.String(), "hooks.enabled requires vars.gateCmd") {
+		t.Fatalf("check without gateCmd: exit %d, want the command-wiring error (%s)", code, wiredErr.String())
+	}
+	setScaffoldGateCmd(t, root)
+	var syncOut, syncErr bytes.Buffer
+	if code := run([]string{"awf", "sync"}, &syncOut, &syncErr); code != 0 {
+		t.Fatalf("sync before first commit: exit %d (%s)", code, syncErr.String())
+	}
 	var checkOut, checkErr bytes.Buffer
 	if code := run([]string{"awf", "check"}, &checkOut, &checkErr); code != 0 {
 		t.Fatalf("check before first commit: exit %d (%s)\n%s", code, checkErr.String(), checkOut.String())
+	}
+}
+
+// setScaffoldGateCmd fills the scaffold's empty gateCmd var in-place: the
+// actionable follow-up the ADR-0156 command-wiring error demands of a
+// no-answer init before its first ordinary sync or check.
+func setScaffoldGateCmd(t *testing.T, root string) {
+	t.Helper()
+	cfgPath := filepath.Join(root, ".awf", "config.yaml")
+	b, err := os.ReadFile(cfgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	replaced := strings.Replace(string(b), `gateCmd: ""`, "gateCmd: make gate", 1)
+	if replaced == string(b) {
+		t.Fatalf("scaffold config carries no empty gateCmd seed:\n%s", b)
+	}
+	if err := os.WriteFile(cfgPath, []byte(replaced), 0o644); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -91,9 +123,15 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// The fresh tree must also pass check, with notes only (advisory, exit 0) -
-	// in particular zero dead-skill-reference findings on the curated default.
+	// With the gateCmd wiring supplied (the one follow-up the ADR-0156
+	// command-wiring error demands), the tree must pass check with notes only
+	// (advisory, exit 0) - in particular zero dead-skill-reference findings on
+	// the curated default.
 	// invariant: rendering/project-output-plan:curated-init-skill-refs-clean
+	setScaffoldGateCmd(t, root)
+	if err := runSync(root, io.Discard); err != nil {
+		t.Fatalf("sync after wiring gateCmd: %v", err)
+	}
 	var checkOut bytes.Buffer
 	if err := runCheck(root, false, &checkOut); err != nil {
 		t.Fatalf("check on fresh init: %v\n%s", err, checkOut.String())

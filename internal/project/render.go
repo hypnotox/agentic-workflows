@@ -102,6 +102,10 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		"gatedCommands":           gatedCommandsDisplay(),
 		"telemetryWidgetEnabled":  p.Cfg.WorkflowTelemetry.Widget.Enabled,
 		"telemetryWidgetShowCost": p.Cfg.WorkflowTelemetry.Widget.ShowCost,
+		// Runner-enabled state for awf-verb fallback arms (ADR-0156 Decision 4):
+		// enabled renders ./awf forms; disabled - and empty publication data -
+		// degrades to the generic awf forms.
+		"runnerEnabled": p.Cfg.Runner != nil && p.Cfg.Runner.Enabled,
 		// Project-level session-handoff signal for the neutral (guide/singleton
 		// doc) render; per-target renders overwrite it from targetTemplateData
 		// (ADR-0157 Decision 6).

@@ -61,7 +61,7 @@ Pick the status transition, then:
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-4. **Regenerate INDEX.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.indexMd }}`. Stage the result. Do not hand-edit `INDEX.md`; always regenerate and commit it alongside any ADR status change.
+4. **Regenerate INDEX.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} sync{{ end }}` to regenerate `{{ .layout.indexMd }}`. Stage the result. Do not hand-edit `INDEX.md`; always regenerate and commit it alongside any ADR status change.
 <!-- awf:end -->
 
 <!-- awf:section procedure-gate -->
@@ -95,6 +95,6 @@ Once `Accepted` or `Implemented`, the body's meaning is frozen; a schema retrofi
 <!-- awf:section notes -->
 - **Authoritative source:** `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field and the append-only `## Status history` are editable in place. The body is the historical record: its meaning is frozen, and append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
-- **`{{ .layout.indexMd }}` is auto-generated** by `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
+- **`{{ .layout.indexMd }}` is auto-generated** by `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} sync{{ end }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->

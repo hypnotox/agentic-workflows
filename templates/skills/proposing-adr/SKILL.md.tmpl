@@ -58,7 +58,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 <!-- awf:end -->
 
 <!-- awf:section procedure-regen -->
-5. **Regenerate INDEX.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.indexMd }}`. Stage the regenerated file. Do not hand-edit `INDEX.md`.
+5. **Regenerate INDEX.md.** Run `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} sync{{ end }}` to regenerate `{{ .layout.indexMd }}`. Stage the regenerated file. Do not hand-edit `INDEX.md`.
 <!-- awf:end -->
 
 <!-- awf:section procedure-commit -->
@@ -79,7 +79,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 
 <!-- awf:section notes -->
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `{{ .prefix }}-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.
-- `{{ .layout.indexMd }}` is never hand-edited; it is always regenerated via `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
+- `{{ .layout.indexMd }}` is never hand-edited; it is always regenerated via `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} sync{{ end }}`.
 - The `State changes` operations, not any frontmatter relation, are how a later ADR changes what an earlier one established: it updates or removes the affected claim directly.
 - For the full ADR lifecycle, see `{{ .layout.workflowRef }}`.
 <!-- awf:end -->

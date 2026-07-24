@@ -27,6 +27,12 @@ AnchorNoSlashGlobs rewrites every no-slash pattern in invariants.sources globs a
 Origin: ADR-0148
 Backing: test
 
+### `invariant: hooks-commands-resolvable`
+
+Config validation for sync and check fails when the hooks singleton is enabled and `vars.gateCmd` is unset, and when the hooks singleton is enabled, the runner singleton is disabled, and any of `vars.checkCmd`, `vars.commitGateCmd`, or `vars.proseGateCmd` is unset; each error names the exact var to set.
+Origin: ADR-0156
+Backing: test
+
 ### `invariant: local-doc-name-path-validated`
 
 A local doc name is accepted only as one or more lowercase-kebab segments separated by slashes, and is rejected for a parent-directory path escape, a leading, trailing, or empty segment, a .md suffix, or the reserved _base stem; skill and agent names remain flat.

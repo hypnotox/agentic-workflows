@@ -51,7 +51,9 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	gitfixture.Stage(t, repo, root, map[string]string{"docs/decisions/0001-existing.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Existing"))})
 	gitfixture.Commit(t, repo, root, "existing ADR", nil)
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+	// The gateCmd answer keeps the scaffold's enabled hooks singleton valid
+	// for the ordinary syncs below (ADR-0156 Decision 5).
+	if err := runInit(root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	initial, err := manifest.Load(config.LockPath(root))
@@ -76,7 +78,7 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertAuthority("zero-migration upgrade")
-	if err := runInit(root, true, false, nil, "", io.Discard); err != nil {
+	if err := runInit(root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	assertAuthority("forced init")
@@ -205,14 +207,16 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 func TestInitForcePreservesAuthority(t *testing.T) {
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+	// A forced re-init over an existing config runs an ordinary sync, so the
+	// gateCmd answer keeps its enabled hooks singleton valid (ADR-0156).
+	if err := runInit(root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	before, err := manifest.Load(config.LockPath(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, true, false, nil, "", io.Discard); err != nil {
+	if err := runInit(root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	after, err := manifest.Load(config.LockPath(root))
@@ -269,7 +273,9 @@ func testInitFirstADRChecksClean(t *testing.T) {
 				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(name[:4]+": Old")))
 			}
 			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-			if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+			// The gateCmd answer keeps the scaffold's enabled hooks singleton
+			// valid for the post-init syncs (ADR-0156 Decision 5).
+			if err := runInit(root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 				t.Fatal(err)
 			}
 			lock, err := manifest.Load(config.LockPath(root))

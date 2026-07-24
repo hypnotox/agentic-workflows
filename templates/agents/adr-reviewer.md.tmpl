@@ -38,7 +38,7 @@ Apply all five lenses to every ADR:
 
 {{ range . }}- {{ .check }}
 {{ end }}{{ end }}
-When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.indexMd }}` must be present. Regen command: `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}`.
+When the ADR status will land as Accepted or Implemented: a task regenerating `{{ .layout.indexMd }}` must be present. Regen command: `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} sync{{ end }}`.
 <!-- awf:end -->
 
 <!-- awf:include review-spine-tail -->

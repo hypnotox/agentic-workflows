@@ -131,6 +131,11 @@ type Change struct {
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
 func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
+	// Refuse an unresolvable hook-command wiring before rendering anything
+	// (ADR-0156 Decision 5); first-adoption InitializeReport stays exempt.
+	if err := validateCommandWiring(p.Cfg); err != nil {
+		return nil, nil, nil, err
+	}
 	return p.syncReport(nil)
 }
 

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-23
 adrs: [156]
-status: Proposed
+status: Implemented
 ---
 # Plan: Rendered awf wrapper replaces the co-owned command runner
 

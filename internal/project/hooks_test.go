@@ -51,34 +51,46 @@ func TestHookPayloadsRendered(t *testing.T) {
 	}
 }
 
-// With every command var unset, each payload degrades to runnable generic awf
-// forms - pin-aware shim plus `awf check` / `awf commit-gate "$1"` - with no
-// unresolved-value token (the ADR-0045 fallback contract).
+// With every command var unset, each payload degrades to a runnable script
+// whose awf-verb commands resolve to ./awf forms when the runner singleton is
+// enabled and to the generic awf forms otherwise, with no inline resolution
+// shim and no unresolved-value token (ADR-0156 Decision 4).
 // invariant: rendering/companion-scripts:hook-payloads-fallback-safe
 func TestHookPayloadsFallbackSafe(t *testing.T) {
-	got := hookFiles(t, "prefix: example\nhooks:\n  enabled: true\n")
-	wantCmd := map[string]string{
-		"pre-commit": "awf check",
-		"commit-msg": `awf commit-gate "$1"`,
-		"pre-push":   "awf check",
-	}
-	for name, f := range got {
-		lines := strings.Split(f.Content, "\n")
-		if lines[0] != "#!/usr/bin/env bash" {
-			t.Errorf("%s: first line = %q, want the shebang", name, lines[0])
-		}
-		if !strings.Contains(f.Content, "set -euo pipefail") {
-			t.Errorf("%s: missing set -euo pipefail", name)
-		}
-		if !strings.Contains(f.Content, `[ -f .awf/bootstrap.sh ]`) {
-			t.Errorf("%s: missing the pin-aware fallback shim:\n%s", name, f.Content)
-		}
-		if !strings.Contains(f.Content, wantCmd[name]) {
-			t.Errorf("%s: missing fallback command %q:\n%s", name, wantCmd[name], f.Content)
-		}
-		if strings.Contains(f.Content, "<no value>") {
-			t.Errorf("%s: unresolved-value token in output:\n%s", name, f.Content)
-		}
+	for _, tc := range []struct {
+		name, config, awf string
+	}{
+		{"runner enabled", "prefix: example\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n", "./awf"},
+		{"runner disabled", "prefix: example\nhooks:\n  enabled: true\n", "awf"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := hookFiles(t, tc.config)
+			wantCmds := map[string][]string{
+				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " prose-gate\n"},
+				"commit-msg": {tc.awf + ` commit-gate "$1"` + "\n"},
+				"pre-push":   {tc.awf + " check\n"},
+			}
+			for name, f := range got {
+				lines := strings.Split(f.Content, "\n")
+				if lines[0] != "#!/usr/bin/env bash" {
+					t.Errorf("%s: first line = %q, want the shebang", name, lines[0])
+				}
+				if !strings.Contains(f.Content, "set -euo pipefail") {
+					t.Errorf("%s: missing set -euo pipefail", name)
+				}
+				for _, want := range wantCmds[name] {
+					if !strings.Contains(f.Content, "\n"+want) {
+						t.Errorf("%s: missing fallback command %q:\n%s", name, want, f.Content)
+					}
+				}
+				if strings.Contains(f.Content, "awf() {") {
+					t.Errorf("%s: payloads carry no inline resolution shim:\n%s", name, f.Content)
+				}
+				if strings.Contains(f.Content, "<no value>") {
+					t.Errorf("%s: unresolved-value token in output:\n%s", name, f.Content)
+				}
+			}
+		})
 	}
 }
 

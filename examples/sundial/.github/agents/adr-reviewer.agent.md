@@ -75,7 +75,7 @@ For each item below, flag a finding if the gating condition is met AND the ADR d
 - every claim named in the ADR's `State changes` is authored to match in the same Implemented commit: an `add` claim carries this ADR as `Origin`, an `update` appends it to `Revised-by` and changes a canonical field, and a `remove` leaves no active claim
 - each `State changes` operation's destination topic metadata exists before the ADR is Accepted, an empty topic shell for a pending add
 
-When the ADR status will land as Accepted or Implemented: a task regenerating `docs/decisions/INDEX.md` must be present. Regen command: `awf sync`.
+When the ADR status will land as Accepted or Implemented: a task regenerating `docs/decisions/INDEX.md` must be present. Regen command: `./awf sync`.
 
 ## Dedup rule
 

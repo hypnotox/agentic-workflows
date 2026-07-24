@@ -73,7 +73,7 @@ If no plan exists, implement directly, then {{ if .targetWorkflowRouter }}call `
 <!-- awf:end -->
 
 <!-- awf:section final-task-adr-flip -->
-7. **Final task: freeze the plan and complete ADR progress.** Flip the plan to Implemented and record findings. For a V2 ADR, append the final Applied batch with exactly its claim mutations before the Implemented status event, or use a direct implicit transition when all operations land together. If execution stops, Abandoned preserves Applied effects and cancels Remaining operations. The prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}awf sync{{ end }}` to regenerate `{{ .layout.indexMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.
+7. **Final task: freeze the plan and complete ADR progress.** Flip the plan to Implemented and record findings. For a V2 ADR, append the final Applied batch with exactly its claim mutations before the Implemented status event, or use a direct implicit transition when all operations land together. If execution stops, Abandoned preserves Applied effects and cancels Remaining operations. The prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} sync{{ end }}` to regenerate `{{ .layout.indexMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.
 <!-- awf:end -->
 
 <!-- awf:section terminal-step -->
