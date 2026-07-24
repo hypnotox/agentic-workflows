@@ -507,6 +507,12 @@ refactor(tooling): slim ./x to project verbs (applies 0156)
   runnable script whose awf-verb commands resolve to `./awf` forms when the runner singleton
   is enabled and to the generic `awf` forms otherwise, carrying no inline resolution shim and
   no unresolved-value token."
+- [ ] **Task 4.6b: Sundial testing-doc leftover (Phase 3 review).** In
+  `examples/sundial/.awf/docs/parts/testing/layout.md:6`, "are checked by `./x invariants`"
+  becomes "are checked by `./awf invariants`" (sundial's hand-written `./x` has only
+  `gate|test` since Phase 2); the rendered `examples/sundial/docs/testing.md` regenerates with
+  the sundial sync this phase already runs. Post-check:
+  `grep -rn "x invariants" examples/sundial/` returns no matches.
 - [ ] **Task 4.7: Changelog.** In `changelog/CHANGELOG.md` under `## [Unreleased]`, add to
   `### Breaking changes`: "The runner singleton now renders a pure awf wrapper `awf` at the
   repo root instead of the co-owned `x`: no per-verb dispatch, no in-place project-verb
