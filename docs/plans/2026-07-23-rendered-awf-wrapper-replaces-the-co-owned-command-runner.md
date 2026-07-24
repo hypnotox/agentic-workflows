@@ -265,7 +265,9 @@ splitting the template swap from the adoptions).
   marker), the hand-written `examples/sundial/x` exists with `gate` and `test` arms, and
   `examples/sundial/.awf/config.yaml` carries none of `activeMdRegenCmd`, `checkCmd`,
   `commitGateCmd`, or `proseGateCmd` (the amended ADR item 8 var-drop is guarded, not just
-  executed). Update
+  executed). Per the Phase 1 review, pin the prune-backup guard's negative case in one
+  existing non-runner prune test (e.g. `TestSyncPrunesRemovedSkill`): assert `SyncReport`
+  returns no backups and no `.awf-bak` sibling exists for the pruned non-runner path. Update
   the remaining `x.tmpl`/path-`x` references in `internal/project/` tests
   (`context_artifacts_test.go:109`, `spine_test.go`, `inplace_test.go`, `target_test.go`,
   `notes_test.go`, `project_test.go`) to the new template id and path; `cmd/repoaudit` fixture
@@ -339,8 +341,11 @@ splitting the template swap from the adoptions).
   `grep -rn "runner-forwarded" templates/ .awf/`, and
   `grep -rn "discovers forwarded verbs" templates/ docs/` return no matches
   (`docs/decisions/` history hits are expected and exempt).
-- [ ] **Task 2.12: Lifecycle, verify, commit.** Append
-  `Applied; state-sequence: 2; operations: add rendering/companion-scripts:runner-pure-forwarder, add rendering/companion-scripts:runner-resolution-pinned-first, update rendering/companion-scripts:runner-singleton-toggle, update rendering/companion-scripts:runner-example-adopted, update rendering/catalog-and-targets:var-descriptor-set-pinned, update tooling/cli:cli-command-spec-single-source, update tooling/cli:metrics-command-contract, update tooling/cli:doctor-command-contract, remove rendering/companion-scripts:runner-awf-verbs-owned, remove rendering/companion-scripts:runner-project-verbs-in-place, remove tooling/cli:managed-runner-command-parity`
+- [ ] **Task 2.12: Lifecycle, verify, commit.** Append the Applied event carrying the next
+  globally consecutive state-sequence (the corpus counter is global across ADRs, not
+  per-ADR - Phase 1 landed at 40, so indicatively 41; `awf check --staged` names the expected
+  next value on mismatch) with
+  `operations: add rendering/companion-scripts:runner-pure-forwarder, add rendering/companion-scripts:runner-resolution-pinned-first, update rendering/companion-scripts:runner-singleton-toggle, update rendering/companion-scripts:runner-example-adopted, update rendering/catalog-and-targets:var-descriptor-set-pinned, update tooling/cli:cli-command-spec-single-source, update tooling/cli:metrics-command-contract, update tooling/cli:doctor-command-contract, remove rendering/companion-scripts:runner-awf-verbs-owned, remove rendering/companion-scripts:runner-project-verbs-in-place, remove tooling/cli:managed-runner-command-parity`
   per `awf-adr-lifecycle`. `./x sync`; fresh `git status`; stage this phase's paths (including
   the new rendered `awf` files and all re-rendered outputs in both trees);
   `go run ./cmd/awf check --staged` clean; `./x gate` green; commit by pathspec.
@@ -387,8 +392,9 @@ feat(rendering): render the pure awf wrapper (applies 0156)
   new commit, and launcher path after publish-before-compare-and-swap advancement. The
   rendered wrapper carries no repository-only commands, so adopters do not acquire
   source-layout assumptions."
-- [ ] **Task 3.4: Lifecycle, verify, commit.** Append
-  `Applied; state-sequence: 3; operations: update rendering/companion-scripts:dashboard-development-runtime-commands`
+- [ ] **Task 3.4: Lifecycle, verify, commit.** Append the Applied event carrying the next
+  globally consecutive state-sequence with
+  `operations: update rendering/companion-scripts:dashboard-development-runtime-commands`
   per `awf-adr-lifecycle`. `./x sync`; fresh `git status`; stage;
   `go run ./cmd/awf check --staged` clean; `./x gate` green; commit by pathspec.
 
@@ -512,8 +518,9 @@ refactor(tooling): slim ./x to project verbs (applies 0156)
   degrading silently." Add to `### Features` (create the section if absent): "New
   `awfInvokeCmd` var overrides how the rendered `./awf` wrapper invokes awf; unset, it
   resolves the bootstrap-pinned binary and falls back to PATH `awf`."
-- [ ] **Task 4.8: Final lifecycle, verify, commit.** Append the final
-  `Applied; state-sequence: 4; operations: add config/validation:hooks-commands-resolvable, update rendering/companion-scripts:hook-payloads-fallback-safe`
+- [ ] **Task 4.8: Final lifecycle, verify, commit.** Append the final Applied event carrying
+  the next globally consecutive state-sequence with
+  `operations: add config/validation:hooks-commands-resolvable, update rendering/companion-scripts:hook-payloads-fallback-safe`
   event and flip ADR-0156's frontmatter `status` to `Implemented` with its Status history
   line, per `awf-adr-lifecycle`; flip this plan's frontmatter `status:` to `Implemented`.
   `./x sync` (INDEX regenerates; both trees' hook payloads re-render); fresh `git status`;
