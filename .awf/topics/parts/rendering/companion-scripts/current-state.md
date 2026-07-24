@@ -38,27 +38,22 @@ With checkCmd, gateCmd, gateCmdFull, and commitGateCmd all unset, every rendered
 Origin: ADR-0148
 Backing: test
 
-### `invariant: runner-awf-verbs-owned`
-
-In the rendered command runner, every clispec command declared runner-forwarded has an awf-owned arm outside editable in-place sections and delegates to the bootstrap-resolved pinned binary; the usage tail derives from the same ordered metadata, so command additions cannot drift.
-Origin: ADR-0148
-Backing: test
-
 ### `invariant: runner-example-adopted`
 
-The bundled sundial example enables the runner singleton, and its rendered `x` is drift-free, invariant-clean, and free of advisory notes, carrying the awf-owned dispatch including the context verb.
+The bundled sundial example enables the runner singleton, and its rendered `awf` wrapper is drift-free, invariant-clean, and free of advisory notes; its project verbs live in a hand-written `./x` outside the render set, and its config carries no awf-verb command vars, so it dogfoods the rendered defaults.
 Origin: ADR-0148
-Backing: test
-
-### `invariant: runner-project-verbs-in-place`
-
-The rendered runner's project-verb region and its setup-and-helpers region are editable in-place sections, so an adopter's edits there survive re-sync while the awf-owned verb arms and file structure are regenerated.
-Origin: ADR-0148
+Revised-by: ADR-0156
 Backing: test
 
 ### `invariant: runner-prune-backup`
 
 A lock prune that removes a co-owned runner output (an outgoing lock entry whose template id is `runner/x.tmpl`) backs the file up through the standard backup path (`x.awf-bak`, collision-suffixed) instead of deleting it, and still records the path as pruned.
+Origin: ADR-0156
+Backing: test
+
+### `invariant: runner-pure-forwarder`
+
+With the runner singleton enabled, the rendered wrapper at the repo-root path `awf` contains no per-verb dispatch and no in-place-editable region: it resolves one awf invocation and execs it with all arguments forwarded verbatim.
 Origin: ADR-0156
 Backing: test
 
@@ -68,10 +63,17 @@ The runner template renders leak-free under empty data, producing no unresolved 
 Origin: ADR-0148
 Backing: test
 
+### `invariant: runner-resolution-pinned-first`
+
+With `vars.awfInvokeCmd` set, the rendered wrapper execs exactly that command; with it unset, the wrapper resolves the bootstrap-pinned binary when `.awf/bootstrap.sh` exists and falls back to the PATH `awf` otherwise.
+Origin: ADR-0156
+Backing: test
+
 ### `invariant: runner-singleton-toggle`
 
-With the runner singleton enabled, `awf sync` renders exactly one runner file at the repo-root path `x`; with it disabled or absent, it renders none.
+With the runner singleton enabled, `awf sync` renders exactly one wrapper file at the repo-root path `awf`; with it disabled or absent, it renders none. `awf init` scaffolding seeds `runner.enabled: true` and the enable-runner migration seeds an absent key to enabled on `awf upgrade`, respecting an explicit false.
 Origin: ADR-0148
+Revised-by: ADR-0156
 Backing: test
 
 ### `invariant: upgrade-delegates-fetch`

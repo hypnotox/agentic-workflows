@@ -56,6 +56,10 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 	if c.Hooks == nil || !c.Hooks.Enabled {
 		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)
 	}
+	// The awf wrapper runner is seeded enabled by default (ADR-0156).
+	if !bytes.Contains(b, []byte("runner:")) || c.Runner == nil || !c.Runner.Enabled {
+		t.Errorf("scaffold should seed runner enabled by default (ADR-0156):\n%s", b)
+	}
 	// The hook payloads' vars are seeded like every other referenced var, so an
 	// init prompt answer for commitGateCmd is not silently dropped.
 	if !bytes.Contains(b, []byte("commitGateCmd:")) {

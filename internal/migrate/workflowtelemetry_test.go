@@ -42,14 +42,14 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if cfg.WorkflowTelemetry != want {
 		t.Fatalf("migrated defaults = %#v, want %#v", cfg.WorkflowTelemetry, want)
 	}
-	if Current() != 17 {
-		t.Fatalf("current schema = %d, want 17", Current())
+	if Current() != 18 {
+		t.Fatalf("current schema = %d, want 18", Current())
 	}
 	versionAuthority, err := os.ReadFile(filepath.Join("..", "project", "project.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, literal := range []string{`const Version = "0.22.0"`, `17: "0.22.0"`} {
+	for _, literal := range []string{`const Version = "0.22.0"`, `17: "0.22.0"`, `18: "0.22.0"`} {
 		if !bytes.Contains(versionAuthority, []byte(literal)) {
 			t.Fatalf("project version authority lacks %q", literal)
 		}
@@ -96,7 +96,7 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(registryRoot, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	authored := "prefix: registry\nworkflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 0\n    maxCompletedEffortCount: 7\n  widget:\n    enabled: false\n    showCost: false\n  diagnostics:\n    heuristicsEnabled: false\n    minimumBaselineSamples: 4\n    baselinePercentile: 80\n    thresholds:\n      phaseReentryCount: 4\n      phaseDurationSeconds: 5\n      phaseTokens: 6\n      compactionCount: 7\n      handoffCount: 8\n      toolFailureCount: 9\n      gateFailureCount: 10\n      cacheReadPercentBelow: 11\n      subagentQueueWaitSeconds: 12\n      implementationReworkCount: 13\n"
+	authored := "prefix: registry\nrunner:\n  enabled: false\nworkflowTelemetry:\n  retention:\n    maxCompletedEffortAgeDays: 0\n    maxCompletedEffortCount: 7\n  widget:\n    enabled: false\n    showCost: false\n  diagnostics:\n    heuristicsEnabled: false\n    minimumBaselineSamples: 4\n    baselinePercentile: 80\n    thresholds:\n      phaseReentryCount: 4\n      phaseDurationSeconds: 5\n      phaseTokens: 6\n      compactionCount: 7\n      handoffCount: 8\n      toolFailureCount: 9\n      gateFailureCount: 10\n      cacheReadPercentBelow: 11\n      subagentQueueWaitSeconds: 12\n      implementationReworkCount: 13\n"
 	if err := os.WriteFile(config.ConfigPath(registryRoot), []byte(authored), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -108,14 +108,14 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(applied) != 1 || applied[0] != "workflow-telemetry" {
+	if len(applied) != 2 || applied[0] != "workflow-telemetry" || applied[1] != "enable-runner" {
 		t.Fatalf("registry applied = %v", applied)
 	}
 	upgraded, err := manifest.Load(config.LockPath(registryRoot))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgraded.SchemaVersion != 17 {
+	if upgraded.SchemaVersion != 18 {
 		t.Fatalf("registry schema = %d", upgraded.SchemaVersion)
 	}
 	body, err := os.ReadFile(config.ConfigPath(registryRoot))

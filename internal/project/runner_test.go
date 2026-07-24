@@ -8,11 +8,11 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
 // runnerFile renders a project with the given config and returns the rendered
-// command-runner `x` (or nil when none is produced).
+// awf wrapper (or nil when none is produced).
 func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
@@ -26,7 +26,7 @@ func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 	}
 	var found *RenderedFile
 	for i := range out {
-		if out[i].Path == "x" {
+		if out[i].Path == "awf" {
 			if found != nil {
 				t.Fatalf("more than one runner rendered")
 			}
@@ -36,12 +36,12 @@ func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 	return found
 }
 
-// With the singleton enabled, exactly one runner `x` renders at the repo root;
-// absent or disabled, none does.
+// With the singleton enabled, exactly one wrapper `awf` renders at the repo
+// root; absent or disabled, none does.
 // invariant: rendering/companion-scripts:runner-singleton-toggle
 func TestRunnerToggle(t *testing.T) {
 	if runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n") == nil {
-		t.Error("expected the runner x to render when enabled")
+		t.Error("expected the wrapper awf to render when enabled")
 	}
 	for _, cfg := range []string{
 		"prefix: example\n",
@@ -53,125 +53,80 @@ func TestRunnerToggle(t *testing.T) {
 	}
 }
 
-// The awf-verb arms are awf-owned (outside any awf:edit-in-place section) and each
-// delegates to the bootstrap-resolved pinned binary; the two adopter regions are
-// awf:edit-in-place sections rendered as #-comments (the shell comment style).
-// invariant: rendering/companion-scripts:runner-awf-verbs-owned
-// invariant: rendering/companion-scripts:runner-project-verbs-in-place
-func TestRunnerStructure(t *testing.T) {
+// The rendered wrapper is a pure forwarder: no per-verb dispatch, no in-place
+// region, exactly one exec form per resolution branch, every one forwarding
+// all arguments verbatim.
+// invariant: rendering/companion-scripts:runner-pure-forwarder
+func TestRunnerPureForwarder(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
-		t.Fatal("runner did not render")
+		t.Fatal("wrapper did not render")
 	}
-	if !rf.RegenChecked {
-		t.Error("a runner carrying in-place sections must be regeneration-checked")
+	if rf.RegenChecked {
+		t.Error("the pure wrapper carries no in-place section, so it must not be regeneration-checked")
 	}
 	c := rf.Content
 	if !strings.HasPrefix(c, "#!/usr/bin/env bash\n") {
-		t.Errorf("runner must open with the bash shebang:\n%s", c)
+		t.Errorf("wrapper must open with the bash shebang:\n%s", c)
 	}
-	// Each metadata-forwarded awf verb delegates directly to the pinned binary
-	// via the bootstrap, with no PATH fallback (ADR-0101 Decision 2/4).
-	// invariant: tooling/cli:managed-runner-command-parity
-	for _, name := range clispec.ForwardedNames() {
-		if strings.Count(c, "\n"+name+")\n") != 1 {
-			t.Errorf("forwarded command %q must have exactly one arm:\n%s", name, c)
+	if strings.Contains(c, "case ") || strings.Contains(c, "esac") {
+		t.Errorf("wrapper must carry no per-verb case dispatch:\n%s", c)
+	}
+	if strings.Contains(c, "awf:edit-in-place") {
+		t.Errorf("wrapper must carry no in-place-editable region:\n%s", c)
+	}
+	for _, line := range strings.Split(c, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "exec ") && !strings.HasSuffix(trimmed, `"$@"`) {
+			t.Errorf("every exec must forward all arguments verbatim: %q", line)
 		}
-	}
-	for _, name := range []string{"init", "upgrade", "uninstall"} {
-		if strings.Contains(c, "\n"+name+")\n") {
-			t.Errorf("excluded command %q must not have a runner arm:\n%s", name, c)
-		}
-	}
-	if !strings.Contains(c, "usage: ./x {"+strings.Join(clispec.ForwardedNames(), "|")+"|gate|test}") {
-		t.Errorf("runner usage does not derive from forwarded metadata:\n%s", c)
-	}
-	if !strings.Contains(c, `"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;`) {
-		t.Errorf("awf arms must delegate directly to the pinned binary:\n%s", c)
-	}
-	if strings.Contains(c, "command awf") {
-		t.Errorf("the runner must not carry a PATH fallback:\n%s", c)
-	}
-	for _, repositoryCommand := range []string{"dashboard-awf-path", "dashboard-awf-advance"} {
-		if strings.Contains(c, repositoryCommand) {
-			t.Errorf("generic runner must not publish repository-only command %q:\n%s", repositoryCommand, c)
-		}
-	}
-	// The two adopter regions are #-comment in-place pointers (shell comment
-	// style), never HTML.
-	for _, name := range []string{"runner-setup", "runner-project-verbs"} {
-		want := "# awf:edit-in-place " + name + ": "
-		if !strings.Contains(c, want) {
-			t.Errorf("missing #-style in-place pointer for %q:\n%s", name, c)
-		}
-	}
-	if strings.Contains(c, "<!-- awf:edit") {
-		t.Errorf("shell runner must not carry HTML-comment pointers:\n%s", c)
 	}
 }
 
-// The runner renders leak-free (no unresolved token, no stray section/marker
+// With vars.awfInvokeCmd set the wrapper execs exactly that command; with it
+// unset it probes the bootstrap pin first and falls back to the PATH awf.
+// invariant: rendering/companion-scripts:runner-resolution-pinned-first
+func TestRunnerResolutionPinnedFirst(t *testing.T) {
+	configured := runnerFile(t, "prefix: example\nvars:\n  awfInvokeCmd: go run ./cmd/awf\nrunner:\n  enabled: true\n")
+	if configured == nil {
+		t.Fatal("wrapper did not render with awfInvokeCmd set")
+	}
+	if !strings.Contains(configured.Content, "\nexec go run ./cmd/awf \"$@\"\n") {
+		t.Errorf("configured wrapper must exec the awfInvokeCmd verbatim:\n%s", configured.Content)
+	}
+	for _, absent := range []string{".awf/bootstrap.sh", "exec awf \"$@\""} {
+		if strings.Contains(configured.Content, absent) {
+			t.Errorf("configured wrapper must not carry the default resolution %q:\n%s", absent, configured.Content)
+		}
+	}
+
+	fallback := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
+	if fallback == nil {
+		t.Fatal("wrapper did not render with awfInvokeCmd unset")
+	}
+	c := fallback.Content
+	probe := strings.Index(c, `if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh)"; then`)
+	pinnedExec := strings.Index(c, "\texec \"$pinned\" \"$@\"")
+	pathExec := strings.Index(c, "\nexec awf \"$@\"\n")
+	if probe < 0 || pinnedExec < 0 || pathExec < 0 || probe >= pinnedExec || pinnedExec >= pathExec {
+		t.Errorf("default wrapper must probe the bootstrap pin, exec it, then fall back to PATH awf:\n%s", c)
+	}
+}
+
+// The wrapper renders leak-free (no unresolved token, no stray section/marker
 // residue) - the publication-safety contract every awf template meets.
 // invariant: rendering/companion-scripts:runner-render-publication-safe
-func TestRunnerProjectVerbLabelsAndCollisions(t *testing.T) {
-	labels, err := runnerProjectVerbLabels("alpha | beta)\n\techo ok ;;\nz9)\n\techo z ;;\n")
-	if err != nil || strings.Join(labels, ",") != "alpha,beta,z9" {
-		t.Fatalf("labels = %v, err = %v", labels, err)
-	}
-	for _, body := range []string{")\n", "Bad)\n", "bad_name)\n"} {
-		if _, err := runnerProjectVerbLabels(body); err == nil {
-			t.Errorf("expected malformed label error for %q", body)
-		}
-	}
-	if err := validateRunnerProjectVerbs("Bad)\n"); err == nil || !strings.Contains(err.Error(), "malformed case label") {
-		t.Fatalf("malformed validation error = %v", err)
-	}
-	if err := validateRunnerProjectVerbs("sync)\n"); err == nil || !strings.Contains(err.Error(), `runner project verb "sync" collides`) {
-		t.Fatalf("collision error = %v", err)
-	}
-}
-
-func TestRunnerCollisionRefusesBeforeWrite(t *testing.T) {
-	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	xPath := filepath.Join(root, "x")
-	before, err := os.ReadFile(xPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	colliding := setRegion(t, string(before), "runner-project-verbs", "sync)\n\techo collision ;;\n")
-	if err := os.WriteFile(xPath, []byte(colliding), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := p.Sync(); err == nil || !strings.Contains(err.Error(), `runner project verb "sync" collides with metadata-forwarded awf command`) {
-		t.Fatalf("Sync collision error = %v", err)
-	}
-	after, err := os.ReadFile(xPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(after) != colliding {
-		t.Fatal("collision refusal rewrote the runner")
-	}
-}
-
 func TestRunnerPublicationSafe(t *testing.T) {
 	rf := runnerFile(t, "prefix: example\nrunner:\n  enabled: true\n")
 	if rf == nil {
-		t.Fatal("runner did not render")
+		t.Fatal("wrapper did not render")
 	}
 	if strings.Contains(rf.Content, "<no value>") {
-		t.Errorf("runner leaked an unresolved-value token:\n%s", rf.Content)
+		t.Errorf("wrapper leaked an unresolved-value token:\n%s", rf.Content)
 	}
 	for _, marker := range []string{"awf:section", "awf:end"} {
 		if strings.Contains(rf.Content, marker) {
-			t.Errorf("runner leaked a structural %q marker:\n%s", marker, rf.Content)
+			t.Errorf("wrapper leaked a structural %q marker:\n%s", marker, rf.Content)
 		}
 	}
 }
@@ -197,6 +152,23 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 				t.Fatal(err)
 			}
 			if err := p.Sync(); err != nil {
+				t.Fatal(err)
+			}
+			// Rewrite the lock so the rendered wrapper entry presents as the
+			// legacy co-owned runner at path x (the ADR-0101 shape the prune
+			// backup exists for), and move the file with it.
+			lock, err := manifest.Load(lockFile(root))
+			if err != nil {
+				t.Fatal(err)
+			}
+			entry := lock.Files["awf"]
+			entry.TemplateID = coOwnedRunnerTID
+			lock.Files["x"] = entry
+			delete(lock.Files, "awf")
+			if err := lock.Save(lockFile(root)); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Rename(filepath.Join(root, "awf"), filepath.Join(root, "x")); err != nil {
 				t.Fatal(err)
 			}
 			before, err := os.ReadFile(filepath.Join(root, "x"))
@@ -257,24 +229,9 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 	}
 }
 
-// A convention part authored for an awf-owned runner section (as its
+// A convention part authored for the wrapper's awf-owned section (as its
 // `create ... to override` pointer invites) is claimed by the closed-tree sweep, so
 // override renders and `awf check` does not flag `.awf/runner` as unclaimed.
-func TestRunnerInPlacePartReadError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	part := filepath.Join(root, ".awf/runner/parts/runner-setup.md")
-	if err := os.MkdirAll(part, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.RenderAll(); err == nil {
-		t.Fatal("in-place part read error accepted")
-	}
-}
-
 func TestRunnerPartOverrideClaimed(t *testing.T) {
 	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
 	p, err := Open(root)
@@ -284,22 +241,22 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	part := filepath.Join(root, ".awf/runner/parts/runner-tail.md")
+	part := filepath.Join(root, ".awf/runner/parts/runner-body.md")
 	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(part, []byte("*)\n\techo custom-tail ;;\nesac\n"), 0o644); err != nil {
+	if err := os.WriteFile(part, []byte("exec custom-awf \"$@\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	x, err := os.ReadFile(filepath.Join(root, "x"))
+	wrapper, err := os.ReadFile(filepath.Join(root, "awf"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(x), "custom-tail") {
-		t.Errorf("runner-tail part override not applied:\n%s", x)
+	if !strings.Contains(string(wrapper), "custom-awf") {
+		t.Errorf("runner-body part override not applied:\n%s", wrapper)
 	}
 	drift, err := p.Check()
 	if err != nil {
@@ -309,5 +266,22 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 		if strings.Contains(d.Path, ".awf/runner") {
 			t.Errorf("runner parts must be claimed by the sweep, got drift %v", d)
 		}
+	}
+}
+
+// A part path that reads as a directory surfaces as a render error rather
+// than a silent default.
+func TestRunnerPartReadError(t *testing.T) {
+	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part := filepath.Join(root, ".awf/runner/parts/runner-body.md")
+	if err := os.MkdirAll(part, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.RenderAll(); err == nil {
+		t.Fatal("part read error accepted")
 	}
 }

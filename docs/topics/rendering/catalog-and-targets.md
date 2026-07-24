@@ -102,6 +102,7 @@ Backing: test
 
 ### `invariant: var-descriptor-set-pinned`
 
-The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, proseGateCmd, testCmd, commitScopes, activeMdRegenCmd, invariantTestPath), and the only multiselect descriptors are the two catalog trims docs and skills.
+The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, proseGateCmd, testCmd, commitScopes, activeMdRegenCmd, awfInvokeCmd, invariantTestPath), and the only multiselect descriptors are the two catalog trims docs and skills.
 Origin: ADR-0084
+Revised-by: ADR-0156
 Backing: test

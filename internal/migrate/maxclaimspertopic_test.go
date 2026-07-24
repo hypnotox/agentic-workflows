@@ -65,14 +65,14 @@ func TestUpgradeSchemaFifteenToCurrentPreservesCutoff(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(applied, []string{"topic-claim-budget", "workflow-telemetry"}) {
+	if !reflect.DeepEqual(applied, []string{"topic-claim-budget", "workflow-telemetry", "enable-runner"}) {
 		t.Fatalf("applied = %#v", applied)
 	}
 	upgraded, err := manifest.Load(config.LockPath(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgraded.SchemaVersion != 17 || upgraded.ADRFormatV1From != 2 || upgraded.ADRFormatV2From != 9 || !reflect.DeepEqual(upgraded.LegacyADRGaps, []int{1}) {
+	if upgraded.SchemaVersion != 18 || upgraded.ADRFormatV1From != 2 || upgraded.ADRFormatV2From != 9 || !reflect.DeepEqual(upgraded.LegacyADRGaps, []int{1}) {
 		t.Fatalf("upgraded lock = %#v", upgraded)
 	}
 	applied, err = Upgrade(root, io.Discard)

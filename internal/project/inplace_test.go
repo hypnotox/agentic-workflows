@@ -100,6 +100,52 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 	}
 }
 
+// planSections surfaces a read error on an in-place section's convention-part
+// probe (the part path readable as neither file nor absent) instead of
+// silently treating the part as absent.
+func TestPlanSectionsInPlacePartReadError(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part := p.Cfg.PartPath("skills", "foo", "s")
+	if err := os.MkdirAll(part, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	segs := render.ParseSections("<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n")
+	if _, err := p.planSections("skills", "foo", []string{"s"}, nil, segs, "out.md", render.HTMLComment); err == nil {
+		t.Fatal("in-place part read error accepted")
+	}
+}
+
+// observeRenderInputs records an existing output as a managed-output input when
+// the section plan carries an in-place section, so the read-back channel shows
+// up in the output declaration parity.
+func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "out.md"), []byte("existing\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	inputs, err := p.observeRenderInputs("skills", "foo", "skills/foo/SKILL.md.tmpl", "out.md", map[string]render.SectionPlan{"s": {InPlace: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, in := range inputs {
+		if in.Path == "out.md" && in.Role == ArtifactManagedOutput {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("in-place plan must observe the existing output as a managed-output input: %#v", inputs)
+	}
+}
+
 // planSections sources an in-place section's body from the existing output, and
 // falls back to the default when the output is absent (first render).
 func TestPlanSectionsInPlaceReadBack(t *testing.T) {
@@ -139,119 +185,6 @@ func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	}
 }
 
-// setRegion rewrites the lines of an in-place region - between its
-// `# awf:edit-in-place <section>` pointer and the next `# awf:edit`-family
-// pointer - to body, mimicking an adopter editing the rendered output in place.
-func setRegion(t *testing.T, content, section, body string) string {
-	t.Helper()
-	lines := strings.Split(content, "\n")
-	start, end := -1, -1
-	for i, ln := range lines {
-		tl := strings.TrimSpace(ln)
-		if strings.HasPrefix(tl, "# awf:edit-in-place "+section+": ") {
-			start = i
-			continue
-		}
-		if start >= 0 && strings.HasPrefix(tl, "# awf:edit") {
-			end = i
-			break
-		}
-	}
-	if start < 0 || end < 0 {
-		t.Fatalf("region %q not found between pointers", section)
-	}
-	out := append([]string{}, lines[:start+1]...)
-	if body != "" {
-		out = append(out, body)
-	}
-	out = append(out, lines[end:]...)
-	return strings.Join(out, "\n")
-}
-
-// End-to-end fixpoint over a real Sync→edit→Sync→Check cycle on the rendered
-// runner: an in-place edit (including emptying the region) survives re-sync and
-// is drift-free, while an edit to an awf-owned region surfaces as drift.
-// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift
-// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned
-func TestRunnerInPlaceFixpoint(t *testing.T) {
-	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	xPath := filepath.Join(root, "x")
-	mustSync := func() {
-		t.Helper()
-		if err := p.Sync(); err != nil {
-			t.Fatal(err)
-		}
-	}
-	read := func() string {
-		t.Helper()
-		b, err := os.ReadFile(xPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		return string(b)
-	}
-	// runnerDrift returns the drift entries the full check reports for the runner.
-	runnerDrift := func() []manifest.Drift {
-		t.Helper()
-		all, err := p.Check()
-		if err != nil {
-			t.Fatal(err)
-		}
-		var d []manifest.Drift
-		for _, dr := range all {
-			if dr.Path == "x" {
-				d = append(d, dr)
-			}
-		}
-		return d
-	}
-	mustClean := func(when string) {
-		t.Helper()
-		if d := runnerDrift(); len(d) != 0 {
-			t.Errorf("%s: want no runner drift, got %v", when, d)
-		}
-	}
-	mustSync()
-
-	// (a) An in-place edit to the project verbs survives re-sync and is clean.
-	edited := setRegion(t, read(), "runner-project-verbs", "gate)\n\tgo test ./... ;;")
-	if err := os.WriteFile(xPath, []byte(edited), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	mustSync()
-	got := read()
-	if !strings.Contains(got, "go test ./... ;;") {
-		t.Errorf("in-place edit not preserved across sync:\n%s", got)
-	}
-	if !strings.Contains(got, `"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;`) {
-		t.Errorf("awf-owned dispatch lost:\n%s", got)
-	}
-	mustClean("after in-place edit + sync")
-
-	// (b) Emptying the region stays empty - NOT reverted to the default stubs.
-	if err := os.WriteFile(xPath, []byte(setRegion(t, read(), "runner-project-verbs", "")), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	mustSync()
-	if strings.Contains(read(), "define the 'gate' project verb") {
-		t.Errorf("emptied region reverted to the default stubs:\n%s", read())
-	}
-	mustClean("after emptying the region")
-
-	// (c) Tampering an awf-owned region surfaces as drift.
-	tampered := strings.Replace(read(), "set -euo pipefail", "set -euo pipefail\n# adopter tampering an awf-owned region", 1)
-	if err := os.WriteFile(xPath, []byte(tampered), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if d := runnerDrift(); len(d) == 0 {
-		t.Error("tampering an awf-owned region must surface as drift")
-	}
-}
-
 func TestAnyInPlace(t *testing.T) {
 	if !anyInPlace(map[string]render.SectionPlan{"a": {}, "b": {InPlace: true}}) {
 		t.Error("a plan with an in-place section must report true")
@@ -276,7 +209,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		"x": {RegenChecked: true, OutputHash: manifest.Hash([]byte(canonical))},
 	}}
-	rendered := map[string]RenderedFile{"x": {Path: "x", Content: canonical, RegenChecked: true}}
+	rendered := map[string]RenderedFile{"x": {Path: "x", Content: canonical, RegenChecked: true, TemplateID: "in-place/mock.tmpl", Policy: OutputPolicy{Regenerate: true}}}
 
 	// On-disk equals the regenerated content (in-place body already read back) → clean.
 	if err := os.WriteFile(xPath, []byte(canonical), 0o644); err != nil {

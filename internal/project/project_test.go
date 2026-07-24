@@ -567,7 +567,7 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(root)
-	_, _, pruned, err := p2.SyncReport()
+	backups, _, pruned, err := p2.SyncReport()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -579,6 +579,14 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	}
 	if !slices.IsSorted(pruned) {
 		t.Errorf("pruned report must be sorted for deterministic output: %v", pruned)
+	}
+	// The prune backup is scoped to the outgoing co-owned runner alone
+	// (ADR-0156 item 9): a pruned non-runner path is deleted, never backed up.
+	if len(backups) != 0 {
+		t.Errorf("a non-runner prune must report no backups: %v", backups)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md.awf-bak")); !os.IsNotExist(err) {
+		t.Errorf("a pruned non-runner path must leave no .awf-bak sibling, stat err = %v", err)
 	}
 }
 

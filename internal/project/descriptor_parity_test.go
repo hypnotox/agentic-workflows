@@ -38,6 +38,7 @@ func TestVarDescriptorParity(t *testing.T) {
 	for _, name := range hookNames {
 		paths = append(paths, "hooks/"+name+".sh.tmpl")
 	}
+	paths = append(paths, runnerTID) // the wrapper consumes awfInvokeCmd (ADR-0156)
 	for _, p := range paths {
 		src, err := templates.FS.ReadFile(p)
 		if err != nil {
@@ -74,13 +75,13 @@ func TestVarDescriptorParity(t *testing.T) {
 }
 
 // functionalVarKeys pins the catalog's value-carrying descriptor set to the
-// nine functional keys the ADR-0084 set plus ADR-0119's proseGateCmd enumerate.
-// Extending this list is a successor-ADR act: a descriptor exists only for a
-// value the rendered artifacts or the tooling execute or enforce, never to tune
-// prose wording.
+// ten functional keys the ADR-0084 set plus ADR-0119's proseGateCmd and
+// ADR-0156's awfInvokeCmd enumerate. Extending this list is a successor-ADR
+// act: a descriptor exists only for a value the rendered artifacts or the
+// tooling execute or enforce, never to tune prose wording.
 var functionalVarKeys = []string{
 	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd", "proseGateCmd",
-	"testCmd", "commitScopes", "activeMdRegenCmd", "invariantTestPath",
+	"testCmd", "commitScopes", "activeMdRegenCmd", "awfInvokeCmd", "invariantTestPath",
 }
 
 // TestVarDescriptorSetPinned asserts the catalog's value-carrying descriptors

@@ -14,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
@@ -30,14 +29,13 @@ const (
 	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
 	memoryTID    = "memory/gitignore.tmpl"
 	metricsTID   = "metrics/gitignore.tmpl"
-	runnerTID    = "runner/x.tmpl"
+	runnerTID    = "runner/awf.tmpl"
 )
 
-// runnerSections are the command-runner's declared sections in template order: two
-// in-place-editable regions (setup/helpers, project verbs) the adopter owns, each
-// bounded by an awf-owned regular section (the awf-verb dispatch, the usage tail)
-// whose provenance pointer anchors the preceding region's read-back (ADR-0100/0101).
-var runnerSections = []string{"runner-setup", "runner-dispatch", "runner-project-verbs", "runner-tail"}
+// runnerSections is the pure awf wrapper's single declared section: the body
+// that resolves one awf invocation (vars.awfInvokeCmd, else bootstrap-pinned,
+// else PATH awf) and execs it with all arguments forwarded verbatim (ADR-0156).
+var runnerSections = []string{"runner-body"}
 
 // hookNames are the git-hook payload scripts the hooks singleton renders as a
 // unit under .awf/hooks/ (ADR-0048); template ids are hooks/<name>.sh.tmpl.
@@ -109,13 +107,6 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 		// (ADR-0157 Decision 6).
 		"targetSessionHandoff": anyTargetHasCapability(p.Targets, CapabilitySessionHandoff),
 	}
-}
-
-func (p *Project) runnerRenderData() map[string]any {
-	data := p.data(config.Sidecar{})
-	data["runnerCommands"] = clispec.ForwardedNames()
-	data["runnerUsage"] = strings.Join(clispec.ForwardedNames(), "|")
-	return data
 }
 
 type workflowRouterEntry struct {
@@ -405,66 +396,6 @@ func trimBlankFraming(lines []string) string {
 		hi--
 	}
 	return strings.Join(lines[lo:hi], "\n")
-}
-
-func sectionDefault(segs []render.Segment, name string) string {
-	for _, seg := range segs {
-		if seg.IsSection && seg.Name == name {
-			return seg.Text
-		}
-	}
-	return "" // coverage-ignore: the embedded runner template declares every runnerSections entry
-}
-
-func runnerProjectVerbLabels(body string) ([]string, error) {
-	seen := map[string]bool{}
-	for _, line := range strings.Split(body, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasSuffix(line, ")") || strings.HasPrefix(line, "#") {
-			continue
-		}
-		arm := strings.TrimSpace(strings.TrimSuffix(line, ")"))
-		if arm == "" {
-			return nil, errors.New("runner-project-verbs contains an empty case label")
-		}
-		for _, raw := range strings.Split(arm, "|") {
-			label := strings.TrimSpace(raw)
-			if !validRunnerProjectVerb(label) {
-				return nil, fmt.Errorf("runner-project-verbs contains malformed case label %q", label)
-			}
-			seen[label] = true
-		}
-	}
-	return slices.Sorted(maps.Keys(seen)), nil
-}
-
-func validRunnerProjectVerb(label string) bool {
-	if label == "" || label[0] < 'a' || label[0] > 'z' {
-		return false
-	}
-	for _, r := range label[1:] {
-		if r != '-' && (r < 'a' || r > 'z') && (r < '0' || r > '9') {
-			return false
-		}
-	}
-	return true
-}
-
-func validateRunnerProjectVerbs(body string) error {
-	labels, err := runnerProjectVerbLabels(body)
-	if err != nil {
-		return err
-	}
-	forwarded := map[string]bool{}
-	for _, name := range clispec.ForwardedNames() {
-		forwarded[name] = true
-	}
-	for _, label := range labels {
-		if forwarded[label] {
-			return fmt.Errorf("runner project verb %q collides with metadata-forwarded awf command", label)
-		}
-	}
-	return nil
 }
 
 // anyInPlace reports whether a section plan contains an in-place-editable section -
@@ -836,16 +767,13 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			out = append(out, hrf)
 		}
 	}
-	// The command-runner `x` at the repo root (config-tree singleton rendered only
-	// when enabled - ADR-0101; a co-owned in-place file per ADR-0100, not a catalog
-	// DocEntry, so it stays out of SingletonKinds()). awf-the-repo leaves it disabled.
+	// The pure awf wrapper `awf` at the repo root (config-tree singleton rendered
+	// only when enabled - ADR-0156; fully awf-owned, no in-place sections, not a
+	// catalog DocEntry, so it stays out of SingletonKinds()).
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
-		if err := clispec.ValidateRunnerDispositions(); err != nil { // coverage-ignore: the compile-time command table is fixed and its malformed states are covered directly in clispec tests
-			return nil, err
-		}
 		rrf, err := p.renderTarget("runner", "", runnerTID,
-			runnerSections, config.Sidecar{}, p.runnerRenderData(), "x")
-		if err != nil { // coverage-ignore: the runner template references no vars and no parts, so renderTarget cannot produce <no value> or a read error
+			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}), "awf")
+		if err != nil { // coverage-ignore: the wrapper template's single var reference is with/else-wrapped (ADR-0045) and it uses no parts, so renderTarget cannot produce <no value> or a read error
 			return nil, err
 		}
 		out = append(out, rrf)
@@ -902,15 +830,6 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	consumedInputs, err := p.observeRenderInputs(kind, artifact, tid, outPath, plan)
 	if err != nil { // coverage-ignore: the producer already parsed the same sidecar and planSections read the same parts in this invocation
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
-	}
-	if tid == runnerTID {
-		body := sectionDefault(segs, "runner-project-verbs")
-		if projectVerbs := plan["runner-project-verbs"]; projectVerbs.InPlaceFound {
-			body = projectVerbs.InPlaceBody
-		}
-		if err := validateRunnerProjectVerbs(body); err != nil {
-			return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
-		}
 	}
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)

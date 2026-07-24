@@ -8,7 +8,7 @@ set -euo pipefail
 
 # Run the pinned awf when the bootstrap resolves; fall back to PATH awf.
 awf() { local pinned; if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh 2>/dev/null)"; then "$pinned" "$@"; else command awf "$@"; fi; }
-./x check
-./x check --staged
+awf check
+awf check --staged
 ./x gate
 awf prose-gate

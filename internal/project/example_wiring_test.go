@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 )
@@ -20,8 +19,8 @@ import (
 // as data (never executing the binary) keeps this a static contract alongside
 // the other example-wiring assertions.
 func TestSundialCurrentStateMigrated(t *testing.T) {
-	if migrate.Current() != 17 {
-		t.Fatalf("migrate.Current() = %d, want 17", migrate.Current())
+	if migrate.Current() != 18 {
+		t.Fatalf("migrate.Current() = %d, want 18", migrate.Current())
 	}
 	lockPath := "../../examples/sundial/.awf/awf.lock"
 	lock, err := manifest.Load(lockPath)
@@ -94,12 +93,6 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 }
 
-// The sundial example adopts the managed runner: it enables the singleton and its
-// rendered `x` carries the awf-owned dispatch (including the `context` verb its
-// hand-written runner was missing, ADR-0092) and its ported project verbs in the
-// in-place section.
-//
-// invariant: rendering/companion-scripts:runner-example-adopted
 // invariant: tooling/quality-gates:pi-extension-container-gate
 func TestPiExtensionContainerGateWiring(t *testing.T) {
 	raw, err := os.ReadFile("../../x")
@@ -132,72 +125,55 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:managed-runner-command-parity
-func TestRepositoryRunnerForwardsEveryMetadataCommand(t *testing.T) {
-	raw, err := os.ReadFile("../../x")
-	if err != nil {
-		t.Fatal(err)
-	}
-	arms := shellCaseArms(string(raw))
-	for _, name := range clispec.ForwardedNames() {
-		body, ok := arms[name]
-		if !ok {
-			t.Errorf("repository x has no case arm for forwarded command %q", name)
-			continue
-		}
-		if !strings.Contains(body, "go run ./cmd/awf") || !strings.Contains(body, name) && !strings.Contains(body, `"$cmd"`) {
-			t.Errorf("repository x arm %q does not delegate through go run ./cmd/awf: %s", name, body)
-		}
-	}
-	for _, name := range []string{"init", "upgrade", "uninstall"} {
-		if _, ok := arms[name]; ok {
-			t.Errorf("repository x must not forward excluded command %q", name)
-		}
-	}
-}
-
-func shellCaseArms(script string) map[string]string {
-	out := map[string]string{}
-	lines := strings.Split(script, "\n")
-	for i := 0; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-		if !strings.HasSuffix(line, ")") || line == "*)" {
-			continue
-		}
-		var body []string
-		for i++; i < len(lines) && strings.TrimSpace(lines[i]) != ";;"; i++ {
-			body = append(body, strings.TrimSpace(lines[i]))
-		}
-		for _, raw := range strings.Split(strings.TrimSuffix(line, ")"), "|") {
-			out[strings.TrimSpace(raw)] = strings.Join(body, "\n")
-		}
-	}
-	return out
-}
-
+// The sundial example adopts the wrapper split (ADR-0156): the runner singleton
+// renders the pure `awf` forwarder (default bootstrap-then-PATH body, no in-place
+// region), its project verbs live in a hand-written `./x` outside the render set,
+// and its config carries none of the awf-verb command vars, so it dogfoods the
+// rendered defaults a fresh adopter gets.
+//
+// invariant: rendering/companion-scripts:runner-example-adopted
 func TestExampleAdoptsRunner(t *testing.T) {
 	cfg, err := os.ReadFile("../../examples/sundial/.awf/config.yaml")
 	if err != nil {
 		t.Fatalf("read example config: %v", err)
 	}
 	if !strings.Contains(string(cfg), "runner:") {
-		t.Error("the sundial example must enable the runner singleton (ADR-0101)")
+		t.Error("the sundial example must enable the runner singleton (ADR-0156)")
 	}
-	raw, err := os.ReadFile("../../examples/sundial/x")
+	for _, dropped := range []string{"activeMdRegenCmd", "checkCmd", "commitGateCmd", "proseGateCmd"} {
+		if strings.Contains(string(cfg), dropped) {
+			t.Errorf("the sundial config must carry no awf-verb command var %q: it dogfoods the rendered defaults", dropped)
+		}
+	}
+	raw, err := os.ReadFile("../../examples/sundial/awf")
 	if err != nil {
-		t.Fatalf("the sundial example must render x: %v", err)
+		t.Fatalf("the sundial example must render awf: %v", err)
 	}
-	x := string(raw)
+	wrapper := string(raw)
 	for _, want := range []string{
 		"#!/usr/bin/env bash",
-		`"$(bash .awf/bootstrap.sh)" "$cmd" "$@" ;;`, // awf-owned dispatch
-		"context",      // the verb the hand-written runner was missing (ADR-0092)
-		"go vet ./...", // sundial's ported gate verb, preserved in the in-place section
-		"# awf:edit-in-place runner-project-verbs: ",
+		`if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh)"; then`,
+		`exec "$pinned" "$@"`,
+		`exec awf "$@"`,
 	} {
-		if !strings.Contains(x, want) {
-			t.Errorf("rendered examples/sundial/x missing %q", want)
+		if !strings.Contains(wrapper, want) {
+			t.Errorf("rendered examples/sundial/awf missing %q", want)
 		}
+	}
+	if strings.Contains(wrapper, "awf:edit-in-place") {
+		t.Errorf("the rendered wrapper must carry no in-place region:\n%s", wrapper)
+	}
+	x, err := os.ReadFile("../../examples/sundial/x")
+	if err != nil {
+		t.Fatalf("the sundial example must keep a hand-written project runner x: %v", err)
+	}
+	for _, want := range []string{"gate)", "test)"} {
+		if !strings.Contains(string(x), want) {
+			t.Errorf("hand-written examples/sundial/x missing project verb arm %q", want)
+		}
+	}
+	if strings.Contains(string(x), "GENERATED by awf") {
+		t.Error("examples/sundial/x must be hand-written, outside the render set")
 	}
 }
 

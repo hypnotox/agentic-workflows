@@ -19,7 +19,7 @@ func unknownKind(kind string) error {
 
 // enableDisableSingleton enables or disables a nested <key>.enabled singleton toggle
 // in the config - the bootstrap (ADR-0040), the git-hook payloads (ADR-0048), or the
-// command runner (ADR-0101). It is the bespoke path (singletons are not
+// awf wrapper runner (ADR-0156). It is the bespoke path (singletons are not
 // kindDescriptors - no catalog pool / sections / plural enable array, so they stay
 // out of the single dispatch table that inv: kind-dispatch-single-table guards): a
 // nested <key>.enabled scalar, written via config.SetMappingScalar.
@@ -403,7 +403,7 @@ func listRunner(p *project.Project, stdout io.Writer) {
 		state = "enabled"
 	}
 	fmt.Fprintln(stdout, "runner:")
-	fmt.Fprintf(stdout, "  %-28s %s\n", "x", state)
+	fmt.Fprintf(stdout, "  %-28s %s\n", "awf", state)
 }
 
 func runList(root, kindFilter string, stdout io.Writer) error {

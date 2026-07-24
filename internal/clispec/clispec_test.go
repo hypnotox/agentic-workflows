@@ -97,7 +97,7 @@ func TestLookup(t *testing.T) {
 		}
 	}
 	doctor, ok := Lookup("doctor")
-	if !ok || doctor.Gating != Gated || !doctor.Runner.Forward || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
+	if !ok || doctor.Gating != Gated || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
 		t.Fatalf("doctor spec = %#v, found %v", doctor, ok)
 	}
 }
@@ -114,59 +114,6 @@ func TestGatedCommandNames(t *testing.T) {
 		if got[i] != want[i] {
 			t.Errorf("GatedCommandNames()[%d] = %q, want %q", i, got[i], want[i])
 		}
-	}
-}
-
-// invariant: tooling/cli:cli-command-spec-single-source
-func TestRunnerDispositions(t *testing.T) {
-	if err := ValidateRunnerDispositions(); err != nil {
-		t.Fatal(err)
-	}
-	wantExcluded := map[string]string{
-		"init":      "requires a pre-adoption invocation",
-		"upgrade":   "must cross the pinned bootstrap boundary",
-		"uninstall": "runner-mediated self-removal is unsafe",
-	}
-	var wantForwarded []string
-	for _, c := range Commands {
-		if reason, excluded := wantExcluded[c.Name]; excluded {
-			if c.Runner.Forward || c.Runner.Reason != reason {
-				t.Errorf("%s runner disposition = %#v", c.Name, c.Runner)
-			}
-			continue
-		}
-		wantForwarded = append(wantForwarded, c.Name)
-	}
-	got := ForwardedNames()
-	if strings.Join(got, ",") != strings.Join(wantForwarded, ",") {
-		t.Errorf("ForwardedNames() = %v, want %v", got, wantForwarded)
-	}
-	forwarded := Forwarded()
-	if len(forwarded) != len(got) {
-		t.Fatalf("Forwarded() len = %d, want %d", len(forwarded), len(got))
-	}
-	for i := range got {
-		if forwarded[i].Name != got[i] {
-			t.Errorf("Forwarded()[%d] = %q, want %q", i, forwarded[i].Name, got[i])
-		}
-	}
-}
-
-func TestRunnerDispositionValidationFailures(t *testing.T) {
-	base := Command{Name: "top", Runner: RunnerDisposition{Forward: true}}
-	for _, tc := range []struct {
-		name string
-		cmd  Command
-	}{
-		{name: "unclassified", cmd: Command{Name: "top"}},
-		{name: "forwarded with reason", cmd: Command{Name: "top", Runner: RunnerDisposition{Forward: true, Reason: "no"}}},
-		{name: "child disposition", cmd: Command{Name: "top", Runner: base.Runner, Children: []Command{{Name: "child", Runner: RunnerDisposition{Forward: true}}}}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if err := validateRunnerDispositions([]Command{tc.cmd}); err == nil {
-				t.Fatal("expected validation error")
-			}
-		})
 	}
 }
 

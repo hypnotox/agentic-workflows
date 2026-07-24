@@ -189,6 +189,7 @@ targets:
   - pi
 vars:
   activeMdRegenCmd: ./x sync
+  awfInvokeCmd: go run ./cmd/awf
   checkCmd: ./x check
   commitGateCmd: ./x commit-gate
   gateCmd: ./x gate
@@ -199,6 +200,8 @@ vars:
 bootstrap:
   enabled: false
 hooks:
+  enabled: true
+runner:
   enabled: true
 proseGate:
   enabled: true

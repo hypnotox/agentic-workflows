@@ -56,7 +56,7 @@ Load-bearing triggers include:
 4. **Declare the State changes.** In the `## State changes` section, either write `None.` or list one `- add`, `- update`, or `- remove` entry per affected claim, each naming the claim by its qualified `<domain>/<topic>:<slug>` id in an inline code span. This is the authoritative link between the ADR and the topics it governs; awf derives the affected domains from it. A rule and an invariant are declared the same way; an invariant claim additionally carries `Backing:` (and a proof marker or `Verify:`) when its prose is authored at implementation time. A rename is remove plus add; a removed id is never reused.
 
 <!-- awf:edit procedure-regen: default; create .awf/skills/parts/proposing-adr/procedure-regen.md to override -->
-5. **Regenerate INDEX.md.** Run `./x sync` to regenerate `docs/decisions/INDEX.md`. Stage the regenerated file. Do not hand-edit `INDEX.md`.
+5. **Regenerate INDEX.md.** Run `awf sync` to regenerate `docs/decisions/INDEX.md`. Stage the regenerated file. Do not hand-edit `INDEX.md`.
 
 <!-- awf:edit procedure-commit: default; create .awf/skills/parts/proposing-adr/procedure-commit.md to override -->
 6. **Commit everything in one commit.** Format: `docs(adr): propose NNNN <short title>`. The commit body names the load-bearing decision and explains why it warrants an ADR. The gate must pass; if the drift test fails, regenerate and re-stage `INDEX.md` before retrying.
@@ -76,6 +76,6 @@ Load-bearing triggers include:
 
 <!-- awf:edit notes: default; create .awf/skills/parts/proposing-adr/notes.md to override -->
 - The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `sundial-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.
-- `docs/decisions/INDEX.md` is never hand-edited; it is always regenerated via `./x sync`.
+- `docs/decisions/INDEX.md` is never hand-edited; it is always regenerated via `awf sync`.
 - The `State changes` operations, not any frontmatter relation, are how a later ADR changes what an earlier one established: it updates or removes the affected claim directly.
 - For the full ADR lifecycle, see `docs/workflow.md`.

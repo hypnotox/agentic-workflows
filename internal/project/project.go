@@ -49,6 +49,7 @@ var minVersionBySchema = map[int]string{
 	15: "0.20.0",
 	16: "0.21.0",
 	17: "0.22.0",
+	18: "0.22.0",
 }
 
 type Project struct {
@@ -244,7 +245,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			}
 		}
 		// A rendered #!-shebang script is written executable (ADR-0100 Decision 8),
-		// so the runner is runnable as ./x. The mode is enforced on every sync - a
+		// so the wrapper is runnable as ./awf. The mode is enforced on every sync - a
 		// pre-existing file's mode is corrected too, since os.WriteFile applies perm
 		// only at creation - hence the explicit Chmod.
 		perm := os.FileMode(0o644)

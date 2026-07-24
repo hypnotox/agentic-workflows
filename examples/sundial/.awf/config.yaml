@@ -1,8 +1,5 @@
 prefix: sundial
 vars:
-  activeMdRegenCmd: ./x sync
-  checkCmd: ./x check
-  commitGateCmd: ./x commit-gate
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...

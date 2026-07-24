@@ -50,7 +50,7 @@ by this repository's own checks (ADR-0090).
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place. Nonempty resident `.awf/metrics/` data and its required ignore file are preserved and reported.
 - `awf version`: print the binary's version.
 
-When the managed runner is enabled, run `./x` without a command to discover its generated awf verbs and project-owned verbs. The generated list follows CLI metadata rather than a copied command list. `init`, `upgrade`, and `uninstall` remain direct `awf` commands because pre-adoption, pinned-bootstrap crossing, and safe self-removal are unsuitable for runner mediation; every other top-level command is forwarded unless later metadata gives a reasoned exclusion.
+When the runner singleton is enabled, the rendered `./awf` wrapper forwards every CLI verb verbatim: it resolves one awf invocation (the `awfInvokeCmd` var when set, otherwise the bootstrap-pinned binary, otherwise the PATH `awf`) and execs it with all arguments, so there is no rendered verb list to fall behind the CLI. Project verbs live in the project's own runner, outside awf's render set.
 
 `awf context internal/project/context.go` is a representative concise orientation query: it renders each applicable topic once (claim-ID roster, directly marked claim detail, matched-path count with a coverage drilldown) and attributes each classified effective path. Use `awf context --full internal/project/context.go` whenever every applicable authority claim is required; the full detail still renders once per topic. `awf topic tooling/cli --coverage` drills into the owning-domain and topic selectors, their both-must-match rule, current matched paths, and marker sites. `--json` serializes the same selected projection for machine consumption (prefer the text form when reading); concise JSON omits the full block. Explicit ADR paths show lifecycle-derived operation progress without treating ADR prose as current authority. Run `./x` with no command to print the metadata-derived forwarded awf verbs alongside the project-owned runner verbs.
 
@@ -86,8 +86,9 @@ artifacts render once per enabled target. `bootstrap` toggles the rendered `.awf
 checksum-verified installer that prints the path of this project's pinned awf binary for hooks and
 CI (`"$(bash .awf/bootstrap.sh)" check`). `hooks` toggles the rendered git-hook payloads under
 `.awf/hooks/`, inert scripts you wire into hook setups you own; awf never touches git config.
-`runner` toggles the co-owned command-runner `x` at the repo root; awf owns the awf-verb dispatch,
-you fill the project-verb and setup sections in place.
+`runner` toggles the rendered pure awf wrapper `awf` at the repo root, a fully awf-owned forwarder
+that execs the configured (`awfInvokeCmd`) or bootstrap-resolved awf with every argument forwarded
+verbatim; your project verbs stay in your own runner.
 
 **Current-state topic inputs.** A topic is exactly one strict sidecar at
 `.awf/topics/metadata/<domain>/<topic>.yaml` paired with one authored part at

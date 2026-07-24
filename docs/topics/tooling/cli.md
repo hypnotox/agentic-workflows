@@ -17,9 +17,9 @@ Backing: test
 
 ### `invariant: cli-command-spec-single-source`
 
-The top-level usage line, awf help overview and order, generated gated-command list, and managed-runner forwarding dispositions all derive from the clispec command table, with no parallel command-order, gated-command, or runner-availability list.
+The top-level usage line, awf help overview and order, and generated gated-command list all derive from the clispec command table, with no parallel command-order or gated-command list.
 Origin: ADR-0094
-Revised-by: ADR-0144
+Revised-by: ADR-0144, ADR-0156
 Backing: test
 
 ### `invariant: cli-config-kinds`
@@ -55,12 +55,6 @@ Backing: test
 ### `invariant: topic-claim-budget-advisory`
 
 awf check emits one deterministic non-failing note for each topic whose claim count is strictly above currentState.maxClaimsPerTopic, naming the count, limit, metadata path, and claim-part path, while equality stays quiet and staged checks suppress this working-tree authoring advisory.
-Origin: ADR-0144
-Backing: test
-
-### `invariant: managed-runner-command-parity`
-
-Every clispec command declared runner-forwarded appears in the generated adopter runner and this repository's source runner, while each excluded command carries a reason and appears in neither; forwarded names cannot collide with adopter project verbs.
 Origin: ADR-0144
 Backing: test
 
@@ -103,14 +97,16 @@ Backing: test
 
 ### `invariant: metrics-command-contract`
 
-The gated, runner-forwarded `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags.
+The gated `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags.
 Origin: ADR-0153
+Revised-by: ADR-0156
 Backing: test
 
 ### `invariant: doctor-command-contract`
 
-The gated, runner-forwarded `awf doctor` command consumes the same shared effort, session, phase, and time selectors and the same storage interpretation as `awf metrics`, remains read-only, and never changes exit status merely because findings exist.
+The gated `awf doctor` command consumes the same shared effort, session, phase, and time selectors and the same storage interpretation as `awf metrics`, remains read-only, and never changes exit status merely because findings exist.
 Origin: ADR-0153
+Revised-by: ADR-0156
 Backing: test
 
 ### `invariant: dashboard-read-dispatch`

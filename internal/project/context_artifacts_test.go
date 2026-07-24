@@ -106,9 +106,9 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	if !reflect.DeepEqual(template.Outputs, []ArtifactLink{{Path: "generated.md", Label: "managed output"}, {Path: "second.md", Label: "managed output"}}) {
 		t.Fatalf("template outputs = %#v", template.Outputs)
 	}
-	inPlaceDecl := []OutputDeclaration{{Path: "x", TemplateID: "runner/x.tmpl", Declarers: []string{"runner"}, Inputs: []OutputInput{{Path: "x", Role: ArtifactManagedOutput}}}}
-	inPlace := artifactRecords("x", inPlaceDecl, authorities)
-	if len(inPlace) != 1 || inPlace[0].Role != ArtifactManagedOutput || !reflect.DeepEqual(inPlace[0].Sources, []ArtifactLink{{Path: "x", Label: "in-place managed output"}}) || !reflect.DeepEqual(inPlace[0].Outputs, []ArtifactLink{{Path: "x", Label: "managed output"}}) || inPlace[0].Navigation == nil {
+	inPlaceDecl := []OutputDeclaration{{Path: "awf", TemplateID: "runner/awf.tmpl", Declarers: []string{"runner"}, Inputs: []OutputInput{{Path: "awf", Role: ArtifactManagedOutput}}}}
+	inPlace := artifactRecords("awf", inPlaceDecl, authorities)
+	if len(inPlace) != 1 || inPlace[0].Role != ArtifactManagedOutput || !reflect.DeepEqual(inPlace[0].Sources, []ArtifactLink{{Path: "awf", Label: "in-place managed output"}}) || !reflect.DeepEqual(inPlace[0].Outputs, []ArtifactLink{{Path: "awf", Label: "managed output"}}) || inPlace[0].Navigation == nil {
 		t.Fatalf("in-place source/output multiplicity = %#v", inPlace)
 	}
 	generatedIndex := artifactRecords("documentation/decisions/INDEX.md", decls, authorities)
@@ -195,7 +195,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	for _, d := range decls {
 		byPath[d.Path] = d
 	}
-	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "x", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/memory/.gitignore"} {
+	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "awf", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/memory/.gitignore"} {
 		if _, ok := byPath[p]; !ok {
 			t.Errorf("missing %s", p)
 		}

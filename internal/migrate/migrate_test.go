@@ -166,8 +166,8 @@ func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
 	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
 	// (a no-op here - tree-layout already ports replaceWith parts), then
 	// awf-dir-relocation, which moves the finished tree to .awf/.
-	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff,topic-claim-budget,workflow-telemetry" {
-		t.Errorf("first Upgrade applied = %v, want all migrations through workflow-telemetry", applied)
+	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff,topic-claim-budget,workflow-telemetry,enable-runner" {
+		t.Errorf("first Upgrade applied = %v, want all migrations through enable-runner", applied)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
 		t.Errorf("tree not produced at .awf: %v", err)
@@ -607,12 +607,6 @@ func TestLegacyReadOnlyInMigrate(t *testing.T) {
 	}
 }
 
-func TestCurrentIsSeventeen(t *testing.T) {
-	if Current() != 17 {
-		t.Errorf("Current() = %d, want 17", Current())
-	}
-}
-
 // invariant: config/migrations-and-locks:awf-relocation-migration
 func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	root := t.TempDir()
@@ -915,8 +909,8 @@ func TestUpgradeStampsTreeLock(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
-	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff,topic-claim-budget,workflow-telemetry" {
-		t.Errorf("applied = %v, want all migrations through workflow-telemetry", applied)
+	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff,topic-claim-budget,workflow-telemetry,enable-runner" {
+		t.Errorf("applied = %v, want all migrations through enable-runner", applied)
 	}
 	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
 	if err != nil {

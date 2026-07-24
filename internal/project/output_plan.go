@@ -290,8 +290,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	}
 	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
 	if cfg.Runner != nil && cfg.Runner.Enabled {
-		runnerAuthored := append([]OutputInput{{Path: "x", Role: ArtifactManagedOutput}}, partInputs("runner", "", runnerSections)...)
-		add("x", "runner/x.tmpl", "runner/x.tmpl", inputs("runner/x.tmpl", runnerAuthored...), false)
+		add("awf", "runner/awf.tmpl", "runner/awf.tmpl", inputs("runner/awf.tmpl", partInputs("runner", "", runnerSections)...), false)
 	}
 	if cfg.Bootstrap != nil && cfg.Bootstrap.Enabled {
 		add(".awf/bootstrap.sh", "bootstrap/awf-bootstrap.sh.tmpl", "bootstrap/awf-bootstrap.sh.tmpl", inputs("bootstrap/awf-bootstrap.sh.tmpl"), false)

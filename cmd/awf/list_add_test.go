@@ -431,9 +431,9 @@ func TestDispatchHooks(t *testing.T) {
 	}
 }
 
-// TestRunRunnerCLI mirrors TestRunBootstrapCLI for the command-runner singleton
-// (ADR-0101): list state, the add/remove toggle round-trip with render/prune, and
-// the guard errors.
+// TestRunRunnerCLI mirrors TestRunBootstrapCLI for the awf-wrapper runner
+// singleton (ADR-0156): list state, the add/remove toggle round-trip with
+// render/prune, and the guard errors.
 func TestRunRunnerCLI(t *testing.T) {
 	root := scaffoldProject(t) // minimalYAML: no runner key (disabled)
 
@@ -443,7 +443,7 @@ func TestRunRunnerCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	if out := buf.String(); !strings.Contains(out, "runner:") ||
-		!strings.Contains(out, "x") || !strings.Contains(out, "available") {
+		!strings.Contains(out, "awf") || !strings.Contains(out, "available") {
 		t.Errorf("list runner (initial):\n%s", out)
 	}
 
@@ -453,15 +453,15 @@ func TestRunRunnerCLI(t *testing.T) {
 		t.Errorf("expected is-not-enabled error, got %v", err)
 	}
 
-	// add enables it (config gains enabled: true, sync renders x at the root).
+	// add enables it (config gains enabled: true, sync renders awf at the root).
 	if err := runEnable(root, "runner", "", false, io.Discard); err != nil {
 		t.Fatalf("add runner: %v", err)
 	}
 	if cfg := readConfig(t, root); !strings.Contains(cfg, "runner:") || !strings.Contains(cfg, "enabled: true") {
 		t.Errorf("runner not enabled in config:\n%s", readConfig(t, root))
 	}
-	if _, err := os.Stat(filepath.Join(root, "x")); err != nil {
-		t.Errorf("x not rendered after add: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "awf")); err != nil {
+		t.Errorf("awf not rendered after add: %v", err)
 	}
 
 	// list runner now reports enabled.
@@ -479,15 +479,15 @@ func TestRunRunnerCLI(t *testing.T) {
 		t.Errorf("expected already-enabled error, got %v", err)
 	}
 
-	// remove disables it and prunes the rendered runner.
+	// remove disables it and prunes the rendered wrapper.
 	if err := runDisable(root, "runner", "", false, false, io.Discard); err != nil {
 		t.Fatalf("remove runner: %v", err)
 	}
 	if !strings.Contains(readConfig(t, root), "enabled: false") {
 		t.Errorf("runner not disabled in config:\n%s", readConfig(t, root))
 	}
-	if _, err := os.Stat(filepath.Join(root, "x")); !os.IsNotExist(err) {
-		t.Errorf("x not pruned after remove: err=%v", err)
+	if _, err := os.Stat(filepath.Join(root, "awf")); !os.IsNotExist(err) {
+		t.Errorf("awf not pruned after remove: err=%v", err)
 	}
 }
 

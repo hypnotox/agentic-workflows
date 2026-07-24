@@ -267,12 +267,15 @@ type HooksConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// RunnerConfig configures the rendered command-runner singleton `x` (ADR-0101):
-// a co-owned file (ADR-0100) whose awf-verb dispatch awf owns and whose project
-// verbs live in in-place-editable sections the adopter fills. Like the
-// bootstrap/hooks toggles, a nil *RunnerConfig (key absent) and Enabled false both
-// mean "do not render"; only Enabled true renders the runner. Additive and
-// default-off - no schema-generation migration, and adopters opt in explicitly.
+// RunnerConfig configures the rendered runner singleton (ADR-0156): a pure,
+// fully awf-owned wrapper `awf` at the repo root that resolves one awf
+// invocation (vars.awfInvokeCmd, else bootstrap-pinned, else PATH awf) and
+// execs it with all arguments forwarded verbatim. Like the bootstrap/hooks
+// toggles, a nil *RunnerConfig (key absent) and Enabled false both mean "do
+// not render"; only Enabled true renders the wrapper. Default-on by seeding:
+// `awf init` scaffolds the key true and the schema-18 enable-runner migration
+// seeds an absent key to enabled on `awf upgrade` (an explicit false is
+// respected); at render time an absent key still renders nothing.
 type RunnerConfig struct {
 	Enabled bool `yaml:"enabled"`
 }

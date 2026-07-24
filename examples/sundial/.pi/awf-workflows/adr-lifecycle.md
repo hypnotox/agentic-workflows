@@ -59,7 +59,7 @@ Pick the status transition, then:
 3. **Update any current-state topic** whose claims this ADR moves: the claim edits above are that update. Refresh the surrounding explanatory prose in the same topic part when the domain's position has shifted, in the same commit. Do not hand-maintain a per-domain decisions index; the generated domain doc links the topic list instead.
 
 <!-- awf:edit procedure-regen: default; create .awf/skills/parts/adr-lifecycle/procedure-regen.md to override -->
-4. **Regenerate INDEX.md.** Run `./x sync` to regenerate `docs/decisions/INDEX.md`. Stage the result. Do not hand-edit `INDEX.md`; always regenerate and commit it alongside any ADR status change.
+4. **Regenerate INDEX.md.** Run `awf sync` to regenerate `docs/decisions/INDEX.md`. Stage the result. Do not hand-edit `INDEX.md`; always regenerate and commit it alongside any ADR status change.
 
 <!-- awf:edit procedure-gate: default; create .awf/skills/parts/adr-lifecycle/procedure-gate.md to override -->
 5. **Validate the staged transaction.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth. If either command fails, fix the cause and re-stage before retrying.
@@ -89,5 +89,5 @@ Once `Accepted` or `Implemented`, the body's meaning is frozen; a schema retrofi
 <!-- awf:edit notes: default; create .awf/skills/parts/adr-lifecycle/notes.md to override -->
 - **Authoritative source:** `docs/workflow.md` and `docs/decisions/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** once any live state is reached, only the `status` field and the append-only `## Status history` are editable in place. The body is the historical record: its meaning is frozen, and append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
-- **`docs/decisions/INDEX.md` is auto-generated** by `./x sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
+- **`docs/decisions/INDEX.md` is auto-generated** by `awf sync` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.

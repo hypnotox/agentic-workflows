@@ -18,9 +18,10 @@ import (
 // the union of all {{ .vars.X }} names referenced by every catalog template. Each
 // var is seeded with an empty string so that strict render (missingkey=zero +
 // <no value> check) does not fail on sync, and so a later `awf enable` of an opt-in
-// skill renders cleanly. It also seeds the self-pinning bootstrap (ADR-0040)
-// and the git-hook payloads (ADR-0048) enabled by default, and writes a resolved
-// commit-scope list to audit.allowedScopes (ADR-0051).
+// skill renders cleanly. It also seeds the self-pinning bootstrap (ADR-0040),
+// the git-hook payloads (ADR-0048), and the pure awf wrapper runner (ADR-0156)
+// enabled by default, and writes a resolved commit-scope list to
+// audit.allowedScopes (ADR-0051).
 // The second return value lists the closure additions beyond a trim's
 // explicit selection (kind-prefixed, e.g. "skill reviewing-plan-resync"),
 // empty for the untrimmed default.
@@ -77,6 +78,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, trim *config.CatalogT
 		Audit:             auditBlk,
 		Bootstrap:         &config.BootstrapConfig{Enabled: true},
 		Hooks:             &config.HooksConfig{Enabled: true},
+		Runner:            &config.RunnerConfig{Enabled: true},
 		CurrentState:      &config.SkeletonCurrentState{MaxClaimsPerTopic: 20},
 		WorkflowTelemetry: config.DefaultWorkflowTelemetryConfig(),
 	})

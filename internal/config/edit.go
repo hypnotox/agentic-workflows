@@ -25,6 +25,7 @@ type Skeleton struct {
 	Audit             *SkeletonAudit          `yaml:"audit,omitempty"`
 	Bootstrap         *BootstrapConfig        `yaml:"bootstrap,omitempty"`
 	Hooks             *HooksConfig            `yaml:"hooks,omitempty"`
+	Runner            *RunnerConfig           `yaml:"runner,omitempty"`
 	CurrentState      *SkeletonCurrentState   `yaml:"currentState,omitempty"`
 	WorkflowTelemetry WorkflowTelemetryConfig `yaml:"workflowTelemetry"`
 }

@@ -47,7 +47,7 @@ Documentation travels with the change that makes it true. When you change behavi
 
 The gate is one command (`./x gate`) that must be green before every commit. Compose it from three layers:
 
-- **Minimum:** the test suite (`./x test`), the language's standard linter, and `./x check`: so behaviour, style, and rendered-file drift all block a commit.
+- **Minimum:** the test suite (`./x test`), the language's standard linter, and `awf check`: so behaviour, style, and rendered-file drift all block a commit.
 - **As the project grows:** add what your stack makes cheap: a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
 - **Keep it fast.** The per-commit tier should run in seconds; move anything slower (end-to-end suites, broad integration runs) to a fuller tier (`./x gate full`) that runs before merging or releasing rather than on every commit.
 
@@ -69,4 +69,4 @@ awf never installs or activates git hooks; the wiring is yours. When the `hooks`
 <!-- awf:edit ci: default; create .awf/parts/workflow/ci.md to override -->
 ## Continuous integration
 
-Local hooks are per-clone and optional, so CI is the enforcement backstop: run `./x check` and the gate (`./x gate`) on every push, and the fuller tier (`./x gate full`) before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `awf check` and the gate (`./x gate`) on every push, and the fuller tier (`./x gate full`) before merging. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.

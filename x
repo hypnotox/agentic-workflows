@@ -117,7 +117,7 @@ case "$cmd" in
     go run ./cmd/awf new "$@"
     ;;
   build)
-    go build -o awf ./cmd/awf
+    go build -o bin/awf ./cmd/awf
     ;;
   install)
     go install ./cmd/awf

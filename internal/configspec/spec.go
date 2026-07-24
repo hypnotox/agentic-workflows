@@ -66,6 +66,7 @@ var varAvailability = map[string]string{
 	"proseGateCmd":      "Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.",
 	"testCmd":           "Consumed while an enabled artifact's template references it.",
 	"activeMdRegenCmd":  "Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).",
+	"awfInvokeCmd":      "Consumed by the rendered runner wrapper template while the runner singleton is enabled.",
 	"invariantTestPath": "Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
 }
 
@@ -256,8 +257,8 @@ var keys = []Entry{
 		Availability: "Always.",
 	},
 	{
-		Path: "runner.enabled", Type: "bool", Default: "false (key absent); opt in via `awf enable runner`",
-		Description:  "Renders the co-owned command-runner `x` at the repo root: awf owns the awf-verb dispatch (delegating to the pinned binary via the bootstrap) and its structure; the project verbs (gate, test, ...) live in in-place-editable sections you fill and awf preserves across syncs. Absent and false both mean: do not render.",
+		Path: "runner.enabled", Type: "bool", Default: "false (key absent); awf init and awf upgrade seed it true",
+		Description:  "Renders the pure awf wrapper `awf` at the repo root: a fully awf-owned forwarder that execs the configured (`awfInvokeCmd`) or bootstrap-resolved awf with all arguments forwarded verbatim. Absent and false both mean: do not render.",
 		Availability: "Always.",
 	},
 	{

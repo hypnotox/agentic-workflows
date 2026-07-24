@@ -49,6 +49,7 @@ var registry = []Migration{
 	{To: 15, Name: "adr-format-v2-cutoff", Apply: applyADRFormatV2Cutoff, OwnsSchemaStamp: true},
 	{To: 16, Name: "topic-claim-budget", Apply: applyTopicClaimBudget},
 	{To: 17, Name: "workflow-telemetry", Apply: applyWorkflowTelemetry},
+	{To: 18, Name: "enable-runner", Apply: applyEnableRunner},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
