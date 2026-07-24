@@ -12,6 +12,7 @@ import (
 
 // An absent runner key is seeded enabled: the schema 17 → 18 default-on port
 // of the pure awf wrapper (ADR-0156).
+// invariant: rendering/companion-scripts:runner-singleton-toggle
 func TestEnableRunnerAdds(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")
@@ -34,6 +35,7 @@ func TestEnableRunnerAdds(t *testing.T) {
 // A config already carrying a runner key made a choice - a replay from a
 // degraded lock must not override a deliberate opt-out with the upgrade
 // default. The genuine 17→18 path has no runner key and still gets true.
+// invariant: rendering/companion-scripts:runner-singleton-toggle
 func TestEnableRunnerKeepsExplicitOptOut(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")

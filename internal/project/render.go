@@ -773,7 +773,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
 		rrf, err := p.renderTarget("runner", "", runnerTID,
 			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}), "awf")
-		if err != nil { // coverage-ignore: the wrapper template's single var reference is with/else-wrapped (ADR-0045) and it uses no parts, so renderTarget cannot produce <no value> or a read error
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, rrf)

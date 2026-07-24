@@ -57,6 +57,7 @@ func TestScaffoldParsesCleanly(t *testing.T) {
 		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)
 	}
 	// The awf wrapper runner is seeded enabled by default (ADR-0156).
+	// invariant: rendering/companion-scripts:runner-singleton-toggle
 	if !bytes.Contains(b, []byte("runner:")) || c.Runner == nil || !c.Runner.Enabled {
 		t.Errorf("scaffold should seed runner enabled by default (ADR-0156):\n%s", b)
 	}

@@ -239,6 +239,100 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	}
 }
 
+// End-to-end fixpoint over the real in-place composition, with no embedded
+// template in the loop: a synthetic source with an awf:section ... inplace
+// region is planned against the on-disk output (the production read-back
+// channel through readBackInPlaceBody), assembled through render.Assemble,
+// and drift-checked through checkLockedFiles as one flow. An edit confined to
+// the in-place section's content lines (internal blank line included) survives
+// regeneration and reports clean - sync followed by check is an idempotent
+// fixpoint - while an edit to an awf-owned region reports hand-edited drift.
+// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift
+// invariant: rendering/inplace-and-placeholders:in-place-spacing-owned
+func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	segs := render.ParseSections(
+		"banner\n" +
+			"<!-- awf:section s inplace -->\nDEFAULT\n<!-- awf:end -->\n" +
+			"<!-- awf:section tail -->\nOWNED\n<!-- awf:end -->\n")
+	declared := []string{"s", "tail"}
+	outPath := filepath.Join(root, "out.md")
+
+	// regenerate plans the sections against the current on-disk output and
+	// assembles the regenerated content, exactly as sync and check do.
+	regenerate := func() string {
+		t.Helper()
+		plan, err := p.planSections("skills", "foo", declared, nil, segs, "out.md", render.HTMLComment)
+		if err != nil {
+			t.Fatal(err)
+		}
+		asm, _ := render.Assemble(segs, plan, render.HTMLComment)
+		return asm
+	}
+	// drift runs the same locked-file compare Check applies to a
+	// regeneration-checked in-place output.
+	drift := func(regenerated string) []manifest.Drift {
+		t.Helper()
+		lock := &manifest.Lock{Files: map[string]manifest.Entry{
+			"out.md": {RegenChecked: true, OutputHash: manifest.Hash([]byte(regenerated))},
+		}}
+		rendered := map[string]RenderedFile{"out.md": {Path: "out.md", Content: regenerated, RegenChecked: true, TemplateID: "in-place/composed.tmpl", Policy: OutputPolicy{Regenerate: true}}}
+		return p.checkLockedFiles(lock, rendered)
+	}
+	write := func(content string) {
+		t.Helper()
+		if err := os.WriteFile(outPath, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// First sync: no output on disk, the in-place region renders its default.
+	first := regenerate()
+	if !strings.Contains(first, "DEFAULT") {
+		t.Fatalf("first render must fall back to the template default:\n%s", first)
+	}
+	write(first)
+
+	// (a) An edit confined to the in-place section's content lines survives
+	// regeneration and reports clean.
+	write(strings.Replace(first, "DEFAULT", "adopter one\n\nadopter two", 1))
+	resynced := regenerate()
+	if !strings.Contains(resynced, "adopter one\n\nadopter two") {
+		t.Errorf("in-place edit lost across regeneration:\n%s", resynced)
+	}
+	if !strings.Contains(resynced, "OWNED") {
+		t.Errorf("awf-owned tail lost across regeneration:\n%s", resynced)
+	}
+	if d := drift(resynced); len(d) != 0 {
+		t.Errorf("an edit confined to the in-place region must report clean, got %v", d)
+	}
+	// Sync overwrites with the regenerated content; a further regeneration is
+	// byte-identical and the check reports no drift (idempotent fixpoint).
+	write(resynced)
+	if again := regenerate(); again != resynced {
+		t.Errorf("regeneration is not an idempotent fixpoint:\ngot  %q\nwant %q", again, resynced)
+	}
+	if d := drift(regenerate()); len(d) != 0 {
+		t.Errorf("sync then check must report no drift, got %v", d)
+	}
+
+	// (b) An edit to an awf-owned region reports drift: regeneration restores
+	// the owned body, so the on-disk file compares hand-edited.
+	write(strings.Replace(resynced, "OWNED", "TAMPERED", 1))
+	tamperRegen := regenerate()
+	if strings.Contains(tamperRegen, "TAMPERED") {
+		t.Fatalf("regeneration must restore the awf-owned region:\n%s", tamperRegen)
+	}
+	d := drift(tamperRegen)
+	if len(d) != 1 || d[0].Kind != "hand-edited" {
+		t.Fatalf("an awf-owned edit must report hand-edited drift, got %v", d)
+	}
+}
+
 // PointerLinePrefixes stays in lockstep with editPointer: every rendered pointer
 // begins with one of the prefixes read-back matches on, in both comment styles.
 func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
