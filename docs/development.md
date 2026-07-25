@@ -25,7 +25,7 @@ the tree, never a stale installed binary.
 
 | Command | What it does |
 |---|---|
-| `./x gate` | The pre-commit gate: profiled Go tests, the 100% statement-coverage floor (`cmd/covercheck`), containerized Pi-extension type checks and 100% line/function/branch coverage, `go vet`, `golangci-lint`, the whole-program dead-code check (`cmd/deadcodecheck`), the workflow-pin check (`cmd/pincheck`, ADR-0079), and the plain-punctuation scan (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled here). `./x gate full` runs the identical steps; the argument exists only for pre-push hook compatibility. |
+| `./x gate` | The pre-commit gate: profiled Go tests, the 100% statement-coverage floor (`cmd/covercheck`), containerized Pi-extension type checks and 100% line/function/branch coverage, `go vet`, `golangci-lint`, the whole-program dead-code check (`cmd/deadcodecheck`), the workflow-pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan (`awf prose-gate`, ADR-0119, opt-in for adopters and enabled here), and the working-memory citation scan (`awf memory-gate`, ADR-0158, opt-in for adopters). `./x gate full` runs the identical steps; the argument exists only for pre-push hook compatibility. |
 | `./x test [args]` | `go test ./...`, passing extra args through. |
 | `./x lint` / `./x fmt` | `golangci-lint run` / `golangci-lint fmt`. |
 | `./x deadcode` | The dead-code check on its own (ADR-0063). |

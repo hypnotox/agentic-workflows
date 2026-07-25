@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-25
 ---
 # ADR-0158: Enforce the working-memory citation ban with a gate
@@ -87,3 +87,5 @@ Three historical plans carry a concrete reference: `docs/plans/2026-07-07-workin
 ## Status history
 
 - 2026-07-25: Proposed
+- 2026-07-25: Implementing; content-sha256: 91f3d1061c0caf48c5e660b0a54660332a30b1ea6589b6634ab6cca9673fdee5
+- 2026-07-25: Applied; state-sequence: 44; operations: update `rendering/catalog-and-targets:var-descriptor-set-pinned`, update `rendering/companion-scripts:hook-payloads-fallback-safe`, update `config/validation:hooks-commands-resolvable`

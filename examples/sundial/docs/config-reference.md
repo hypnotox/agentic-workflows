@@ -89,6 +89,8 @@ declined; the generic prose renders).
   State: absent, declined; the generic prose renders. Consumed by: hooks commit-msg.
 - `proseGateCmd`: Command that runs the prose scan (the pre-commit hook payload calls it). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.
   State: absent, declined; the generic prose renders. Consumed by: hooks pre-commit.
+- `memoryGateCmd`: Command that runs the working-memory citation scan (the pre-commit hook payload calls it). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.
+  State: absent, declined; the generic prose renders. Consumed by: hooks pre-commit.
 - `testCmd`: Command that runs the test suite. Consumed while an enabled artifact's template references it.
   State: set (`./x test`). Consumed by: agents-doc, doc workflow, skill tdd.
 - `activeMdRegenCmd`: Command that regenerates the generated ADR decision index (INDEX.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).

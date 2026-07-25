@@ -195,6 +195,7 @@ vars:
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
+  memoryGateCmd: ./awf memory-gate
   proseGateCmd: ./awf prose-gate
   testCmd: go test ./...
 bootstrap:

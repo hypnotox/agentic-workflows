@@ -22,6 +22,7 @@ case "$cmd" in
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck
     ./awf prose-gate
+    ./awf memory-gate
     ;;
   lint)
     go tool golangci-lint run "$@"

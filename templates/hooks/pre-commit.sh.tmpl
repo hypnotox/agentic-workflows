@@ -15,3 +15,4 @@ set -euo pipefail
 {{ . }}
 {{- end }}
 {{ with .vars.proseGateCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} prose-gate{{ end }}
+{{ with .vars.memoryGateCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} memory-gate{{ end }}

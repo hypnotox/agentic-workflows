@@ -55,6 +55,11 @@ func TestValidateCommandWiring(t *testing.T) {
 			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\nhooks:\n  enabled: true\n",
 			"hooks.enabled without the runner singleton requires vars.proseGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
 		},
+		{
+			"runner disabled, memoryGateCmd fourth",
+			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\nhooks:\n  enabled: true\n",
+			"hooks.enabled without the runner singleton requires vars.memoryGateCmd: set it in .awf/config.yaml or enable the runner (awf enable runner)",
+		},
 	}
 	for _, tc := range fire {
 		t.Run(tc.name, func(t *testing.T) {
@@ -75,7 +80,7 @@ func TestValidateCommandWiring(t *testing.T) {
 		},
 		{
 			"explicit vars satisfy a runner-less config",
-			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\nhooks:\n  enabled: true\n",
+			"prefix: example\nvars:\n  gateCmd: make gate\n  checkCmd: make check\n  commitGateCmd: make commit-gate\n  proseGateCmd: make prose-gate\n  memoryGateCmd: make memory-gate\nhooks:\n  enabled: true\n",
 		},
 		{
 			"hooks disabled needs nothing",

@@ -140,7 +140,7 @@ func TestExampleAdoptsRunner(t *testing.T) {
 	if !strings.Contains(string(cfg), "runner:") {
 		t.Error("the sundial example must enable the runner singleton (ADR-0156)")
 	}
-	for _, dropped := range []string{"activeMdRegenCmd", "checkCmd", "commitGateCmd", "proseGateCmd"} {
+	for _, dropped := range []string{"activeMdRegenCmd", "checkCmd", "commitGateCmd", "proseGateCmd", "memoryGateCmd"} {
 		if strings.Contains(string(cfg), dropped) {
 			t.Errorf("the sundial config must carry no awf-verb command var %q: it dogfoods the rendered defaults", dropped)
 		}

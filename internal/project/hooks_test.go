@@ -66,7 +66,7 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
-				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " prose-gate\n"},
+				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " prose-gate\n", tc.awf + " memory-gate\n"},
 				"commit-msg": {tc.awf + ` commit-gate "$1"` + "\n"},
 				"pre-push":   {tc.awf + " check\n"},
 			}
@@ -104,11 +104,12 @@ vars:
   gateCmdFull: ./x gate full
   commitGateCmd: ./x commit-gate
   proseGateCmd: ./x prose-gate
+  memoryGateCmd: ./x memory-gate
 hooks:
   enabled: true
 `)
 	want := map[string][]string{
-		"pre-commit": {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n"},
+		"pre-commit": {"./x check\n./x check --staged\n./x gate\n./x prose-gate\n./x memory-gate\n"},
 		"commit-msg": {"./x commit-gate \"$1\"\n"},
 		"pre-push":   {"./x gate full\n"},
 	}

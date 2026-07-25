@@ -9,3 +9,4 @@ set -euo pipefail
 ./x check --staged
 ./x gate
 ./awf prose-gate
+./awf memory-gate
