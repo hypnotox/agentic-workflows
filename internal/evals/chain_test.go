@@ -335,7 +335,10 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		"Working memory is optional",
 		"do not create a file merely because this checkpoint was reached",
 		"update it in its own tool batch",
-		"Effort: <active-effort-id>",
+		"Effort: <effort-id>",
+		"rewriting it when a runtime has since assigned an active ID",
+		"a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface",
+		"never adopt another effort's identity",
 		"Decide whether user attention is required",
 		"material authority drift",
 		"a blocker, or failed required verification",
@@ -384,6 +387,32 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		t.Errorf("retrospective missing the working-memory deletion step")
 	}
 
+	// No rendered site may presuppose a runtime-assigned effort ID: the old
+	// placeholder and the over-broad prohibition are unsatisfiable wherever no
+	// runtime assigns one (ADR-0160).
+	for _, name := range append(append([]string{}, routineCheckpointSkills...), approvalCheckpointSkills...) {
+		body := read(t, piSkillPath(name))
+		for _, banned := range []string{"<active-effort-id>", "never invent or infer an effort ID", "never infer the ID"} {
+			if strings.Contains(body, banned) {
+				t.Errorf("skill %q still presupposes a runtime-assigned effort ID via %q", name, banned)
+			}
+		}
+	}
+
+	// The brainstorming template carries the identity rule in its own prose,
+	// ahead of the approval protocol. assertOrderedBody scans strictly forward
+	// from the approval header, so an ordered-list phrase would be satisfied by
+	// the approval partial's copy and would not reach this site (ADR-0160).
+	brainstorming := read(t, piSkillPath("brainstorming"))
+	approvalHeader := strings.Index(brainstorming, "**Mandatory approval check-in.**")
+	if approvalHeader < 0 {
+		t.Fatalf("brainstorming lost its approval header")
+	}
+	identity := strings.Index(brainstorming, "a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface")
+	if identity < 0 || identity >= approvalHeader {
+		t.Errorf("brainstorming must carry the two-source identity rule in its own prose ahead of the approval protocol, got index %d against header %d", identity, approvalHeader)
+	}
+
 	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
 	for _, name := range routineCheckpointSkills {
 		body := read(t, skillPath(nonPiRoot, name))
@@ -409,7 +438,10 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	ordered := []string{
 		"**Mandatory approval check-in.**",
 		"Complete the memory update in its own tool batch",
-		"Effort: <active-effort-id>",
+		"Effort: <effort-id>",
+		"rewriting it when a runtime has since assigned an active ID",
+		"a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface",
+		"never adopt another effort's identity",
 		"explicitly request approval",
 		"end the turn",
 		"Stop even when there is no concern to raise",

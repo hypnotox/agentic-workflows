@@ -22,15 +22,16 @@ Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
-The rendered brainstorming and ADR-review skills close with the mandatory approval protocol: persist memory, present the completed summary, explicitly request approval, and stop; continuation and any session handoff begin only after explicit approval is persisted. No other chain skill renders an approval stop.
+The rendered brainstorming and ADR-review skills close with the mandatory approval protocol: persist memory, present the completed summary, explicitly request approval, and stop; continuation and any session handoff begin only after explicit approval is persisted. The memory-persistence step names this effort's identity on its `Effort: <effort-id>` line, taking a runtime's active ID exactly when one is assigned and otherwise a short kebab-case slug the agent establishes, and refuses adopting another effort's identity. No other chain skill renders an approval stop.
 Origin: ADR-0152
+Revised-by: ADR-0160
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Working memory is optional, a non-trivial brainstormed effort becomes memory-backed when its first settled decision is persisted, and an existing or deliberately created memory file carries the active `Effort: <id>` and updates in its own tool batch. Every checkpoint-carrying skill outside the two mandatory approval boundaries renders the routine protocol: memory persistence first, then the attention classification, then either a raised check-in that stops or a continuity notice that continues without ending the turn. The implementation skills embed the complete routine protocol at their per-task sections, and retrospective alone carries the memory-file deletion step.
+Working memory is optional, a non-trivial brainstormed effort becomes memory-backed when its first settled decision is persisted, and an existing or deliberately created memory file carries this effort's identity on its `Effort: <effort-id>` line and updates in its own tool batch. That identity is a runtime's active ID exactly when one is assigned, and otherwise a short kebab-case slug the agent establishes and surfaces; no rendered site presupposes a runtime-assigned ID, adopting another effort's identity is refused, and the rendered brainstorming body carries the same rule ahead of its approval protocol. Every checkpoint-carrying skill outside the two mandatory approval boundaries renders the routine protocol: memory persistence first, then the attention classification, then either a raised check-in that stops or a continuity notice that continues without ending the turn. The implementation skills embed the complete routine protocol at their per-task sections, and retrospective alone carries the memory-file deletion step.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152
+Revised-by: ADR-0149, ADR-0152, ADR-0160
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

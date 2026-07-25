@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0159: Regroup the verification commands under check and rename sync to render](0159-regroup-the-verification-commands-under-check-and-rename-sync-to-render.md) (Proposed)
-- [ADR-0160: Permit agent-established effort identity and ship the full working-memory protocol](0160-permit-agent-established-effort-identity-and-ship-the-full-working-memory-protocol.md) (Proposed)
 
 ## History
 
@@ -164,3 +163,4 @@
 - [ADR-0156: Rendered awf wrapper replaces the co-owned command runner](0156-rendered-awf-wrapper-replaces-the-co-owned-command-runner.md) (Implemented)
 - [ADR-0157: Slim the agent guide to entry-point routing](0157-slim-the-agent-guide-to-entry-point-routing.md) (Implemented)
 - [ADR-0158: Enforce the working-memory citation ban with a gate](0158-enforce-the-working-memory-citation-ban-with-a-gate.md) (Implemented)
+- [ADR-0160: Permit agent-established effort identity and ship the full working-memory protocol](0160-permit-agent-established-effort-identity-and-ship-the-full-working-memory-protocol.md) (Implemented)

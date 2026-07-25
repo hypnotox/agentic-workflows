@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-26
 ---
 # ADR-0160: Permit agent-established effort identity and ship the full working-memory protocol
@@ -292,3 +292,4 @@ counted here.
 ## Status history
 
 - 2026-07-26: Proposed
+- 2026-07-26: Implemented; content-sha256: 4afed803e3ed247f2e939c982c669c5a7ebf9ff1197643d0f86d7c53a71fb4fd; state-sequence: 46

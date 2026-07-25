@@ -64,6 +64,7 @@ Backing: test
 
 ### `invariant: working-memory-single-home`
 
-The file skeleton, ground rules, and just-in-time retrieval prose render canonically in the workflow doc's working-memory section; the guide, the shared checkpoint partials, and the chain section point to that content rather than carrying copies of it.
+The file skeleton, ground rules, just-in-time retrieval prose, and effort-identity semantics render canonically in the workflow doc's working-memory section, whose Pi-specific sentences render behind the session-handoff signal while the identity rule renders unconditionally; the guide, the shared checkpoint partials, and the chain section point to that canonical prose rather than carrying copies of it. The boundary is canonical prose versus operational protocol: a checkpoint partial embeds the protocol steps it executes, identity confirmation and creation included, and carries no copy of the skeleton, ground rules, or retrieval prose.
 Origin: ADR-0157
+Revised-by: ADR-0160
 Backing: test

@@ -9,6 +9,22 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Features
+- Working-memory effort identity now has two sources (ADR-0160). The rendered checkpoint partials
+  and the brainstorming skill previously required "the exact active `Effort: <active-effort-id>`
+  line" and forbade inventing or inferring an effort ID; both presuppose a runtime-assigned ID,
+  which only a workflow-router runtime produces, so on every other target the instruction was
+  unsatisfiable and suppressed the memory file entirely. The rendered protocol now uses a
+  runtime's active ID exactly when one is assigned, and otherwise has the agent establish the
+  effort's own short kebab-case slug and surface it; the prohibition narrows to adopting another
+  effort's identity. The full protocol also moves out of this repository's convention part into the
+  shipped workflow-doc template, so an adopter's rendered workflow doc gains the effort-identity
+  sentences (and, for a session-handoff-capable target, the structured-resume and ledger sentences)
+  on the next `awf sync`.
+  Upgrade note: if you replaced the workflow doc's `working-memory` section with a
+  full-replacement convention part, you do not receive the newly shipped identity protocol, while
+  your checkpoint partials continue to point at that section. Re-derive your part against the new
+  section default or adopt the section, otherwise your rendered protocol stays incomplete. Sync
+  provenance labels this a template change, which understates a content relocation.
 - New `awf memory-gate` command scans the staged decisions and plans directories for a citation of
   a specific working-memory file and exits non-zero on any finding, and `awf commit-gate` applies
   the same detector to the git-cleaned commit-message body (ADR-0158). A mention of the bare

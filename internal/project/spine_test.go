@@ -1022,9 +1022,21 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		"Ground rules: the file is session state",
 		"prefer just-in-time retrieval",
 		"the working-memory section below is the canonical home",
+		// The effort-identity semantics are canonical here too, and the
+		// unconditional half renders even with the session-handoff signal
+		// off, which this render exercises (ADR-0160).
+		"Effort identity then has two sources",
+		"Identity flows one way, from ID to filename",
+		"Effort: <effort-id>",
 	} {
 		if !strings.Contains(workflowDoc, want) {
 			t.Errorf("workflow doc missing canonical working-memory prose %q:\n%s", want, workflowDoc)
+		}
+	}
+	// The Pi-gated half stays behind the signal, which is unset in this render.
+	for _, gated := range []string{"/awf-resume-effort", "the ledger stores no memory path"} {
+		if strings.Contains(workflowDoc, gated) {
+			t.Errorf("workflow doc leaked session-handoff prose %q with the signal unset:\n%s", gated, workflowDoc)
 		}
 	}
 	if got := strings.Count(workflowDoc, "File skeleton"); got != 1 {
@@ -1053,6 +1065,17 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 		})
 		if !strings.Contains(out, pointer) {
 			t.Errorf("%s must point at the canonical working-memory home:\n%s", skill, out)
+		}
+		// The single-home boundary is canonical prose versus operational
+		// protocol: a partial embeds the steps it executes, identity
+		// included, and copies none of the canonical prose (ADR-0160).
+		if !strings.Contains(out, "never adopt another effort's identity") {
+			t.Errorf("%s must embed the identity step it executes:\n%s", skill, out)
+		}
+		for _, canonical := range []string{"File skeleton", "Ground rules: the file is session state", "prefer just-in-time retrieval"} {
+			if strings.Contains(out, canonical) {
+				t.Errorf("%s must not copy canonical working-memory prose %q:\n%s", skill, canonical, out)
+			}
 		}
 	}
 }
