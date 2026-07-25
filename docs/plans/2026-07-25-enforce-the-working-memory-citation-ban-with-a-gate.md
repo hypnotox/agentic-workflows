@@ -17,7 +17,9 @@ Non-goals: widening the scan beyond decision records and commit messages, changi
 
 ## Architecture summary
 
-Five commits, each gate-green on its own.
+Four commits, each gate-green on its own. There is no separate documentation phase: the invariant is
+that reality and its documentation update in the same commit, so each phase carries the prose that
+describes what that phase makes true, and no phase asserts a state its own commit does not establish.
 
 Phase 1 clears the corpus first: three historical plans carry a concrete working-memory reference,
 and every later commit is scanned in full once the knob is on, so the authorized rewording must
@@ -26,19 +28,19 @@ land before the gate can be enabled.
 Phase 2 adds the detector and its first caller together, because the dead-code gate rejects a
 package no `main` reaches. It lands `internal/memorycite`, the `memoryCite` config field with its
 four configspec entries, the `awf memory-gate` command with its clispec and dispatch wiring, the
-commit-gate body scan, and the domain and topic path entries for the new package.
+commit-gate body scan, the domain and topic path entries for the new package, and the prose for all
+of it: the config and tooling domain narratives, the architecture components and data-flow entries,
+and the shipped and adopter-facing command lists.
 
 Phase 3 adds the `memoryGateCmd` var and the two wiring points (the `x` runner's gate step and the
-pre-commit hook template), plus the config-validation guard entry. This is the ADR's first
-application transaction: it applies the three `update` operations with their claim mutations and
-moves the ADR to `Implementing`.
+pre-commit hook template), plus the config-validation guard entry, plus the rendering domain
+narrative and the gate and hook docs that describe that wiring. This is the ADR's first application
+transaction: it applies the three `update` operations with their claim mutations and moves the ADR
+to `Implementing`.
 
-Phase 4 lands the prose: the domain narrative, the gate and hook docs, the architecture entries, the
-shipped command list, and the changelog.
-
-Phase 5 flips the switch: it enables the knob in this repository, authors the new claim, adds the
-two proof markers, and moves the ADR to `Implemented` with its final `add` operation, co-flipping
-this plan's status.
+Phase 4 flips the switch: it enables the knob in this repository, authors the new claim and the
+agent-guide invariant entry, adds the two proof markers and the changelog entry, and moves the ADR
+to `Implemented` with its final `add` operation, co-flipping this plan's status.
 
 ### State-changes transaction assignment
 
@@ -49,7 +51,7 @@ ADR-0158 declares four operations. They split across two application transaction
   `update config/validation:hooks-commands-resolvable`. Each becomes true in that same commit, which
   is what makes the batch honest: the var joins the pinned key set, the hook payload gains the line,
   and the guard gains the var.
-- **Final batch (Phase 5, `Implemented`):** `add tooling/quality-gates:memory-citation-gate`.
+- **Final batch (Phase 4, `Implemented`):** `add tooling/quality-gates:memory-citation-gate`.
 
 Three applied and one remaining is a nonempty strict subset, so the `Implementing` status is legal.
 
@@ -74,7 +76,8 @@ Three applied and one remaining is a nonempty strict subset, so the `Implementin
     `.awf/topics/parts/rendering/catalog-and-targets/current-state.md`,
     `.awf/topics/parts/rendering/companion-scripts/current-state.md`,
     `.awf/topics/parts/config/validation/current-state.md`,
-    `.awf/domains/parts/tooling/current-state.md`, `.awf/agents-doc.yaml`,
+    `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/config/current-state.md`,
+    `.awf/domains/parts/rendering/current-state.md`, `.awf/agents-doc.yaml`,
     `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/architecture/data-flow.md`,
     `.awf/docs/parts/testing/gate.md`, `.awf/docs/parts/development/command-runner.md`,
     `.awf/parts/workflow/composing-the-gate.md`, `.awf/parts/workflow/local-hooks.md`
@@ -87,13 +90,13 @@ Three applied and one remaining is a nonempty strict subset, so the `Implementin
     `docs/working-with-awf.md`, `docs/domains/tooling.md`, `docs/topics/**`,
     `docs/decisions/INDEX.md`, `.awf/hooks/pre-commit.sh`, `.awf/lock.yaml`, `examples/sundial/**`).
     `docs/decisions/INDEX.md` in particular regenerates on each of the two status transitions, per
-    ADR-0158 Decision 7, so it must be staged with the Phase 3 and Phase 5 commits.
+    ADR-0158 Decision 7, so it must be staged with the Phase 3 and Phase 4 commits.
 - **Deleted:** none.
 
 ### Authoring constraint for this file
 
 This plan lives under `docs/plans/`, which the gate scans in full on every commit once the knob is
-on in Phase 5. It therefore never writes a concrete filename directly after the `.awf/memory/`
+on in Phase 4. It therefore never writes a concrete filename directly after the `.awf/memory/`
 prefix. Where a task must identify existing text of that shape, it gives the file and line number
 and names the offending segment separately. Where a task must show a Go fixture of that shape, it
 builds the string from a `dir` constant. Both are the same dodge `internal/prosegate` already uses
@@ -330,7 +333,7 @@ for banned runes, and a future editor of this file must preserve it.
   unpinned branch, the line numbers.
 
   Do not put an invariant proof marker in this file. The ADR places the two proof markers on the
-  command-level tests that exercise the blocking path; those land in Phase 5.
+  command-level tests that exercise the blocking path; those land in Phase 4.
 
 - [ ] **Task 2.6: Add the `awf memory-gate` command.** Create `cmd/awf/memorygate.go` in package
   `main`, modelled on `cmd/awf/prosegate.go`. Required behavior, exactly:
@@ -445,7 +448,7 @@ for banned runes, and a future editor of this file must preserve it.
   Also assert `cleanCommitLines` directly, or assert `cleanCommitSubject` still returns what its
   existing cases expect, so the extraction is proven behaviour-preserving rather than assumed.
 
-  Do not add proof markers yet; Phase 5 adds them.
+  Do not add proof markers yet; Phase 4 adds them.
 
 - [ ] **Task 2.9: Give the new package a domain and a topic.** `internal/memorycite/**` must be
   added to both selectors, mirroring `internal/prosegate/**`, because a domain-owned path with no
@@ -457,6 +460,16 @@ for banned runes, and a future editor of this file must preserve it.
   - In `.awf/topics/metadata/tooling/quality-gates.yaml`, add `  - internal/memorycite/**` to the
     `paths` list, immediately after the `internal/prosegate/**` entry.
 
+  Two enumerations become incomplete the moment the package joins the topic, and both render into
+  `docs/topics/tooling/quality-gates.md`, `docs/topics/tooling/index.md`, and
+  `docs/domains/tooling.md`, so both are fixed in this same task:
+
+  - The topic's opening narrative sentence in
+    `.awf/topics/parts/tooling/quality-gates/current-state.md:1` reads "coverage, prose punctuation,
+    and the gate tiers"; add the citation scan to that list.
+  - The `summary:` line in `.awf/topics/metadata/tooling/quality-gates.yaml` reads "Coverage, prose,
+    and the command-runner gate machinery"; extend it in the same register, keeping it to one line.
+
 - [ ] **Task 2.10: Name the new package and command in the architecture components list.** In
   `.awf/docs/parts/architecture/components.md`:
 
@@ -467,7 +480,45 @@ for banned runes, and a future editor of this file must preserve it.
     working-memory file in a decision record or a commit-message body, powering the opt-in blocking
     `awf memory-gate` and the commit-gate body scan, and citing ADR-0158.
 
-- [ ] **Task 2.11: Verify and commit.** Run `./x sync`, then `./x check` (expect `awf check: clean`)
+- [ ] **Task 2.11: Extend the config domain narrative.** In
+  `.awf/domains/parts/config/current-state.md`, the passage at line 17 enumerates the config-tree
+  blocks and describes `proseGate` as the fourth one beside bootstrap, hooks, and runner: an
+  additive default-off mapping carrying its `enabled` key and its exemptions list, each key
+  described in `internal/configspec` and projected into the config reference with a live-state entry
+  count. Add `memoryCite` as the fifth block in the same register and at the same level of detail,
+  naming its `enabled` key and its `{path, count}` exemptions list, and citing ADR-0158. This is a
+  Phase 2 obligation because Tasks 2.1 through 2.3 are the config-domain change it describes.
+
+- [ ] **Task 2.12: Extend the tooling domain narrative with the command.** In
+  `.awf/domains/parts/tooling/current-state.md`, the paragraph at line 32 describes `awf commit-gate`
+  and then `awf prose-gate` as the blocking counterparts to the advisory audit rules. Append prose
+  describing `awf memory-gate` in the same register and at the same level of detail: what it scans
+  (the staged decision-record directories, derived from the configured docs directory), what the
+  detector discriminates (a concrete segment flags; the placeholder and bare-directory forms pass;
+  the ignore-file name is excluded), that `commit-gate` runs the same detector over the git-cleaned
+  message body, that it is opt-in and default-off and self-gates on `memoryCite.enabled` so a hook
+  may invoke it unconditionally, that it is `Ungated` like its two siblings, and that it refuses
+  outside a git repository. Cite ADR-0158. Write the concrete-file shape only in placeholder form,
+  per this plan's authoring constraint.
+
+  Stop there. The runner and hook wiring lands in Phase 3, and the knob is not on here until
+  Phase 4, so this task must not describe either. Task 3.8 appends the wiring sentence and Task 4.1
+  appends the enabled-here clause, each in the commit that makes its sentence true.
+
+- [ ] **Task 2.13: Update the architecture data-flow note.** In
+  `.awf/docs/parts/architecture/data-flow.md`, line 54 states that `awf prose-gate` reads the staged
+  files it scans through the immutable `internal/snapshot` index. Extend that statement to cover
+  `awf memory-gate`, which reads its staged blobs the same way and additionally path-filters them to
+  the decision-record directories.
+
+- [ ] **Task 2.14: Add the command to the shipped and adopter-facing command lists.** In
+  `templates/docs/working-with-awf.md.tmpl`, add a bullet after the `awf prose-gate` bullet
+  (line 42), in the identical shape: what it scans, that it exits non-zero on any finding, that it
+  is opt-in via `memoryCite.enabled` and default off, and that a pre-commit hook uses it. In
+  `README.md` (hand-written, not rendered), add a row to the command table after the
+  `awf prose-gate` row (line 281), matching its two-column shape and terseness.
+
+- [ ] **Task 2.15: Verify and commit.** Run `./x sync`, then `./x check` (expect `awf check: clean`)
   and `./x gate` (expect green: 100% statement coverage, `deadcodecheck: no production dead code`,
   and `prose-gate: clean`). The dead-code step is the meaningful one for this phase: it is why the
   detector and its callers share a commit. Stage the exact paths this phase touched plus everything
@@ -543,7 +594,7 @@ for banned runes, and a future editor of this file must preserve it.
   `  memoryGateCmd: ./awf memory-gate` to the `vars:` block, keeping the block's alphabetical order
   (it sorts between `invariantTestPath` and `proseGateCmd`). In `x`, add `./awf memory-gate` to the
   `gate)` arm immediately after the `./awf prose-gate` line (line 24). The knob is still off at this
-  point, so both call sites are no-ops until Phase 5; that is deliberate, and it means this phase's
+  point, so both call sites are no-ops until Phase 4; that is deliberate, and it means this phase's
   own gate run exercises the wiring without the scan.
 
 - [ ] **Task 3.7: Apply the ADR's first batch: three claim updates.** Each claim gains
@@ -579,44 +630,18 @@ for banned runes, and a future editor of this file must preserve it.
   the date this plan carries. Do not edit any ADR section other than the frontmatter `status` and
   the appended history entries: the body is frozen the moment the ADR leaves `Proposed`.
 
-- [ ] **Task 3.8: Verify and commit.** Run `./x sync`, then `./x check` and `./x gate`, both green.
-  `./x check` is the meaningful one here: it validates the Applied event against exactly the claim
-  mutations staged beside it. Stage the exact paths and commit:
+- [ ] **Task 3.8: Extend the rendering domain narrative.** In
+  `.awf/domains/parts/rendering/current-state.md`, the passage at line 48 closes by recording that
+  ADR-0119 added a `proseGateCmd` var and an unconditional prose-gate line to the rendered
+  pre-commit hook payload, and that the payload's shim guard widened accordingly. Append a sentence
+  in the same register recording that ADR-0158 adds `memoryGateCmd` and an unconditional
+  `awf memory-gate` line to that payload, and joins the var to the ADR-0156 hook-command
+  resolvability guard. This is a Phase 3 obligation because Tasks 3.1 through 3.5 are the rendering
+  change it describes.
 
-  ```commit
-  feat(rendering): add the memoryGateCmd var (applies 0158 batch)
-  ```
-
-## Phase 4: Documentation
-
-- [ ] **Task 4.1: Extend the tooling domain narrative.** In
-  `.awf/domains/parts/tooling/current-state.md`, the paragraph at line 32 describes `awf commit-gate`
-  and then `awf prose-gate` as the blocking counterparts to the advisory audit rules. Append prose
-  describing `awf memory-gate` in the same register and at the same level of detail: what it scans
-  (the staged decision-record directories, derived from the configured docs directory), what the
-  detector discriminates (a concrete segment flags; the placeholder and bare-directory forms pass;
-  the ignore-file name is excluded), that `commit-gate` runs the same detector over the message body,
-  that it is opt-in and default-off and self-gates on `memoryCite.enabled` so a hook may invoke it
-  unconditionally, that it is `Ungated` like its two siblings, that it refuses outside a git
-  repository, and that it is wired into both `./x gate` and the rendered pre-commit payload,
-  scanning twice by the same accepted design prose-gate already carries. Cite ADR-0158. Write the
-  concrete-file shape only in placeholder form, per this plan's authoring constraint.
-
-  Do not assert here that this repository has the knob on. Phase 5 turns it on, and Task 5.1 appends
-  that clause in the same commit that makes it true. Asserting it now would ship a commit whose
-  regenerated `docs/config-reference.md` renders the live state as false while the narrative beside
-  it claims otherwise.
-
-- [ ] **Task 4.2: Add the invariant to the agent guide.** In `.awf/agents-doc.yaml`, add an entry to
-  the same `Invariants` list that carries the plain-punctuation entry (line 30), placed after it.
-  Follow that entry's shape: a bold lead-in naming the rule, the mechanism in one or two sentences,
-  the authoring escape (name the file separately from the prefix, or use the placeholder), and a
-  trailing ADR reference. State that the ban covers an ADR, a plan, and a commit-message body. Do
-  not state that the gate is on in this repo; Task 5.1 adds that clause in the commit that makes it
-  true, for the reason Task 4.1 gives.
-
-- [ ] **Task 4.3: Update the gate and hook prose.** Four parts, each a small addition beside its
-  existing prose-gate mention, keeping each file's established sentence shape:
+- [ ] **Task 3.9: Update the gate and hook prose.** Five edits, each a small addition beside its
+  existing prose-gate mention, keeping each file's established sentence shape. All five describe
+  wiring that lands in this phase, which is why they land in this commit rather than a later one:
 
   - `.awf/parts/workflow/composing-the-gate.md` line 7: add the citation scan to the enumerated gate
     steps, after the plain-punctuation scan, with its ADR reference and its opt-in status.
@@ -626,42 +651,24 @@ for banned runes, and a future editor of this file must preserve it.
     scan in the gate-tier description.
   - `.awf/docs/parts/development/command-runner.md` line 10: add the citation scan to the `./x gate`
     row's enumerated steps, after the plain-punctuation scan.
+  - `.awf/domains/parts/tooling/current-state.md`: append to the paragraph Task 2.12 extended that
+    this repository wires the gate into both `./x gate` and the rendered pre-commit payload, so it
+    runs twice by the same accepted design prose-gate already carries. Do not yet say the knob is
+    on; Task 4.1 adds that.
 
-- [ ] **Task 4.4: Update the architecture data-flow note.** In
-  `.awf/docs/parts/architecture/data-flow.md`, line 54 states that `awf prose-gate` reads the staged
-  files it scans through the immutable `internal/snapshot` index. Extend that statement to cover
-  `awf memory-gate`, which reads its staged blobs the same way and additionally path-filters them to
-  the decision-record directories.
-
-- [ ] **Task 4.5: Add the command to the shipped and adopter-facing command lists.** In
-  `templates/docs/working-with-awf.md.tmpl`, add a bullet after the `awf prose-gate` bullet
-  (line 42), in the identical shape: what it scans, that it exits non-zero on any finding, that it
-  is opt-in via `memoryCite.enabled` and default off, and that a pre-commit hook uses it. In
-  `README.md` (hand-written, not rendered), add a row to the command table after the
-  `awf prose-gate` row (line 281), matching its two-column shape and terseness.
-
-- [ ] **Task 4.6: Add the changelog entry.** In `changelog/CHANGELOG.md`, under `## [Unreleased]`,
-  add a `### Features` section if absent and one entry describing the adopter-facing effect: the new
-  `awf memory-gate` command and the commit-gate body scan, both opt-in via the new
-  `memoryCite.enabled` knob and both off by default; the new `memoryGateCmd` var and the new
-  pre-commit payload line, which re-renders on the adopter's next `awf sync`; and the one breaking
-  edge, that a project with the hooks singleton enabled and the runner singleton explicitly disabled
-  must now set `memoryGateCmd` before `awf sync` or `awf check` will pass. Categorise by
-  adopter-facing effect, not by commit type, per the file's own header.
-
-- [ ] **Task 4.7: Verify and commit.** Run `./x sync`, then `./x check` and `./x gate`, both green.
-  Confirm the rendered AGENTS.md, `docs/workflow.md`, `docs/testing.md`, `docs/development.md`,
-  `docs/architecture.md`, `docs/working-with-awf.md`, and `docs/domains/tooling.md` all carry the
-  new prose, since each is regenerated from a part this phase edited. Stage the exact paths and
-  commit:
+- [ ] **Task 3.10: Verify and commit.** Run `./x sync`, then `./x check` and `./x gate`, both green.
+  `./x check` is the meaningful one here: it validates the Applied event against exactly the claim
+  mutations staged beside it. Confirm the regenerated `docs/workflow.md`, `docs/testing.md`,
+  `docs/development.md`, and `docs/domains/rendering.md` carry the new prose. Stage the exact paths,
+  `docs/decisions/INDEX.md` included (the status transition regenerates it), and commit:
 
   ```commit
-  docs(awf): document the memory gate
+  feat(rendering): add the memoryGateCmd var (applies 0158 batch)
   ```
 
-## Phase 5: Enable the gate and apply the final batch
+## Phase 4: Enable the gate, author the claim, and apply the final batch
 
-- [ ] **Task 5.1: Enable the knob in this repository.** In `.awf/config.yaml`, add a `memoryCite`
+- [ ] **Task 4.1: Enable the knob in this repository.** In `.awf/config.yaml`, add a `memoryCite`
   block after the `proseGate` block (which ends at line 220) and before `workflowTelemetry`:
 
   ```yaml
@@ -672,13 +679,24 @@ for banned runes, and a future editor of this file must preserve it.
   Omit `exemptions` entirely: ADR-0158 requires this repository to reach an exemption-free state,
   which Phase 1 established.
 
-  In the same commit, append the this-repo-enabled clause Phase 4 deliberately withheld, so the
-  narrative and the regenerated live state flip together: add to
-  `.awf/domains/parts/tooling/current-state.md` that this repository enables the knob with no
-  exemptions, and to the `.awf/agents-doc.yaml` invariant entry that the gate is on here. Both
-  sentences are now true and the regenerated `docs/config-reference.md` row agrees with them.
+  In the same commit, append to `.awf/domains/parts/tooling/current-state.md` the clause Tasks 2.12
+  and 3.9 deliberately withheld: that this repository enables the knob with no exemptions. The
+  sentence is true only from this commit onward, and the regenerated `docs/config-reference.md`
+  live-state row now agrees with it.
 
-- [ ] **Task 5.2: Author the new claim.** In
+- [ ] **Task 4.2: Add the invariant to the agent guide.** In `.awf/agents-doc.yaml`, add an entry to
+  the same `Invariants` list that carries the plain-punctuation entry (line 30), placed after it.
+  Follow that entry's shape: a bold lead-in naming the rule, the mechanism in one or two sentences,
+  the authoring escape (name the file separately from the prefix, or use the placeholder), a note
+  that the gate is on in this repo, and a trailing ADR reference. State that the ban covers an ADR,
+  a plan, and a commit-message body.
+
+  This belongs in this phase, not an earlier one. The list it joins is headed "Hard rules every
+  change must respect", and the rule is not yet one: the knob is off until Task 4.1 and the backed
+  claim does not exist until Task 4.3. ADR-0158 Decision 6 pairs the two, authoring the claim in the
+  Implemented commit and joining the invariant to the guide list.
+
+- [ ] **Task 4.3: Author the new claim.** In
   `.awf/topics/parts/tooling/quality-gates/current-state.md`, insert a claim block in the file's
   existing alphabetical-by-slug order, which places `memory-citation-gate` between
   `example-zero-notes` and `mutants-timeout-untrusted`:
@@ -696,7 +714,7 @@ for banned runes, and a future editor of this file must preserve it.
   metadata lines in the order `Origin`, `Backing`. Do not write the prefix followed by a concrete
   segment anywhere in this block.
 
-- [ ] **Task 5.3: Add the two proof markers.** ADR-0158 places the backing on the command-level
+- [ ] **Task 4.4: Add the two proof markers.** ADR-0158 places the backing on the command-level
   tests that exercise the blocking path. Add the comment line
   `// invariant: tooling/quality-gates:memory-citation-gate` immediately above each of:
 
@@ -709,7 +727,17 @@ for banned runes, and a future editor of this file must preserve it.
   sites. Add no third marker: `internal/memorycite/memorycite_test.go` carries the discrimination
   table, which the claim describes but does not take backing from.
 
-- [ ] **Task 5.4: Apply the ADR's final batch and flip both statuses.** In
+- [ ] **Task 4.5: Add the changelog entry.** In `changelog/CHANGELOG.md`, under `## [Unreleased]`,
+  add a `### Features` section if absent and one entry describing the adopter-facing effect: the new
+  `awf memory-gate` command and the commit-gate body scan, both opt-in via the new
+  `memoryCite.enabled` knob and both off by default; the new `memoryGateCmd` var and the new
+  pre-commit payload line, which re-renders on the adopter's next `awf sync`; and the one breaking
+  edge, that a project with the hooks singleton enabled and the runner singleton explicitly disabled
+  must now set `memoryGateCmd` before `awf sync` or `awf check` will pass. Categorise by
+  adopter-facing effect, not by commit type, per the file's own header. The entry describes the
+  whole feature, which is why it lands in the commit that completes it rather than in a part of it.
+
+- [ ] **Task 4.6: Apply the ADR's final batch and flip both statuses.** In
   `docs/decisions/0158-enforce-the-working-memory-citation-ban-with-a-gate.md`, append two entries
   to `## Status history` and set the frontmatter `status:` to `Implemented`:
 
@@ -723,16 +751,18 @@ for banned runes, and a future editor of this file must preserve it.
   by running `./x check` and requiring a clean result rather than assuming it. Use today's date on
   both entries. In this plan file, set the frontmatter `status:` to `Implemented`.
 
-- [ ] **Task 5.5: Verify and commit.** Run `./x sync`, then `./x check` and `./x gate`.
+- [ ] **Task 4.7: Verify and commit.** Run `./x sync`, then `./x check` and `./x gate`.
 
   Both are load-bearing here and neither has run under these conditions before, because this is the
   first run with the scan active. Expect `./x gate` to end with both `prose-gate: clean` and
   `memory-gate: clean`. If `memory-gate` reports a finding, the fix is to reword the offending line
   to the placeholder form, never to add an exemption: ADR-0158 requires this repository to reach an
   exemption-free state. Expect `./x check` to validate the final Applied event against exactly the
-  one claim added beside it.
+  one claim added beside it. Confirm the regenerated AGENTS.md carries the new invariant entry and
+  `docs/config-reference.md` renders the `memoryCite.enabled` live state as true.
 
-  Stage the exact paths and commit. This commit carries both status flips.
+  Stage the exact paths, `docs/decisions/INDEX.md` included (the status transition regenerates it),
+  and commit. This commit carries both status flips.
 
   ```commit
   feat(awf): enforce the working-memory citation ban (implements 0158)
@@ -755,7 +785,7 @@ The effort is done when all of the following hold:
 - A deliberate negative check: temporarily add a line naming a concrete working-memory file to any
   file under `docs/plans/`, stage it, and confirm `./awf memory-gate` exits non-zero and names the
   path and line. Revert it before committing anything.
-- `git log --oneline` shows five commits carrying the subjects this plan fences, in order.
+- `git log --oneline` shows four commits carrying the subjects this plan fences, in order.
 
 ## Notes
 
@@ -765,15 +795,16 @@ The effort is done when all of the following hold:
   derives the prefixes from `cfg.DocsDir`, which yields the ADR's literal paths in this repository
   and the correct ones for an adopter with a custom `docsDir`.
 - **The commit-gate knob coupling and message cleaning are ADR-level, not plan-level.** Both were
-  written into the Decision by amendment during plan review, because the claim Task 5.2 authors
+  written into the Decision by amendment during plan review, because the claim Task 4.3 authors
   carries `Origin: ADR-0158` and asserts the knob coupling, and Task 2.2 ships it in an
   adopter-facing configspec description. A behaviour an adopter reads in the config reference
   belongs in the decision record, not only in the execution record.
 - **The commit-gate body scan sits after the git-generated-subject exemption**, so a merge or
-  autosquash message is not scanned. This is a deliberate, minimal-diff choice: it preserves every
-  existing early return, including the one that lets `commit-gate` return nil outside an adopted
-  tree, and a git-generated body will not carry the pattern. Task 2.8 pins the behaviour with a test
-  so it is a decision on the record rather than an accident.
+  autosquash message is not scanned. This is a deliberate, minimal-diff choice: it preserves both
+  existing nil early returns (the empty subject, which git aborts anyway, and the git-generated
+  subject) without moving `project.Open` above them, and a git-generated body will not carry the
+  pattern. Task 2.8 pins the behaviour with a test so it is a decision on the record rather than an
+  accident.
 - **The detector's quote terminators came out of review, not the first draft.** The original spec
   terminated a segment on whitespace, slash, and backtick only, which made the ignore-file exclusion
   miss a quoted occurrence and flagged a corpus line ADR-0158 counts as clean. The lesson generalizes
