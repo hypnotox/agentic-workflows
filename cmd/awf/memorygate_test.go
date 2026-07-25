@@ -49,7 +49,8 @@ func memoryGateRepo(t *testing.T, memoryCiteYAML string, stage map[string]string
 }
 
 func TestMemoryGateKnobOff(t *testing.T) {
-	// No .awf at all: config.Load fails.
+	// A bare directory is not a git repository, so the staged-snapshot read fails
+	// before any knob is consulted.
 	if err := runMemoryGate(t.TempDir(), io.Discard); err == nil {
 		t.Error("no .awf: want a config-load error, got nil")
 	}

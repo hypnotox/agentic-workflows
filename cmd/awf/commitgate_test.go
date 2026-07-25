@@ -184,6 +184,18 @@ func TestRunCommitGateCitationScan(t *testing.T) {
 			t.Errorf("diagnostic must name the reference: %q", out.String())
 		}
 	})
+	t.Run("an exemption does not suppress the message scan", func(t *testing.T) {
+		// An exemption is keyed by path and a commit message has none, so
+		// configuring one - even under the synthetic label the diagnostic uses -
+		// must leave the scan blocking.
+		root := scaffoldProject(t)
+		testsupport.WriteAwfConfig(t, root,
+			minimalYAML+"memoryCite:\n  enabled: true\n  exemptions:\n    - path: commit message\n")
+		var out bytes.Buffer
+		if err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out); err == nil {
+			t.Error("a configured exemption must not reach the commit-message scan")
+		}
+	})
 	t.Run("a comment-only citation is accepted", func(t *testing.T) {
 		// git discards the comment, so it is never recorded.
 		root := citingProject(t)
@@ -229,5 +241,11 @@ func TestRunCommitGateProjectOpenError(t *testing.T) {
 	var out bytes.Buffer
 	if err := runCommitGate(bare, writeMsg(t, "feat: needs a project\n"), nil, &out); err == nil {
 		t.Fatal("commit-gate outside an awf project must error")
+	}
+	// A git-generated subject reaches project.Open too, because the citation scan
+	// sits above the subject exemption (ADR-0158 Decision 6). This is the accepted
+	// behavioural cost of that ordering: the call returned nil here before.
+	if err := runCommitGate(bare, writeMsg(t, "Merge branch 'x'\n"), nil, &out); err == nil {
+		t.Fatal("a merge subject outside an awf project must error too")
 	}
 }
