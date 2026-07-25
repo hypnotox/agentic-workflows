@@ -64,6 +64,36 @@ shared checkout, treat a pi-extension lane failure whose errors are missing-file
 lines under /workspace/repo as this race: rerun the gate before diagnosing, and only
 investigate if the failure reproduces on a quiet tree.
 
+## A claim must not out-claim the filter its own command applies
+
+_Domains: invariants_
+
+ADR-0158's memory-citation claim was authored as reporting every concrete working-memory
+file reference in the staged decisions and plans directories. The command deliberately
+drops non-Scannable blobs, and the claim's own backing suite pins that exclusion with a
+symlink whose target is exactly the flagged shape, so the backing test contradicts a
+literal reading of the claim it backs. Terminal review escalated it only after the add
+operation had Applied under an Implemented ADR, the point where the text can change only
+through a successor update operation from a new decision. The sibling prose-gate claim in
+the same topic had already solved this by scoping itself to a text file. When authoring a
+claim for a command that filters its input before scanning, scope the sentence to what the
+command actually reads, and read the sibling claims in the destination topic first: the
+wording that survives review is usually already there.
+
+## A staged-symlink fixture needs a real blob, a gitlink does not
+
+_Domains: tooling_
+
+The ADR-0158 memory-gate tests needed a staged non-regular entry to prove the command's
+Scannable filter drops it. The prose-gate sibling fabricates one by appending an index
+entry with filemode.Submodule and a synthetic hash, and that works only because the
+snapshot never reads a gitlink's blob. Copying the trick with filemode.Symlink fails:
+snapshot.IndexTree does read a symlink's bytes (its target path), so a synthetic hash
+produces "read index blob: object not found" before Scannable is ever consulted, and the
+test fails for a reason unrelated to what it asserts. Stage a real symlink with os.Symlink
+plus worktree Add instead. The target string becomes the blob, which also lets the fixture
+carry the exact shape under test, making the assertion stronger than the fabricated form.
+
 ## A test's name is not its assertions
 
 _Domains: invariants_

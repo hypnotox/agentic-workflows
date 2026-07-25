@@ -27,7 +27,14 @@
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151
   session from appending Notes to a frozen plan at review's direction; a prose rule that failed
   twice is the promotion signal for a deterministic check (needs an ADR: it changes check
-  behavior and the plan lifecycle contract).
+  behavior and the plan lifecycle contract). The ADR-0158 effort is the third occurrence and
+  splits the target in two: the remediation half of the pitfall worked (terminal review directed
+  a post-freeze Notes append and the executing session declined it, citing the pitfall), while
+  the prevention half failed again (three deviations reached the freeze commit unrecorded). A
+  refusal to edit a frozen plan would not have prevented that miss. The complementary and
+  cheaper lever is a pre-flip deviation sweep in the execution skills' final-commit step, which
+  is where the omission actually happens; that is a shipped-template change, so it needs its own
+  ADR rather than a local override, on pain of awf diverging from the standard it publishes.
 - A conditional-key consumption check: extend the ADR-0086 consumption union so a template
   conditional keyed on a render key that no render path for that artifact sets fails loudly.
   The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
