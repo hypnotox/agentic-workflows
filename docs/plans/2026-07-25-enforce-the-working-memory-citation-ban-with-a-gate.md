@@ -1,7 +1,7 @@
 ---
 date: 2026-07-25
 adrs: [158]
-status: Proposed
+status: Implemented
 ---
 # Plan: Enforce the working-memory citation ban with a gate
 

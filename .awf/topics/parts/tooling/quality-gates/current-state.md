@@ -50,6 +50,12 @@ The example check step fails on any note: line present in the example's awf chec
 Origin: ADR-0090
 Backing: test
 
+### `invariant: memory-citation-gate`
+
+With memoryCite.enabled true, the memory-gate command reports every concrete working-memory file reference in the staged decisions and plans directories and exits non-zero on any finding outside memoryCite.exemptions; the commit-gate command applies the same detector to the git-cleaned commit-message body, where no exemption applies, and exits non-zero on any reference. A reference written in the angle-bracket placeholder form, one naming the bare directory, and the ignore-file name all pass.
+Origin: ADR-0158
+Backing: test
+
 ### `invariant: mutants-timeout-untrusted`
 
 The mutation-report checker exits non-zero when any mutation in its input JSON has status TIMED OUT, signalling an untrustworthy run; otherwise it reports exactly the surviving (LIVED) mutants, dropping NOT COVERED and every other status, and treats a missing or empty input file as an empty run with no survivors.

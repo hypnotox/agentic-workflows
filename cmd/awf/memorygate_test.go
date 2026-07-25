@@ -92,6 +92,7 @@ func TestMemoryGateClean(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:memory-citation-gate
 func TestMemoryGateFindings(t *testing.T) {
 	for _, path := range []string{"docs/decisions/0001-x.md", "docs/plans/2026-01-01-x.md"} {
 		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",

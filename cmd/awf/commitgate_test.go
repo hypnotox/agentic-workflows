@@ -157,6 +157,7 @@ func TestCleanCommitLines(t *testing.T) {
 // than written out so this file does not carry the shape the gate rejects.
 func cite() string { return dir + "effort.md" }
 
+// invariant: tooling/quality-gates:memory-citation-gate
 func TestRunCommitGateCitationScan(t *testing.T) {
 	t.Run("knob off accepts a citing body", func(t *testing.T) {
 		root := scaffoldProject(t)

@@ -219,6 +219,8 @@ proseGate:
     - path: docs/pitfalls.md
       codepoint: U+201C
       count: 1
+memoryCite:
+  enabled: true
 workflowTelemetry:
   retention:
     maxCompletedEffortAgeDays: 90

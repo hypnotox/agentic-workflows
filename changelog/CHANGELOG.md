@@ -8,6 +8,20 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+- New `awf memory-gate` command scans the staged decisions and plans directories for a citation of
+  a specific working-memory file and exits non-zero on any finding, and `awf commit-gate` applies
+  the same detector to the git-cleaned commit-message body (ADR-0158). A mention of the bare
+  `.awf/memory/` directory, an angle-bracket placeholder segment, and the directory's own ignore
+  file all pass; only a concrete file name is a finding. Both scans are opt-in through the new
+  `memoryCite.enabled` key and off by default, and `memoryCite.exemptions` permits a path that
+  genuinely needs one (the commit-message scan honours no exemption, since an exemption is keyed by
+  path). A new `memoryGateCmd` var and an unconditional `awf memory-gate` line in the rendered
+  pre-commit payload re-render on your next `awf sync`. One breaking edge: a project with the hooks
+  singleton enabled and the runner singleton explicitly disabled must now set `memoryGateCmd`
+  before `awf sync` or `awf check` will pass, the same requirement the other three hook-referenced
+  awf-verb vars already carry.
+
 ## [0.22.0] - 2026-07-24
 
 ### Features
