@@ -377,12 +377,33 @@ for banned runes, and a future editor of this file must preserve it.
     is scanned, that it exits zero without scanning unless `memoryCite.enabled` is true, that
     `memoryCite.exemptions` permits a path, and that awf installs no hook.
 
-- [ ] **Task 2.7: Add the commit-message body scan.** In `cmd/awf/commitgate.go`, inside
-  `runCommitGate`, insert the scan after the successful `project.Open` (lines 34 to 37) and before
-  the `audit.CheckConventionalCommit` call, so the existing early returns for an empty subject and a
-  git-generated subject are untouched and a merge or autosquash message is not scanned.
+- [ ] **Task 2.7: Add the commit-message body scan.** In `cmd/awf/commitgate.go`, restructure
+  `runCommitGate` so the citation scan covers every message the commit will actually record,
+  including a merge or autosquash one. ADR-0158 Decision 6 states the universal ("a commit-message
+  body carrying one cannot be committed") and the claim Task 4.3 authors repeats it, so the scan
+  cannot sit behind the subject exemption: a hand-edited merge body persists in history exactly like
+  any other.
 
-  Required behavior:
+  Required ordering, which moves `project.Open` up past the exempt-subject return and leaves
+  everything else in place:
+
+  1. Read the message and compute `subject` as today.
+  2. Return nil when `subject == ""`. Unchanged, and correct regardless of the knob: git aborts the
+     commit itself, so nothing is recorded and there is nothing to guard.
+  3. `project.Open`, moved above the exempt-subject return. Its failure remains the existing wrapped
+     error.
+  4. The citation scan, below.
+  5. Return nil when `isExemptSubject(subject)`. This return now skips only the Conventional Commits
+     check, which is all it was ever meant to protect: git generates the *subject*, and the exemption
+     exists so the gate never blocks what git wrote or will rewrite.
+  6. The existing `audit.CheckConventionalCommit` call and its findings loop, unchanged.
+
+  The one behavioural cost, accepted deliberately: a merge or autosquash commit in a tree that is not
+  an adopted awf project now surfaces `project.Open`'s error where it previously returned nil. That
+  path is already an error for every non-exempt subject, and `commit-gate` is hook-wired inside
+  adopted trees, so the prior nil was an accident of ordering rather than a designed affordance.
+
+  Required behavior of the scan itself:
 
   - Run only when `p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled`.
   - Scan the git-cleaned message, never the raw bytes. This is not a detail: `git commit -v` appends
@@ -416,10 +437,11 @@ for banned runes, and a future editor of this file must preserve it.
     `commit-gate: ` in the style of the existing finding loop, and return an error naming the
     rejection. The commit-message scan honours no exemptions: an exemption is keyed by path, and a
     commit message has none.
-  - With none, fall through to the existing Conventional Commits check unchanged.
+  - With none, fall through to step 5 above.
 
   Update the doc-comment on `runCommitGate` so it describes both checks rather than only the
-  Conventional Commits rule.
+  Conventional Commits rule, and so it records that the subject exemption scopes the Conventional
+  Commits check alone while the citation scan applies to every recorded message.
 
 - [ ] **Task 2.8: Add the command's test file.** Create `cmd/awf/memorygate_test.go` in package
   `main`, porting the structure of `cmd/awf/prosegate_test.go`. Add a `memoryGateRepo` helper with
@@ -439,11 +461,15 @@ for banned runes, and a future editor of this file must preserve it.
 
   Extend `cmd/awf/commitgate_test.go` with cases for the body scan: the knob off leaves a citing
   body accepted; the knob on rejects a citing body and names the reference; the knob on accepts a
-  clean body; a citing body under a merge subject is still accepted, pinning the deliberate
-  interaction with the existing exemption; a citation appearing only in a comment line is accepted,
-  since git discards it; and a citation appearing only below a scissors line is accepted, which is
-  the `git commit -v` regression case Task 2.7 exists to prevent. The last two are the cleaning
-  contract, and they must fail against an implementation that scans `raw`.
+  clean body; a citing body under a merge subject is **rejected**, and the same under a `fixup!`
+  subject, which together prove the scan is not scoped by the subject exemption; a merge subject with
+  a clean body is still accepted and still skips the Conventional Commits check, proving the
+  exemption survives for what it actually governs; a citation appearing only in a comment line is
+  accepted, since git discards it; and a citation appearing only below a scissors line is accepted,
+  which is the `git commit -v` regression case Task 2.7 exists to prevent. The last two are the
+  cleaning contract and must fail against an implementation that scans `raw`; the merge and `fixup!`
+  rejections are the universal the claim asserts and must fail against an implementation that leaves
+  the scan below the exempt-subject return.
 
   Also assert `cleanCommitLines` directly, or assert `cleanCommitSubject` still returns what its
   existing cases expect, so the extraction is proven behaviour-preserving rather than assumed.
@@ -799,12 +825,13 @@ The effort is done when all of the following hold:
   carries `Origin: ADR-0158` and asserts the knob coupling, and Task 2.2 ships it in an
   adopter-facing configspec description. A behaviour an adopter reads in the config reference
   belongs in the decision record, not only in the execution record.
-- **The commit-gate body scan sits after the git-generated-subject exemption**, so a merge or
-  autosquash message is not scanned. This is a deliberate, minimal-diff choice: it preserves both
-  existing nil early returns (the empty subject, which git aborts anyway, and the git-generated
-  subject) without moving `project.Open` above them, and a git-generated body will not carry the
-  pattern. Task 2.8 pins the behaviour with a test so it is a decision on the record rather than an
-  accident.
+- **The commit-gate scan sits above the git-generated-subject exemption**, so a merge or autosquash
+  body is scanned like any other. The first draft placed it below, on minimal-diff grounds; resync
+  caught that this made the ADR's universal false and, worse, had Task 2.8 pinning the counter-case
+  with a test, so the claim's own backing suite would have proved the gap rather than closing it.
+  The exemption now scopes the Conventional Commits check alone, which is what it was for: git
+  generates the subject, not the body a person may edit. The cost is one narrow behaviour change,
+  stated in Task 2.7.
 - **The detector's quote terminators came out of review, not the first draft.** The original spec
   terminated a segment on whitespace, slash, and backtick only, which made the ignore-file exclusion
   miss a quoted occurrence and flagged a corpus line ADR-0158 counts as clean. The lesson generalizes
