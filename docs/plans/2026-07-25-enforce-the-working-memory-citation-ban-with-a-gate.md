@@ -126,12 +126,13 @@ for banned runes, and a future editor of this file must preserve it.
   excludes that name, and the corpus carries many of them.
 
 - [ ] **Task 1.2: Verify and commit.** Run this command and require empty output, which is the
-  terminal state proving the corpus is clear of concrete references outside the excluded
-  `.gitignore` name:
+  terminal state proving the corpus is clear of concrete references outside the excluded ignore-file
+  name. It is a shell approximation of Task 2.4's rule, and its character class must stay in step
+  with that task's terminator set, quote terminators included:
 
   ```
-  grep -rnoE '\.awf/memory/[A-Za-z0-9._-][^ \t`/]*' docs/decisions/ docs/plans/ \
-    | grep -v '\.gitignore$'
+  grep -rnoE "\.awf/memory/[A-Za-z0-9._-][^/[:space:]\`\"']*" docs/decisions/ docs/plans/ \
+    | grep -vE ':\.awf/memory/\.gitignore$'
   ```
 
   Then run `./x check` (expect `awf check: clean`) and `./x gate` (expect green, ending in
@@ -257,10 +258,20 @@ for banned runes, and a future editor of this file must preserve it.
     `Reference.Path`, so a caller with no file may pass a synthetic label.
   - An unexported `func concreteSegment(rest string) (string, bool)` implementing the whole
     discrimination rule. It reads the segment as the run of characters from the start of `rest` up
-    to the first `/`, space, tab, carriage return, or backtick, or to the end of `rest`. It reports
-    the segment and `true` only when all three hold: the segment's first byte is in
-    `[A-Za-z0-9._-]`; the segment contains neither `<` nor `>`; and the segment is not `.gitignore`.
-    Otherwise it reports `false`.
+    to the first `/`, ASCII whitespace (space, tab, carriage return), backtick, double quote, or
+    single quote, or to the end of `rest`. It reports the segment and `true` only when all three
+    hold: the segment's first byte is in `[A-Za-z0-9._-]`; the segment contains neither `<` nor `>`;
+    and the segment is not `.gitignore`. Otherwise it reports `false`.
+
+    The two quote terminators are load-bearing, not decoration. A decision record that discusses the
+    ignore file inside a quoted string literal writes the ignore-file name followed by a double
+    quote, and the corpus genuinely carries such a line at
+    `docs/plans/2026-07-07-working-memory-convention.md:203`. Without the quote in the terminator
+    set the segment would be the ignore-file name plus the quote character, which the exact-name
+    exclusion would not match, so the detector would flag a line ADR-0158 Context counts as clean.
+    Terminating on both quote characters is what makes the ADR's own corpus claim (three plan lines
+    carry a concrete reference, and `docs/decisions/**` carries none) true. The single quote is
+    included for the same reason in a YAML or shell context.
   - `func Scan(files []File, exemptions []Exemption) []Finding`. Runs `ScanText` over each file,
     groups the references by path, and applies the exemptions with `prosegate.Scan`'s three-way
     semantics: a path with no exemption and at least one reference is a finding; an exempt path with
@@ -293,6 +304,10 @@ for banned runes, and a future editor of this file must preserve it.
     bare directory. The backslash case is the markdown-escaped form a historical plan uses.
   - `dir + ".gitignore"` passes by the explicit name exclusion, and `dir + ".gitignored.md"` flags,
     so the exclusion is an exact-name match and not a prefix match.
+  - The ignore-file name immediately followed by a double quote, and the same followed by a single
+    quote, both pass. This is the quote-terminator branch, and it is the case that fails if the
+    terminator set is written without them; it must be asserted directly, not left implied by the
+    plain exclusion case above.
   - `dir + "nested/file.awf-bak"` flags with segment `nested`: a concrete first segment is a
     citation regardless of what follows it.
   - `dir + "eff<x>.md"` passes by the angle-bracket rule, which is the branch the first-byte rule
@@ -359,8 +374,25 @@ for banned runes, and a future editor of this file must preserve it.
   Required behavior:
 
   - Run only when `p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled`.
-  - Call `memorycite.ScanText` over the full `raw` message bytes, not over the subject, passing a
-    synthetic path: the label that will appear in the diagnostic. Use `commit message`.
+  - Scan the git-cleaned message, never the raw bytes. This is not a detail: `git commit -v` appends
+    the staged diff below a scissors line, and this repository's own
+    `tools/pi-extension-test/tests/handoff.test.ts` legitimately names a concrete working-memory
+    file, exactly as ADR-0158 Context records. Scanning `raw` would reject any verbose commit whose
+    diff touches that file, on text git itself discards. Cleaning first makes the scan see only what
+    the commit will actually record.
+  - Restructure the existing cleanup helper rather than duplicating its logic. Extract the line walk
+    in `cleanCommitSubject` (lines 52 to 68) into
+    `func cleanCommitLines(raw string) []string`, which normalizes CRLF, drops comment lines (first
+    non-blank character is the default `#`), stops at a verbose scissors line (a comment line
+    containing `>8`), and returns the surviving lines. Then `cleanCommitSubject` returns the first
+    non-blank entry of `cleanCommitLines`, right-trimmed of spaces, preserving its current behavior
+    exactly (its existing tests must pass unchanged), and a new
+    `func cleanCommitBody(raw string) string` returns `strings.Join(cleanCommitLines(raw), "\n")`.
+  - Call `memorycite.ScanText` over `[]byte(cleanCommitBody(string(raw)))`, passing a synthetic path:
+    the label that will appear in the diagnostic. Use `commit message`. Line numbers in the
+    diagnostic are then relative to the cleaned message, which is what the author sees in the editor
+    minus the comment lines; say so in the doc-comment so the numbering is not mistaken for raw-file
+    lines.
   - With at least one reference, print one diagnostic line per reference to `stdout`, prefixed
     `commit-gate: ` in the style of the existing finding loop, and return an error naming the
     rejection. The commit-message scan honours no exemptions: an exemption is keyed by path, and a
@@ -388,8 +420,14 @@ for banned runes, and a future editor of this file must preserve it.
 
   Extend `cmd/awf/commitgate_test.go` with cases for the body scan: the knob off leaves a citing
   body accepted; the knob on rejects a citing body and names the reference; the knob on accepts a
-  clean body; and a citing body under a merge subject is still accepted, pinning the deliberate
-  interaction with the existing exemption.
+  clean body; a citing body under a merge subject is still accepted, pinning the deliberate
+  interaction with the existing exemption; a citation appearing only in a comment line is accepted,
+  since git discards it; and a citation appearing only below a scissors line is accepted, which is
+  the `git commit -v` regression case Task 2.7 exists to prevent. The last two are the cleaning
+  contract, and they must fail against an implementation that scans `raw`.
+
+  Also assert `cleanCommitLines` directly, or assert `cleanCommitSubject` still returns what its
+  existing cases expect, so the extraction is proven behaviour-preserving rather than assumed.
 
   Do not add proof markers yet; Phase 5 adds them.
 
@@ -683,8 +721,8 @@ The effort is done when all of the following hold:
 - This command returns empty output, proving the corpus carries no concrete reference outside the
   excluded ignore-file name:
   ```
-  grep -rnoE '\.awf/memory/[A-Za-z0-9._-][^ \t`/]*' docs/decisions/ docs/plans/ \
-    | grep -v '\.gitignore$'
+  grep -rnoE "\.awf/memory/[A-Za-z0-9._-][^/[:space:]\`\"']*" docs/decisions/ docs/plans/ \
+    | grep -vE ':\.awf/memory/\.gitignore$'
   ```
 - `.awf/config.yaml` carries `memoryCite.enabled: true` and no `memoryCite.exemptions` key.
 - A deliberate negative check: temporarily add a line naming a concrete working-memory file to any
@@ -694,19 +732,26 @@ The effort is done when all of the following hold:
 
 ## Notes
 
-- **Two details the ADR leaves to implementation, resolved here.** First, the ADR names
+- **One detail the ADR leaves to implementation, resolved here.** The ADR names
   `docs/decisions/**` and `docs/plans/**`, but `docsDir` is a configurable key defaulting to `docs`,
   and the decisions and plans directories derive from it throughout `internal/project`. Task 2.6
   derives the prefixes from `cfg.DocsDir`, which yields the ADR's literal paths in this repository
-  and the correct ones for an adopter with a custom `docsDir`. Second, the ADR states the knob for
-  the `memory-gate` command but is silent on whether the commit-gate body scan honours it; Task 2.7
-  gates both on `memoryCite.enabled`, which is the only reading consistent with the field being
-  opt-in and with the ADR's own Consequences.
+  and the correct ones for an adopter with a custom `docsDir`.
+- **The commit-gate knob coupling and message cleaning are ADR-level, not plan-level.** Both were
+  written into the Decision by amendment during plan review, because the claim Task 5.2 authors
+  carries `Origin: ADR-0158` and asserts the knob coupling, and Task 2.2 ships it in an
+  adopter-facing configspec description. A behaviour an adopter reads in the config reference
+  belongs in the decision record, not only in the execution record.
 - **The commit-gate body scan sits after the git-generated-subject exemption**, so a merge or
   autosquash message is not scanned. This is a deliberate, minimal-diff choice: it preserves every
   existing early return, including the one that lets `commit-gate` return nil outside an adopted
   tree, and a git-generated body will not carry the pattern. Task 2.8 pins the behaviour with a test
   so it is a decision on the record rather than an accident.
+- **The detector's quote terminators came out of review, not the first draft.** The original spec
+  terminated a segment on whitespace, slash, and backtick only, which made the ignore-file exclusion
+  miss a quoted occurrence and flagged a corpus line ADR-0158 counts as clean. The lesson generalizes
+  past this plan: a syntactic rule stated in prose is not verified until it is simulated against the
+  real corpus, and Task 1.2's grep exists so that simulation is repeatable rather than a one-off.
 - **`internal/memorycite` deliberately omits prose-gate's UTF-8 validity check** and its
   skipped-binary reporting. The pattern it matches is pure ASCII, so byte-wise scanning of arbitrary
   input is safe, and the `Scannable` filter in the command already drops the one non-document blob
