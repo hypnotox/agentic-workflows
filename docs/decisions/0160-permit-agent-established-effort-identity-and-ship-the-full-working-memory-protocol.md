@@ -56,23 +56,33 @@ Mechanical facts established by a grounding pass against source:
   association. A kebab-case slug passes the shape check but runtime IDs are `randomUUID()`
   values, so an agent-established identity can never satisfy the equality check.
 
-A second, independent defect surfaced while scoping the fix. This repository's convention part
-`.awf/parts/workflow/working-memory.md` carries the entire effort-identity, resume, and
-one-way-ledger prose, appended after the shipped section default. The shipped template
-`templates/docs/workflow.md.tmpl` carries none of it, while both partials ship the pointer
-sentence "The file skeleton and ground rules live in the workflow doc's working-memory
-section" to every adopter. A Pi-enabled adopter therefore receives the `handoff_session`
-guidance from the shipped conditional but not the identity rules that govern it, and the
-`working-memory-single-home` pointer resolves to absent content.
+A second defect surfaced while scoping the fix, and it is coupled to the first rather than
+merely adjacent. This repository's convention part `.awf/parts/workflow/working-memory.md`
+carries the effort-identity, Pi structured-resume, and one-way-ledger prose, appended after the
+shipped section default. The shipped template `templates/docs/workflow.md.tmpl` carries the
+on-demand check and the ordinary resume trigger already, but none of the Pi structured-resume
+path, none of the ledger sentences, and no one-way identity rule. Meanwhile both partials ship
+the pointer sentence "The file skeleton and ground rules live in the workflow doc's
+working-memory section" to every adopter. A Pi-enabled adopter therefore receives the
+`handoff_session` guidance from the shipped conditional but not the identity rules that govern
+it, and for that content the `working-memory-single-home` pointer resolves to absent text.
 
-That split is residue, not design. The part was created by `095e1cb2` on 2026-07-23, the same
-day as ADR-0157, whose Context records that at the time "the guide and the singleton docs
-render neutrally, once, through render data that never sets `targetSessionHandoff`", making
-"every `{{if .targetSessionHandoff}}` branch in the guide and workflow-doc templates ... dead
-code". Pi-conditional prose in a singleton doc template could not render at all, so parking
-the Pi sentences in a local part was the only way to get them into this project's own rendered
-doc. ADR-0157 Decision 6 made the signal live project-wide the same day
-(`internal/project/render.go`, `anyTargetHasCapability`), but the prose was never unparked.
+The coupling is what makes the two land together: the identity protocol of Decisions 1 through
+4 has to be authored somewhere, and authoring it in a project-local part would state the
+standard's central rule in a file no adopter renders, diverging awf from what it publishes at
+the exact point this decision is trying to make authoritative.
+
+That split is a prior choice made under a constraint that has since been lifted, not accidental
+drift. ADR-0157 Decision 9 directed it: "the workflow chain part (`.awf/parts/workflow/chain.md`)
+relocates its appended Pi working-memory sentences to the new working-memory section", which
+produced `.awf/parts/workflow/working-memory.md` by `095e1cb2` on 2026-07-23. At the time that
+was the only available home, because the same ADR's Context records that "the guide and the
+singleton docs render neutrally, once, through render data that never sets
+`targetSessionHandoff`", making "every `{{if .targetSessionHandoff}}` branch in the guide and
+workflow-doc templates ... dead code". Pi-conditional prose in a singleton doc template could
+not render at all. ADR-0157 Decision 6 lifted that constraint the same day
+(`internal/project/render.go`, `anyTargetHasCapability`), but the relocation had already been
+made local and was never carried the rest of the way. This decision completes it.
 
 ## Decision
 
@@ -97,30 +107,85 @@ doc. ADR-0157 Decision 6 made the signal live project-wide the same day
 4. An agent-established identity yields to a runtime-assigned one. When work carrying an
    agent-established `Effort:` value later runs under a runtime that assigns an active ID, the
    next checkpoint rewrites the `Effort:` line to the runtime ID before any handoff is
-   attempted. This is Decision 1's first clause applied over time, and it closes the otherwise
-   silent dead end where `handoff_session` refuses a slug that can never equal a UUID.
+   attempted. The file keeps the name it was created under: Pi's handoff validates the memory
+   path it is given and the `Effort:` line inside it, never the filename
+   (`templates/pi/awf-handoff/index.ts.tmpl`), so no rename is required and Decision 3's
+   one-way rule is unaffected, the filename having recorded the identity that was current when
+   the file was created. This item is Decision 1's first clause applied over time, and it
+   closes the otherwise silent dead end where `handoff_session` refuses a slug that can never
+   equal a UUID.
 
 5. The working-memory protocol ships complete. Every sentence currently in
    `.awf/parts/workflow/working-memory.md` moves into the `working-memory` section of
-   `templates/docs/workflow.md.tmpl`, with the Pi-specific sentences behind
-   `{{if .targetSessionHandoff}}` and their existing runtime-scoped phrasing retained, per
+   `templates/docs/workflow.md.tmpl`, and the convention part is deleted: nothing in it is
+   specific to this project. The conditional split is drawn per sentence, not per paragraph.
+   The one-way identity rule renders unconditionally, because it is Decision 3 and governs
+   every target. The ledger sentence, the `/awf-resume-effort` structured-resume path, the
+   handoff-validation sentence, and the reopen and abandoned-or-pruned sentences render behind
+   `{{if .targetSessionHandoff}}`, retaining their existing runtime-scoped phrasing per
    ADR-0157's constraint that singletons render once and their Pi-gated prose must not
-   misdirect a non-Pi session. The convention part is deleted: nothing in it is specific to
-   this project. The identity protocol from Decisions 1 through 4 is authored in that same
-   shipped section, so adopters and this repository render identical text.
+   misdirect a non-Pi session. The identity protocol from Decisions 1 through 4 is authored in
+   that same shipped section, so adopters and this repository render identical text.
 
-6. The point-of-use clause is short, harmonised, and citation-free. All three authoring sites
-   (`templates/partials/checkpoint-routine.md`, `templates/partials/checkpoint-approval.md`,
+6. The point-of-use rewrite covers the whole presupposing sentence, not just the prohibition.
+   In both partials the memory-persistence step today reads "require its exact
+   `Effort: <active-effort-id>` line to match the active effort" and closes with "never invent
+   or infer an effort ID". Replacing only the closing clause would leave the literal
+   `<active-effort-id>` placeholder and the match-the-active-effort requirement standing, and
+   those presuppose a runtime-assigned ID exactly as the removed clause did, re-creating the
+   unsatisfiable instruction. Both are rewritten: the placeholder becomes a runtime-neutral
+   `Effort: <effort-id>`, and the requirement becomes a confirm-or-rewrite step per Decision 4,
+   the identity being the effort's own rather than necessarily a runtime's. All three authoring
+   sites (`templates/partials/checkpoint-routine.md`, `templates/partials/checkpoint-approval.md`,
    and `templates/skills/brainstorming/SKILL.md.tmpl`) carry one identical phrasing of the
    two-source rule and the narrowed prohibition, replacing the three divergent phrasings that
-   exist today. The full semantics stay in the shipped workflow-doc section. No template
-   prose cites an ADR by number, since `TestTemplateSourceResidue` scans the whole embedded
-   template source and rejects any concrete `ADR-NNNN` citation.
+   exist today. The full semantics stay in the shipped workflow-doc section. No template prose
+   cites an ADR by number, since `TestTemplateSourceResidue` scans the whole embedded template
+   source and rejects any concrete `ADR-NNNN` citation.
 
-7. Both partials' clause is proven by its own invariant's test. `TestMemoryCheckpointCoverage`
-   gains the clause in its ordered-phrase list and `TestMandatoryApprovalBoundaries` gains a
-   matching assertion, so neither partial carries rendered-but-unproven text and each revised
-   claim is backed by a proof that actually reads the surface it describes.
+7. Every authoring site's clause is proven by the invariant whose proof actually reads it.
+   `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage` gains the two-source
+   identity rule and the narrowed prohibition in its memory-persistence sentence, proven by
+   `TestMemoryCheckpointCoverage`. `rendering/workflow-skill-templates:mandatory-approval-boundaries`
+   gains the same two additions to its memory-persistence step, which its current text does not
+   mention at all, proven by `TestMandatoryApprovalBoundaries`; that test already reads the
+   rendered brainstorming body through its approval-boundary skill list, so the third authoring
+   site is covered by the same assertion rather than shipping unproven. Both proofs currently
+   pin the literal phrase `Effort: <active-effort-id>` in their ordered-phrase lists, so
+   Decision 6's placeholder change edits both lists rather than only appending to them.
+
+8. The single-home boundary is stated rather than left to inference, and proven.
+   `rendering/guide-and-doc-templates:working-memory-single-home` is updated to distinguish the
+   canonical prose that the guide, partials, and chain section point at (the file skeleton, the
+   ground rules, just-in-time retrieval, and now the full effort-identity semantics) from the
+   operational protocol steps that the partials embed at the point where they fire, which
+   ADR-0152 Decision 5 requires them to embed. `TestWorkingMemorySingleHomeSurfaces`
+   (`internal/project/spine_test.go`) gains an assertion for that boundary, since its partial
+   assertions today check only that the pointer is present and would not detect an embedded
+   clause crossing the line.
+
+9. Derived prose travels with the claims in the same batch. The glossary sidecar entry for
+   `memory-backed effort` (`.awf/docs/glossary.yaml`) defines it as a file carrying "the exact
+   active `Effort: <id>` line", which is false for an agent-established identity, and the
+   rendering domain narrative (`.awf/domains/parts/rendering/current-state.md`) states that the
+   partials "carry pointers instead of copies", which Decision 6 changes. Both are updated
+   alongside the claim edits.
+
+10. The changelog carries an upgrade note, on the ADR-0157 item 10 precedent for the same
+    relocation hazard: adopters who replaced the workflow doc's working-memory section with a
+    full-replacement convention part do not receive the newly shipped identity protocol, while
+    their partials continue to point at that section, and must re-derive their part or adopt
+    the new section. Sync provenance labels the change as a template edit, which understates a
+    content relocation; the note compensates.
+
+11. Every status transition of this ADR regenerates `docs/decisions/INDEX.md` via `./x sync` in
+    the same commit.
+
+12. This decision carries no ordering dependency on ADR-0159, which is Proposed on the same
+    branch and renames the render command while regrouping the verification commands. The two
+    touch disjoint authored surfaces but regenerate the same rendered corpus, so whichever
+    applies second rebases onto the first and re-runs the render rather than merging rendered
+    output. Any command name this decision's prose carries is the name current when it applies.
 
 ## State changes
 
@@ -134,19 +199,27 @@ Working memory becomes creatable on every target. The instruction that suppresse
 outside Pi is gone, and the failure mode that prompted this decision cannot recur through the
 same reasoning.
 
-Adopters gain the identity protocol they never had. Because Decision 5 moves the prose into the
-shipped template, a Pi-enabled adopter's rendered workflow doc gains the effort-identity,
-resume, and one-way-ledger sentences on next sync, and the `working-memory-single-home` pointer
-resolves to real content for the first time. Non-Pi adopters gain the two-source rule and the
-narrowed prohibition. This repository stops carrying a local copy of standard prose and
-therefore renders exactly what it publishes.
+Most adopters gain the identity protocol they never had. Because Decision 5 moves the prose into
+the shipped template, a Pi-enabled adopter's rendered workflow doc gains the effort-identity,
+structured-resume, and one-way-ledger sentences on next sync, and the
+`working-memory-single-home` pointer resolves to real content for that material for the first
+time. Non-Pi adopters gain the two-source rule and the narrowed prohibition. This repository
+stops carrying a local copy of standard prose and therefore renders exactly what it publishes.
 
-The `working-memory-single-home` claim needs its boundary stated rather than assumed. The
-partials now carry a short operational clause rather than a pure pointer, which is consistent
-with ADR-0152 Decision 5's rule that protocol text is embedded where it fires; the claim is
-updated to distinguish canonical prose that the partials point at (skeleton, ground rules,
-just-in-time retrieval, and now the full identity semantics) from operational protocol steps
-that they embed.
+One adopter population is exempted rather than served, and this is the decision's sharpest
+trade-off. An adopter whose workflow-doc working-memory section is a full-replacement convention
+part receives none of the newly shipped prose, while its partials keep pointing at that section:
+precisely the dangling-pointer defect this decision fixes, reproduced for that population. The
+replacement semantics are unchanged and their override is respected, so nothing breaks silently,
+but the protocol they render stays incomplete until they re-derive their part. Decision 10's
+changelog note is the whole mitigation available, since awf cannot merge into an override.
+
+Single-home gains a stated boundary and loses a little of its bluntness. The partials now carry
+a short operational clause rather than a pure pointer, so Decision 8's revised claim has to
+distinguish canonical prose from embedded protocol instead of asserting pointers-not-copies
+outright. That is a weaker invariant to check by eye, which is why Decision 8 pairs it with a
+proof assertion: the boundary is exactly the kind of line that erodes one reasonable-looking
+clause at a time.
 
 Cross-runtime continuation acquires a documented transition where it previously had a silent
 failure. Decision 4 does not make an agent-established identity acceptable to
@@ -183,6 +256,7 @@ left to a follow-on audit of where this project over-overrides the standard it p
 | Pointer-only in the partials, all semantics in the workflow doc | Contradicts ADR-0152 Decision 5, which legislated against referencing a distant definition instead of embedding protocol at the point of use. The failure this decision fixes happened at the point of use. |
 | Render different identity text per target behind a conditional | No signal expresses "this target has a workflow router"; `targetSessionHandoff` denotes handoff capability, and reusing it would need a new signal. Unified text degrades correctly without one, since a target with a router always has an active ID and the second clause never fires. ADR-0157 also records dead target conditionals as a live hazard in these templates. |
 | Also strengthen the "working memory is optional" framing | ADR-0152 Decision 8 already establishes that a non-trivial brainstormed effort becomes memory-backed at its first settled decision, and the routine partial's wording correctly governs mid-effort boundaries rather than optionality in general. Changing it would rewrite canonical text pinned in two proofs, a claim, and the glossary for no defect. |
+| Have the runtime adopt an agent-established identity, by registering or aliasing the slug at settlement or by relaxing the handoff equality check | There is nothing to adopt: an agent-established identity creates no ledger entry, so registering it would mean creating a durable effort from a filename, which is the move ADR-0149 rejected as leaving spurious efforts behind on explicit resume. Relaxing the equality check would weaken the one guarantee that makes handoff safe. Decision 4 puts the cost on a rewrite the agent performs instead. |
 | Fix the identity rule in this project's convention part only | Leaves every adopter with a partial that points at content their workflow doc never receives, and keeps awf diverging from the standard it publishes. |
 
 ## Status history
