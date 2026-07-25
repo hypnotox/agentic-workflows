@@ -192,8 +192,11 @@ func TestRunCommitGateCitationScan(t *testing.T) {
 		testsupport.WriteAwfConfig(t, root,
 			minimalYAML+"memoryCite:\n  enabled: true\n  exemptions:\n    - path: commit message\n")
 		var out bytes.Buffer
-		if err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out); err == nil {
-			t.Error("a configured exemption must not reach the commit-message scan")
+		// Assert the citation error specifically: a bare non-nil check would also
+		// pass if the config never parsed, which is the opposite of the point.
+		err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out)
+		if err == nil || !strings.Contains(err.Error(), "working-memory file") {
+			t.Errorf("a configured exemption must not reach the commit-message scan: %v", err)
 		}
 	})
 	t.Run("a comment-only citation is accepted", func(t *testing.T) {

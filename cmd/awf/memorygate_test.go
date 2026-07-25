@@ -52,7 +52,7 @@ func TestMemoryGateKnobOff(t *testing.T) {
 	// A bare directory is not a git repository, so the staged-snapshot read fails
 	// before any knob is consulted.
 	if err := runMemoryGate(t.TempDir(), io.Discard); err == nil {
-		t.Error("no .awf: want a config-load error, got nil")
+		t.Error("bare directory: want a staged-snapshot read error, got nil")
 	}
 	// Knob absent, and knob explicitly false: both no-op and return nil, even
 	// with a citing file staged.
