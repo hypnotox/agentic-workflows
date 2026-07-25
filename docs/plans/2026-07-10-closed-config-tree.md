@@ -671,7 +671,7 @@ fixture were verified clean during design.
         with `notes` NOT a declared section; use a name like `stray.txt`) → unclaimed
         detail; and `.awf/skills/parts/tdd/bogus.md` → the byte-identical
         `convention part for a section not in the target's declared set`;
-      - `.awf/memory/anything.md` and `.awf/memory/deep/file.awf-bak` → no drift at all;
+      - `.awf/memory/<any-file>.md` and `.awf/memory/<nested>/<file>.awf-bak` → no drift at all;
       - `.awf/hooks/pre-commit.sh.awf-bak` (hooks enabled) and
         `.awf/config.yaml.awf-bak.2` → each one entry with
         `stale awf-bak backup: review and delete`;

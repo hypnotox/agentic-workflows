@@ -722,4 +722,4 @@ git commit -m "docs(adr): mark 0077 implemented, retire invariants-glob-basename
 ```
 
 - [ ] **3.7 Hand off to `awf-reviewing-impl`** (terminal review), then `awf-retrospective`;
-  delete `.awf/memory/domain-code-staleness-audit.md` when the chain terminates.
+  delete `.awf/memory/<effort-slug>.md` when the chain terminates.
