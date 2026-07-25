@@ -1,0 +1,78 @@
+---
+format: current-state-v2
+status: Proposed
+date: 2026-07-25
+---
+# ADR-0158: Enforce the working-memory citation ban with a gate
+
+## Context
+
+ADR-0069 established the working-memory convention: a per-effort file at `.awf/memory/<effort-slug>.md`, kept out of version control, that must never be committed or cited in an ADR, plan, or commit message. The convention has two halves, and only one is mechanically enforced. The committed half is guarded by the always-rendered self-ignoring `.awf/memory/.gitignore` (backed invariant `rendering/singletons-and-payloads:memory-gitignore-always-on`), so the file cannot be tracked. The cited half - never name a specific effort's memory file in a decision record or commit message - is convention only, enforced by nothing. A dangling citation of an ephemeral, gitignored, eventually-deleted file leaks that file as false authority into a durable record, which is exactly the harm the convention exists to prevent.
+
+A fresh-context grounding check (2026-07-25) verified the corpus and the enforcement surfaces:
+
+### The scan surface is the three named surfaces, not every tracked file
+
+awf self-hosts the convention it defines, so roughly 159 tracked files legitimately name `.awf/memory/`: the rendered skill bodies and their `.awf/` sources, the domain and glossary docs, ADR-0069 itself, the lock manifest, and the Pi handoff extension together with its test fixtures (`tools/pi-extension-test/tests/handoff.test.ts` operates on `.awf/memory/work.md` by design). A scan of every tracked file would drown in these. The convention names exactly three surfaces - an ADR, a plan, or a commit message - which scopes the scan to `docs/decisions/**`, `docs/plans/**`, and commit-message bodies and excludes the legitimate machinery entirely.
+
+### Placeholder versus concrete is the discriminating signal
+
+Description text uses the placeholder form `.awf/memory/<effort-slug>.md` (158 occurrences) or the bare directory `.awf/memory/`; a citation names a concrete file such as `.awf/memory/domain-code-staleness-audit.md`. The placeholder can never be a real filename, so a detector that flags only a concrete path segment - one whose first character after `.awf/memory/` is a path-segment character `[A-Za-z0-9._-]`, that contains no angle bracket, and that is not `.gitignore` - passes every description and flags every citation. Within the three named surfaces `docs/decisions/**` is already clean (zero concrete references); only three plan lines carry a concrete reference.
+
+### The closest existing mechanism is the prose gate, and its couplings are verified
+
+ADR-0119's prose gate is the shape to mirror: an opt-in staged-tree scanner with a config knob, wired into `./x gate` and the pre-commit hook. Verified couplings that shape this decision:
+
+- Prose-gate wiring is in two places, not one: a hardcoded `./awf prose-gate` step in the `x` runner, and a template line in `templates/hooks/pre-commit.sh.tmpl` driven by a `proseGateCmd` var. Mirroring it needs a matching `memoryGateCmd` var threaded through the catalog var descriptor (`internal/catalog/standard.go`), the availability map (`internal/configspec/spec.go`), and `.awf/config.yaml` vars, all pinned by the var-derivation parity test.
+- An opt-in nil-pointer config field is backward-compatible and needs no schema-generation bump or migration entry (the `proseGate` field carries none); the ADR-0039 version gate still protects an old binary through the lock `awfVersion`.
+- A new config field is covered by the existing generic `config/configspec-and-reference:configspec-key-parity` invariant, which requires a configspec `keys` entry per struct leaf and regenerates `docs/config-reference.md`; the enabling ADR number and any repo-identity literal are barred from the configspec description by `configspec-description-residue` and live only in the Go struct doc-comment.
+- Unlike the prose gate, which scans the whole staged tree, the memory gate must path-filter its blob list to the two decision-record directories.
+- Adding a commit-body scan to the commit gate is additive and does not touch the `tooling/audit-and-snapshots:commit-gate-shared-rule` claim, which is about the shared Conventional-Commit subject check.
+
+### An authorized exception to the frozen-history norm
+
+Three historical plans carry a concrete reference: `docs/plans/2026-07-07-working-memory-convention.md:243`, `docs/plans/2026-07-08-anchored-globs-domain-code-staleness.md:725`, and `docs/plans/2026-07-10-closed-config-tree.md:674`. The project normally leaves completed plans frozen. The effort owner explicitly authorized rewording these three to the placeholder form so the repository needs no gate exemptions; that authorization is recorded here so the deviation from the frozen-plan norm is on the record. A fourth line, `2026-07-07:411`, names the bare directory through a markdown-escaped backtick and passes the detector unchanged, so it is left as-is.
+
+## Decision
+
+1. Add an `internal/memorycite` package with a detector that, given a byte slice and a path, reports every reference to `.awf/memory/<segment>` whose `<segment>` is concrete: the first character after `.awf/memory/` is a path-segment character `[A-Za-z0-9._-]`, the segment contains neither `<` nor `>`, and the segment is not `.gitignore`. A reference whose next character is any other byte (whitespace, backtick, backslash, slash, end of input) is the bare directory and passes; a segment containing an angle bracket is a placeholder and passes. The detector accepts a synthetic path for callers that scan text with no file path.
+
+2. Add an `awf memory-gate` subcommand mirroring `cmd/awf/prosegate.go`: read the staged tree, path-filter the blob list to `docs/decisions/**` and `docs/plans/**`, run the detector, and exit non-zero on any finding. It returns without scanning when the config knob is off. It is a blocking gate, not an advisory report.
+
+3. Extend `cmd/awf/commitgate.go` to run the same detector over the full commit-message body alongside the existing Conventional-Commit subject check, blocking the commit on any finding. The scan lives in the commit-gate command, calls the shared detector, and leaves `internal/audit` unchanged.
+
+4. Add an opt-in `memoryCite` config field mirroring `proseGate`, carrying `enabled` and an `exemptions` list of `{path, count}` entries, and a `memoryGateCmd` var mirroring `proseGateCmd`. Enable the knob in this repository with an empty exemptions list. Wire the gate into the `x` runner's gate step and the pre-commit hook template exactly as the prose gate is wired. The enabling ADR number appears only in the Go struct doc-comment, never in the configspec description.
+
+5. Reword the three authorized frozen-plan lines to the placeholder form, preserving each line's illustrative intent (the `2026-07-10` line's example must keep showing that a nested, non-`.md` path under `.awf/memory/` is covered). Leave `docs/decisions/**` untouched (already clean) and leave `2026-07-07:411` untouched (the detector passes it).
+
+6. This promotes the cited half of ADR-0069 from convention to a backed invariant `tooling/quality-gates:memory-citation-gate`: a concrete `.awf/memory/<segment>` citation in an ADR, a plan, or a commit-message body fails a blocking gate, while the placeholder and bare-directory forms pass. It is `Backing: test`, proven by a marker on the `internal/memorycite` detector test in a `currentState.testGlobs` file, and it joins the AGENTS.md Invariants list. It sits with the enforcement family in `tooling/quality-gates` rather than with the sibling gitignore invariant in `rendering/singletons-and-payloads`, because its subject is a gate and its backing is a tooling test.
+
+7. Every status transition of this ADR regenerates `docs/decisions/INDEX.md` (and, when the config field lands, `docs/config-reference.md`) via `./x sync` in the same commit.
+
+## State changes
+
+- add `tooling/quality-gates:memory-citation-gate`
+
+## Consequences
+
+- The cited half of the working-memory convention becomes mechanically enforced. A decision record or commit message can no longer smuggle a specific effort's ephemeral memory file in as durable authority; the gate blocks it before the commit lands.
+- The scan is deliberately narrow (the three named surfaces, concrete segments only), so it never fights awf's own self-hosted description of the convention. The cost is that a concrete memory reference outside a decision record or commit message is not caught; that is out of scope because it is not the harm, and widening the surface would only add the Pi extension's legitimate test fixtures behind an exemption.
+- New wiring surface: the `memoryGateCmd` var, the four `memoryCite` configspec key entries, the config-reference regeneration, and the two wiring points (runner and hook template). The staged handshake and the parity tests force these to land together, so a missing touchpoint fails the gate rather than shipping silent drift.
+- The gate runs twice in this repository's pre-commit (once directly, once inside `./x gate`), exactly as the prose gate does today; this is redundant but harmless and keeps the two gates uniform.
+- Three frozen plans are edited, a deliberate and authorized departure from the frozen-history norm, recorded in Context. The alternative (permanent exemption entries for historical example text) was declined in favor of a clean, exemption-free repository state.
+- Adopters who enable the knob gain the same enforcement over their own decision records; those who leave it off are unaffected, since the gate no-ops when disabled.
+- The detector is a shared, path-agnostic function with a single discrimination rule, so its correctness is provable in isolation by a table-driven test, and the two callers become thin wiring verified by their own command tests.
+
+## Alternatives Considered
+
+| Alternative | Why not chosen |
+|---|---|
+| Scan every tracked file, not just the three named surfaces | Adds only the Pi extension's legitimate concrete test fixtures (which need real paths), forcing a blanket exemption for zero added protection against the actual harm |
+| Fold the check into the prose gate | Conflates two unrelated content policies under one name and one knob, so a repository cannot enable one without the other and the prose gate loses its single responsibility |
+| Enforce commit messages only, leave ADRs and plans to convention | Leaves the highest-value surface (durable decision records) unenforced; the invariant names all three surfaces |
+| Report file citations as an advisory `awf audit` finding | Advisory is the wrong severity for a hard-invariant violation; the check must block, not warn |
+| Grandfather the three existing plan references with exemption entries | The owner authorized rewording them instead, which keeps the exemptions list empty and the repository state clean |
+
+## Status history
+
+- 2026-07-25: Proposed
