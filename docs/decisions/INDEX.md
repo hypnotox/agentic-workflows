@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0159: Regroup the verification commands under check and rename sync to render](0159-regroup-the-verification-commands-under-check-and-rename-sync-to-render.md) (Proposed)
+- [ADR-0160: Permit agent-established effort identity and ship the full working-memory protocol](0160-permit-agent-established-effort-identity-and-ship-the-full-working-memory-protocol.md) (Proposed)
 
 ## History
 
