@@ -115,17 +115,26 @@ made local and was never carried the rest of the way. This decision completes it
    closes the otherwise silent dead end where `handoff_session` refuses a slug that can never
    equal a UUID.
 
-5. The working-memory protocol ships complete. Every sentence currently in
-   `.awf/parts/workflow/working-memory.md` moves into the `working-memory` section of
-   `templates/docs/workflow.md.tmpl`, and the convention part is deleted: nothing in it is
-   specific to this project. The conditional split is drawn per sentence, not per paragraph.
-   The one-way identity rule renders unconditionally, because it is Decision 3 and governs
-   every target. The ledger sentence, the `/awf-resume-effort` structured-resume path, the
-   handoff-validation sentence, and the reopen and abandoned-or-pruned sentences render behind
-   `{{if .targetSessionHandoff}}`, retaining their existing runtime-scoped phrasing per
-   ADR-0157's constraint that singletons render once and their Pi-gated prose must not
-   misdirect a non-Pi session. The identity protocol from Decisions 1 through 4 is authored in
-   that same shipped section, so adopters and this repository render identical text.
+5. The working-memory protocol ships complete, and every sentence of the outgoing part is
+   accounted for individually. `.awf/parts/workflow/working-memory.md` is deleted, nothing in
+   it being specific to this project, and its content lands in the `working-memory` section of
+   `templates/docs/workflow.md.tmpl` as follows. The optionality sentence and the
+   warrants-durable-state clause render unconditionally. The clause "and then carries an exact
+   `Effort: <active-effort-id>` line" is superseded rather than moved: carrying it verbatim
+   would reinstall the runtime-presupposing placeholder in the very section Decisions 1 through
+   4 make canonical, so it is replaced by the two-source protocol in the runtime-neutral
+   `Effort: <effort-id>` form of Decision 6. The handoff-validation sentence, the
+   `/awf-resume-effort` structured-resume sentence, the ledger sentence, and the reopen and
+   abandoned-or-pruned sentences render behind `{{if .targetSessionHandoff}}`, retaining their
+   runtime-scoped phrasing per ADR-0157's constraint that singletons render once and their
+   Pi-gated prose must not misdirect a non-Pi session. Decision 3's rule renders
+   unconditionally, and because two unrelated rules would otherwise both be called "one-way" in
+   one section, the retained ledger sentence drops that label: it becomes "Working memory is
+   not created to satisfy telemetry or handoff, and the ledger stores no memory path", leaving
+   "one way" to mean only Decision 3's ID-to-filename direction. The section's file skeleton,
+   which today enumerates `# <effort title>`, `Phase:`, `Next:`, and `Updated:`, gains the
+   `Effort: <effort-id>` line, so the canonical skeleton and the canonical identity protocol
+   agree inside the same section.
 
 6. The point-of-use rewrite covers the whole presupposing sentence, not just the prohibition.
    In both partials the memory-persistence step today reads "require its exact
@@ -135,24 +144,32 @@ made local and was never carried the rest of the way. This decision completes it
    those presuppose a runtime-assigned ID exactly as the removed clause did, re-creating the
    unsatisfiable instruction. Both are rewritten: the placeholder becomes a runtime-neutral
    `Effort: <effort-id>`, and the requirement becomes a confirm-or-rewrite step per Decision 4,
-   the identity being the effort's own rather than necessarily a runtime's. All three authoring
-   sites (`templates/partials/checkpoint-routine.md`, `templates/partials/checkpoint-approval.md`,
-   and `templates/skills/brainstorming/SKILL.md.tmpl`) carry one identical phrasing of the
-   two-source rule and the narrowed prohibition, replacing the three divergent phrasings that
-   exist today. The full semantics stay in the shipped workflow-doc section. No template prose
-   cites an ADR by number, since `TestTemplateSourceResidue` scans the whole embedded template
-   source and rejects any concrete `ADR-NNNN` citation.
+   the identity being the effort's own rather than necessarily a runtime's. The third authoring
+   site carries the same presupposition in its own words, "include the exact active
+   `Effort: <id>` line" (`templates/skills/brainstorming/SKILL.md.tmpl`), and is rewritten on
+   the same terms: "the exact active" goes with the placeholder, not just the trailing
+   prohibition. All three sites then carry one identical phrasing of the two-source rule and the
+   narrowed prohibition, replacing the three divergent phrasings that exist today. The full
+   semantics stay in the shipped workflow-doc section. No template prose cites an ADR by number,
+   since `TestTemplateSourceResidue` scans the whole embedded template source and rejects any
+   concrete `ADR-NNNN` citation.
 
-7. Every authoring site's clause is proven by the invariant whose proof actually reads it.
+7. Every authoring site's clause is proven by an assertion that actually reaches it.
    `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage` gains the two-source
    identity rule and the narrowed prohibition in its memory-persistence sentence, proven by
    `TestMemoryCheckpointCoverage`. `rendering/workflow-skill-templates:mandatory-approval-boundaries`
-   gains the same two additions to its memory-persistence step, which its current text does not
-   mention at all, proven by `TestMandatoryApprovalBoundaries`; that test already reads the
-   rendered brainstorming body through its approval-boundary skill list, so the third authoring
-   site is covered by the same assertion rather than shipping unproven. Both proofs currently
-   pin the literal phrase `Effort: <active-effort-id>` in their ordered-phrase lists, so
-   Decision 6's placeholder change edits both lists rather than only appending to them.
+   gains the same two additions at its memory-persistence step, which its current text names
+   without any identity semantics, proven by `TestMandatoryApprovalBoundaries`. Both proofs
+   currently pin the literal phrase `Effort: <active-effort-id>` in their ordered-phrase lists,
+   so Decision 6's placeholder change edits both lists rather than only appending to them.
+   The third authoring site needs its own assertion rather than riding either ordered list:
+   `assertOrderedBody` scans strictly forward from an ordered list that opens at the mandatory
+   approval header, which renders well below the brainstorming template's identity sentence, so
+   a phrase appended to that list is satisfied by the approval partial's copy and would not
+   detect the brainstorming sentence being reverted. The proof for that site is therefore a
+   separate assertion over the rendered brainstorming body ahead of the approval header, and it
+   belongs to `memory-checkpoint-chain-coverage`, which owns the general memory-persistence
+   contract, rather than to the approval-scoped claim.
 
 8. The single-home boundary is stated rather than left to inference, and proven.
    `rendering/guide-and-doc-templates:working-memory-single-home` is updated to distinguish the
@@ -164,12 +181,16 @@ made local and was never carried the rest of the way. This decision completes it
    assertions today check only that the pointer is present and would not detect an embedded
    clause crossing the line.
 
-9. Derived prose travels with the claims in the same batch. The glossary sidecar entry for
-   `memory-backed effort` (`.awf/docs/glossary.yaml`) defines it as a file carrying "the exact
-   active `Effort: <id>` line", which is false for an agent-established identity, and the
-   rendering domain narrative (`.awf/domains/parts/rendering/current-state.md`) states that the
-   partials "carry pointers instead of copies", which Decision 6 changes. Both are updated
-   alongside the claim edits.
+9. Derived prose travels with the claims in the same batch. Three surfaces assert the single
+   runtime source and are corrected together: the glossary sidecar entry for `memory-backed
+   effort` (`.awf/docs/glossary.yaml`), which defines it as a file carrying "the exact active
+   `Effort: <id>` line" and is false for an agent-established identity; the rendering domain
+   narrative (`.awf/domains/parts/rendering/current-state.md`), which states that the partials
+   "carry pointers instead of copies", which Decision 6 changes; and the sentence "A
+   deliberately created `.awf/memory/<slug>.md` carries `Effort: <active-effort-id>`" in
+   `.awf/parts/working-with-awf/config-and-overrides.md`. That last part is otherwise left in
+   place per Consequences, but its identity sentence is narrower than the rule this decision
+   establishes and is corrected in place rather than left to contradict it.
 
 10. The changelog carries an upgrade note, on the ADR-0157 item 10 precedent for the same
     relocation hazard: adopters who replaced the workflow doc's working-memory section with a
@@ -182,10 +203,15 @@ made local and was never carried the rest of the way. This decision completes it
     the same commit.
 
 12. This decision carries no ordering dependency on ADR-0159, which is Proposed on the same
-    branch and renames the render command while regrouping the verification commands. The two
-    touch disjoint authored surfaces but regenerate the same rendered corpus, so whichever
-    applies second rebases onto the first and re-runs the render rather than merging rendered
-    output. Any command name this decision's prose carries is the name current when it applies.
+    branch and renames the render command while regrouping the verification commands, but the
+    two are not surface-disjoint. Their claim operations are disjoint: ADR-0159 touches no
+    `rendering/workflow-skill-templates` or `rendering/guide-and-doc-templates` claim. Two
+    authored files are shared, both named in ADR-0159's own enumeration of its authored inputs
+    and both edited by Decision 9 here: `.awf/docs/glossary.yaml` and
+    `.awf/domains/parts/rendering/current-state.md`. Whichever decision applies second rebases
+    onto the first, resolves those two files textually, and re-runs the render rather than
+    merging rendered output. Any command name this decision's prose carries is the name current
+    when it applies.
 
 ## State changes
 
@@ -244,9 +270,13 @@ stays, because ADR-0157 Decision 6 caps the guide's Pi branch at the routing min
 lifecycle detail in the surfaces that carry it, making that part a genuine local choice rather
 than residue. `.awf/parts/working-with-awf/config-and-overrides.md` stays for now, because
 `templates/docs/working-with-awf.md.tmpl` carries no `targetSessionHandoff` conditional at all;
-giving it one is new shipped-template capability and belongs to its own decision. Both, and the
-nine convention parts that fully replace their shipped default rather than appending to it, are
-left to a follow-on audit of where this project over-overrides the standard it publishes.
+giving it one is new shipped-template capability and belongs to its own decision, though
+Decision 9 still corrects its identity sentence. Both parts, and the nine guide, workflow, and
+skill convention parts under `.awf/parts/` and `.awf/skills/parts/` that fully replace their
+shipped default rather than appending to it, are left to a follow-on audit of where this project
+over-overrides the standard it publishes. That audit's scope should be set deliberately: the
+fourteen doc parts under `.awf/docs/parts/` are full replacements of the same kind and are not
+counted here.
 
 ## Alternatives Considered
 
