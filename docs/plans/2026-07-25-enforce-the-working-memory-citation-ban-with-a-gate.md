@@ -84,10 +84,12 @@ Three applied and one remaining is a nonempty strict subset, so the `Implementin
   - `docs/plans/2026-07-07-working-memory-convention.md`,
     `docs/plans/2026-07-08-anchored-globs-domain-code-staleness.md`,
     `docs/plans/2026-07-10-closed-config-tree.md`
-  - `docs/decisions/0158-enforce-the-working-memory-citation-ban-with-a-gate.md`
+  - `docs/decisions/0158-enforce-the-working-memory-citation-ban-with-a-gate.md`, and this plan
+    file itself (its frontmatter `status` co-flips in Task 4.6)
   - every file `./x sync` regenerates from the above (AGENTS.md, `docs/config-reference.md`,
     `docs/architecture.md`, `docs/development.md`, `docs/testing.md`, `docs/workflow.md`,
-    `docs/working-with-awf.md`, `docs/domains/tooling.md`, `docs/topics/**`,
+    `docs/working-with-awf.md`, `docs/domains/config.md`, `docs/domains/rendering.md`,
+    `docs/domains/tooling.md`, `docs/topics/**`,
     `docs/decisions/INDEX.md`, `.awf/hooks/pre-commit.sh`, `.awf/lock.yaml`, `examples/sundial/**`).
     `docs/decisions/INDEX.md` in particular regenerates on each of the two status transitions, per
     ADR-0158 Decision 7, so it must be staged with the Phase 3 and Phase 4 commits.
@@ -398,10 +400,14 @@ for banned runes, and a future editor of this file must preserve it.
      exists so the gate never blocks what git wrote or will rewrite.
   6. The existing `audit.CheckConventionalCommit` call and its findings loop, unchanged.
 
-  The one behavioural cost, accepted deliberately: a merge or autosquash commit in a tree that is not
-  an adopted awf project now surfaces `project.Open`'s error where it previously returned nil. That
-  path is already an error for every non-exempt subject, and `commit-gate` is hook-wired inside
-  adopted trees, so the prior nil was an accident of ordering rather than a designed affordance.
+  The one behavioural cost, accepted deliberately: a merge or autosquash commit now surfaces
+  `project.Open`'s error wherever that call would fail, where it previously returned nil. That is
+  wider than "outside an adopted tree": `project.Open` (`internal/project/project.go:72`) also fails
+  on a config that does not load or validate, an unresolvable target, and a catalog validation
+  failure. The design conclusion is unchanged, because that path is already an error for every
+  non-exempt subject and `commit-gate` is hook-wired inside adopted trees, so the prior nil was an
+  accident of ordering rather than a designed affordance. Task 2.8 pins the new refusal so the
+  change is on the record.
 
   Required behavior of the scan itself:
 
@@ -528,7 +534,7 @@ for banned runes, and a future editor of this file must preserve it.
   per this plan's authoring constraint.
 
   Stop there. The runner and hook wiring lands in Phase 3, and the knob is not on here until
-  Phase 4, so this task must not describe either. Task 3.8 appends the wiring sentence and Task 4.1
+  Phase 4, so this task must not describe either. Task 3.9 appends the wiring sentence and Task 4.1
   appends the enabled-here clause, each in the commit that makes its sentence true.
 
 - [ ] **Task 2.13: Update the architecture data-flow note.** In
@@ -540,15 +546,21 @@ for banned runes, and a future editor of this file must preserve it.
 - [ ] **Task 2.14: Add the command to the shipped and adopter-facing command lists.** In
   `templates/docs/working-with-awf.md.tmpl`, add a bullet after the `awf prose-gate` bullet
   (line 42), in the identical shape: what it scans, that it exits non-zero on any finding, that it
-  is opt-in via `memoryCite.enabled` and default off, and that a pre-commit hook uses it. In
-  `README.md` (hand-written, not rendered), add a row to the command table after the
-  `awf prose-gate` row (line 281), matching its two-column shape and terseness.
+  is opt-in via `memoryCite.enabled` and default off. Withhold the prose-gate bullet's closing
+  "used by a pre-commit hook" clause: the payload line does not exist until Task 3.4, and Task 3.9
+  appends the clause in the commit that renders it. In `README.md` (hand-written, not rendered), add
+  a row to the command table after the `awf prose-gate` row (line 281), matching its two-column
+  shape and terseness. The README row needs no such withholding, because the prose-gate row it
+  mirrors does not mention the hook.
 
 - [ ] **Task 2.15: Verify and commit.** Run `./x sync`, then `./x check` (expect `awf check: clean`)
   and `./x gate` (expect green: 100% statement coverage, `deadcodecheck: no production dead code`,
   and `prose-gate: clean`). The dead-code step is the meaningful one for this phase: it is why the
-  detector and its callers share a commit. Stage the exact paths this phase touched plus everything
-  `./x sync` regenerated, and commit:
+  detector and its callers share a commit. Confirm the regenerated `docs/architecture.md`,
+  `docs/working-with-awf.md`, `docs/domains/config.md`, `docs/domains/tooling.md`, and
+  `docs/topics/tooling/quality-gates.md` carry the new prose, since each is regenerated from a part
+  this phase edited. Stage the exact paths this phase touched plus everything `./x sync` regenerated,
+  and commit:
 
   ```commit
   feat(awf): add the memory-gate command and its citation detector
@@ -681,6 +693,9 @@ for banned runes, and a future editor of this file must preserve it.
     this repository wires the gate into both `./x gate` and the rendered pre-commit payload, so it
     runs twice by the same accepted design prose-gate already carries. Do not yet say the knob is
     on; Task 4.1 adds that.
+  - `templates/docs/working-with-awf.md.tmpl`: append to the bullet Task 2.14 added the closing
+    "used by a pre-commit hook" clause its prose-gate neighbour carries, now that Task 3.4 has
+    rendered the payload line that makes it true.
 
 - [ ] **Task 3.10: Verify and commit.** Run `./x sync`, then `./x check` and `./x gate`, both green.
   `./x check` is the meaningful one here: it validates the Applied event against exactly the claim
