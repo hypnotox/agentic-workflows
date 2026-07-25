@@ -85,7 +85,9 @@ Three applied and one remaining is a nonempty strict subset, so the `Implementin
   - every file `./x sync` regenerates from the above (AGENTS.md, `docs/config-reference.md`,
     `docs/architecture.md`, `docs/development.md`, `docs/testing.md`, `docs/workflow.md`,
     `docs/working-with-awf.md`, `docs/domains/tooling.md`, `docs/topics/**`,
-    `.awf/hooks/pre-commit.sh`, `.awf/lock.yaml`, `examples/sundial/**`)
+    `docs/decisions/INDEX.md`, `.awf/hooks/pre-commit.sh`, `.awf/lock.yaml`, `examples/sundial/**`).
+    `docs/decisions/INDEX.md` in particular regenerates on each of the two status transitions, per
+    ADR-0158 Decision 7, so it must be staged with the Phase 3 and Phase 5 commits.
 - **Deleted:** none.
 
 ### Authoring constraint for this file
@@ -188,7 +190,7 @@ for banned runes, and a future editor of this file must preserve it.
   ```go
   	{
   		Path: "memoryCite.enabled", Type: "bool", Default: "false (key absent)",
-  		Description:  "Whether `awf memory-gate` scans, and whether `awf commit-gate` scans the commit-message body for the same thing. False, both exit zero without scanning, so a hook or a runner may invoke them unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
+  		Description:  "Whether `awf memory-gate` scans, and whether `awf commit-gate` scans the commit-message body for the same thing. False, neither scans: memory-gate exits zero, so a hook or a runner may invoke it unconditionally, and commit-gate falls through to its existing subject check. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
   		Availability: "Always.",
   	},
   	{
@@ -258,10 +260,16 @@ for banned runes, and a future editor of this file must preserve it.
     `Reference.Path`, so a caller with no file may pass a synthetic label.
   - An unexported `func concreteSegment(rest string) (string, bool)` implementing the whole
     discrimination rule. It reads the segment as the run of characters from the start of `rest` up
-    to the first `/`, ASCII whitespace (space, tab, carriage return), backtick, double quote, or
-    single quote, or to the end of `rest`. It reports the segment and `true` only when all three
-    hold: the segment's first byte is in `[A-Za-z0-9._-]`; the segment contains neither `<` nor `>`;
-    and the segment is not `.gitignore`. Otherwise it reports `false`.
+    to the first `/`, any ASCII whitespace character (space, tab, vertical tab, form feed, carriage
+    return), backtick, double quote, or single quote, or to the end of `rest`. It reports the
+    segment and `true` only when all three hold: the segment's first byte is in `[A-Za-z0-9._-]`;
+    the segment contains neither `<` nor `>`; and the segment is not `.gitignore`. Otherwise it
+    reports `false`.
+
+    The whitespace set is the full ASCII one, not just the three common characters, so that the
+    shell approximation in Task 1.2 (which uses the POSIX `[:space:]` class) is exactly equivalent
+    rather than narrower on an exotic byte. Newline cannot appear, because `ScanText` has already
+    split on it.
 
     The two quote terminators are load-bearing, not decoration. A decision record that discusses the
     ignore file inside a quoted string literal writes the ignore-file name followed by a double
@@ -367,7 +375,7 @@ for banned runes, and a future editor of this file must preserve it.
     `memoryCite.exemptions` permits a path, and that awf installs no hook.
 
 - [ ] **Task 2.7: Add the commit-message body scan.** In `cmd/awf/commitgate.go`, inside
-  `runCommitGate`, insert the scan after the successful `project.Open` (lines 36 to 40) and before
+  `runCommitGate`, insert the scan after the successful `project.Open` (lines 34 to 37) and before
   the `audit.CheckConventionalCommit` call, so the existing early returns for an empty subject and a
   git-generated subject are untouched and a merge or autosquash message is not scanned.
 
@@ -384,10 +392,18 @@ for banned runes, and a future editor of this file must preserve it.
     in `cleanCommitSubject` (lines 52 to 68) into
     `func cleanCommitLines(raw string) []string`, which normalizes CRLF, drops comment lines (first
     non-blank character is the default `#`), stops at a verbose scissors line (a comment line
-    containing `>8`), and returns the surviving lines. Then `cleanCommitSubject` returns the first
-    non-blank entry of `cleanCommitLines`, right-trimmed of spaces, preserving its current behavior
-    exactly (its existing tests must pass unchanged), and a new
+    containing `>8`), and returns the surviving lines **untrimmed**, exactly as they appeared.
+    Then `cleanCommitSubject` returns the first entry whose `strings.TrimSpace` is non-empty,
+    right-trimmed of spaces, and the empty string when no entry survives that test; and a new
     `func cleanCommitBody(raw string) string` returns `strings.Join(cleanCommitLines(raw), "\n")`.
+
+    Both details are load-bearing, not restatements. The blankness test must be `TrimSpace`, not
+    `!= ""`: the existing case named `blank then comment` in `cmd/awf/commitgate_test.go:26` feeds
+    a whitespace-only first line and expects the subject from two lines further down, so an
+    implementation testing `!= ""` returns the empty string and silently breaks a behaviour this
+    refactor claims to preserve. And the lines must stay untrimmed, because the existing
+    `trailing spaces` case depends on `cleanCommitSubject` doing its own right-trim, and
+    `cleanCommitBody`'s line numbering depends on the surviving lines being the real ones.
   - Call `memorycite.ScanText` over `[]byte(cleanCommitBody(string(raw)))`, passing a synthetic path:
     the label that will appear in the diagnostic. Use `commit message`. Line numbers in the
     diagnostic are then relative to the cleaned message, which is what the author sees in the editor
@@ -582,17 +598,22 @@ for banned runes, and a future editor of this file must preserve it.
   the ignore-file name is excluded), that `commit-gate` runs the same detector over the message body,
   that it is opt-in and default-off and self-gates on `memoryCite.enabled` so a hook may invoke it
   unconditionally, that it is `Ungated` like its two siblings, that it refuses outside a git
-  repository, and that this repository enables it and wires it into both `./x gate` and the rendered
-  pre-commit payload, scanning twice by the same accepted design prose-gate already carries. Cite
-  ADR-0158. Write the concrete-file shape only in placeholder form, per this plan's authoring
-  constraint.
+  repository, and that it is wired into both `./x gate` and the rendered pre-commit payload,
+  scanning twice by the same accepted design prose-gate already carries. Cite ADR-0158. Write the
+  concrete-file shape only in placeholder form, per this plan's authoring constraint.
+
+  Do not assert here that this repository has the knob on. Phase 5 turns it on, and Task 5.1 appends
+  that clause in the same commit that makes it true. Asserting it now would ship a commit whose
+  regenerated `docs/config-reference.md` renders the live state as false while the narrative beside
+  it claims otherwise.
 
 - [ ] **Task 4.2: Add the invariant to the agent guide.** In `.awf/agents-doc.yaml`, add an entry to
   the same `Invariants` list that carries the plain-punctuation entry (line 30), placed after it.
   Follow that entry's shape: a bold lead-in naming the rule, the mechanism in one or two sentences,
   the authoring escape (name the file separately from the prefix, or use the placeholder), and a
-  trailing ADR reference. State that the ban covers an ADR, a plan, and a commit-message body, and
-  that the gate is on in this repo.
+  trailing ADR reference. State that the ban covers an ADR, a plan, and a commit-message body. Do
+  not state that the gate is on in this repo; Task 5.1 adds that clause in the commit that makes it
+  true, for the reason Task 4.1 gives.
 
 - [ ] **Task 4.3: Update the gate and hook prose.** Four parts, each a small addition beside its
   existing prose-gate mention, keeping each file's established sentence shape:
@@ -651,6 +672,12 @@ for banned runes, and a future editor of this file must preserve it.
   Omit `exemptions` entirely: ADR-0158 requires this repository to reach an exemption-free state,
   which Phase 1 established.
 
+  In the same commit, append the this-repo-enabled clause Phase 4 deliberately withheld, so the
+  narrative and the regenerated live state flip together: add to
+  `.awf/domains/parts/tooling/current-state.md` that this repository enables the knob with no
+  exemptions, and to the `.awf/agents-doc.yaml` invariant entry that the gate is on here. Both
+  sentences are now true and the regenerated `docs/config-reference.md` row agrees with them.
+
 - [ ] **Task 5.2: Author the new claim.** In
   `.awf/topics/parts/tooling/quality-gates/current-state.md`, insert a claim block in the file's
   existing alphabetical-by-slug order, which places `memory-citation-gate` between
@@ -659,7 +686,7 @@ for banned runes, and a future editor of this file must preserve it.
   ```markdown
   ### `invariant: memory-citation-gate`
 
-  With memoryCite.enabled true, the memory-gate command reports every concrete working-memory file reference in the staged decisions and plans directories and exits non-zero on any finding outside memoryCite.exemptions, and the commit-gate command does the same for the commit-message body; a reference written in the angle-bracket placeholder form, one naming the bare directory, and the ignore-file name all pass.
+  With memoryCite.enabled true, the memory-gate command reports every concrete working-memory file reference in the staged decisions and plans directories and exits non-zero on any finding outside memoryCite.exemptions; the commit-gate command applies the same detector to the git-cleaned commit-message body, where no exemption applies, and exits non-zero on any reference. A reference written in the angle-bracket placeholder form, one naming the bare directory, and the ignore-file name all pass.
   Origin: ADR-0158
   Backing: test
   ```

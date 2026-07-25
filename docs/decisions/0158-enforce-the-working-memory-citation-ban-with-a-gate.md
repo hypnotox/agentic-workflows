@@ -80,6 +80,8 @@ Three historical plans carry a concrete reference: `docs/plans/2026-07-07-workin
 | Grandfather the three existing plan references with exemption entries | The owner authorized rewording them instead, which keeps the exemptions list empty and the repository state clean |
 | Leave `memoryGateCmd` out of the hook-command resolvability guard | Spares a narrow adopter shape one config line at the price of letting it render a bare unshimmed `awf memory-gate` call, the exact degradation ADR-0156 removed, and of making the new var the only hook-referenced command var outside the guard |
 | Ship a one-time migration seeding `memoryGateCmd` empty | No catalog var has ever shipped such a seed, and a present-but-empty value is unset to the guard, so the seed would change no behaviour and buy only an advisory note the guard's refusal already supersedes |
+| Leave the commit-gate body scan always on, independent of the knob | Makes the policy half-on for every adopter the moment they upgrade, which contradicts the field being opt-in and would block commits in a repository that never chose the rule |
+| Scan the raw commit message rather than the git-cleaned one | A verbose commit appends the staged diff below a scissors line, so a commit touching a file that legitimately names a concrete memory file would be rejected over text git discards before recording the message |
 
 ## Status history
 
