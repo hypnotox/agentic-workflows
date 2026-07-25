@@ -40,6 +40,7 @@ file and reports that fact; only an explicitly confirmed metrics purge removes e
 - `awf invariants`: report the current-state topic invariant claims and their backing state.
 - `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
 - `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
+- `awf memory-gate`: scan the staged decisions and plans directories for a citation of a specific working-memory file and exit non-zero on any finding (opt-in via `memoryCite.enabled`, default off).
 - `awf changelog`: query the changelog by version or range.
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place. Nonempty resident `.awf/metrics/` data and its required ignore file are preserved and reported.
 - `awf version`: print the binary's version.

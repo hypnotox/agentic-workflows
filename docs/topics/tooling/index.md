@@ -9,7 +9,7 @@
 - [Dashboard runtime](dashboard-runtime.md): Immutable Git-ref-pinned cache, launcher, and policy snapshot for repository dashboard reads.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
 - [Init and enablement](init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
-- [Quality gates](quality-gates.md): Coverage, prose, and the command-runner gate machinery.
+- [Quality gates](quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
 - [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.
 - [Workflow telemetry](workflow-telemetry.md): Durable effort telemetry, projections, retention, and workflow diagnosis.

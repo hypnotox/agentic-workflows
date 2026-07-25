@@ -13,5 +13,6 @@ paths:
   - internal/telemetry/**
   - internal/upgrade/**
   - internal/prosegate/**
+  - internal/memorycite/**
   - tools/**
   - x

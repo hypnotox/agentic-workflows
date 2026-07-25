@@ -227,6 +227,13 @@ func (p *Project) currentValue(path string) string {
 			return "(none)"
 		}
 		return fmt.Sprintf("%d entries", len(p.Cfg.ProseGate.Exemptions))
+	case "memoryCite.enabled":
+		return strconv.FormatBool(p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled)
+	case "memoryCite.exemptions":
+		if p.Cfg.MemoryCite == nil || len(p.Cfg.MemoryCite.Exemptions) == 0 {
+			return "(none)"
+		}
+		return fmt.Sprintf("%d entries", len(p.Cfg.MemoryCite.Exemptions))
 	default: // per-entry leaves (audit.allowedScopes[]....)
 		return "n/a"
 	}

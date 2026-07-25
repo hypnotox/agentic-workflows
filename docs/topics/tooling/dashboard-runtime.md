@@ -3,7 +3,7 @@
 
 Immutable Git-ref-pinned cache, launcher, and policy snapshot for repository dashboard reads.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/dashboardruntime/**`. Both domain and topic selectors must match. Run `awf topic tooling/dashboard-runtime --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/dashboardruntime/**`. Both domain and topic selectors must match. Run `awf topic tooling/dashboard-runtime --coverage` for current matched paths and marker sites.
 
 The repository dashboard runtime freezes canonical read semantics at an explicit Git commit and publishes validated immutable artifacts independently of the mutable checkout.
 

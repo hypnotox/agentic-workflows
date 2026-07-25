@@ -1,4 +1,4 @@
-These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, and the gate tiers. The claims below capture the current gate contracts.
+These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
 
 ## Claims
 

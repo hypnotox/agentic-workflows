@@ -1,7 +1,8 @@
 title: Quality gates
-summary: Coverage, prose, and the command-runner gate machinery.
+summary: Coverage, prose, working-memory citations, and the command-runner gate machinery.
 paths:
   - internal/coverage/**
   - internal/prosegate/**
+  - internal/memorycite/**
   - tools/**
   - x

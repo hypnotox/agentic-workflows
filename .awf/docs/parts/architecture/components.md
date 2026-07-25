@@ -1,7 +1,7 @@
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `memory-gate`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
@@ -102,6 +102,10 @@
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
   it answers whether the tree is clean, not whether a commit made it worse.
+- **`internal/memorycite/`**: detects a citation of a specific working-memory file in a decision
+  record or a commit-message body; powers the opt-in blocking `awf memory-gate` and the
+  `awf commit-gate` body scan (ADR-0158). Pure text in, findings out: it reads no filesystem and no
+  git, so both callers supply their own bytes.
 - **`internal/pathglob/`**: awf's single glob dialect (ADR-0077): anchored full-path doublestar
   matching against slash-separated repo-relative paths, consumed by config validation, invariant
   scanning, and the audit's path matching. Leaf package.

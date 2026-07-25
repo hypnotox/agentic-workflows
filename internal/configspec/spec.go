@@ -287,6 +287,26 @@ var keys = []Entry{
 		Availability: "While `proseGate.enabled` is true.",
 	},
 	{
+		Path: "memoryCite.enabled", Type: "bool", Default: "false (key absent)",
+		Description:  "Whether `awf memory-gate` scans, and whether `awf commit-gate` scans the commit-message body for the same thing. False, neither scans: memory-gate exits zero, so a hook or a runner may invoke it unconditionally, and commit-gate falls through to its existing subject check. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
+		Availability: "Always.",
+	},
+	{
+		Path: "memoryCite.exemptions", Type: "list of {path, count} mappings", Default: "empty (nothing is exempt)",
+		Description:  "Decision records permitted to name a specific working-memory file, typically prose that is genuinely about one particular file. An entry exempts one path. Prefer rewording to the placeholder form over adding an entry.",
+		Availability: "While `memoryCite.enabled` is true.",
+	},
+	{
+		Path: "memoryCite.exemptions[].path", Type: "string", Default: "required",
+		Description:  "The repo-relative path the exemption covers. Only a path under the decisions or plans directory can carry a finding, so only such a path is worth exempting.",
+		Availability: "While `memoryCite.enabled` is true.",
+	},
+	{
+		Path: "memoryCite.exemptions[].count", Type: "int", Default: "unset (any number is permitted)",
+		Description:  "The exact number of citations expected. Set, an added citation in an exempt file still fails, which suits a frozen record; unset, any number is permitted, which suits a living file that may gain another mention.",
+		Availability: "While `memoryCite.enabled` is true.",
+	},
+	{
 		Path: "sidecar.data", Type: "key → value map", Default: "empty: catalog defaults apply",
 		Description:  "Per-artifact structured render data, overriding the artifact's catalog default per top-level key; a present-but-null key declines the default explicitly. See the per-artifact data-key list below for what each key does.",
 		Availability: "Keys must be referenced by the artifact's template. An unreferenced key is failing drift; rejected entirely on domain sidecars (paths-only) and on the config-reference sidecar (its tables are generated).",

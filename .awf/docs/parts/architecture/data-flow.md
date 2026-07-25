@@ -54,8 +54,10 @@ preceding bridge release; this binary consumes seals, it never produces them.
 `awf prose-gate` reads the staged files it scans through the immutable `internal/snapshot` index
 Tree rather than raw index blobs: the Tree captures each stage-0 file's path, executable mode, and a
 private byte copy in one path-sorted, tamper-proof view, so the scan and its `.awf/config.yaml`
-lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
-and range universes the current-state checks compare.
+lookup share a single immutable snapshot. `awf memory-gate` reads its staged blobs the same way and
+additionally path-filters them to the decision-record directories, so only a staged decision or plan
+reaches its detector. The same snapshot seam serves the working, index, commit, and range universes
+the current-state checks compare.
 
 An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
 closed route, starts the first named phase, transactionally closes an unmatched phase start and enters

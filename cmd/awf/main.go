@@ -141,7 +141,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
 func guardProjectState(root string, top clispec.Command, inv invocation) error {
 	switch top.Name {
-	case "version", "changelog", "commit-gate", "prose-gate":
+	case "version", "changelog", "commit-gate", "prose-gate", "memory-gate":
 		return nil
 	}
 	if top.Name == "init" && inv.bools["--describe"] {

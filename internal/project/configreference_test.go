@@ -64,6 +64,8 @@ func TestConfigReferenceGolden(t *testing.T) {
 		"`agent code-reviewer` · `data.correctnessTraps` (catalog default)",
 		"`agents-doc` · `data.invariants`",
 		"`sidecar.paths` (string list (anchored path globs))",
+		"`memoryCite.enabled` | bool | false (key absent) | false |",
+		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | (none) |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("config reference missing %q:\n%s", want, got)
@@ -250,6 +252,11 @@ proseGate:
     - path: docs/x.md
       codepoint: U+2014
       count: 1
+memoryCite:
+  enabled: true
+  exemptions:
+    - path: docs/plans/x.md
+      count: 1
 `
 	root, _ := syncedProject(t, auditYAML, nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
@@ -262,6 +269,8 @@ proseGate:
 		"| accept any |",
 		"| rule off |",
 		"| 1 entries |", // proseGate.exemptions live-state count
+		"`memoryCite.enabled` | bool | false (key absent) | true |",
+		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",
 		"`currentState.topicCoverage` | severity (error, warn, or off) | error | off |",

@@ -172,6 +172,22 @@ artifact is enabled).
 `,
 	},
 	{
+		Name: "memory-gate", Summary: "Scan staged decision records for working-memory citations, blocking",
+		Gating: Ungated,
+		HelpBody: `Usage: awf memory-gate
+
+Report every citation of a specific working-memory file in the staged decisions
+and plans directories and exit non-zero on any finding: the convention says a
+decision record may name the directory or a placeholder, never an actual file.
+Exits zero without scanning unless memoryCite.enabled is true, so a hook or a
+runner may invoke it unconditionally; the same knob makes awf commit-gate scan
+the commit-message body for the same thing. Permit a path that genuinely needs
+one with memoryCite.exemptions. awf installs no hook; wire this into your own
+pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
+hooks artifact is enabled).
+`,
+	},
+	{
 		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf list [<kind>]

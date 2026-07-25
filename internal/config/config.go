@@ -57,6 +57,7 @@ type Config struct {
 	Hooks                *HooksConfig            `yaml:"hooks"`
 	Runner               *RunnerConfig           `yaml:"runner"`
 	ProseGate            *ProseGateConfig        `yaml:"proseGate"`
+	MemoryCite           *MemoryCiteConfig       `yaml:"memoryCite"`
 	WorkflowTelemetry    WorkflowTelemetryConfig `yaml:"workflowTelemetry"`
 	workflowTelemetrySet bool
 	root                 string     // <project>/.awf, for sidecar/part resolution
@@ -301,6 +302,25 @@ type ProseExemption struct {
 	Path      string `yaml:"path"`
 	Codepoint string `yaml:"codepoint"`
 	Count     *int   `yaml:"count"`
+}
+
+// MemoryCiteConfig configures `awf memory-gate` (ADR-0158): a scan of the
+// staged decision-record directories, and of the commit-message body, for a
+// citation of a specific working-memory file. ProseGateConfig semantics: a nil
+// *MemoryCiteConfig (key absent) and Enabled false both mean "the scan does not
+// run". The default is off because the scan blocks a commit, and a corpus that
+// has never been swept would fail it on the day it lands.
+type MemoryCiteConfig struct {
+	Enabled    bool              `yaml:"enabled"`
+	Exemptions []MemoryExemption `yaml:"exemptions"`
+}
+
+// MemoryExemption permits citations in one path. A nil Count permits any number
+// of them; a non-nil Count pins the expected number, so an added citation in an
+// exempt file still fails.
+type MemoryExemption struct {
+	Path  string `yaml:"path"`
+	Count *int   `yaml:"count"`
 }
 
 // WorkflowTelemetryConfig controls resident workflow metrics collection and display.

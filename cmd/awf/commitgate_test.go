@@ -19,6 +19,16 @@ func writeMsg(t *testing.T, content string) string {
 	return p
 }
 
+// citingProject is a scaffolded project with the citation knob on; the gate
+// reads the worktree config through project.Open, so rewriting it after the
+// scaffold sync is enough.
+func citingProject(t *testing.T) string {
+	t.Helper()
+	root := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"memoryCite:\n  enabled: true\n")
+	return root
+}
+
 func TestCleanCommitSubject(t *testing.T) {
 	cases := []struct{ name, in, want string }{
 		{"plain", "feat: x\n\nbody here\n", "feat: x"},
@@ -124,6 +134,90 @@ func TestDispatchCommitGate(t *testing.T) {
 	errb.Reset()
 	if code := run([]string{"awf", "commit-gate", writeMsg(t, "nope not conventional\n")}, &out, &errb); code == 0 {
 		t.Fatal("dispatch commit-gate should block a non-conforming subject")
+	}
+}
+
+func TestCleanCommitLines(t *testing.T) {
+	// The extraction must preserve blank lines and leave every surviving line
+	// untrimmed, which is what keeps cleanCommitSubject's existing behaviour and
+	// makes body line numbers match what the author sees.
+	got := cleanCommitLines("feat: x  \r\n\n# a comment\nbody\n# ---- >8 ----\ndiff\n")
+	want := []string{"feat: x  ", "", "body"}
+	if len(got) != len(want) {
+		t.Fatalf("cleanCommitLines = %q, want %q", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("line %d = %q, want %q", i, got[i], want[i])
+		}
+	}
+}
+
+// cite is the working-memory prefix followed by a concrete name, built rather
+// than written out so this file does not carry the shape the gate rejects.
+func cite() string { return dir + "effort.md" }
+
+func TestRunCommitGateCitationScan(t *testing.T) {
+	t.Run("knob off accepts a citing body", func(t *testing.T) {
+		root := scaffoldProject(t)
+		var out bytes.Buffer
+		if err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out); err != nil {
+			t.Fatalf("knob off must not scan: %v (out=%q)", err, out.String())
+		}
+	})
+	t.Run("knob on accepts a clean body", func(t *testing.T) {
+		root := citingProject(t)
+		var out bytes.Buffer
+		if err := runCommitGate(root, writeMsg(t, "feat: a\n\nthe file lives under "+dir+"\n"), nil, &out); err != nil {
+			t.Fatalf("clean body must pass: %v (out=%q)", err, out.String())
+		}
+	})
+	t.Run("knob on rejects a citing body", func(t *testing.T) {
+		root := citingProject(t)
+		var out bytes.Buffer
+		err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out)
+		if err == nil || !strings.Contains(err.Error(), "working-memory file") {
+			t.Fatalf("citing body must be rejected: %v", err)
+		}
+		if !strings.Contains(out.String(), "line 3") || !strings.Contains(out.String(), "effort.md") {
+			t.Errorf("diagnostic must name the reference: %q", out.String())
+		}
+	})
+	t.Run("a comment-only citation is accepted", func(t *testing.T) {
+		// git discards the comment, so it is never recorded.
+		root := citingProject(t)
+		var out bytes.Buffer
+		if err := runCommitGate(root, writeMsg(t, "feat: a\n\n# see "+cite()+"\n"), nil, &out); err != nil {
+			t.Fatalf("a citation git discards must not block: %v", err)
+		}
+	})
+	t.Run("a citation below the scissors line is accepted", func(t *testing.T) {
+		// `git commit -v` appends the staged diff, which may legitimately touch a
+		// file whose fixtures name a working-memory file.
+		root := citingProject(t)
+		msg := "feat: a\n\nbody\n# ------------------------ >8 ------------------------\ndiff --git\n+" + cite() + "\n"
+		var out bytes.Buffer
+		if err := runCommitGate(root, writeMsg(t, msg), nil, &out); err != nil {
+			t.Fatalf("a verbose diff must not block: %v", err)
+		}
+	})
+}
+
+func TestRunCommitGateCitationScanIgnoresSubjectExemption(t *testing.T) {
+	root := citingProject(t)
+	// The exemption exists because git writes the subject; a person may still
+	// edit the body, so the citation scan applies to a merge and an autosquash.
+	for _, subject := range []string{"Merge branch 'topic'", "fixup! feat: a"} {
+		var out bytes.Buffer
+		if err := runCommitGate(root, writeMsg(t, subject+"\n\nsee "+cite()+"\n"), nil, &out); err == nil {
+			t.Errorf("%q: a citing body must be rejected under an exempt subject", subject)
+		}
+	}
+	// The exemption still governs what it was for: a merge subject is not a
+	// Conventional Commits violation.
+	var out bytes.Buffer
+	if err := runCommitGate(root, writeMsg(t, "Merge branch 'topic'\n\nclean body\n"), nil, &out); err != nil {
+		t.Errorf("merge subject with a clean body must stay exempt: %v", err)
 	}
 }
 

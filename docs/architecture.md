@@ -73,7 +73,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `memory-gate`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
@@ -174,6 +174,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
   it answers whether the tree is clean, not whether a commit made it worse.
+- **`internal/memorycite/`**: detects a citation of a specific working-memory file in a decision
+  record or a commit-message body; powers the opt-in blocking `awf memory-gate` and the
+  `awf commit-gate` body scan (ADR-0158). Pure text in, findings out: it reads no filesystem and no
+  git, so both callers supply their own bytes.
 - **`internal/pathglob/`**: awf's single glob dialect (ADR-0077): anchored full-path doublestar
   matching against slash-separated repo-relative paths, consumed by config validation, invariant
   scanning, and the audit's path matching. Leaf package.
@@ -311,8 +315,10 @@ preceding bridge release; this binary consumes seals, it never produces them.
 `awf prose-gate` reads the staged files it scans through the immutable `internal/snapshot` index
 Tree rather than raw index blobs: the Tree captures each stage-0 file's path, executable mode, and a
 private byte copy in one path-sorted, tamper-proof view, so the scan and its `.awf/config.yaml`
-lookup share a single immutable snapshot. The same snapshot seam serves the working, index, commit,
-and range universes the current-state checks compare.
+lookup share a single immutable snapshot. `awf memory-gate` reads its staged blobs the same way and
+additionally path-filters them to the decision-record directories, so only a staged decision or plan
+reaches its detector. The same snapshot seam serves the working, index, commit, and range universes
+the current-state checks compare.
 
 An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
 closed route, starts the first named phase, transactionally closes an unmatched phase start and enters
