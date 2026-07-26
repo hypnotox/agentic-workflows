@@ -9,7 +9,7 @@ status: Proposed
 
 Ship ADR-0159: rename `awf sync` to `awf render`, fold `awf invariants`, `awf prose-gate`, `awf memory-gate`, and `awf commit-gate` into an `awf check` group alongside two new `drift` and `state` children, and give the driver the per-child gating and per-child project-state exemption that regrouping requires.
 
-Non-goals: bare `awf check` does not change what it runs or what it returns, no ran/skipped report is added, no `*Cmd` var key is renamed, and no retained history is rewritten (`docs/decisions/**`, `docs/plans/**`, and the released version sections of `changelog/`).
+Non-goals: bare `awf check` does not change what it runs or what it returns, no ran/skipped report is added, no `*Cmd` var key is renamed, and no retained record is rewritten (the ADR and plan files themselves, the dated analyses under `docs/research/`, and the released version sections of `changelog/`). The rule covers records, not whole directories: the awf-managed files that live among them (`docs/decisions/INDEX.md`, both `README.md` and `template.md` pairs) are rendered output and are regenerated like any other.
 
 ## Architecture summary
 
@@ -50,7 +50,8 @@ Phases are ordered so each closing commit passes `./x gate` alone, and so every 
   - `templates/hooks/pre-commit.sh.tmpl`, `templates/hooks/commit-msg.sh.tmpl` - the three unset-var fallbacks
   - `templates/docs/working-with-awf.md.tmpl` - the `gatedCommands` render-key description
   - `x`, `.githooks/pre-commit` - the runner verb and the hook stub's remediation message
-  - `README.md` - the public CLI command table (hand-authored, outside the lock, so nothing else catches it)
+  - `README.md`, `examples/sundial/README.md` - the public CLI command table and the example's usage notes (both hand-authored and outside the lock, so nothing else catches them)
+  - `examples/sundial/.awf/docs/parts/testing/layout.md` - a raw convention part spliced verbatim into the example's rendered testing doc, so a re-render propagates the retired name rather than fixing it
   - `changelog/CHANGELOG.md` - a new `## [Unreleased]` entry only
   - `.awf/config.yaml` - `activeMdRegenCmd`, `proseGateCmd`, `memoryGateCmd`, `commitGateCmd`
   - the authored `.awf/` inputs naming a retired command (Tasks 1.6 and 4.4 give the discovery commands)
@@ -136,16 +137,16 @@ Self-contained: the rename completes within this phase, so `./x gate` passes at 
   **Affected-site set** - the union of two discovery commands, because the prose grep alone misses every bare-token Go site:
 
   ```
-  git grep -lE 'awf sync|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md
+  git grep -lE 'awf sync|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md examples/sundial/README.md examples/sundial/.awf/docs examples/sundial/.awf/config.yaml
   git grep -ln '"sync"' -- cmd internal
   ```
 
-  Apply the identical shape at every site. Do not run either over `docs/decisions`, `docs/plans`, or the released sections of `changelog/`: ADR-0159 Decision 10 leaves retained records naming the old command. In the second command's output, `internal/telemetry` uses `"sync"` in an unrelated sense; inspect before editing rather than replacing blind.
+  A git pathspec is a leading-path match, so `.awf` never reaches `examples/sundial/.awf`; the example's authored inputs must be named separately, and its `README.md` is hand-authored with no provenance banner, so nothing re-renders it. Exclude the rendered payloads that a re-render rewrites: `.awf/hooks/*.sh`, `.awf/memory/.gitignore`, and `.awf/metrics/.gitignore` all match through their banner line and must never be hand-edited. Do not run either command over `docs/decisions`, `docs/plans`, `docs/research`, or the released sections of `changelog/`: those are retained records naming the old command. In the second command's output, `internal/telemetry` uses `"sync"` in an unrelated sense; inspect before editing rather than replacing blind.
 
-  **Post-check** - `go test ./...` passes, and this command produces no output:
+  **Post-check** - after the edits *and* the Task 1.7 re-render (which is what corrects the banner-bearing payloads), `go test ./...` passes and this command produces no output:
 
   ```
-  git grep -nE 'awf sync|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md
+  git grep -nE 'awf sync|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md examples/sundial/README.md examples/sundial/.awf/docs examples/sundial/.awf/config.yaml
   ```
 
 - [ ] **Task 1.7: Apply the render-rename operations, open the Implementing sequence, and commit.** Update the prose of these ten claims so each names `awf render` or `./x render` where it named the retired command. The first eight name it as an invocation; the last two enumerate "load, render, sync, or check" and would otherwise name one concept twice, so their enumeration collapses to "load, render, or check":
@@ -241,6 +242,8 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   ```
 
   Both claims are authored in Task 3.14, in this same commit. A proof marker naming an undeclared claim fails the corpus load with `unknown claim ID`, so marker and claim must land together; keeping both in Phase 3 also avoids shipping a commit whose claim prose contradicts its own proof test.
+
+  `cmd/awf/main_test.go`'s `TestResolveReturnsTopLevel` keeps passing but its doc comment states the retired rule ("so run() gates ... off the top-level node rather than the child, whose Gating is an unset Ungated zero"). Correct it here: the body is still right, only the stated rationale is wrong.
 
 - [ ] **Task 3.4: Restructure the command table.** In `internal/clispec/clispec.go`, delete the top-level `invariants`, `commit-gate`, `prose-gate`, and `memory-gate` entries, and replace the `check` entry with a group in its current table position, so `awf help` order changes only by the four removals. `MaxPos` widens to `-1` so the handler owns the unknown-subcommand message (the `new` treatment).
 
@@ -395,7 +398,13 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   	// ... remainder unchanged
   ```
 
-  Update the doc comment above `guardProjectState`, which enumerates the exempt commands by name: state instead that exemption is the resolved command's `StateExempt` property, and that the three regrouped `check` children carry it so a commit-msg hook keeps working during a journal or an attested lock. In `cmd/awf/check.go`, `checkLockVsBinary` branches on the staged flag; its caller must pass the bare-check-only value, never the raw flag, so a child can never select the staged lock.
+  Four doc comments assert the rule this task inverts and are false in every clause afterwards. None is reachable by any discovery grep in this plan, because none names a retired command:
+  - `cmd/awf/main.go`, above the gating block: "Gating is read from top (the top-level command), not the resolved child: a group's children never set Gating, so a future Gated group must gate from its top-level node rather than silently inherit a child's Ungated zero value."
+  - `cmd/awf/main.go`, above `guardProjectState`: it enumerates the exempt commands by name. State instead that exemption is the resolved command's `StateExempt` property, and that the three regrouped `check` children carry it so a commit-msg hook keeps working during a journal or an attested lock.
+  - `cmd/awf/dispatch.go`, above `resolve`: "the driver reads gating and the handler key from top, since both are top-level properties a child never overrides." The handler key is still top-level; the gating is not.
+  - `internal/clispec/clispec.go`, above `GatedCommandNames`: "This is the single source of the doc-published gated-command list", false once `UngatedGroupChildren` becomes the second source.
+
+  In `cmd/awf/check.go`, `checkLockVsBinary` branches on the staged flag; its caller must pass the bare-check-only value, never the raw flag, so a child can never select the staged lock.
 
 - [ ] **Task 3.8: Add the drift and state entry points.** In `cmd/awf/check.go`, keep `runCheck` as the bare-form entry point, unchanged in behaviour, and extract two new entry points from the parts it already calls:
   - `runCheckDrift(root string, stdout io.Writer) error` - open the project, run `p.Check()`, print each drift entry in the existing format, print `awf check drift: clean` when empty, else return an error naming the drift count. It prints neither the advisory notes nor the version-ahead note; ADR-0159 Decision 2 keeps both on the bare form.
@@ -498,6 +507,8 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   - `awf check prose` and `awf check memory` succeed against a project whose lock is behind the binary, where bare `awf check` refuses. This is the per-child gating property.
   - `awf help` lists the six `check` children (extending the Phase 2 assertion to the new group).
 
+  The two entry points Task 3.8 adds bring new statements that the clean-path assertions above never reach: a `project.Open` error return, a `p.Check()` / `p.CheckCurrentState()` error return, the per-entry print loop, and the non-zero-count error return. ADR-0012's coverage gate fails below 100%, so each needs either a test or a reasoned ignore. Add `awf check drift` against a tree with a drifted rendered file and `awf check state` against a tree with a current-state finding, each asserting the non-zero exit and the count-naming error message. Any branch that is genuinely unreachable because the driver pre-gates it carries a `// coverage-ignore: <reason>` comment, following the precedent already in `cmd/awf/check.go` on `runCheck`'s corrupt-lock path.
+
 - [ ] **Task 3.14: Author the two new claims, apply the third batch, and commit.** Author in `.awf/topics/parts/tooling/cli/current-state.md`, both `Backing: test` with `Origin: ADR-0159`, their proof markers already placed in Task 3.3:
   - `tooling/cli:group-child-gating-honored` - a group child's gating classification resolves from the child when it declares one and from the parent otherwise, so an ungated child under a gated parent is honoured rather than silently gated.
   - `tooling/cli:group-child-project-guard-exemption` - the current-state journal and attestation guard reads the resolved command's exemption property, so `check prose`, `check memory`, and `check commit` stay runnable in the states where a hook must still function.
@@ -563,10 +574,10 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
   **Affected-site set** - the output of:
 
   ```
-  git grep -lE 'awf (invariants|prose-gate|memory-gate|commit-gate)' -- .awf .githooks templates cmd internal x tools .github README.md ':!internal/migrate/renameretiredcommands*.go'
+  git grep -lE 'awf (invariants|prose-gate|memory-gate|commit-gate)' -- .awf .githooks templates cmd internal x tools .github README.md examples/sundial/README.md examples/sundial/.awf/docs examples/sundial/.awf/config.yaml ':!internal/migrate/renameretiredcommands*.go'
   ```
 
-  `README.md` is hand-authored and absent from `.awf/awf.lock`, so no drift check will catch it: its public CLI command table is the project's front door and names five retired commands. Exclude the rendered payloads under `.awf/hooks/`, which a re-render rewrites.
+  `README.md` is hand-authored and absent from `.awf/awf.lock`, so no drift check will catch it: its public CLI command table is the project's front door and names five retired commands. The example adopter needs its own pathspec entries for the same reason a leading-path `.awf` never reaches `examples/sundial/.awf`; in particular `examples/sundial/.awf/docs/parts/testing/layout.md` is a raw convention part spliced verbatim into the example's rendered testing doc, so a re-render propagates the retired name rather than fixing it, and the model adopter would ship a doc naming a command that no longer exists. Do not widen the pathspec to `examples/sundial` wholesale: that sweeps in the rendered adapter trees and the example's own retained plan. Exclude the rendered payloads under `.awf/hooks/`, which a re-render rewrites.
 
   **Post-check** - after the edits and a re-render, that same command produces no output.
 
@@ -582,8 +593,12 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
 
   ```
   go run ./cmd/awf upgrade
-  (cd examples/sundial && go run ../../cmd/awf upgrade)
+  bindir="$(mktemp -d)"
+  go build -o "$bindir/awf" ./cmd/awf
+  (cd examples/sundial && "$bindir/awf" upgrade)
   ```
+
+  The example must be upgraded with a built binary, not `go run ../../cmd/awf`: it is its own Go module with no requirement on this one, so a relative package path outside the module fails with "directory ../../cmd/awf outside main module or its selected dependencies". This is the build-once-then-run shape `x` already uses for the example, and its comment there says why.
 
   Expected terminal state: both locks stamped at schema generation 19, after which `./x render` and `./x check` run again.
 
@@ -601,10 +616,10 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
 - [ ] This command produces no output:
 
   ```
-  git grep -nE 'awf (sync|invariants|prose-gate|memory-gate|commit-gate)|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md ':!internal/migrate/renameretiredcommands*.go'
+  git grep -nE 'awf (sync|invariants|prose-gate|memory-gate|commit-gate)|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md examples/sundial/README.md examples/sundial/.awf/docs examples/sundial/.awf/config.yaml ':!internal/migrate/renameretiredcommands*.go'
   ```
 
-  `docs/decisions`, `docs/plans`, the released sections of `changelog/`, and the migration's own fixtures are excluded by design and still carry the old spellings.
+  Excluded by design and still carrying the old spellings: the ADR and plan records, the dated analyses under `docs/research/`, the released sections of `changelog/`, and the migration's own fixtures.
 - [ ] `go test ./...` passes, which is what catches the bare-token argv fixtures no prose grep reaches.
 - [ ] `awf help` lists every group child, including `check`'s six and the existing `new` and `metrics` children.
 - [ ] `awf check` on a clean tree produces the same verdict and exit status as before the change; only the version-ahead note's command name differs.
@@ -616,7 +631,7 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
 ## Notes
 
 - **Phase boundaries are not release boundaries.** The schema-19 migration that carries adopters across the rename lands in Phase 4; a release cut at the close of Phase 1 or Phase 3 would rename commands with no migration behind them. Only the completed plan is releasable.
-- **Retained history keeps the old names.** `docs/decisions/**`, `docs/plans/**`, and the released version sections of `changelog/` are not rewritten (ADR-0159 Decision 10). A released entry states what shipped under that version; rewriting it would describe a command that version never had. Only `## [Unreleased]` gains an entry.
+- **Retained records keep the old names, but the rule is about records, not directories.** The ADR and plan files, the dated analyses under `docs/research/`, and the released version sections of `changelog/` are not rewritten (ADR-0159 Decision 10). A released entry states what shipped under that version; rewriting it would describe a command that version never had. Only `## [Unreleased]` gains an entry. Five awf-managed files live inside `docs/decisions/` and `docs/plans/` and *are* rewritten by the re-render, because they are rendered output, not records: `docs/decisions/INDEX.md`, and the `README.md` and `template.md` in each directory. `docs/decisions/README.md` changes beyond its banner, because its authored source under `.awf/parts/` carries retired mentions that Task 1.6 corrects. Reverting them would produce drift that fails the phase's own `./x check`.
 - **The Phase 1 diff is dominated by the banner.** Changing `bannerText` rewrites the first line of every managed file, so Phase 1's commit touches essentially the whole rendered tree. That churn is content-free; review the authored files and treat the banner lines as mechanical.
 - **Prose greps miss argv fixtures.** The retired names appear in Go tests as bare tokens (`resolve([]string{"sync"})`, `clispec.Lookup("sync")`), which no `awf sync` grep finds. Both rename batches therefore pair a prose grep with a bare-token grep, and both post-checks require `go test ./...` rather than a clean grep alone.
 - **The Go symbol `runSync` and the file `cmd/awf/sync.go` keep their names.** ADR-0159 renames the command surface, not internal identifiers. A symbol rename is a legitimate follow-up but would double Phase 1's reviewable diff.
