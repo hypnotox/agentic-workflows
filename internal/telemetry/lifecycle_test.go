@@ -789,6 +789,49 @@ func TestDetourReturnIdentityAndTerminalBoundary(t *testing.T) {
 	}
 }
 
+func TestDetourReturnRejectsPriorEpochAssociationAfterReopen(t *testing.T) {
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := createActiveDetourParent(t, ledger, "parent", "session", "parent-phase-start")
+	terminalOneAt, terminalTwoAt := "2026-07-22T00:00:01Z", "2026-07-22T00:00:02Z"
+	events := completedRoute("direct")
+	events[len(events)-1].Timestamp = terminalOneAt
+	events = appendEvent(events, "reopen", "effort_reopened", EffortReopenedPayload{TerminalEpoch: 2, TrajectoryID: "reopened", AnchorID: "anchor"})
+	for index, phase := range routeRequirements["direct"] {
+		events = appendFinishedPhase(events, "epoch-two-"+string(rune('a'+index)), phase, "reopened")
+	}
+	events = appendEvent(events, "complete-two", "effort_completed", EffortTerminalPayload{TerminalEpoch: 2})
+	events[len(events)-1].Timestamp = terminalTwoAt
+	child := EffortRead{Metadata: EffortMetadata{EffortID: "child", CreationMode: "derived", Origin: &origin, DetourReturn: &DetourReturnMetadata{SessionID: "session"}}, Events: events}
+	for index := range events {
+		child.Records = append(child.Records, LedgerRecord{Event: &events[index], Applied: true})
+	}
+
+	associate := func(epoch uint64, timestamp, predecessor string) AssociateLifecycleRequest {
+		identity := detourReturnIdentity(child.Metadata.EffortID, epoch)
+		return AssociateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "associate", IdempotencyKey: "detour-return-" + identity, EventID: "detour-return-event-" + identity + "-parent", EffortID: origin.EffortID, SessionID: "session", Timestamp: timestamp, Predecessors: []string{predecessor}}, TrajectoryID: origin.TrajectoryID, AssociationOrigin: "detour"}
+	}
+	priorEpoch := associate(1, terminalOneAt, "parent-phase-start")
+	if _, err := ledger.ApplyLifecycle(context.Background(), priorEpoch); err != nil {
+		t.Fatal(err)
+	}
+	currentEpoch := associate(2, terminalTwoAt, priorEpoch.EventID)
+	if _, err := ledger.ApplyLifecycle(context.Background(), currentEpoch); err != nil {
+		t.Fatal(err)
+	}
+
+	returned := EventEnvelope{Payload: mustJSON(t, DetourReturnedPayload{ParentAssociationEventID: priorEpoch.EventID})}
+	if err := ledger.validateDetourReturnAssociation(child, returned); err == nil {
+		t.Fatal("same-child deterministic association for terminal epoch one was accepted after terminal epoch two")
+	}
+	returned.Payload = mustJSON(t, DetourReturnedPayload{ParentAssociationEventID: currentEpoch.EventID})
+	if err := ledger.validateDetourReturnAssociation(child, returned); err != nil {
+		t.Fatalf("same-child deterministic association for terminal epoch two was rejected: %v", err)
+	}
+}
+
 func TestApplyLifecycleRejectsOtherChildDetourReturnAssociation(t *testing.T) {
 	ledger, err := NewLedger(newTestProject(t))
 	if err != nil {
