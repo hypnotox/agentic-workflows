@@ -32,6 +32,10 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Pi can now adopt an explicit external working-memory checkpoint through a confined, bounded,
+  normalized header validation path. Adoption rejects duplicate effort identities and incompatible
+  workflow state, durably creates the adopted effort before persisting its session association,
+  and recovers identical retries without duplicate events or custom association entries.
 - Pi workflow routing now plans three explicit effects: start a phase, transition to its legal
   target, or continue the open phase with updated attribution. Route-bearing continuations apply
   their route first and observe the updated frontier; same-phase transition events are removed.

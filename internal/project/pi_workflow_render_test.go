@@ -57,7 +57,7 @@ func TestPiWorkflowRouterExactOutputSet(t *testing.T) {
 		}
 	}
 	dashboard := renderedByPath(t, files, ".pi/extensions/awf-dashboard/index.ts")
-	for _, wantText := range []string{`"exploring":{"kind":"support","allowEntryWithoutPhase":false,"entryPredecessors":[],"continuationPhases":["adr-authoring","adr-plan-resync","adr-review","brainstorming","implementation","implementation-review","investigation","plan-review","planning","retrospective"],"activity":"exploration"}`, `"tdd":{"kind":"support","allowEntryWithoutPhase":false,"entryPredecessors":[],"continuationPhases":["implementation"],"activity":"tdd"}`, `StringEnum(workflowSkillNames as any)`, `name: "awf_workflow"`, `workflowToolPreflight`, `workflowBodyPath(deps.extensionFile, skill)`, `settleWorkflowIdentity(skill, ctx)`, `workflow request canceled after durable acknowledgment`, `governed workflow body is missing after lifecycle acknowledgment`, `pi.on("agent_end"`} {
+	for _, wantText := range []string{`"exploring":{"kind":"support","allowEntryWithoutPhase":false,"entryPredecessors":[],"continuationPhases":["adr-authoring","adr-plan-resync","adr-review","brainstorming","implementation","implementation-review","investigation","plan-review","planning","retrospective"],"activity":"exploration"}`, `"tdd":{"kind":"support","allowEntryWithoutPhase":false,"entryPredecessors":[],"continuationPhases":["implementation"],"activity":"tdd"}`, `StringEnum(workflowSkillNames as any)`, `name: "awf_workflow"`, `name: "awf_adopt_effort"`, `memoryPath: Type.String()`, `validateAdoptionMemory`, `workflowToolPreflight`, `snapshotWorkflowBody`, `WORKFLOW_BODY_MAX_BYTES`, `fsConstants.O_NOFOLLOW`, `workflowBodyPath(deps.extensionFile, skill)`, `settleWorkflowIdentity(skill, ctx)`, `workflow request canceled after durable acknowledgment`, `pi.on("agent_end"`} {
 		if !strings.Contains(dashboard, wantText) {
 			t.Errorf("dashboard workflow loader missing rendered contract %q", wantText)
 		}
@@ -76,6 +76,7 @@ func TestPiWorkflowRouterExactOutputSet(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router
+// invariant: tooling/workflow-telemetry:external-adoption-boundary
 func TestPiWorkflowRouterBehavioralProof(t *testing.T) {
 	provePiContractBehavior(t,
 		"workflow router enforces mapped lifecycle effects",
@@ -83,6 +84,7 @@ func TestPiWorkflowRouterBehavioralProof(t *testing.T) {
 		"workflow router rejects competing frontiers",
 		"workflow router acknowledges durably before returning fixed bodies",
 		"workflow router completes retrospective mechanically",
+		"external adoption validates bounded normalized memory and recovers deterministically",
 	)
 }
 

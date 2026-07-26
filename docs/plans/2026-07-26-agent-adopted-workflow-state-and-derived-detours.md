@@ -39,14 +39,15 @@ and freezes the ADR and plan.
   `.awf/parts/working-with-awf/config-and-overrides.md`,
   `.awf/docs/parts/architecture/overview.md`, `.awf/docs/parts/architecture/data-flow.md`, and
   `.awf/docs/parts/testing/layout.md`; the exact `.awf/topics/parts/**` files named below; and
-  `changelog/CHANGELOG.md` for the adopter-visible Phase-2 routing change.
+  `changelog/CHANGELOG.md` for the adopter-visible routing and checkpoint-adoption changes.
 - **Generated outputs modified only by `./x render`:** `.pi/extensions/awf-dashboard/index.ts`,
   `.pi/extensions/awf-dashboard/protocol.ts`, `.pi/skills/awf-workflow/SKILL.md`, hidden Pi
   workflow bodies, `docs/architecture.md`, `docs/testing.md`, `docs/workflow.md`, rendered topic
-  and domain docs, `AGENTS.md`, `docs/decisions/INDEX.md`, `.awf/awf.lock`, and the three Sundial
+  and domain docs, `AGENTS.md`, `docs/decisions/INDEX.md`, `.awf/awf.lock`, and the Sundial
   outputs `examples/sundial/.awf/awf.lock`,
-  `examples/sundial/.pi/extensions/awf-dashboard/index.ts`, and
-  `examples/sundial/.pi/extensions/awf-dashboard/protocol.ts`.
+  `examples/sundial/.pi/extensions/awf-dashboard/index.ts`,
+  `examples/sundial/.pi/extensions/awf-dashboard/protocol.ts`, and
+  `examples/sundial/docs/workflow.md`.
 - **Deleted:** none.
 
 ## Phase 1: Publish protocol-2.1 readers with new writes disabled
@@ -315,8 +316,9 @@ feat(rendering): continue workflow phases (applies 0161 batch)
   `.awf/parts/working-with-awf/config-and-overrides.md` with the agent-driven normalized-header
   route. Do not edit rendered docs or AGENTS directly. Run `./x render`, `./x check`,
   `go test ./internal/telemetry ./internal/catalog ./internal/project`, and `./x pi-test run`, each
-  with zero exit. Stage with
-  `git add -u -- templates/pi/awf-dashboard/index.ts.tmpl templates/docs/workflow.md.tmpl tools/pi-extension-test/tests/workflow.test.ts internal/project/pi_workflow_render_test.go .awf/topics/parts/tooling/workflow-telemetry/current-state.md .awf/parts/agents-doc/working-memory.md .awf/parts/workflow/chain.md .awf/parts/working-with-awf/commands.md .awf/parts/working-with-awf/config-and-overrides.md .pi docs AGENTS.md .awf/awf.lock`.
+  with zero exit. First stage this amended plan with
+  `git add -- docs/plans/2026-07-26-agent-adopted-workflow-state-and-derived-detours.md`. Then stage
+  with `git add -u -- templates/pi/awf-dashboard/index.ts.tmpl templates/docs/workflow.md.tmpl tools/pi-extension-test/tests/workflow.test.ts tools/pi-extension-test/tests/dashboard.test.ts internal/project/pi_workflow_render_test.go .awf/topics/parts/tooling/workflow-telemetry/current-state.md .awf/parts/agents-doc/working-memory.md .awf/parts/workflow/chain.md .awf/parts/working-with-awf/commands.md .awf/parts/working-with-awf/config-and-overrides.md changelog/CHANGELOG.md .pi docs AGENTS.md .awf/awf.lock examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-dashboard/index.ts examples/sundial/docs/workflow.md`.
   Then run `./awf check --staged` and `./x gate`, both with zero exit; commit:
 
 ```commit

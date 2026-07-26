@@ -802,9 +802,9 @@
     },
     ".pi/extensions/awf-dashboard/index.ts": {
       "templateId": "pi/awf-dashboard/index.ts.tmpl",
-      "templateHash": "sha256:658fd67238d7c67809a1d78f232304fccf0b3f20b76d60e81c22390fb080470b",
+      "templateHash": "sha256:056bdda24e193e871995999cb632c758fd1f577b4880c17a6af626e5a76bdd09",
       "configHash": "sha256:f82fc8aec272d707dd21c9643f1f24173e2c29c82aab4a5e5813a3c14dfb6186",
-      "outputHash": "sha256:3fd9f4fad6238a38f0fb9e015d49c2fda5556f3f73f1b7881df14033a1fdd95e"
+      "outputHash": "sha256:87ee717bf4b9d56586ca6ccde5c1c7da1a9f5b14388b2cf4b874eddd2a5fd4cd"
     },
     ".pi/extensions/awf-dashboard/protocol.ts": {
       "templateId": "pi/awf-dashboard/protocol.ts.tmpl",
@@ -992,9 +992,9 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:eb13445f2bd3c16e46118b510ae5410f1397dcb8c9c5cf5ffb65b647c525078b",
+      "templateHash": "sha256:9b2d74b4d139cb029743f97df8e5a981dda744a529c9a00cd5b709894d14520a",
       "configHash": "sha256:ce464081778601c8cc6b312f7bd736c417382727af835c90193ace37c13c2a21",
-      "outputHash": "sha256:e84c79929c6edfbf30d6af0d58af65eeefcf43f3a9314d4b72280ed25444b637"
+      "outputHash": "sha256:d227149960e83740c455955d73c27654373e01122433ec51282b7021d9992fa2"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",

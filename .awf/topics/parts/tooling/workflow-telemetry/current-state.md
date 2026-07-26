@@ -23,6 +23,12 @@ Origin: ADR-0146
 Revised-by: ADR-0161
 Backing: test
 
+### `invariant: external-adoption-boundary`
+
+External continuation with no resident effort is agent-driven through the exclusive `awf_adopt_effort` Pi tool and never inferred from a filename or freeform prose. Adoption re-reads one confined nonsymlink regular UTF-8 file below `.awf/memory/`, bounded to 1 MiB, and requires its first 16 KiB before the first H2 to contain exactly ordered, unique, at-most-512-byte `Effort:`, `Route:`, `Phase:`, `Workflow:`, and nonempty `Next:` lines using LF or CRLF. It scans at most 256 confined regular Markdown siblings for duplicate effort IDs, rejects unsafe entries plus resident-effort or tombstone collisions, and requires the submitted closed fields to match the normalized header and an enabled catalog-compatible workflow, route, and phase. Successful adoption first snapshots the enabled governed body as a strict UTF-8 regular nonsymlink file bounded to 1 MiB through a no-follow handle with identity, size, and complete-read revalidation, then atomically creates one adopted effort with deterministic request identity, a truthful current phase and workflow, optional selected route, new trajectory and anchor, and current-session manual association. It persists the active-branch association and returns only that precommit body snapshot, so a later symlink, identity, or size swap cannot change acknowledged output. Precommit failure creates no effort; postcommit failure recovers by explicit effort ID and the identical durable event, allowing only the same provisional manager's exact deterministic buffered observations to finish an interrupted flush and association persistence. Any other lifecycle, route, phase, trajectory, terminal, association, or observational progress still rejects re-adoption. Resident metadata and events never contain the ephemeral memory path, filename, `Next` text, file content, or another repository path, and existing efforts continue through structured resume rather than re-adoption.
+Origin: ADR-0161
+Backing: test
+
 ### `invariant: privacy-integrity-and-retention`
 
 Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.

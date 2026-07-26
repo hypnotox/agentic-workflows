@@ -68,7 +68,7 @@ Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](doc
 
 `.awf/memory/<effort-slug>.md` (gitignored) holds one working-memory file per in-flight effort. Check `.awf/memory/` when a request implies earlier work to continue, or when a fresh session finds it non-empty and unaccounted for; resume from the file's `Phase:`/`Next:` lines rather than restarting, and ask before resuming anything you cannot verify. Never commit the file or cite it in an ADR, plan, or commit message; delete it when the effort's chain terminates. The checkpoint protocol, file skeleton, and ground rules live in the workflow doc's working-memory section.
 
-In a fresh Pi session, continue an explicitly named active effort with `/awf-resume-effort <effort-id>`.
+In a fresh Pi session, continue an explicitly named resident active effort with `/awf-resume-effort <effort-id>`. For an external checkpoint with no resident effort, establish and surface its identity and any uncertain interpretation, normalize its leading `Effort:`, `Route:`, `Phase:`, `Workflow:`, and nonempty `Next:` lines, then invoke `awf_adopt_effort` alone with the matching explicit fields. Never infer identity from a filename or prose, and never place the memory path, filename, `Next` text, or file content in durable metadata or events.
 
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
