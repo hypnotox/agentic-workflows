@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-26
 ---
 # ADR-0161: Agent-adopted workflow state and derived detours
@@ -347,3 +347,5 @@ small deterministic summary that cannot grow with ledger history or global integ
 - 2026-07-26: Applied; state-sequence: 53; operations: add `tooling/workflow-telemetry:external-adoption-boundary`
 - 2026-07-26: Applied; state-sequence: 54; operations: add `tooling/workflow-telemetry:derived-detour-return`
 - 2026-07-26: Applied; state-sequence: 55; operations: update `tooling/workflow-telemetry:privacy-integrity-and-retention`, update `tooling/workflow-telemetry:canonical-projections-and-diagnostics`
+- 2026-07-26: Applied; state-sequence: 56; operations: update `rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router`, update `rendering/pi-workflows:pi-workflow-dashboard-public-contract`, update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/adapter-outputs:pi-workflow-dashboard-runtime`, update `rendering/pi-runtime:pi-real-runtime-smoke`
+- 2026-07-26: Implemented; content-sha256: ff60f69f266ad7356531e3bd8e1b7b533b77eff7002a2ed3f33ec13b1d6c1164

@@ -13,7 +13,7 @@ Use this router for every governed awf workflow. Do not load governed workflow b
 {{ range .workflowSkills }}
 - `{{ .Name }}`: {{ .Kind }}; {{ .Effect }}
 {{ end }}
-Choose by the work's semantic intent, not by a filesystem path. Catalog metadata determines whether the current state may start the workflow's entry phase, transition from an allowed predecessor, or continue an allowed already-open phase. The tool validates lifecycle state, durably records that mapped effect, and only then returns the fixed pre-rendered body. Follow that returned body exactly.
+Choose by the work's semantic intent, not by a filesystem path. Catalog metadata determines whether the current state may start the workflow's entry phase, transition from an allowed predecessor, or continue an allowed already-open phase. Continuation preserves the existing phase start while explicitly replacing or clearing attribution; it never writes a same-phase transition. The tool validates lifecycle state, durably records that mapped effect, and only then returns the fixed pre-rendered body. Follow that returned body exactly.
 {{ else }}No governed awf workflows are enabled. Do not call `awf_workflow` until the project enables one.
 {{ end }}
 Never pass a path, template text, or workflow body to `awf_workflow`. Never read `.pi/awf-workflows/` as a substitute for the tool.

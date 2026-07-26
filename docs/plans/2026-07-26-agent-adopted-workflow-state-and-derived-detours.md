@@ -1,7 +1,7 @@
 ---
 date: 2026-07-26
 adrs: [161]
-status: Proposed
+status: Implemented
 ---
 # Plan: Agent-adopted workflow state and derived detours
 
@@ -52,7 +52,7 @@ and freezes the ADR and plan.
 
 ## Phase 1: Publish protocol-2.1 readers with new writes disabled
 
-- [ ] **Task 1.1: Write failing compatibility and closed-schema tests.** In
+- [x] **Task 1.1: Write failing compatibility and closed-schema tests.** In
   `internal/telemetry/reader_test.go`, prove one unsupported required record suppresses the whole
   effort instead of leaving a partial lifecycle projection. In `aggregate_test.go`,
   `diagnostics_test.go`, and `retention_test.go`, prove the suppressed effort contributes no
@@ -66,7 +66,7 @@ and freezes the ADR and plan.
   continuation phase-start preservation, detour lineage, post-terminal return marker, and
   pending-return exclusion. Before implementation, `go test ./internal/telemetry` must fail for
   partial projection and missing 2.1 shapes.
-- [ ] **Task 1.2: Encode the exact protocol-2.1 contract.** In
+- [x] **Task 1.2: Encode the exact protocol-2.1 contract.** In
   `internal/telemetry/protocol.json`, set minor 1 and encode ADR-0161 Decision 1 exactly:
   `effort_adopted/adopt`, `phase_continued/continue-phase`,
   `detour_started/start-detour`, and `detour_returned/mark-detour-returned`; creation mode
@@ -135,7 +135,7 @@ and freezes the ADR and plan.
   workflow=brainstorming. Adopt request deliberately has neither creationMode nor
   associationOrigin; continue and mark-return have no field-const; payload constraints remain
   exactly those listed above.
-- [ ] **Task 1.3: Implement alternative creation and projection as reader capability.** In
+- [x] **Task 1.3: Implement alternative creation and projection as reader capability.** In
   `internal/telemetry/ledger.go`, add one closed helper returning true only for
   `effort_created`, `effort_adopted`, and `detour_started`. `CreateEffort` accepts metadata plus
   exactly one matching first event; `Append` rejects every creation kind outside atomic creation;
@@ -145,7 +145,7 @@ and freezes the ADR and plan.
   one valid first-stream creation kind and suppress the whole effort after any unsupported required
   record. In `lifecycle.go` and `projection.go`, teach readers all four effects without exposing a
   successful new-kind mutation path. In `retention.go`, exclude pending-return terminal children.
-- [ ] **Task 1.4: Publish the generated local reader but disable every new writer entry.** In
+- [x] **Task 1.4: Publish the generated local reader but disable every new writer entry.** In
   `templates/pi/awf-dashboard/index.ts.tmpl`, update protocol validation, metadata scanning,
   creation-kind validation, and local projection to read all 2.1 kinds. Add an explicit
   reader-before-writer guard: `awf_lifecycle` rejects the four new actions with a bounded
@@ -156,7 +156,7 @@ and freezes the ADR and plan.
   `tools/pi-extension-test/fixtures/fake-awf.mjs` to return the required 2.1 protocol handshake,
   because the generated dashboard must reject its old 2.0 response. Test this guard in
   `protocol.test.ts` and `dashboard.test.ts`.
-- [ ] **Task 1.5: Enter Implementing, apply operation 1, and commit green.** Update only
+- [x] **Task 1.5: Enter Implementing, apply operation 1, and commit green.** Update only
   `.awf/topics/parts/tooling/workflow-telemetry/current-state.md` claim
   `event-protocol-and-ledger` to its complete ADR-0161 wording and append ADR-0161 to
   `Revised-by`. Append `Implementing` with the frozen digest and the first Applied event containing
@@ -180,7 +180,7 @@ feat(tooling): publish protocol 2.1 readers (applies 0161 batch)
 
 ## Phase 2: Enable lifecycle writes and entry/continuation routing
 
-- [ ] **Task 2.1: Add failing writer and router regressions.** In
+- [x] **Task 2.1: Add failing writer and router regressions.** In
   `internal/telemetry/ledger_test.go`, `ledger_branches_test.go`,
   `ledger_fault_branches_test.go`, `lifecycle_test.go`, `lifecycle_branches_test.go`, and
   `faults_test.go`, invoke all four lifecycle requests and cover request-to-envelope construction,
@@ -192,7 +192,7 @@ feat(tooling): publish protocol 2.1 readers (applies 0161 batch)
   already-open target failures; assert continuation preserves the original start, replaces or
   clears attribution, and emits no same-phase transition. Focused Go/Pi tests must fail before the
   write guard and old `PhaseEffect` model are removed.
-- [ ] **Task 2.2: Enable the canonical lifecycle request union.** In
+- [x] **Task 2.2: Enable the canonical lifecycle request union.** In
   `internal/telemetry/lifecycle.go`, make request decomposition return exact metadata/event pairs:
   adopt uses absent effort, empty predecessors, adopted metadata, optional route, and its event as
   phase start; continue requires the visible named start and whole current frontier; start-detour
@@ -201,7 +201,7 @@ feat(tooling): publish protocol 2.1 readers (applies 0161 batch)
   association ID. `ApplyLifecycle` routes both new creation actions through `CreateEffort` and both
   append actions through ordinary causal append. Remove the Phase-1 write-disabled rejection in
   Go only after these tests pass.
-- [ ] **Task 2.3: Replace catalog `PhaseEffect` with a three-effect planner.** In
+- [x] **Task 2.3: Replace catalog `PhaseEffect` with a three-effect planner.** In
   `internal/catalog/catalog.go`, remove `PhaseEffect` and declare exactly:
 
   ```go
@@ -252,13 +252,13 @@ feat(tooling): publish protocol 2.1 readers (applies 0161 batch)
   legal current phase. Debugging may enter investigation or continue any phase; brainstorming may
   transition from investigation; TDD remains implementation-only; chain skills continue only at
   their target. Remove all same-phase `phase_transitioned` writes.
-- [ ] **Task 2.4: Enable the generated Pi writer safely.** Remove the Phase-1 TypeScript write
+- [x] **Task 2.4: Enable the generated Pi writer safely.** Remove the Phase-1 TypeScript write
   guard only for `continue-phase`; retain adopt and start-detour behind their dedicated later tools,
   while `mark-detour-returned` remains callable only by return settlement. Update
   `awf_lifecycle` validation so direct public calls cannot bypass adoption memory validation or
   detour parent validation. Render and test the compatible reader is already present in the prior
   commit and every enabled path acknowledges durability before returning a body.
-- [ ] **Task 2.5: Apply operations 2-3 and commit.** Update once, to complete ADR-0161 wording,
+- [x] **Task 2.5: Apply operations 2-3 and commit.** Update once, to complete ADR-0161 wording,
   `tooling/workflow-telemetry:effort-lifecycle-and-routes` and
   `tooling/workflow-telemetry:trajectory-and-derived-effort-model`; append one Applied event with
   exactly those declaration-consecutive operations. Update `.awf/parts/workflow/chain.md`,
@@ -284,7 +284,7 @@ feat(rendering): continue workflow phases (applies 0161 batch)
 
 ## Phase 3: Adopt normalized external checkpoints
 
-- [ ] **Task 3.1: Add the failing adoption proof suite.** In
+- [x] **Task 3.1: Add the failing adoption proof suite.** In
   `tools/pi-extension-test/tests/workflow.test.ts`, add
   `// invariant: tooling/workflow-telemetry:external-adoption-boundary` on a suite covering:
   confined regular UTF-8 file; 1-MiB file, first-16-KiB header, and 512-byte line bounds; LF/CRLF;
@@ -293,14 +293,14 @@ feat(rendering): continue workflow phases (applies 0161 batch)
   and tombstone collision; request/header mismatch; unselected-route translation; catalog
   compatibility; exclusive batches; precommit failure; postcommit association failure; identical
   retry; and absence of path, filename, Next text, or content from metadata/events.
-- [ ] **Task 3.2: Implement bounded memory validation.** In the dashboard template, add helpers that
+- [x] **Task 3.2: Implement bounded memory validation.** In the dashboard template, add helpers that
   inspect from the project root without symlink traversal, require `.awf/memory/` containment and a
   regular file, perform bounded byte reads followed by strict UTF-8 decode, parse the exact header
   prefix, and scan at most 256 confined regular `.md` siblings for Effort collisions. Reject unsafe
   entries and exceeded bounds; ignore an unrelated bounded sibling only when it has no Effort
   field. Check effort directories and tombstones. Never infer from filenames or prose and never
   import another generated extension.
-- [ ] **Task 3.3: Register exclusive `awf_adopt_effort`.** Add closed input
+- [x] **Task 3.3: Register exclusive `awf_adopt_effort`.** Add closed input
   `{memoryPath, effortId, route, phase, workflow}` and generalized single-tool preflight. Re-read
   and match all normalized fields, translate route `unselected` to omitted lifecycle route,
   validate mapping compatibility, derive deterministic request/event identity from effort,
@@ -308,7 +308,7 @@ feat(rendering): continue workflow phases (applies 0161 batch)
   request, and invoke atomic adopt. Persist association after durability and then return the fixed
   body. Before commit create nothing; after commit recover by explicit effort ID and identical
   event even when custom persistence previously failed.
-- [ ] **Task 3.4: Apply operation 4 and commit.** Add
+- [x] **Task 3.4: Apply operation 4 and commit.** Add
   `tooling/workflow-telemetry:external-adoption-boundary` with `Origin: ADR-0161` and
   `Backing: test`; apply exactly operation 4. Update `templates/docs/workflow.md.tmpl`,
   `.awf/parts/agents-doc/working-memory.md`, `.awf/parts/workflow/chain.md`,
@@ -327,7 +327,7 @@ feat(rendering): adopt external checkpoints (applies 0161 batch)
 
 ## Phase 4: Add derived detours and deterministic parent return
 
-- [ ] **Task 4.1: Add the failing detour proof and fault matrix.** In
+- [x] **Task 4.1: Add the failing detour proof and fault matrix.** In
   `tools/pi-extension-test/tests/workflow.test.ts`, add
   `// invariant: tooling/workflow-telemetry:derived-detour-return` on tests for explicit child ID,
   effort/tombstone/pending collision, exact active parent/phase/start/session/trajectory/anchor,
@@ -336,13 +336,13 @@ feat(rendering): adopt external checkpoints (applies 0161 batch)
   immediately before and after terminal child durability, parent association durability, child
   return marker durability, and custom association persistence. Assert selection changes only after
   success, one logical parent association, and pending children remain non-retainable.
-- [ ] **Task 4.2: Register `awf_detour`.** Add exclusive closed input
+- [x] **Task 4.2: Register `awf_detour`.** Add exclusive closed input
   `{childEffortId, workflow}` with workflow enum initially exactly brainstorming. Validate parent
   projection and every collision. Derive child lifecycle idempotency, event, trajectory, and anchor
   IDs from child ID plus parent effort/phase start/session so retry reconstructs identical bytes.
   Invoke atomic `start-detour`, persist child association after durability, and return brainstorming
   without any parent mutation.
-- [ ] **Task 4.3: Implement the exact return state machine.** Add named template helpers
+- [x] **Task 4.3: Implement the exact return state machine.** Add named template helpers
   `detourReturnIdentity`, `findParentReturnAssociation`, and `settleDetourReturn`. Discover pending
   work by projecting the selected terminal child at `session_start`, after retrospective completion,
   and after successful active-child abandonment. The terminal child event is the commit boundary.
@@ -355,7 +355,7 @@ feat(rendering): adopt external checkpoints (applies 0161 batch)
   association ID, persist the parent custom entry, then and only then switch in-memory association.
   A failure leaves the terminal child selected and recoverable; never append trajectory resume or
   restart the parent phase.
-- [ ] **Task 4.4: Apply operation 5 and commit.** Add
+- [x] **Task 4.4: Apply operation 5 and commit.** Add
   `tooling/workflow-telemetry:derived-detour-return` with `Origin: ADR-0161` and `Backing: test`;
   apply exactly operation 5. Update `.awf/docs/parts/architecture/overview.md`,
   `.awf/docs/parts/architecture/data-flow.md`, `.awf/parts/workflow/chain.md`, and the authored
@@ -370,7 +370,7 @@ feat(rendering): add derived detour return recovery (applies 0161 batch)
 
 ## Phase 5: Bound agent-facing query results
 
-- [ ] **Task 5.1: Add the failing raw-query and byte-bound suite.** In
+- [x] **Task 5.1: Add the failing raw-query and byte-bound suite.** In
   `tools/pi-extension-test/tests/dashboard.test.ts`, feed metrics and doctor fixtures with many
   efforts, event IDs, evidence, eventless integrity, controls, POSIX/Windows/project-relative paths,
   multiline text, long Unicode, malformed canonical output, and raw stdout/stderr. Assert literal
@@ -401,7 +401,7 @@ feat(rendering): add derived detour return recovery (applies 0161 batch)
   `{"format":"awf-compact-v1","selector":"%s","truncated":%t,"displayed":{"efforts":%d,"findings":%d,"integrityCodes":%d}}`,
   at most 1024 bytes. Raw JSON, IDs/evidence, paths, stdout, and stderr must be absent while the
   overlay still retains the full private parsed object.
-- [ ] **Task 5.2: Implement allowlist-only serializers exactly.** In the dashboard template add
+- [x] **Task 5.2: Implement allowlist-only serializers exactly.** In the dashboard template add
   `sanitizeCompactText`, `fitUTF8`, `compactSelector`, `compactMetricsResult`,
   `compactDoctorResult`, and `compactQueryDetails`. Normalize CR/LF/tab and Unicode categories Cc
   and Cf to spaces and collapse `[ \\f\\v]+` to one space. Replace path tokens before sorting. A
@@ -431,7 +431,7 @@ feat(rendering): add derived detour return recovery (applies 0161 batch)
   generic `toolResult` with parsed canonical data and never include
   process output in degraded errors; degraded content is
   `awf <metrics|doctor>: unavailable (<bounded-category>)`.
-- [ ] **Task 5.3: Apply operations 6-7 and commit.** Update once and apply exactly consecutive
+- [x] **Task 5.3: Apply operations 6-7 and commit.** Update once and apply exactly consecutive
   operations 6 and 7:
   `tooling/workflow-telemetry:privacy-integrity-and-retention` and
   `tooling/workflow-telemetry:canonical-projections-and-diagnostics`. Update
@@ -446,7 +446,7 @@ fix(rendering): bound agent-facing workflow queries (applies 0161 batch)
 
 ## Phase 6: Apply Pi authority, run acceptance, and freeze
 
-- [ ] **Task 6.1: Complete exact authored Pi and documentation surfaces.** Update each remaining
+- [x] **Task 6.1: Complete exact authored Pi and documentation surfaces without rendering.** Update each remaining
   claim once to its complete ADR-0161 wording: in
   `.awf/topics/parts/rendering/pi-workflows/current-state.md`, router then dashboard claims; in
   `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, working-memory single
@@ -457,31 +457,30 @@ fix(rendering): bound agent-facing workflow queries (applies 0161 batch)
   `.awf/parts/working-with-awf/commands.md`,
   `.awf/parts/working-with-awf/config-and-overrides.md`,
   `.awf/docs/parts/architecture/overview.md`, `.awf/docs/parts/architecture/data-flow.md`, and
-  `.awf/docs/parts/testing/layout.md`. Render all outputs; do not edit `.pi/**`, rendered `docs/**`,
-  `AGENTS.md`, index, or lock directly.
-- [ ] **Task 6.2: Run final acceptance without open-ended repair.** Run `./x render`, `./x check`,
-  `go test ./internal/telemetry ./internal/catalog ./internal/project`, `./x pi-test run`,
-  `go test ./...`, and `./x gate full`, each with expected zero exit. This is the pinned Pi 0.81.1
-  fixture lane, not the release-only manual interactive Pi smoke. Verify adoption into every
-  legal mapping, investigation-to-brainstorming, start/transition/continue, nested completion and
-  abandonment return at every fault boundary, pending-return retention exclusion, exact compact
-  output bytes/details, dashboard full detail, protocol TypeScript parity, generated ownership,
-  and 100 percent Go and Pi coverage. Any nonzero result stops execution and requires this Proposed
-  plan to be amended before further implementation; Task 6.3 begins only when every command exits
-  zero without an additional unplanned commit.
-- [ ] **Task 6.3: Apply exact operations 8-12 and freeze records.** Append one final Applied event
-  with exactly, in declaration order: update
-  `rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router`; update
+  `.awf/docs/parts/testing/layout.md`. Do not render, check, or edit `.pi/**`, rendered `docs/**`,
+  `AGENTS.md`, index, or lock until the authority transaction in Task 6.2.
+- [x] **Task 6.2: Prepare the terminal authority transaction, then accept it.** In the same
+  uncommitted transaction, append one final Applied event with exactly, in declaration order:
+  update `rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router`; update
   `rendering/pi-workflows:pi-workflow-dashboard-public-contract`; update
   `rendering/guide-and-doc-templates:working-memory-single-home`; update
   `rendering/adapter-outputs:pi-workflow-dashboard-runtime`; update
-  `rendering/pi-runtime:pi-real-runtime-smoke`. Then append Implemented with the frozen digest and
-  the same terminal state sequence. Check every plan task, add actual commit IDs and final command
-  results to Notes, and flip this plan to Implemented. Run `./x render`, explicitly stage ADR,
+  `rendering/pi-runtime:pi-real-runtime-smoke`. Use the next state sequence at execution time.
+  Then append Implemented with the frozen digest, check every plan task, add actual commit IDs and
+  final command results to Notes, and flip this plan to Implemented. Run `./x render`, `./x check`,
+  `go test ./internal/telemetry ./internal/catalog ./internal/project`, `./x pi-test run`,
+  `go test ./...`, and `./x gate full`, each with expected zero exit. This is the pinned Pi 0.81.1
+  fixture lane, not the release-only manual interactive Pi smoke. Verify adoption into every legal
+  mapping, investigation-to-brainstorming, start/transition/continue, nested completion and
+  abandonment return at every fault boundary, pending-return retention exclusion, exact compact
+  output bytes/details, dashboard full detail, protocol TypeScript parity, generated ownership,
+  and 100 percent Go and Pi coverage. Any nonzero result stops execution and requires this Proposed
+  plan to be amended before further implementation.
+- [x] **Task 6.3: Stage and commit the accepted terminal transaction.** Explicitly stage ADR,
   plan, index, lock, the five claim sources, authored docs/templates, tests, and generated outputs.
   Stage exactly with
   `git add -- docs/plans/2026-07-26-agent-adopted-workflow-state-and-derived-detours.md`, then
-  `git add -u -- docs/decisions/0161-agent-adopted-workflow-state-and-derived-detours.md docs/decisions/INDEX.md .awf/awf.lock .awf/topics/parts/rendering/pi-workflows/current-state.md .awf/topics/parts/rendering/guide-and-doc-templates/current-state.md .awf/topics/parts/rendering/adapter-outputs/current-state.md .awf/topics/parts/rendering/pi-runtime/current-state.md templates/pi/awf-workflow/SKILL.md.tmpl templates/docs/workflow.md.tmpl .awf/parts/workflow/chain.md .awf/parts/agents-doc/working-memory.md .awf/parts/working-with-awf/commands.md .awf/parts/working-with-awf/config-and-overrides.md .awf/docs/parts/architecture/overview.md .awf/docs/parts/architecture/data-flow.md .awf/docs/parts/testing/layout.md .pi/skills/awf-workflow/SKILL.md docs/workflow.md docs/architecture.md docs/testing.md docs/topics/rendering/pi-workflows.md docs/topics/rendering/guide-and-doc-templates.md docs/topics/rendering/adapter-outputs.md docs/topics/rendering/pi-runtime.md docs/domains/rendering.md AGENTS.md examples/sundial/.awf/awf.lock examples/sundial/docs/workflow.md examples/sundial/.pi/skills/awf-workflow/SKILL.md`.
+  `git add -u -- docs/decisions/0161-agent-adopted-workflow-state-and-derived-detours.md docs/decisions/INDEX.md .awf/awf.lock .awf/topics/parts/rendering/pi-workflows/current-state.md .awf/topics/parts/rendering/guide-and-doc-templates/current-state.md .awf/topics/parts/rendering/adapter-outputs/current-state.md .awf/topics/parts/rendering/pi-runtime/current-state.md templates/pi/awf-workflow/SKILL.md.tmpl templates/docs/workflow.md.tmpl .awf/parts/workflow/chain.md .awf/parts/agents-doc/working-memory.md .awf/parts/working-with-awf/commands.md .awf/parts/working-with-awf/config-and-overrides.md .awf/docs/parts/architecture/overview.md .awf/docs/parts/architecture/data-flow.md .awf/docs/parts/testing/layout.md .pi/skills/awf-workflow/SKILL.md docs/workflow.md docs/working-with-awf.md docs/architecture.md docs/testing.md docs/topics/rendering/pi-workflows.md docs/topics/rendering/guide-and-doc-templates.md docs/topics/rendering/adapter-outputs.md docs/topics/rendering/pi-runtime.md docs/domains/rendering.md AGENTS.md examples/sundial/.awf/awf.lock examples/sundial/docs/workflow.md examples/sundial/.pi/skills/awf-workflow/SKILL.md`.
   If `git diff --name-only` names any other path after the final render, stop and amend this Proposed
   plan rather than broadening the staging command at execution time.
   Run `./awf check --staged` and `./x gate`, both with zero exit; commit:
@@ -515,3 +514,8 @@ feat(awf): complete workflow adoption and detours (implements 0161)
 - Protocol 2.1 prioritizes stabilization over making an old binary safely read newly written event
   kinds. The committed reader-before-writer split prevents the pinned Pi runtime from creating that
   mixed deployment.
+- Phase commits: 44065e3a (Phase 1), 7a84fd0e (Phase 2), bae8e728 (Phase 3), b75661b1
+  (Phase 4), and cbce2889 (Phase 5).
+- Final acceptance: `./x render`, `./x check`,
+  `go test ./internal/telemetry ./internal/catalog ./internal/project`, `./x pi-test run`,
+  `go test ./...`, and `./x gate full` each exited zero.

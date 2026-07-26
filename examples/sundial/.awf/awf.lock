@@ -832,9 +832,9 @@
     },
     ".pi/skills/awf-workflow/SKILL.md": {
       "templateId": "pi/awf-workflow/SKILL.md.tmpl",
-      "templateHash": "sha256:f47662249372b2c82241f034b66650a1d9e575c087552e7b8af3730abe620f51",
+      "templateHash": "sha256:b0b4da042881d106135cd5063f2a4402080495ab254607d86b85f5c23719e459",
       "configHash": "sha256:87bed15da32a1cb4d63811ee938f0e147c3aebebd933574295309847f3942f12",
-      "outputHash": "sha256:128b8acccfdf2b37d7aa7b73075d71b4d3156ffd3fc52fbb758a027a7080036e"
+      "outputHash": "sha256:cd1c6ea4fd0def35c29722aa6e8d7ad820112f86973a7223fbf94e176be7570d"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -992,9 +992,9 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:9b2d74b4d139cb029743f97df8e5a981dda744a529c9a00cd5b709894d14520a",
+      "templateHash": "sha256:25829e9ef1957ff26654bc47ebe5edd7f50b93bc7cb6f691ac5bd4d4156762f4",
       "configHash": "sha256:ce464081778601c8cc6b312f7bd736c417382727af835c90193ace37c13c2a21",
-      "outputHash": "sha256:d227149960e83740c455955d73c27654373e01122433ec51282b7021d9992fa2"
+      "outputHash": "sha256:175186c1098cc4b9a4e42589be27f6f79ad6302741ee7b3e0243a7cfc4420f80"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",

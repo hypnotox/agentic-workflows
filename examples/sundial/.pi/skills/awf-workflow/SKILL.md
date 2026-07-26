@@ -48,6 +48,6 @@ Call `awf_workflow` alone, with no sibling tool calls, and set its `skill` argum
 
 - `writing-plans`: chain; entry phase planning route promote-adr-plan
 
-Choose by the work's semantic intent, not by a filesystem path. Catalog metadata determines whether the current state may start the workflow's entry phase, transition from an allowed predecessor, or continue an allowed already-open phase. The tool validates lifecycle state, durably records that mapped effect, and only then returns the fixed pre-rendered body. Follow that returned body exactly.
+Choose by the work's semantic intent, not by a filesystem path. Catalog metadata determines whether the current state may start the workflow's entry phase, transition from an allowed predecessor, or continue an allowed already-open phase. Continuation preserves the existing phase start while explicitly replacing or clearing attribution; it never writes a same-phase transition. The tool validates lifecycle state, durably records that mapped effect, and only then returns the fixed pre-rendered body. Follow that returned body exactly.
 
 Never pass a path, template text, or workflow body to `awf_workflow`. Never read `.pi/awf-workflows/` as a substitute for the tool.

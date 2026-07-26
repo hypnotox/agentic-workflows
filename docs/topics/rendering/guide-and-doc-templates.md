@@ -71,7 +71,7 @@ Backing: test
 
 ### `invariant: working-memory-single-home`
 
-The file skeleton, ground rules, just-in-time retrieval prose, and effort-identity semantics render canonically in the workflow doc's working-memory section, whose Pi-specific sentences render behind the session-handoff signal while the identity rule renders unconditionally; the guide, the shared checkpoint partials, and the chain section point to that canonical prose rather than carrying copies of it. The boundary is canonical prose versus operational protocol: a checkpoint partial embeds the protocol steps it executes, identity confirmation and creation included, and carries no copy of the skeleton, ground rules, or retrieval prose.
+The file skeleton, ground rules, just-in-time retrieval prose, and effort-identity semantics render canonically in the workflow doc's working-memory section, whose Pi-specific sentences render behind the session-handoff signal while the identity rule renders unconditionally; the guide, shared checkpoint partials, and chain section point to that canonical prose rather than carrying copies of it. A normalized external-adoption checkpoint has exact leading `Effort:`, `Route:`, `Phase:`, `Workflow:`, and nonempty `Next:` fields before its first H2; the agent establishes and surfaces uncertain interpretation before normalizing, never infers identity from a filename or prose, and never places checkpoint path or content in durable records. The boundary is canonical prose versus operational protocol: a checkpoint partial embeds only the protocol steps it executes, including identity confirmation, adoption, and derived-detour routing, and carries no copy of the skeleton, ground rules, or retrieval prose.
 Origin: ADR-0157
-Revised-by: ADR-0160
+Revised-by: ADR-0160, ADR-0161
 Backing: test
