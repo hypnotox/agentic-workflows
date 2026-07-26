@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 )
 
 func lifecycleBaseEvents() []EventEnvelope {
@@ -611,7 +612,7 @@ func TestStartingDerivedDetourPreservesActiveParentProjection(t *testing.T) {
 	before := ProjectLifecycle(parentEventsBefore)
 	frontierBefore := currentCausalFrontier(parentEventsBefore)
 
-	childBase := LifecycleRequestBase{EffortID: "derived-child", SessionID: "child-session", Timestamp: at}
+	childBase := LifecycleRequestBase{EffortID: "derived-child", SessionID: parentBase.SessionID, Timestamp: at}
 	origin := OriginMetadata{EffortID: parentBase.EffortID, TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
 	detour := StartDetourLifecycleRequest{LifecycleRequestBase: withAction(childBase, "start-detour"), CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-phase-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
 	detour.IdempotencyKey, detour.EventID, detour.Predecessors = "child-detour-key", "child-detour-start", []string{}
@@ -645,13 +646,166 @@ func TestStartingDerivedDetourPreservesActiveParentProjection(t *testing.T) {
 	}
 }
 
+func createActiveDetourParent(t *testing.T, ledger *Ledger, effortID, sessionID, phaseStartID string) OriginMetadata {
+	t.Helper()
+	base := LifecycleRequestBase{EffortID: effortID, SessionID: sessionID, Timestamp: "2026-07-22T00:00:00Z"}
+	requests := []LifecycleRequest{
+		CreateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "create", IdempotencyKey: "parent-create-key", EventID: "parent-create", EffortID: effortID, SessionID: sessionID, Timestamp: base.Timestamp, Predecessors: []string{}}, CreationMode: "independent"},
+		RouteLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "select-route", IdempotencyKey: "parent-route-key", EventID: "parent-route", EffortID: effortID, SessionID: sessionID, Timestamp: base.Timestamp, Predecessors: []string{"parent-create"}}, Route: "direct"},
+		TrajectoryLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-trajectory", IdempotencyKey: "parent-trajectory-key", EventID: "parent-trajectory-start", EffortID: effortID, SessionID: sessionID, Timestamp: base.Timestamp, Predecessors: []string{"parent-route"}}, TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"},
+		AssociateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "associate", IdempotencyKey: "parent-association-key", EventID: "parent-association", EffortID: effortID, SessionID: sessionID, Timestamp: base.Timestamp, Predecessors: []string{"parent-trajectory-start"}}, TrajectoryID: "parent-trajectory", AssociationOrigin: "detour"},
+		StartPhaseLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-phase", IdempotencyKey: "parent-phase-key", EventID: phaseStartID, EffortID: effortID, SessionID: sessionID, Timestamp: base.Timestamp, Predecessors: []string{"parent-association"}}, Phase: "implementation"},
+	}
+	for _, request := range requests {
+		if _, err := ledger.ApplyLifecycle(context.Background(), request); err != nil {
+			t.Fatalf("create active detour parent: %v", err)
+		}
+	}
+	return OriginMetadata{EffortID: effortID, TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+}
+
+func TestStartDetourRequestAndActiveTrajectoryAnchorVariants(t *testing.T) {
+	request := &StartDetourLifecycleRequest{}
+	if got, ok := asStartDetourRequest(request); !ok || got.Action != request.Action {
+		t.Fatalf("pointer start-detour request = %#v, %v", got, ok)
+	}
+	var nilRequest *StartDetourLifecycleRequest
+	if _, ok := asStartDetourRequest(nilRequest); ok {
+		t.Fatal("nil start-detour request was accepted")
+	}
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid := StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour"}, CreationMode: "derived", Workflow: "brainstorming"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), invalid); err == nil {
+		t.Fatal("invalid start-detour request was accepted")
+	}
+	for _, test := range []struct {
+		name    string
+		kind    EventKind
+		payload any
+		anchor  string
+	}{
+		{"adopted", "effort_adopted", EffortAdoptedPayload{TrajectoryID: "trajectory", AnchorID: "anchor"}, "anchor"},
+		{"detour", "detour_started", DetourStartedPayload{TrajectoryID: "trajectory", AnchorID: "anchor"}, "anchor"},
+		{"trajectory", "trajectory_resumed", TrajectoryPayload{TrajectoryID: "trajectory", AnchorID: "anchor"}, "anchor"},
+		{"fork", "trajectory_forked", TrajectoryForkedPayload{TrajectoryID: "trajectory", ForkAnchorID: "anchor"}, "anchor"},
+		{"reopened", "effort_reopened", EffortReopenedPayload{TrajectoryID: "trajectory", AnchorID: "anchor"}, "anchor"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			payload, err := json.Marshal(test.payload)
+			if err != nil {
+				t.Fatal(err)
+			}
+			event := EventEnvelope{EventID: "event", Kind: test.kind, Payload: payload}
+			anchor, ok := activeTrajectoryAnchor([]EventEnvelope{event}, LifecycleProjection{AppliedEventIDs: []string{"event"}}, "trajectory")
+			if !ok || anchor != test.anchor {
+				t.Fatalf("active trajectory anchor = %q, %v", anchor, ok)
+			}
+		})
+	}
+	if _, ok := activeTrajectoryAnchor([]EventEnvelope{{EventID: "excluded"}}, LifecycleProjection{}, "trajectory"); ok {
+		t.Fatal("excluded trajectory event supplied an anchor")
+	}
+	if err := ledger.validateDetourReturnAssociation(EffortRead{}, EventEnvelope{}); err == nil {
+		t.Fatal("non-derived detour return was accepted")
+	}
+	child := EffortRead{Metadata: EffortMetadata{CreationMode: "derived", Origin: &OriginMetadata{EffortID: "parent"}, DetourReturn: &DetourReturnMetadata{}}}
+	if err := ledger.validateDetourReturnAssociation(child, EventEnvelope{Payload: json.RawMessage("invalid")}); err == nil {
+		t.Fatal("malformed detour return payload was accepted")
+	}
+}
+
+func TestApplyLifecycleRejectsForgedDetourParentBoundary(t *testing.T) {
+	for _, test := range []struct {
+		name   string
+		mutate func(*StartDetourLifecycleRequest)
+	}{
+		{"origin effort", func(request *StartDetourLifecycleRequest) { request.Origin.EffortID = "forged-parent" }},
+		{"origin trajectory", func(request *StartDetourLifecycleRequest) { request.Origin.TrajectoryID = "forged-trajectory" }},
+		{"origin anchor", func(request *StartDetourLifecycleRequest) { request.Origin.AnchorID = "forged-anchor" }},
+		{"return phase start", func(request *StartDetourLifecycleRequest) { request.ReturnPhaseStartEventID = "forged-phase-start" }},
+		{"parent association", func(request *StartDetourLifecycleRequest) { request.SessionID = "forged-session" }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ledger, err := NewLedger(newTestProject(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			origin := createActiveDetourParent(t, ledger, "parent", "session", "parent-phase-start")
+			request := StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour-start", EffortID: "child", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-phase-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
+			test.mutate(&request)
+			if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
+				t.Fatal("forged detour parent boundary was accepted")
+			}
+			if _, err := ledger.ReadEffort(request.EffortID); err == nil {
+				t.Fatal("forged detour child was durably created")
+			}
+		})
+	}
+}
+
+func TestApplyStartDetourReportsParentLeaseHeartbeatAndReleaseFailures(t *testing.T) {
+	newRequest := func(t *testing.T) (*Ledger, StartDetourLifecycleRequest) {
+		t.Helper()
+		ledger, err := NewLedger(newTestProject(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		origin := createActiveDetourParent(t, ledger, "parent", "session", "parent-phase-start")
+		return ledger, StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour-start", EffortID: "child", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-phase-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
+	}
+	ledger, request := newRequest(t)
+	ledger.ops.sleep = func(context.Context, time.Duration) error { return errInjected }
+	if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
+		t.Fatal("detour parent heartbeat failure was accepted")
+	}
+
+	ledger, request = newRequest(t)
+	originalRemove := ledger.ops.remove
+	ledger.ops.remove = func(path string) error {
+		if path == ledger.paths.appendLease(request.Origin.EffortID) {
+			return errInjected
+		}
+		return originalRemove(path)
+	}
+	if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
+		t.Fatal("detour parent lease release failure was accepted")
+	}
+}
+
+func TestApplyLifecycleRejectsForgedDetourReturnParentAssociation(t *testing.T) {
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin := createActiveDetourParent(t, ledger, "parent", "session", "parent-phase-start")
+	start := StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour-start", EffortID: "child", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-phase-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), start); err != nil {
+		t.Fatal(err)
+	}
+	abandon := AbandonLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "abandon", IdempotencyKey: "abandon-key", EventID: "terminal", EffortID: "child", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{"detour-start"}}, Reason: "blocked"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), abandon); err != nil {
+		t.Fatal(err)
+	}
+	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "mark-detour-returned", IdempotencyKey: "return-key", EventID: "return", EffortID: "child", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{"terminal"}}, TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-route"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err == nil {
+		t.Fatal("forged parent association event ID was accepted")
+	}
+	returned.ParentAssociationEventID = "parent-association"
+	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err != nil {
+		t.Fatalf("matching parent association was rejected: %v", err)
+	}
+}
+
 func TestProtocol21OnlyReturnIsLegalAfterDetourTerminal(t *testing.T) {
 	ledger, err := NewLedger(newTestProject(t))
 	if err != nil {
 		t.Fatal(err)
 	}
 	base := LifecycleRequestBase{EffortID: "detour-effort", SessionID: "session-id", Timestamp: "2026-07-22T00:00:00Z"}
-	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	origin := createActiveDetourParent(t, ledger, "parent", base.SessionID, "parent-start")
 	start := StartDetourLifecycleRequest{LifecycleRequestBase: withAction(base, "start-detour"), CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
 	start.IdempotencyKey, start.EventID, start.Predecessors = "start-key", "detour-start", []string{}
 	if _, err := ledger.ApplyLifecycle(context.Background(), start); err != nil {

@@ -230,6 +230,9 @@ func TestProtocol21LifecycleAlternativeCreationRetriesAreImmutable(t *testing.T)
 			if err != nil {
 				t.Fatal(err)
 			}
+			if tc.name == "detour" {
+				createActiveDetourParent(t, ledger, "parent", base.SessionID, "parent-start")
+			}
 			if result, err := ledger.ApplyLifecycle(context.Background(), tc.request); err != nil || result.Idempotent {
 				t.Fatalf("first creation = %#v, %v", result, err)
 			}

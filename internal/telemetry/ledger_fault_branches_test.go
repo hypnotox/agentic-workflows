@@ -22,8 +22,16 @@ func TestProtocol21CreationVerificationFaultsRecoverByImmutableRetry(t *testing.
 		if err != nil {
 			t.Fatal(err)
 		}
+		if _, ok := request.(StartDetourLifecycleRequest); ok {
+			createActiveDetourParent(t, ledger, origin.EffortID, "session", "parent-start")
+		}
 		originalReadDir := ledger.ops.readDir
-		ledger.ops.readDir = func(string) ([]os.DirEntry, error) { return nil, errInjected }
+		ledger.ops.readDir = func(path string) ([]os.DirEntry, error) {
+			if _, ok := request.(StartDetourLifecycleRequest); ok && path == filepath.Join(ledger.paths.effort(origin.EffortID), "sessions") {
+				return originalReadDir(path)
+			}
+			return nil, errInjected
+		}
 		if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
 			t.Fatalf("%T verification fault was hidden", request)
 		}

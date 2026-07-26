@@ -701,6 +701,9 @@ func (l *Ledger) ApplyLifecycle(ctx context.Context, request LifecycleRequest) (
 	if err != nil {
 		return AppendResult{}, err
 	}
+	if start, ok := asStartDetourRequest(request); ok {
+		return l.applyStartDetour(ctx, start, metadata, raw)
+	}
 	if creating {
 		result, createErr := l.CreateEffort(metadata, raw)
 		if createErr != nil {
@@ -735,6 +738,134 @@ func (l *Ledger) ApplyLifecycle(ctx context.Context, request LifecycleRequest) (
 		return AppendResult{}, releaseErr
 	}
 	return result, nil
+}
+
+func asStartDetourRequest(request LifecycleRequest) (StartDetourLifecycleRequest, bool) {
+	switch typed := request.(type) {
+	case StartDetourLifecycleRequest:
+		return typed, true
+	case *StartDetourLifecycleRequest:
+		if typed != nil {
+			return *typed, true
+		}
+	}
+	return StartDetourLifecycleRequest{}, false
+}
+
+// applyStartDetour validates the parent while its append lease is held, so a
+// newly durable child cannot claim a parent boundary that was never current.
+// An existing identical child remains a retry even after its parent advances.
+func (l *Ledger) applyStartDetour(ctx context.Context, request StartDetourLifecycleRequest, metadata EffortMetadata, raw json.RawMessage) (AppendResult, error) {
+	event, err := ValidateEvent(raw)
+	if err != nil {
+		return AppendResult{}, err
+	}
+	if retry, retryErr := l.identicalCreation(metadata, event, raw); retryErr != nil {
+		return AppendResult{}, retryErr
+	} else if retry {
+		return l.verifyLifecycleResult(AppendResult{Event: event, Idempotent: true})
+	}
+	leasePath := l.paths.appendLease(request.Origin.EffortID)
+	nonce, err := l.acquireLease(ctx, leasePath)
+	if err != nil {
+		return AppendResult{}, err
+	}
+	stopHeartbeat, heartbeatDone := l.startHeartbeat(ctx, leasePath, nonce)
+	result, operationErr := func() (AppendResult, error) {
+		// A concurrent creator may have completed while this caller waited for
+		// the parent lease. Preserve its idempotent retry semantics.
+		if retry, retryErr := l.identicalCreation(metadata, event, raw); retryErr != nil { // coverage-ignore: only another creator can commit the same child while this caller waits on the parent lease
+			return AppendResult{}, retryErr
+		} else if retry { // coverage-ignore: only another creator can commit the same child while this caller waits on the parent lease
+			return AppendResult{Event: event, Idempotent: true}, nil
+		}
+		if err := l.validateDetourParent(request); err != nil {
+			return AppendResult{}, err
+		}
+		return l.CreateEffort(metadata, raw)
+	}()
+	heartbeatErr := finishHeartbeat(stopHeartbeat, heartbeatDone)
+	releaseErr := l.releaseLease(leasePath, nonce)
+	if operationErr != nil {
+		return AppendResult{}, operationErr
+	}
+	if heartbeatErr != nil { // coverage-ignore: a child creation reports its own heartbeat failure before a later parent heartbeat can be observed here
+		return AppendResult{}, heartbeatErr
+	}
+	if releaseErr != nil {
+		return AppendResult{}, releaseErr
+	}
+	return l.verifyLifecycleResult(result)
+}
+
+func (l *Ledger) validateDetourParent(request StartDetourLifecycleRequest) error {
+	parent, err := l.ReadEffort(request.Origin.EffortID)
+	if err != nil {
+		return fmt.Errorf("read detour parent: %w", err)
+	}
+	current := projectLifecycleFromRead(parent)
+	if current.State != EffortActive || current.ActiveTrajectoryID != request.Origin.TrajectoryID {
+		return errors.New("detour parent is not active on the claimed trajectory")
+	}
+	if anchor, ok := activeTrajectoryAnchor(parent.Events, current, request.Origin.TrajectoryID); !ok || anchor != request.Origin.AnchorID {
+		return errors.New("detour parent anchor does not match the claimed origin")
+	}
+	phase, ok := current.OpenPhases[request.ReturnPhaseStartEventID]
+	if len(current.OpenPhases) != 1 || !ok || phase.Phase != request.ReturnPhase || phase.StartEventID != request.ReturnPhaseStartEventID {
+		return errors.New("detour parent return phase is not open")
+	}
+	association, ok := current.Associations[request.SessionID]
+	if !ok || association.EffortID != request.Origin.EffortID || association.SessionID != request.SessionID || association.TrajectoryID != request.Origin.TrajectoryID {
+		return errors.New("detour parent session association is invalid")
+	}
+	return nil
+}
+
+func activeTrajectoryAnchor(events []EventEnvelope, projection LifecycleProjection, trajectoryID string) (string, bool) {
+	applied := make(map[string]bool, len(projection.AppliedEventIDs))
+	for _, eventID := range projection.AppliedEventIDs {
+		applied[eventID] = true
+	}
+	order, _ := BuildCausalOrder(events)
+	anchor := ""
+	for _, event := range order.ordered(events) {
+		if !applied[event.EventID] {
+			continue
+		}
+		switch event.Kind {
+		case "effort_adopted":
+			var payload EffortAdoptedPayload
+			_ = json.Unmarshal(event.Payload, &payload)
+			if payload.TrajectoryID == trajectoryID {
+				anchor = payload.AnchorID
+			}
+		case "detour_started":
+			var payload DetourStartedPayload
+			_ = json.Unmarshal(event.Payload, &payload)
+			if payload.TrajectoryID == trajectoryID {
+				anchor = payload.AnchorID
+			}
+		case "trajectory_started", "trajectory_resumed", "trajectory_closed":
+			var payload TrajectoryPayload
+			_ = json.Unmarshal(event.Payload, &payload)
+			if payload.TrajectoryID == trajectoryID {
+				anchor = payload.AnchorID
+			}
+		case "trajectory_forked":
+			var payload TrajectoryForkedPayload
+			_ = json.Unmarshal(event.Payload, &payload)
+			if payload.TrajectoryID == trajectoryID {
+				anchor = payload.ForkAnchorID
+			}
+		case "effort_reopened":
+			var payload EffortReopenedPayload
+			_ = json.Unmarshal(event.Payload, &payload)
+			if payload.TrajectoryID == trajectoryID {
+				anchor = payload.AnchorID
+			}
+		}
+	}
+	return anchor, anchor != ""
 }
 
 func (l *Ledger) verifyLifecycleResult(result AppendResult) (AppendResult, error) {
@@ -776,6 +907,11 @@ func (l *Ledger) applyLifecycleUnderLease(ctx context.Context, event EventEnvelo
 			return AppendResult{}, fmt.Errorf("lifecycle request does not observe the current causal frontier: got %v, want %v", predecessors, frontier)
 		}
 	}
+	if event.Kind == "detour_returned" {
+		if err := l.validateDetourReturnAssociation(read, event); err != nil {
+			return AppendResult{}, err
+		}
+	}
 	current := projectLifecycleFromRead(read)
 	if event.TrajectoryID == "" {
 		if association, exists := current.Associations[event.SessionID]; exists {
@@ -801,6 +937,34 @@ func (l *Ledger) applyLifecycleUnderLease(ctx context.Context, event EventEnvelo
 		}
 	}
 	return l.Append(ctx, raw)
+}
+
+func (l *Ledger) validateDetourReturnAssociation(child EffortRead, event EventEnvelope) error {
+	if child.Metadata.CreationMode != "derived" || child.Metadata.Origin == nil || child.Metadata.DetourReturn == nil {
+		return errors.New("detour return requires derived detour metadata")
+	}
+	var payload DetourReturnedPayload
+	if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: lifecycle request validation proved the payload
+		return err
+	}
+	parent, err := l.ReadEffort(child.Metadata.Origin.EffortID)
+	if err != nil {
+		return fmt.Errorf("read detour return parent: %w", err)
+	}
+	for _, record := range parent.Records {
+		if record.Event == nil || !record.Applied || record.Event.EventID != payload.ParentAssociationEventID || record.Event.Kind != "session_associated" {
+			continue
+		}
+		var association SessionAssociatedPayload
+		if err := json.Unmarshal(record.Event.Payload, &association); err != nil { // coverage-ignore: applied ledger events have validated payloads
+			return err
+		}
+		origin, returned := child.Metadata.Origin, child.Metadata.DetourReturn
+		if record.Event.EffortID == origin.EffortID && record.Event.SessionID == returned.SessionID && association.TrajectoryID == origin.TrajectoryID && association.AssociationOrigin == "detour" {
+			return nil
+		}
+	}
+	return errors.New("detour return parent association is not a matching applied parent event")
 }
 
 func currentCausalFrontier(events []EventEnvelope) []string {
