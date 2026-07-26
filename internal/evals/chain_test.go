@@ -387,18 +387,6 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		t.Errorf("retrospective missing the working-memory deletion step")
 	}
 
-	// No rendered site may presuppose a runtime-assigned effort ID: the old
-	// placeholder and the over-broad prohibition are unsatisfiable wherever no
-	// runtime assigns one (ADR-0160).
-	for _, name := range append(append([]string{}, routineCheckpointSkills...), approvalCheckpointSkills...) {
-		body := read(t, piSkillPath(name))
-		for _, banned := range []string{"<active-effort-id>", "never invent or infer an effort ID", "never infer the ID"} {
-			if strings.Contains(body, banned) {
-				t.Errorf("skill %q still presupposes a runtime-assigned effort ID via %q", name, banned)
-			}
-		}
-	}
-
 	// The brainstorming template carries the identity rule in its own prose,
 	// ahead of the approval protocol. assertOrderedBody scans strictly forward
 	// from the approval header, so an ordered-list phrase would be satisfied by
@@ -423,6 +411,32 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		continuation := strings.Index(body, "Continue through the target-native successor without claiming session replacement")
 		if notice < 0 || continuation < notice {
 			t.Errorf("non-Pi skill %q does not continue target-natively after the continuity notice", name)
+		}
+	}
+
+	// No rendered skill body on any target may presuppose a runtime-assigned
+	// effort ID. The sweep covers every rendered skill on both renders rather
+	// than the checkpoint-carrying lists: the old forms are unsatisfiable
+	// wherever no runtime assigns an ID, whichever skill carries them, and a
+	// target-conditional branch is exactly where such a form hides (ADR-0160).
+	bodies, err := os.ReadDir(filepath.Join(root, ".pi", "awf-workflows"))
+	if err != nil {
+		t.Fatalf("list rendered pi workflow bodies: %v", err)
+	}
+	for _, entry := range bodies {
+		name := strings.TrimSuffix(entry.Name(), ".md")
+		if name == entry.Name() {
+			continue
+		}
+		for label, path := range map[string]string{
+			"pi/" + name:     filepath.Join(root, ".pi", "awf-workflows", entry.Name()),
+			"claude/" + name: skillPath(nonPiRoot, name),
+		} {
+			for _, banned := range []string{"<active-effort-id>", "never invent or infer an effort ID", "never infer the ID"} {
+				if strings.Contains(read(t, path), banned) {
+					t.Errorf("skill %q presupposes a runtime-assigned effort ID via %q", label, banned)
+				}
+			}
 		}
 	}
 }
