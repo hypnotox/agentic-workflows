@@ -46,7 +46,7 @@ diagnostics, cohorts, and retention with one bounded compatibility notice. The f
 fixture advertises 2.1 because the generated dashboard rejects a 2.0 runtime before registration, and
 Phase-1 dashboard tests prove all four new writer actions remain disabled after the compatible reader
 is published. A repository-resident preflight test refuses automatic cleanup when any protocol-1
-effort exists and proves it changes no resident evidence. Dashboard tests cover confined owner-only
+effort exists and proves it changes no resident evidence. Dashboard tests cover exact compact non-JSON metrics and doctor line grammar, allowlisted details, path/control sanitization, deterministic ordering, dashboard-private canonical retention, malformed-response degradation, and UTF-8 byte ceilings before covering confined owner-only
 storage, leases, tombstones, serialized drain, explicit versus passive failure, active-branch
 association, bounded provisional creation/discard/overflow/graceful/crash behavior, ordered retry recovery, structured replacement resume and cancellation, trajectory navigation, closed lifecycle schemas, bootstrap authority,
 PATH-to-advertised-runner fallback, launcher project-root environment, bounded dual-failure

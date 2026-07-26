@@ -346,3 +346,4 @@ small deterministic summary that cannot grow with ledger history or global integ
 - 2026-07-26: Applied; state-sequence: 52; operations: update `tooling/workflow-telemetry:effort-lifecycle-and-routes`, update `tooling/workflow-telemetry:trajectory-and-derived-effort-model`
 - 2026-07-26: Applied; state-sequence: 53; operations: add `tooling/workflow-telemetry:external-adoption-boundary`
 - 2026-07-26: Applied; state-sequence: 54; operations: add `tooling/workflow-telemetry:derived-detour-return`
+- 2026-07-26: Applied; state-sequence: 55; operations: update `tooling/workflow-telemetry:privacy-integrity-and-retention`, update `tooling/workflow-telemetry:canonical-projections-and-diagnostics`

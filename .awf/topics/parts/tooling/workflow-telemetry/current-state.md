@@ -37,9 +37,9 @@ Backing: test
 
 ### `invariant: privacy-integrity-and-retention`
 
-Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.
+Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Pi invokes canonical JSON only as private dashboard transport: `awf_metrics` and `awf_doctor` construct non-JSON allowlist-only summaries with no raw JSON, process output, paths, event IDs, evidence, or per-scope integrity. They sanitize controls and path-shaped tokens before deterministic ordering, UTF-8-safely cap selectors at 256 bytes, explanations and next actions at 512 bytes, tool content at 4096 bytes, and compact JSON details at 1024 bytes. Truncation, sanitization, omitted canonical detail, or cardinality limits produce exactly one `details: /awf-dashboard` footer; malformed canonical results expose only a bounded degraded category. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.
 Origin: ADR-0146
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0161
 Backing: test
 
 ### `invariant: anchor-claims-and-location-metadata`
@@ -50,7 +50,7 @@ Backing: test
 
 ### `invariant: canonical-projections-and-diagnostics`
 
-Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, and expose stable exact and heuristic findings with an owning `effortId`, thresholds, baselines, confidence, and typed remediation. Repair and waiver inputs re-resolve that effort-owned finding and require eligible reason, matching evidence and scope, and the current nonempty causal frontier; no projection derives an opaque health score.
+Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, and expose stable exact and heuristic findings with an owning `effortId`, thresholds, baselines, confidence, and typed remediation. The dashboard retains the complete parsed canonical objects privately for overlay inspection, while query-tool details contain only the versioned `awf-compact-v1` marker, normalized selector, truncation flag, and final displayed effort, finding, and integrity-code counts in fixed insertion order. Metrics sorts effort rows by ID and displays at most eight; doctor sorts severity, rule, integrity, and findings deterministically and displays at most five findings. Repair and waiver inputs re-resolve that effort-owned finding and require eligible reason, matching evidence and scope, and the current nonempty causal frontier; no projection derives an opaque health score.
 Origin: ADR-0146
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0161
 Backing: test
