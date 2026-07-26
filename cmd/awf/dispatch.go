@@ -83,8 +83,10 @@ func runCheckGroup(c *cmdCtx) error {
 		return runProseGate(c.root, c.stdout)
 	case "memory":
 		return runMemoryGate(c.root, c.stdout)
-	default: // "commit"
+	case "commit":
 		return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
+	default: // coverage-ignore: resolve admits only a declared child, so an unhandled name means a new clispec entry shipped without a dispatch arm
+		return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", c.sub, checkSubcommands())}
 	}
 }
 

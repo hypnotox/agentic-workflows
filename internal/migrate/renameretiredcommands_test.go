@@ -104,6 +104,25 @@ func TestRenameRetiredCommandsToleratesNonStringVars(t *testing.T) {
 	}
 }
 
+// A var written as a YAML alias decodes to a Go string while its node is an
+// alias, so an editor that insisted on a scalar would abort the upgrade and
+// strand the tree below the current schema generation. ADR-0159 Decision 8 says
+// an unrecognized value is left untouched, not that it refuses.
+func TestRenameRetiredCommandsLeavesAliasedVarAlone(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	src := "anchors:\n  a: &cmd ./awf prose-gate\nvars:\n  proseGateCmd: *cmd\n  memoryGateCmd: ./awf memory-gate\n"
+	testsupport.WriteFile(t, cfg, src)
+	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+		t.Fatalf("an aliased var must not fail the upgrade: %v", err)
+	}
+	out, _ := os.ReadFile(cfg)
+	want := "anchors:\n  a: &cmd ./awf prose-gate\nvars:\n  proseGateCmd: *cmd\n  memoryGateCmd: ./awf check memory\n"
+	if string(out) != want {
+		t.Errorf("aliased var handling:\n got %q\nwant %q", out, want)
+	}
+}
+
 func TestRenameRetiredCommandsAbsentConfig(t *testing.T) {
 	if err := applyRenameRetiredCommands(t.TempDir(), io.Discard); err != nil {
 		t.Errorf("applyRenameRetiredCommands with no .awf/config.yaml should be a no-op, got %v", err)

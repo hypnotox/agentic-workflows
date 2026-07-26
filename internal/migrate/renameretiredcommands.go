@@ -83,7 +83,7 @@ func applyRenameRetiredCommands(root string, _ io.Writer) error {
 					continue
 				}
 				edited, err := config.SetMappingString(out, "vars", k, next)
-				if err != nil { // coverage-ignore: the value just decoded as a string under a mapping vars key, so SetMappingString cannot error here
+				if err != nil { // coverage-ignore: SetMappingString is total apart from its own parse, and src parsed as YAML a few lines above
 					return nil, err
 				}
 				out = edited

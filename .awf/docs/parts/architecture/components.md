@@ -9,8 +9,9 @@
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
-  positional bounds, three-valued gating classification, runner-forwarding disposition, help text,
-  and (for `new`) its subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
+  positional bounds, four-valued gating classification, current-state guard exemption,
+  runner-forwarding disposition, help text, and (for a group like `new` or `check`) its
+  subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
   to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
   from the same metadata. Excluded runner commands carry their user-facing safety reason.
 - **`cmd/awf-dashboard-launcher/`**: immutable cached launcher for repository dashboard development. It verifies adjacent metadata, executable, launcher, and policy digests, accepts only the public read shapes, requires `AWF_DASHBOARD_PROJECT_ROOT`, and replaces itself with the sibling awf binary's private `dashboard-read` translation.
@@ -25,8 +26,8 @@
   (`MarshalSkeleton`) and typed mutation (`SetArrayMember`, `SetArray`, `SetMappingScalar`,
   `SetMappingInteger`, and `SetMappingString`, comment-preserving `yaml.Node` round trips) behind
   one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The
-  `currentState` block configures
-  strict topic validation, coverage/fan-out policy, and the positive default-20 non-failing
+  `currentState` block configures strict topic validation, coverage/fan-out policy, and the
+  positive default-20 non-failing
   `maxClaimsPerTopic` topic-size advisory; it is the authority the current-state model reads. The
   legacy `invariants` block it replaced was dropped at the project-atomic cutover.
   `IsSingletonKind` classifies off `internal/catalog`'s `SingletonKinds()` (ADR-0043, ADR-0061).

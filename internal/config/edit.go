@@ -213,26 +213,29 @@ func SetMappingInteger(src []byte, key, child string, value int) ([]byte, error)
 // retired-command value migration (ADR-0159 Decision 8): SeedVarKey writes a
 // string only into an *absent* key, so until now nothing rewrote a present one.
 // The scalar's style is preserved, so a quoted value stays quoted and the diff
-// carries only the value change. An absent key or an absent child is a no-op
-// (returns src unchanged), so a schema migration can re-run safely.
+// carries only the value change.
+//
+// Every shape it does not own is a no-op returning src unchanged: an absent key,
+// a non-mapping parent, an absent child, and a child that is not a plain scalar
+// (an alias node or a nested structure). That is deliberately weaker than the
+// erroring SetMappingScalar/SetMappingInteger siblings, because this editor
+// exists for the ADR-0159 value migration, whose contract is that any value it
+// does not recognize is left untouched. An alias is the case that matters:
+// `proseGateCmd: *cmd` decodes to a Go string while its node is an alias, so
+// erroring here would abort awf upgrade on a legal config and strand the tree
+// below the current schema generation. Being total also keeps a re-run safe.
 func SetMappingString(src []byte, key, child, value string) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {
 		return nil, err
 	}
 	val, _ := mapValue(root, key)
-	if val == nil {
+	if val == nil || val.Kind != yaml.MappingNode {
 		return src, nil
-	}
-	if val.Kind != yaml.MappingNode {
-		return nil, fmt.Errorf("config: %s must be a mapping", key)
 	}
 	current, _ := mapValue(val, child)
-	if current == nil {
+	if current == nil || current.Kind != yaml.ScalarNode {
 		return src, nil
-	}
-	if current.Kind != yaml.ScalarNode {
-		return nil, fmt.Errorf("config: %s.%s must be a string scalar", key, child)
 	}
 	current.Tag, current.Value = "!!str", value
 	return encode(doc)

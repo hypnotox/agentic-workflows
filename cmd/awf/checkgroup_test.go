@@ -62,6 +62,28 @@ func TestCheckChildrenRejectStaged(t *testing.T) {
 	}
 }
 
+// guardProjectState's staged predicate carries the same `sub == ""` narrowing as
+// the driver's gate switch, and this is what pins it. Without the narrowing a
+// child invoked with --staged sends the guard down its staged path, which reads
+// the git index: in a non-git adopted tree that fails with a snapshot error at
+// exit 1 before the handler can produce the bare-form-only diagnostic. A git-backed
+// fixture cannot tell the two apart, which is why this one deliberately is not.
+func TestCheckChildStagedRejectionPrecedesStateGuard(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, checkYAML)
+	if err := initializeProject(root, io.Discard); err != nil {
+		t.Fatalf("render: %v", err)
+	}
+	var out, errb bytes.Buffer
+	code := runAt(t, root, []string{"awf", "check", "drift", "--staged"}, &out, &errb)
+	if code != 2 {
+		t.Fatalf("exit = %d, want 2 (CLI misuse); stderr=%q", code, errb.String())
+	}
+	if !strings.Contains(errb.String(), "--staged applies to the bare form only") {
+		t.Errorf("diagnostic = %q, want the bare-form-only message, not a git failure", errb.String())
+	}
+}
+
 // `awf check --staged drift` puts the subcommand after the flag, so resolve never
 // sees it as a child and it arrives as a positional. That earns the ordering
 // message, not the unknown-subcommand one.
@@ -134,7 +156,9 @@ func aheadSchemaGitProject(t *testing.T) string {
 
 // The per-child gating property: `check prose` and `check memory` resolve to
 // Ungated under a Gated parent, so they run against a project whose lock is
-// behind this binary where bare `check` refuses.
+// behind this binary where bare `check` refuses. This is the half of the claim
+// the driver owns; the clispec resolver's half is proved in that package.
+// invariant: tooling/cli:group-child-gating-honored
 func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
 	for _, sub := range []string{"prose", "memory"} {
 		t.Run(sub, func(t *testing.T) {

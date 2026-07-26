@@ -187,8 +187,11 @@ func TestSetMappingString(t *testing.T) {
 		{"preserves the quoting style", "vars:\n  gateCmd: \"./x gate\"\n", "vars:\n  gateCmd: \"./x verify\"\n", false},
 		{"absent key is a no-op", "prefix: x\n", "prefix: x\n", false},
 		{"absent child is a no-op", "vars:\n  other: v\n", "vars:\n  other: v\n", false},
-		{"rejects non-mapping", "vars: nope\n", "", true},
-		{"rejects non-scalar child", "vars:\n  gateCmd: [a]\n", "", true},
+		{"non-mapping parent is a no-op", "vars: nope\n", "vars: nope\n", false},
+		{"non-scalar child is a no-op", "vars:\n  gateCmd: [a]\n", "vars:\n  gateCmd: [a]\n", false},
+		// An alias decodes to a string but is not a scalar node; rewriting it would
+		// have to edit the anchor, so it is left alone rather than erroring.
+		{"aliased child is a no-op", "anchors:\n  a: &c ./x gate\nvars:\n  gateCmd: *c\n", "anchors:\n  a: &c ./x gate\nvars:\n  gateCmd: *c\n", false},
 		{"rejects malformed", "vars: [bad\n", "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
