@@ -127,13 +127,13 @@ func TestDispatchCommitGate(t *testing.T) {
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "commit-gate", writeMsg(t, "feat: via dispatch\n")}, &out, &errb); code != 0 {
-		t.Fatalf("dispatch commit-gate should accept a clean subject: code=%d err=%s", code, errb.String())
+	if code := run([]string{"awf", "check", "commit", writeMsg(t, "feat: via dispatch\n")}, &out, &errb); code != 0 {
+		t.Fatalf("dispatch check commit should accept a clean subject: code=%d err=%s", code, errb.String())
 	}
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "commit-gate", writeMsg(t, "nope not conventional\n")}, &out, &errb); code == 0 {
-		t.Fatal("dispatch commit-gate should block a non-conforming subject")
+	if code := run([]string{"awf", "check", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code == 0 {
+		t.Fatal("dispatch check commit should block a non-conforming subject")
 	}
 }
 
@@ -243,7 +243,7 @@ func TestRunCommitGateProjectOpenError(t *testing.T) {
 	bare := t.TempDir()
 	var out bytes.Buffer
 	if err := runCommitGate(bare, writeMsg(t, "feat: needs a project\n"), nil, &out); err == nil {
-		t.Fatal("commit-gate outside an awf project must error")
+		t.Fatal("check commit outside an awf project must error")
 	}
 	// A git-generated subject reaches project.Open too, because the citation scan
 	// sits above the subject exemption (ADR-0158 Decision 6). This is the accepted

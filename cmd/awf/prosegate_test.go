@@ -93,7 +93,7 @@ func TestProseGateClean(t *testing.T) {
 	if err := runProseGate(root, &out); err != nil {
 		t.Fatalf("clean: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "prose-gate: clean") {
+	if !strings.Contains(out.String(), "check prose: clean") {
 		t.Errorf("clean: output %q", out.String())
 	}
 }
@@ -113,7 +113,7 @@ func TestProseGateReportsSkippedBinaries(t *testing.T) {
 	if first < 0 || second < 0 || first > second {
 		t.Errorf("skipped binary paths must be printed in sorted order: %q", text)
 	}
-	if !strings.Contains(text, "prose-gate: clean") {
+	if !strings.Contains(text, "check prose: clean") {
 		t.Errorf("clean output missing after binary reports: %q", text)
 	}
 }
@@ -128,7 +128,7 @@ func TestProseGateValidExemptionPermits(t *testing.T) {
 	if err := runProseGate(root, &out); err != nil {
 		t.Fatalf("valid exemption: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "prose-gate: clean") {
+	if !strings.Contains(out.String(), "check prose: clean") {
 		t.Errorf("valid exemption: output %q", out.String())
 	}
 }
@@ -211,10 +211,10 @@ func TestProseGateDispatch(t *testing.T) {
 		map[string]string{"a.md": "plain ascii\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb strings.Builder
-	if code := run([]string{"awf", "prose-gate"}, &out, &errb); code != 0 {
-		t.Fatalf("prose-gate exited %d: %s", code, errb.String())
+	if code := run([]string{"awf", "check", "prose"}, &out, &errb); code != 0 {
+		t.Fatalf("check prose exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "prose-gate: clean") {
+	if !strings.Contains(out.String(), "check prose: clean") {
 		t.Errorf("dispatch: output %q", out.String())
 	}
 }

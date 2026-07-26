@@ -309,7 +309,7 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `commitScopeList` | the allowed commit-scope names, comma-separated |
 | `commitScopeTable` | a markdown table of scope names and meanings |
 | `commitScopeSentence` | a one-sentence statement of the allowed scopes |
-| `gatedCommands` | the backticked, comma-separated list of binary-version-gated commands |
+| `gatedCommands` | the backticked, comma-separated list of binary-version-gated top-level commands, followed by an `except` clause naming the group children that stay ungated |
 | `prefix` | the project's artifact prefix |
 | `gateCmd` | the configured pre-commit gate command |
 | `checkCmd` | the configured drift-check command |

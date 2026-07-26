@@ -108,17 +108,20 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// A committed current-state journal or attestation makes ordinary project
 	// commands non-operational; the guard refuses them before gating so no state
 	// is reachable without protection (Plan 2 Task 3.3).
-	if err := guardProjectState(cwd, top, inv); err != nil {
+	if err := guardProjectState(cwd, cmd, top, sub, inv); err != nil {
 		return dispatchErr(stderr, err)
 	}
 	// The driver gates every Gated command before its handler; config/context/topic/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
-	// Gating is read from top (the top-level command), not the resolved child: a
-	// group's children never set Gating, so a future Gated group must gate from
-	// its top-level node rather than silently inherit a child's Ungated zero value.
-	if top.Gating == clispec.Gated {
+	// Gating resolves from the child, falling back to the parent: a child that
+	// declares nothing inherits, while one that declares Ungated under a Gated
+	// parent lowers it deliberately, which is how `check prose|memory|commit`
+	// stay cheap enough for a hook to invoke unconditionally (ADR-0159).
+	if clispec.ResolvedGating(top, cmd) == clispec.Gated {
 		gateFn := gate
-		if top.Name == "check" && inv.bools["--staged"] {
+		// --staged is bare-check only, so the staged gate can never be selected
+		// by a child; the handler rejects the flag on one outright.
+		if top.Name == "check" && sub == "" && inv.bools["--staged"] {
 			gateFn = gateStaged
 		}
 		if err := gateFn(cwd); err != nil {
@@ -135,8 +138,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 }
 
 // guardProjectState enforces the current-state upgrade command-state matrix.
-// Help, version, changelog, and the read-only init descriptor query bypass it
-// outright; outside an adopted tree it is
+// Exemption is the resolved command's StateExempt property, not a name list, so
+// a group child carries it independently of its parent: `check prose`, `check
+// memory`, and `check commit` are exempt while bare `check` is not, which is
+// what keeps a commit-msg hook working during a committed journal or an
+// attested lock (ADR-0159 Decision 5). The read-only init descriptor query
+// bypasses it too; outside an adopted tree it is
 // a no-op so config/context/topic keep their static fallback. Inside a tree:
 //   - a valid journal permits only `awf upgrade --recover`; every other command
 //     refuses with a run-recover diagnostic;
@@ -147,15 +154,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 //     consume-the-attestation diagnostic; a would-be recovery with no journal is
 //     refused;
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
-func guardProjectState(root string, top clispec.Command, inv invocation) error {
-	switch top.Name {
-	case "version", "changelog", "commit-gate", "prose-gate", "memory-gate":
+func guardProjectState(root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
+	if cmd.StateExempt {
 		return nil
 	}
 	if top.Name == "init" && inv.bools["--describe"] {
 		return nil
 	}
-	staged := top.Name == "check" && inv.bools["--staged"]
+	staged := top.Name == "check" && sub == "" && inv.bools["--staged"]
 	present, journal, journalFound, lock, found, loadErr, err := projectGuardState(root, staged)
 	if err != nil {
 		return err

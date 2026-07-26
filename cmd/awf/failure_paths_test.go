@@ -93,7 +93,7 @@ func TestGateCorruptLockWithoutConfigLayout(t *testing.T) {
 
 func TestGatedCommandsRefuseCorruptLock(t *testing.T) {
 	for variant := range corruptions {
-		for _, cmd := range []string{"render", "check", "invariants", "audit", "list"} {
+		for _, cmd := range []string{"render", "check", "audit", "list"} {
 			t.Run(variant+"/"+cmd, func(t *testing.T) {
 				root, want := corruptLock(t, variant)
 				var out, errb bytes.Buffer

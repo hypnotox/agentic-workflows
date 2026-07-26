@@ -19,11 +19,11 @@ import (
 func runMemoryGate(root string, stdout io.Writer) error {
 	tree, err := snapshot.IndexTree(root)
 	if err != nil {
-		return fmt.Errorf("memory-gate: cannot read staged files: %w", err)
+		return fmt.Errorf("check memory: cannot read staged files: %w", err)
 	}
 	stagedConfig, ok := tree.Lookup(".awf/config.yaml")
 	if !ok {
-		return errors.New("memory-gate: staged snapshot has no .awf/config.yaml")
+		return errors.New("check memory: staged snapshot has no .awf/config.yaml")
 	}
 	cfg, err := config.Parse(config.RootDir(root), stagedConfig.Bytes)
 	if err != nil {
@@ -56,8 +56,8 @@ func runMemoryGate(root string, stdout io.Writer) error {
 		fmt.Fprintln(stdout, memorycite.Format(f))
 	}
 	if len(findings) > 0 {
-		return errors.New("memory-gate: name the working-memory file separately from the prefix or use the placeholder form, or exempt the path in memoryCite.exemptions")
+		return errors.New("check memory: name the working-memory file separately from the prefix or use the placeholder form, or exempt the path in memoryCite.exemptions")
 	}
-	fmt.Fprintln(stdout, "memory-gate: clean")
+	fmt.Fprintln(stdout, "check memory: clean")
 	return nil
 }

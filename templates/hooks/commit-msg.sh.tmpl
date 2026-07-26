@@ -3,4 +3,4 @@
 # into a hook setup you own, e.g. a .git/hooks/commit-msg stub containing:
 #   exec bash .awf/hooks/commit-msg.sh "$@"
 set -euo pipefail
-{{ with .vars.commitGateCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} commit-gate{{ end }} "$1"
+{{ with .vars.commitGateCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} check commit{{ end }} "$1"

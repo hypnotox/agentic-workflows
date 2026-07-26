@@ -31,7 +31,7 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 		raw, err = io.ReadAll(stdin)
 	}
 	if err != nil {
-		return fmt.Errorf("commit-gate: read message: %w", err)
+		return fmt.Errorf("check commit: read message: %w", err)
 	}
 	subject := cleanCommitSubject(string(raw))
 	// An empty subject aborts the commit in git itself, so nothing is recorded
@@ -41,7 +41,7 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 	}
 	p, err := project.Open(root)
 	if err != nil {
-		return fmt.Errorf("commit-gate: %w", err)
+		return fmt.Errorf("check commit: %w", err)
 	}
 	if p.Cfg.MemoryCite != nil && p.Cfg.MemoryCite.Enabled {
 		// Scan the cleaned message, never the raw bytes: `git commit -v` appends
@@ -49,10 +49,10 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 		// text git itself discards.
 		refs := memorycite.ScanText("commit message", []byte(cleanCommitBody(string(raw))))
 		for _, r := range refs {
-			fmt.Fprintf(stdout, "commit-gate: %s line %d names the working-memory file %q\n", r.Path, r.Line, r.Segment)
+			fmt.Fprintf(stdout, "check commit: %s line %d names the working-memory file %q\n", r.Path, r.Line, r.Segment)
 		}
 		if len(refs) > 0 {
-			return errors.New("commit-gate: a commit message must not name a specific working-memory file; name it separately from the prefix, or write the segment as an angle-bracket placeholder")
+			return errors.New("check commit: a commit message must not name a specific working-memory file; name it separately from the prefix, or write the segment as an angle-bracket placeholder")
 		}
 	}
 	// A git-generated merge or autosquash subject is exempt from the Conventional
@@ -66,9 +66,9 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 		return nil
 	}
 	for _, f := range findings {
-		fmt.Fprintf(stdout, "commit-gate: %s\n", f.Detail)
+		fmt.Fprintf(stdout, "check commit: %s\n", f.Detail)
 	}
-	return fmt.Errorf("commit-gate: rejected %q", subject)
+	return fmt.Errorf("check commit: rejected %q", subject)
 }
 
 // cleanCommitLines mirrors git's default commit.cleanup=strip: it normalizes

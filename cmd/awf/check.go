@@ -61,6 +61,56 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 	return fmt.Errorf("awf check: %d drift(s), %d current-state issue(s)", len(drift), len(current))
 }
 
+// runCheckDrift is the `awf check drift` entry point: the drift half of bare
+// check, including the config-tree hygiene sweep that p.Check() performs. It
+// prints neither the advisory notes nor the version-ahead note; ADR-0159
+// Decision 2 keeps both on the bare form, which is the only one that owns
+// project-level context.
+func runCheckDrift(root string, stdout io.Writer) error {
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	drift, err := p.Check()
+	if err != nil {
+		return err
+	}
+	for _, d := range drift {
+		fmt.Fprintf(stdout, "  %-14s %s: %s\n", d.Kind, d.Path, d.Detail)
+	}
+	if len(drift) == 0 {
+		fmt.Fprintln(stdout, "awf check drift: clean")
+		return nil
+	}
+	return fmt.Errorf("awf check drift: %d drift(s)", len(drift))
+}
+
+// runCheckState is the `awf check state` entry point: the current-state half of
+// bare check. Coverage and fan-out warnings ride the non-failing note: channel
+// exactly as they do there; only findings fail.
+func runCheckState(root string, stdout io.Writer) error {
+	p, err := project.Open(root)
+	if err != nil {
+		return err
+	}
+	report, err := p.CheckCurrentState()
+	if err != nil {
+		return err
+	}
+	for _, n := range report.Notes() {
+		fmt.Fprintf(stdout, "note: %s\n", n)
+	}
+	current := report.Findings()
+	for _, f := range current {
+		fmt.Fprintf(stdout, "  %-14s %s\n", "current-state", f)
+	}
+	if len(current) == 0 {
+		fmt.Fprintln(stdout, "awf check state: clean")
+		return nil
+	}
+	return fmt.Errorf("awf check state: %d current-state issue(s)", len(current))
+}
+
 func checkLockVsBinary(root string, staged bool) (lockV, binV string, ok bool, err error) {
 	if !staged {
 		return lockVsBinary(root)

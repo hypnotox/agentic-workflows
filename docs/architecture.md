@@ -73,8 +73,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `render`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `memory-gate`, `upgrade`, `uninstall`,
-  `changelog`, `version` subcommands, plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+  `disable`, `new`, `audit`, `metrics`, `doctor`, `upgrade`, `uninstall`,
+  `changelog`, `version` subcommands, where `check` is a group carrying the whole
+  verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
+  plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.

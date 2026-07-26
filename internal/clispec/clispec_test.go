@@ -28,16 +28,72 @@ func TestCommandsWellFormed(t *testing.T) {
 	}
 }
 
-// Gating is a top-level property: a group command's children must leave Gating
-// at the Ungated zero value, so the driver (which reads gating from the
-// top-level node) is the single authority. A child that declared its own gating
-// would be silently ignored - this guards that trap shut.
-func TestGroupChildrenCarryNoGating(t *testing.T) {
+// Gating resolves from the child when it declares one and from the parent
+// otherwise. The Inherit zero value is what makes "declares nothing" distinct
+// from "declares Ungated", so an ungated child under a gated parent is honoured
+// rather than silently gated.
+// invariant: tooling/cli:group-child-gating-honored
+func TestResolvedGating(t *testing.T) {
+	// A top-level command has no parent to inherit from, so Inherit is never valid there.
 	for _, c := range Commands {
-		for _, ch := range c.Children {
-			if ch.Gating != Ungated {
-				t.Errorf("group %q child %q sets Gating=%d; children must stay Ungated (gating is top-level)", c.Name, ch.Name, ch.Gating)
-			}
+		if c.Gating == Inherit {
+			t.Errorf("top-level %q leaves Gating at Inherit; it has no parent to inherit from", c.Name)
+		}
+	}
+	// A child that declares nothing takes the parent's gating.
+	metrics, ok := Lookup("metrics")
+	if !ok {
+		t.Fatal("Lookup(metrics) missing")
+	}
+	export, ok := metrics.Child("export")
+	if !ok {
+		t.Fatal("metrics.Child(export) missing")
+	}
+	if export.Gating != Inherit {
+		t.Errorf("metrics export declares Gating=%d; it should inherit", export.Gating)
+	}
+	if got := ResolvedGating(metrics, export); got != metrics.Gating {
+		t.Errorf("ResolvedGating(metrics, export) = %d, want the parent's %d", got, metrics.Gating)
+	}
+	// A child that declares Ungated under a Gated parent lowers it deliberately.
+	check, ok := Lookup("check")
+	if !ok {
+		t.Fatal("Lookup(check) missing")
+	}
+	if check.Gating != Gated {
+		t.Fatalf("check Gating = %d, want Gated", check.Gating)
+	}
+	for _, name := range []string{"prose", "memory", "commit"} {
+		child, found := check.Child(name)
+		if !found {
+			t.Fatalf("check.Child(%s) missing", name)
+		}
+		if got := ResolvedGating(check, child); got != Ungated {
+			t.Errorf("ResolvedGating(check, %s) = %d, want Ungated", name, got)
+		}
+	}
+	// The remaining children inherit check's gate.
+	for _, name := range []string{"drift", "state", "invariants"} {
+		child, found := check.Child(name)
+		if !found {
+			t.Fatalf("check.Child(%s) missing", name)
+		}
+		if got := ResolvedGating(check, child); got != Gated {
+			t.Errorf("ResolvedGating(check, %s) = %d, want the inherited Gated", name, got)
+		}
+	}
+}
+
+// UngatedGroupChildren is the exclusion list published beside the gated set.
+func TestUngatedGroupChildren(t *testing.T) {
+	want := []string{"check prose", "check memory", "check commit"}
+	got := UngatedGroupChildren()
+	if len(got) != len(want) {
+		t.Fatalf("UngatedGroupChildren() = %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("UngatedGroupChildren()[%d] = %q, want %q", i, got[i], want[i])
 		}
 	}
 }
@@ -105,7 +161,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "invariants", "audit", "metrics", "doctor", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "audit", "metrics", "doctor", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

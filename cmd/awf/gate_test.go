@@ -201,7 +201,7 @@ func TestDriverGatesGatedCommands(t *testing.T) {
 	}{
 		{"render", []string{"awf", "render"}},
 		{"check", []string{"awf", "check"}},
-		{"invariants", []string{"awf", "invariants"}},
+		{"check invariants", []string{"awf", "check", "invariants"}},
 		{"audit", []string{"awf", "audit"}},
 		{"list", []string{"awf", "list"}},
 		{"enable", []string{"awf", "enable", "skill", "tdd"}},

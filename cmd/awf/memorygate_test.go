@@ -88,7 +88,7 @@ func TestMemoryGateClean(t *testing.T) {
 	if err := runMemoryGate(root, &out); err != nil {
 		t.Fatalf("clean: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "memory-gate: clean") {
+	if !strings.Contains(out.String(), "check memory: clean") {
 		t.Errorf("clean: output %q", out.String())
 	}
 }
@@ -118,7 +118,7 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 	if err := runMemoryGate(root, &out); err != nil {
 		t.Fatalf("a citation outside the scanned prefixes must be ignored: %v", err)
 	}
-	if !strings.Contains(out.String(), "memory-gate: clean") {
+	if !strings.Contains(out.String(), "check memory: clean") {
 		t.Errorf("output %q", out.String())
 	}
 }
@@ -146,7 +146,7 @@ func TestMemoryGateExemptionPermits(t *testing.T) {
 	if err := runMemoryGate(root, &out); err != nil {
 		t.Fatalf("exempt path: want nil, got %v", err)
 	}
-	if !strings.Contains(out.String(), "memory-gate: clean") {
+	if !strings.Contains(out.String(), "check memory: clean") {
 		t.Errorf("exempt path: output %q", out.String())
 	}
 }
@@ -214,10 +214,10 @@ func TestMemoryGateDispatch(t *testing.T) {
 		map[string]string{"docs/plans/p.md": "clean\n"})
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb strings.Builder
-	if code := run([]string{"awf", "memory-gate"}, &out, &errb); code != 0 {
-		t.Fatalf("memory-gate exited %d: %s", code, errb.String())
+	if code := run([]string{"awf", "check", "memory"}, &out, &errb); code != 0 {
+		t.Fatalf("check memory exited %d: %s", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "memory-gate: clean") {
+	if !strings.Contains(out.String(), "check memory: clean") {
 		t.Errorf("dispatch: output %q", out.String())
 	}
 }

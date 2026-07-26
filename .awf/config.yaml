@@ -191,12 +191,12 @@ vars:
   activeMdRegenCmd: ./x render
   awfInvokeCmd: go run ./cmd/awf
   checkCmd: ./x check
-  commitGateCmd: ./awf commit-gate
+  commitGateCmd: ./awf check commit
   gateCmd: ./x gate
   gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
-  memoryGateCmd: ./awf memory-gate
-  proseGateCmd: ./awf prose-gate
+  memoryGateCmd: ./awf check memory
+  proseGateCmd: ./awf check prose
   testCmd: go test ./...
 bootstrap:
   enabled: false

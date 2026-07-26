@@ -48,8 +48,21 @@ Backing: test
 
 ### `invariant: gated-commands-generated`
 
-The gated-command list rendered into the managed docs is generated from the clispec command table (exactly the top-level commands whose gating classification is not ungated) through one generator feeding both the render placeholder and the agent-guide value, with no hand-maintained enumeration in either doc.
+The gated-command list rendered into the managed docs is generated from the clispec command table through one generator feeding both the render placeholder and the agent-guide value, with no hand-maintained enumeration in either doc. It is two projections: the top-level commands whose gating classification is not ungated, followed by the separately reported group children whose resolved gating is ungated under a gating parent, rendered as named exclusions.
 Origin: ADR-0094
+Revised-by: ADR-0159
+Backing: test
+
+### `invariant: group-child-gating-honored`
+
+A group child's gating classification resolves from the child when it declares one and from the parent otherwise, so an ungated child under a gated parent is honoured rather than silently gated.
+Origin: ADR-0159
+Backing: test
+
+### `invariant: group-child-project-guard-exemption`
+
+The current-state journal and attestation guard reads the resolved command's exemption property, so `awf check prose`, `awf check memory`, and `awf check commit` stay runnable in the states where a hook must still function.
+Origin: ADR-0159
 Backing: test
 
 ### `invariant: invariants-in-check`

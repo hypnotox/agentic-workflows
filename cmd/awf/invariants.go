@@ -22,7 +22,7 @@ func runInvariants(root string, stdout io.Writer) error {
 		return err
 	}
 	if len(invs) == 0 {
-		fmt.Fprintln(stdout, "awf invariants: no invariant claims")
+		fmt.Fprintln(stdout, "awf check invariants: no invariant claims")
 		return nil
 	}
 	for _, iv := range invs {

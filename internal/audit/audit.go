@@ -136,7 +136,7 @@ func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 
 // CheckConventionalCommit validates one commit's subject against the Conventional
 // Commits settings and returns any violations. It is the single definition of the
-// rule - consumed by the audit range loop above, by the blocking `awf commit-gate`
+// rule - consumed by the audit range loop above, by the blocking `awf check commit`
 // command (ADR-0036), and by the plan-time planned-subject check
 // (CheckPlannedSubject, ADR-0111) - so none re-implements the regex, the type/scope
 // allow-lists, or the subject-length limit. Merge commits are exempt.

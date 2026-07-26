@@ -527,15 +527,28 @@ func TestRunDispatchError(t *testing.T) {
 }
 
 // TestRunDispatchArms drives every switch arm through run() against a scaffolded
-// project, covering the dispatch statements.
+// project, covering the dispatch statements. The check children are spelled as
+// full argv because they are subcommands, not top-level names: a single-token
+// loop could no longer reach them.
 func TestRunDispatchArms(t *testing.T) {
-	for _, cmd := range []string{"render", "check", "invariants", "list", "upgrade"} {
-		t.Run(cmd, func(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"render", []string{"awf", "render"}},
+		{"check", []string{"awf", "check"}},
+		{"check drift", []string{"awf", "check", "drift"}},
+		{"check state", []string{"awf", "check", "state"}},
+		{"check invariants", []string{"awf", "check", "invariants"}},
+		{"list", []string{"awf", "list"}},
+		{"upgrade", []string{"awf", "upgrade"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldProject(t)
 			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			var out, errb bytes.Buffer
-			if code := run([]string{"awf", cmd}, &out, &errb); code != 0 {
-				t.Fatalf("%s: expected exit 0, got %d (%s)", cmd, code, errb.String())
+			if code := run(tc.args, &out, &errb); code != 0 {
+				t.Fatalf("%s: expected exit 0, got %d (%s)", tc.name, code, errb.String())
 			}
 		})
 	}

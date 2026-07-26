@@ -14,7 +14,8 @@ import (
 type Gating int
 
 const (
-	Ungated        Gating = iota // never gates (version, changelog, upgrade, uninstall, commit-gate, init)
+	Inherit        Gating = iota // a group child that declares nothing: resolve from the parent
+	Ungated                      // never gates (version, changelog, upgrade, uninstall, init, and the three regrouped hook checks)
 	Gated                        // the driver gates before the handler
 	GatedInHandler               // the handler gates itself (config/context/topic after their static-fallback check; new after name validation)
 )
@@ -32,7 +33,11 @@ type Command struct {
 	MinPos     int
 	MaxPos     int
 	Gating     Gating
-	Children   []Command
+	// StateExempt bypasses the current-state journal/attestation guard
+	// (ADR-0159 Decision 5). It is read from the resolved command, so a group
+	// child carries it independently of its parent.
+	StateExempt bool
+	Children    []Command
 }
 
 // Commands is the ordered command table - the sole source of the command set,
@@ -65,26 +70,91 @@ Re-render every enabled target after a template or config change and update .awf
 `,
 	},
 	{
-		Name: "check", Summary: "Fail on stale or hand-edited rendered output",
-		BoolFlags: []string{"--staged"}, MaxPos: 0, Gating: Gated,
+		Name: "check", Summary: "Verify the project: drift, current state, and the opt-in scans",
+		BoolFlags: []string{"--staged"}, MaxPos: -1, Gating: Gated,
 		HelpBody: `Usage: awf check [--staged]
+       awf check <subcommand>
 
-Re-render in memory and fail if any rendered file is stale or hand-edited (drift),
-then check current-state authority over the working tree.
+With no subcommand, re-render in memory and fail if any rendered file is stale or
+hand-edited (drift), then check current-state authority over the working tree.
 
 With --staged, skip the drift check and instead validate the staged transition:
 the HEAD-to-index ADR status changes and claim add/update/remove mutations must
 correspond, and the index is checked for topic coverage. It reads only committed
 and staged content, never the working tree, so a pre-commit hook can invoke it.
-`,
-	},
-	{
-		Name: "invariants", Summary: "Report Implemented-ADR invariant slugs lacking a backing comment",
-		MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf invariants
+--staged applies to the bare form only; a subcommand rejects it.
 
-Report each Implemented-ADR ` + "`inv:`" + ` slug lacking a backing ` + "`<marker> invariant:`" + ` comment.
+Subcommands:
+  drift        report stale or hand-edited rendered output
+  state        report current-state authority findings
+  invariants   report each invariant claim's backing and proof sites
+  prose        scan tracked text files for typographic punctuation, blocking
+  memory       scan staged decision records for working-memory citations, blocking
+  commit       validate one commit message (Conventional Commits), blocking
 `,
+		Children: []Command{
+			{Name: "drift", Summary: "Report stale or hand-edited rendered output",
+				BoolFlags: []string{"--staged"}, MaxPos: 0,
+				HelpBody: `Usage: awf check drift
+
+Re-render in memory and report every rendered file that is stale or hand-edited,
+including the config-tree hygiene sweep. Does not accept --staged.
+`},
+			{Name: "state", Summary: "Report current-state authority findings",
+				BoolFlags: []string{"--staged"}, MaxPos: 0,
+				HelpBody: `Usage: awf check state
+
+Check current-state authority over the working tree. Does not accept --staged;
+the staged transition is awf check --staged.
+`},
+			{Name: "invariants", Summary: "Report each invariant claim's backing and proof sites",
+				BoolFlags: []string{"--staged"}, MaxPos: 0,
+				HelpBody: `Usage: awf check invariants
+
+Report each invariant claim's backing mode, an unbacked claim's Verify guidance,
+and a test-backed claim's proof-marker sites.
+`},
+			{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking",
+				BoolFlags: []string{"--staged"}, MaxPos: 0,
+				Gating: Ungated, StateExempt: true,
+				HelpBody: `Usage: awf check prose
+
+Report every typographic punctuation substitute in the project's tracked text
+files and exit non-zero on any finding. Exits zero without scanning unless
+proseGate.enabled is true, so a hook or a runner may invoke it unconditionally.
+Permit a character that is genuinely being written about with
+proseGate.exemptions. awf installs no hook; wire this into your own pre-commit
+hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the hooks
+artifact is enabled).
+`},
+			{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking",
+				BoolFlags: []string{"--staged"}, MaxPos: 0,
+				Gating: Ungated, StateExempt: true,
+				HelpBody: `Usage: awf check memory
+
+Report every citation of a specific working-memory file in the staged decisions
+and plans directories and exit non-zero on any finding: the convention says a
+decision record may name the directory or a placeholder, never an actual file.
+Exits zero without scanning unless memoryCite.enabled is true, so a hook or a
+runner may invoke it unconditionally; the same knob makes awf check commit scan
+the commit-message body for the same thing. Permit a path that genuinely needs
+one with memoryCite.exemptions. awf installs no hook; wire this into your own
+pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
+hooks artifact is enabled).
+`},
+			{Name: "commit", Summary: "Validate one commit message (Conventional Commits), blocking",
+				BoolFlags: []string{"--staged"}, MaxPos: 1,
+				Gating: Ungated, StateExempt: true,
+				HelpBody: `Usage: awf check commit [FILE]
+
+Validate one commit message against the Conventional Commits rules (type, scope,
+72-char subject) and exit non-zero on a violation. Reads FILE (the path a
+commit-msg hook passes as $1) or stdin; cleans the message git-style and exempts
+merge/autosquash subjects. awf installs no hook; wire this into your own
+commit-msg hook (the rendered .awf/hooks/commit-msg.sh payload runs it when the
+hooks artifact is enabled).
+`},
+		},
 	},
 	{
 		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
@@ -141,50 +211,6 @@ Recursively purge one named terminal effort only after explicit confirmation.
 
 Report exact and configured heuristic findings read-only. Findings are advisory
 and do not alter the command exit status.
-`,
-	},
-	{
-		Name: "commit-gate", Summary: "Validate one commit message (Conventional Commits), blocking",
-		MaxPos: 1, Gating: Ungated,
-		HelpBody: `Usage: awf commit-gate [FILE]
-
-Validate one commit message against the Conventional Commits rules (type, scope,
-72-char subject) and exit non-zero on a violation: the commit-side analog of the
-gate. Reads FILE (the path a commit-msg hook passes as $1) or stdin; cleans the
-message git-style and exempts merge/autosquash subjects. awf installs no hook;
-wire this into your own commit-msg hook (the rendered .awf/hooks/commit-msg.sh
-payload runs it when the hooks artifact is enabled).
-`,
-	},
-	{
-		Name: "prose-gate", Summary: "Scan tracked text files for typographic punctuation, blocking",
-		Gating: Ungated,
-		HelpBody: `Usage: awf prose-gate
-
-Report every typographic punctuation substitute in the project's tracked text
-files and exit non-zero on any finding: the presence-level analog of the audit
-rule, which only warns when a commit adds one. Exits zero without scanning
-unless proseGate.enabled is true, so a hook or a runner may invoke it
-unconditionally. Permit a character that is genuinely being written about with
-proseGate.exemptions. awf installs no hook; wire this into your own pre-commit
-hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the hooks
-artifact is enabled).
-`,
-	},
-	{
-		Name: "memory-gate", Summary: "Scan staged decision records for working-memory citations, blocking",
-		Gating: Ungated,
-		HelpBody: `Usage: awf memory-gate
-
-Report every citation of a specific working-memory file in the staged decisions
-and plans directories and exit non-zero on any finding: the convention says a
-decision record may name the directory or a placeholder, never an actual file.
-Exits zero without scanning unless memoryCite.enabled is true, so a hook or a
-runner may invoke it unconditionally; the same knob makes awf commit-gate scan
-the commit-message body for the same thing. Permit a path that genuinely needs
-one with memoryCite.exemptions. awf installs no hook; wire this into your own
-pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
-hooks artifact is enabled).
 `,
 	},
 	{
@@ -383,6 +409,7 @@ Remove every awf-generated file recorded in the lock (keeps your authored .awf/ 
 	{
 		Name: "changelog", Summary: "Print the embedded changelog, or one version/range of it",
 		ValueFlags: []string{"--version", "--since", "--range"}, MaxPos: 0, Gating: Ungated,
+		StateExempt: true,
 		HelpBody: `Usage: awf changelog [--version <v> | --since <v> | --range <from>..<to>]
 
 Print the embedded awf changelog. With no flags, print the whole file. The three
@@ -396,7 +423,7 @@ Flags:
 	},
 	{
 		Name: "version", Summary: "Print the awf version",
-		MaxPos: 0, Gating: Ungated,
+		MaxPos: 0, Gating: Ungated, StateExempt: true,
 		HelpBody: `Usage: awf version
 
 Print the awf version.
@@ -424,6 +451,16 @@ func (c Command) Child(name string) (Command, bool) {
 	return Command{}, false
 }
 
+// ResolvedGating returns the child's own gating when it declares one, else the
+// parent's. A child that says nothing inherits; a child that says Ungated under
+// a Gated parent lowers it deliberately (ADR-0159 Decision 4).
+func ResolvedGating(top, cmd Command) Gating {
+	if cmd.Gating != Inherit {
+		return cmd.Gating
+	}
+	return top.Gating
+}
+
 // Names returns every top-level command name in table order.
 func Names() []string {
 	out := make([]string, len(Commands))
@@ -440,12 +477,33 @@ func UsageLine() string { return "awf <" + strings.Join(Names(), "|") + ">" }
 // the binary-version gate - the driver-gated commands plus the ones that gate
 // in-handler (config/context/topic after their static fallback, new after name
 // validation). Ungated commands are excluded; a group contributes only its own
-// token. This is the single source of the doc-published gated-command list.
+// token. Together with UngatedGroupChildren it is the source of the
+// doc-published gated-command list.
 func GatedCommandNames() []string {
 	var out []string
 	for _, c := range Commands {
 		if c.Gating != Ungated {
 			out = append(out, c.Name)
+		}
+	}
+	return out
+}
+
+// UngatedGroupChildren returns, in table order, each group child whose resolved
+// gating is Ungated under a parent that gates - the exclusions a reader needs
+// beside the gated set. Spelled "parent child". A child that is not weaker than
+// its parent is simply not an exclusion; the gated list stays top-level-only
+// (ADR-0159 Decision 4).
+func UngatedGroupChildren() []string {
+	var out []string
+	for _, c := range Commands {
+		if c.Gating == Ungated {
+			continue
+		}
+		for _, child := range c.Children {
+			if ResolvedGating(c, child) == Ungated {
+				out = append(out, c.Name+" "+child.Name)
+			}
 		}
 	}
 	return out

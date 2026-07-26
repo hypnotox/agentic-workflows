@@ -66,8 +66,8 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
 			wantCmds := map[string][]string{
-				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " prose-gate\n", tc.awf + " memory-gate\n"},
-				"commit-msg": {tc.awf + ` commit-gate "$1"` + "\n"},
+				"pre-commit": {tc.awf + " check\n", tc.awf + " check --staged\n", tc.awf + " check prose\n", tc.awf + " check memory\n"},
+				"commit-msg": {tc.awf + ` check commit "$1"` + "\n"},
 				"pre-push":   {tc.awf + " check\n"},
 			}
 			for name, f := range got {

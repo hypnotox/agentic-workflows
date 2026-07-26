@@ -16,11 +16,11 @@ import (
 func runProseGate(root string, stdout io.Writer) error {
 	tree, err := snapshot.IndexTree(root)
 	if err != nil {
-		return fmt.Errorf("prose-gate: cannot read staged files: %w", err)
+		return fmt.Errorf("check prose: cannot read staged files: %w", err)
 	}
 	stagedConfig, ok := tree.Lookup(".awf/config.yaml")
 	if !ok {
-		return errors.New("prose-gate: staged snapshot has no .awf/config.yaml")
+		return errors.New("check prose: staged snapshot has no .awf/config.yaml")
 	}
 	cfg, err := config.Parse(config.RootDir(root), stagedConfig.Bytes)
 	if err != nil {
@@ -33,7 +33,7 @@ func runProseGate(root string, stdout io.Writer) error {
 	for _, e := range cfg.ProseGate.Exemptions {
 		r, perr := prosegate.ParseCodepoint(e.Codepoint)
 		if perr != nil {
-			return fmt.Errorf("prose-gate: exemption for %s: %w", e.Path, perr)
+			return fmt.Errorf("check prose: exemption for %s: %w", e.Path, perr)
 		}
 		exemptions = append(exemptions, prosegate.Exemption{Path: e.Path, Codepoint: r, Count: e.Count})
 	}
@@ -44,7 +44,7 @@ func runProseGate(root string, stdout io.Writer) error {
 	}
 	findings, skipped, err := prosegate.Scan(files, exemptions)
 	if err != nil { // coverage-ignore: Scan receives in-memory staged bytes and has no fallible operation
-		return fmt.Errorf("prose-gate: %w", err)
+		return fmt.Errorf("check prose: %w", err)
 	}
 	for _, path := range skipped {
 		fmt.Fprintf(stdout, "skipped binary: %s\n", path)
@@ -53,8 +53,8 @@ func runProseGate(root string, stdout io.Writer) error {
 		fmt.Fprintln(stdout, prosegate.Format(f))
 	}
 	if len(findings) > 0 {
-		return errors.New("prose-gate: use plain punctuation, or exempt the path in proseGate.exemptions")
+		return errors.New("check prose: use plain punctuation, or exempt the path in proseGate.exemptions")
 	}
-	fmt.Fprintln(stdout, "prose-gate: clean")
+	fmt.Fprintln(stdout, "check prose: clean")
 	return nil
 }

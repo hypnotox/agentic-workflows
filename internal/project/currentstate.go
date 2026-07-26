@@ -444,7 +444,7 @@ func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
 }
 
 // InvariantReport is one invariant claim in the working-tree topic corpus for the
-// standalone `awf invariants` report (ADR-0134): its full claim ID, backing mode
+// standalone `awf check invariants` report (ADR-0134): its full claim ID, backing mode
 // (test or unbacked), an unbacked claim's Verify guidance, and the sorted
 // proof-marker sites of a test-backed claim. Rule claims never appear. A
 // backing-contract violation is a corpus load error surfaced by

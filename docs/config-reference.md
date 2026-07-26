@@ -86,11 +86,11 @@ declined; the generic prose renders).
 - `checkCmd`: Command that checks rendered output for drift. Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
   State: set (`./x check`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push.
 - `commitGateCmd`: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.
-  State: set (`./awf commit-gate`). Consumed by: hooks commit-msg.
+  State: set (`./awf check commit`). Consumed by: hooks commit-msg.
 - `proseGateCmd`: Command that runs the prose scan (the pre-commit hook payload calls it). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.
-  State: set (`./awf prose-gate`). Consumed by: hooks pre-commit.
+  State: set (`./awf check prose`). Consumed by: hooks pre-commit.
 - `memoryGateCmd`: Command that runs the working-memory citation scan (the pre-commit hook payload calls it). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed by the rendered pre-commit hook payload while the hooks singleton is enabled.
-  State: set (`./awf memory-gate`). Consumed by: hooks pre-commit.
+  State: set (`./awf check memory`). Consumed by: hooks pre-commit.
 - `testCmd`: Command that runs the test suite. Consumed while an enabled artifact's template references it.
   State: set (`go test ./...`). Consumed by: agents-doc, skill tdd.
 - `activeMdRegenCmd`: Command that regenerates the generated ADR decision index (INDEX.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).

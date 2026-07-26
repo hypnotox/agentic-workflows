@@ -218,7 +218,7 @@ func (p *Project) taskSkillRows() string {
 
 // commitScopesDisplay returns the display-formatted allowed commit-scope list
 // (e.g. "`adr`, `awf`, `plans`") resolved from audit.allowedScopes - the same
-// audit.Resolve path awf commit-gate reads, so prose and gate agree by
+// audit.Resolve path awf check commit reads, so prose and gate agree by
 // construction - or "" when scopes are accept-any (ADR-0051).
 func (p *Project) commitScopesDisplay() string {
 	scopes := audit.Resolve(p.Cfg.Audit).AllowedScopes

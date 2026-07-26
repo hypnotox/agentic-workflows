@@ -21,8 +21,8 @@ case "$cmd" in
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck
-    ./awf prose-gate
-    ./awf memory-gate
+    ./awf check prose
+    ./awf check memory
     ;;
   lint)
     go tool golangci-lint run "$@"
@@ -65,7 +65,7 @@ case "$cmd" in
       echo "check: the example adopter has advisory notes - author the missing content or clear the smell (ADR-0090)" >&2
       exit 1
     fi
-    (cd examples/sundial && "$bindir/awf" invariants)
+    (cd examples/sundial && "$bindir/awf" check invariants)
     (cd examples/sundial && go test ./...)
     ;;
   dashboard-awf-path)

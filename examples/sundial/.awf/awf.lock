@@ -118,15 +118,15 @@
     },
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
-      "templateHash": "sha256:002b4d5c01c1348da8bbd319a9d66b94a9ab604e2188b49a76e83408973c295f",
+      "templateHash": "sha256:29aec3a75135d989d86d0d8ba01d195ddf2081627a01e2533448bb2b4b0f66bf",
       "configHash": "sha256:226668af3a174ec77441308aafa35c72e3720f160fdaac10a2bf7618269efcf6",
-      "outputHash": "sha256:64a97c12c622b8e5d36436d5c0f0be277f79fd59e4e343f75f252b52f44040a3"
+      "outputHash": "sha256:4d10596859ea23ad230647aea32a2c0c1d916f94835fd5681f26935019a76f8c"
     },
     ".awf/hooks/pre-commit.sh": {
       "templateId": "hooks/pre-commit.sh.tmpl",
-      "templateHash": "sha256:c37b2792e831686d4dc8c4005776dfb69697c2236665394c1a0ba2e7c86a7263",
+      "templateHash": "sha256:5fa5e14b4c17e5e13f2ee24676fe3aa7b2b16d6b3bc59271d747dc508d5e248f",
       "configHash": "sha256:105bdc0cd5d277378cd1a22e736a69093a9a8810b543fe1e53f6b7bdd7388f74",
-      "outputHash": "sha256:b14fb17125fd8880ae06d3687b5144d24d7596ab9e0184b2f92a5a15e6169a74"
+      "outputHash": "sha256:341d05894f2d6c60e23ae5c045a033dbe5c39bb2c96102ebc9a7a9b55044ab9e"
     },
     ".awf/hooks/pre-push.sh": {
       "templateId": "hooks/pre-push.sh.tmpl",
@@ -840,7 +840,7 @@
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:cb34fcab4b52b7b38211c0dc520971b30d777c6bd6c10057642134c10c138862",
       "configHash": "sha256:661810b09f0cd676c999136730da1336f3584aa68c0773d425b81a237b723aa0",
-      "outputHash": "sha256:befcadf39a50b597cc64511e96212714b63e9d1f092d0503e544afc8563a62d4"
+      "outputHash": "sha256:a65326cec63b5223a25482ac95ed809ffcd5876870c695e16c31ff39ca23abb5"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -998,9 +998,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:bc8f735c248309612efb7c8bbbd45545b1e7de78b53c91a84e43fd0cf295dddd",
+      "templateHash": "sha256:b4102b66ab424d60a47b6e556be5c2c17a893c0134e0f9712c5273cfd1aa8157",
       "configHash": "sha256:c35f2ef3cc76acf3dd202acfcddfac6410df8be6faf1beaa0e0e9f38c63126e4",
-      "outputHash": "sha256:b70410dc99e18dfdc94e1a1f4997d801b03da7cbc606b441e662001ad305c723"
+      "outputHash": "sha256:732c1062a85f59189ebfe9505f79b7f8eefbd853f755bba6720148fa4e59771a"
     }
   },
   "adrFormatV1From": 4,

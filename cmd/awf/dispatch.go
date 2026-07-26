@@ -33,12 +33,59 @@ type cmdCtx struct {
 type handler func(*cmdCtx) error
 
 // firstPos returns the first positional or "" - the optional-argument shape of
-// list, config, and commit-gate.
+// list, config, and `check commit`.
 func firstPos(pos []string) string {
 	if len(pos) > 0 {
 		return pos[0]
 	}
 	return ""
+}
+
+// checkSubcommands lists the check group's children for its usage messages, in
+// clispec table order so the message can never drift from the spec.
+func checkSubcommands() string {
+	spec, _ := clispec.Lookup("check")
+	names := make([]string, len(spec.Children))
+	for i, child := range spec.Children {
+		names[i] = child.Name
+	}
+	return strings.Join(names, ", ")
+}
+
+// runCheckGroup dispatches the check group. The empty sub runs bare check
+// unchanged, including --staged; every child rejects --staged, which is the only
+// reason each declares the flag in clispec (an undeclared flag dies in parseArgs
+// with a generic unknown-flag error before this handler is reached).
+func runCheckGroup(c *cmdCtx) error {
+	if c.sub == "" {
+		// resolve only tests args[1] for a child name, so `awf check --staged drift`
+		// arrives here with drift as a positional rather than as a subcommand.
+		if pos := firstPos(c.inv.positionals); pos != "" {
+			spec, _ := clispec.Lookup("check")
+			if _, isChild := spec.Child(pos); isChild {
+				return &usageErr{"awf check: the subcommand must come first: awf check " + pos}
+			}
+			return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", pos, checkSubcommands())}
+		}
+		return runCheck(c.root, c.inv.bools["--staged"], c.stdout)
+	}
+	if c.inv.bools["--staged"] {
+		return &usageErr{fmt.Sprintf("awf check %s: --staged applies to the bare form only: awf check --staged", c.sub)}
+	}
+	switch c.sub {
+	case "drift":
+		return runCheckDrift(c.root, c.stdout)
+	case "state":
+		return runCheckState(c.root, c.stdout)
+	case "invariants":
+		return runInvariants(c.root, c.stdout)
+	case "prose":
+		return runProseGate(c.root, c.stdout)
+	case "memory":
+		return runMemoryGate(c.root, c.stdout)
+	default: // "commit"
+		return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
+	}
 }
 
 // handlers maps a top-level command name to its handler. A group command (new)
@@ -48,15 +95,13 @@ var handlers = map[string]handler{
 	"init": func(c *cmdCtx) error {
 		return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
 	},
-	"render":      func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
-	"check":       func(c *cmdCtx) error { return runCheck(c.root, c.inv.bools["--staged"], c.stdout) },
-	"invariants":  func(c *cmdCtx) error { return runInvariants(c.root, c.stdout) },
-	"audit":       func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
-	"metrics":     runMetrics,
-	"doctor":      runDoctor,
-	"commit-gate": func(c *cmdCtx) error { return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout) },
-	"list":        func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
-	"config":      func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"render":  func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
+	"check":   runCheckGroup,
+	"audit":   func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"metrics": runMetrics,
+	"doctor":  runDoctor,
+	"list":    func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"config":  func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"context": func(c *cmdCtx) error {
 		if c.inv.bools["--full"] {
 			return runContextProjection(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--json"], c.inv.bools["--uncovered"], true, c.stdout)
@@ -98,9 +143,7 @@ var handlers = map[string]handler{
 	"changelog": func(c *cmdCtx) error {
 		return runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout)
 	},
-	"version":     func(c *cmdCtx) error { runVersion(c.stdout); return nil },
-	"prose-gate":  func(c *cmdCtx) error { return runProseGate(c.root, c.stdout) },
-	"memory-gate": func(c *cmdCtx) error { return runMemoryGate(c.root, c.stdout) },
+	"version": func(c *cmdCtx) error { runVersion(c.stdout); return nil },
 }
 
 // enableDisableArgs resolves the shared positional forms of enable/disable -
@@ -153,8 +196,9 @@ func isKindToken(s string) bool {
 // group with no or an unknown child, returns itself as cmd with sub "" and rest
 // args[1:] - the group's handler then owns the missing/unknown-child messages.
 // top is always the top-level command (== cmd for a leaf, the group for a
-// resolved child); the driver reads gating and the handler key from top, since
-// both are top-level properties a child never overrides.
+// resolved child). The handler key stays a top-level property, but gating and
+// the current-state exemption are read from cmd (falling back to top for
+// gating), so a child can carry its own.
 func resolve(args []string) (cmd, top clispec.Command, sub string, rest []string, ok bool) {
 	top, found := clispec.Lookup(args[0])
 	if !found {

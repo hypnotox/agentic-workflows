@@ -281,7 +281,7 @@ type RunnerConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
-// ProseGateConfig configures `awf prose-gate` (ADR-0119): a presence-level scan
+// ProseGateConfig configures `awf check prose` (ADR-0119): a presence-level scan
 // of every tracked text file for the seven banned typographic punctuation
 // substitutes. BootstrapConfig semantics: a nil *ProseGateConfig (key absent)
 // and Enabled false both mean "the command exits zero without scanning". The
@@ -304,7 +304,7 @@ type ProseExemption struct {
 	Count     *int   `yaml:"count"`
 }
 
-// MemoryCiteConfig configures `awf memory-gate` (ADR-0158): a scan of the
+// MemoryCiteConfig configures `awf check memory` (ADR-0158): a scan of the
 // staged decision-record directories, and of the commit-message body, for a
 // citation of a specific working-memory file. ProseGateConfig semantics: a nil
 // *MemoryCiteConfig (key absent) and Enabled false both mean "the scan does not

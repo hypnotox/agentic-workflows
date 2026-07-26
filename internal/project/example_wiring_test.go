@@ -81,7 +81,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 		`(cd examples/sundial && "$bindir/awf" render)`,
 		`out="$(cd examples/sundial && "$bindir/awf" check)"`,
 		`grep -q '^note: '`,
-		`(cd examples/sundial && "$bindir/awf" invariants)`,
+		`(cd examples/sundial && "$bindir/awf" check invariants)`,
 		`(cd examples/sundial && go test ./...)`,
 	} {
 		if !strings.Contains(script, want) {

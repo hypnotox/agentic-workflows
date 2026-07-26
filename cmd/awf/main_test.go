@@ -58,8 +58,9 @@ func TestHandlerRegistryParity(t *testing.T) {
 }
 
 // TestResolveReturnsTopLevel pins that resolve returns the top-level command
-// alongside a resolved child, so run() gates and keys the handler off the
-// top-level node rather than the child (whose Gating is an unset Ungated zero).
+// alongside a resolved child, so run() keys the handler off the top-level node
+// and has both nodes available for clispec.ResolvedGating, which reads the
+// child's gating and falls back to the parent's.
 func TestResolveReturnsTopLevel(t *testing.T) {
 	cmd, top, sub, rest, ok := resolve([]string{"new", "adr", "A Title"})
 	if !ok || cmd.Name != "adr" || top.Name != "new" || sub != "adr" {
