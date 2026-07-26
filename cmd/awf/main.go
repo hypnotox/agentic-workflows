@@ -30,7 +30,12 @@ var isInteractive = func() bool {
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
 // so the overview and the per-command `awf <cmd> --help` texts share one source -
-// the internal/clispec table (inv: cli-command-spec-single-source).
+// the internal/clispec table (inv: cli-command-spec-single-source). A group's
+// children are listed beneath it at a deeper indent, so no command is reachable
+// only by knowing to ask its parent for help (inv: help-lists-group-children).
+// The child indent is deeper than the parent's on purpose: indentation carries the
+// relationship, and a child sharing a top-level name (`new topic` beside `topic`)
+// therefore cannot be mistaken for the top-level entry.
 func globalHelp() string {
 	var b strings.Builder
 	b.WriteString("awf: render agentic-workflow tooling into a project from a committed .awf/ config tree\n\n")
@@ -38,6 +43,9 @@ func globalHelp() string {
 	b.WriteString("Commands:\n")
 	for _, c := range clispec.Commands {
 		fmt.Fprintf(&b, "  %-12s %s\n", c.Name, c.Summary)
+		for _, child := range c.Children {
+			fmt.Fprintf(&b, "    %-10s %s\n", child.Name, child.Summary)
+		}
 	}
 	b.WriteString("\nRun `awf <command> --help` for details on a command.\n")
 	return b.String()

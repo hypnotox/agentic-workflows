@@ -22,6 +22,12 @@ Origin: ADR-0094
 Revised-by: ADR-0144, ADR-0156
 Backing: test
 
+### `invariant: help-lists-group-children`
+
+The awf help overview lists every group command's children beneath their parent at a deeper indent, so no command is reachable only by knowing to ask a parent for help.
+Origin: ADR-0159
+Backing: test
+
 ### `invariant: cli-config-kinds`
 
 The enable and disable commands operate on exactly four kinds, skill, agent, doc, and domain, each mapping to its plural enable array in the config. The three catalog-backed kinds are validated against the catalog pool, while the freeform domain kind is validated through the config path-safety rule.

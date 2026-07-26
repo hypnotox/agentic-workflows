@@ -76,6 +76,43 @@ func TestCliCommandSpecSingleSource(t *testing.T) {
 	}
 }
 
+// Every group child is listed in the overview beneath its own parent, so a
+// subcommand is never reachable only by knowing to ask its parent for help.
+// invariant: tooling/cli:help-lists-group-children
+func TestHelpListsGroupChildren(t *testing.T) {
+	var out, errb bytes.Buffer
+	run([]string{"awf", "help"}, &out, &errb)
+	got := out.String()
+	for i, parent := range clispec.Commands {
+		if len(parent.Children) == 0 {
+			continue
+		}
+		from := strings.Index(got, "\n  "+parent.Name+" ")
+		if from < 0 {
+			t.Fatalf("globalHelp omits the group %q", parent.Name)
+		}
+		// The child block ends where the next top-level command begins, so a
+		// child listed under the wrong parent fails rather than passing on a
+		// match found elsewhere in the overview.
+		to := len(got)
+		if i+1 < len(clispec.Commands) {
+			if next := strings.Index(got, "\n  "+clispec.Commands[i+1].Name+" "); next > from {
+				to = next
+			}
+		}
+		block := got[from:to]
+		for _, child := range parent.Children {
+			line := "\n    " + child.Name + " "
+			if !strings.Contains(block, line) {
+				t.Errorf("globalHelp omits %s child %q beneath its parent:\n%s", parent.Name, child.Name, block)
+			}
+			if !strings.Contains(block, child.Summary) {
+				t.Errorf("globalHelp omits the summary of %s %q", parent.Name, child.Name)
+			}
+		}
+	}
+}
+
 // `awf help <cmd>` prints that command's --help text; an unknown command
 // falls back to the top-level overview and exits 0, like bare `awf help`.
 func TestHelpSubcommandDispatch(t *testing.T) {

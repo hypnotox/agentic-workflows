@@ -642,8 +642,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:ea597d78c017ef6e73957fe16a11c48d8647cbb9db5d5a523dfd4f8b9190f144",
-      "outputHash": "sha256:56a9c51191b71cadf2a56171d6df9ac27ff13ccbe1a4bd6731e3d5bcae0f47ee"
+      "configHash": "sha256:46dd1ea3fa7d5d44ff680fbafbe988a01ffa3f2e18942289714f27eed17d3f54",
+      "outputHash": "sha256:81bcbea61d4e8a5b09f76efd2c08efbc29cb16c1c070ac76d29459d71f6454e3"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",
