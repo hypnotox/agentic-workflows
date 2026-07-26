@@ -104,10 +104,31 @@ func TestRenameRetiredCommandsToleratesNonStringVars(t *testing.T) {
 	}
 }
 
-// A var written as a YAML alias decodes to a Go string while its node is an
-// alias, so an editor that insisted on a scalar would abort the upgrade and
-// strand the tree below the current schema generation. ADR-0159 Decision 8 says
-// an unrecognized value is left untouched, not that it refuses.
+// The alias shape awf's strict parse actually accepts: the anchor is defined on
+// a sibling var, because a top-level anchors key fails KnownFields. The anchor
+// itself is an ordinary string scalar, so it is rewritten and every alias to it
+// follows; nothing is silently skipped in a config awf would load.
+func TestRenameRetiredCommandsRewritesAnchoredVar(t *testing.T) {
+	root := t.TempDir()
+	cfg := filepath.Join(root, ".awf", "config.yaml")
+	testsupport.WriteFile(t, cfg, "prefix: example\nvars:\n  helperCmd: &c ./awf prose-gate\n  proseGateCmd: *c\n")
+	if err := applyRenameRetiredCommands(root, io.Discard); err != nil {
+		t.Fatalf("an anchored var must not fail the upgrade: %v", err)
+	}
+	out, _ := os.ReadFile(cfg)
+	want := "prefix: example\nvars:\n  helperCmd: &c ./awf check prose\n  proseGateCmd: *c\n"
+	if string(out) != want {
+		t.Errorf("anchored var handling:\n got %q\nwant %q", out, want)
+	}
+}
+
+// An alias node decodes to a Go string while its node kind is not a scalar, so an
+// editor insisting on a scalar would return an error and abort the whole upgrade,
+// stranding the tree below the current schema generation. ADR-0159 Decision 8 says
+// an unrecognized value is left untouched, not that it refuses. The fixture uses a
+// top-level anchors key, which awf's strict parse would itself reject, so the
+// guarantee this pins is the narrow one: the migration never aborts on a shape it
+// does not own, whether or not the surrounding config is loadable.
 func TestRenameRetiredCommandsLeavesAliasedVarAlone(t *testing.T) {
 	root := t.TempDir()
 	cfg := filepath.Join(root, ".awf", "config.yaml")

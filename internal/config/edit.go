@@ -217,13 +217,15 @@ func SetMappingInteger(src []byte, key, child string, value int) ([]byte, error)
 //
 // Every shape it does not own is a no-op returning src unchanged: an absent key,
 // a non-mapping parent, an absent child, and a child that is not a plain scalar
-// (an alias node or a nested structure). That is deliberately weaker than the
-// erroring SetMappingScalar/SetMappingInteger siblings, because this editor
-// exists for the ADR-0159 value migration, whose contract is that any value it
-// does not recognize is left untouched. An alias is the case that matters:
-// `proseGateCmd: *cmd` decodes to a Go string while its node is an alias, so
-// erroring here would abort awf upgrade on a legal config and strand the tree
-// below the current schema generation. Being total also keeps a re-run safe.
+// (an alias node or a nested structure). Each sibling handles a foreign shape
+// differently: SetMappingInteger errors on a non-mapping parent, SetMappingScalar
+// coerces one by replacing the node, and this editor declines. It declines
+// because it exists for the ADR-0159 value migration, whose contract is that any
+// value it does not recognize is left untouched. An alias is the case that
+// matters: `proseGateCmd: *cmd` decodes to a Go string while its node is an
+// alias, so erroring here would abort awf upgrade over a value it was never
+// asked to rewrite and strand the tree below the current schema generation.
+// Being total also keeps a re-run safe.
 func SetMappingString(src []byte, key, child, value string) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {

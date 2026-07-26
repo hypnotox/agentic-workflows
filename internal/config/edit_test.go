@@ -190,7 +190,10 @@ func TestSetMappingString(t *testing.T) {
 		{"non-mapping parent is a no-op", "vars: nope\n", "vars: nope\n", false},
 		{"non-scalar child is a no-op", "vars:\n  gateCmd: [a]\n", "vars:\n  gateCmd: [a]\n", false},
 		// An alias decodes to a string but is not a scalar node; rewriting it would
-		// have to edit the anchor, so it is left alone rather than erroring.
+		// have to edit the anchor, so it is left alone rather than erroring. The
+		// anchor lives under a foreign top-level key here only to keep the fixture
+		// small; the shape awf's own strict parse accepts is anchored on a sibling
+		// var, and internal/migrate covers that one end to end.
 		{"aliased child is a no-op", "anchors:\n  a: &c ./x gate\nvars:\n  gateCmd: *c\n", "anchors:\n  a: &c ./x gate\nvars:\n  gateCmd: *c\n", false},
 		{"rejects malformed", "vars: [bad\n", "", true},
 	} {
