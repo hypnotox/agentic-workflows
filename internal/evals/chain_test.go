@@ -309,6 +309,11 @@ var routineCheckpointSkills = []string{
 var approvalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
 
 // assertOrderedBody asserts each phrase appears in body after the previous one.
+//
+// The cursor only advances, so nothing before the FIRST phrase is ever scanned.
+// Appending a phrase here therefore proves nothing about a site that renders
+// ahead of that first anchor: a later copy of the same prose satisfies the
+// match. Such a site needs its own index assertion, not another list entry.
 func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 	t.Helper()
 	position := 0

@@ -12,6 +12,14 @@ data:
         shared checkout, treat a pi-extension lane failure whose errors are missing-file TS6053
         lines under /workspace/repo as this race: rerun the gate before diagnosing, and only
         investigate if the failure reproduces on a quiet tree.
+
+        The race also surfaces as module resolution failures rather than TS6053, so match on the
+        failure class and not that one signature. A 2026-07-26 pre-commit run failed with
+        `Cannot find module './languages/sql'` out of a nested node_modules, `Cannot find module`
+        for two test files that were present on disk, and one invariant reporting a degraded
+        resolution status, while a standalone `./x gate` passed immediately before and again
+        immediately after. Missing-file and missing-module errors are the tell either way;
+        assertion failures are not.
     - title: "A claim must not out-claim the filter its own command applies"
       domains: [invariants]
       tags: [invariant-backing, verification-discipline]
@@ -40,6 +48,22 @@ data:
         test fails for a reason unrelated to what it asserts. Stage a real symlink with os.Symlink
         plus worktree Add instead. The target string becomes the blob, which also lets the fixture
         carry the exact shape under test, making the assertion stronger than the fabricated form.
+    - title: "An ordered-phrase assertion cannot reach a site ahead of its first anchor"
+      domains: [rendering, invariants]
+      tags: [invariant-backing, verification-discipline]
+      body: |
+        `assertOrderedBody` advances a cursor past each matched phrase, so every phrase must
+        occur after the previous one and nothing before the FIRST anchor is scanned at all.
+        Appending a phrase to an ordered list therefore proves nothing about prose that renders
+        ahead of that list's opening anchor: the match is satisfied by a later copy of the same
+        sentence, and deleting the early one fails no test. In ADR-0160 the brainstorming skill
+        carries the effort-identity rule in its own procedure prose near the top of the body,
+        while the shared approval partial repeats it far below, and the ordered list opens at
+        "**Mandatory approval check-in.**". Two successive rounds recorded the early site as
+        covered by that list; it never was. A site ahead of the anchor needs its own assertion
+        that resolves both offsets and compares them. The general form: before claiming an
+        ordered-list entry covers a site, check where that site renders relative to the list's
+        first phrase.
     - title: "A test's name is not its assertions"
       domains: [invariants]
       tags: [invariant-backing, plan-taxonomy]
