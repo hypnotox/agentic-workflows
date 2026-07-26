@@ -963,6 +963,49 @@ adr-readme part, and the architecture/working-with-awf guide sources, not just t
 authoring template. A post-rename `grep -rnE '\b<oldtoken>' .awf/` reaching zero is the
 cheap catch (2026-07-13).
 
+Grep the BARE TOKEN, never the phrase. ADR-0159 renamed five commands and wrote its
+discovery greps as phrases (`awf sync`, `awf prose-gate`), which missed the same two
+shapes three separate times across three phases even after the first phase recorded
+them. A verb list names the command as a bare token in prose that never says `awf`
+("the awf verbs `render`, `check`, `invariants`, `audit`"), and an unset-var template
+fallback splits the phrase across a template action (`{{ end }} sync{{ end }}`), so no
+phrase grep can see either. Both are invisible to review too, because the rendered
+output looks right wherever the var IS set. Pair every phrase grep with
+`git grep -nE '\b<oldtoken>\b'` and a `\}\} *<oldtoken>\b` grep, and treat
+`go test ./...` as the real oracle: bare-token argv fixtures
+(`resolve([]string{"sync"})`, `clispec.Lookup("sync")`) are reached by no prose grep at
+all. Note also that a git pathspec is a leading-path match, so `.awf` never reaches
+`examples/sundial/.awf`; the example needs its own pathspec entries (2026-07-26).
+
+## Registering a migration has fallout the plan never lists
+
+_Domains: config_
+
+Adding one line to the migration registry moves `migrate.Current()`, and everything
+pinned to the old tip fails at once. ADR-0159's plan specified the migration and its
+test and named none of the rest; eight assertions across six files broke
+(`internal/project/{version,example_wiring}_test.go`,
+`internal/migrate/{migrate,workflowtelemetry,maxclaimspertopic,enablerunner}_test.go`,
+`cmd/awf/{upgrade,run}_test.go`). Most want a new number, but two need judgment: a
+fixture asserting the schema is AHEAD must move to tip+1 to stay ahead, and each
+migration's own `TestXIsCurrent` asserts a premise ("enable-runner is the tip") that the
+next migration falsifies, so it is deleted rather than renumbered while the new
+migration's file adds its own.
+
+The version floor is the part that is easy to get wrong quietly. `minVersionBySchema`
+needs an entry for the new generation at or below `project.Version` (ADR-0049
+Decision 4), and reusing the previous generation's version is only correct while that
+version is UNRELEASED. Generations 17 and 18 both map to 0.22.0 because both landed
+during its cycle; generation 19 landed after 0.22.0 shipped, so mapping it there would
+claim a published binary can render a tree it has no migration for. It maps to 0.23.0
+and the const moves with it, the mid-cycle bump `docs/releasing.md` already prescribes.
+Check the changelog for a released heading before reusing a version.
+
+Finally, registering the migration trips the version gate in the repo's OWN trees:
+`./x render` and `./x check` refuse until both `.awf/awf.lock` and
+`examples/sundial/.awf/awf.lock` are upgraded, and the example is a separate Go module,
+so it needs a built binary rather than `go run ../../cmd/awf` (2026-07-26).
+
 ## A new config field needs a config-reference live-state projection case
 
 _Domains: config_
