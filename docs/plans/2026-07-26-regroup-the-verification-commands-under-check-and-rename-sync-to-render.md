@@ -9,7 +9,7 @@ status: Proposed
 
 Ship ADR-0159: rename `awf sync` to `awf render`, fold `awf invariants`, `awf prose-gate`, `awf memory-gate`, and `awf commit-gate` into an `awf check` group alongside two new `drift` and `state` children, and give the driver the per-child gating and per-child project-state exemption that regrouping requires.
 
-Non-goals: bare `awf check` does not change what it runs or what it returns, no ran/skipped report is added, no `*Cmd` var key is renamed, and no file under `docs/decisions/` or `docs/plans/` is rewritten.
+Non-goals: bare `awf check` does not change what it runs or what it returns, no ran/skipped report is added, no `*Cmd` var key is renamed, and no retained history is rewritten (`docs/decisions/**`, `docs/plans/**`, and the released version sections of `changelog/`).
 
 ## Architecture summary
 
@@ -21,9 +21,11 @@ Three mechanisms carry the change; the rest is mechanical rename.
 
 **`check` becomes a group with a default leaf.** `metrics` is the existing precedent: a group whose bare form does work and whose children add more. `check`'s handler dispatches on `c.sub`, with the empty sub running today's `runCheck` unchanged.
 
-`--staged` stays a flag on the bare form only. The three predicates that key on `top.Name == "check"` are re-scoped to bare check, and the handler rejects the flag on any child.
+`--staged` stays a flag on the bare form only. The three predicates that key on `top.Name == "check"` are re-scoped to bare check, and the handler rejects the flag on any child. The children still declare the flag in their spec: `parseArgs` validates against the resolved child, so an undeclared flag dies with a generic unknown-flag error before the handler can produce a useful one.
 
 Phases are ordered so each closing commit passes `./x gate` alone, and so every ADR-0159 operation lands in the phase whose reality it describes. Phase boundaries are not release boundaries: only the completed plan is releasable, because the schema migration that moves adopters lands in Phase 4.
+
+**Operation batching.** ADR-0159 declares nineteen operations, applied in four batches: ten in Phase 1 (the render rename, alongside the `Implementing` flip), one in Phase 2, three in Phase 3, and five in Phase 4 (alongside the `Implemented` flip). The lifecycle rules pin the ends: `internal/adr/format.go` refuses an `Implementing` event not immediately followed by the first `Applied` event and an explicit `Implemented` event not immediately preceded by a final `Applied` event, and `internal/adr/application.go` refuses `Implementing` without both applied and remaining operations. Every intermediate state satisfies that: 10/9, 11/8, 14/5, then 19/0.
 
 ## File structure
 
@@ -31,23 +33,28 @@ Phases are ordered so each closing commit passes `./x gate` alone, and so every 
   - `internal/migrate/renameretiredcommands.go` - the schema-19 migration rewriting retired subcommand tokens in config var values
   - `internal/migrate/renameretiredcommands_test.go` - its table test
 - **Modified:**
-  - `internal/clispec/clispec.go` - the command table: `sync` to `render`, the `check` group and its six children, the `Inherit` gating zero value, the `StateExempt` field, `GatedCommandNames`
-  - `internal/clispec/clispec_test.go` - replace `TestGroupChildrenCarryNoGating`, update `TestGatedCommandNames` and `TestLookup`
+  - `internal/clispec/clispec.go` - the command table: `sync` to `render`, the `check` group and its six children, the `Inherit` gating zero value, the `StateExempt` field, `GatedCommandNames`, the new weaker-child projection
+  - `internal/clispec/clispec_test.go` - `TestLookup`, `TestGatedCommandNames`, and the replacement for `TestGroupChildrenCarryNoGating`
   - `cmd/awf/main.go` - `globalHelp` child recursion, resolved-gating dispatch, `guardProjectState` per-child exemption, bare-check staged predicates
   - `cmd/awf/dispatch.go` - handler registry keys, the `check` group handler
   - `cmd/awf/check.go` - the drift and state entry points, the version-ahead note text
   - `cmd/awf/invariants.go`, `cmd/awf/prosegate.go`, `cmd/awf/memorygate.go`, `cmd/awf/commitgate.go` - user-facing message prefixes
-  - `cmd/awf/help_test.go`, `cmd/awf/check_test.go`, `cmd/awf/gate_test.go`, `cmd/awf/run_test.go`, `cmd/awf/invariants_test.go`, `cmd/awf/prosegate_test.go`, `cmd/awf/memorygate_test.go`, `cmd/awf/commitgate_test.go`, `cmd/awf/failure_paths_test.go`, `cmd/awf/dashboardread_test.go` - invocations and expected output
+  - `internal/audit/audit.go`, `internal/config/config.go`, `internal/project/render.go`, `internal/project/currentstate.go` - Go doc comments naming retired commands
+  - `internal/config/edit.go` - the string-valued mapping editor the migration needs
+  - the `cmd/awf` test files carrying a retired command name or bare token (Tasks 1.6 and 3.12 give discovery commands rather than a fixed list)
   - `internal/project/banner.go` - `bannerText`
-  - `internal/project/gatedcommands.go` - the per-child projection
+  - `internal/project/gatedcommands.go`, `internal/project/gatedcommands_test.go` - the projection and its pinned expectation
   - `internal/catalog/standard.go` - five var descriptors' descriptions and `Options`
   - `internal/configspec/spec.go` - five key entries' `Description` / `Availability`
   - `internal/migrate/migrate.go` - register migration 19
   - `templates/hooks/pre-commit.sh.tmpl`, `templates/hooks/commit-msg.sh.tmpl` - the three unset-var fallbacks
-  - `x` - the `sync` verb and five retired-command call sites
+  - `templates/docs/working-with-awf.md.tmpl` - the `gatedCommands` render-key description
+  - `x`, `.githooks/pre-commit` - the runner verb and the hook stub's remediation message
+  - `README.md` - the public CLI command table (hand-authored, outside the lock, so nothing else catches it)
+  - `changelog/CHANGELOG.md` - a new `## [Unreleased]` entry only
   - `.awf/config.yaml` - `activeMdRegenCmd`, `proseGateCmd`, `memoryGateCmd`, `commitGateCmd`
-  - the authored `.awf/` inputs naming a retired command (Tasks 1.6 and 4.3 give the exact sets)
-  - `.awf/topics/parts/**/current-state.md` - the eighteen ADR-0159 claim operations
+  - the authored `.awf/` inputs naming a retired command (Tasks 1.6 and 4.4 give the discovery commands)
+  - `.awf/topics/parts/**/current-state.md` - the nineteen ADR-0159 claim operations
   - `docs/decisions/0159-regroup-the-verification-commands-under-check-and-rename-sync-to-render.md` - status history
   - this plan - the status flip
 - **Deleted:** none.
@@ -56,7 +63,7 @@ Phases are ordered so each closing commit passes `./x gate` alone, and so every 
 
 Self-contained: the rename completes within this phase, so `./x gate` passes at its close. No `check` work happens here.
 
-- [ ] **Task 1.1: Rename the command in the spec table.** In `internal/clispec/clispec.go`, replace the `sync` entry with:
+- [ ] **Task 1.1: Rename the command in the spec table and its two pinned tests.** In `internal/clispec/clispec.go`, replace the `sync` entry with:
 
   ```go
   	{
@@ -69,7 +76,7 @@ Self-contained: the rename completes within this phase, so `./x gate` passes at 
   	},
   ```
 
-  In `internal/clispec/clispec_test.go`, `TestLookup` looks up `"sync"`; change that argument to `"render"`.
+  Two tests in `internal/clispec/clispec_test.go` pin the old name and fail at this phase's gate unless both change here: `TestLookup` looks up `"sync"` (change the argument to `"render"`), and `TestGatedCommandNames` pins `want := []string{"sync", "check", "invariants", ...}` (change the first element to `"render"` only; Task 3.5 makes the remaining edits to this literal).
 
 - [ ] **Task 1.2: Rename the handler key and the ahead-note text.** In `cmd/awf/dispatch.go`, change the registry key:
 
@@ -95,13 +102,20 @@ Self-contained: the rename completes within this phase, so `./x gate` passes at 
 
 - [ ] **Task 1.4: Rename the runner's verb and its awf invocations.** In `x`: rename the `sync)` case label to `render)`; update the usage line in the `*)` default case so `render` replaces `sync` in the pipe-separated verb list; change `./awf sync "$@"` to `./awf render "$@"`; change `(cd examples/sundial && "$bindir/awf" sync)` to `(cd examples/sundial && "$bindir/awf" render)`. Leave the `check)` and `gate)` cases untouched.
 
+  In `.githooks/pre-commit`, the drift-refusal message tells the developer what to run, and is read exactly when a commit has just been refused:
+
+  ```diff
+  -    echo "pre-commit: the staged slice has drift in $label - run ./x sync and stage the result" >&2
+  +    echo "pre-commit: the staged slice has drift in $label - run ./x render and stage the result" >&2
+  ```
+
 - [ ] **Task 1.5: Update the authored config and descriptor naming `awf sync`.** In `.awf/config.yaml`, change `activeMdRegenCmd: ./x sync` to `activeMdRegenCmd: ./x render`. In `internal/catalog/standard.go`:
 
   ```go
   		{Key: "activeMdRegenCmd", Kind: "string", Description: "Command that regenerates the generated ADR decision index (INDEX.md).", Default: "", Options: []string{"./awf render", "awf render"}},
   ```
 
-- [ ] **Task 1.6: Batch - update every authored source naming `awf sync`.** One transformation (`awf sync` becomes `awf render`; `./x sync` becomes `./x render`) applied across authored inputs.
+- [ ] **Task 1.6: Batch - update every authored source naming the retired command.** One transformation (`awf sync` becomes `awf render`; `./x sync` becomes `./x render`) applied across authored inputs.
 
   **Representative** - a convention part naming the command in prose:
 
@@ -110,25 +124,28 @@ Self-contained: the rename completes within this phase, so `./x gate` passes at 
   +Every `awf render` unconditionally renders `.awf/memory/.gitignore` with no config gate,
   ```
 
-  **Edge** - a template that spells the banner out in its own text, where the surrounding comment syntax and the `awf:` prefix must survive:
+  **Edge** - a Go test passing the command as a bare token, with no `awf ` prefix for a prose grep to find. `cmd/awf/help_test.go` is the sharpest case, because its failure is a `Lookup` miss rather than a string mismatch:
 
   ```diff
-  -<!-- GENERATED by awf: do not edit; change .awf/ and run `awf sync` -->
-  +<!-- GENERATED by awf: do not edit; change .awf/ and run `awf render` -->
+  -	run([]string{"awf", "help", "sync"}, &out, &errb)
+  -	spec, _ := clispec.Lookup("sync")
+  +	run([]string{"awf", "help", "render"}, &out, &errb)
+  +	spec, _ := clispec.Lookup("render")
   ```
 
-  **Affected-site set** - the output of:
+  **Affected-site set** - the union of two discovery commands, because the prose grep alone misses every bare-token Go site:
 
   ```
-  git grep -lE 'awf sync|\./x sync' -- .awf templates cmd internal x tools .github
+  git grep -lE 'awf sync|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md
+  git grep -ln '"sync"' -- cmd internal
   ```
 
-  Apply the identical shape at every site. Do not run it over `docs/decisions` or `docs/plans`: ADR-0159 Decision 10 leaves retained records naming the old command.
+  Apply the identical shape at every site. Do not run either over `docs/decisions`, `docs/plans`, or the released sections of `changelog/`: ADR-0159 Decision 10 leaves retained records naming the old command. In the second command's output, `internal/telemetry` uses `"sync"` in an unrelated sense; inspect before editing rather than replacing blind.
 
-  **Post-check** - this command produces no output:
+  **Post-check** - `go test ./...` passes, and this command produces no output:
 
   ```
-  git grep -nE 'awf sync|\./x sync' -- .awf templates cmd internal x tools .github
+  git grep -nE 'awf sync|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md
   ```
 
 - [ ] **Task 1.7: Apply the render-rename operations, open the Implementing sequence, and commit.** Update the prose of these ten claims so each names `awf render` or `./x render` where it named the retired command. The first eight name it as an invocation; the last two enumerate "load, render, sync, or check" and would otherwise name one concept twice, so their enumeration collapses to "load, render, or check":
@@ -137,7 +154,7 @@ Self-contained: the rename completes within this phase, so `./x gate` passes at 
 
   Each gains `Revised-by: ADR-0159`. Claim slugs and the `rendering/sync-and-drift` topic id are identities and do not change (ADR-0159 Decision 11).
 
-  In the ADR, set `status: Implementing` and append two adjacent events in this order: an `Implementing` event carrying the frozen content digest, then an `Applied` event carrying the next state sequence and these ten operations in the ADR's `State changes` declaration order. `internal/adr/format.go` refuses an `Implementing` event not immediately followed by the first `Applied` event, and `internal/adr/application.go` refuses an `Implementing` status without both applied and remaining operations; ten applied of eighteen leaves eight remaining, satisfying both.
+  In the ADR, set `status: Implementing` and append two adjacent events in this order: an `Implementing` event carrying the frozen content digest, then an `Applied` event carrying the next state sequence and these ten operations in the ADR's `State changes` declaration order.
 
   Run `./x render` (the verb renamed in Task 1.4), then `./x check` (expected: clean, no drift entries and no error-severity findings). Stage the transaction, run `./awf check --staged` (expected: clean), then `./x gate` (expected: every step passes). Commit:
 
@@ -164,7 +181,7 @@ Self-contained and independently useful: `metrics` and `new` have undiscoverable
 
   Author `tooling/cli:help-lists-group-children` in `.awf/topics/parts/tooling/cli/current-state.md` as an invariant with `Backing: test` and `Origin: ADR-0159`, stating that `awf help` lists every group command's children beneath their parent, so no command is reachable only by knowing to ask a parent for help.
 
-  In the ADR, append an `Applied` event with the next state sequence and the single operation `add \`tooling/cli:help-lists-group-children\``. Status stays `Implementing`: eleven applied, seven remaining.
+  In the ADR, append an `Applied` event with the next state sequence and the single operation `add \`tooling/cli:help-lists-group-children\``. Status stays `Implementing`: eleven applied, eight remaining.
 
   Run `./x render && ./x check` (expected: clean), stage, `./awf check --staged` (expected: clean), `./x gate` (expected: pass). Commit:
 
@@ -174,7 +191,7 @@ Self-contained and independently useful: `metrics` and `new` have undiscoverable
 
 ## Phase 3: Regroup the verification commands under `awf check`
 
-The largest phase, and it cannot be sliced further: the group, the gating machinery, the guard exemption, and every call site invoking a retired command must land together, because `./x gate` itself runs `./awf prose-gate` and would fail at any intermediate state. No claim operations land here; the claims describing this reality apply in Phase 4, which is what `Remaining` means.
+The largest phase, and it cannot be sliced further: the group, the gating machinery, the guard exemption, and every call site invoking a retired command must land together, because `./x gate` itself runs `./awf prose-gate` and `./awf memory-gate` (`x:24-25`) and would fail at any intermediate state.
 
 - [ ] **Task 3.1: Give gating an inherit state.** In `internal/clispec/clispec.go`, renumber the enum so the zero value means "not declared":
 
@@ -211,11 +228,23 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
 
   Set `StateExempt: true` on the top-level `version` and `changelog` entries and on the `check` children `prose`, `memory`, and `commit` added in Task 3.4. Leave it false everywhere else, `check` itself and `check drift`/`state`/`invariants` included, matching `check`'s treatment today.
 
-- [ ] **Task 3.3: Replace the children-carry-no-gating guard.** In `internal/clispec/clispec_test.go`, delete `TestGroupChildrenCarryNoGating` and its doc comment: it asserts the property this phase deliberately removes. Replace it with a test asserting resolution instead, covering: every top-level command has `Gating != Inherit`; `ResolvedGating` returns the parent's gating for a child left at `Inherit` (assert against a `metrics` or `new` child); `ResolvedGating` returns `Ungated` for `check`'s `prose`, `memory`, and `commit` children while `check` itself is `Gated`.
+- [ ] **Task 3.3: Replace the children-carry-no-gating guard and pin both new properties.** In `internal/clispec/clispec_test.go`, delete `TestGroupChildrenCarryNoGating` and its doc comment: it asserts the property this phase deliberately removes. Replace it with a test asserting resolution instead, covering: every top-level command has `Gating != Inherit`; `ResolvedGating` returns the parent's gating for a child left at `Inherit` (assert against a `metrics` or `new` child); `ResolvedGating` returns `Ungated` for `check`'s `prose`, `memory`, and `commit` children while `check` itself is `Gated`. Add its proof marker:
 
-  Write this test without a proof-marker comment. Its marker is added in Phase 4 Task 4.4 alongside the claim it proves, because a marker naming an undeclared claim fails the corpus load.
+  ```go
+  // invariant: tooling/cli:group-child-gating-honored
+  ```
 
-- [ ] **Task 3.4: Restructure the command table.** In `internal/clispec/clispec.go`, delete the top-level `invariants`, `commit-gate`, `prose-gate`, and `memory-gate` entries, and replace the `check` entry with a group in its current table position, so `awf help` order changes only by the four removals. `MaxPos` widens to `-1` so the handler owns the unknown-subcommand message (the `new` treatment):
+  Add a second test, in `cmd/awf`, asserting that each of `check prose`, `check memory`, and `check commit` succeeds under a committed current-state journal and under an attested lock while bare `check` refuses in both. Add its proof marker:
+
+  ```go
+  // invariant: tooling/cli:group-child-project-guard-exemption
+  ```
+
+  Both claims are authored in Task 3.14, in this same commit. A proof marker naming an undeclared claim fails the corpus load with `unknown claim ID`, so marker and claim must land together; keeping both in Phase 3 also avoids shipping a commit whose claim prose contradicts its own proof test.
+
+- [ ] **Task 3.4: Restructure the command table.** In `internal/clispec/clispec.go`, delete the top-level `invariants`, `commit-gate`, `prose-gate`, and `memory-gate` entries, and replace the `check` entry with a group in its current table position, so `awf help` order changes only by the four removals. `MaxPos` widens to `-1` so the handler owns the unknown-subcommand message (the `new` treatment).
+
+  Every child declares `BoolFlags: []string{"--staged"}` even though none accepts it: `resolve` returns the child as `cmd` and `parseArgs` validates against the child's spec, so an undeclared `--staged` dies with a generic `unknown flag` error before the handler can produce the bare-form-only message Task 3.9 specifies. Declaring the flag is what lets the handler own the diagnostic, exactly as `MaxPos: -1` does for the unknown-subcommand message.
 
   ```go
   	{
@@ -242,25 +271,29 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
     commit       validate one commit message (Conventional Commits), blocking
   `,
   		Children: []Command{
-  			{Name: "drift", Summary: "Report stale or hand-edited rendered output", MaxPos: 0,
+  			{Name: "drift", Summary: "Report stale or hand-edited rendered output",
+  				BoolFlags: []string{"--staged"}, MaxPos: 0,
   				HelpBody: `Usage: awf check drift
 
   Re-render in memory and report every rendered file that is stale or hand-edited,
   including the config-tree hygiene sweep. Does not accept --staged.
   `},
-  			{Name: "state", Summary: "Report current-state authority findings", MaxPos: 0,
+  			{Name: "state", Summary: "Report current-state authority findings",
+  				BoolFlags: []string{"--staged"}, MaxPos: 0,
   				HelpBody: `Usage: awf check state
 
   Check current-state authority over the working tree. Does not accept --staged;
   the staged transition is awf check --staged.
   `},
-  			{Name: "invariants", Summary: "Report each invariant claim's backing and proof sites", MaxPos: 0,
+  			{Name: "invariants", Summary: "Report each invariant claim's backing and proof sites",
+  				BoolFlags: []string{"--staged"}, MaxPos: 0,
   				HelpBody: `Usage: awf check invariants
 
   Report each invariant claim's backing mode, an unbacked claim's Verify guidance,
   and a test-backed claim's proof-marker sites.
   `},
-  			{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking", MaxPos: 0,
+  			{Name: "prose", Summary: "Scan tracked text files for typographic punctuation, blocking",
+  				BoolFlags: []string{"--staged"}, MaxPos: 0,
   				Gating: Ungated, StateExempt: true,
   				HelpBody: `Usage: awf check prose
 
@@ -272,7 +305,8 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the hooks
   artifact is enabled).
   `},
-  			{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking", MaxPos: 0,
+  			{Name: "memory", Summary: "Scan staged decision records for working-memory citations, blocking",
+  				BoolFlags: []string{"--staged"}, MaxPos: 0,
   				Gating: Ungated, StateExempt: true,
   				HelpBody: `Usage: awf check memory
 
@@ -286,7 +320,8 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   pre-commit hook (the rendered .awf/hooks/pre-commit.sh payload runs it when the
   hooks artifact is enabled).
   `},
-  			{Name: "commit", Summary: "Validate one commit message (Conventional Commits), blocking", MaxPos: 1,
+  			{Name: "commit", Summary: "Validate one commit message (Conventional Commits), blocking",
+  				BoolFlags: []string{"--staged"}, MaxPos: 1,
   				Gating: Ungated, StateExempt: true,
   				HelpBody: `Usage: awf check commit [FILE]
 
@@ -301,11 +336,30 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   	},
   ```
 
-- [ ] **Task 3.5: Project the gated-command list per child.** In `internal/clispec/clispec.go`, `GatedCommandNames` iterates top-level commands only. Required behaviour after the change: emit each top-level command whose gating is not `Ungated`, in table order, exactly as today; additionally emit, in table order beneath its parent, each child whose `ResolvedGating` differs from its parent's, spelled `parent child`; a child that inherits emits nothing, so `new` and `metrics` children never appear. Under the restructured table the result is the twelve gated top-level names plus the three ungated `check` children.
+- [ ] **Task 3.5: Split the gated projection into two lists.** A flat `[]string` gives a renderer no way to tell a gated member from an ungated exclusion, and "differs from the parent" would wrongly classify a hypothetical gated child under an ungated parent. In `internal/clispec/clispec.go`, keep `GatedCommandNames()` returning only genuinely gated names, unchanged in contract, and add a sibling:
 
-  In `internal/clispec/clispec_test.go`, `TestGatedCommandNames` pins a literal list; update the literal to the post-change set. This is the test that fails until edited. The marker-carrying `TestGatedCommandsDisplay` in `internal/project` derives its expectation from `GatedCommandNames()` and passes unchanged, so it is not the one to edit.
+  ```go
+  // UngatedGroupChildren returns, in table order, each group child whose resolved
+  // gating is Ungated under a parent that gates - the exclusions a reader needs
+  // beside the gated set. Spelled "parent child". A child at or above its
+  // parent's gating is a member of the gated set, not an exclusion (ADR-0159
+  // Decision 4).
+  func UngatedGroupChildren() []string
+  ```
 
-- [ ] **Task 3.6: Render the gated list with its exclusions.** In `internal/project/gatedcommands.go`, the projection feeds the agent guide's binary-version-gate line. Required behaviour: render the gated top-level names as today, and render the differing children as a trailing exclusion clause naming them, so a reader sees which `check` subcommands do not gate. Forbidden: presenting an ungated child as a member of the gated set.
+  In `internal/clispec/clispec_test.go`, finish the `TestGatedCommandNames` literal begun in Task 1.1: remove `"invariants"`, leaving the twelve gated top-level names. Add a test pinning `UngatedGroupChildren()` to exactly `check prose`, `check memory`, `check commit`.
+
+- [ ] **Task 3.6: Render the gated list with its exclusions.** The rendered value is interpolated into a shipped adopter-facing sentence at `templates/agents-doc/AGENTS.md.tmpl`, which reads `Every gated command ({{ $.gatedCommands }}) refuses to run when the binary is behind...`, so the exact string matters. In `internal/project/gatedcommands.go`, `gatedCommandsDisplay()` must produce:
+
+  ```
+  `render`, `check`, `audit`, `metrics`, `doctor`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`
+  ```
+
+  giving the rendered sentence: "Every gated command (`render`, `check`, ..., `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`". Build the exclusion clause from `UngatedGroupChildren()`, never from a literal.
+
+  `internal/project/gatedcommands_test.go` asserts `gatedCommandsDisplay()` equals the comma-joined `GatedCommandNames()` exactly, so it fails once the clause is added; update its expectation to the two-part form. Its proof marker for `tooling/cli:gated-commands-generated` stays on that test.
+
+  In `templates/docs/working-with-awf.md.tmpl`, the `gatedCommands` render-key description reads "the backticked, comma-separated list of binary-version-gated commands", which is now false for every adopter's rendered doc. Replace it with a description naming both parts: the backticked gated top-level list plus the named ungated-child exclusions.
 
 - [ ] **Task 3.7: Resolve gating and the state guard from the child.** In `cmd/awf/main.go`, the driver reads `top.Gating`; resolve from the child and re-scope the staged predicate to bare check:
 
@@ -321,7 +375,13 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   	}
   ```
 
-  `cmd` and `sub` are already returned by `resolve`; thread them to this call site. Replace `guardProjectState`'s top-level-name switch with the resolved command's property:
+  Replace `guardProjectState`'s top-level-name switch with the resolved command's property, and update its call site, which today passes `(cwd, top, inv)`:
+
+  ```go
+  	if err := guardProjectState(cwd, cmd, top, sub, inv); err != nil {
+  		return dispatchErr(stderr, err)
+  	}
+  ```
 
   ```go
   func guardProjectState(root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
@@ -345,12 +405,12 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
 
 - [ ] **Task 3.9: Rewire the handler registry.** In `cmd/awf/dispatch.go`, delete the `invariants`, `commit-gate`, `prose-gate`, and `memory-gate` keys and replace the `check` value with a group handler. Required behaviour:
   - `sub == ""` with no positionals: run `runCheck(c.root, c.inv.bools["--staged"], c.stdout)`, today's behaviour.
-  - `sub` names a child: reject `--staged` with a usage error stating the flag applies to the bare form only, then dispatch to `runCheckDrift`, `runCheckState`, `runInvariants`, `runProseGate`, `runMemoryGate`, or `runCommitGate` (the last taking `firstPos(c.inv.positionals)` and `c.stdin`).
+  - `sub` names a child: if `--staged` is present, return a usage error stating the flag applies to the bare form only (the child declares the flag in Task 3.4 solely so this message is reachable); otherwise dispatch to `runCheckDrift`, `runCheckState`, `runInvariants`, `runProseGate`, `runMemoryGate`, or `runCommitGate` (the last taking `firstPos(c.inv.positionals)` and `c.stdin`).
   - `sub == ""` with a positional: `resolve` tests only `args[1]` for a child name, so `awf check --staged drift` arrives here with `drift` as a positional. When that positional names a valid child, return a usage error saying the subcommand must come first (`awf check drift`); otherwise return a usage error listing the valid subcommands.
 
   Forbidden: listing a valid child among "unknown subcommands" when the user spelled one in the wrong position. `TestHandlerRegistryParity` asserts registry keys match clispec top-level names, so removing four keys alongside four table entries keeps it green.
 
-- [ ] **Task 3.10: Batch - update the user-facing message prefixes.** Each regrouped command prints its own name in at least one message.
+- [ ] **Task 3.10: Batch - update the message prefixes and doc comments.** Each regrouped command prints its own name in at least one message, and several Go doc comments name one too.
 
   **Representative** - `cmd/awf/prosegate.go`:
 
@@ -366,9 +426,9 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   +		fmt.Fprintln(stdout, "awf check invariants: no invariant claims")
   ```
 
-  **Affected-site set** - `cmd/awf/prosegate.go`, `cmd/awf/memorygate.go`, `cmd/awf/commitgate.go`, `cmd/awf/invariants.go`, and the tests asserting those strings: `cmd/awf/prosegate_test.go`, `cmd/awf/memorygate_test.go`, `cmd/awf/commitgate_test.go`, `cmd/awf/invariants_test.go`, `cmd/awf/run_test.go`, `cmd/awf/failure_paths_test.go`.
+  **Affected-site set** - the four command files (`cmd/awf/prosegate.go`, `memorygate.go`, `commitgate.go`, `invariants.go`), the five Go doc comments outside `cmd/awf` (`internal/audit/audit.go`, `internal/config/config.go` in two places, `internal/project/render.go`, `internal/project/currentstate.go`), and every site the discovery command in Task 3.12 returns.
 
-  **Post-check** - `go test ./cmd/awf/...` passes and this command produces no output:
+  **Post-check** - `go test ./...` passes and this command produces no output:
 
   ```
   git grep -nE '"(prose-gate|memory-gate|commit-gate|awf invariants):' -- cmd internal
@@ -406,12 +466,45 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
 
   In `.awf/config.yaml`, update `proseGateCmd`, `memoryGateCmd`, and `commitGateCmd` to their new spellings. `checkCmd` names this repo's own runner verb and stays as it is.
 
-- [ ] **Task 3.12: Update and extend the command tests, then commit.** Update every test invoking a retired command name to its new spelling across `cmd/awf/check_test.go`, `cmd/awf/gate_test.go`, `cmd/awf/run_test.go`, `cmd/awf/invariants_test.go`, `cmd/awf/prosegate_test.go`, `cmd/awf/memorygate_test.go`, `cmd/awf/commitgate_test.go`, `cmd/awf/help_test.go`, and `cmd/awf/dashboardread_test.go`. Add tests for the behaviour this phase introduces, each asserting a terminal state:
+- [ ] **Task 3.12: Batch - update the command tests.** Discovery rather than a fixed list, because the retired names appear as bare tokens in argv fixtures that no prose grep reaches.
+
+  **Representative** - a test invoking the command through the driver:
+
+  ```diff
+  -	code := run([]string{"awf", "prose-gate"}, &out, &errb)
+  +	code := run([]string{"awf", "check", "prose"}, &out, &errb)
+  ```
+
+  **Edge** - a fixture listing command names as data, where only some elements move (`cmd/awf/failure_paths_test.go`):
+
+  ```diff
+  -	for _, name := range []string{"sync", "check", "invariants", "audit", "list"} {
+  +	for _, name := range []string{"render", "check", "audit", "list"} {
+  ```
+
+  **Affected-site set** - the output of:
+
+  ```
+  git grep -ln '"invariants"\|"prose-gate"\|"memory-gate"\|"commit-gate"' -- cmd internal
+  ```
+
+  **Post-check** - `go test ./...` passes and that same grep returns nothing outside `internal/migrate`.
+
+- [ ] **Task 3.13: Add the tests for the new behaviour.** Each asserts a terminal state:
   - `awf check drift` and `awf check state` each run alone and print their clean line on a clean tree.
-  - `awf check --staged` is unchanged; `awf check state --staged` and `awf check drift --staged` each exit non-zero with the bare-form-only usage message.
+  - `awf check --staged` is unchanged; `awf check state --staged` and `awf check drift --staged` each exit non-zero with the bare-form-only usage message (reachable only because Task 3.4 declares the flag on each child).
   - `awf check --staged drift` exits non-zero with the subcommand-order message, not the unknown-subcommand message.
   - `awf check bogus` exits non-zero listing the valid subcommands.
   - `awf check prose` and `awf check memory` succeed against a project whose lock is behind the binary, where bare `awf check` refuses. This is the per-child gating property.
+  - `awf help` lists the six `check` children (extending the Phase 2 assertion to the new group).
+
+- [ ] **Task 3.14: Author the two new claims, apply the third batch, and commit.** Author in `.awf/topics/parts/tooling/cli/current-state.md`, both `Backing: test` with `Origin: ADR-0159`, their proof markers already placed in Task 3.3:
+  - `tooling/cli:group-child-gating-honored` - a group child's gating classification resolves from the child when it declares one and from the parent otherwise, so an ungated child under a gated parent is honoured rather than silently gated.
+  - `tooling/cli:group-child-project-guard-exemption` - the current-state journal and attestation guard reads the resolved command's exemption property, so `check prose`, `check memory`, and `check commit` stay runnable in the states where a hook must still function.
+
+  Update `tooling/cli:gated-commands-generated`'s prose for the two-list projection (gated top-level names plus the separately-reported ungated group children), gaining `Revised-by: ADR-0159`. Applying it here keeps the claim consistent with its own proof test, which Task 3.6 rewrites in this commit.
+
+  In the ADR, append an `Applied` event with the next state sequence and these three operations in declaration order. Status stays `Implementing`: fourteen applied, five remaining.
 
   Run `./x render && ./x check` (expected: clean), stage, `./awf check --staged` (expected: clean), `./x gate` (expected: pass). Commit:
 
@@ -421,13 +514,24 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
 
 ## Phase 4: Migration, descriptor prose, docs, and the terminal flip
 
-Closes the ADR: the remaining seven operations apply here, and the `Implemented` event follows the final `Applied` event immediately, as `internal/adr/format.go` requires.
+Closes the ADR: the remaining five operations apply here, and the `Implemented` event follows the final `Applied` event immediately.
 
-- [ ] **Task 4.1: Add the schema-19 migration.** Create `internal/migrate/renameretiredcommands.go` with `applyRenameRetiredCommands`. Required behaviour:
+- [ ] **Task 4.1: Add the string-valued config editor.** `internal/config`'s funnel writes a bool (`SetMappingScalar`), an int (`SetMappingInteger`), sequences (`SetArray`, `SetArrayMember`), and a string into an *absent* key (`SeedVarKey`); nothing rewrites a present string value. Add the string sibling in `internal/config/edit.go`, matching the existing editors' shape and routing through the same `encode` funnel:
+
+  ```go
+  // SetMappingString writes value at key.child, replacing a present string value.
+  // The string sibling of SetMappingScalar and SetMappingInteger (ADR-0159
+  // Decision 8), added for the retired-command value migration.
+  func SetMappingString(src []byte, key, child, value string) ([]byte, error)
+  ```
+
+  Forbidden: hand-rolled YAML emission. The funnel exists so no caller emits YAML directly, and ADR-0159 Decision 8 says so explicitly.
+
+- [ ] **Task 4.2: Add the schema-19 migration.** Create `internal/migrate/renameretiredcommands.go` with `applyRenameRetiredCommands`. Required behaviour:
   - For each config var value that is a string, match the shape `<invocation> <retired-subcommand>[ <trailing args>]`, where `<invocation>` is exactly `awf`, `./awf`, or a path ending in `/awf`.
   - Rewrite the subcommand token: `sync` to `render`, `invariants` to `check invariants`, `prose-gate` to `check prose`, `memory-gate` to `check memory`, `commit-gate` to `check commit`. Preserve the invocation token and every trailing argument verbatim.
   - Leave every other value untouched, including a value naming a runner awf does not own (`./x check`, `make gate`) and any value whose first token is not an awf invocation.
-  - Write through `internal/config`'s existing mapping editor; do not hand-roll YAML emission.
+  - Write through `config.SetMappingString` from Task 4.1.
 
   Forbidden: rewriting a value that merely contains a retired word in prose or later in a longer pipeline. The match is anchored at the invocation token.
 
@@ -437,15 +541,17 @@ Closes the ADR: the remaining seven operations apply here, and the `Implemented`
   	{To: 19, Name: "rename-retired-commands", Apply: applyRenameRetiredCommands},
   ```
 
-- [ ] **Task 4.2: Test the migration.** Create `internal/migrate/renameretiredcommands_test.go` as a table test covering, at minimum: each of the five rewrites; all three invocation spellings; trailing-argument preservation; `./x check` left untouched; a non-awf first token left untouched; an absent var left untouched; a value containing a retired word in prose left untouched.
+- [ ] **Task 4.3: Test the migration.** Create `internal/migrate/renameretiredcommands_test.go` as a table test covering, at minimum: each of the five rewrites; all three invocation spellings; trailing-argument preservation; `./x check` left untouched; a non-awf first token left untouched; an absent var left untouched; a value containing a retired word in prose left untouched.
 
-- [ ] **Task 4.3: Correct the descriptor and configspec prose.** In `internal/catalog/standard.go`, update the four remaining descriptors naming a retired command: `commitGateCmd`, `proseGateCmd`, and `memoryGateCmd` (their `Options` entries become `./awf check commit`, `./awf check prose`, `./awf check memory`) and `commitScopes` (its description says "enforced by awf commit-gate/audit"). `activeMdRegenCmd` was corrected in Task 1.5.
+  These fixtures must contain the retired spellings literally, since they are what the migration rewrites. This file and `renameretiredcommands.go` are the one sanctioned home for those spellings, and both are excluded from the repo-wide post-checks below.
+
+- [ ] **Task 4.4: Correct the descriptor and configspec prose.** In `internal/catalog/standard.go`, update the four remaining descriptors naming a retired command: `commitGateCmd`, `proseGateCmd`, and `memoryGateCmd` (their `Options` entries become `./awf check commit`, `./awf check prose`, `./awf check memory`) and `commitScopes` (its description says "enforced by awf commit-gate/audit"). `activeMdRegenCmd` was corrected in Task 1.5.
 
   In `internal/configspec/spec.go`, update the `Description` and `Availability` prose of `audit.allowedTypes`, `audit.allowedScopes`, `audit.subjectMaxLength`, `proseGate.enabled`, and `memoryCite.enabled`. These render verbatim into `docs/config-reference.md`, so regenerating without correcting them reproduces the retired names.
 
-- [ ] **Task 4.4: Batch - update the remaining authored sources.** The mirror of Task 1.6 for the regrouped commands.
+- [ ] **Task 4.5: Batch - update the remaining authored sources.** The mirror of Task 1.6 for the regrouped commands.
 
-  **Representative** - a workflow convention part naming a gate command in prose, where only the command name moves and the surrounding sentence stands:
+  **Representative** - a workflow convention part naming a gate command in prose:
 
   ```diff
   -The opt-in `awf memory-gate` (on in this repo, wired into `./x gate` and the
@@ -457,32 +563,33 @@ Closes the ADR: the remaining seven operations apply here, and the `Implemented`
   **Affected-site set** - the output of:
 
   ```
-  git grep -lE 'awf (invariants|prose-gate|memory-gate|commit-gate)' -- .awf templates tools .github
+  git grep -lE 'awf (invariants|prose-gate|memory-gate|commit-gate)' -- .awf .githooks templates cmd internal x tools .github README.md ':!internal/migrate/renameretiredcommands*.go'
   ```
 
-  excluding the rendered payloads under `.awf/hooks/`, which a re-render rewrites.
+  `README.md` is hand-authored and absent from `.awf/awf.lock`, so no drift check will catch it: its public CLI command table is the project's front door and names five retired commands. Exclude the rendered payloads under `.awf/hooks/`, which a re-render rewrites.
 
-  **Post-check** - after the edits and a re-render, this command produces no output:
+  **Post-check** - after the edits and a re-render, that same command produces no output.
 
-  ```
-  git grep -nE 'awf (invariants|prose-gate|memory-gate|commit-gate)' -- .awf templates cmd internal x tools .github
-  ```
+- [ ] **Task 4.6: Write the Unreleased changelog entry.** `docs/releasing.md` requires entries added as they land so the changelog stays release-ready, and ADR-0159's Consequences name the changelog as the mitigation for adopters whose var value is neither migratable shape. Under `## [Unreleased]`, add a breaking-changes entry covering: the `sync` to `render` rename with no alias; the four regrouped commands and their new spellings; the forced schema-19 upgrade, including for projects with no matching var value; the `rename-retired-commands` value migration and the shapes it deliberately does not cover; and the banner-driven whole-tree re-render on first `awf render` after upgrading.
 
-- [ ] **Task 4.5: Author the two remaining claims.** Author `tooling/cli:group-child-gating-honored` in `.awf/topics/parts/tooling/cli/current-state.md`: an invariant, `Backing: test`, `Origin: ADR-0159`, stating that a group child's gating classification resolves from the child when it declares one and from the parent otherwise, so an ungated child under a gated parent is honoured rather than silently gated. Add its proof marker to the resolution test written in Task 3.3.
+  Do not touch any released version section: ADR-0159 Decision 10 treats them as retained history, on the same grounds as decisions and plans.
 
-  Author `tooling/cli:group-child-project-guard-exemption`: an invariant, `Backing: test`, `Origin: ADR-0159`, stating that the current-state journal and attestation guard reads the resolved command's exemption property, so `check prose`, `check memory`, and `check commit` stay runnable in the states where a hook must still function. Add its proof marker to a new test asserting that each of the three children succeeds under a committed journal and under an attested lock while bare `check` refuses.
-
-  Update the prose of these five claims so each names the new command, each gaining `Revised-by: ADR-0159`: `tooling/cli:gated-commands-generated` (reworded for the per-child projection rather than for a rename), `tooling/quality-gates:example-adopter-checked`, `tooling/quality-gates:prose-gate-refuses-without-git`, `tooling/quality-gates:memory-citation-gate`, and `tooling/audit-and-snapshots:commit-gate-shared-rule`. Slugs do not change.
+- [ ] **Task 4.7: Apply the final batch, flip both statuses, and close.** Update the prose of these five claims, each gaining `Revised-by: ADR-0159`: `tooling/quality-gates:example-adopter-checked`, `tooling/quality-gates:prose-gate-refuses-without-git`, `tooling/quality-gates:memory-citation-gate`, `tooling/audit-and-snapshots:commit-gate-shared-rule`, and `config/configuration:config-serialization-owned` (whose enumeration of the serialization funnel gains `SetMappingString`). Slugs do not change.
 
   `tooling/quality-gates:prose-gate-tracked-file-scan` is deliberately absent from every operation list: its body says "the prose scanner" and never names the command, so only its slug carries the old word, and a slug is an identity (ADR-0159 Decision 11).
 
-- [ ] **Task 4.6: Regenerate, flip both statuses, and close.** Run `./x render` so AGENTS.md, `docs/decisions/INDEX.md`, and `docs/config-reference.md` regenerate from the corrected authored inputs.
+  Registering migration 19 makes `migrate.Current()` return 19 while both `.awf/awf.lock` and `examples/sundial/.awf/awf.lock` still carry generation 18, so the version gate refuses `render` and `check` in both trees until each is upgraded. Run the upgrade before the render, exactly as the previous schema bump did:
 
-  In the ADR, set `status: Implemented` and append, in this order and in the same commit, an `Applied` event carrying the next state sequence and the seven remaining operations in the ADR's `State changes` declaration order, then an `Implemented` event carrying the frozen content digest. The `Implemented` event must be the entry immediately after the final `Applied` event, and every declared operation must now be applied.
+  ```
+  go run ./cmd/awf upgrade
+  (cd examples/sundial && go run ../../cmd/awf upgrade)
+  ```
 
-  In this plan's frontmatter, set `status: Implemented`.
+  Expected terminal state: both locks stamped at schema generation 19, after which `./x render` and `./x check` run again.
 
-  Run `./x render && ./x check` (expected: clean), stage, `./awf check --staged` (expected: clean), `./x gate` (expected: pass). Commit:
+  Run `./x render` so AGENTS.md, `docs/decisions/INDEX.md`, and `docs/config-reference.md` regenerate from the corrected authored inputs. In the ADR, set `status: Implemented` and append, in this order and in the same commit, an `Applied` event carrying the next state sequence and these five operations in the ADR's declaration order, then an `Implemented` event carrying the frozen content digest. In this plan's frontmatter, set `status: Implemented`.
+
+  Run `./x check` (expected: clean), stage, `./awf check --staged` (expected: clean), `./x gate` (expected: pass). Commit:
 
   ```commit
   feat(awf): migrate retired command names and close ADR-0159
@@ -491,7 +598,14 @@ Closes the ADR: the remaining seven operations apply here, and the `Implemented`
 ## Verification
 
 - [ ] `./x check` is clean and `./x gate` passes at the close of every phase, not only at the end.
-- [ ] `git grep -nE 'awf (sync|invariants|prose-gate|memory-gate|commit-gate)' -- .awf templates cmd internal x tools .github` produces no output. `docs/decisions` and `docs/plans` are excluded by design and still name the old commands.
+- [ ] This command produces no output:
+
+  ```
+  git grep -nE 'awf (sync|invariants|prose-gate|memory-gate|commit-gate)|\./x sync' -- .awf .githooks templates cmd internal x tools .github README.md ':!internal/migrate/renameretiredcommands*.go'
+  ```
+
+  `docs/decisions`, `docs/plans`, the released sections of `changelog/`, and the migration's own fixtures are excluded by design and still carry the old spellings.
+- [ ] `go test ./...` passes, which is what catches the bare-token argv fixtures no prose grep reaches.
 - [ ] `awf help` lists every group child, including `check`'s six and the existing `new` and `metrics` children.
 - [ ] `awf check` on a clean tree produces the same verdict and exit status as before the change; only the version-ahead note's command name differs.
 - [ ] `awf check prose` and `awf check memory` succeed against a project whose lock is behind the binary, where bare `awf check` refuses.
@@ -502,8 +616,10 @@ Closes the ADR: the remaining seven operations apply here, and the `Implemented`
 ## Notes
 
 - **Phase boundaries are not release boundaries.** The schema-19 migration that carries adopters across the rename lands in Phase 4; a release cut at the close of Phase 1 or Phase 3 would rename commands with no migration behind them. Only the completed plan is releasable.
+- **Retained history keeps the old names.** `docs/decisions/**`, `docs/plans/**`, and the released version sections of `changelog/` are not rewritten (ADR-0159 Decision 10). A released entry states what shipped under that version; rewriting it would describe a command that version never had. Only `## [Unreleased]` gains an entry.
 - **The Phase 1 diff is dominated by the banner.** Changing `bannerText` rewrites the first line of every managed file, so Phase 1's commit touches essentially the whole rendered tree. That churn is content-free; review the authored files and treat the banner lines as mechanical.
+- **Prose greps miss argv fixtures.** The retired names appear in Go tests as bare tokens (`resolve([]string{"sync"})`, `clispec.Lookup("sync")`), which no `awf sync` grep finds. Both rename batches therefore pair a prose grep with a bare-token grep, and both post-checks require `go test ./...` rather than a clean grep alone.
 - **The Go symbol `runSync` and the file `cmd/awf/sync.go` keep their names.** ADR-0159 renames the command surface, not internal identifiers. A symbol rename is a legitimate follow-up but would double Phase 1's reviewable diff.
-- **The `--staged` widening is the subtle risk.** The three predicates keying on `top.Name == "check"` compile and pass their existing tests after regrouping while meaning something different, so the tests added in Task 3.12 for `check state --staged` and `check drift --staged` are what actually pin the correction.
+- **The `--staged` widening is the subtle risk.** The three predicates keying on `top.Name == "check"` compile and pass their existing tests after regrouping while meaning something different, so the tests in Task 3.13 for `check state --staged` and `check drift --staged` are what actually pin the correction.
 - **Follow-on decision, deliberately out of scope.** Making bare `awf check` run every enabled check with a ran/skipped report owns the git precondition on the prose and memory scans (both call `snapshot.IndexTree` before consulting their knob), the duplicate invocations in the pre-commit payload, and the exit-code contract when every check is skipped.
 - **Also noted during ADR review, out of scope here.** ADR-0100's in-place-editable-sections primitive has had no consumer since ADR-0156 replaced ADR-0101's `x` with a single-section wrapper. Worth its own look.
