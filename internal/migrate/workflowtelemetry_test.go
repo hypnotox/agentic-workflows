@@ -42,14 +42,14 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if cfg.WorkflowTelemetry != want {
 		t.Fatalf("migrated defaults = %#v, want %#v", cfg.WorkflowTelemetry, want)
 	}
-	if Current() != 18 {
-		t.Fatalf("current schema = %d, want 18", Current())
+	if Current() != 19 {
+		t.Fatalf("current schema = %d, want 19", Current())
 	}
 	versionAuthority, err := os.ReadFile(filepath.Join("..", "project", "project.go"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, literal := range []string{`const Version = "0.22.0"`, `17: "0.22.0"`, `18: "0.22.0"`} {
+	for _, literal := range []string{`const Version = "0.23.0"`, `17: "0.22.0"`, `18: "0.22.0"`, `19: "0.23.0"`} {
 		if !bytes.Contains(versionAuthority, []byte(literal)) {
 			t.Fatalf("project version authority lacks %q", literal)
 		}
@@ -108,14 +108,14 @@ func TestWorkflowTelemetryMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(applied) != 2 || applied[0] != "workflow-telemetry" || applied[1] != "enable-runner" {
+	if len(applied) != 3 || applied[0] != "workflow-telemetry" || applied[1] != "enable-runner" || applied[2] != "rename-retired-commands" {
 		t.Fatalf("registry applied = %v", applied)
 	}
 	upgraded, err := manifest.Load(config.LockPath(registryRoot))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if upgraded.SchemaVersion != 18 {
+	if upgraded.SchemaVersion != 19 {
 		t.Fatalf("registry schema = %d", upgraded.SchemaVersion)
 	}
 	body, err := os.ReadFile(config.ConfigPath(registryRoot))

@@ -63,10 +63,3 @@ func TestEnableRunnerMalformedConfig(t *testing.T) {
 		t.Error("expected error surfaced from SetMappingScalar for malformed config.yaml")
 	}
 }
-
-// The enable-runner migration is the schema 18 tip.
-func TestEnableRunnerIsCurrent(t *testing.T) {
-	if Current() != 18 {
-		t.Errorf("Current() = %d, want 18", Current())
-	}
-}

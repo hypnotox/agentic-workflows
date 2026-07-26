@@ -175,6 +175,40 @@ func TestSetMappingInteger(t *testing.T) {
 	}
 }
 
+// The string editor the retired-command value migration consumes. Its fixtures
+// deliberately spell no retired command name: the migration's own test owns those
+// literals, and this file is inside the repo-wide sweep that forbids them.
+func TestSetMappingString(t *testing.T) {
+	for _, tc := range []struct {
+		name, src, want string
+		wantErr         bool
+	}{
+		{"replaces a present value", "vars:\n  gateCmd: ./x gate # keep\n", "vars:\n  gateCmd: ./x verify # keep\n", false},
+		{"preserves the quoting style", "vars:\n  gateCmd: \"./x gate\"\n", "vars:\n  gateCmd: \"./x verify\"\n", false},
+		{"absent key is a no-op", "prefix: x\n", "prefix: x\n", false},
+		{"absent child is a no-op", "vars:\n  other: v\n", "vars:\n  other: v\n", false},
+		{"rejects non-mapping", "vars: nope\n", "", true},
+		{"rejects non-scalar child", "vars:\n  gateCmd: [a]\n", "", true},
+		{"rejects malformed", "vars: [bad\n", "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := SetMappingString([]byte(tc.src), "vars", "gateCmd", "./x verify")
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error, got %q", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(got) != tc.want {
+				t.Fatalf("got %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestRemoveMappingKey(t *testing.T) {
 	cases := []struct {
 		name, src, key, child, want string

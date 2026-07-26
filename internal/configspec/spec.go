@@ -189,13 +189,13 @@ var keys = []Entry{
 	{Path: "workflowTelemetry.diagnostics.thresholds.implementationReworkCount", Type: "positive integer", Default: "2", Description: "Inclusive absolute threshold for returns to implementation after implementation review.", Availability: "Consumed when heuristic diagnostics are enabled."},
 	{
 		Path: "audit.allowedTypes", Type: "string list", Default: "the Conventional Commits type set (build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test)",
-		Description:  "Commit types `awf commit-gate` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.)",
-		Availability: "Read by `awf commit-gate` and `awf audit`.",
+		Description:  "Commit types `awf check commit` and `awf audit` accept. Absent key = the default set; an explicit empty list = accept any type. (Absent and empty differ.)",
+		Availability: "Read by `awf check commit` and `awf audit`.",
 	},
 	{
 		Path: "audit.allowedScopes", Type: "list of scope entries (bare string, or {name, meaning})", Default: "accept any scope",
-		Description:  "The project's Conventional Commits scope taxonomy: the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf commit-gate`/`awf audit` and editing them reflags referencing rendered artifacts.",
-		Availability: "Read by `awf commit-gate`, `awf audit`, and every rendered artifact quoting the scope list.",
+		Description:  "The project's Conventional Commits scope taxonomy: the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf check commit`/`awf audit` and editing them reflags referencing rendered artifacts.",
+		Availability: "Read by `awf check commit`, `awf audit`, and every rendered artifact quoting the scope list.",
 	},
 	{
 		Path: "audit.allowedScopes[].name", Type: "string", Default: "none",
@@ -209,8 +209,8 @@ var keys = []Entry{
 	},
 	{
 		Path: "audit.subjectMaxLength", Type: "int", Default: "72",
-		Description:  "Maximum commit-subject length `awf commit-gate` and `awf audit` accept.",
-		Availability: "Read by `awf commit-gate` and `awf audit`.",
+		Description:  "Maximum commit-subject length `awf check commit` and `awf audit` accept.",
+		Availability: "Read by `awf check commit` and `awf audit`.",
 	},
 	{
 		Path: "audit.dependencyManifests", Type: "string list (anchored path globs)", Default: "a broad manifest set (**/go.mod, **/package.json, **/Cargo.toml, ...)",
@@ -264,7 +264,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "proseGate.enabled", Type: "bool", Default: "false (key absent)",
-		Description:  "Whether `awf prose-gate` scans. False, the command exits zero immediately without scanning, so a hook or a runner may invoke it unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a tree that has never been swept would fail it on the day it lands.",
+		Description:  "Whether `awf check prose` scans. False, the command exits zero immediately without scanning, so a hook or a runner may invoke it unconditionally. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a tree that has never been swept would fail it on the day it lands.",
 		Availability: "Always.",
 	},
 	{
@@ -289,7 +289,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "memoryCite.enabled", Type: "bool", Default: "false (key absent)",
-		Description:  "Whether `awf memory-gate` scans, and whether `awf commit-gate` scans the commit-message body for the same thing. False, neither scans: memory-gate exits zero, so a hook or a runner may invoke it unconditionally, and commit-gate falls through to its existing subject check. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
+		Description:  "Whether `awf check memory` scans, and whether `awf check commit` scans the commit-message body for the same thing. False, neither scans: `awf check memory` exits zero, so a hook or a runner may invoke it unconditionally, and `awf check commit` falls through to its existing subject check. Absent and false both mean: do not scan. Default off, because the scan blocks a commit and a corpus that has never been swept would fail it on the day it lands.",
 		Availability: "Always.",
 	},
 	{

@@ -76,7 +76,7 @@ Apply all five lenses to every plan:
 **dependency-order**: tasks are ordered so each builds only on already-completed work
 
 
-**gate-clean-embedded**: plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the gate the executor will run; commit subjects ≤72 chars (commit-gate), constant-string `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide brace guard)
+**gate-clean-embedded**: plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the gate the executor will run; commit subjects ≤72 chars (check commit), constant-string `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide brace guard)
 
 
 **section-taxonomy**: the plan follows the canonical shape, a `# Plan:` H1 title, the `date`/`adrs`/`status` frontmatter, the three header sections (Goal, Architecture summary, File structure), the phases, and the optional Verification/Notes tails, rather than re-improvising header field names or presentation

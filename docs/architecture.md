@@ -94,9 +94,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   conformance audit (`./x audit-local`, ADR-0073: changelog-entry Errors plus
   coverage-ignore re-evaluation Warnings). Not part of the rendered standard.
 - **`internal/config/`**: owns `.awf/config.yaml`: the schema and strict load, its construction
-  (`MarshalSkeleton`) and typed mutation (`SetArrayMember`, `SetArray`, `SetMappingScalar`, and
-  `SetMappingInteger`, comment-preserving `yaml.Node` round trips) behind one `encode` funnel
-  (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The `currentState` block configures
+  (`MarshalSkeleton`) and typed mutation (`SetArrayMember`, `SetArray`, `SetMappingScalar`,
+  `SetMappingInteger`, and `SetMappingString`, comment-preserving `yaml.Node` round trips) behind
+  one `encode` funnel (ADR-0026; `internal/migrate` excepted), plus keyed sidecars. The
+  `currentState` block configures
   strict topic validation, coverage/fan-out policy, and the positive default-20 non-failing
   `maxClaimsPerTopic` topic-size advisory; it is the authority the current-state model reads. The
   legacy `invariants` block it replaced was dropped at the project-atomic cutover.
@@ -168,17 +169,17 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `CheckStaged` run the current-state static and staged checks, and `Audit` evaluates per-commit claim
   transitions across a range.
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
-  workflow-conformance rules; powers `awf audit` and the blocking `awf commit-gate`
+  workflow-conformance rules; powers `awf audit` and the blocking `awf check commit`
   (ADR-0017, ADR-0036).
 - **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
 - **`internal/dashboardruntime/`**: resolves and compare-and-swap advances `refs/awf/dashboard-runtime`, materializes only the pinned commit, derives the complete validated telemetry policy snapshot, and publishes or verifies private immutable XDG cache entries under an OS advisory lock. Stable sentinels distinguish unsafe paths, refs, builds, collisions, snapshots, and concurrent advances.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
-  typographic punctuation substitutes; powers the opt-in blocking `awf prose-gate` (ADR-0119).
+  typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
   it answers whether the tree is clean, not whether a commit made it worse.
 - **`internal/memorycite/`**: detects a citation of a specific working-memory file in a decision
-  record or a commit-message body; powers the opt-in blocking `awf memory-gate` and the
-  `awf commit-gate` body scan (ADR-0158). Pure text in, findings out: it reads no filesystem and no
+  record or a commit-message body; powers the opt-in blocking `awf check memory` and the
+  `awf check commit` body scan (ADR-0158). Pure text in, findings out: it reads no filesystem and no
   git, so both callers supply their own bytes.
 - **`internal/pathglob/`**: awf's single glob dialect (ADR-0077): anchored full-path doublestar
   matching against slash-separated repo-relative paths, consumed by config validation, invariant
@@ -210,7 +211,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `worktreeConfig`-extension workaround) plus eligible working-path, commit-blob, range-blob, and
   staged-blob readers (each carrying its executable mode); read-only,
   shared by `awf audit` and `awf context`, and feeding the `internal/snapshot` seam that
-  the current-state checks and `awf prose-gate` consume (ADR-0092). It is also the sole
+  the current-state checks and `awf check prose` consume (ADR-0092). It is also the sole
   definition site for `<a>..<b>` range parsing (`ParseRange`, ADR-0127): every command taking
   a range parses through it, and a test fails the build if a second parser reappears.
 - **`internal/snapshot/`**: captures immutable, path-sorted file trees whose `File`s own private
@@ -218,7 +219,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   caller's data; `NewTree` rejects unsupported modes, unsafe paths, and duplicates. It exposes
   `IndexTree`, `WorkingTree`, `CommitTree`, and `RangePair` over `internal/git`'s blob readers
   (preserving executable mode, rejecting an unmerged index), consumed by the current-state checks,
-  `awf context`, and `awf prose-gate`.
+  `awf context`, and `awf check prose`.
 - **`internal/configspec/`**: the compile-time, adopter-facing description authority (ADR-0088):
   every config key, sidecar field, and per-artifact data key with adopter-voiced descriptions and
   availability clauses, var entries derived verbatim from the catalog descriptors. Bidirectional
@@ -314,10 +315,10 @@ exists: a committed journal permits only `--recover`, a committed attestation pe
 `version`/`changelog`/`help` always bypass it. Attestation and readiness reporting live only in the
 preceding bridge release; this binary consumes seals, it never produces them.
 
-`awf prose-gate` reads the staged files it scans through the immutable `internal/snapshot` index
+`awf check prose` reads the staged files it scans through the immutable `internal/snapshot` index
 Tree rather than raw index blobs: the Tree captures each stage-0 file's path, executable mode, and a
 private byte copy in one path-sorted, tamper-proof view, so the scan and its `.awf/config.yaml`
-lookup share a single immutable snapshot. `awf memory-gate` reads its staged blobs the same way and
+lookup share a single immutable snapshot. `awf check memory` reads its staged blobs the same way and
 additionally path-filters them to the decision-record directories, so only a staged decision or plan
 reaches its detector. The same snapshot seam serves the working, index, commit, and range universes
 the current-state checks compare.

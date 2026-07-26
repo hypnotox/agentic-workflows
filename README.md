@@ -164,7 +164,7 @@ flowchart LR
     TOPIC --> INV[invariant claims]
     RULE --> AUTH[["awf context:<br/>live authority"]]
     INV --> AUTH
-    INV -.->|Backing marker| CHECK[["awf check /<br/>awf invariants"]]
+    INV -.->|Backing marker| CHECK[["awf check /<br/>check invariants"]]
 ```
 
 A topic pairs strict metadata (`.awf/topics/metadata/<domain>/<topic>.yaml`) with a constrained
@@ -181,7 +181,7 @@ without reading the whole ADR corpus. `--staged` and `--range <a>..<b>` resolve 
 **Invariants are enforced, not just documented.** An invariant claim declares its backing:
 `Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug>`) on a
 real test, while `Backing: unbacked` is a reasoned contract that must carry a `Verify:` line and
-no marker. `awf check` and `awf invariants` enforce this symmetrically, so an invariant with no
+no marker. `awf check` and its `invariants` subcommand enforce this symmetrically, so an invariant with no
 backing in source fails loudly instead of rotting. Rules carry no backing.
 
 Adopting this release from an older awf is a one-time sealed cutover handled by plain `awf
@@ -264,7 +264,7 @@ disk.
 |---|---|
 | `awf init` | Scaffold `.awf/`, seal first-adoption version and ADR cutoff authority, and render. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
 | `awf render` | Re-render after a config or template change. |
-| `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. |
+| `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. Subcommands narrow it to one check: `drift`, `state`, `invariants`, `prose`, `memory`, `commit`. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
@@ -274,13 +274,13 @@ disk.
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf metrics [selectors] [--json]` | Query canonical effort/session/phase/time-window metrics; export the same projection or validated normalized JSONL, append closed lifecycle requests, preview/apply terminal retention, or explicitly confirm one terminal-effort purge. |
 | `awf doctor [selectors] [--json]` | Read canonical exact and heuristic workflow findings. Findings are advisory and do not change exit status. |
-| `awf invariants` | Report documented invariants that lack a backing comment in source. |
+| `awf check invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
 | `awf context <paths>` | Report owning domains, topic summaries, applicable rules and invariants with backing contracts, and Accepted or Implementing pending changes and progress. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits the same data. `--uncovered` reports eligible unowned and uncovered paths. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
-| `awf prose-gate` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
-| `awf memory-gate` | Scan staged decision records for a citation of a specific working-memory file; blocking, opt-in per project. |
-| `awf commit-gate [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
+| `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
+| `awf check memory` | Scan staged decision records for a citation of a specific working-memory file; blocking, opt-in per project. |
+| `awf check commit [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files (keeps your `.awf/` config and preserves nonempty resident `.awf/metrics/` data plus its ignore file). |
 | `awf changelog` | Print the embedded changelog (`--version`, `--since`, or `--range`). |
@@ -304,7 +304,7 @@ removes everything awf generated, leaving your config in place.
 awf renders git-hook *content* but never installs or activates hooks; the wiring is
 yours. With the `hooks` artifact enabled (default on init), three inert payload scripts
 land under `.awf/hooks/`: `pre-commit.sh` (ordinary drift check, staged authority check,
-project gate, then enabled prose gate), `commit-msg.sh` (`awf commit-gate`), and `pre-push.sh`.
+project gate, then enabled prose gate), `commit-msg.sh` (`awf check commit`), and `pre-push.sh`.
 Invoke them from wiring you own,
 e.g. an executable `.git/hooks/pre-commit` containing
 `exec bash .awf/hooks/pre-commit.sh "$@"`, or a tracked `core.hooksPath` directory. If

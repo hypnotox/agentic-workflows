@@ -1,7 +1,7 @@
 ---
 date: 2026-07-26
 adrs: [159]
-status: Proposed
+status: Implemented
 ---
 # Plan: Regroup the verification commands under check and rename sync to render
 
@@ -656,3 +656,13 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
 - **The `--staged` widening is the subtle risk.** The three predicates keying on `top.Name == "check"` compile and pass their existing tests after regrouping while meaning something different, so the tests in Task 3.13 for `check state --staged` and `check drift --staged` are what actually pin the correction.
 - **Follow-on decision, deliberately out of scope.** Making bare `awf check` run every enabled check with a ran/skipped report owns the git precondition on the prose and memory scans (both call `snapshot.IndexTree` before consulting their knob), the duplicate invocations in the pre-commit payload, and the exit-code contract when every check is skipped.
 - **Also noted during ADR review, out of scope here.** ADR-0100's in-place-editable-sections primitive has had no consumer since ADR-0156 replaced ADR-0101's `x` with a single-section wrapper. Worth its own look.
+
+### Implementation findings
+
+- **Task 1.6's post-check was unachievable at Phase 1** as written: it required the prose grep to come back empty, but `tooling/quality-gates:example-adopter-checked` still said `./x sync` and its Applied operation sits at declaration position 16, batched into Phase 4. The grep was run in Phase 1 with that one claim excluded; the end-of-plan Verification grep, which runs after Phase 4, is the one that had to come back clean.
+- **The schema bump forced a `project.Version` bump the plan did not name.** `minVersionBySchema` needs an entry for the current generation at or below `project.Version` (ADR-0049 Decision 4), and generations 17 and 18 both map to `0.22.0`, which shipped on 2026-07-24. Reusing it for generation 19 would claim a released binary can render a tree it has no migration for, so generation 19 maps to `0.23.0` and the const moves with it. `docs/releasing.md` already prescribes exactly this mid-cycle bump for a schema-coupled change; it touches only the const and the map.
+- **A schema bump has standard test fallout the task list did not enumerate.** Eight assertions pinned generation 18 or the migration-name list: `internal/project/version_test.go`, `internal/project/example_wiring_test.go`, `internal/migrate/{migrate,workflowtelemetry,maxclaimspertopic,enablerunner}_test.go`, and `cmd/awf/{upgrade,run}_test.go`. Two needed more than a number: `TestEnableRunnerIsCurrent` asserted a premise ("enable-runner is the tip") that the new migration falsifies, so it was deleted in favour of the new file's own tip test, and `TestRunUpgradeSchema15FailureAndAheadAreAtomic`'s schema-ahead fixture had to move from 19 to 20 to stay ahead.
+- **Task 3.12's post-check grep is over-broad by construction.** `'"invariants"'` also matches the `invariants` domain name, the agents-doc `invariants` data key, and the AGENTS.md section id, so it can never return empty. All seventeen non-migrate hits were inspected and confirmed legitimate; `go test ./...` is the real check for that task, as the plan's own notes say.
+- **Only one claim-metadata form takes multiple revisions.** A claim carries a single `Revised-by:` line with comma-separated ADR ids; a second line fails the topic parse with "expected Backing metadata", which reads as a missing-field error rather than a duplicate-key one.
+- **The bare-token blind spot recurred in Phase 4**, as Phase 1's findings predicted. `examples/sundial/.awf/docs/parts/development/command-runner.md` listed the awf verbs as bare tokens (`` `invariants` ``, `` `commit-gate` ``) and no `awf <command>` grep reached it. The tag vocabulary in `.awf/config.yaml` and the pitfall `tags:` entries also spell `commit-gate`, but a tag is an identity like a claim slug (Decision 11), so those stay.
+- **The `## [Unreleased]` changelog section needed the rename applied to it**, not just a new entry. It already carried `awf sync`, `awf memory-gate`, and `awf commit-gate` in unshipped ADR-0158 and ADR-0160 notes; those ship in the same release as the rename, so leaving them would publish release notes naming commands that no longer exist. Released sections were left untouched (Decision 10).

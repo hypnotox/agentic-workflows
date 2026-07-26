@@ -1,7 +1,7 @@
 // Package audit reports workflow-conformance findings over a branch's git
 // history. The range rules are advisory (ADR-0017): standalone, never wired into
 // the gate. The shared CheckConventionalCommit rule is the exception - it is also
-// consumed at commit time by the commit-gate and at plan time by `awf check`
+// consumed at commit time by `awf check commit` and at plan time by `awf check`
 // (ADR-0111). Most rules are pure over the commit range; the uncommitted-changes
 // rule (ADR-0025) additionally inspects the live working tree.
 package audit
@@ -140,7 +140,7 @@ func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 // command (ADR-0036), and by the plan-time planned-subject check
 // (CheckPlannedSubject, ADR-0111) - so none re-implements the regex, the type/scope
 // allow-lists, or the subject-length limit. Merge commits are exempt.
-// touches-state: tooling/audit-and-snapshots:commit-gate-shared-rule - shared conventional-commit rule consumed by commit-gate; proof in commitgate_test.go
+// touches-state: tooling/audit-and-snapshots:commit-gate-shared-rule - shared conventional-commit rule consumed by check commit; proof in commitgate_test.go
 func CheckConventionalCommit(c Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, Error)
 }

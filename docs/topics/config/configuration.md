@@ -30,9 +30,9 @@ Backing: test
 
 ### `invariant: config-serialization-owned`
 
-The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, SetMappingScalar, and the typed nested-integer SetMappingInteger editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
+The live .awf/config.yaml is constructed and mutated only through internal/config via MarshalSkeleton, SetArrayMember, SetArray, SetMappingScalar, the typed nested-integer SetMappingInteger editor, and the nested-string SetMappingString editor, which share one encoding funnel at a two-space indent, so no other package hand-rolls config.yaml serialization.
 Origin: ADR-0026
-Revised-by: ADR-0144
+Revised-by: ADR-0144, ADR-0159
 Backing: test
 
 ### `invariant: docsdir-default`

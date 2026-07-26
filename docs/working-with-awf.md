@@ -43,10 +43,10 @@ by this repository's own checks (ADR-0090).
 - `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, transactional phase transition, trajectory, terminal, waiver, or typed repair operation. Protocol 2 uses `transition-phase` for a normal chain edge so one event closes the named start and enters its successor, optionally with a route effect. Repair and waiver requests name the selected finding's owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible input is rejected without append. A failed validation or durable write is an error, never a claimed success.
 - `awf metrics retain --dry-run --json`: preview deterministic terminal-effort retention. Omit `--dry-run` to apply it. `awf metrics purge --effort <ID> --confirm --json` is the separately confirmed destructive cleanup surface and refuses active efforts.
 - `awf doctor --json`: report effort-owned exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status. There is no automatic health score, workflow block, waiver, repair, or reconciliation.
-- `awf invariants`: report the current-state topic invariant claims and their backing state.
-- `awf commit-gate <file>`: validate one commit message (used by a commit-msg hook).
-- `awf prose-gate`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
-- `awf memory-gate`: scan the staged decisions and plans directories for a citation of a specific working-memory file and exit non-zero on any finding (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
+- `awf check invariants`: report the current-state topic invariant claims and their backing state.
+- `awf check commit <file>`: validate one commit message (used by a commit-msg hook).
+- `awf check prose`: scan tracked text files for typographic punctuation substitutes and exit non-zero on any finding (opt-in via `proseGate.enabled`, default off; used by a pre-commit hook).
+- `awf check memory`: scan the staged decisions and plans directories for a citation of a specific working-memory file and exit non-zero on any finding (opt-in via `memoryCite.enabled`, default off; used by a pre-commit hook).
 - `awf changelog`: query the changelog by version or range.
 - `awf uninstall`: remove the generated footprint (lock-tracked files and the lock); the authored `.awf/` config stays in place. Nonempty resident `.awf/metrics/` data and its required ignore file are preserved and reported.
 - `awf version`: print the binary's version.

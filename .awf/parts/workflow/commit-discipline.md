@@ -2,7 +2,7 @@
 
 Use Conventional Commits, one concern per commit. Stage files explicitly rather than `git add -A`, so each commit is a deliberate, reviewable unit.
 
-The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), and enforced by `awf commit-gate`. awf uses a domain-aligned taxonomy:
+The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), and enforced by `awf check commit`. awf uses a domain-aligned taxonomy:
 
 {{=awf:commitScopeTable}}
 

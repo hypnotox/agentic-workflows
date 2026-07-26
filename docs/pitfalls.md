@@ -274,7 +274,7 @@ count in the doc (not just the paragraph you are editing) whenever a chain artif
 _Domains: tooling_
 
 `README.md` is hand-owned, not rendered, so `awf check` never flags it. Its command table and
-feature claims drift silently when the CLI grows (`awf new` and `awf commit-gate` shipped without
+feature claims drift silently when the CLI grows (`awf new` and `awf check commit` shipped without
 README rows). Adding or changing a CLI command means updating the README table in the same
 change, per the docs-travel-with-the-change invariant; no deterministic check will remind you.
 
@@ -1128,7 +1128,7 @@ _Related: ADR-0119_
 
 A file whose subject is the banned typographic substitutes (the scanner's rune map, a test
 fixture that plants an em-dash to prove the gate fires, an ADR example) is itself a tracked
-text file the `awf prose-gate` scan reads, so a literal glyph in it is a finding against the
+text file the `awf check prose` scan reads, so a literal glyph in it is a finding against the
 file that defines or tests the rule. Write the glyph as its Go escape (a backslash-u rune
 or string literal, which compiles to the real rune while the source stays ASCII), exactly as
 `internal/project/residue_scan_test.go`'s `bannedRunes` map and `internal/prosegate`'s

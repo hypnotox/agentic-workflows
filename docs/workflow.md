@@ -46,7 +46,7 @@ In Pi, a handoff requires a memory file whose `Effort:` line matches the active 
 
 Use Conventional Commits, one concern per commit. Stage files explicitly rather than `git add -A`, so each commit is a deliberate, reviewable unit.
 
-The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), and enforced by `awf commit-gate`. awf uses a domain-aligned taxonomy:
+The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), and enforced by `awf check commit`. awf uses a domain-aligned taxonomy:
 
 | scope | use it for |
 |---|---|
@@ -74,8 +74,8 @@ The gate is one command (`./x gate`) that must be green before every commit. Her
 profiled test suite (`go test ./... -coverpkg=./...`), the 100%-coverage check
 (`cmd/covercheck`, ADR-0012), the containerized Pi-extension strict type check and its 100%
 line/function/branch coverage floor (ADR-0123, ADR-0126), `go vet`, `golangci-lint`, the dead-code gate (`cmd/deadcodecheck`, ADR-0063), the
-workflow-pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan (`awf prose-gate`, ADR-0119, opt-in
-for adopters and enabled here), and the working-memory citation scan (`awf memory-gate`, ADR-0158,
+workflow-pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan (`awf check prose`, ADR-0119, opt-in
+for adopters and enabled here), and the working-memory citation scan (`awf check memory`, ADR-0158,
 opt-in for adopters and enabled here). Every step is deterministic: same tree in, same verdict out.
 
 Rendered-file drift is not a gate step: `./x check` blocks separately through the pre-commit
@@ -92,7 +92,7 @@ escape when a cutover transaction is interrupted.
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 ## Local git hooks
 
-This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check`, `./x check --staged`, `./x gate`, then the enabled `./awf prose-gate` and `./awf memory-gate`; `.awf/hooks/commit-msg.sh` runs `./awf commit-gate` with the message file; and `.awf/hooks/pre-push.sh` runs `./x gate full`. The commands are driven by the staged-check, `checkCmd`, `proseGateCmd`, `memoryGateCmd`, `gateCmd`, `gateCmdFull`, and `commitGateCmd` configuration and kept current by `./x render`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
+This repository enables the rendered hook payloads (ADR-0048): `.awf/hooks/pre-commit.sh` runs `./x check`, `./x check --staged`, `./x gate`, then the enabled `./awf check prose` and `./awf check memory`; `.awf/hooks/commit-msg.sh` runs `./awf check commit` with the message file; and `.awf/hooks/pre-push.sh` runs `./x gate full`. The commands are driven by the staged-check, `checkCmd`, `proseGateCmd`, `memoryGateCmd`, `gateCmd`, `gateCmdFull`, and `commitGateCmd` configuration and kept current by `./x render`. The checked-in `.githooks/` scripts are executable one-line stubs delegating to those payloads (`exec bash .awf/hooks/<name>.sh "$@"`), wired once per clone with `git config core.hooksPath .githooks`. awf never activates hooks; the stubs are this repo's adopter-owned wiring and the worked example of it.
 
 A committed current-state upgrade journal makes every ordinary command non-operational, hook-driven
 ones included, except `awf upgrade --recover`; a committed bridge attestation instead permits only
@@ -101,7 +101,7 @@ resolves: run the permitted mode to roll an interrupted cutover back, clean up a
 consume the seal before the hooks pass again. A malformed journal refuses even recovery and asks you to
 restore the working tree from Git and reinstall the bridge release.
 
-`awf commit-gate` is the deterministic, blocking commit-message gate, the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
+`awf check commit` is the deterministic, blocking commit-message gate, the commit-side analog of the test gate. It validates one commit message against the same Conventional Commits rules `awf audit` reports (type, scope, 72-char subject), but at commit time so a bad subject is refused instead of merely flagged later. It reads the message file a `commit-msg` hook passes as `$1` (or stdin), cleans it git-style, exempts merge and autosquash subjects, and exits non-zero on a violation. awf renders the `commit-msg.sh` payload but never wires it (ADR-0048); the `.githooks/commit-msg` stub here is the wiring.
 
 
 <!-- awf:edit ci: default; create .awf/parts/workflow/ci.md to override -->

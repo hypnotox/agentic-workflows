@@ -8,6 +8,29 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+- The verification commands are regrouped under `awf check` and `awf sync` is renamed to
+  `awf render` (ADR-0159). There are no aliases, on the ADR-0093 precedent: `awf sync` becomes
+  `awf render`, `awf invariants` becomes `awf check invariants`, `awf prose-gate` becomes
+  `awf check prose`, `awf memory-gate` becomes `awf check memory`, and `awf commit-gate [FILE]`
+  becomes `awf check commit [FILE]`. Two new subcommands split what bare `awf check` already did:
+  `awf check drift` reports stale or hand-edited rendered output (carrying the config-tree hygiene
+  sweep) and `awf check state` reports current-state authority findings. Bare `awf check` is
+  unchanged in behaviour and exit status, and `--staged` stays a flag on the bare form: a
+  subcommand rejects it with a usage message. `awf help` now lists a group's children, so the
+  regrouped commands stay discoverable.
+  Upgrade note: this ships schema generation 19, so `awf upgrade` is required before `awf render`
+  or `awf check` will run, including for a project whose vars name none of the renamed commands.
+  The `rename-retired-commands` migration rewrites a var value whose *leading* token is an awf
+  invocation (`awf`, `./awf`, or a path ending in `/awf`) followed by a retired subcommand,
+  preserving trailing arguments. It deliberately does not touch a value naming another runner
+  (`./x check`, `make gate`), one that mentions a retired name anywhere but that anchored second
+  position, or any call site outside `.awf/config.yaml`: your own scripts, CI workflows, and git
+  hooks that invoke a retired command by name need updating by hand.
+  Expect a whole-tree diff on the first `awf render` after upgrading. The provenance banner stamped
+  into the first line of every rendered file names the command to re-run, so the rename rewrites
+  that line everywhere. The churn is content-free.
+
 ### Features
 - Working-memory effort identity now has two sources (ADR-0160). The rendered checkpoint partials
   and the brainstorming skill previously required "the exact active `Effort: <active-effort-id>`
@@ -19,23 +42,23 @@ query a single version or a range.
   effort's identity. The full protocol also moves out of this repository's convention part into the
   shipped workflow-doc template, so an adopter's rendered workflow doc gains the effort-identity
   sentences (and, for a session-handoff-capable target, the structured-resume and ledger sentences)
-  on the next `awf sync`.
+  on the next `awf render`.
   Upgrade note: if you replaced the workflow doc's `working-memory` section with a
   full-replacement convention part, you do not receive the newly shipped identity protocol, while
   your checkpoint partials continue to point at that section. Re-derive your part against the new
   section default or adopt the section, otherwise your rendered protocol stays incomplete. Sync
   provenance labels this a template change, which understates a content relocation.
-- New `awf memory-gate` command scans the staged decisions and plans directories for a citation of
-  a specific working-memory file and exits non-zero on any finding, and `awf commit-gate` applies
+- New `awf check memory` command scans the staged decisions and plans directories for a citation of
+  a specific working-memory file and exits non-zero on any finding, and `awf check commit` applies
   the same detector to the git-cleaned commit-message body (ADR-0158). A mention of the bare
   `.awf/memory/` directory, an angle-bracket placeholder segment, and the directory's own ignore
   file all pass; only a concrete file name is a finding. Both scans are opt-in through the new
   `memoryCite.enabled` key and off by default, and `memoryCite.exemptions` permits a path that
   genuinely needs one (the commit-message scan honours no exemption, since an exemption is keyed by
-  path). A new `memoryGateCmd` var and an unconditional `awf memory-gate` line in the rendered
-  pre-commit payload re-render on your next `awf sync`. One breaking edge: a project with the hooks
+  path). A new `memoryGateCmd` var and an unconditional `awf check memory` line in the rendered
+  pre-commit payload re-render on your next `awf render`. One breaking edge: a project with the hooks
   singleton enabled and the runner singleton explicitly disabled must now set `memoryGateCmd`
-  before `awf sync` or `awf check` will pass, the same requirement the other three hook-referenced
+  before `awf render` or `awf check` will pass, the same requirement the other three hook-referenced
   awf-verb vars already carry.
 
 ## [0.22.0] - 2026-07-24

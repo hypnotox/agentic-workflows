@@ -50,6 +50,7 @@ var registry = []Migration{
 	{To: 16, Name: "topic-claim-budget", Apply: applyTopicClaimBudget},
 	{To: 17, Name: "workflow-telemetry", Apply: applyWorkflowTelemetry},
 	{To: 18, Name: "enable-runner", Apply: applyEnableRunner},
+	{To: 19, Name: "rename-retired-commands", Apply: applyRenameRetiredCommands},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state

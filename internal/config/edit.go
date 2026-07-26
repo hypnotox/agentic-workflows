@@ -206,6 +206,38 @@ func SetMappingInteger(src []byte, key, child string, value int) ([]byte, error)
 	return encode(doc)
 }
 
+// SetMappingString replaces a present string value at child under a top-level
+// mapping at key, via the same yaml.Node round-trip as the other editors so
+// comments and every untouched key survive (ADR-0026). It is the string sibling
+// of SetMappingScalar (bool) and SetMappingInteger (int), added for the
+// retired-command value migration (ADR-0159 Decision 8): SeedVarKey writes a
+// string only into an *absent* key, so until now nothing rewrote a present one.
+// The scalar's style is preserved, so a quoted value stays quoted and the diff
+// carries only the value change. An absent key or an absent child is a no-op
+// (returns src unchanged), so a schema migration can re-run safely.
+func SetMappingString(src []byte, key, child, value string) ([]byte, error) {
+	doc, root, err := parseMapping(src)
+	if err != nil {
+		return nil, err
+	}
+	val, _ := mapValue(root, key)
+	if val == nil {
+		return src, nil
+	}
+	if val.Kind != yaml.MappingNode {
+		return nil, fmt.Errorf("config: %s must be a mapping", key)
+	}
+	current, _ := mapValue(val, child)
+	if current == nil {
+		return src, nil
+	}
+	if current.Kind != yaml.ScalarNode {
+		return nil, fmt.Errorf("config: %s.%s must be a string scalar", key, child)
+	}
+	current.Tag, current.Value = "!!str", value
+	return encode(doc)
+}
+
 // RemoveMappingKey removes child from the mapping at top-level key, preserving
 // comments and every untouched key via the same yaml.Node round-trip as the
 // other editors (ADR-0026). When the removal empties the parent mapping, the

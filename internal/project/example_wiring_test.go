@@ -19,8 +19,8 @@ import (
 // as data (never executing the binary) keeps this a static contract alongside
 // the other example-wiring assertions.
 func TestSundialCurrentStateMigrated(t *testing.T) {
-	if migrate.Current() != 18 {
-		t.Fatalf("migrate.Current() = %d, want 18", migrate.Current())
+	if migrate.Current() != 19 {
+		t.Fatalf("migrate.Current() = %d, want 19", migrate.Current())
 	}
 	lockPath := "../../examples/sundial/.awf/awf.lock"
 	lock, err := manifest.Load(lockPath)

@@ -34,8 +34,9 @@ Backing: test
 
 ### `invariant: example-adopter-checked`
 
-The ./x sync step re-renders examples/sundial with the from-source binary, and ./x check runs awf check and awf invariants inside that example, so example drift or an invariant finding there fails ./x check.
+The ./x render step re-renders examples/sundial with the from-source binary, and ./x check runs awf check and awf check invariants inside that example, so example drift or an invariant finding there fails ./x check.
 Origin: ADR-0090
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: example-module-isolated`
@@ -52,8 +53,9 @@ Backing: test
 
 ### `invariant: memory-citation-gate`
 
-With memoryCite.enabled true, the memory-gate command reports every concrete working-memory file reference in the staged decisions and plans directories and exits non-zero on any finding outside memoryCite.exemptions; the commit-gate command applies the same detector to the git-cleaned commit-message body, where no exemption applies, and exits non-zero on any reference. A reference written in the angle-bracket placeholder form, one naming the bare directory, and the ignore-file name all pass.
+With memoryCite.enabled true, the check memory command reports every concrete working-memory file reference in the staged decisions and plans directories and exits non-zero on any finding outside memoryCite.exemptions; the check commit command applies the same detector to the git-cleaned commit-message body, where no exemption applies, and exits non-zero on any reference. A reference written in the angle-bracket placeholder form, one naming the bare directory, and the ignore-file name all pass.
 Origin: ADR-0158
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: mutants-timeout-untrusted`
@@ -70,8 +72,9 @@ Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`
 
-In an adopted tree that is not a git repository, the prose-gate command refuses with an error about being unable to read staged files rather than reporting a clean result it could not verify.
+In an adopted tree that is not a git repository, the check prose command refuses with an error about being unable to read staged files rather than reporting a clean result it could not verify.
 Origin: ADR-0119
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: prose-gate-tracked-file-scan`
