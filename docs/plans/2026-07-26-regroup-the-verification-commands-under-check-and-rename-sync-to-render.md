@@ -54,7 +54,8 @@ Phases are ordered so each closing commit passes `./x gate` alone, and so every 
   - `examples/sundial/.awf/docs/parts/testing/layout.md` - a raw convention part spliced verbatim into the example's rendered testing doc, so a re-render propagates the retired name rather than fixing it
   - `changelog/CHANGELOG.md` - a new `## [Unreleased]` entry only
   - `.awf/config.yaml` - `activeMdRegenCmd`, `proseGateCmd`, `memoryGateCmd`, `commitGateCmd`
-  - the authored `.awf/` inputs naming a retired command (Tasks 1.6 and 4.4 give the discovery commands)
+  - `.awf/docs/parts/architecture/components.md`, `.awf/domains/parts/config/current-state.md`, `internal/config/edit_test.go` - the two authored enumerations of the config serialization funnel and the claim's proof file, all reached by no discovery grep
+  - the authored `.awf/` inputs naming a retired command (Tasks 1.6 and 4.5 give the discovery commands)
   - `.awf/topics/parts/**/current-state.md` - the nineteen ADR-0159 claim operations
   - `docs/decisions/0159-regroup-the-verification-commands-under-check-and-rename-sync-to-render.md` - status history
   - this plan - the status flip
@@ -344,11 +345,13 @@ The largest phase, and it cannot be sliced further: the group, the gating machin
   ```go
   // UngatedGroupChildren returns, in table order, each group child whose resolved
   // gating is Ungated under a parent that gates - the exclusions a reader needs
-  // beside the gated set. Spelled "parent child". A child at or above its
-  // parent's gating is a member of the gated set, not an exclusion (ADR-0159
-  // Decision 4).
+  // beside the gated set. Spelled "parent child". A child that is not weaker than
+  // its parent is simply not an exclusion; the gated list stays top-level-only
+  // (ADR-0159 Decision 4).
   func UngatedGroupChildren() []string
   ```
+
+  The comment says "not an exclusion" rather than "a member of the gated set", because `GatedCommandNames()` iterates top-level commands with no child recursion and this task keeps that contract unchanged. A hypothetical gated child under an ungated parent would therefore appear in neither projection. No such child exists in the table, so nothing is lost today; the wording just avoids promising a classification the code does not make.
 
   In `internal/clispec/clispec_test.go`, finish the `TestGatedCommandNames` literal begun in Task 1.1: remove `"invariants"`, leaving the twelve gated top-level names. Add a test pinning `UngatedGroupChildren()` to exactly `check prose`, `check memory`, `check commit`.
 
@@ -538,6 +541,14 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
 
   Forbidden: hand-rolled YAML emission. The funnel exists so no caller emits YAML directly, and ADR-0159 Decision 8 says so explicitly.
 
+  Two authored docs enumerate the funnel's members exactly and go stale the moment it gains one. Neither discovery grep reaches them, because neither names a retired command, so both are corrected here in the same commit as the editor:
+  - `.awf/docs/parts/architecture/components.md` lists "typed mutation (`SetArrayMember`, `SetArray`, `SetMappingScalar`, and `SetMappingInteger`, comment-preserving `yaml.Node` round trips) behind one `encode` funnel". Add `SetMappingString` to that list.
+  - `.awf/domains/parts/config/current-state.md` carries the same enumeration and adds "all behind a single two-space `encode` funnel that retires the former hand-rolled emitter and string editor". Add the new member and reword the trailing clause, which now reads as if no string editor exists.
+
+  The precedent is exact: the ADR-0144 batch that added `SetMappingInteger` updated both surfaces in the same commit as the editor.
+
+  Add a `SetMappingString` case to `internal/config/edit_test.go`, which carries the proof marker for `config/configuration:config-serialization-owned`: assert that a present string value is replaced at the funnel's two-space indent. The migration's own table test exercises the editor indirectly and probably satisfies the coverage gate on its own, but the claim's backing lives in this file, and Task 4.7 updates that claim's prose to name the new member.
+
 - [ ] **Task 4.2: Add the schema-19 migration.** Create `internal/migrate/renameretiredcommands.go` with `applyRenameRetiredCommands`. Required behaviour:
   - For each config var value that is a string, match the shape `<invocation> <retired-subcommand>[ <trailing args>]`, where `<invocation>` is exactly `awf`, `./awf`, or a path ending in `/awf`.
   - Rewrite the subcommand token: `sync` to `render`, `invariants` to `check invariants`, `prose-gate` to `check prose`, `memory-gate` to `check memory`, `commit-gate` to `check commit`. Preserve the invocation token and every trailing argument verbatim.
@@ -585,7 +596,14 @@ Closes the ADR: the remaining five operations apply here, and the `Implemented` 
 
   Do not touch any released version section: ADR-0159 Decision 10 treats them as retained history, on the same grounds as decisions and plans.
 
-- [ ] **Task 4.7: Apply the final batch, flip both statuses, and close.** Update the prose of these five claims, each gaining `Revised-by: ADR-0159`: `tooling/quality-gates:example-adopter-checked`, `tooling/quality-gates:prose-gate-refuses-without-git`, `tooling/quality-gates:memory-citation-gate`, `tooling/audit-and-snapshots:commit-gate-shared-rule`, and `config/configuration:config-serialization-owned` (whose enumeration of the serialization funnel gains `SetMappingString`). Slugs do not change.
+- [ ] **Task 4.7: Apply the final batch, flip both statuses, and close.** Update the prose of these five claims, each gaining `Revised-by: ADR-0159`. They are listed here in the ADR's declaration order, which is the order the Applied event must record: `internal/adr/history.go` rejects an event whose operations do not ascend by declaration position, so writing them in the order below is load-bearing, not cosmetic.
+  1. `config/configuration:config-serialization-owned` - its enumeration of the serialization funnel gains `SetMappingString`
+  2. `tooling/quality-gates:example-adopter-checked`
+  3. `tooling/quality-gates:prose-gate-refuses-without-git`
+  4. `tooling/quality-gates:memory-citation-gate`
+  5. `tooling/audit-and-snapshots:commit-gate-shared-rule`
+
+  Slugs do not change.
 
   `tooling/quality-gates:prose-gate-tracked-file-scan` is deliberately absent from every operation list: its body says "the prose scanner" and never names the command, so only its slug carries the old word, and a slug is an identity (ADR-0159 Decision 11).
 
