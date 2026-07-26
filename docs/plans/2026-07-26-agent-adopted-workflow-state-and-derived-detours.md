@@ -361,7 +361,7 @@ feat(rendering): adopt external checkpoints (applies 0161 batch)
   `.awf/docs/parts/architecture/data-flow.md`, `.awf/parts/workflow/chain.md`, and the authored
   agent-guide rule for derived blockers. Run `./x render`, `./x check`,
   `go test ./internal/telemetry`, and `./x pi-test run`, each with zero exit. Stage with
-  `git add -u -- internal/telemetry templates/pi/awf-dashboard/index.ts.tmpl tools/pi-extension-test/tests/workflow.test.ts .awf/topics/parts/tooling/workflow-telemetry/current-state.md .awf/docs/parts/architecture/overview.md .awf/docs/parts/architecture/data-flow.md .awf/parts/workflow/chain.md .awf/parts/agents-doc/working-memory.md .pi docs AGENTS.md .awf/awf.lock`.
+  `git add -u -- internal/telemetry templates/pi/awf-dashboard/index.ts.tmpl tools/pi-extension-test/tests/workflow.test.ts tools/pi-extension-test/tests/dashboard.test.ts .awf/topics/parts/tooling/workflow-telemetry/current-state.md .awf/docs/parts/architecture/overview.md .awf/docs/parts/architecture/data-flow.md .awf/parts/workflow/chain.md .awf/parts/agents-doc/working-memory.md .pi docs AGENTS.md .awf/awf.lock examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-dashboard/index.ts changelog/CHANGELOG.md`.
   Then run `./awf check --staged` and `./x gate`, both with zero exit; commit:
 
 ```commit

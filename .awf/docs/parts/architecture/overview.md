@@ -44,7 +44,7 @@ payload union, and closed lifecycle requests without any repository-path field. 
 appends one JSONL stream per session; `phase_transitioned` transactionally closes an unmatched phase
 start, enters its successor, and optionally applies a route effect from the current causal frontier,
 while `phase_continued` preserves that start and replaces or clears current workflow, activity, and
-implementation-mode attribution. The same engine projects discovery, route, phase, handoff, and trajectory state,
+implementation-mode attribution. Pi's exclusive detour boundary atomically creates a derived brainstorming child with immutable parent return lineage while leaving the parent phase open; terminal child return then durably associates the exact parent and marks the child before switching the active association. The same engine projects discovery, route, phase, handoff, and trajectory state,
 performs leased deterministic terminal-effort retention, and serves canonical selector-driven
 metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor`
 reports exact violations and configured versioned heuristics without a score, automatic repair,

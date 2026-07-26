@@ -134,6 +134,7 @@ func TestRetentionSuppressesIncompatibleEffort(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:derived-detour-return
 func TestRetentionExcludesPendingDetourReturnUntilMarkerIsDurable(t *testing.T) {
 	origin := map[string]any{"effortId": "parent-effort", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"}
 	started := protocol21Envelope(t, "detour-start", "detour_started", nil, map[string]any{

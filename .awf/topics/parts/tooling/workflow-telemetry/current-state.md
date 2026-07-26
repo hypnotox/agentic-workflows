@@ -29,6 +29,12 @@ External continuation with no resident effort is agent-driven through the exclus
 Origin: ADR-0161
 Backing: test
 
+### `invariant: derived-detour-return`
+
+Pi starts material deviations through the exclusive `awf_detour` tool with an explicit child effort ID and the enabled brainstorming workflow. It atomically creates one derived child whose immutable lineage names the active parent effort, trajectory, anchor, return session, open phase, and phase-start event, persists the child association only after durability, and leaves the parent phase and trajectory untouched; identical retries reconstruct the same event, and nested detours form the same durable lineage recursively. Completion or abandonment makes the terminal child the return commit boundary. Settlement revalidates the recorded parent before deriving one parent association from the child ID and terminal epoch, retries a raced whole frontier until that identity is durable, appends the matching child return marker, persists the parent custom association, and only then changes the selected effort. A durable association is reused by idempotency regardless of later parent frontier movement. Failures leave the terminal child selected for startup or explicit retry, invalid parents are never guessed, no phase or trajectory resume is fabricated, and pending-return terminal children remain excluded from retention until their return marker is durable.
+Origin: ADR-0161
+Backing: test
+
 ### `invariant: privacy-integrity-and-retention`
 
 Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.

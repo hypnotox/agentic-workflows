@@ -32,6 +32,10 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Pi workflows can now detour into an explicit derived child effort and return to the exact open
+  parent phase only after the child terminal event, parent association, return marker, and session
+  selection are durably settled. Interrupted completion and abandonment retry the same canonical
+  return history without restarting the parent phase or losing the selected child.
 - Pi can now adopt an explicit external working-memory checkpoint through a confined, bounded,
   normalized header validation path. Adoption rejects duplicate effort identities and incompatible
   workflow state, durably creates the adopted effort before persisting its session association,

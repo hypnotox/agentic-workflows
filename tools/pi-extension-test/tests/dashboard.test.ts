@@ -469,7 +469,7 @@ test("accepted canonical refresh notifies an open overlay and shutdown cancels q
 test("invariant: dashboard runtime covers lifecycle, queries, privacy, association, and passive telemetry", async () => {
   const project = await root();
   try {
-    const h = harness(project); assert.deepEqual([...h.tools.keys()], ["awf_lifecycle", "awf_adopt_effort", "awf_workflow", "awf_metrics", "awf_doctor"]);
+    const h = harness(project); assert.deepEqual([...h.tools.keys()], ["awf_lifecycle", "awf_adopt_effort", "awf_detour", "awf_workflow", "awf_metrics", "awf_doctor"]);
     const createRequest = { action: "create", idempotencyKey: "create-key", eventId: "create-event", effortId: "effort", sessionId: "session", timestamp: "2026-07-22T00:00:00Z", predecessors: [], creationMode: "independent" };
     const created = await execute(h.tools.get("awf_lifecycle"), createRequest); assert.equal(created.details.idempotent, false); assert.equal(h.entries.length, 0);
     await execute(h.tools.get("awf_lifecycle"), { action: "start-trajectory", idempotencyKey: "trajectory-key", eventId: "trajectory-event", effortId: "effort", sessionId: "session", timestamp: "2026-07-22T00:00:01Z", predecessors: ["create-event"], trajectoryId: "trajectory", anchorId: "root-anchor" });
@@ -520,14 +520,14 @@ test("fork and pre-association tree navigation preserve trajectory truth without
 test("lifecycle tool enables continuation, keeps adoption private, and guards detour settlement entry points", async () => {
   const project = await root();
   try {
-    const h = harness(project); assert.deepEqual([...h.tools.keys()], ["awf_lifecycle", "awf_adopt_effort", "awf_workflow", "awf_metrics", "awf_doctor"]); const tool = h.tools.get("awf_lifecycle"); const base = { idempotencyKey: "key", eventId: "event", effortId: "effort", sessionId: "session", timestamp: "2026-07-22T00:00:00Z", predecessors: [] };
+    const h = harness(project); assert.deepEqual([...h.tools.keys()], ["awf_lifecycle", "awf_adopt_effort", "awf_detour", "awf_workflow", "awf_metrics", "awf_doctor"]); const tool = h.tools.get("awf_lifecycle"); const base = { idempotencyKey: "key", eventId: "event", effortId: "effort", sessionId: "session", timestamp: "2026-07-22T00:00:00Z", predecessors: [] };
     const guarded = [
       { ...base, action: "adopt", phase: "planning", workflow: "writing-plans", trajectoryId: "trajectory", anchorId: "anchor" },
       { ...base, action: "start-detour", creationMode: "derived", origin: { effortId: "parent", trajectoryId: "parent-trajectory", anchorId: "parent-anchor" }, returnPhase: "implementation", returnPhaseStartEventId: "parent-phase", trajectoryId: "child-trajectory", anchorId: "child-anchor", workflow: "brainstorming" },
       { ...base, action: "mark-detour-returned", terminalOutcome: "completed", parentAssociationEventId: "parent-association" },
     ];
     for (const request of guarded) await assert.rejects(execute(tool, request), (error: any) => error?.message === "protocol 2.1 writer is not enabled" && Buffer.byteLength(error.message, "utf8") <= 64, request.action);
-    const writer = createLedgerWriter(h.deps.ledger); const writerAdopt = { ...guarded[0], effortId: "writer-adopt", eventId: "writer-adopt-event", idempotencyKey: "writer-adopt-key" }; const adopted = await writer.mutateLifecycle(writerAdopt as any); assert.equal(adopted.event.kind, "effort_adopted"); for (const request of guarded.slice(1)) await assert.rejects(writer.mutateLifecycle(request as any), /protocol 2\.1 writer is not enabled/); await writer.shutdown(); assert.equal((await projectLocalLifecycle(h.deps.ledger, "writer-adopt")).state, "discovery");
+    const writer = createLedgerWriter(h.deps.ledger); const writerAdopt = { ...guarded[0], effortId: "writer-adopt", eventId: "writer-adopt-event", idempotencyKey: "writer-adopt-key" }; const adopted = await writer.mutateLifecycle(writerAdopt as any); assert.equal(adopted.event.kind, "effort_adopted"); const started = await writer.mutateLifecycle({ ...guarded[1], effortId: "writer-detour", eventId: "writer-detour-event", idempotencyKey: "writer-detour-key" } as any); assert.equal(started.event.kind, "detour_started"); await assert.rejects(writer.mutateLifecycle(guarded[2] as any), /missing|lifecycle|terminal|effect/); await writer.shutdown(); assert.equal((await projectLocalLifecycle(h.deps.ledger, "writer-adopt")).state, "discovery");
 
     await execute(tool, { ...base, action: "create", creationMode: "independent" });
     await execute(tool, { ...base, action: "start-phase", idempotencyKey: "start-key", eventId: "phase-start", predecessors: ["event"], phase: "planning" });

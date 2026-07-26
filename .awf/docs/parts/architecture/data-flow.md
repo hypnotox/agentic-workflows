@@ -104,8 +104,7 @@ launcher, metadata, and policy snapshot. Launcher queries carry the absolute pro
 maintenance never do. The dashboard captures one successful protocol-2.1 handshake for the session. Publication is
 reader-before-writer: the rendered local reader recognizes all protocol-2.1 event kinds, metadata,
 and projections. Phase continuation is enabled only through the validated lifecycle and workflow
-loader paths; adoption, detour creation, and detour return remain disabled until their dedicated
-boundaries are published. The closed-enum workflow loader validates an exclusive trustworthy call,
+loader paths; adoption is enabled only through its normalized-memory boundary, and detour creation is enabled only through exclusive `awf_detour`. That tool derives one atomic child creation from the explicit child ID and exact active parent lineage, persists child association after durability, and never mutates the parent. Completion and abandonment reproject the terminal child, associate the recorded parent against its whole frontier with deterministic identity, append the child return marker, persist the parent custom association, and only then switch selection. Frontier races retry before identity exists; durable parent association or child marker events are reused during startup recovery, while a failure keeps the child selected and pending-return children stay outside retention. The closed-enum workflow loader validates an exclusive trustworthy call,
 current frontier, and route, then uses catalog entry and continuation metadata to plan exactly one
 phase start, transactional transition, or continuation. It reads only the pre-rendered
 `.pi/awf-workflows/<name>.md` body after that effect is durably acknowledged and never emits a
