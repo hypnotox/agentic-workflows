@@ -66,8 +66,9 @@ Backing: test
 
 Every valid topic input has one rendered topic document and participates in its domain's generated topic index, output plan, lock manifest, drift check, and prune behaviour.
 Origin: ADR-0148
+Revised-by: ADR-0159
 Backing: unbacked
-Verify: Creating and removing a topic in a render fixture changes awf sync, awf check, the output plan, the lock, the index, and stale-output pruning consistently.
+Verify: Creating and removing a topic in a render fixture changes awf render, awf check, the output plan, the lock, the index, and stale-output pruning consistently.
 
 ### `invariant: working-with-awf-mandatory`
 

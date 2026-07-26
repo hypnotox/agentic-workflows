@@ -73,9 +73,9 @@ Backing: test
 
 ### `invariant: runner-singleton-toggle`
 
-With the runner singleton enabled, `awf sync` renders exactly one wrapper file at the repo-root path `awf`; with it disabled or absent, it renders none. `awf init` scaffolding seeds `runner.enabled: true` and the enable-runner migration seeds an absent key to enabled on `awf upgrade`, respecting an explicit false.
+With the runner singleton enabled, `awf render` renders exactly one wrapper file at the repo-root path `awf`; with it disabled or absent, it renders none. `awf init` scaffolding seeds `runner.enabled: true` and the enable-runner migration seeds an absent key to enabled on `awf upgrade`, respecting an explicit false.
 Origin: ADR-0148
-Revised-by: ADR-0156
+Revised-by: ADR-0156, ADR-0159
 Backing: test
 
 ### `invariant: upgrade-delegates-fetch`

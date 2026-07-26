@@ -375,7 +375,7 @@ func TestStagedAuthorityWorkflowTemplates(t *testing.T) {
 		"prefix": "example",
 		"vars": map[string]any{
 			"gateCmd":          "./x gate",
-			"activeMdRegenCmd": "awf sync",
+			"activeMdRegenCmd": "awf render",
 		},
 		"layout": testLayout(),
 		"data": map[string]any{
@@ -1220,7 +1220,7 @@ var unsetFallbackCases = []fallbackCase{
 	// invariant: rendering/workflow-skill-templates:reviewers-report-only
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
-		want: []string{"Regen command: `awf sync`."},
+		want: []string{"Regen command: `awf render`."},
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
 	},
 	{
@@ -1238,7 +1238,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/adr-lifecycle/SKILL.md.tmpl",
-		want: []string{"the multi-state lifecycle", "Run `awf sync` to regenerate"},
+		want: []string{"the multi-state lifecycle", "Run `awf render` to regenerate"},
 	},
 	{
 		tmpl: "skills/brainstorming/SKILL.md.tmpl",
@@ -1253,7 +1253,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
-		want: []string{"follow the ADR template's section order", "Run `awf sync` to regenerate"},
+		want: []string{"follow the ADR template's section order", "Run `awf render` to regenerate"},
 	},
 	{
 		tmpl: "skills/reviewing-adr/SKILL.md.tmpl",

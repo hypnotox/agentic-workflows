@@ -19,7 +19,7 @@ data:
     invariants:
         - ref: ADR-0001, ADR-0045
           text: '**Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders.'
-        - text: '**`awf check` is the drift oracle.** After any `.awf/` edit run `./x sync && ./x check`; commit rendered files with their config and never hand-edit one.'
+        - text: '**`awf check` is the drift oracle.** After any `.awf/` edit run `./x render && ./x check`; commit rendered files with their config and never hand-edit one.'
         # Typed marker (ADR-0055), not a hand-written ref/text entry: the template's
         # `kind == "scopes"` branch renders the Conventional-Commits / commit-scope
         # invariant from audit.allowedScopes so a scopes edit updates the guide.

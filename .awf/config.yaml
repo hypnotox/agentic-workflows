@@ -188,7 +188,7 @@ targets:
   - claude
   - pi
 vars:
-  activeMdRegenCmd: ./x sync
+  activeMdRegenCmd: ./x render
   awfInvokeCmd: go run ./cmd/awf
   checkCmd: ./x check
   commitGateCmd: ./awf commit-gate

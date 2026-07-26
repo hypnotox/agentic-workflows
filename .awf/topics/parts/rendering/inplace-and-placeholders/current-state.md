@@ -46,8 +46,9 @@ Backing: test
 
 ### `invariant: part-placeholder-sandboxed`
 
-A `{{=awf:key}}` placeholder in a convention part is resolved by literal substitution against a closed registry of config-derived values, never through the template engine; an unknown or empty key, or any residual `{{=awf` token surviving substitution, is a hard render error that fails both `awf sync` and `awf check`.
+A `{{=awf:key}}` placeholder in a convention part is resolved by literal substitution against a closed registry of config-derived values, never through the template engine; an unknown or empty key, or any residual `{{=awf` token surviving substitution, is a hard render error that fails both `awf render` and `awf check`.
 Origin: ADR-0148
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: placeholder-value-token-free`

@@ -1,6 +1,6 @@
 ## Components
 
-- **`cmd/awf/`**: CLI entry point; `init`, `sync`, `check`, `list`, `config`, `context`, `enable`,
+- **`cmd/awf/`**: CLI entry point; `init`, `render`, `check`, `list`, `config`, `context`, `enable`,
   `disable`, `new`, `audit`, `metrics`, `doctor`, `invariants`, `commit-gate`, `prose-gate`, `memory-gate`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
@@ -128,7 +128,7 @@
   `internal/adr` and skill/agent validation.
 - **`internal/adr/`**: parses ADRs, regenerates `docs/decisions/INDEX.md` from the corpus,
   and scaffolds new ADR files (`NextNumber`/`NewFile`, ADR-0042); invoked by
-  `awf sync` (`./x sync`) and `awf new adr`.
+  `awf render` (`./x render`) and `awf new adr`.
 - **`internal/plan/`**: parses plan files under `docs/plans` and scaffolds new ones
   (`ParseDir`/`NewFile`); date-prefixed rather than sequentially numbered, unlike `internal/adr`
   (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
@@ -182,5 +182,5 @@
   changelog`.
 - **`examples/sundial/`**: the committed example adopter (ADR-0090): a fictional Go
   module (own `go.mod`, invisible to the repo's `./...` sweeps) whose full rendered
-  surface is the rendered-output quality oracle: re-rendered by `./x sync`, gated
+  surface is the rendered-output quality oracle: re-rendered by `./x render`, gated
   by `./x check`. Not part of the rendered standard.

@@ -228,8 +228,8 @@ func probeCollisions(root string) ([]string, error) {
 // successful render.
 const initNextSteps = `
 next steps:
-  1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf sync.
-  2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf sync.
+  1. Fill the Identity section: edit .awf/parts/agents-doc/identity.md, then run awf render.
+  2. Set any still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render.
   3. Wire the rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself.
   4. Commit .awf/ and the rendered files together.
 `

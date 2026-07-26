@@ -1,4 +1,4 @@
-How awf sync and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
+How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
 
 ## Claims
 
@@ -82,14 +82,16 @@ Backing: test
 
 ### `invariant: sync-always-writes-active-md`
 
-awf sync writes the ADR status index at docs/decisions/INDEX.md for every decisions directory, recording it in the lock when the directory holds ADRs and rendering a placeholder index when it holds none.
+awf render writes the ADR status index at docs/decisions/INDEX.md for every decisions directory, recording it in the lock when the directory holds ADRs and rendering a placeholder index when it holds none.
 Origin: ADR-0148
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: sync-backs-up-foreign`
 
-During `awf sync`, a target path that already exists on disk but is not recorded as awf-written in the lock at the start of the sync is copied to a free `.awf-bak` sibling and reported before being overwritten, while a path recorded in that lock is overwritten with no backup.
+During `awf render`, a target path that already exists on disk but is not recorded as awf-written in the lock at the start of the sync is copied to a free `.awf-bak` sibling and reported before being overwritten, while a path recorded in that lock is overwritten with no backup.
 Origin: ADR-0148
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: target-prune-ancestors`

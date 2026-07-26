@@ -28,8 +28,9 @@ Backing: test
 
 ### `invariant: memory-gitignore-always-on`
 
-Every `awf sync` unconditionally renders `.awf/memory/.gitignore` with no config gate, lock-tracked, whose content ignores everything in the directory except the gitignore itself and carries a hash-comment provenance banner.
+Every `awf render` unconditionally renders `.awf/memory/.gitignore` with no config gate, lock-tracked, whose content ignores everything in the directory except the gitignore itself and carries a hash-comment provenance banner.
 Origin: ADR-0148
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`

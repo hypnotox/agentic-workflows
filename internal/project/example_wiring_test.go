@@ -78,7 +78,7 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 	script := string(raw)
 	for _, want := range []string{
-		`(cd examples/sundial && "$bindir/awf" sync)`,
+		`(cd examples/sundial && "$bindir/awf" render)`,
 		`out="$(cd examples/sundial && "$bindir/awf" check)"`,
 		`grep -q '^note: '`,
 		`(cd examples/sundial && "$bindir/awf" invariants)`,

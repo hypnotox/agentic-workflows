@@ -41,8 +41,9 @@ Backing: test
 
 ### `invariant: legacy-read-isolation`
 
-The legacy single-file config at .claude/awf.yaml is read only by the migrate package's frozen legacy reader during awf upgrade; no config-load, render, sync, or check path ever opens it.
+The legacy single-file config at .claude/awf.yaml is read only by the migrate package's frozen legacy reader during awf upgrade; no config-load, render, or check path ever opens it.
 Origin: ADR-0010
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: lock-atomic-save`
@@ -59,8 +60,9 @@ Backing: test
 
 ### `invariant: noop-autobump`
 
-When a project's effective generation is below current but no registered migration targets a generation inside the open gap, awf sync writes the lock at the current schema version without gating and without error.
+When a project's effective generation is below current but no registered migration targets a generation inside the open gap, awf render writes the lock at the current schema version without gating and without error.
 Origin: ADR-0010
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: schema-min-version`
@@ -83,8 +85,9 @@ Backing: test
 
 ### `invariant: upgrade-gate`
 
-awf sync and awf check exit non-zero with a run-awf-upgrade message when the project's effective generation (0 for the legacy layout, else the lock's schemaVersion) is below current and at least one registered migration targets a generation inside the open gap; a project already at the current schema does not gate.
+awf render and awf check exit non-zero with a run-awf-upgrade message when the project's effective generation (0 for the legacy layout, else the lock's schemaVersion) is below current and at least one registered migration targets a generation inside the open gap; a project already at the current schema does not gate.
 Origin: ADR-0010
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: upgrade-migrates-retirements`

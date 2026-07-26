@@ -199,7 +199,7 @@ func TestDriverGatesGatedCommands(t *testing.T) {
 		cmd  string
 		args []string
 	}{
-		{"sync", []string{"awf", "sync"}},
+		{"render", []string{"awf", "render"}},
 		{"check", []string{"awf", "check"}},
 		{"invariants", []string{"awf", "invariants"}},
 		{"audit", []string{"awf", "audit"}},

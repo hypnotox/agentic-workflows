@@ -85,11 +85,11 @@ data:
       tags: [lock-manifest, active-md]
       body: |
         Two ADR-0153 proposal-phase commits staged a regenerated docs/decisions/INDEX.md without
-        the .awf/awf.lock outputHash update that the same `./x sync` had written to the working
+        the .awf/awf.lock outputHash update that the same `./x render` had written to the working
         tree, and `awf check --staged` passed both times: the generated index is
         regeneration-checked, not hash-checked, so the staged INDEX/lock mismatch is invisible to
         the staged view while the fresh lock sits dirty on disk. The stranded lock change then
-        pollutes the next unrelated commit or surfaces as confusing drift. After any `./x sync`,
+        pollutes the next unrelated commit or surfaces as confusing drift. After any `./x render`,
         stage the lock together with every regenerated output in the same transaction - and if
         `git status` shows a lone modified .awf/awf.lock, a previous commit almost certainly
         dropped it.
@@ -105,7 +105,7 @@ data:
         filename, H1, INDEX.md, changelog mentions, and every Origin/Revised-by provenance line in
         the topic parts name the number, and the Status-history digest must still validate after
         the rename. Renumber while the ADR is still Proposed whenever merge order is foreseeable,
-        and at merge time run `./x sync && ./x check` immediately after the rename to let the
+        and at merge time run `./x render && ./x check` immediately after the rename to let the
         digest and provenance validators enumerate what the renumber missed.
     - title: "A V2 ADR's Implementing flip cannot commit alone"
       domains: [adr-system]
@@ -114,7 +114,7 @@ data:
         The current-state-v2 parser rejects an ADR whose Status history ends on an Implementing
         event: "implementing status event must be followed by the first Applied event". A plan that
         schedules a standalone begin-implementation commit (flip to Implementing, sync, commit) is
-        therefore structurally unexecutable - every `./x sync`, `./x check`, and gate run fails to
+        therefore structurally unexecutable - every `./x render`, `./x check`, and gate run fails to
         parse the ADR until the first Applied event exists, so the Implementing flip must travel in
         the same staged transaction as the first Applied batch and its claim mutations. The
         ADR-0147 plan scheduled exactly that standalone phase and it survived the full plan review,
@@ -127,14 +127,14 @@ data:
         state-sequence when explicit Applied events exist. The ADR-0148 grounding check caught a
         design that would have scheduled the Implemented flip as its own commit; plans must pin
         both ends of the batch choreography, not just the first.
-    - title: "A schema-generation bump needs `awf upgrade`, not `awf sync`"
+    - title: "A schema-generation bump needs `awf upgrade`, not `awf render`"
       domains: [config, tooling]
       tags: [schema-migration, upgrade-flow]
       body: |
         Registering a migration raises `migrate.Current()`, which immediately puts the repo's own
-        `.awf/` tree one generation behind its freshly-built binary. `awf sync` and `awf check` then
+        `.awf/` tree one generation behind its freshly-built binary. `awf render` and `awf check` then
         *refuse* with "config schema is behind (generation N-1 < N); run awf upgrade" rather than
-        re-rendering, so a plan step that says "run `./x sync` and stage the result" cannot work at
+        re-rendering, so a plan step that says "run `./x render` and stage the result" cannot work at
         that point. Run `go run ./cmd/awf upgrade`, which applies the new migration to this repo and
         re-syncs. The same applies to `examples/sundial`: it carries its own schema generation and is
         gated by `./x check` (ADR-0090), so upgrade it too, with a source-built binary from the repo
@@ -228,7 +228,7 @@ data:
 
         The same directive is an **explicit directory allowlist**, not a glob, so it has a second edge: a
         brand-new top-level template directory (a new singleton's `templates/<name>/`) is silently *not*
-        embedded until its name is added to the `//go:embed` line. The symptom is identical; `awf sync`
+        embedded until its name is added to the `//go:embed` line. The symptom is identical; `awf render`
         fails with `read template <name>/...: file does not exist` even though the file is on disk, because
         the source tree has it but the embedded FS does not. When adding a rendered artifact backed by a new
         `templates/` subdirectory, add the directory to `templates/embed.go` in the same change.
@@ -243,7 +243,7 @@ data:
         untracked file must still be `git add`-ed first, a bare pathspec commit rejects it. Two more
         shared-tree symptoms: `awf audit`'s `uncommitted-changes` error fires on the *other* agent's
         dirty files (a false positive for your session; never commit or discard their work to appease
-        it), and a pre-commit drift-gate failure may be their stale generated file; `./x sync`
+        it), and a pre-commit drift-gate failure may be their stale generated file; `./x render`
         freshens the disk, then still commit only your paths. Recurred harder in the ADR-0088/0089
         dual session: pathspec discipline alone cannot make a commit *hermetic*; the gate validates
         the worktree, but the commit is a slice of the index, so a foreign hunk staged in a shared
@@ -328,8 +328,8 @@ data:
         shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
         rendered guide was produced by the intermediate version, and nothing flagged it. The gap is
         deliberate (ADR-0039 keeps `.version` out of the config hash; a binary upgrade advises
-        "run awf sync" as a note instead of failing). The discipline: any commit that changes render
-        output for unchanged config/templates must run `./x sync` *after the final code state* and
+        "run awf render" as a note instead of failing). The discipline: any commit that changes render
+        output for unchanged config/templates must run `./x render` *after the final code state* and
         commit the refreshed outputs; verify by grepping the rendered file for the change, not by
         trusting a clean check.
     - title: "Documenting a literal `{{=awf:key}}` token in the agent guide trips the render-guide brace check"
@@ -417,7 +417,7 @@ data:
       domains: [adr-system]
       tags: [topic-navigation, adr-lifecycle]
       body: |
-        `./x sync` regenerates `docs/decisions/INDEX.md` from the ADR corpus and regenerates topic
+        `./x render` regenerates `docs/decisions/INDEX.md` from the ADR corpus and regenerates topic
         indexes plus owning domain-doc navigation from topic metadata. Stage from `git status`, not
         from a memorised authored-file list: a status transition can move the decision index, while
         a topic add, rename, or metadata change can move both its topic index and domain doc. The
@@ -756,7 +756,7 @@ data:
         `gate()` (the binary-version guard) was applied *transitively*: `runSync` gated at its top,
         so every command that chained `runSync` (including the `Ungated` `init` and `upgrade`)
         inherited the refusal without a direct `gate()` call. Moving the gate up to the parse-once
-        driver (ADR-0094) removed it from `runSync`; the top-level `sync` command stayed covered by
+        driver (ADR-0094) removed it from `runSync`; the top-level `render` command stayed covered by
         the driver, but `init`/`upgrade` (Ungated, gating only through their chained sync) silently
         lost it; `awf init` on a schema-behind tree re-stamped the current schema over an unmigrated
         config instead of refusing "run awf upgrade". The transitive gate was real but *untested*, so
@@ -780,7 +780,7 @@ data:
         task; caught downstream by plan review, by reading `git status`, and by `./x audit-local`
         respectively, not up front. Two lessons: when a plan edits a catalog artifact, enumerate the fan-out
         explicitly (all targets × {root, example} × {rendered, lock}, plus a changelog task), and at
-        execution treat the plan's `git add` list as a *floor*; run `./x sync`, then stage exactly what
+        execution treat the plan's `git add` list as a *floor*; run `./x render`, then stage exactly what
         `git status --short` reports, adding paths the plan forgot rather than only dropping ones it
         over-named.
 
@@ -789,7 +789,7 @@ data:
         the root reference, leaving the example regen for a follow-up commit and three intermediate
         commits `./x check`-red at checkout. The root cause the prose above missed is why staging
         discipline alone keeps failing here: a hook that validates the *working tree* (where the
-        preceding `./x sync` has already written the example file) cannot see a regenerated-but-unstaged
+        preceding `./x render` has already written the example file) cannot see a regenerated-but-unstaged
         output, so the commit passes the hook while being drift-red on its own.
 
         **The deterministic backstop now exists** (34d839c, 2026-07-15): `.githooks/pre-commit` checks the
@@ -800,7 +800,7 @@ data:
         adopters get (`.awf/hooks/pre-commit.sh`) still checks the worktree, so an adopter hitting this
         fan-out has no backstop at all. And it fires **late**, after the commit message is written, telling
         you a hunk is missing but not which fan-out arm you forgot. So: when a plan edits a catalog
-        artifact, still enumerate the fan-out up front, and after `./x sync` stage **every** path
+        artifact, still enumerate the fan-out up front, and after `./x render` stage **every** path
         `git status --short` reports, `examples/sundial` included.
     - title: "GoReleaser aborts on a dirty git tree; pre-release artifacts belong outside the worktree"
       domains: [tooling]
@@ -1085,14 +1085,14 @@ data:
         compare each ADR's Decision item list before and after (identical), and compare the
         whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
         pre-existing construct as a change and buries the real finding in false positives.
-    - title: "Within an Applied batch phase, claim mutations land before `awf sync`"
+    - title: "Within an Applied batch phase, claim mutations land before `awf render`"
       domains: [adr-system]
       tags: [adr-lifecycle, invariant-backing, provenance-markers]
       body: |
-        `awf sync` scans current-state markers and hard-refuses a proof marker naming a claim
+        `awf render` scans current-state markers and hard-refuses a proof marker naming a claim
         that does not exist yet. In an incremental batch phase everything commits as one staged
         transaction, but the working tree still has an order: the ADR-0151 phase-1 implementation
-        wrote the marked render tests first and `./x sync` refused with "unknown claim ID" until
+        wrote the marked render tests first and `./x render` refused with "unknown claim ID" until
         the topic-part claim mutations were applied. Within each batch phase, edit the claims and
         the ADR status history, then sync, then run the tests; the commit boundary is unchanged.
     - title: "A plan must not pre-compute check-named lifecycle values"

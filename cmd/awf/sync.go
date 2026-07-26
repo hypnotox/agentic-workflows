@@ -39,14 +39,14 @@ func runSyncPrinting(root string, seed *project.InitAuthority, stdout io.Writer)
 	}
 	for _, c := range changes {
 		if c.Cause == "added" {
-			fmt.Fprintf(stdout, "awf sync: added %s\n", c.Path)
+			fmt.Fprintf(stdout, "awf render: added %s\n", c.Path)
 			continue
 		}
-		fmt.Fprintf(stdout, "awf sync: changed %s (%s)\n", c.Path, c.Cause)
+		fmt.Fprintf(stdout, "awf render: changed %s (%s)\n", c.Path, c.Cause)
 	}
 	for _, path := range pruned {
-		fmt.Fprintf(stdout, "awf sync: pruned %s\n", path)
+		fmt.Fprintf(stdout, "awf render: pruned %s\n", path)
 	}
-	fmt.Fprintln(stdout, "awf sync: done")
+	fmt.Fprintln(stdout, "awf render: done")
 	return nil
 }

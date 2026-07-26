@@ -6,7 +6,7 @@ repository. Read it before taking any action; keep it current as decisions evolv
 <!-- awf:section awf-setup -->
 ## Working with awf
 
-This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one. Change the config, a var, or a convention part, then run `awf sync` and `awf check`, and commit the rendered files with the config change. Toggle artifacts and adapters with `awf enable <kind> <name>` / `awf disable <kind> <name>`.
+This project's rendered skills, agents, and docs (and this guide) are produced by [awf](https://github.com/hypnotox/agentic-workflows) from the `.awf/` config tree. Every rendered file is generated: never hand-edit one. Change the config, a var, or a convention part, then run `awf render` and `awf check`, and commit the rendered files with the config change. Toggle artifacts and adapters with `awf enable <kind> <name>` / `awf disable <kind> <name>`.
 
 See [{{ .layout.workingWithAwf }}]({{ .layout.workingWithAwf }}) for the full usage guide: commands, overrides, placeholders, and the sync/check loop.
 <!-- awf:end -->
@@ -79,7 +79,7 @@ Hard rules every change must respect:
 {{ end }}{{ if and $gate (ne $gate $test) }}- `{{ $gate }}`: run the gate before committing
 {{ end }}{{ if and $check (ne $check $test) (ne $check $gate) }}- `{{ $check }}`: check rendered files for drift
 {{ end }}{{- else }}
-<!-- No commands configured. Set the testCmd/gateCmd/checkCmd vars in .awf/config.yaml (or supply data.commands via an agents-doc sidecar), then run awf sync. -->
+<!-- No commands configured. Set the testCmd/gateCmd/checkCmd vars in .awf/config.yaml (or supply data.commands via an agents-doc sidecar), then run awf render. -->
 {{ end -}}
 {{- end }}
 <!-- awf:end -->

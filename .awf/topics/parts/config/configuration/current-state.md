@@ -10,8 +10,9 @@ Backing: test
 
 ### `invariant: awf-config-root`
 
-Configuration loads from `.awf/config.yaml` and the lock is read from and written to `.awf/awf.lock`; no ordinary load, render, sync, or check path reads or writes under `.claude/awf/`, and only the migrate package reads the legacy `.claude/awf.yaml` when porting an older tree forward.
+Configuration loads from `.awf/config.yaml` and the lock is read from and written to `.awf/awf.lock`; no ordinary load, render, or check path reads or writes under `.claude/awf/`, and only the migrate package reads the legacy `.claude/awf.yaml` when porting an older tree forward.
 Origin: ADR-0016
+Revised-by: ADR-0159
 Backing: test
 
 ### `invariant: config-mutation-roundtrip`

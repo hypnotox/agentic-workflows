@@ -68,8 +68,8 @@ func TestResolveReturnsTopLevel(t *testing.T) {
 	if len(rest) != 1 || rest[0] != "A Title" {
 		t.Errorf("resolve(new adr) rest = %v", rest)
 	}
-	if cmd, top, _, _, ok := resolve([]string{"sync"}); !ok || cmd.Name != "sync" || top.Name != "sync" {
-		t.Errorf("resolve(sync) = cmd=%q top=%q ok=%v; leaf should return itself as top", cmd.Name, top.Name, ok)
+	if cmd, top, _, _, ok := resolve([]string{"render"}); !ok || cmd.Name != "render" || top.Name != "render" {
+		t.Errorf("resolve(render) = cmd=%q top=%q ok=%v; leaf should return itself as top", cmd.Name, top.Name, ok)
 	}
 	if _, _, _, _, ok := resolve([]string{"nope"}); ok {
 		t.Error("resolve(nope) should miss")

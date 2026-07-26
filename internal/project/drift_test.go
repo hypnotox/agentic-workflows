@@ -515,7 +515,7 @@ func TestCheckSplitsMissingVsCorrupt(t *testing.T) {
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(); err == nil || !strings.Contains(err.Error(), "no lock (run awf sync)") {
+	if _, err := p.Check(); err == nil || !strings.Contains(err.Error(), "no lock (run awf render)") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }

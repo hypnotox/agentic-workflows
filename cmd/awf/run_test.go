@@ -397,7 +397,7 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	if err := runSync(root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf sync: pruned .claude/skills/example-tdd/SKILL.md\n") {
+	if !strings.Contains(out.String(), "awf render: pruned .claude/skills/example-tdd/SKILL.md\n") {
 		t.Errorf("missing prune line:\n%s", out.String())
 	}
 	// A drift-clean re-sync prints no prune lines.
@@ -419,7 +419,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf sync: changed .claude/skills/example-tdd/SKILL.md (config)\n") {
+	if !strings.Contains(out.String(), "awf render: changed .claude/skills/example-tdd/SKILL.md (config)\n") {
 		t.Errorf("missing config-cause change line:\n%s", out.String())
 	}
 	// A drift-clean re-sync prints no change lines.
@@ -436,7 +436,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	if err := runSync(root, &out); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "awf sync: added docs/pitfalls.md\n") {
+	if !strings.Contains(out.String(), "awf render: added docs/pitfalls.md\n") {
 		t.Errorf("missing added line:\n%s", out.String())
 	}
 }
@@ -466,7 +466,7 @@ func TestRunHelp(t *testing.T) {
 func TestRunGetwdError(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "sync"}, &out, &errb); code != 1 {
+	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on getwd error, got %d", code)
 	}
 }
@@ -498,7 +498,7 @@ func TestRunArgValidation(t *testing.T) {
 		want string
 	}{
 		{"unknown flag", []string{"awf", "check", "--bogus"}, "unknown flag"},
-		{"unexpected positional", []string{"awf", "sync", "extra"}, "unexpected arguments"},
+		{"unexpected positional", []string{"awf", "render", "extra"}, "unexpected arguments"},
 		{"value flag without value", []string{"awf", "context", "--range"}, "needs a value"},
 	}
 	for _, c := range cases {
@@ -515,10 +515,10 @@ func TestRunArgValidation(t *testing.T) {
 }
 
 func TestRunDispatchError(t *testing.T) {
-	// sync in a bare dir: project.Open fails -> handler error -> exit 1.
+	// render in a bare dir: project.Open fails -> handler error -> exit 1.
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "sync"}, &out, &errb); code != 1 {
+	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
 		t.Fatalf("expected exit 1 on dispatch error, got %d", code)
 	}
 	if !strings.HasPrefix(errb.String(), "awf:") {
@@ -529,7 +529,7 @@ func TestRunDispatchError(t *testing.T) {
 // TestRunDispatchArms drives every switch arm through run() against a scaffolded
 // project, covering the dispatch statements.
 func TestRunDispatchArms(t *testing.T) {
-	for _, cmd := range []string{"sync", "check", "invariants", "list", "upgrade"} {
+	for _, cmd := range []string{"render", "check", "invariants", "list", "upgrade"} {
 		t.Run(cmd, func(t *testing.T) {
 			root := scaffoldProject(t)
 			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -807,10 +807,10 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	if err := gate(root); err == nil {
 		t.Fatal("expected gate to reject stale schema")
 	}
-	// sync is Gated: the driver surfaces the same gate error before the handler.
+	// render is Gated: the driver surfaces the same gate error before the handler.
 	var out, errb bytes.Buffer
-	if code := runAt(t, root, []string{"awf", "sync"}, &out, &errb); code != 1 {
-		t.Errorf("expected the driver to fail sync on stale schema, got %d", code)
+	if code := runAt(t, root, []string{"awf", "render"}, &out, &errb); code != 1 {
+		t.Errorf("expected the driver to fail render on stale schema, got %d", code)
 	}
 }
 
@@ -867,7 +867,7 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	}
 	// The zero-migrations path must still sync: a same-schema binary bump
 	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
-	if !strings.Contains(out.String(), "awf sync: done") {
+	if !strings.Contains(out.String(), "awf render: done") {
 		t.Errorf("expected the no-op upgrade to run a sync, got %q", out.String())
 	}
 }
@@ -1055,7 +1055,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "sync"}, &out, &errb); code != 0 {
+	if code := run([]string{"awf", "render"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
 	if !strings.Contains(out.String(), "backed up docs/decisions/INDEX.md") {

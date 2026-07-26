@@ -61,7 +61,7 @@ instead of rotting.
   scripts. You wire them up; awf never touches your git config.
 - **A command runner** (`x`, opt-in via `awf enable runner`): an executable dispatch
   script giving every repo the same `./x <verb>` entry point. It is co-owned: one section
-  is marked edit-in-place, so the verbs you add there survive every `awf sync` while awf
+  is marked edit-in-place, so the verbs you add there survive every `awf render` while awf
   keeps the rest current. awf itself keeps a from-source runner instead; the
   [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
@@ -192,7 +192,7 @@ The rendered paths above show the default `claude` target; each enabled runtime 
 own layout, and they are not uniform (Codex splits skills into `.agents/` and agents into
 `.codex/`, Pi keeps both under `.pi/skills/`). `awf list target` shows the roster.
 
-You change the config and run `awf sync`; you never hand-edit a rendered file.
+You change the config and run `awf render`; you never hand-edit a rendered file.
 `awf check` fails when a rendered file is stale or was edited by hand, so the two can't
 silently diverge. To customise one section of an artifact, drop a *convention part*
 under `.awf/`; it replaces that section's body and inherits the rest of the template.
@@ -243,7 +243,7 @@ Windows, put `awf` on `PATH` and call it directly.
     awf enable target pi    # render compatible Pi 0.81.1+ skills and trusted extensions
 
 The Pi extension is executable project code loaded behind Pi's project-trust prompt. Its generated
-files are drift-checked; use `awf sync` to restore missing or modified copies.
+files are drift-checked; use `awf render` to restore missing or modified copies.
 
 `awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
 `adr-lifecycle`, and `exploring`) and the three review agents. The workflow, documentation, and agent-guide standards sit outside
@@ -263,7 +263,7 @@ disk.
 | Command | Purpose |
 |---|---|
 | `awf init` | Scaffold `.awf/`, seal first-adoption version and ADR cutoff authority, and render. Prompts for config values on a TTY; `--describe` prints them as JSON for agents, `--set k=v` / `--answers FILE` fill them non-interactively, and `--set skills=` / `--set docs=` trim the enabled set. `--force` backs up collisions while preserving existing authority provenance. |
-| `awf sync` | Re-render after a config or template change. |
+| `awf render` | Re-render after a config or template change. |
 | `awf check` | Fail on stale or hand-edited rendered output, dead links, dead skill references, invalid frontmatter, and unbacked invariants. |
 | `awf list [<kind>]` | Show enabled vs available artifacts (`awf list target` shows adapters). |
 | `awf enable` / `awf disable <kind> <name>` | Toggle an artifact or adapter. `<kind>` ∈ `skill`, `agent`, `doc`, `domain`, `target`, `bootstrap`, `hooks`, `runner`. Enabling a reviewing skill pulls in the agent it dispatches. |
@@ -340,7 +340,7 @@ jobs:
 
 This project develops itself with the workflow it ships, so the rules above apply here
 too: never hand-edit a rendered file; change `.awf/` (or a template) and run
-`awf sync`, then `awf check`. The gate (`./x gate`) must pass before every commit. Read
+`awf render`, then `awf check`. The gate (`./x gate`) must pass before every commit. Read
 [`AGENTS.md`](AGENTS.md) and [`docs/workflow.md`](docs/workflow.md) before non-trivial
 work.
 

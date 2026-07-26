@@ -254,7 +254,7 @@ func TestGuardPreTrackingCommandMatrix(t *testing.T) {
 	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
 	for _, args := range [][]string{
 		{"awf", "init", "--force"},
-		{"awf", "sync"},
+		{"awf", "render"},
 		{"awf", "check"},
 		{"awf", "upgrade"},
 	} {

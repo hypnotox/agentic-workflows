@@ -1142,7 +1142,7 @@ test("review maps all kinds and reports missing or empty reviewer files", async 
   }
   const missing = harness();
   missing.deps.readFile = async () => { throw new Error("missing"); };
-  await assert.rejects(execute(missing.tools.get("subagent_review"), { kind: "adr", task: "x" }, missing.ctx), /Enable the matching adr-reviewer agent and run awf sync/);
+  await assert.rejects(execute(missing.tools.get("subagent_review"), { kind: "adr", task: "x" }, missing.ctx), /Enable the matching adr-reviewer agent and run awf render/);
   const empty = harness({ reviewer: "---\nname: x\ndescription: x\n---\n" });
   await assert.rejects(execute(empty.tools.get("subagent_review"), { kind: "plan", task: "x" }, empty.ctx), /no instruction body/);
 });

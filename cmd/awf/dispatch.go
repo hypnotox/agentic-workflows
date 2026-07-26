@@ -48,7 +48,7 @@ var handlers = map[string]handler{
 	"init": func(c *cmdCtx) error {
 		return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
 	},
-	"sync":        func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
+	"render":      func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
 	"check":       func(c *cmdCtx) error { return runCheck(c.root, c.inv.bools["--staged"], c.stdout) },
 	"invariants":  func(c *cmdCtx) error { return runInvariants(c.root, c.stdout) },
 	"audit":       func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },

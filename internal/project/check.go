@@ -401,7 +401,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 		return nil, err
 	}
 	if !found {
-		return nil, errors.New("no lock (run awf sync)")
+		return nil, errors.New("no lock (run awf render)")
 	}
 	op, err := p.OutputPlan()
 	if err != nil {
@@ -470,7 +470,7 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 	var drift []manifest.Drift
 	for _, path := range slices.Sorted(maps.Keys(rendered)) {
 		if _, ok := lock.Files[path]; !ok {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "unsynced", Detail: "enabled but not in lock; run awf sync"})
+			drift = append(drift, manifest.Drift{Path: path, Kind: "unsynced", Detail: "enabled but not in lock; run awf render"})
 		}
 	}
 	for _, path := range slices.Sorted(maps.Keys(lock.Files)) {
@@ -485,15 +485,15 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 			}
 			onDisk, err := os.ReadFile(filepath.Join(p.Root, path))
 			if err != nil {
-				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf sync"})
+				drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 				continue
 			}
 			if manifest.Hash(onDisk) != manifest.Hash([]byte(rf.Content)) {
 				if rf.TemplateID == "" {
-					drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf sync"})
+					drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "generated output out of date; run awf render"})
 				} else {
 					// touches-state: rendering/inplace-and-placeholders:in-place-tamper-drift - awf-region/structure edit drifts, in-place edit does not; proof in check_test.go
-					drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf sync to restore awf-owned regions"})
+					drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf render to restore awf-owned regions"})
 				}
 			}
 			continue
@@ -505,16 +505,16 @@ func (p *Project) checkLockedFiles(lock *manifest.Lock, rendered map[string]Rend
 		if rf.TemplateHash != e.TemplateHash || rf.ConfigHash != e.ConfigHash {
 			// stale takes precedence: a re-sync overwrites any hand-edit, so it
 			// is the actionable signal - one drift entry per path.
-			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf sync"})
+			drift = append(drift, manifest.Drift{Path: path, Kind: "stale", Detail: "template or config changed; run awf render"})
 			continue
 		}
 		onDisk, err := os.ReadFile(filepath.Join(p.Root, path))
 		if err != nil {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf sync"})
+			drift = append(drift, manifest.Drift{Path: path, Kind: "missing", Detail: "file absent; run awf render"})
 			continue
 		}
 		if manifest.Hash(onDisk) != e.OutputHash {
-			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock; run awf sync to discard the edit, or move it into a .awf convention part to keep it"})
+			drift = append(drift, manifest.Drift{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from lock; run awf render to discard the edit, or move it into a .awf convention part to keep it"})
 			continue
 		}
 		// In-sync skill/agent files must still carry valid frontmatter (subordinate

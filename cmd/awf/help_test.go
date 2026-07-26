@@ -80,12 +80,12 @@ func TestCliCommandSpecSingleSource(t *testing.T) {
 // falls back to the top-level overview and exits 0, like bare `awf help`.
 func TestHelpSubcommandDispatch(t *testing.T) {
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "help", "sync"}, &out, &errb); code != 0 {
-		t.Fatalf("help sync: exit %d (%s)", code, errb.String())
+	if code := run([]string{"awf", "help", "render"}, &out, &errb); code != 0 {
+		t.Fatalf("help render: exit %d (%s)", code, errb.String())
 	}
-	sync, _ := clispec.Lookup("sync")
-	if out.String() != sync.HelpBody {
-		t.Errorf("awf help sync = %q, want the sync --help text", out.String())
+	render, _ := clispec.Lookup("render")
+	if out.String() != render.HelpBody {
+		t.Errorf("awf help render = %q, want the render --help text", out.String())
 	}
 	out.Reset()
 	if code := run([]string{"awf", "help", "bogus"}, &out, &errb); code != 0 {

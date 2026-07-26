@@ -43,8 +43,8 @@ func TestGroupChildrenCarryNoGating(t *testing.T) {
 }
 
 func TestLookup(t *testing.T) {
-	if _, ok := Lookup("sync"); !ok {
-		t.Error("Lookup(sync) missing")
+	if _, ok := Lookup("render"); !ok {
+		t.Error("Lookup(render) missing")
 	}
 	if _, ok := Lookup("nope"); ok {
 		t.Error("Lookup(nope) should miss")
@@ -105,7 +105,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"sync", "check", "invariants", "audit", "metrics", "doctor", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "invariants", "audit", "metrics", "doctor", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

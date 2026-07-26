@@ -38,8 +38,8 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	}
 	setScaffoldGateCmd(t, root)
 	var syncOut, syncErr bytes.Buffer
-	if code := run([]string{"awf", "sync"}, &syncOut, &syncErr); code != 0 {
-		t.Fatalf("sync before first commit: exit %d (%s)", code, syncErr.String())
+	if code := run([]string{"awf", "render"}, &syncOut, &syncErr); code != 0 {
+		t.Fatalf("render before first commit: exit %d (%s)", code, syncErr.String())
 	}
 	var checkOut, checkErr bytes.Buffer
 	if code := run([]string{"awf", "check"}, &checkOut, &checkErr); code != 0 {

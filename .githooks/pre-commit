@@ -36,7 +36,7 @@ awf_slice="$tmp/awf-slice"
 check_slice() {
   dir="$1"; label="$2"
   if ! (cd "$dir" && "$awf_slice" check >/dev/null); then
-    echo "pre-commit: the staged slice has drift in $label - run ./x sync and stage the result" >&2
+    echo "pre-commit: the staged slice has drift in $label - run ./x render and stage the result" >&2
     exit 1
   fi
 }

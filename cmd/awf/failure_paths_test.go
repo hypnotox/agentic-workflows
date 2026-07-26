@@ -93,7 +93,7 @@ func TestGateCorruptLockWithoutConfigLayout(t *testing.T) {
 
 func TestGatedCommandsRefuseCorruptLock(t *testing.T) {
 	for variant := range corruptions {
-		for _, cmd := range []string{"sync", "check", "invariants", "audit", "list"} {
+		for _, cmd := range []string{"render", "check", "invariants", "audit", "list"} {
 			t.Run(variant+"/"+cmd, func(t *testing.T) {
 				root, want := corruptLock(t, variant)
 				var out, errb bytes.Buffer
@@ -146,7 +146,7 @@ func TestUpgradeOutsideProject(t *testing.T) {
 
 func TestProjectCommandsHintInit(t *testing.T) {
 	var out, errb bytes.Buffer
-	code := runAt(t, t.TempDir(), []string{"awf", "sync"}, &out, &errb)
+	code := runAt(t, t.TempDir(), []string{"awf", "render"}, &out, &errb)
 	all := out.String() + errb.String()
 	if code != 1 || !strings.Contains(all, "not an awf project (run `awf init`)") {
 		t.Fatalf("code=%d output:\n%s", code, all)

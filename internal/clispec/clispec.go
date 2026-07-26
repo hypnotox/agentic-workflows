@@ -57,9 +57,9 @@ Flags:
 `,
 	},
 	{
-		Name: "sync", Summary: "Re-render after a template or config change",
+		Name: "render", Summary: "Re-render after a template or config change",
 		MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf sync
+		HelpBody: `Usage: awf render
 
 Re-render every enabled target after a template or config change and update .awf/awf.lock.
 `,

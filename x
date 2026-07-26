@@ -38,16 +38,16 @@ case "$cmd" in
   test)
     go test ./... "$@"
     ;;
-  sync)
+  render)
     # The rendered ./awf wrapper runs awf from source (awfInvokeCmd) so the
     # dogfooded render always matches the tree.
-    ./awf sync "$@"
+    ./awf render "$@"
     # ADR-0090: re-render the example adopter with the same source. The example
     # is its own Go module, so build once and run with the example as cwd.
     bindir="$(mktemp -d)"
     trap 'rm -rf "$bindir"' EXIT
     go build -o "$bindir/awf" ./cmd/awf
-    (cd examples/sundial && "$bindir/awf" sync)
+    (cd examples/sundial && "$bindir/awf" render)
     ;;
   check)
     ./awf check "$@"
@@ -128,7 +128,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|sync|check|dashboard-awf-path|dashboard-awf-advance [commit]|pi-test <run|stop|reset>|build|install|mutants|audit-local>" >&2
+    echo "usage: ./x <gate [full]|lint|fmt|test|deadcode|render|check|dashboard-awf-path|dashboard-awf-advance [commit]|pi-test <run|stop|reset>|build|install|mutants|audit-local>" >&2
     exit 2
     ;;
 esac

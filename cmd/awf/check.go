@@ -15,7 +15,7 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 		return err
 	}
 	if ok && semver.Compare(binV, lockV) > 0 {
-		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf sync to re-pin\n",
+		fmt.Fprintf(stdout, "note: awf %s is ahead of this project (rendered by %s); run awf render to re-pin\n",
 			strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
 	}
 	if staged {
