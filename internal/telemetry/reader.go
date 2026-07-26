@@ -118,6 +118,13 @@ func (l *Ledger) readEffort(effortID string, allowPendingTombstone bool) (Effort
 		}
 		l.readStream(&result, effortID, sessionID, raw, byEventID, byLifecycleIdentity, byPassiveIdentity)
 	}
+	if !effortProjectionCompatible(result) {
+		result.Events = []EventEnvelope{}
+		result.EffectApplied = map[string]bool{}
+		result.RejectedEffects = map[string]bool{}
+		result.Integrity = []IntegrityIssue{integrity("unsupported-protocol", effortID, 0, nil, "the effort requires an unsupported protocol interpretation")}
+		return result, nil
+	}
 	for _, event := range result.Events {
 		for _, predecessor := range event.Predecessors {
 			if _, ok := byEventID[predecessor]; !ok {
@@ -129,7 +136,7 @@ func (l *Ledger) readEffort(effortID string, allowPendingTombstone bool) (Effort
 	invalidCreationIDs := make(map[string]bool)
 	for index := range result.Records {
 		record := &result.Records[index]
-		if record.Event == nil || record.Event.Kind != "effort_created" || !record.Applied {
+		if record.Event == nil || !isCreationKind(record.Event.Kind) || !record.Applied {
 			continue
 		}
 		valid := true
@@ -191,6 +198,26 @@ func (l *Ledger) readEffort(effortID string, allowPendingTombstone bool) (Effort
 	return result, nil
 }
 
+func effortProjectionCompatible(read EffortRead) bool {
+	for _, issue := range read.Integrity {
+		if issue.Code == "unsupported-protocol" {
+			return false
+		}
+	}
+	return true
+}
+
+func unsupportedRequiredRecord(raw json.RawMessage, validationErr error) bool {
+	if strings.Contains(validationErr.Error(), "unsupported protocol major") || strings.Contains(validationErr.Error(), "unknown required kind") {
+		return true
+	}
+	var header struct {
+		Version ProtocolVersion `json:"version"`
+		Kind    EventKind       `json:"kind"`
+	}
+	return json.Unmarshal(raw, &header) == nil && header.Version.Major == descriptor.Version.Major && header.Version.Minor > descriptor.Version.Minor && descriptor.Payloads[string(header.Kind)].Class == ""
+}
+
 func (l *Ledger) readStream(result *EffortRead, effortID, sessionID string, raw []byte, byEventID, byLifecycleIdentity, byPassiveIdentity map[string]EventEnvelope) {
 	lines := splitJSONLines(raw)
 	for index, line := range lines.complete {
@@ -199,7 +226,7 @@ func (l *Ledger) readStream(result *EffortRead, effortID, sessionID string, raw 
 		event, err := ValidateEvent(line)
 		if err != nil {
 			code := "malformed-complete-line"
-			if strings.Contains(err.Error(), "unsupported protocol major") || strings.Contains(err.Error(), "unknown required kind") {
+			if unsupportedRequiredRecord(line, err) {
 				code = "unsupported-protocol"
 			}
 			result.Integrity = append(result.Integrity, integrity(code, sessionID, lineNumber, nil, err.Error()))

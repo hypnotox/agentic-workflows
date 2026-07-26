@@ -117,6 +117,67 @@ func TestAggregateMetricsSelectorsTrajectoriesFamiliesAndRetention(t *testing.T)
 	}
 }
 
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+func TestAggregateSuppressesIncompatibleEffortFromMetricsAndRetention(t *testing.T) {
+	read := heuristicSignalRead("incompatible-effort")
+	read.Integrity = []IntegrityIssue{{Code: "unsupported-protocol", Scope: "session", Line: 2}}
+	read.Records = []LedgerRecord{{SessionID: "session", Line: 2, Raw: json.RawMessage(`{"version":{"major":2,"minor":2},"kind":"future_required_kind"}`)}}
+
+	result, err := AggregateMetrics([]EffortRead{read}, Selector{}, MetricsOptions{
+		GeneratedAt: time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC),
+		Retention:   RetentionPolicy{MaxCompletedEffortAgeDays: 1, MaxCompletedEffortCount: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(result.Efforts) != 0 {
+		t.Fatalf("incompatible effort contributed metrics: %#v", result.Efforts)
+	}
+	if result.Retention.TerminalEffortCount != 0 || len(result.Retention.Candidates) != 0 {
+		t.Fatalf("incompatible effort contributed retention state: %#v", result.Retention)
+	}
+	if len(result.Integrity) != 1 || result.Integrity[0].Code != "unsupported-protocol" {
+		t.Fatalf("compatibility result is not one bounded notice: %#v", result.Integrity)
+	}
+}
+
+func TestAggregateProjectsBoundedAdoptionAndDetourReturnState(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "phase": "planning", "workflow": "writing-plans",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual",
+	})
+	adoptRead := EffortRead{Metadata: protocol21Metadata(t, map[string]any{"effortId": "effort-id", "createdAt": adopted.Timestamp, "creationMode": "adopted"}), Events: []EventEnvelope{adopted}}
+	result, err := AggregateMetrics([]EffortRead{adoptRead}, Selector{}, MetricsOptions{})
+	if err != nil || len(result.Efforts) != 1 {
+		t.Fatalf("aggregate adoption = %#v, %v", result, err)
+	}
+	projected := result.Efforts[0]
+	if projected.AdoptionBoundary == nil || projected.AdoptionBoundary.EventID != "adopt" || projected.CurrentWorkflow != "writing-plans" || projected.DetourReturn != nil {
+		t.Fatalf("bounded canonical adoption fields = %#v", projected)
+	}
+
+	origin := map[string]any{"effortId": "parent", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"}
+	started := protocol21Envelope(t, "detour", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": origin, "returnPhase": "implementation", "returnPhaseStartEventId": "parent-start",
+		"trajectoryId": "child-trajectory", "anchorId": "child-anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	abandoned := protocol21Envelope(t, "abandon", "effort_abandoned", []string{"detour"}, map[string]any{"terminalEpoch": 1})
+	detourRead := EffortRead{Metadata: protocol21Metadata(t, map[string]any{
+		"effortId": "effort-id", "createdAt": started.Timestamp, "creationMode": "derived", "origin": origin,
+		"detourReturn": map[string]any{"sessionId": "session-id", "phase": "implementation", "phaseStartEventId": "parent-start"},
+	}), Events: []EventEnvelope{started, abandoned}}
+	result, err = AggregateMetrics([]EffortRead{detourRead}, Selector{}, MetricsOptions{})
+	if err != nil || len(result.Efforts) != 1 || result.Efforts[0].DetourReturn == nil || !result.Efforts[0].DetourReturn.Pending || result.Efforts[0].DetourReturn.Settled {
+		t.Fatalf("bounded canonical pending return = %#v, %v", result, err)
+	}
+	returned := protocol21Envelope(t, "returned", "detour_returned", []string{"abandon"}, map[string]any{"terminalOutcome": "abandoned", "parentAssociationEventId": "parent-association"})
+	detourRead.Events = append(detourRead.Events, returned)
+	result, err = AggregateMetrics([]EffortRead{detourRead}, Selector{}, MetricsOptions{})
+	if err != nil || result.Efforts[0].DetourReturn == nil || result.Efforts[0].DetourReturn.Pending || !result.Efforts[0].DetourReturn.Settled || result.Efforts[0].DetourReturn.ParentAssociationEventID != "parent-association" {
+		t.Fatalf("bounded canonical settled return = %#v, %v", result, err)
+	}
+}
+
 func TestStableMetricsJSONContractAndSaturatingTotals(t *testing.T) {
 	generated := time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC)
 	result := MetricsResult{SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: generated, Selector: Selector{}, Efforts: []EffortProjection{}, Retention: RetentionState{MaxAgeDays: 90, MaxCount: 100, Candidates: []string{}}, Integrity: []IntegrityNotice{}}

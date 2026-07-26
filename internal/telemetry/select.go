@@ -93,6 +93,18 @@ func projectEventPhases(events []EventEnvelope) map[string]map[string]bool {
 			if json.Unmarshal(event.Payload, &payload) == nil {
 				result[event.EventID][string(payload.Phase)] = true
 			}
+		case "effort_adopted":
+			var payload EffortAdoptedPayload
+			if json.Unmarshal(event.Payload, &payload) == nil {
+				result[event.EventID][string(payload.Phase)] = true
+			}
+		case "detour_started":
+			result[event.EventID]["brainstorming"] = true
+		case "phase_continued":
+			var payload PhaseContinuedPayload
+			if json.Unmarshal(event.Payload, &payload) == nil {
+				result[event.EventID][string(payload.Phase)] = true
+			}
 		case "phase_finished":
 			var payload PhaseFinishedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil {
@@ -160,6 +172,14 @@ func projectEventPhases(events []EventEnvelope) map[string]map[string]bool {
 				continue
 			}
 			phase = payload.NextPhase
+		case "effort_adopted":
+			var payload EffortAdoptedPayload
+			if json.Unmarshal(start.Payload, &payload) != nil {
+				continue
+			}
+			phase = payload.Phase
+		case "detour_started":
+			phase = "brainstorming"
 		default:
 			continue
 		}

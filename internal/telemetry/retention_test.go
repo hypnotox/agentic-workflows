@@ -123,6 +123,48 @@ func TestRetentionUsesEffectiveRepairedTerminalTimestamp(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+func TestRetentionSuppressesIncompatibleEffort(t *testing.T) {
+	read := heuristicSignalRead("incompatible-effort")
+	read.Integrity = []IntegrityIssue{{Code: "unsupported-protocol", Scope: "session", Line: 2}}
+	read.EffectApplied = ProjectLifecycle(read.Events).EffectApplied
+	candidate, terminal, err := retentionCandidateFromRead(read, read.Metadata.EffortID)
+	if err != nil || terminal {
+		t.Fatalf("incompatible effort became a retention candidate: candidate=%#v terminal=%v err=%v", candidate, terminal, err)
+	}
+}
+
+func TestRetentionExcludesPendingDetourReturnUntilMarkerIsDurable(t *testing.T) {
+	origin := map[string]any{"effortId": "parent-effort", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"}
+	started := protocol21Envelope(t, "detour-start", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": origin, "returnPhase": "implementation",
+		"returnPhaseStartEventId": "parent-phase-start", "trajectoryId": "child-trajectory", "anchorId": "child-anchor",
+		"workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	abandoned := protocol21Envelope(t, "detour-abandon", "effort_abandoned", []string{"detour-start"}, map[string]any{"terminalEpoch": 1})
+	abandoned.Timestamp = "2026-07-22T00:00:01Z"
+	metadata := protocol21Metadata(t, map[string]any{
+		"effortId": "effort-id", "createdAt": started.Timestamp, "creationMode": "derived", "origin": origin,
+		"detourReturn": map[string]any{"sessionId": "session-id", "phase": "implementation", "phaseStartEventId": "parent-phase-start"},
+	})
+	pendingEvents := []EventEnvelope{started, abandoned}
+	pending := EffortRead{Metadata: metadata, Events: pendingEvents, EffectApplied: ProjectLifecycle(pendingEvents).EffectApplied}
+	if candidate, terminal, err := retentionCandidateFromRead(pending, metadata.EffortID); err != nil || terminal {
+		t.Fatalf("pending-return terminal child became retainable: candidate=%#v terminal=%v err=%v", candidate, terminal, err)
+	}
+
+	returned := protocol21Envelope(t, "detour-return", "detour_returned", []string{"detour-abandon"}, map[string]any{
+		"terminalOutcome": "abandoned", "parentAssociationEventId": "parent-association",
+	})
+	returned.Timestamp = "2026-07-22T00:00:02Z"
+	settledEvents := []EventEnvelope{started, abandoned, returned}
+	settled := EffortRead{Metadata: metadata, Events: settledEvents, EffectApplied: ProjectLifecycle(settledEvents).EffectApplied}
+	candidate, terminal, err := retentionCandidateFromRead(settled, metadata.EffortID)
+	if err != nil || !terminal || candidate.EffortID != metadata.EffortID {
+		t.Fatalf("settled detour did not re-enter retention: candidate=%#v terminal=%v err=%v", candidate, terminal, err)
+	}
+}
+
 func TestRetentionStableNewestAndInversePruneTies(t *testing.T) {
 	ledger := newRetentionLedger(t)
 	now := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)

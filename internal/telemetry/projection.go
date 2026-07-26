@@ -25,18 +25,28 @@ type WorkflowProjection struct {
 	Trajectories        []TrajectoryProjection
 	DerivedEffortIDs    []string
 	Origin              *OriginMetadata
+	AdoptionBoundary    *AdoptionBoundaryProjection
+	DetourReturn        *DetourReturnProjection
 	Integrity           []IntegrityIssue
 }
 
 func ProjectWorkflow(read EffortRead) WorkflowProjection {
-	lifecycle := projectLifecycleFromRead(read)
+	lifecycle := newLifecycleProjection()
+	if effortProjectionCompatible(read) {
+		lifecycle = projectLifecycleFromRead(read)
+	}
 	projection := WorkflowProjection{
-		Metadata: read.Metadata, Lifecycle: lifecycle, Origin: read.Metadata.Origin,
+		Metadata: read.Metadata, Lifecycle: lifecycle, Origin: read.Metadata.Origin, AdoptionBoundary: lifecycle.AdoptionBoundary,
 		EvidenceEventIDs: []string{}, EffectApplied: map[string]bool{},
 		CurrentPathEventIDs: []string{}, AllWorkEventIDs: []string{}, DiscardedEventIDs: []string{},
 		Trajectories: []TrajectoryProjection{}, DerivedEffortIDs: []string{},
 		Integrity: append(append([]IntegrityIssue(nil), read.Integrity...), lifecycle.Invalid...),
 	}
+	if !effortProjectionCompatible(read) {
+		projection.Integrity = deduplicateIntegrity(projection.Integrity)
+		return projection
+	}
+	projection.DetourReturn = projectDetourReturn(read, lifecycle)
 	active := map[string]bool{}
 	for trajectoryID := lifecycle.ActiveTrajectoryID; trajectoryID != ""; trajectoryID = lifecycle.Trajectories[trajectoryID].ParentTrajectoryID {
 		if active[trajectoryID] { // coverage-ignore: validated trajectory creation and fork rules guarantee acyclic ancestry
@@ -88,6 +98,34 @@ func ProjectWorkflow(read EffortRead) WorkflowProjection {
 	sort.Strings(projection.DiscardedEventIDs)
 	projection.Integrity = deduplicateIntegrity(projection.Integrity)
 	return projection
+}
+
+func projectDetourReturn(read EffortRead, lifecycle LifecycleProjection) *DetourReturnProjection {
+	metadata := read.Metadata.DetourReturn
+	if metadata == nil {
+		return nil
+	}
+	result := &DetourReturnProjection{
+		SessionID: metadata.SessionID, Phase: metadata.Phase, PhaseStartEventID: metadata.PhaseStartEventID,
+		Pending: lifecycle.State == EffortCompleted || lifecycle.State == EffortAbandoned,
+	}
+	if result.Pending {
+		result.TerminalOutcome = TerminalOutcome(lifecycle.State)
+	}
+	for _, event := range read.Events {
+		if event.Kind != "detour_returned" || !lifecycle.EffectApplied[event.EventID] {
+			continue
+		}
+		var payload DetourReturnedPayload
+		if json.Unmarshal(event.Payload, &payload) != nil { // coverage-ignore: validated protocol payloads always decode into their generated Go type
+			continue
+		}
+		result.Pending, result.Settled = false, true
+		result.TerminalOutcome = payload.TerminalOutcome
+		result.ParentAssociationEventID = payload.ParentAssociationEventID
+		result.ReturnEventID = event.EventID
+	}
+	return result
 }
 
 func causallyVisibleAssociationTrajectory(event EventEnvelope, events []EventEnvelope, order *CausalOrder, effectApplied map[string]bool) string {

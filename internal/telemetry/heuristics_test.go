@@ -143,6 +143,24 @@ func TestComparableBaselinesUseDistinctCompletedCompatibleSameRouteEfforts(t *te
 	}
 }
 
+func TestHeuristicMetricsRecognizeAdoptionAndDetourPhaseStarts(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "phase": "implementation", "workflow": "executing-direct",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual",
+	})
+	detour := protocol21Envelope(t, "detour", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": map[string]any{"effortId": "parent", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"},
+		"returnPhase": "implementation", "returnPhaseStartEventId": "parent-start", "trajectoryId": "trajectory",
+		"anchorId": "anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	for _, event := range []EventEnvelope{adopted, detour} {
+		metrics := effortHeuristicMetrics(EffortRead{Metadata: EffortMetadata{EffortID: "effort"}, Events: []EventEnvelope{event}}, HeuristicThresholds{})
+		if metrics == nil {
+			t.Fatalf("%s produced a nil metric set", event.Kind)
+		}
+	}
+}
+
 func heuristicSignalRead(effortID string) EffortRead {
 	events := lifecycleBaseEvents()
 	events = appendEvent(events, "route", "route_selected", RoutePayload{Route: "direct"})

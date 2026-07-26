@@ -59,14 +59,14 @@ func TestProtocolLedgerContract(t *testing.T) {
 	if err != nil || len(raw) == 0 || raw[len(raw)-1] != '\n' {
 		t.Fatalf("stream is not complete JSONL: %q, %v", raw, err)
 	}
-	newer := validEvent("usage_observed", 1)
+	newer := validEvent("usage_observed", 2)
 	newer["futureEnvelope"] = map[string]any{"value": true}
 	newer["payload"].(map[string]any)["futurePayload"] = []any{"opaque"}
 	validated, err := ValidateEvent(mustJSON(t, newer))
 	if err != nil || len(validated.EnvelopeExtensions) != 1 || len(validated.PayloadExtensions) != 1 {
 		t.Fatalf("compatible-minor extensions were not preserved: %#v, %v", validated, err)
 	}
-	privacy := validEvent("usage_observed", 1)
+	privacy := validEvent("usage_observed", 2)
 	privacy["future"] = map[string]any{"prompt": "forbidden"}
 	if _, err := ValidateEvent(mustJSON(t, privacy)); err == nil {
 		t.Fatal("nested privacy-forbidden extension accepted")
@@ -107,7 +107,6 @@ func TestProtocolLedgerContract(t *testing.T) {
 	}
 }
 
-// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
 func TestProtocol2TransitionAppendRetryAndConflict(t *testing.T) {
 	ledger, err := NewLedger(newTestProject(t))
 	if err != nil {
@@ -150,6 +149,109 @@ func TestProtocol2TransitionAppendRetryAndConflict(t *testing.T) {
 	read, err := ledger.ReadEffort("effort-id")
 	if err != nil || len(read.Events) != 3 || read.Events[2].Kind != "phase_transitioned" {
 		t.Fatalf("transition durability = events %#v, %v", read.Events, err)
+	}
+}
+
+func TestProtocol21AlternativeCreationKindsAreAtomicLedgerCreations(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		kind     EventKind
+		metadata map[string]any
+		payload  map[string]any
+	}{
+		{
+			name: "adopted", kind: "effort_adopted",
+			metadata: map[string]any{"effortId": "effort-id", "createdAt": "2026-07-22T00:00:00Z", "creationMode": "adopted"},
+			payload:  map[string]any{"creationMode": "adopted", "phase": "planning", "workflow": "writing-plans", "trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual"},
+		},
+		{
+			name: "detour", kind: "detour_started",
+			metadata: map[string]any{
+				"effortId": "effort-id", "createdAt": "2026-07-22T00:00:00Z", "creationMode": "derived",
+				"origin":       map[string]any{"effortId": "parent", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"},
+				"detourReturn": map[string]any{"sessionId": "session-id", "phase": "implementation", "phaseStartEventId": "parent-phase-start"},
+			},
+			payload: map[string]any{
+				"creationMode": "derived", "origin": map[string]any{"effortId": "parent", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"},
+				"returnPhase": "implementation", "returnPhaseStartEventId": "parent-phase-start", "trajectoryId": "trajectory",
+				"anchorId": "anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+			},
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			ledger, err := NewLedger(newTestProject(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			metadata := protocol21Metadata(t, test.metadata)
+			first := protocol21Envelope(t, "creation-event", test.kind, nil, test.payload)
+			raw, err := json.Marshal(first)
+			if err != nil {
+				t.Fatal(err)
+			}
+			result, err := ledger.CreateEffort(metadata, raw)
+			if err != nil || result.Idempotent {
+				t.Fatalf("alternative creation = %#v, %v", result, err)
+			}
+			retry, err := ledger.CreateEffort(metadata, raw)
+			if err != nil || !retry.Idempotent {
+				t.Fatalf("alternative creation retry = %#v, %v", retry, err)
+			}
+			read, err := ledger.ReadEffort(metadata.EffortID)
+			if err != nil || len(read.Events) != 1 || read.Events[0].Kind != test.kind || !read.EffectApplied["creation-event"] {
+				t.Fatalf("alternative creation read = %#v, %v", read, err)
+			}
+		})
+	}
+}
+
+func TestAlternativeCreationMetadataMustMatchFirstEvent(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "phase": "planning", "workflow": "writing-plans",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual",
+	})
+	adoptedRaw := mustJSON(t, adopted)
+	adoptedMetadata := EffortMetadata{EffortID: adopted.EffortID, CreatedAt: adopted.Timestamp, CreationMode: "adopted"}
+	withPredecessor := adopted
+	withPredecessor.Predecessors = []string{"prior"}
+	if _, err := validateCreation(adoptedMetadata, mustJSON(t, withPredecessor)); err == nil || !strings.Contains(err.Error(), "empty predecessors") {
+		t.Fatalf("creation predecessor accepted: %v", err)
+	}
+	wrongAdoption := adoptedMetadata
+	wrongAdoption.CreationMode = "independent"
+	if _, err := validateCreation(wrongAdoption, adoptedRaw); err == nil || !strings.Contains(err.Error(), "adoption payload") {
+		t.Fatalf("adoption metadata mismatch accepted: %v", err)
+	}
+
+	createdMetadata, createdRaw := testCreation(t)
+	createdMetadata.DetourReturn = &DetourReturnMetadata{SessionID: "session-id", Phase: "implementation", PhaseStartEventID: "phase-start"}
+	if _, err := validateCreation(createdMetadata, createdRaw); err == nil || !strings.Contains(err.Error(), "creation payload") {
+		t.Fatalf("ordinary creation detour metadata accepted: %v", err)
+	}
+
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	detour := protocol21Envelope(t, "detour", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": origin, "returnPhase": "implementation", "returnPhaseStartEventId": "parent-start",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	detourMetadata := EffortMetadata{
+		EffortID: detour.EffortID, CreatedAt: detour.Timestamp, CreationMode: "derived", Origin: &origin,
+		DetourReturn: &DetourReturnMetadata{SessionID: detour.SessionID, Phase: "planning", PhaseStartEventID: "parent-start"},
+	}
+	if _, err := validateCreation(detourMetadata, mustJSON(t, detour)); err == nil || !strings.Contains(err.Error(), "detour payload") {
+		t.Fatalf("detour return metadata mismatch accepted: %v", err)
+	}
+
+	withoutOrigin := adoptedMetadata
+	withOrigin := adoptedMetadata
+	withOrigin.Origin = &origin
+	if metadataEqual(withoutOrigin, withOrigin) {
+		t.Fatal("metadata with one missing origin compared equal")
+	}
+	otherOrigin := withOrigin
+	otherOrigin.Origin = &OriginMetadata{EffortID: "other-parent", TrajectoryID: origin.TrajectoryID, AnchorID: origin.AnchorID}
+	if metadataEqual(withOrigin, otherOrigin) {
+		t.Fatal("different non-empty origins compared equal")
 	}
 }
 

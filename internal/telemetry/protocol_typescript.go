@@ -98,6 +98,14 @@ func tsFieldType(field fieldDescriptor) string {
 		return "{ " + strings.Join(parts, "; ") + " }"
 	case "payload":
 		return "unknown"
+	case "origin":
+		return "OriginMetadata"
+	case "detourReturn":
+		return "DetourReturnMetadata"
+	case "replacement":
+		return "RepairReplacement"
+	case "proposal":
+		return "RepairProposal"
 	default:
 		return "unknown"
 	}
@@ -141,8 +149,8 @@ function formattedString(field: any, value: unknown): boolean {
   if (field.format === "identifier") return value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
   return true;
 }
-function namedObject(type: "origin" | "replacement" | "proposal"): any {
-  return (protocolDescriptor.objects as any)[({ origin: "OriginMetadata", replacement: "RepairReplacement", proposal: "RepairProposal" } as const)[type]];
+function namedObject(type: "origin" | "detourReturn" | "replacement" | "proposal"): any {
+  return (protocolDescriptor.objects as any)[({ origin: "OriginMetadata", detourReturn: "DetourReturnMetadata", replacement: "RepairReplacement", proposal: "RepairProposal" } as const)[type]];
 }
 function fieldValid(field: any, value: unknown): boolean {
   if (field.vocabulary) return typeof value === "string" && (protocolDescriptor.vocabularies as any)[field.vocabulary]?.includes(value);
@@ -157,7 +165,7 @@ function fieldValid(field: any, value: unknown): boolean {
     /* c8 ignore stop */
     case "object": return objectValid({ fields: field.fields, additionalProperties: field.additionalProperties }, value);
     case "payload": return isRecord(value);
-    case "origin": case "proposal": return shapedValid(namedObject(field.type), value);
+    case "origin": case "detourReturn": case "proposal": return shapedValid(namedObject(field.type), value);
     case "replacement": {
       if (!shapedValid(namedObject(field.type), value)) return false;
       const replacement = value as Record<string, unknown>;
@@ -188,10 +196,12 @@ function constraintValid(constraint: any, value: Record<string, unknown>): boole
   const present = (name: string) => name in value && value[name] !== undefined;
   /* c8 ignore stop */
   switch (constraint.kind) {
+    case "field-const": return value[constraint.field] === constraint.value;
     case "fields-required-when": return value[constraint.discriminator] !== constraint.value || constraint.fields.every(present);
     case "fields-forbidden-when": return value[constraint.discriminator] !== constraint.value || constraint.fields.every((name: string) => !present(name));
     case "field-allowed-when": return !present(constraint.field) || value[constraint.discriminator] === constraint.value;
     case "paired-presence": return present(constraint.fields[0]) === present(constraint.fields[1]);
+    case "alternative-creation": case "metadata-match": case "omission-clears-attribution": case "fixed-brainstorming": case "matching-terminal-outcome": case "post-terminal": return true;
     case "waiver-eligibility": return ((protocolDescriptor.waiverRules as any)[value[constraint.ruleField] as string] ?? []).includes(value[constraint.reasonField]);
     default: return false;
   }

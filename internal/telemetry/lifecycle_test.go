@@ -160,6 +160,192 @@ func protocol2TransitionEnvelope(t *testing.T, eventID string, predecessors []st
 	return envelope
 }
 
+func TestProtocol21AdoptionAndContinuationProjection(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "route": "direct", "phase": "implementation",
+		"workflow": "executing-direct", "trajectoryId": "adopted-trajectory", "anchorId": "adopted-anchor",
+		"associationOrigin": "manual",
+	})
+	continued := protocol21Envelope(t, "continue", "phase_continued", []string{"adopt"}, map[string]any{
+		"phase": "implementation", "startEventId": "adopt", "workflow": "tdd", "activity": "tdd",
+	})
+	cleared := protocol21Envelope(t, "clear", "phase_continued", []string{"continue"}, map[string]any{
+		"phase": "implementation", "startEventId": "adopt", "workflow": "executing-direct",
+	})
+	projection := ProjectLifecycle([]EventEnvelope{adopted, continued, cleared})
+	if projection.State != EffortActive || projection.Route != "direct" || projection.ActiveTrajectoryID != "adopted-trajectory" {
+		t.Fatalf("adoption state was not projected: %#v", projection)
+	}
+	interval, ok := projection.OpenPhases["adopt"]
+	if !ok || interval.Phase != "implementation" || interval.StartEventID != "adopt" || len(projection.PhaseIntervals) != 0 {
+		t.Fatalf("continuation did not preserve the adopted phase start: %#v", projection)
+	}
+	association, ok := projection.Associations["session-id"]
+	if !ok || association.TrajectoryID != "adopted-trajectory" || association.AssociationOrigin != "manual" {
+		t.Fatalf("adoption association was not projected: %#v", projection.Associations)
+	}
+	if !projection.EffectApplied["adopt"] || !projection.EffectApplied["continue"] || !projection.EffectApplied["clear"] {
+		t.Fatalf("new lifecycle effects were not applied: %#v", projection.EffectApplied)
+	}
+	if projection.CurrentWorkflow != "executing-direct" || projection.CurrentActivity != "" || projection.CurrentImplementationMode != "" {
+		t.Fatalf("continuation omission did not replace and clear current attribution: %#v", projection)
+	}
+	interval = projection.OpenPhases["adopt"]
+	if interval.Workflow != "executing-direct" || interval.Activity != "" || interval.ImplementationMode != "" {
+		t.Fatalf("continuation omission did not clear interval attribution: %#v", interval)
+	}
+}
+
+func TestPhaseLifecycleUpdatesAndClearsCurrentAttribution(t *testing.T) {
+	events := lifecycleBaseEvents()
+	started := appendEvent(events, "start", "phase_started", PhaseStartedPayload{Phase: "implementation", Activity: "tdd", ImplementationMode: "inline-execution"})
+	projection := ProjectLifecycle(started)
+	if projection.CurrentWorkflow != "" || projection.CurrentActivity != "tdd" || projection.CurrentImplementationMode != "inline-execution" {
+		t.Fatalf("phase start attribution = %#v", projection)
+	}
+	finished := appendEvent(started, "finish", "phase_finished", PhaseFinishedPayload{Phase: "implementation", StartEventID: "start", Outcome: "success"})
+	projection = ProjectLifecycle(finished)
+	if projection.CurrentWorkflow != "" || projection.CurrentActivity != "" || projection.CurrentImplementationMode != "" {
+		t.Fatalf("phase finish retained current attribution: %#v", projection)
+	}
+}
+
+func TestProtocol21DetourLineageAndPostTerminalReturnProjection(t *testing.T) {
+	origin := map[string]any{"effortId": "parent-effort", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"}
+	started := protocol21Envelope(t, "detour-start", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": origin, "returnPhase": "implementation",
+		"returnPhaseStartEventId": "parent-phase-start", "trajectoryId": "child-trajectory",
+		"anchorId": "child-anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	abandoned := protocol21Envelope(t, "detour-abandon", "effort_abandoned", []string{"detour-start"}, map[string]any{"terminalEpoch": 1})
+	returned := protocol21Envelope(t, "detour-return", "detour_returned", []string{"detour-abandon"}, map[string]any{
+		"terminalOutcome": "abandoned", "parentAssociationEventId": "parent-return-association",
+	})
+	metadata := protocol21Metadata(t, map[string]any{
+		"effortId": "effort-id", "createdAt": started.Timestamp, "creationMode": "derived", "origin": origin,
+		"detourReturn": map[string]any{"sessionId": "session-id", "phase": "implementation", "phaseStartEventId": "parent-phase-start"},
+	})
+	workflow := ProjectWorkflow(EffortRead{Metadata: metadata, Events: []EventEnvelope{started, abandoned, returned}})
+	if workflow.Origin == nil || workflow.Origin.EffortID != "parent-effort" || workflow.Origin.TrajectoryID != "parent-trajectory" || workflow.Origin.AnchorID != "parent-anchor" {
+		t.Fatalf("detour lineage was not projected: %#v", workflow)
+	}
+	if workflow.Lifecycle.State != EffortAbandoned || !workflow.Lifecycle.EffectApplied["detour-return"] {
+		t.Fatalf("post-terminal return marker was not projected without changing outcome: %#v", workflow.Lifecycle)
+	}
+	metadataJSON, err := json.Marshal(workflow.Metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var metadataFields map[string]any
+	if err := json.Unmarshal(metadataJSON, &metadataFields); err != nil {
+		t.Fatal(err)
+	}
+	if metadataFields["detourReturn"] == nil {
+		t.Fatalf("canonical detour return metadata was not retained: %s", metadataJSON)
+	}
+}
+
+func TestProtocol21LifecycleRejectsInvalidCreationContinuationAndReturnState(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "phase": "implementation", "workflow": "executing-direct",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual",
+	})
+	detour := protocol21Envelope(t, "detour", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": map[string]any{"effortId": "parent", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"},
+		"returnPhase": "implementation", "returnPhaseStartEventId": "parent-start", "trajectoryId": "trajectory",
+		"anchorId": "anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	for _, creation := range []EventEnvelope{adopted, detour} {
+		projection := newLifecycleProjection()
+		projection.State = EffortDiscovery
+		projection.AppliedEventIDs = []string{"existing"}
+		order, _ := BuildCausalOrder([]EventEnvelope{creation})
+		if err := projection.apply(creation, order); err == nil || !strings.Contains(err.Error(), "already exists") {
+			t.Fatalf("duplicate %s accepted: %v", creation.Kind, err)
+		}
+	}
+
+	continued := protocol21Envelope(t, "continue", "phase_continued", nil, map[string]any{
+		"phase": "implementation", "startEventId": "start", "workflow": "tdd",
+	})
+	projection := newLifecycleProjection()
+	projection.State = EffortActive
+	order, _ := BuildCausalOrder([]EventEnvelope{continued})
+	if err := projection.apply(continued, order); err == nil || !strings.Contains(err.Error(), "unmatched matching start") {
+		t.Fatalf("continuation without open phase accepted: %v", err)
+	}
+	start := protocol21Envelope(t, "start", "phase_started", nil, map[string]any{"phase": "implementation"})
+	continued.SessionID = "other-session"
+	projection.OpenPhases[start.EventID] = PhaseInterval{Phase: "implementation", StartEventID: start.EventID}
+	order, _ = BuildCausalOrder([]EventEnvelope{start, continued})
+	if err := projection.apply(continued, order); err == nil || !strings.Contains(err.Error(), "causally visible") {
+		t.Fatalf("concurrent continuation accepted: %v", err)
+	}
+
+	returned := protocol21Envelope(t, "returned", "detour_returned", nil, map[string]any{"terminalOutcome": "completed", "parentAssociationEventId": "parent-association"})
+	projection = newLifecycleProjection()
+	projection.State = EffortAbandoned
+	order, _ = BuildCausalOrder([]EventEnvelope{returned})
+	if err := projection.apply(returned, order); err == nil || !strings.Contains(err.Error(), "outcome") {
+		t.Fatalf("mismatched terminal outcome accepted: %v", err)
+	}
+	returned.Payload = mustJSON(t, map[string]any{"terminalOutcome": "abandoned", "parentAssociationEventId": "parent-association"})
+	if err := projection.apply(returned, order); err == nil || !strings.Contains(err.Error(), "pending terminal detour") {
+		t.Fatalf("return without detour start accepted: %v", err)
+	}
+	priorReturn := returned
+	priorReturn.EventID = "prior-return"
+	projection.AppliedEventIDs = []string{detour.EventID, priorReturn.EventID}
+	order, _ = BuildCausalOrder([]EventEnvelope{detour, priorReturn, returned})
+	if err := projection.apply(returned, order); err == nil || !strings.Contains(err.Error(), "pending terminal detour") {
+		t.Fatalf("second detour return accepted: %v", err)
+	}
+}
+
+func TestAdoptionBoundaryAllowsCompletionFromAdoptedPhase(t *testing.T) {
+	events := []EventEnvelope{protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "route": "direct", "phase": "implementation", "workflow": "executing-direct",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual",
+	})}
+	events = appendEvent(events, "implementation-finish", "phase_finished", PhaseFinishedPayload{Phase: "implementation", StartEventID: "adopt"})
+	events = appendFinishedPhase(events, "review", "implementation-review", "trajectory")
+	events = appendFinishedPhase(events, "retro", "retrospective", "trajectory")
+	events = appendEvent(events, "complete", "effort_completed", EffortTerminalPayload{TerminalEpoch: 1})
+	projection := ProjectLifecycle(events)
+	if projection.State != EffortCompleted || len(projection.Invalid) != 0 {
+		t.Fatalf("adopted route completion = state %q invalid %#v", projection.State, projection.Invalid)
+	}
+}
+
+func protocol21Envelope(t *testing.T, eventID string, kind EventKind, predecessors []string, payload any) EventEnvelope {
+	t.Helper()
+	if predecessors == nil {
+		predecessors = []string{}
+	}
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return EventEnvelope{
+		Version: ProtocolVersion{Major: 2, Minor: 1}, EventID: eventID, IdempotencyKey: "key-" + eventID,
+		EffortID: "effort-id", SessionID: "session-id", Timestamp: "2026-07-22T00:00:00Z",
+		Kind: kind, Predecessors: predecessors, Payload: raw,
+	}
+}
+
+func protocol21Metadata(t *testing.T, fields map[string]any) EffortMetadata {
+	t.Helper()
+	raw, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var metadata EffortMetadata
+	if err := json.Unmarshal(raw, &metadata); err != nil {
+		t.Fatal(err)
+	}
+	return metadata
+}
+
 func TestTerminalRepairsAndWaiversDoNotReopen(t *testing.T) {
 	events := completedRoute("direct")
 	routeReplacement, _ := json.Marshal(RoutePayload{Route: "direct"})

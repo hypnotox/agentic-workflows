@@ -1,7 +1,7 @@
 {
   "version": {
     "major": 2,
-    "minor": 0
+    "minor": 1
   },
   "limits": {
     "identifierBytes": 128,
@@ -55,7 +55,8 @@
       "created",
       "handoff",
       "manual",
-      "repair"
+      "repair",
+      "detour"
     ],
     "waiverReasonCodes": [
       "approved-route-deviation",
@@ -93,7 +94,8 @@
     ],
     "creationModes": [
       "independent",
-      "derived"
+      "derived",
+      "adopted"
     ],
     "detachReasons": [
       "manual",
@@ -131,20 +133,24 @@
     ],
     "eventKinds": [
       "effort_created",
+      "effort_adopted",
       "session_associated",
       "session_detached",
       "route_selected",
       "route_changed",
       "phase_started",
       "phase_transitioned",
+      "phase_continued",
       "phase_finished",
       "trajectory_started",
       "trajectory_resumed",
       "trajectory_closed",
       "trajectory_forked",
+      "detour_started",
       "effort_completed",
       "effort_abandoned",
       "effort_reopened",
+      "detour_returned",
       "finding_waived",
       "repair_applied",
       "usage_observed",
@@ -362,6 +368,68 @@
       ],
       "privacyPolicy": "long-lived-minimal"
     },
+    "effort_adopted": {
+      "goType": "EffortAdoptedPayload",
+      "class": "lifecycle",
+      "repairable": true,
+      "additionalProperties": false,
+      "fields": {
+        "creationMode": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "creationModes"
+        },
+        "route": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "routes"
+        },
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "workflow": {
+          "type": "string",
+          "required": true,
+          "format": "category"
+        },
+        "trajectoryId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "anchorId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "associationOrigin": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "associationOrigins"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "field-const",
+          "field": "creationMode",
+          "value": "adopted"
+        },
+        {
+          "kind": "field-const",
+          "field": "associationOrigin",
+          "value": "manual"
+        },
+        {
+          "kind": "alternative-creation"
+        },
+        {
+          "kind": "metadata-match"
+        }
+      ],
+      "privacyPolicy": "long-lived-minimal"
+    },
     "session_associated": {
       "goType": "SessionAssociatedPayload",
       "class": "lifecycle",
@@ -510,6 +578,45 @@
       ],
       "privacyPolicy": "long-lived-minimal"
     },
+    "phase_continued": {
+      "goType": "PhaseContinuedPayload",
+      "class": "lifecycle",
+      "repairable": true,
+      "additionalProperties": false,
+      "fields": {
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "startEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "workflow": {
+          "type": "string",
+          "required": true,
+          "format": "category"
+        },
+        "activity": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "activities"
+        },
+        "implementationMode": {
+          "type": "string",
+          "required": false,
+          "format": "category"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "omission-clears-attribution"
+        }
+      ],
+      "privacyPolicy": "long-lived-minimal"
+    },
     "phase_finished": {
       "goType": "PhaseFinishedPayload",
       "class": "lifecycle",
@@ -630,6 +737,80 @@
       },
       "privacyPolicy": "long-lived-minimal"
     },
+    "detour_started": {
+      "goType": "DetourStartedPayload",
+      "class": "lifecycle",
+      "repairable": true,
+      "additionalProperties": false,
+      "fields": {
+        "creationMode": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "creationModes"
+        },
+        "origin": {
+          "type": "origin",
+          "required": true
+        },
+        "returnPhase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "returnPhaseStartEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "trajectoryId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "anchorId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "workflow": {
+          "type": "string",
+          "required": true,
+          "format": "category"
+        },
+        "associationOrigin": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "associationOrigins"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "field-const",
+          "field": "creationMode",
+          "value": "derived"
+        },
+        {
+          "kind": "field-const",
+          "field": "workflow",
+          "value": "brainstorming"
+        },
+        {
+          "kind": "field-const",
+          "field": "associationOrigin",
+          "value": "detour"
+        },
+        {
+          "kind": "alternative-creation"
+        },
+        {
+          "kind": "metadata-match"
+        },
+        {
+          "kind": "fixed-brainstorming"
+        }
+      ],
+      "privacyPolicy": "long-lived-minimal"
+    },
     "effort_completed": {
       "goType": "EffortTerminalPayload",
       "class": "lifecycle",
@@ -685,6 +866,33 @@
           "format": "identifier"
         }
       },
+      "privacyPolicy": "long-lived-minimal"
+    },
+    "detour_returned": {
+      "goType": "DetourReturnedPayload",
+      "class": "lifecycle",
+      "repairable": false,
+      "additionalProperties": false,
+      "fields": {
+        "terminalOutcome": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "terminalOutcomes"
+        },
+        "parentAssociationEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "matching-terminal-outcome"
+        },
+        {
+          "kind": "post-terminal"
+        }
+      ],
       "privacyPolicy": "long-lived-minimal"
     },
     "finding_waived": {
@@ -1126,6 +1334,77 @@
         }
       ]
     },
+    "adopt": {
+      "goType": "AdoptLifecycleRequest",
+      "eventKind": "effort_adopted",
+      "additionalProperties": false,
+      "fields": {
+        "action": {
+          "type": "string",
+          "required": true
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "effortId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "sessionId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "required": true,
+          "format": "timestamp"
+        },
+        "predecessors": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "string",
+            "format": "identifier"
+          },
+          "uniqueItems": true,
+          "minItems": 0
+        },
+        "route": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "routes"
+        },
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "workflow": {
+          "type": "string",
+          "required": true,
+          "format": "category"
+        },
+        "trajectoryId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "anchorId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        }
+      }
+    },
     "associate": {
       "goType": "AssociateLifecycleRequest",
       "eventKind": "session_associated",
@@ -1496,6 +1775,77 @@
         }
       ]
     },
+    "continue-phase": {
+      "goType": "ContinuePhaseLifecycleRequest",
+      "eventKind": "phase_continued",
+      "additionalProperties": false,
+      "fields": {
+        "action": {
+          "type": "string",
+          "required": true
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "effortId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "sessionId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "required": true,
+          "format": "timestamp"
+        },
+        "predecessors": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "string",
+            "format": "identifier"
+          },
+          "uniqueItems": true,
+          "minItems": 0
+        },
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "startEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "workflow": {
+          "type": "string",
+          "required": true,
+          "format": "category"
+        },
+        "activity": {
+          "type": "string",
+          "required": false,
+          "vocabulary": "activities"
+        },
+        "implementationMode": {
+          "type": "string",
+          "required": false,
+          "format": "category"
+        }
+      }
+    },
     "finish-phase": {
       "goType": "FinishPhaseLifecycleRequest",
       "eventKind": "phase_finished",
@@ -1801,6 +2151,98 @@
         }
       }
     },
+    "start-detour": {
+      "goType": "StartDetourLifecycleRequest",
+      "eventKind": "detour_started",
+      "additionalProperties": false,
+      "fields": {
+        "action": {
+          "type": "string",
+          "required": true
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "effortId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "sessionId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "required": true,
+          "format": "timestamp"
+        },
+        "predecessors": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "string",
+            "format": "identifier"
+          },
+          "uniqueItems": true,
+          "minItems": 0
+        },
+        "creationMode": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "creationModes"
+        },
+        "origin": {
+          "type": "origin",
+          "required": true
+        },
+        "returnPhase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "returnPhaseStartEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "trajectoryId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "anchorId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "workflow": {
+          "type": "string",
+          "required": true,
+          "format": "category"
+        }
+      },
+      "constraints": [
+        {
+          "kind": "field-const",
+          "field": "creationMode",
+          "value": "derived"
+        },
+        {
+          "kind": "field-const",
+          "field": "workflow",
+          "value": "brainstorming"
+        }
+      ]
+    },
     "complete": {
       "goType": "TerminalLifecycleRequest",
       "eventKind": "effort_completed",
@@ -1948,6 +2390,62 @@
           "format": "identifier"
         },
         "anchorId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        }
+      }
+    },
+    "mark-detour-returned": {
+      "goType": "MarkDetourReturnedLifecycleRequest",
+      "eventKind": "detour_returned",
+      "additionalProperties": false,
+      "fields": {
+        "action": {
+          "type": "string",
+          "required": true
+        },
+        "idempotencyKey": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "eventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "effortId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "sessionId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "timestamp": {
+          "type": "string",
+          "required": true,
+          "format": "timestamp"
+        },
+        "predecessors": {
+          "type": "array",
+          "required": true,
+          "items": {
+            "type": "string",
+            "format": "identifier"
+          },
+          "uniqueItems": true,
+          "minItems": 0
+        },
+        "terminalOutcome": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "terminalOutcomes"
+        },
+        "parentAssociationEventId": {
           "type": "string",
           "required": true,
           "format": "identifier"
@@ -2105,6 +2603,27 @@
         }
       }
     },
+    "DetourReturnMetadata": {
+      "goType": "DetourReturnMetadata",
+      "additionalProperties": false,
+      "fields": {
+        "sessionId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        },
+        "phase": {
+          "type": "string",
+          "required": true,
+          "vocabulary": "phases"
+        },
+        "phaseStartEventId": {
+          "type": "string",
+          "required": true,
+          "format": "identifier"
+        }
+      }
+    },
     "RepairReplacement": {
       "goType": "RepairReplacement",
       "additionalProperties": false,
@@ -2168,8 +2687,40 @@
         "origin": {
           "type": "origin",
           "required": false
+        },
+        "detourReturn": {
+          "type": "detourReturn",
+          "required": false
         }
-      }
+      },
+      "constraints": [
+        {
+          "kind": "fields-forbidden-when",
+          "discriminator": "creationMode",
+          "value": "independent",
+          "fields": [
+            "origin",
+            "detourReturn"
+          ]
+        },
+        {
+          "kind": "fields-forbidden-when",
+          "discriminator": "creationMode",
+          "value": "adopted",
+          "fields": [
+            "origin",
+            "detourReturn"
+          ]
+        },
+        {
+          "kind": "fields-required-when",
+          "discriminator": "creationMode",
+          "value": "derived",
+          "fields": [
+            "origin"
+          ]
+        }
+      ]
     },
     "Association": {
       "goType": "Association",

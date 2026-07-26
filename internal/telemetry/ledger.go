@@ -275,8 +275,8 @@ func (l *Ledger) Append(ctx context.Context, raw json.RawMessage) (AppendResult,
 	if err != nil {
 		return AppendResult{}, err
 	}
-	if event.Kind == "effort_created" {
-		return AppendResult{}, errors.New("effort_created is valid only at atomic creation")
+	if isCreationKind(event.Kind) {
+		return AppendResult{}, fmt.Errorf("%s is valid only at atomic creation", event.Kind)
 	}
 	if err := validatePathIdentifier("effortId", event.EffortID); err != nil { // coverage-ignore: ValidateEvent already validated the effort identifier
 		return AppendResult{}, err
@@ -408,6 +408,15 @@ func (l *Ledger) Append(ctx context.Context, raw json.RawMessage) (AppendResult,
 	return AppendResult{Event: event}, nil
 }
 
+func isCreationKind(kind EventKind) bool {
+	switch kind {
+	case "effort_created", "effort_adopted", "detour_started":
+		return true
+	default:
+		return false
+	}
+}
+
 func validateCreation(metadata EffortMetadata, raw json.RawMessage) (EventEnvelope, error) {
 	metadataRaw, err := json.Marshal(metadata)
 	if err != nil { // coverage-ignore: metadata contains only JSON-safe values
@@ -423,19 +432,42 @@ func validateCreation(metadata EffortMetadata, raw json.RawMessage) (EventEnvelo
 	if err != nil {
 		return EventEnvelope{}, err
 	}
-	if event.Kind != "effort_created" || event.EffortID != metadata.EffortID || event.Timestamp != metadata.CreatedAt {
+	if !isCreationKind(event.Kind) || event.EffortID != metadata.EffortID || event.Timestamp != metadata.CreatedAt {
 		return EventEnvelope{}, errors.New("first event does not match immutable effort metadata")
 	}
-	var payload EffortCreatedPayload
-	if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: protocol validation proved payload shape
-		return EventEnvelope{}, err
+	if len(event.Predecessors) != 0 {
+		return EventEnvelope{}, errors.New("first event creation must have empty predecessors")
 	}
-	if payload.CreationMode != metadata.CreationMode {
-		return EventEnvelope{}, errors.New("first event creation payload differs from metadata")
-	}
-	wantOrigin := OriginMetadata{EffortID: payload.OriginEffortID, TrajectoryID: payload.OriginTrajectoryID, AnchorID: payload.OriginAnchorID}
-	if (metadata.Origin == nil && wantOrigin != (OriginMetadata{})) || (metadata.Origin != nil && *metadata.Origin != wantOrigin) {
-		return EventEnvelope{}, errors.New("first event origin differs from metadata")
+	switch event.Kind {
+	case "effort_created":
+		var payload EffortCreatedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: protocol validation proved payload shape
+			return EventEnvelope{}, err
+		}
+		if payload.CreationMode != metadata.CreationMode || metadata.DetourReturn != nil {
+			return EventEnvelope{}, errors.New("first event creation payload differs from metadata")
+		}
+		wantOrigin := OriginMetadata{EffortID: payload.OriginEffortID, TrajectoryID: payload.OriginTrajectoryID, AnchorID: payload.OriginAnchorID}
+		if (metadata.Origin == nil && wantOrigin != (OriginMetadata{})) || (metadata.Origin != nil && *metadata.Origin != wantOrigin) {
+			return EventEnvelope{}, errors.New("first event origin differs from metadata")
+		}
+	case "effort_adopted":
+		var payload EffortAdoptedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: protocol validation proved payload shape
+			return EventEnvelope{}, err
+		}
+		if payload.CreationMode != "adopted" || metadata.CreationMode != payload.CreationMode || metadata.Origin != nil || metadata.DetourReturn != nil {
+			return EventEnvelope{}, errors.New("first event adoption payload differs from metadata")
+		}
+	case "detour_started":
+		var payload DetourStartedPayload
+		if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: protocol validation proved payload shape
+			return EventEnvelope{}, err
+		}
+		wantReturn := DetourReturnMetadata{SessionID: event.SessionID, Phase: payload.ReturnPhase, PhaseStartEventID: payload.ReturnPhaseStartEventID}
+		if payload.CreationMode != "derived" || metadata.CreationMode != payload.CreationMode || metadata.Origin == nil || *metadata.Origin != payload.Origin || metadata.DetourReturn == nil || *metadata.DetourReturn != wantReturn {
+			return EventEnvelope{}, errors.New("first event detour payload differs from metadata")
+		}
 	}
 	return event, nil
 }
@@ -482,9 +514,16 @@ func metadataEqual(left, right EffortMetadata) bool {
 		return false
 	}
 	if left.Origin == nil || right.Origin == nil {
-		return left.Origin == nil && right.Origin == nil
+		if left.Origin != nil || right.Origin != nil {
+			return false
+		}
+	} else if *left.Origin != *right.Origin {
+		return false
 	}
-	return *left.Origin == *right.Origin
+	if left.DetourReturn == nil || right.DetourReturn == nil {
+		return left.DetourReturn == nil && right.DetourReturn == nil
+	}
+	return *left.DetourReturn == *right.DetourReturn
 }
 
 func (l *Ledger) readMetadata(effortID string) (EffortMetadata, error) {

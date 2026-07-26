@@ -16,12 +16,13 @@ function valueFor(field: any): any {
   if (field.type === "array") return Array.from({ length: field.minItems ?? 0 }, () => valueFor(field.items));
   if (field.type === "object") return shapeValue({ fields: field.fields });
   if (field.type === "payload") return {};
-  const objectName = field.type === "origin" ? "OriginMetadata" : field.type === "replacement" ? "RepairReplacement" : "RepairProposal";
+  const objectName = field.type === "origin" ? "OriginMetadata" : field.type === "detourReturn" ? "DetourReturnMetadata" : field.type === "replacement" ? "RepairReplacement" : "RepairProposal";
   return shapeValue((protocolDescriptor.objects as any)[objectName]);
 }
 function shapeValue(shape: any): any {
   const value: any = {};
   for (const [name, field] of Object.entries(shape.fields) as any) if (field.required) value[name] = valueFor(field);
+  for (const constraint of shape.constraints ?? []) if (constraint.kind === "field-const") value[constraint.field] = constraint.value;
   return value;
 }
 function validPayload(kind: string): any {
@@ -47,8 +48,9 @@ test("descriptor validators accept every closed event and lifecycle shape", () =
   }
 });
 
-test("protocol 2 descriptor and generated TypeScript stay in exact parity", () => {
-  assert.deepEqual(protocolVersion, { major: 2, minor: 0 });
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+test("protocol 2.1 descriptor and generated TypeScript stay in exact parity", () => {
+  assert.deepEqual(protocolVersion, { major: 2, minor: 1 });
   const oldField = "checkpoint" + "Id";
   assert.equal(`${oldField}Bytes` in protocolLimits, false);
   assert.equal(protocolDescriptor.privacy.allowedRepositoryPathField, "");
@@ -67,6 +69,10 @@ test("protocol 2 descriptor and generated TypeScript stay in exact parity", () =
   assert.equal(validateTelemetryEvent(transition), true); delete transition.payload.route; assert.equal(validateTelemetryEvent(transition), false);
   const transitionRequest = shapeValue(request); transitionRequest.action = "transition-phase"; Object.assign(transitionRequest, { phase: "brainstorming", startEventId: "start", nextPhase: "implementation", routeAction: "change", route: "plan" });
   assert.equal(validateLifecycleRequest(transitionRequest), true); delete transitionRequest.routeAction; assert.equal(validateLifecycleRequest(transitionRequest), false);
+  for (const kind of ["effort_adopted", "phase_continued", "detour_started", "detour_returned"]) assert.equal(kind in protocolDescriptor.payloads, true, kind);
+  for (const action of ["adopt", "continue-phase", "start-detour", "mark-detour-returned"]) assert.equal(action in protocolDescriptor.lifecycleRequests, true, action);
+  assert.deepEqual((protocolDescriptor.vocabularies as any).creationModes, ["independent", "derived", "adopted"]); assert.equal((protocolDescriptor.objects.EffortMetadata as any).fields.detourReturn.type, "detourReturn");
+  const oldEvent = validEvent("effort_created"); oldEvent.version = { major: 2, minor: 0 }; assert.equal(validateTelemetryEvent(oldEvent), true);
   assert.equal(JSON.stringify(protocolDescriptor).includes(oldField), false);
 });
 
@@ -79,11 +85,13 @@ test("event validator rejects malformed envelopes, fields, constraints, and iden
   ]) assert.equal(validateTelemetryEvent({ ...base, ...mutation }), false, JSON.stringify(mutation));
   const passive = validEvent("tool_observed"); delete passive.observationId; assert.equal(validateTelemetryEvent(passive), false); passive.observationId = "o"; passive.idempotencyKey = "i"; assert.equal(validateTelemetryEvent(passive), false);
   const derived = validEvent("effort_created"); derived.payload.creationMode = "derived"; assert.equal(validateTelemetryEvent(derived), false); Object.assign(derived.payload, { originEffortId: "e", originTrajectoryId: "t", originAnchorId: "a" }); assert.equal(validateTelemetryEvent(derived), true);
+  const adopted = validEvent("effort_adopted"); assert.equal(validateTelemetryEvent(adopted), true); adopted.payload.creationMode = "independent"; assert.equal(validateTelemetryEvent(adopted), false);
+  const detour = validEvent("detour_started"); assert.equal(validateTelemetryEvent(detour), true); detour.payload.workflow = "writing-plans"; assert.equal(validateTelemetryEvent(detour), false);
   const independent = validEvent("effort_created"); independent.payload.originEffortId = "e"; assert.equal(validateTelemetryEvent(independent), false);
   const shell = validEvent("shell_observed"); shell.payload.gateMode = "full"; assert.equal(validateTelemetryEvent(shell), true); shell.payload.classification = "unclassified"; assert.equal(validateTelemetryEvent(shell), false);
   const waiver = validEvent("finding_waived"); waiver.payload.reasonCode = "approved-clock-skew"; assert.equal(validateTelemetryEvent(waiver), false);
   const repair = validEvent("repair_applied"); repair.payload.replacement = { eventKind: "tool_observed", payload: validPayload("tool_observed") }; assert.equal(validateTelemetryEvent(repair), false); repair.payload.replacement = { eventKind: "session_detached", payload: {} }; assert.equal(validateTelemetryEvent(repair), false);
-  const newer = { ...base, version: { major: 2, minor: 1 }, extension: { safe: true }, payload: { ...base.payload, extension: 1 } }; assert.equal(validateTelemetryEvent(newer), true);
+  const newer = { ...base, version: { major: 2, minor: 2 }, extension: { safe: true }, payload: { ...base.payload, extension: 1 } }; assert.equal(validateTelemetryEvent(newer), true);
   const constraints = (protocolDescriptor.payloads.effort_created as any).constraints; constraints.push({ kind: "future-constraint" }); assert.equal(validateTelemetryEvent(base), false); constraints.pop();
 });
 
@@ -94,7 +102,7 @@ test("field type branches and lifecycle constraints reject invalid values", () =
   const unknownReplacement = validEvent("repair_applied"); unknownReplacement.payload.replacement = { eventKind: "future", payload: {} }; assert.equal(validateTelemetryEvent(unknownReplacement), false); unknownReplacement.payload.replacement = { eventKind: "repair_applied", payload: validPayload("repair_applied") }; assert.equal(validateTelemetryEvent(unknownReplacement), false);
   const noWaiver = validEvent("finding_waived"); noWaiver.payload.ruleCode = "WFV1-EVENT-INTEGRITY"; assert.equal(validateTelemetryEvent(noWaiver), false);
   const optionalUndefined = validEvent("usage_observed"); optionalUndefined.trajectoryId = undefined; assert.equal(validateTelemetryEvent(optionalUndefined), false);
-  const passiveNewer = validEvent("usage_observed"); passiveNewer.version.minor = 1; (passiveNewer as any).extension = true; passiveNewer.payload.extension = true; assert.equal(validateTelemetryEvent(passiveNewer), true);
+  const passiveNewer = validEvent("usage_observed"); passiveNewer.version.minor = 2; (passiveNewer as any).extension = true; passiveNewer.payload.extension = true; assert.equal(validateTelemetryEvent(passiveNewer), true);
   assert.equal(validateLifecycleRequest(null), false); assert.equal(validateLifecycleRequest({ action: 1 }), false); assert.equal(validateLifecycleRequest({ action: "future" }), false);
   const badTimestamp = validEvent("usage_observed"); badTimestamp.timestamp = "July 22 2026"; assert.equal(validateTelemetryEvent(badTimestamp), false);
   const create: any = shapeValue(protocolDescriptor.lifecycleRequests.create); create.action = "create"; create.creationMode = "derived"; assert.equal(validateLifecycleRequest(create), false); create.origin = { effortId: "e", trajectoryId: "t", anchorId: "a" }; assert.equal(validateLifecycleRequest(create), true); create.extra = true; assert.equal(validateLifecycleRequest(create), false); delete create.extra;

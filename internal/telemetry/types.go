@@ -57,6 +57,16 @@ type EffortCreatedPayload struct {
 	OriginAnchorID     string       `json:"originAnchorId,omitempty"`
 }
 
+type EffortAdoptedPayload struct {
+	CreationMode      CreationMode      `json:"creationMode"`
+	Route             Route             `json:"route,omitempty"`
+	Phase             Phase             `json:"phase"`
+	Workflow          BoundedCategory   `json:"workflow"`
+	TrajectoryID      string            `json:"trajectoryId"`
+	AnchorID          string            `json:"anchorId"`
+	AssociationOrigin AssociationOrigin `json:"associationOrigin"`
+}
+
 type SessionAssociatedPayload struct {
 	AssociationOrigin AssociationOrigin `json:"associationOrigin"`
 	TrajectoryID      string            `json:"trajectoryId"`
@@ -94,6 +104,14 @@ type PhaseTransitionedPayload struct {
 	Route              Route           `json:"route,omitempty"`
 }
 
+type PhaseContinuedPayload struct {
+	Phase              Phase           `json:"phase"`
+	StartEventID       string          `json:"startEventId"`
+	Workflow           BoundedCategory `json:"workflow"`
+	Activity           Activity        `json:"activity,omitempty"`
+	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
+}
+
 type TrajectoryPayload struct {
 	TrajectoryID string          `json:"trajectoryId"`
 	AnchorID     string          `json:"anchorId"`
@@ -104,6 +122,17 @@ type TrajectoryForkedPayload struct {
 	TrajectoryID       string `json:"trajectoryId"`
 	ParentTrajectoryID string `json:"parentTrajectoryId"`
 	ForkAnchorID       string `json:"forkAnchorId"`
+}
+
+type DetourStartedPayload struct {
+	CreationMode            CreationMode      `json:"creationMode"`
+	Origin                  OriginMetadata    `json:"origin"`
+	ReturnPhase             Phase             `json:"returnPhase"`
+	ReturnPhaseStartEventID string            `json:"returnPhaseStartEventId"`
+	TrajectoryID            string            `json:"trajectoryId"`
+	AnchorID                string            `json:"anchorId"`
+	Workflow                BoundedCategory   `json:"workflow"`
+	AssociationOrigin       AssociationOrigin `json:"associationOrigin"`
 }
 
 type EffortTerminalPayload struct {
@@ -119,6 +148,11 @@ type EffortReopenedPayload struct {
 	TerminalEpoch uint64 `json:"terminalEpoch"`
 	TrajectoryID  string `json:"trajectoryId"`
 	AnchorID      string `json:"anchorId"`
+}
+
+type DetourReturnedPayload struct {
+	TerminalOutcome          TerminalOutcome `json:"terminalOutcome"`
+	ParentAssociationEventID string          `json:"parentAssociationEventId"`
 }
 
 type FindingWaivedPayload struct {
@@ -206,11 +240,18 @@ type OriginMetadata struct {
 	AnchorID     string `json:"anchorId"`
 }
 
+type DetourReturnMetadata struct {
+	SessionID         string `json:"sessionId"`
+	Phase             Phase  `json:"phase"`
+	PhaseStartEventID string `json:"phaseStartEventId"`
+}
+
 type EffortMetadata struct {
-	EffortID     string          `json:"effortId"`
-	CreatedAt    string          `json:"createdAt"`
-	CreationMode CreationMode    `json:"creationMode"`
-	Origin       *OriginMetadata `json:"origin,omitempty"`
+	EffortID     string                `json:"effortId"`
+	CreatedAt    string                `json:"createdAt"`
+	CreationMode CreationMode          `json:"creationMode"`
+	Origin       *OriginMetadata       `json:"origin,omitempty"`
+	DetourReturn *DetourReturnMetadata `json:"detourReturn,omitempty"`
 }
 
 type Association struct {
@@ -241,6 +282,17 @@ type CreateLifecycleRequest struct {
 }
 
 func (r CreateLifecycleRequest) lifecycleAction() string { return r.Action }
+
+type AdoptLifecycleRequest struct {
+	LifecycleRequestBase
+	Route        Route           `json:"route,omitempty"`
+	Phase        Phase           `json:"phase"`
+	Workflow     BoundedCategory `json:"workflow"`
+	TrajectoryID string          `json:"trajectoryId"`
+	AnchorID     string          `json:"anchorId"`
+}
+
+func (r AdoptLifecycleRequest) lifecycleAction() string { return r.Action }
 
 type AssociateLifecycleRequest struct {
 	LifecycleRequestBase
@@ -297,6 +349,17 @@ type TransitionPhaseLifecycleRequest struct {
 
 func (r TransitionPhaseLifecycleRequest) lifecycleAction() string { return r.Action }
 
+type ContinuePhaseLifecycleRequest struct {
+	LifecycleRequestBase
+	Phase              Phase           `json:"phase"`
+	StartEventID       string          `json:"startEventId"`
+	Workflow           BoundedCategory `json:"workflow"`
+	Activity           Activity        `json:"activity,omitempty"`
+	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
+}
+
+func (r ContinuePhaseLifecycleRequest) lifecycleAction() string { return r.Action }
+
 type TrajectoryLifecycleRequest struct {
 	LifecycleRequestBase
 	TrajectoryID string          `json:"trajectoryId"`
@@ -314,6 +377,19 @@ type ForkTrajectoryLifecycleRequest struct {
 }
 
 func (r ForkTrajectoryLifecycleRequest) lifecycleAction() string { return r.Action }
+
+type StartDetourLifecycleRequest struct {
+	LifecycleRequestBase
+	CreationMode            CreationMode    `json:"creationMode"`
+	Origin                  OriginMetadata  `json:"origin"`
+	ReturnPhase             Phase           `json:"returnPhase"`
+	ReturnPhaseStartEventID string          `json:"returnPhaseStartEventId"`
+	TrajectoryID            string          `json:"trajectoryId"`
+	AnchorID                string          `json:"anchorId"`
+	Workflow                BoundedCategory `json:"workflow"`
+}
+
+func (r StartDetourLifecycleRequest) lifecycleAction() string { return r.Action }
 
 type TerminalLifecycleRequest struct {
 	LifecycleRequestBase
@@ -335,6 +411,14 @@ type ReopenLifecycleRequest struct {
 }
 
 func (r ReopenLifecycleRequest) lifecycleAction() string { return r.Action }
+
+type MarkDetourReturnedLifecycleRequest struct {
+	LifecycleRequestBase
+	TerminalOutcome          TerminalOutcome `json:"terminalOutcome"`
+	ParentAssociationEventID string          `json:"parentAssociationEventId"`
+}
+
+func (r MarkDetourReturnedLifecycleRequest) lifecycleAction() string { return r.Action }
 
 type WaiveLifecycleRequest struct {
 	LifecycleRequestBase
@@ -402,6 +486,23 @@ type IntegrityNotice struct {
 	Explanation string   `json:"explanation"`
 }
 
+type AdoptionBoundaryProjection struct {
+	EventID  string          `json:"eventId"`
+	Phase    Phase           `json:"phase"`
+	Workflow BoundedCategory `json:"workflow"`
+}
+
+type DetourReturnProjection struct {
+	SessionID                string          `json:"sessionId"`
+	Phase                    Phase           `json:"phase"`
+	PhaseStartEventID        string          `json:"phaseStartEventId"`
+	Pending                  bool            `json:"pending"`
+	Settled                  bool            `json:"settled"`
+	TerminalOutcome          TerminalOutcome `json:"terminalOutcome,omitempty"`
+	ParentAssociationEventID string          `json:"parentAssociationEventId,omitempty"`
+	ReturnEventID            string          `json:"returnEventId,omitempty"`
+}
+
 type RetentionState struct {
 	MaxAgeDays          int        `json:"maxAgeDays"`
 	MaxCount            int        `json:"maxCount"`
@@ -411,18 +512,23 @@ type RetentionState struct {
 }
 
 type EffortProjection struct {
-	EffortID           string            `json:"effortId"`
-	State              string            `json:"state"`
-	Route              string            `json:"route"`
-	ActiveTrajectoryID string            `json:"activeTrajectoryId"`
-	CurrentPath        ScopeProjection   `json:"currentPath"`
-	AllWork            ScopeProjection   `json:"allWork"`
-	Sessions           []ScopeProjection `json:"sessions"`
-	Phases             []ScopeProjection `json:"phases"`
-	Trajectories       []ScopeProjection `json:"trajectories"`
-	DerivedEffortIDs   []string          `json:"derivedEffortIds"`
-	Origin             *OriginMetadata   `json:"origin,omitempty"`
-	Integrity          []IntegrityNotice `json:"integrity"`
+	EffortID                  string                      `json:"effortId"`
+	State                     string                      `json:"state"`
+	Route                     string                      `json:"route"`
+	ActiveTrajectoryID        string                      `json:"activeTrajectoryId"`
+	CurrentWorkflow           BoundedCategory             `json:"currentWorkflow,omitempty"`
+	CurrentActivity           Activity                    `json:"currentActivity,omitempty"`
+	CurrentImplementationMode BoundedCategory             `json:"currentImplementationMode,omitempty"`
+	AdoptionBoundary          *AdoptionBoundaryProjection `json:"adoptionBoundary,omitempty"`
+	DetourReturn              *DetourReturnProjection     `json:"detourReturn,omitempty"`
+	CurrentPath               ScopeProjection             `json:"currentPath"`
+	AllWork                   ScopeProjection             `json:"allWork"`
+	Sessions                  []ScopeProjection           `json:"sessions"`
+	Phases                    []ScopeProjection           `json:"phases"`
+	Trajectories              []ScopeProjection           `json:"trajectories"`
+	DerivedEffortIDs          []string                    `json:"derivedEffortIds"`
+	Origin                    *OriginMetadata             `json:"origin,omitempty"`
+	Integrity                 []IntegrityNotice           `json:"integrity"`
 }
 
 type MetricsResult struct {

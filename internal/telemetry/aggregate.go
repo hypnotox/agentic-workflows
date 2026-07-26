@@ -29,8 +29,10 @@ func AggregateMetrics(reads []EffortRead, selector Selector, options MetricsOpti
 	workflows := make([]WorkflowProjection, 0, len(reads))
 	readsByID := make(map[string]EffortRead, len(reads))
 	for _, read := range reads {
-		workflows = append(workflows, ProjectWorkflow(read))
 		readsByID[read.Metadata.EffortID] = read
+		if effortProjectionCompatible(read) {
+			workflows = append(workflows, ProjectWorkflow(read))
+		}
 	}
 	workflows = GroupDerivedFamilies(workflows)
 	result := MetricsResult{
@@ -41,6 +43,11 @@ func AggregateMetrics(reads []EffortRead, selector Selector, options MetricsOpti
 		Efforts:       []EffortProjection{},
 		Retention:     projectRetentionState(reads, options.Retention, generatedAt, options.LastRunAt),
 		Integrity:     []IntegrityNotice{},
+	}
+	for _, read := range reads {
+		if !effortProjectionCompatible(read) && (selector.EffortID == nil || read.Metadata.EffortID == *selector.EffortID) {
+			result.Integrity = append(result.Integrity, compatibilityIntegrityNotice(read))
+		}
 	}
 	for _, workflow := range workflows {
 		read := readsByID[workflow.Metadata.EffortID]
@@ -75,18 +82,23 @@ func aggregateEffort(read EffortRead, workflow WorkflowProjection, events []Even
 	currentEvents := eventsForIDs(byID, workflow.CurrentPathEventIDs)
 	allEvents := eventsForIDs(byID, workflow.AllWorkEventIDs)
 	result := EffortProjection{
-		EffortID:           workflow.Metadata.EffortID,
-		State:              string(workflow.Lifecycle.State),
-		Route:              string(workflow.Lifecycle.Route),
-		ActiveTrajectoryID: workflow.Lifecycle.ActiveTrajectoryID,
-		CurrentPath:        aggregateScope("current-path", currentEvents),
-		AllWork:            aggregateScope("all-work", allEvents),
-		Sessions:           []ScopeProjection{},
-		Phases:             []ScopeProjection{},
-		Trajectories:       []ScopeProjection{},
-		DerivedEffortIDs:   append([]string(nil), workflow.DerivedEffortIDs...),
-		Origin:             workflow.Origin,
-		Integrity:          integrityNotices(workflow.Integrity, selectedIDs),
+		EffortID:                  workflow.Metadata.EffortID,
+		State:                     string(workflow.Lifecycle.State),
+		Route:                     string(workflow.Lifecycle.Route),
+		ActiveTrajectoryID:        workflow.Lifecycle.ActiveTrajectoryID,
+		CurrentWorkflow:           workflow.Lifecycle.CurrentWorkflow,
+		CurrentActivity:           workflow.Lifecycle.CurrentActivity,
+		CurrentImplementationMode: workflow.Lifecycle.CurrentImplementationMode,
+		AdoptionBoundary:          workflow.AdoptionBoundary,
+		DetourReturn:              workflow.DetourReturn,
+		CurrentPath:               aggregateScope("current-path", currentEvents),
+		AllWork:                   aggregateScope("all-work", allEvents),
+		Sessions:                  []ScopeProjection{},
+		Phases:                    []ScopeProjection{},
+		Trajectories:              []ScopeProjection{},
+		DerivedEffortIDs:          append([]string(nil), workflow.DerivedEffortIDs...),
+		Origin:                    workflow.Origin,
+		Integrity:                 integrityNotices(workflow.Integrity, selectedIDs),
 	}
 	result.Sessions = aggregateGroupedScopes(allEvents, func(event EventEnvelope) []string { return []string{event.SessionID} })
 	phases := projectEventPhases(read.Events)
@@ -237,6 +249,13 @@ func saturatingAdd(left, right uint64) uint64 {
 		return math.MaxUint64
 	}
 	return left + right
+}
+
+func compatibilityIntegrityNotice(read EffortRead) IntegrityNotice {
+	return IntegrityNotice{
+		Code: "unsupported-protocol", Severity: "violation", Scope: read.Metadata.EffortID,
+		EventIDs: []string{}, Explanation: integrityExplanation("unsupported-protocol"),
+	}
 }
 
 func integrityNotices(issues []IntegrityIssue, selectedIDs map[string]bool) []IntegrityNotice {

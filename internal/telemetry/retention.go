@@ -169,9 +169,24 @@ func (l *Ledger) readRetentionCandidate(effortID string) (retentionCandidate, bo
 }
 
 func retentionCandidateFromRead(read EffortRead, effortID string) (retentionCandidate, bool, error) {
+	if !effortProjectionCompatible(read) {
+		return retentionCandidate{}, false, nil
+	}
 	projection := projectLifecycleFromRead(read)
 	if projection.State != EffortCompleted && projection.State != EffortAbandoned {
 		return retentionCandidate{}, false, nil
+	}
+	if read.Metadata.DetourReturn != nil {
+		settled := false
+		for _, event := range read.Events {
+			if event.Kind == "detour_returned" && projection.EffectApplied[event.EventID] {
+				settled = true
+				break
+			}
+		}
+		if !settled {
+			return retentionCandidate{}, false, nil
+		}
 	}
 	created, err := time.Parse(time.RFC3339Nano, read.Metadata.CreatedAt)
 	if err != nil { // coverage-ignore: immutable metadata validation enforces RFC3339Nano

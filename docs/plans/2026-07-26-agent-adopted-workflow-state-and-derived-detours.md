@@ -28,12 +28,13 @@ and freezes the ADR and plan.
   `tools/pi-extension-test/tests/workflow.test.ts`, compact-query coverage in
   `tools/pi-extension-test/tests/dashboard.test.ts`.
 - **Authored code and template inputs modified:** production and test `.go` files under
-  `internal/telemetry/` plus `internal/telemetry/protocol.json`;
-  `internal/catalog/catalog.go`, `internal/catalog/workflow.go`, `internal/catalog/standard.go`,
+  `internal/telemetry/` plus `internal/telemetry/protocol.json`; `cmd/awf/metrics.go` and
+  `cmd/awf/metrics_test.go`; `internal/catalog/catalog.go`, `internal/catalog/workflow.go`, `internal/catalog/standard.go`,
   `internal/catalog/workflow_test.go`; `internal/project/render.go`,
   `internal/project/pi_workflow_render_test.go`, and `internal/project/target_test.go`;
   `templates/pi/awf-dashboard/index.ts.tmpl`, `templates/pi/awf-workflow/SKILL.md.tmpl`,
-  `templates/docs/workflow.md.tmpl`; `.awf/parts/workflow/chain.md`,
+  `templates/docs/workflow.md.tmpl`; `tools/pi-extension-test/fixtures/fake-awf.mjs`;
+  `.awf/parts/workflow/chain.md`,
   `.awf/parts/agents-doc/working-memory.md`, `.awf/parts/working-with-awf/commands.md`,
   `.awf/parts/working-with-awf/config-and-overrides.md`,
   `.awf/docs/parts/architecture/overview.md`, `.awf/docs/parts/architecture/data-flow.md`, and
@@ -41,7 +42,10 @@ and freezes the ADR and plan.
 - **Generated outputs modified only by `./x render`:** `.pi/extensions/awf-dashboard/index.ts`,
   `.pi/extensions/awf-dashboard/protocol.ts`, `.pi/skills/awf-workflow/SKILL.md`, hidden Pi
   workflow bodies, `docs/architecture.md`, `docs/testing.md`, `docs/workflow.md`, rendered topic
-  and domain docs, `AGENTS.md`, `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
+  and domain docs, `AGENTS.md`, `docs/decisions/INDEX.md`, `.awf/awf.lock`, and the three Sundial
+  outputs `examples/sundial/.awf/awf.lock`,
+  `examples/sundial/.pi/extensions/awf-dashboard/index.ts`, and
+  `examples/sundial/.pi/extensions/awf-dashboard/protocol.ts`.
 - **Deleted:** none.
 
 ## Phase 1: Publish protocol-2.1 readers with new writes disabled
@@ -53,7 +57,9 @@ and freezes the ADR and plan.
   metrics, findings, cohort sample, or retention candidate and emits one bounded compatibility
   notice. In `protocol_test.go` and `protocol_typescript_test.go`, specify minor 1, all four exact
   event/request pairs, `adopted` creation mode, `detour` association origin, metadata fields,
-  constraints, and Go/TypeScript parity. In ledger/lifecycle/projection/retention tests, build
+  constraints, and Go/TypeScript parity. In `cmd/awf/metrics_test.go`, require the real
+  `awf metrics protocol --json` handshake to report protocol 2.1. In
+  ledger/lifecycle/projection/retention tests, build
   valid new-kind histories directly and assert alternative creation, adoption state,
   continuation phase-start preservation, detour lineage, post-terminal return marker, and
   pending-return exclusion. Before implementation, `go test ./internal/telemetry` must fail for
@@ -143,8 +149,11 @@ and freezes the ADR and plan.
   reader-before-writer guard: `awf_lifecycle` rejects the four new actions with a bounded
   `protocol 2.1 writer is not enabled` error; no adoption or detour tool is registered; workflow
   mappings still emit only 2.0 kinds. Rendered TypeScript therefore understands resident 2.1
-  records before any Pi route can append one. Test this guard in `protocol.test.ts` and
-  `dashboard.test.ts`.
+  records before any Pi route can append one. Advance the real handshake in `cmd/awf/metrics.go`
+  to 2.1 so registration uses the compatible binary reader rather than only a fixture. Update
+  `tools/pi-extension-test/fixtures/fake-awf.mjs` to return the required 2.1 protocol handshake,
+  because the generated dashboard must reject its old 2.0 response. Test this guard in
+  `protocol.test.ts` and `dashboard.test.ts`.
 - [ ] **Task 1.5: Enter Implementing, apply operation 1, and commit green.** Update only
   `.awf/topics/parts/tooling/workflow-telemetry/current-state.md` claim
   `event-protocol-and-ledger` to its complete ADR-0161 wording and append ADR-0161 to
@@ -153,9 +162,13 @@ and freezes the ADR and plan.
   global state sequence. Update `.awf/docs/parts/architecture/data-flow.md` and
   `.awf/docs/parts/testing/layout.md` for reader suppression and reader-first publication. Run
   `./x render`, `./x check`, `go test ./internal/telemetry`, and `./x pi-test run`, all with
-  zero exit. Stage only this transaction with:
+  zero exit. First add this modified plan explicitly with:
 
-  `git add -u -- internal/telemetry templates/pi/awf-dashboard/index.ts.tmpl tools/pi-extension-test/tests/protocol.test.ts tools/pi-extension-test/tests/dashboard.test.ts .awf/topics/parts/tooling/workflow-telemetry/current-state.md .awf/docs/parts/architecture/data-flow.md .awf/docs/parts/testing/layout.md .pi/extensions/awf-dashboard docs/architecture.md docs/testing.md docs/topics/tooling/workflow-telemetry.md docs/domains/tooling.md docs/decisions/0161-agent-adopted-workflow-state-and-derived-detours.md docs/decisions/INDEX.md .awf/awf.lock`
+  `git add -- docs/plans/2026-07-26-agent-adopted-workflow-state-and-derived-detours.md`
+
+  Then stage the remaining tracked transaction with:
+
+  `git add -u -- internal/telemetry cmd/awf/metrics.go cmd/awf/metrics_test.go templates/pi/awf-dashboard/index.ts.tmpl tools/pi-extension-test/fixtures/fake-awf.mjs tools/pi-extension-test/tests/protocol.test.ts tools/pi-extension-test/tests/dashboard.test.ts .awf/topics/parts/tooling/workflow-telemetry/current-state.md .awf/docs/parts/architecture/data-flow.md .awf/docs/parts/testing/layout.md .pi/extensions/awf-dashboard docs/architecture.md docs/testing.md docs/topics/tooling/workflow-telemetry.md docs/domains/tooling.md docs/decisions/0161-agent-adopted-workflow-state-and-derived-detours.md docs/decisions/INDEX.md .awf/awf.lock examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-dashboard/index.ts examples/sundial/.pi/extensions/awf-dashboard/protocol.ts`
 
   Run `./awf check --staged` and `./x gate`, both with zero exit, then commit:
 

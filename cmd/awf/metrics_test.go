@@ -20,13 +20,14 @@ import (
 )
 
 // invariant: tooling/cli:metrics-command-contract
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
 func TestMetricsProtocolAndGrammar(t *testing.T) {
 	var out bytes.Buffer
 	c := &cmdCtx{sub: "protocol", inv: invocation{bools: map[string]bool{"--json": true}}, stdout: &out}
 	if err := runMetrics(c); err != nil {
 		t.Fatal(err)
 	}
-	wantProtocol := fmt.Sprintf("{\"schemaVersion\":1,\"protocol\":{\"major\":2,\"minor\":0},\"compatibleMajor\":2,\"descriptorSha256\":%q,\"awfVersion\":%q,\"projectVersion\":%q}\n", telemetry.DescriptorSHA256(), awfVersion(), awfVersion())
+	wantProtocol := fmt.Sprintf("{\"schemaVersion\":1,\"protocol\":{\"major\":2,\"minor\":1},\"compatibleMajor\":2,\"descriptorSha256\":%q,\"awfVersion\":%q,\"projectVersion\":%q}\n", telemetry.DescriptorSHA256(), awfVersion(), awfVersion())
 	if out.String() != wantProtocol {
 		t.Fatalf("protocol output = %q, want %q", out.String(), wantProtocol)
 	}
@@ -132,8 +133,8 @@ func TestMetricsJSONLGoldenOrderingAndNoCorruptRaw(t *testing.T) {
 	if err := runMetrics(c); err != nil {
 		t.Fatal(err)
 	}
-	wantJSONL := "{\"version\":{\"major\":2,\"minor\":0},\"eventId\":\"a-create\",\"idempotencyKey\":\"key-a-create\",\"effortId\":\"a-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"creationMode\":\"independent\"}}\n" +
-		"{\"version\":{\"major\":2,\"minor\":0},\"eventId\":\"z-create\",\"idempotencyKey\":\"key-z-create\",\"effortId\":\"z-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"creationMode\":\"independent\"}}\n"
+	wantJSONL := "{\"version\":{\"major\":2,\"minor\":1},\"eventId\":\"a-create\",\"idempotencyKey\":\"key-a-create\",\"effortId\":\"a-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"creationMode\":\"independent\"}}\n" +
+		"{\"version\":{\"major\":2,\"minor\":1},\"eventId\":\"z-create\",\"idempotencyKey\":\"key-z-create\",\"effortId\":\"z-effort\",\"sessionId\":\"session-id\",\"timestamp\":\"2026-07-22T00:00:00Z\",\"kind\":\"effort_created\",\"predecessors\":[],\"payload\":{\"creationMode\":\"independent\"}}\n"
 	if out.String() != wantJSONL {
 		t.Fatalf("JSONL = %q, want %q", out.String(), wantJSONL)
 	}

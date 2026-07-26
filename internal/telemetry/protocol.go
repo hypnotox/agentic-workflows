@@ -52,6 +52,7 @@ type objectDescriptor struct {
 	GoType               string                     `json:"goType"`
 	AdditionalProperties bool                       `json:"additionalProperties"`
 	Fields               map[string]fieldDescriptor `json:"fields"`
+	Constraints          []constraintDescriptor     `json:"constraints"`
 	IdentityRule         string                     `json:"identityRule"`
 }
 
@@ -167,7 +168,7 @@ func validateDescriptor(parsed protocolDescriptor) error {
 		if payload.Class != "lifecycle" && payload.Class != "passive" {
 			return fmt.Errorf("payloads.%s has unknown class %q", kind, payload.Class)
 		}
-		wantRepairable := payload.Class == "lifecycle" && kind != "repair_applied"
+		wantRepairable := payload.Class == "lifecycle" && kind != "repair_applied" && kind != "detour_returned"
 		if payload.Repairable != wantRepairable {
 			return fmt.Errorf("payloads.%s repairable metadata differs from lifecycle class", kind)
 		}
@@ -217,8 +218,11 @@ func validateDescriptor(parsed protocolDescriptor) error {
 		if err := validateDescriptorFields(parsed, "objects."+name, object.Fields); err != nil {
 			return err
 		}
+		if err := validateConstraintAuthority(parsed, "objects."+name, object.Fields, object.Constraints); err != nil {
+			return err
+		}
 	}
-	for _, required := range []string{"OriginMetadata", "RepairReplacement", "RepairProposal", "EffortMetadata", "Association"} {
+	for _, required := range []string{"OriginMetadata", "DetourReturnMetadata", "RepairReplacement", "RepairProposal", "EffortMetadata", "Association"} {
 		if _, ok := parsed.Objects[required]; !ok {
 			return fmt.Errorf("objects.%s is required", required)
 		}
@@ -304,7 +308,7 @@ func validateFieldAuthority(parsed protocolDescriptor, location string, field fi
 			return fmt.Errorf("%s has invalid or open object metadata", location)
 		}
 		return validateDescriptorFields(parsed, location, field.Fields)
-	case "payload", "replacement", "origin", "proposal":
+	case "payload", "replacement", "origin", "detourReturn", "proposal":
 		if field.Items != nil || len(field.Fields) != 0 || field.Format != "" || field.Vocabulary != "" || field.Minimum != nil || field.MinItems != 0 || field.UniqueItems || field.AdditionalProperties {
 			return fmt.Errorf("%s has metadata incompatible with %s", location, field.Type)
 		}
@@ -338,6 +342,20 @@ func validateConstraintAuthority(parsed protocolDescriptor, location string, fie
 					return err
 				}
 			}
+		case "field-const":
+			field, err := requireField(constraint.Field, "constant")
+			if err != nil {
+				return err
+			}
+			if !field.Required || field.Type != "string" || constraint.Value == "" || constraint.Discriminator != "" || len(constraint.Fields) != 0 || constraint.RuleField != "" || constraint.ReasonField != "" {
+				return fmt.Errorf("%s has invalid field-const metadata", constraintLocation)
+			}
+			if field.Vocabulary != "" && !contains(parsed.Vocabularies[field.Vocabulary], constraint.Value) {
+				return fmt.Errorf("%s constant is outside vocabulary %s", constraintLocation, field.Vocabulary)
+			}
+			if field.Vocabulary == "" && field.Format == "category" && len([]byte(constraint.Value)) > parsed.Limits.CategoryBytes {
+				return fmt.Errorf("%s constant exceeds category limit", constraintLocation)
+			}
 		case "field-allowed-when":
 			discriminator, err := requireField(constraint.Discriminator, "discriminator")
 			if err != nil {
@@ -357,6 +375,10 @@ func validateConstraintAuthority(parsed protocolDescriptor, location string, fie
 				if _, err := requireField(name, "paired"); err != nil {
 					return err
 				}
+			}
+		case "alternative-creation", "metadata-match", "omission-clears-attribution", "fixed-brainstorming", "matching-terminal-outcome", "post-terminal":
+			if constraint.Discriminator != "" || constraint.Value != "" || len(constraint.Fields) != 0 || constraint.Field != "" || constraint.RuleField != "" || constraint.ReasonField != "" {
+				return fmt.Errorf("%s has metadata on semantic marker %q", constraintLocation, constraint.Kind)
 			}
 		case "waiver-eligibility":
 			rule, err := requireField(constraint.RuleField, "rule")
@@ -545,6 +567,14 @@ func DecodeLifecycleRequest(raw json.RawMessage) (LifecycleRequest, error) {
 		request = &WaiveLifecycleRequest{}
 	case "RepairLifecycleRequest":
 		request = &RepairLifecycleRequest{}
+	case "AdoptLifecycleRequest":
+		request = &AdoptLifecycleRequest{}
+	case "ContinuePhaseLifecycleRequest":
+		request = &ContinuePhaseLifecycleRequest{}
+	case "StartDetourLifecycleRequest":
+		request = &StartDetourLifecycleRequest{}
+	case "MarkDetourReturnedLifecycleRequest":
+		request = &MarkDetourReturnedLifecycleRequest{}
 	default:
 		return nil, fmt.Errorf("lifecycle request.action: unsupported descriptor Go type %q", schema.GoType)
 	}
@@ -740,6 +770,8 @@ func validateField(location string, raw json.RawMessage, field fieldDescriptor) 
 		return validateReplacement(location, raw)
 	case "origin":
 		return validateDescriptorObject(location, raw, "OriginMetadata")
+	case "detourReturn":
+		return validateDescriptorObject(location, raw, "DetourReturnMetadata")
 	case "proposal":
 		return validateDescriptorObject(location, raw, "RepairProposal")
 	default:
@@ -756,8 +788,10 @@ func validateDescriptorObject(location string, raw json.RawMessage, name string)
 	if !ok {
 		return fmt.Errorf("%s: descriptor object %q is missing", location, name)
 	}
-	_, err = validateObject(location, object, schema.Fields, false)
-	return err
+	if _, err = validateObject(location, object, schema.Fields, false); err != nil {
+		return err
+	}
+	return validateConstraints(location, object, schema.Constraints)
 }
 
 func validateReplacement(location string, raw json.RawMessage) error {
@@ -777,7 +811,7 @@ func validateReplacement(location string, raw json.RawMessage) error {
 		return err
 	}
 	payloadSchema, ok := descriptor.Payloads[kind]
-	if !ok || payloadSchema.Class != "lifecycle" || kind == "repair_applied" {
+	if !ok || payloadSchema.Class != "lifecycle" || !payloadSchema.Repairable {
 		return fmt.Errorf("%s.eventKind: kind %q is not a non-recursive lifecycle replacement", location, kind)
 	}
 	payload, err := rawObject(object["payload"], location+".payload")
@@ -819,6 +853,11 @@ func validateConstraints(location string, object map[string]json.RawMessage, con
 					return fmt.Errorf("%s: %s=%q forbids %s", location, constraint.Discriminator, constraint.Value, field)
 				}
 			}
+		case "field-const":
+			value, _ := rawString(object[constraint.Field], location+"."+constraint.Field)
+			if value != constraint.Value {
+				return fmt.Errorf("%s: %s must equal %q", location, constraint.Field, constraint.Value)
+			}
 		case "field-allowed-when":
 			if _, present := object[constraint.Field]; !present {
 				continue
@@ -833,6 +872,9 @@ func validateConstraints(location string, object map[string]json.RawMessage, con
 			if left != right {
 				return fmt.Errorf("%s: %s and %s must be present together", location, constraint.Fields[0], constraint.Fields[1])
 			}
+		case "alternative-creation", "metadata-match", "omission-clears-attribution", "fixed-brainstorming", "matching-terminal-outcome", "post-terminal":
+			// These markers declare cross-record projection and ledger rules. Their
+			// value checks are performed where the required related state exists.
 		case "waiver-eligibility":
 			rule, _ := rawString(object[constraint.RuleField], location+"."+constraint.RuleField)
 			reason, _ := rawString(object[constraint.ReasonField], location+"."+constraint.ReasonField)

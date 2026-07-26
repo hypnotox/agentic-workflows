@@ -18,11 +18,14 @@ const (
 )
 
 type PhaseInterval struct {
-	Phase         Phase
-	StartEventID  string
-	FinishEventID string
-	TrajectoryID  string
-	TerminalEpoch uint64
+	Phase              Phase
+	StartEventID       string
+	FinishEventID      string
+	TrajectoryID       string
+	TerminalEpoch      uint64
+	Workflow           BoundedCategory
+	Activity           Activity
+	ImplementationMode BoundedCategory
 }
 
 type RouteSelection struct {
@@ -46,22 +49,26 @@ type RepairState struct {
 }
 
 type LifecycleProjection struct {
-	State              EffortState
-	Route              Route
-	RouteHistory       []RouteSelection
-	TerminalEpoch      uint64
-	ActiveTrajectoryID string
-	Associations       map[string]Association
-	OpenPhases         map[string]PhaseInterval
-	PhaseIntervals     []PhaseInterval
-	Trajectories       map[string]TrajectoryNode
-	Waivers            []WaiverState
-	Repairs            []RepairState
-	SupersededEventIDs map[string]string
-	AppliedEventIDs    []string
-	EffectApplied      map[string]bool
-	closedTrajectories map[string]bool
-	Invalid            []IntegrityIssue
+	State                     EffortState
+	Route                     Route
+	RouteHistory              []RouteSelection
+	TerminalEpoch             uint64
+	ActiveTrajectoryID        string
+	CurrentWorkflow           BoundedCategory
+	CurrentActivity           Activity
+	CurrentImplementationMode BoundedCategory
+	Associations              map[string]Association
+	OpenPhases                map[string]PhaseInterval
+	PhaseIntervals            []PhaseInterval
+	Trajectories              map[string]TrajectoryNode
+	Waivers                   []WaiverState
+	Repairs                   []RepairState
+	SupersededEventIDs        map[string]string
+	AppliedEventIDs           []string
+	EffectApplied             map[string]bool
+	closedTrajectories        map[string]bool
+	AdoptionBoundary          *AdoptionBoundaryProjection
+	Invalid                   []IntegrityIssue
 }
 
 var routeRequirements = map[Route][]Phase{
@@ -216,10 +223,10 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 	if descriptor.Payloads[string(event.Kind)].Class != "lifecycle" {
 		return nil
 	}
-	if p.State == "" && event.Kind != "effort_created" {
+	if p.State == "" && !isCreationKind(event.Kind) {
 		return errors.New("mutation requires an existing effort")
 	}
-	if (p.State == EffortCompleted || p.State == EffortAbandoned) && event.Kind != "finding_waived" && event.Kind != "repair_applied" && event.Kind != "effort_reopened" && (p.State != EffortAbandoned || event.Kind != "session_detached") {
+	if (p.State == EffortCompleted || p.State == EffortAbandoned) && event.Kind != "finding_waived" && event.Kind != "repair_applied" && event.Kind != "effort_reopened" && event.Kind != "detour_returned" && (p.State != EffortAbandoned || event.Kind != "session_detached") {
 		return fmt.Errorf("%s is not legal after terminal state %s", event.Kind, p.State)
 	}
 	switch event.Kind {
@@ -229,6 +236,37 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 		}
 		p.State = EffortDiscovery
 		p.TerminalEpoch = 1
+	case "effort_adopted":
+		if len(p.AppliedEventIDs) != 0 {
+			return errors.New("effort already exists")
+		}
+		var payload EffortAdoptedPayload
+		_ = json.Unmarshal(event.Payload, &payload)
+		p.State, p.TerminalEpoch = EffortDiscovery, 1
+		if payload.Route != "" {
+			p.Route, p.State = payload.Route, EffortActive
+			p.RouteHistory = append(p.RouteHistory, RouteSelection{Route: payload.Route, EventID: event.EventID})
+		}
+		p.AdoptionBoundary = &AdoptionBoundaryProjection{EventID: event.EventID, Phase: payload.Phase, Workflow: payload.Workflow}
+		p.CurrentWorkflow, p.CurrentActivity, p.CurrentImplementationMode = payload.Workflow, "", ""
+		p.OpenPhases[event.EventID] = PhaseInterval{Phase: payload.Phase, StartEventID: event.EventID, TrajectoryID: payload.TrajectoryID, TerminalEpoch: p.TerminalEpoch, Workflow: payload.Workflow}
+		p.Trajectories[payload.TrajectoryID] = TrajectoryNode{ID: payload.TrajectoryID, EventID: event.EventID}
+		p.closedTrajectories[payload.TrajectoryID] = false
+		p.ActiveTrajectoryID = payload.TrajectoryID
+		p.Associations[event.SessionID] = Association{EffortID: event.EffortID, SessionID: event.SessionID, TrajectoryID: payload.TrajectoryID, AssociationOrigin: payload.AssociationOrigin}
+	case "detour_started":
+		if len(p.AppliedEventIDs) != 0 {
+			return errors.New("effort already exists")
+		}
+		var payload DetourStartedPayload
+		_ = json.Unmarshal(event.Payload, &payload)
+		p.State, p.TerminalEpoch = EffortDiscovery, 1
+		p.CurrentWorkflow, p.CurrentActivity, p.CurrentImplementationMode = payload.Workflow, "", ""
+		p.OpenPhases[event.EventID] = PhaseInterval{Phase: "brainstorming", StartEventID: event.EventID, TrajectoryID: payload.TrajectoryID, TerminalEpoch: p.TerminalEpoch, Workflow: payload.Workflow}
+		p.Trajectories[payload.TrajectoryID] = TrajectoryNode{ID: payload.TrajectoryID, EventID: event.EventID}
+		p.closedTrajectories[payload.TrajectoryID] = false
+		p.ActiveTrajectoryID = payload.TrajectoryID
+		p.Associations[event.SessionID] = Association{EffortID: event.EffortID, SessionID: event.SessionID, TrajectoryID: payload.TrajectoryID, AssociationOrigin: payload.AssociationOrigin}
 	case "session_associated":
 		var payload SessionAssociatedPayload
 		_ = json.Unmarshal(event.Payload, &payload)
@@ -267,7 +305,21 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 		}
 		var payload PhaseStartedPayload
 		_ = json.Unmarshal(event.Payload, &payload)
-		p.OpenPhases[event.EventID] = PhaseInterval{Phase: payload.Phase, StartEventID: event.EventID, TrajectoryID: event.TrajectoryID, TerminalEpoch: p.TerminalEpoch}
+		p.CurrentWorkflow, p.CurrentActivity, p.CurrentImplementationMode = "", payload.Activity, payload.ImplementationMode
+		p.OpenPhases[event.EventID] = PhaseInterval{Phase: payload.Phase, StartEventID: event.EventID, TrajectoryID: event.TrajectoryID, TerminalEpoch: p.TerminalEpoch, Activity: payload.Activity, ImplementationMode: payload.ImplementationMode}
+	case "phase_continued":
+		var payload PhaseContinuedPayload
+		_ = json.Unmarshal(event.Payload, &payload)
+		interval, ok := p.OpenPhases[payload.StartEventID]
+		if !ok || interval.Phase != payload.Phase {
+			return errors.New("phase continuation does not name the unmatched matching start")
+		}
+		if !order.HappensBefore(payload.StartEventID, event.EventID) {
+			return errors.New("phase start is not causally visible to continuation")
+		}
+		p.CurrentWorkflow, p.CurrentActivity, p.CurrentImplementationMode = payload.Workflow, payload.Activity, payload.ImplementationMode
+		interval.Workflow, interval.Activity, interval.ImplementationMode = payload.Workflow, payload.Activity, payload.ImplementationMode
+		p.OpenPhases[payload.StartEventID] = interval
 	case "phase_finished":
 		var payload PhaseFinishedPayload
 		_ = json.Unmarshal(event.Payload, &payload)
@@ -281,6 +333,7 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 		interval.FinishEventID = event.EventID
 		delete(p.OpenPhases, payload.StartEventID)
 		p.PhaseIntervals = append(p.PhaseIntervals, interval)
+		p.CurrentWorkflow, p.CurrentActivity, p.CurrentImplementationMode = "", "", ""
 	case "phase_transitioned":
 		var payload PhaseTransitionedPayload
 		_ = json.Unmarshal(event.Payload, &payload)
@@ -312,7 +365,8 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 		interval.FinishEventID = event.EventID
 		delete(p.OpenPhases, payload.StartEventID)
 		p.PhaseIntervals = append(p.PhaseIntervals, interval)
-		p.OpenPhases[event.EventID] = PhaseInterval{Phase: payload.NextPhase, StartEventID: event.EventID, TrajectoryID: event.TrajectoryID, TerminalEpoch: p.TerminalEpoch}
+		p.CurrentWorkflow, p.CurrentActivity, p.CurrentImplementationMode = "", payload.Activity, payload.ImplementationMode
+		p.OpenPhases[event.EventID] = PhaseInterval{Phase: payload.NextPhase, StartEventID: event.EventID, TrajectoryID: event.TrajectoryID, TerminalEpoch: p.TerminalEpoch, Activity: payload.Activity, ImplementationMode: payload.ImplementationMode}
 	case "trajectory_started", "trajectory_resumed", "trajectory_closed":
 		var payload TrajectoryPayload
 		_ = json.Unmarshal(event.Payload, &payload)
@@ -404,6 +458,23 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 		p.TerminalEpoch = payload.TerminalEpoch
 		p.Trajectories[payload.TrajectoryID] = TrajectoryNode{ID: payload.TrajectoryID, EventID: event.EventID}
 		p.ActiveTrajectoryID, p.State = payload.TrajectoryID, EffortActive
+	case "detour_returned":
+		var payload DetourReturnedPayload
+		_ = json.Unmarshal(event.Payload, &payload)
+		if payload.TerminalOutcome == "completed" && p.State != EffortCompleted || payload.TerminalOutcome == "abandoned" && p.State != EffortAbandoned {
+			return errors.New("detour return outcome does not match terminal state")
+		}
+		settled := false
+		started := false
+		for _, appliedID := range p.AppliedEventIDs {
+			if prior, ok := order.events[appliedID]; ok {
+				started = started || prior.Kind == "detour_started"
+				settled = settled || prior.Kind == "detour_returned"
+			}
+		}
+		if !started || settled {
+			return errors.New("detour return requires one pending terminal detour")
+		}
 	case "finding_waived":
 		var payload FindingWaivedPayload
 		_ = json.Unmarshal(event.Payload, &payload)
@@ -434,6 +505,14 @@ func (p LifecycleProjection) hasPhase(phase Phase) bool {
 
 func (p LifecycleProjection) validateRouteCompletion(terminal EventEnvelope, order *CausalOrder) error {
 	required := routeRequirements[p.Route]
+	if p.AdoptionBoundary != nil {
+		for index, phase := range required {
+			if phase == p.AdoptionBoundary.Phase {
+				required = required[index:]
+				break
+			}
+		}
+	}
 	last := ""
 	for _, phase := range required {
 		selected := ""
@@ -521,9 +600,9 @@ func transitionHasRouteEffect(event EventEnvelope) bool {
 
 func lifecycleConflictKey(event EventEnvelope) string {
 	switch event.Kind {
-	case "route_selected", "route_changed", "effort_completed", "effort_abandoned", "effort_reopened":
+	case "effort_created", "effort_adopted", "detour_started", "route_selected", "route_changed", "effort_completed", "effort_abandoned", "effort_reopened", "detour_returned":
 		return "effort-state"
-	case "phase_started", "phase_transitioned":
+	case "phase_started", "phase_transitioned", "phase_continued":
 		return "phase-open"
 	case "phase_finished":
 		var payload PhaseFinishedPayload
@@ -560,7 +639,7 @@ func isTerminalMutation(kind EventKind) bool {
 }
 
 func isMutableLifecycle(kind EventKind) bool {
-	return descriptor.Payloads[string(kind)].Class == "lifecycle" && kind != "effort_created" && kind != "finding_waived" && kind != "repair_applied"
+	return descriptor.Payloads[string(kind)].Class == "lifecycle" && !isCreationKind(kind) && kind != "finding_waived" && kind != "repair_applied"
 }
 
 func validateRepair(event EventEnvelope, payload RepairAppliedPayload, byID map[string]EventEnvelope, order *CausalOrder) error {

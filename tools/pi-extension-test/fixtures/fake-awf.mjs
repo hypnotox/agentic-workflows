@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 const args = process.argv.slice(2);
-const protocol = { schemaVersion: 1, protocol: { major: 2, minor: 0 }, compatibleMajor: 2, descriptorSha256: "fixture", awfVersion: "0.23.0", projectVersion: "0.22.0" };
+const protocol = { schemaVersion: 1, protocol: { major: 2, minor: 1 }, compatibleMajor: 2, descriptorSha256: "fixture", awfVersion: "0.23.0", projectVersion: "0.22.0" };
 const metrics = { schemaVersion: 1, protocolMajor: 2, generatedAt: "2026-07-22T00:00:00Z", selector: {}, efforts: [], retention: {}, integrity: [] };
 const doctor = { schemaVersion: 1, protocolMajor: 2, generatedAt: "2026-07-22T00:00:00Z", selector: {}, findings: [], integrity: [] };
 function orderedSelectors(values) {

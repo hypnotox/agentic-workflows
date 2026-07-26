@@ -70,14 +70,17 @@ func DiagnoseHeuristics(reads []EffortRead, selector Selector, options Heuristic
 	completed := make(map[string]bool, len(reads))
 	compatible := make(map[string]bool, len(reads))
 	for _, read := range reads {
+		compatible[read.Metadata.EffortID] = heuristicCohortCompatible(read)
+		if !compatible[read.Metadata.EffortID] {
+			continue
+		}
 		all[read.Metadata.EffortID] = effortHeuristicMetrics(read, options.Thresholds)
 		lifecycle := projectLifecycleFromRead(read)
 		completed[read.Metadata.EffortID] = lifecycle.State == EffortCompleted
-		compatible[read.Metadata.EffortID] = heuristicCohortCompatible(read)
 	}
 	findings := []Finding{}
 	for _, read := range reads {
-		if selector.EffortID != nil && read.Metadata.EffortID != *selector.EffortID {
+		if !compatible[read.Metadata.EffortID] || selector.EffortID != nil && read.Metadata.EffortID != *selector.EffortID {
 			continue
 		}
 		_, selected, err := selectEffortEvents(read, selector)
@@ -125,6 +128,13 @@ func effortHeuristicMetrics(read EffortRead, thresholds HeuristicThresholds) []h
 			if json.Unmarshal(event.Payload, &payload) == nil {
 				startsByPhase[payload.Phase] = append(startsByPhase[payload.Phase], event)
 			}
+		case "effort_adopted":
+			var payload EffortAdoptedPayload
+			if json.Unmarshal(event.Payload, &payload) == nil {
+				startsByPhase[payload.Phase] = append(startsByPhase[payload.Phase], event)
+			}
+		case "detour_started":
+			startsByPhase["brainstorming"] = append(startsByPhase["brainstorming"], event)
 		case "phase_finished":
 			var payload PhaseFinishedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil {

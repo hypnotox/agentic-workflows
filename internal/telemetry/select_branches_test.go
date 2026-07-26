@@ -38,6 +38,32 @@ func TestSelectorFilteringBranchesAndOpenPhaseProjection(t *testing.T) {
 	}
 }
 
+func TestProjectEventPhasesIncludesAdoptionBoundary(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "phase": "planning", "workflow": "writing-plans",
+		"trajectoryId": "trajectory", "anchorId": "anchor", "associationOrigin": "manual",
+	})
+	inside := causalEvent("inside-adoption", "session-id", "tool_observed", []string{"adopt"}, ToolObservedPayload{Tool: "read", Outcome: "success", DurationMS: 1})
+	continued := protocol21Envelope(t, "continued", "phase_continued", []string{"adopt"}, map[string]any{
+		"phase": "planning", "startEventId": "adopt", "workflow": "writing-plans",
+	})
+	phases := projectEventPhases([]EventEnvelope{adopted, continued, inside})
+	if !phases["adopt"]["planning"] || !phases["continued"]["planning"] || !phases["inside-adoption"]["planning"] {
+		t.Fatalf("adoption phase projection = %#v", phases)
+	}
+
+	malformedAdopt := adopted
+	malformedAdopt.EventID = "malformed-adopt"
+	malformedAdopt.Payload = json.RawMessage("{")
+	malformedContinuation := continued
+	malformedContinuation.EventID = "malformed-continuation"
+	malformedContinuation.Payload = json.RawMessage("{")
+	phases = projectEventPhases([]EventEnvelope{malformedAdopt, malformedContinuation})
+	if len(phases[malformedAdopt.EventID]) != 0 || len(phases[malformedContinuation.EventID]) != 0 {
+		t.Fatalf("malformed protocol 2.1 event invented a phase: %#v", phases)
+	}
+}
+
 func TestProjectEventPhasesMalformedAndMissingReferences(t *testing.T) {
 	malformed := json.RawMessage("{")
 	transitionStart := causalEvent("transition-start", "session", "phase_started", nil, PhaseStartedPayload{Phase: "planning"})

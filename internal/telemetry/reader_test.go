@@ -3,10 +3,21 @@ package telemetry
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
 	"strings"
 	"testing"
 )
+
+func TestUnsupportedRequiredRecordRecognizesFutureUnknownKind(t *testing.T) {
+	raw := json.RawMessage(`{"version":{"major":2,"minor":2},"kind":"future_required_kind"}`)
+	if !unsupportedRequiredRecord(raw, errors.New("generic validation failure")) {
+		t.Fatal("future same-major unknown kind was not treated as an unsupported required record")
+	}
+	if !unsupportedRequiredRecord(json.RawMessage(`{}`), errors.New("unknown required kind future_required_kind")) {
+		t.Fatal("explicit unknown-required-kind validation error was not recognized")
+	}
+}
 
 func TestReaderReportsCorruptionDeduplicatesAndRetainsEvidence(t *testing.T) {
 	t.Parallel()
@@ -14,18 +25,11 @@ func TestReaderReportsCorruptionDeduplicatesAndRetainsEvidence(t *testing.T) {
 	stream := ledger.paths.stream(metadata.EffortID, "session-id")
 	identical := append(append([]byte(nil), first...), '\n')
 	broken := passiveEvent(t, "broken-event", "broken-observation", metadata.EffortID, []string{"missing-event"})
-	unsupportedMap := validEvent("usage_observed", 0)
-	unsupportedMap["eventId"] = "unsupported-event"
-	unsupportedMap["observationId"] = "unsupported-observation"
-	unsupportedMap["version"] = map[string]any{"major": 99, "minor": 0}
-	unsupported := mustJSON(t, unsupportedMap)
 	contents := append([]byte(nil), first...)
 	contents = append(contents, '\n')
 	contents = append(contents, identical...)
 	contents = append(contents, []byte("{malformed}\n")...)
 	contents = append(contents, broken...)
-	contents = append(contents, '\n')
-	contents = append(contents, unsupported...)
 	contents = append(contents, '\n')
 	contents = append(contents, []byte(`{"eventId":"partial"`)...)
 	if err := os.WriteFile(stream, contents, 0o600); err != nil {
@@ -42,12 +46,12 @@ func TestReaderReportsCorruptionDeduplicatesAndRetainsEvidence(t *testing.T) {
 	if !read.EffectApplied["event-id"] {
 		t.Fatal("identical physical duplicate suppressed the canonical lifecycle effect")
 	}
-	for _, code := range []string{"malformed-complete-line", "unsupported-protocol", "partial-final-line", "broken-predecessor"} {
+	for _, code := range []string{"malformed-complete-line", "partial-final-line", "broken-predecessor"} {
 		if !hasIntegrityCode(read.Integrity, code) {
 			t.Errorf("missing integrity code %s: %+v", code, read.Integrity)
 		}
 	}
-	if len(read.Records) != 6 || read.Records[2].Event != nil || read.Records[2].Applied {
+	if len(read.Records) != 5 || read.Records[2].Event != nil || read.Records[2].Applied {
 		t.Fatalf("malformed complete evidence was not retained: %+v", read.Records)
 	}
 }
@@ -300,6 +304,55 @@ func TestReaderIdentityAndPlacementRejectionMatrix(t *testing.T) {
 	read, err = ledger.ReadEffort(metadata.EffortID)
 	if err != nil || !hasIntegrityCode(read.Integrity, "stream-identity-mismatch") {
 		t.Fatalf("stream identity mismatch not reported: %+v %v", read.Integrity, err)
+	}
+}
+
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+func TestReaderSuppressesWholeEffortAfterUnsupportedRequiredRecord(t *testing.T) {
+	t.Parallel()
+	ledger, metadata, _ := createTestEffort(t)
+	stream := ledger.paths.stream(metadata.EffortID, "session-id")
+	file, err := os.OpenFile(stream, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	known := passiveEvent(t, "known-after-create", "known-observation", metadata.EffortID, []string{"event-id"})
+	unsupported := map[string]any{
+		"version": map[string]any{"major": 2, "minor": 2}, "eventId": "required-future-event",
+		"idempotencyKey": "required-future-key", "effortId": metadata.EffortID, "sessionId": "session-id",
+		"timestamp": "2026-07-22T12:35:00Z", "kind": "future_required_kind",
+		"predecessors": []string{"known-after-create"}, "payload": map[string]any{},
+	}
+	contents := append(append(known, '\n'), append(mustJSON(t, unsupported), '\n')...)
+	if _, err := file.Write(contents); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	read, err := ledger.ReadEffort(metadata.EffortID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(read.Events) != 0 || len(read.EffectApplied) != 0 || len(read.RejectedEffects) != 0 {
+		t.Fatalf("unsupported required record left a partial effort projection: events=%#v applied=%#v rejected=%#v", read.Events, read.EffectApplied, read.RejectedEffects)
+	}
+	if len(read.Records) != 3 {
+		t.Fatalf("suppression discarded physical evidence: %#v", read.Records)
+	}
+	compatibility := 0
+	for _, issue := range read.Integrity {
+		if issue.Code == "unsupported-protocol" {
+			compatibility++
+			if len([]byte(issue.Scope)) > descriptor.Limits.CategoryBytes || len([]byte(issue.Detail)) > descriptor.Limits.CategoryBytes {
+				t.Errorf("compatibility notice is not bounded: %#v", issue)
+			}
+		}
+	}
+	if compatibility != 1 {
+		t.Fatalf("compatibility notices = %d, want one bounded effort notice: %#v", compatibility, read.Integrity)
 	}
 }
 

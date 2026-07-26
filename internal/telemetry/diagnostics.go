@@ -31,6 +31,12 @@ func DiagnoseExact(reads []EffortRead, selector Selector, generatedAt time.Time)
 	}
 	selectedByEffort := make(map[string]map[string]bool, len(reads))
 	for _, read := range reads {
+		if !effortProjectionCompatible(read) {
+			if selector.EffortID == nil || read.Metadata.EffortID == *selector.EffortID {
+				result.Integrity = append(result.Integrity, compatibilityIntegrityNotice(read))
+			}
+			continue
+		}
 		_, selected, err := selectEffortEvents(read, selector)
 		if err != nil { // coverage-ignore: selector validation above is authoritative
 			return DoctorResult{}, err
@@ -48,7 +54,13 @@ func DiagnoseExact(reads []EffortRead, selector Selector, generatedAt time.Time)
 			}
 		}
 	}
-	for _, finding := range diagnoseHandoffs(reads) {
+	compatibleReads := make([]EffortRead, 0, len(reads))
+	for _, read := range reads {
+		if effortProjectionCompatible(read) {
+			compatibleReads = append(compatibleReads, read)
+		}
+	}
+	for _, finding := range diagnoseHandoffs(compatibleReads) {
 		if selector.EffortID != nil && !findingBelongsToEffort(finding, reads, *selector.EffortID) {
 			continue
 		}
@@ -64,6 +76,9 @@ func DiagnoseExact(reads []EffortRead, selector Selector, generatedAt time.Time)
 }
 
 func diagnoseEffort(read EffortRead, workflow WorkflowProjection) []Finding {
+	if !effortProjectionCompatible(read) {
+		return []Finding{}
+	}
 	findings := []Finding{}
 	byID := eventsByID(read.Events)
 	order, _ := BuildCausalOrder(read.Events)

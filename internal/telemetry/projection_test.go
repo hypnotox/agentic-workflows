@@ -90,6 +90,71 @@ func countProjectionString(values []string, wanted string) int {
 	return count
 }
 
+func TestWorkflowProjectionStopsAtUnsupportedProtocolBoundary(t *testing.T) {
+	read := EffortRead{
+		Metadata: EffortMetadata{EffortID: "future-effort"},
+		Events:   lifecycleBaseEvents(),
+		Integrity: []IntegrityIssue{
+			{Code: "unsupported-protocol", Scope: "session", Line: 2},
+			{Code: "unsupported-protocol", Scope: "session", Line: 2},
+		},
+	}
+	projection := ProjectWorkflow(read)
+	if projection.Lifecycle.State != "" || len(projection.EvidenceEventIDs) != 0 || len(projection.Integrity) != 1 {
+		t.Fatalf("unsupported workflow projection = %#v", projection)
+	}
+}
+
+func TestProtocol21WorkflowProjectionRetainsAdoptionBoundaryAndDetourLineage(t *testing.T) {
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
+		"creationMode": "adopted", "phase": "planning", "workflow": "writing-plans",
+		"trajectoryId": "adopted-trajectory", "anchorId": "adopted-anchor", "associationOrigin": "manual",
+	})
+	adoptedProjection := ProjectWorkflow(EffortRead{
+		Metadata: protocol21Metadata(t, map[string]any{"effortId": "effort-id", "createdAt": adopted.Timestamp, "creationMode": "adopted"}),
+		Events:   []EventEnvelope{adopted},
+	})
+	if adoptedProjection.Lifecycle.State != EffortDiscovery || adoptedProjection.Lifecycle.OpenPhases["adopt"].StartEventID != "adopt" || adoptedProjection.Lifecycle.ActiveTrajectoryID != "adopted-trajectory" {
+		t.Fatalf("canonical adoption boundary projection = %#v", adoptedProjection)
+	}
+	if adoptedProjection.AdoptionBoundary == nil || adoptedProjection.AdoptionBoundary.EventID != "adopt" || adoptedProjection.AdoptionBoundary.Phase != "planning" || adoptedProjection.AdoptionBoundary.Workflow != "writing-plans" || adoptedProjection.Lifecycle.CurrentWorkflow != "writing-plans" {
+		t.Fatalf("bounded adoption projection and attribution = %#v", adoptedProjection)
+	}
+	if !containsString(adoptedProjection.EvidenceEventIDs, "adopt") || !containsString(adoptedProjection.AllWorkEventIDs, "adopt") {
+		t.Fatalf("adoption boundary is absent from canonical evidence: %#v", adoptedProjection)
+	}
+
+	origin := map[string]any{"effortId": "parent-effort", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"}
+	started := protocol21Envelope(t, "detour-start", "detour_started", nil, map[string]any{
+		"creationMode": "derived", "origin": origin, "returnPhase": "implementation", "returnPhaseStartEventId": "parent-phase-start",
+		"trajectoryId": "child-trajectory", "anchorId": "child-anchor", "workflow": "brainstorming", "associationOrigin": "detour",
+	})
+	detourProjection := ProjectWorkflow(EffortRead{
+		Metadata: protocol21Metadata(t, map[string]any{
+			"effortId": "effort-id", "createdAt": started.Timestamp, "creationMode": "derived", "origin": origin,
+			"detourReturn": map[string]any{"sessionId": "session-id", "phase": "implementation", "phaseStartEventId": "parent-phase-start"},
+		}),
+		Events: []EventEnvelope{started},
+	})
+	if detourProjection.Origin == nil || detourProjection.Origin.EffortID != "parent-effort" || detourProjection.Lifecycle.State != EffortDiscovery || detourProjection.Lifecycle.OpenPhases["detour-start"].Phase != "brainstorming" {
+		t.Fatalf("canonical detour lineage projection = %#v", detourProjection)
+	}
+	if detourProjection.DetourReturn == nil || detourProjection.DetourReturn.Pending || detourProjection.DetourReturn.Settled || detourProjection.DetourReturn.SessionID != "session-id" || detourProjection.DetourReturn.PhaseStartEventID != "parent-phase-start" {
+		t.Fatalf("active detour return target projection = %#v", detourProjection.DetourReturn)
+	}
+
+	abandoned := protocol21Envelope(t, "abandon", "effort_abandoned", []string{"detour-start"}, map[string]any{"terminalEpoch": 1})
+	pending := ProjectWorkflow(EffortRead{Metadata: detourProjection.Metadata, Events: []EventEnvelope{started, abandoned}})
+	if pending.DetourReturn == nil || !pending.DetourReturn.Pending || pending.DetourReturn.Settled || pending.DetourReturn.TerminalOutcome != "abandoned" || pending.DetourReturn.ParentAssociationEventID != "" || pending.DetourReturn.ReturnEventID != "" {
+		t.Fatalf("pending detour return projection = %#v", pending.DetourReturn)
+	}
+	returned := protocol21Envelope(t, "returned", "detour_returned", []string{"abandon"}, map[string]any{"terminalOutcome": "abandoned", "parentAssociationEventId": "parent-association"})
+	settled := ProjectWorkflow(EffortRead{Metadata: detourProjection.Metadata, Events: []EventEnvelope{started, abandoned, returned}})
+	if settled.DetourReturn == nil || settled.DetourReturn.Pending || !settled.DetourReturn.Settled || settled.DetourReturn.TerminalOutcome != "abandoned" || settled.DetourReturn.ParentAssociationEventID != "parent-association" || settled.DetourReturn.ReturnEventID != "returned" {
+		t.Fatalf("settled detour return projection = %#v", settled.DetourReturn)
+	}
+}
+
 func TestProjectionUsesAssociationAndActiveAncestry(t *testing.T) {
 	events := lifecycleBaseEvents()
 	events = appendEvent(events, "parent", "trajectory_started", TrajectoryPayload{TrajectoryID: "parent", AnchorID: "parent-anchor"})

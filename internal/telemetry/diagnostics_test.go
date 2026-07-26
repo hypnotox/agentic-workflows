@@ -48,7 +48,6 @@ func TestCanonicalProjectionsAndDiagnostics(t *testing.T) {
 		diagnosticRead(handoff),
 		{Metadata: EffortMetadata{EffortID: "effort"}, Events: lifecycleBaseEvents(), Integrity: []IntegrityIssue{
 			{Code: "malformed-complete-line", Scope: "session", Line: 2, EventIDs: []string{"available"}},
-			{Code: "unsupported-protocol", Scope: "session", Line: 3, EventIDs: []string{}},
 		}},
 	}
 	result, err := DiagnoseExact(reads, Selector{}, time.Date(2026, 7, 22, 1, 0, 0, 0, time.UTC))
@@ -88,15 +87,12 @@ func TestCanonicalProjectionsAndDiagnostics(t *testing.T) {
 		}
 	}
 	for _, code := range descriptor.Vocabularies["diagnosticRuleCodes"] {
-		if !got[code] {
+		if code != "WFV1-SCHEMA-COMPATIBILITY" && !got[code] {
 			t.Errorf("positive case did not produce %s: %#v", code, result.Findings)
 		}
 	}
 	if finding := findingByCode(t, result.Findings, "WFV1-EVENT-INTEGRITY"); !equalStringSets(finding.Evidence.EventIDs, []string{"available"}) || !equalStringSets(finding.Evidence.CounterIDs, []string{"line:2"}) {
 		t.Fatalf("event-integrity evidence contract = %#v", finding.Evidence)
-	}
-	if finding := findingByCode(t, result.Findings, "WFV1-SCHEMA-COMPATIBILITY"); !equalStringSets(finding.Evidence.CounterIDs, []string{"line:3"}) {
-		t.Fatalf("schema evidence contract = %#v", finding.Evidence)
 	}
 	for rule, reasons := range descriptor.WaiverRules {
 		if len(reasons) != 1 || severity[rule] == "" {
@@ -225,6 +221,40 @@ func currentFrontier(events []EventEnvelope) []string {
 	return frontier
 }
 
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+func TestDiagnosticsSuppressIncompatibleEffortAndExcludeItFromCohorts(t *testing.T) {
+	incompatible := heuristicSignalRead("incompatible-baseline")
+	incompatible.Integrity = []IntegrityIssue{{Code: "unsupported-protocol", Scope: "session", Line: 2}}
+	incompatible.Records = []LedgerRecord{{SessionID: "session", Line: 2, Raw: json.RawMessage(`{"version":{"major":2,"minor":2},"kind":"future_required_kind"}`)}}
+	target := heuristicSignalRead("target-effort")
+	target.Events = target.Events[:len(target.Events)-1]
+
+	result, err := Diagnose([]EffortRead{incompatible, target}, Selector{}, HeuristicOptions{
+		Enabled: true, MinimumBaselineSamples: 1, BaselinePercentile: 95,
+		Thresholds: HeuristicThresholds{CompactionCount: 1},
+	}, time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, finding := range result.Findings {
+		if finding.EffortID == "incompatible-baseline" {
+			t.Fatalf("suppressed effort contributed a diagnostic finding: %#v", finding)
+		}
+	}
+	compactions := Finding{}
+	for _, finding := range result.Findings {
+		if finding.EffortID == "target-effort" && finding.Code == "WFH1-COMPACTIONS" {
+			compactions = finding
+		}
+	}
+	if compactions.Baseline == nil || compactions.Baseline.SampleCount != 0 {
+		t.Fatalf("incompatible effort entered the heuristic cohort: %#v", compactions)
+	}
+	if len(result.Integrity) != 1 || result.Integrity[0].Code != "unsupported-protocol" {
+		t.Fatalf("compatibility integrity is not one bounded notice: %#v", result.Integrity)
+	}
+}
+
 func TestDiagnosticsWaiversRequireExactEligibleMatch(t *testing.T) {
 	events := lifecycleBaseEvents()
 	events = appendEvent(events, "route", "route_selected", RoutePayload{Route: "direct"})
@@ -299,7 +329,7 @@ func TestDiagnosticsTypedRepairsCompatibilitySortingAndReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !hasFindingCode(first.Findings, "WFV1-SCHEMA-COMPATIBILITY") || !reflect.DeepEqual(first, second) {
+	if len(first.Findings) != 0 || len(first.Integrity) != 1 || first.Integrity[0].Code != "unsupported-protocol" || !reflect.DeepEqual(first, second) {
 		t.Fatalf("incompatible/stable diagnosis = first %#v second %#v", first, second)
 	}
 	for index := 1; index < len(first.Findings); index++ {

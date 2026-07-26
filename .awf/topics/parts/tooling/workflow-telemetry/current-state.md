@@ -4,9 +4,9 @@ The telemetry package owns the protocol-2 privacy-minimal event contract, confin
 
 ### `invariant: event-protocol-and-ledger`
 
-One embedded machine-readable descriptor defines protocol version 2.0, closed event, payload, activity, route-action, and lifecycle-request vocabularies, bounded identifiers and categories, recursive privacy exclusions, compatible-minor preservation, and the append-only per-session JSONL ledger. Creation and append validate confinement, ownership, leases, durability, idempotency, and corrupt-stream evidence without protocol-1 compatibility or inferred missing state.
+One embedded machine-readable descriptor defines protocol version 2.1, closed event, payload, activity, route-action, and lifecycle-request vocabularies, bounded identifiers and categories, recursive privacy exclusions, compatible-minor preservation, and the append-only per-session JSONL ledger. Protocol 2.1 preserves protocol-2.0 history without migration and adds `effort_adopted`/`adopt`, `phase_continued`/`continue-phase`, `detour_started`/`start-detour`, and `detour_returned`/`mark-detour-returned`; the creation-kind set is exactly `effort_created`, `effort_adopted`, and `detour_started`, with one immutable matching first-stream creation record. Creation validates immutable metadata agreement, while creation and append validate confinement, ownership, leases, durability, idempotency, and corrupt-stream evidence without protocol-1 compatibility or inferred missing state. Closed lifecycle mutation and causal-append paths, not passive append, require the exact current causal frontier. Any unsupported required kind or protocol interpretation suppresses the entire effort from lifecycle, metrics, diagnostics, cohorts, and retention and yields one bounded compatibility result. The pinned runtime requires a 2.1 handshake, and publication advances its compatible reader before enabling any 2.1 writer.
 Origin: ADR-0146
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0161
 Backing: test
 
 ### `invariant: effort-lifecycle-and-routes`

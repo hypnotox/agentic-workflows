@@ -38,9 +38,14 @@ dependencies in a named volume, snapshots the read-only checkout inside the cont
 and executes strict TypeScript plus 100% statement, branch, function, and line coverage checks without
 host npm state. Every rendered extension file carries a `// @ts-nocheck` directive (ADR-0126) that
 keeps adopter IDEs quiet without a resolvable `@types/node`; the container strips that line from its
-snapshot before `tsc` runs, so the type-check still covers the real extension code. Descriptor golden and fixture tests compare the complete protocol-2 Go and generated TypeScript
-vocabulary, event acceptance, creation and append recovery, transactional phase transitions, and gate
-classification. A repository-resident preflight test refuses automatic cleanup when any protocol-1
+snapshot before `tsc` runs, so the type-check still covers the real extension code. Descriptor golden and fixture tests compare the complete protocol-2.1 Go and generated TypeScript
+vocabulary, event acceptance, alternative creation and append recovery, transactional phase
+transitions, and gate classification while preserving protocol-2.0 records. Reader regressions prove
+that one unsupported required record suppresses its whole effort from lifecycle, metrics,
+diagnostics, cohorts, and retention with one bounded compatibility notice. The fake-awf handshake
+fixture advertises 2.1 because the generated dashboard rejects a 2.0 runtime before registration, and
+Phase-1 dashboard tests prove all four new writer actions remain disabled after the compatible reader
+is published. A repository-resident preflight test refuses automatic cleanup when any protocol-1
 effort exists and proves it changes no resident evidence. Dashboard tests cover confined owner-only
 storage, leases, tombstones, serialized drain, explicit versus passive failure, active-branch
 association, bounded provisional creation/discard/overflow/graceful/crash behavior, ordered retry recovery, structured replacement resume and cancellation, trajectory navigation, closed lifecycle schemas, bootstrap authority,

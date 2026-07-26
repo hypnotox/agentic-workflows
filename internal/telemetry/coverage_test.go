@@ -6,6 +6,7 @@ import (
 	"errors"
 	"math"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -101,6 +102,12 @@ func TestDescriptorAuthorityRejectsEveryMalformedAuthorityShape(t *testing.T) {
 			d.Objects["Association"] = object
 		},
 		func(d *protocolDescriptor) { delete(d.Objects, "Association") },
+		func(d *protocolDescriptor) { delete(d.Objects, "DetourReturnMetadata") },
+		func(d *protocolDescriptor) {
+			object := d.Objects["EffortMetadata"]
+			object.Constraints = []constraintDescriptor{{Kind: "unknown"}}
+			d.Objects["EffortMetadata"] = object
+		},
 		func(d *protocolDescriptor) { d.WaiverRules["missing-rule"] = []string{"approved-exception"} },
 		func(d *protocolDescriptor) {
 			for rule := range d.WaiverRules {
@@ -160,10 +167,11 @@ func TestDescriptorFieldAndConstraintAuthorityErrorMatrix(t *testing.T) {
 	}
 
 	fields := map[string]fieldDescriptor{
-		"disc":   {Type: "string", Vocabulary: "outcomes"},
-		"target": {Type: "string"},
-		"rule":   {Type: "string", Vocabulary: "diagnosticRuleCodes"},
-		"reason": {Type: "string", Vocabulary: "waiverReasonCodes"},
+		"disc":     {Type: "string", Required: true, Vocabulary: "outcomes"},
+		"target":   {Type: "string"},
+		"category": {Type: "string", Required: true, Format: "category"},
+		"rule":     {Type: "string", Vocabulary: "diagnosticRuleCodes"},
+		"reason":   {Type: "string", Vocabulary: "waiverReasonCodes"},
 	}
 	constraints := []constraintDescriptor{
 		{Kind: "fields-required-when", Discriminator: "missing", Value: "success", Fields: []string{"target"}},
@@ -172,6 +180,11 @@ func TestDescriptorFieldAndConstraintAuthorityErrorMatrix(t *testing.T) {
 		{Kind: "field-allowed-when", Discriminator: "missing", Value: "success", Field: "target"},
 		{Kind: "field-allowed-when", Discriminator: "disc", Value: "success", Field: "missing"},
 		{Kind: "field-allowed-when", Discriminator: "disc", Value: "missing", Field: "target"},
+		{Kind: "field-const", Field: "missing", Value: "success"},
+		{Kind: "field-const", Field: "target", Value: "success", Discriminator: "disc"},
+		{Kind: "field-const", Field: "disc", Value: "missing"},
+		{Kind: "field-const", Field: "category", Value: strings.Repeat("x", descriptor.Limits.CategoryBytes+1)},
+		{Kind: "alternative-creation", Value: "unexpected"},
 		{Kind: "waiver-eligibility", RuleField: "missing", ReasonField: "reason"},
 		{Kind: "waiver-eligibility", RuleField: "rule", ReasonField: "missing"},
 		{Kind: "waiver-eligibility", RuleField: "target", ReasonField: "reason"},
@@ -181,6 +194,9 @@ func TestDescriptorFieldAndConstraintAuthorityErrorMatrix(t *testing.T) {
 		if err := validateConstraintAuthority(descriptor, "test", fields, []constraintDescriptor{constraint}); err == nil {
 			t.Errorf("constraint case %d accepted", index)
 		}
+	}
+	if err := validateConstraints("test", map[string]json.RawMessage{"category": json.RawMessage(`"wrong"`)}, []constraintDescriptor{{Kind: "field-const", Field: "category", Value: "fixed"}}); err == nil {
+		t.Fatal("field constant mismatch accepted")
 	}
 }
 

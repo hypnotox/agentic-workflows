@@ -20,7 +20,16 @@ func TestProjectTypeScriptDerivesProtocolContract(t *testing.T) {
 		"export interface EventEnvelope",
 		"export interface UsageObservedPayload",
 		"export interface PhaseTransitionedPayload",
+		"export interface EffortAdoptedPayload",
+		"export interface PhaseContinuedPayload",
+		"export interface DetourStartedPayload",
+		"export interface DetourReturnedPayload",
+		"export interface DetourReturnMetadata",
 		"export interface TransitionPhaseLifecycleRequest",
+		"export interface AdoptLifecycleRequest",
+		"export interface ContinuePhaseLifecycleRequest",
+		"export interface StartDetourLifecycleRequest",
+		"export interface MarkDetourReturnedLifecycleRequest",
 		"export type LifecycleRequest = ",
 		"export function validateTelemetryEvent",
 		"export function classifyGateTokens",
@@ -60,12 +69,41 @@ func TestProjectedTypeScriptEmbedsCompleteProtocol2Descriptor(t *testing.T) {
 	}
 	object := generated.(map[string]any)
 	version := object["version"].(map[string]any)
-	if version["major"] != float64(2) || version["minor"] != float64(0) {
+	if version["major"] != float64(2) || version["minor"] != float64(1) {
 		t.Fatalf("projected protocol version = %#v", version)
 	}
 	encoded, _ := json.Marshal(generated)
 	if strings.Contains(string(encoded), "checkpoint"+"Id") || strings.Contains(projected, "format === \"check"+"point\"") {
 		t.Fatal("projected TypeScript retains protocol-1 checkpoint contract")
+	}
+}
+
+// invariant: tooling/workflow-telemetry:event-protocol-and-ledger
+func TestProjectedTypeScriptProtocol21ShapeParity(t *testing.T) {
+	projected := ProjectTypeScript()
+	for _, declaration := range []string{
+		"export interface EffortAdoptedPayload {",
+		"export interface PhaseContinuedPayload {",
+		"export interface DetourStartedPayload {",
+		"export interface DetourReturnedPayload {",
+		"export interface DetourReturnMetadata {",
+		"export interface AdoptLifecycleRequest {",
+		"export interface ContinuePhaseLifecycleRequest {",
+		"export interface StartDetourLifecycleRequest {",
+		"export interface MarkDetourReturnedLifecycleRequest {",
+	} {
+		if strings.Count(projected, declaration) != 1 {
+			t.Errorf("projected TypeScript declaration %q count = %d", declaration, strings.Count(projected, declaration))
+		}
+	}
+	for _, runtimeShape := range []string{
+		`case "field-const":`,
+		`case "detourReturn":`,
+		`detourReturn?: DetourReturnMetadata;`,
+	} {
+		if !strings.Contains(projected, runtimeShape) {
+			t.Errorf("projected TypeScript omits protocol 2.1 parity shape %q", runtimeShape)
+		}
 	}
 }
 

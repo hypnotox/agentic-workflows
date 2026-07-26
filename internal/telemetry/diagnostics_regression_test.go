@@ -93,14 +93,42 @@ func TestDiagnosticsEffortSelectorAndHandoffTrajectoryCopy(t *testing.T) {
 	}
 }
 
+func TestDiagnosticsCompatibilityEvidenceBranches(t *testing.T) {
+	incompatible := EffortRead{Metadata: EffortMetadata{EffortID: "incompatible"}, Integrity: []IntegrityIssue{{Code: "unsupported-protocol"}}}
+	if findings := diagnoseEffort(incompatible, ProjectWorkflow(incompatible)); len(findings) != 0 {
+		t.Fatalf("incompatible effort produced findings: %#v", findings)
+	}
+	if _, ok := findingFromIntegrity(IntegrityIssue{Code: "informational"}, nil, "effort"); ok {
+		t.Fatal("unknown integrity issue produced an exact finding")
+	}
+
+	finding, ok := findingFromIntegrity(IntegrityIssue{Code: "unsupported-protocol", Scope: "stream", Line: 7}, nil, "effort")
+	if !ok {
+		t.Fatal("unsupported protocol did not map to a finding")
+	}
+	read := EffortRead{Records: []LedgerRecord{
+		{SessionID: "other", Line: 7, Raw: json.RawMessage(`{"version":{"major":8,"minor":1}}`)},
+		{SessionID: "stream", Line: 6, Raw: json.RawMessage(`{"version":{"major":8,"minor":2}}`)},
+		{SessionID: "stream", Line: 7, Raw: json.RawMessage(`not-json`)},
+		{SessionID: "stream", Line: 7, Raw: json.RawMessage(`{"version":{"major":9,"minor":3}}`)},
+	}}
+	enriched := enrichIntegrityEvidence(finding, IntegrityIssue{Code: "unsupported-protocol", Scope: "stream", Line: 7}, read, nil)
+	if !equalStringSets(enriched.Evidence.CounterIDs, []string{"line:7", "protocol:9.3"}) {
+		t.Fatalf("compatibility evidence = %#v", enriched.Evidence)
+	}
+}
+
 func TestDiagnosticsExactEvidenceContract(t *testing.T) {
 	bad := lifecycleBaseEvents()
 	bad = appendEvent(bad, "bad-change", "route_changed", RoutePayload{Route: "direct"})
 	read := diagnosticRead(bad)
 	unsupportedRaw := json.RawMessage(`{"version":{"major":2,"minor":3}}`)
-	read.Records = []LedgerRecord{{SessionID: "other-stream", Line: 1, Raw: unsupportedRaw}, {SessionID: "stream", Line: 6, Raw: unsupportedRaw}, {SessionID: "stream", Line: 7, Raw: unsupportedRaw}}
-	read.Integrity = []IntegrityIssue{{Code: "unsupported-protocol", Scope: "stream", Line: 7}}
-	result, err := DiagnoseExact([]EffortRead{read}, Selector{}, time.Time{})
+	incompatible := EffortRead{
+		Metadata:  EffortMetadata{EffortID: "incompatible"},
+		Records:   []LedgerRecord{{SessionID: "other-stream", Line: 1, Raw: unsupportedRaw}, {SessionID: "stream", Line: 6, Raw: unsupportedRaw}, {SessionID: "stream", Line: 7, Raw: unsupportedRaw}},
+		Integrity: []IntegrityIssue{{Code: "unsupported-protocol", Scope: "stream", Line: 7}},
+	}
+	result, err := DiagnoseExact([]EffortRead{read, incompatible}, Selector{}, time.Time{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,9 +136,20 @@ func TestDiagnosticsExactEvidenceContract(t *testing.T) {
 	if !equalStringSets(transition.Evidence.EventIDs, []string{"bad-change", "create"}) {
 		t.Fatalf("transition omits frontier evidence: %#v", transition.Evidence)
 	}
-	schema := findingByCode(t, result.Findings, "WFV1-SCHEMA-COMPATIBILITY")
-	if !equalStringSets(schema.Evidence.CounterIDs, []string{"line:7", "protocol:2.3"}) {
-		t.Fatalf("schema omits line/version evidence: %#v", schema.Evidence)
+	if hasFindingCode(result.Findings, "WFV1-SCHEMA-COMPATIBILITY") {
+		t.Fatalf("incompatible effort emitted a diagnostic finding: %#v", result.Findings)
+	}
+	compatibilityNotices := 0
+	for _, notice := range result.Integrity {
+		if notice.Code == "unsupported-protocol" {
+			compatibilityNotices++
+			if notice.Scope != "incompatible" || len(notice.EventIDs) != 0 {
+				t.Fatalf("incompatible effort emitted an unbounded integrity notice: %#v", notice)
+			}
+		}
+	}
+	if compatibilityNotices != 1 {
+		t.Fatalf("incompatible effort did not emit exactly one compatibility notice: %#v", result.Integrity)
 	}
 
 	clock := lifecycleBaseEvents()
