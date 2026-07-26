@@ -12,16 +12,6 @@ const (
 	WorkflowSupport WorkflowKind = "support"
 )
 
-// PhaseEffect describes how loading a workflow body affects phase state.
-type PhaseEffect string
-
-const (
-	PhaseNone       PhaseEffect = ""
-	PhaseStart      PhaseEffect = "start"
-	PhaseTransition PhaseEffect = "transition"
-	PhaseCurrent    PhaseEffect = "current"
-)
-
 // RouteEffect describes the deterministic route operation performed at load.
 type RouteEffect string
 
@@ -50,14 +40,15 @@ const (
 // WorkflowMapping is the complete lifecycle operation associated with one
 // governed semantic skill.
 type WorkflowMapping struct {
-	Kind               WorkflowKind
-	PhaseEffect        PhaseEffect
-	Phase              string
-	Activity           string
-	ImplementationMode string
-	RouteEffect        RouteEffect
-	TerminalEffect     TerminalEffect
-	RequiresPhases     []string
+	Kind                   WorkflowKind
+	EntryPhase             string
+	AllowEntryWithoutPhase bool
+	EntryPredecessors      []string
+	ContinuationPhases     []string
+	Activity               string
+	ImplementationMode     string
+	RouteEffect            RouteEffect
+	TerminalEffect         TerminalEffect
 }
 
 // TargetSpec declares the render sections of a target that has no further

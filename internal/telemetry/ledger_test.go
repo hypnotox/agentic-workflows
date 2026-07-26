@@ -205,6 +205,44 @@ func TestProtocol21AlternativeCreationKindsAreAtomicLedgerCreations(t *testing.T
 	}
 }
 
+func TestProtocol21LifecycleAlternativeCreationRetriesAreImmutable(t *testing.T) {
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	base := LifecycleRequestBase{SessionID: "session-id", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
+	tests := []struct {
+		name     string
+		request  LifecycleRequest
+		conflict LifecycleRequest
+	}{
+		{
+			name:     "adopt",
+			request:  AdoptLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "adopt", IdempotencyKey: "adopt-key", EventID: "adopt", EffortID: "adopted-effort", SessionID: base.SessionID, Timestamp: base.Timestamp, Predecessors: base.Predecessors}, Route: "direct", Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor"},
+			conflict: AdoptLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "adopt", IdempotencyKey: "adopt-key", EventID: "adopt", EffortID: "adopted-effort", SessionID: base.SessionID, Timestamp: base.Timestamp, Predecessors: base.Predecessors}, Route: "direct", Phase: "implementation", Workflow: "tdd", TrajectoryID: "trajectory", AnchorID: "anchor"},
+		},
+		{
+			name:     "detour",
+			request:  StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour", EffortID: "child-effort", SessionID: base.SessionID, Timestamp: base.Timestamp, Predecessors: base.Predecessors}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"},
+			conflict: StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour", EffortID: "child-effort", SessionID: base.SessionID, Timestamp: base.Timestamp, Predecessors: base.Predecessors}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "different-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ledger, err := NewLedger(newTestProject(t))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result, err := ledger.ApplyLifecycle(context.Background(), tc.request); err != nil || result.Idempotent {
+				t.Fatalf("first creation = %#v, %v", result, err)
+			}
+			if result, err := ledger.ApplyLifecycle(context.Background(), tc.request); err != nil || !result.Idempotent {
+				t.Fatalf("identical creation retry = %#v, %v", result, err)
+			}
+			if _, err := ledger.ApplyLifecycle(context.Background(), tc.conflict); err == nil || !strings.Contains(err.Error(), "effort ID collides") {
+				t.Fatalf("mismatched creation retry error = %v", err)
+			}
+		})
+	}
+}
+
 func TestAlternativeCreationMetadataMustMatchFirstEvent(t *testing.T) {
 	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
 		"creationMode": "adopted", "phase": "planning", "workflow": "writing-plans",

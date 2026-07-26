@@ -53,6 +53,71 @@ func TestLedgerInjectedFilesystemFailures(t *testing.T) {
 	}
 }
 
+func TestProtocol21LifecycleWritersPropagateDurabilityFaults(t *testing.T) {
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	creationRequests := []LifecycleRequest{
+		AdoptLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "adopt", IdempotencyKey: "adopt-key", EventID: "adopt", EffortID: "adopted", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor"},
+		StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour", EffortID: "detour", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-start", TrajectoryID: "child", AnchorID: "child-anchor", Workflow: "brainstorming"},
+	}
+	for _, request := range creationRequests {
+		ledger, err := NewLedger(newTestProject(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		ledger.ops.openFile = func(string, int, fs.FileMode) (syncedFile, error) { return nil, errInjected }
+		if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
+			t.Fatalf("%T durability fault was hidden", request)
+		}
+	}
+
+	adoptedLedger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, EffortAdoptedPayload{CreationMode: "adopted", Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor", AssociationOrigin: "manual"})
+	adopted.EffortID, adopted.SessionID = "continued", "session"
+	if _, err := adoptedLedger.CreateEffort(EffortMetadata{EffortID: "continued", CreatedAt: adopted.Timestamp, CreationMode: "adopted"}, mustJSON(t, adopted)); err != nil {
+		t.Fatal(err)
+	}
+	originalOpen := adoptedLedger.ops.openFile
+	adoptedLedger.ops.openFile = func(path string, flag int, mode fs.FileMode) (syncedFile, error) {
+		if path == adoptedLedger.paths.stream("continued", "session") {
+			return nil, errInjected
+		}
+		return originalOpen(path, flag, mode)
+	}
+	continued := ContinuePhaseLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "continue-phase", IdempotencyKey: "continue-key", EventID: "continue", EffortID: "continued", SessionID: "session", Timestamp: "2026-07-22T00:00:01Z", Predecessors: []string{"adopt"}}, Phase: "implementation", StartEventID: "adopt", Workflow: "tdd", Activity: "tdd"}
+	if _, err := adoptedLedger.ApplyLifecycle(context.Background(), continued); err == nil {
+		t.Fatal("continuation durability fault was hidden")
+	}
+
+	detourLedger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	started := protocol21Envelope(t, "detour", "detour_started", nil, DetourStartedPayload{CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-start", TrajectoryID: "child", AnchorID: "child-anchor", Workflow: "brainstorming", AssociationOrigin: "detour"})
+	started.EffortID, started.SessionID = "returned", "session"
+	metadata := EffortMetadata{EffortID: "returned", CreatedAt: started.Timestamp, CreationMode: "derived", Origin: &origin, DetourReturn: &DetourReturnMetadata{SessionID: "session", Phase: "implementation", PhaseStartEventID: "parent-start"}}
+	if _, err := detourLedger.CreateEffort(metadata, mustJSON(t, started)); err != nil {
+		t.Fatal(err)
+	}
+	abandon := lifecycleRaw(t, "terminal", "terminal-key", "returned", "effort_abandoned", []string{"detour"}, EffortAbandonedPayload{TerminalEpoch: 1})
+	if _, err := detourLedger.Append(context.Background(), abandon); err != nil {
+		t.Fatal(err)
+	}
+	originalOpen = detourLedger.ops.openFile
+	detourLedger.ops.openFile = func(path string, flag int, mode fs.FileMode) (syncedFile, error) {
+		if path == detourLedger.paths.stream("returned", "session-id") {
+			return nil, errInjected
+		}
+		return originalOpen(path, flag, mode)
+	}
+	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "mark-detour-returned", IdempotencyKey: "return-key", EventID: "return", EffortID: "returned", SessionID: "session-id", Timestamp: "2026-07-22T00:00:02Z", Predecessors: []string{"terminal"}}, TerminalOutcome: "abandoned", ParentAssociationEventID: "association"}
+	if _, err := detourLedger.ApplyLifecycle(context.Background(), returned); err == nil {
+		t.Fatal("detour return durability fault was hidden")
+	}
+}
+
 func TestSyncedFileFailureSeams(t *testing.T) {
 	for _, failure := range []string{"short", "write", "sync", "close"} {
 		ledger, metadata, _ := createTestEffort(t)

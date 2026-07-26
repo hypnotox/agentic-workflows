@@ -61,15 +61,18 @@ the current-state checks compare.
 
 An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
 closed route, starts the first named phase, transactionally closes an unmatched phase start and enters
-its successor, manages session association and trajectories, or records a terminal, waiver, or typed
-repair operation. A normal chain edge is one `phase_transitioned` event carrying both phase effects and
-any route effect. Each request is validated against the embedded descriptor and current causal frontier
-before a confined, leased, flushed JSONL append acknowledges success; an identical retry succeeds
-idempotently while conflicting concurrent state remains evidence. Investigation is an
-optional phase and debugging activity; bugfix is a route whose implementation, review, and
-retrospective requirements remain explicit. Parent handoff copies only the active-branch association.
-Tree navigation closes or resumes a known trajectory or forks one; work derived from a terminal effort
-normally creates a new effort with opaque origin metadata, while reopen is an explicit same-effort
+its successor, continues an already-open phase without changing its interval, manages session
+association and trajectories, or records a terminal, waiver, or typed repair operation. A normal chain
+edge is one `phase_transitioned` event carrying both phase effects and any route effect;
+`phase_continued` instead names the visible unmatched start and replaces or clears workflow, activity,
+and implementation-mode attribution. Each request is validated against the embedded descriptor and
+current causal frontier before a confined, leased, flushed JSONL append acknowledges success; an
+identical retry succeeds idempotently while conflicting concurrent state remains evidence.
+Investigation is an optional phase and debugging activity; bugfix is a route whose implementation,
+review, and retrospective requirements remain explicit. Parent handoff copies only the active-branch
+association. Tree navigation closes or resumes a known trajectory or forks one; lightweight support
+work remains current-phase attribution, while work with an independent outcome uses immutable derived
+effort lineage rather than an arbitrary parent phase jump. Reopen remains an explicit same-effort
 choice.
 
 Effort creation commits immutable metadata and exactly one matching first-stream creation event through
@@ -100,10 +103,15 @@ launcher, metadata, and policy snapshot. Launcher queries carry the absolute pro
 `AWF_DASHBOARD_PROJECT_ROOT` and enter the closed private `dashboard-read` grammar; mutation and
 maintenance never do. The dashboard captures one successful protocol-2.1 handshake for the session. Publication is
 reader-before-writer: the rendered local reader recognizes all protocol-2.1 event kinds, metadata,
-and projections while every new 2.1 lifecycle action remains rejected and no adoption or detour tool
-is registered. Its closed-enum workflow loader validates an exclusive trustworthy call, current
-frontier, route and predecessor, applies one durable mapped phase transition or activity, and reads
-only the pre-rendered `.pi/awf-workflows/<name>.md` body after acknowledgement. Normal chain successors route through that loader, and successful retrospective agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves retrospective open. The dashboard assigns a monotonic generation before each canonical launch, coalesces refresh at startup, overlay open, lifecycle settlement, bounded passive boundaries, and explicit refresh, then reads metrics followed by doctor. A completion older than current local or canonical generation is discarded, while an accepted pair updates an open overlay. Rendering never starts a process. A failed resolution, handshake, query, or retention call preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is visible. The muted below-editor widget computes input, output, cache-read, cache-write, and finite permitted cost by visiting each unique active-branch assistant entry once. Cache hit is `cacheRead/(input+cacheRead)` when defined; public `getContextUsage()` contributes only current context percentage and window. Restored entries and nested subagent top-level usage are included, tool-result or compaction usage is not separately recharged, and subscription or automatic-context labels are omitted unless a public safe signal exists. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
+and projections. Phase continuation is enabled only through the validated lifecycle and workflow
+loader paths; adoption, detour creation, and detour return remain disabled until their dedicated
+boundaries are published. The closed-enum workflow loader validates an exclusive trustworthy call,
+current frontier, and route, then uses catalog entry and continuation metadata to plan exactly one
+phase start, transactional transition, or continuation. It reads only the pre-rendered
+`.pi/awf-workflows/<name>.md` body after that effect is durably acknowledged and never emits a
+same-phase transition. Normal chain successors route through that loader, and successful retrospective
+agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves
+retrospective open. The dashboard assigns a monotonic generation before each canonical launch, coalesces refresh at startup, overlay open, lifecycle settlement, bounded passive boundaries, and explicit refresh, then reads metrics followed by doctor. A completion older than current local or canonical generation is discarded, while an accepted pair updates an open overlay. Rendering never starts a process. A failed resolution, handshake, query, or retention call preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is visible. The muted below-editor widget computes input, output, cache-read, cache-write, and finite permitted cost by visiting each unique active-branch assistant entry once. Cache hit is `cacheRead/(input+cacheRead)` when defined; public `getContextUsage()` contributes only current context percentage and window. Restored entries and nested subagent top-level usage are included, tool-result or compaction usage is not separately recharged, and subscription or automatic-context labels are omitted unless a public safe signal exists. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

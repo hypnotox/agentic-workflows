@@ -68,17 +68,14 @@ func validateWorkflowMapping(name string, mapping WorkflowMapping, vocabularies 
 	if !validWorkflowKind(mapping.Kind) {
 		return workflowValueError(name, "kind", mapping.Kind)
 	}
-	if !validPhaseEffect(mapping.PhaseEffect) {
-		return workflowValueError(name, "phase effect", mapping.PhaseEffect)
-	}
 	if !validRouteEffect(mapping.RouteEffect) {
 		return workflowValueError(name, "route effect", mapping.RouteEffect)
 	}
 	if !validTerminalEffect(mapping.TerminalEffect) {
 		return workflowValueError(name, "terminal effect", mapping.TerminalEffect)
 	}
-	if mapping.Phase != "" && !slices.Contains(vocabularies["phases"], mapping.Phase) {
-		return workflowValueError(name, "phase", mapping.Phase)
+	if mapping.EntryPhase != "" && !slices.Contains(vocabularies["phases"], mapping.EntryPhase) {
+		return workflowValueError(name, "entry phase", mapping.EntryPhase)
 	}
 	if mapping.Activity != "" && !slices.Contains(vocabularies["activities"], mapping.Activity) {
 		return workflowValueError(name, "activity", mapping.Activity)
@@ -86,19 +83,32 @@ func validateWorkflowMapping(name string, mapping WorkflowMapping, vocabularies 
 	if mapping.ImplementationMode != "" && !slices.Contains(vocabularies["activities"], mapping.ImplementationMode) {
 		return workflowValueError(name, "implementation mode", mapping.ImplementationMode)
 	}
-	if !slices.IsSorted(mapping.RequiresPhases) {
-		return fmt.Errorf("skill %q workflow required phases are not sorted", name)
+	if err := validateWorkflowPhases(name, "entry predecessor", mapping.EntryPredecessors, vocabularies["phases"]); err != nil {
+		return err
 	}
-	for i, phase := range mapping.RequiresPhases {
-		if !slices.Contains(vocabularies["phases"], phase) {
-			return workflowValueError(name, "required phase", phase)
-		}
-		if i > 0 && mapping.RequiresPhases[i-1] == phase {
-			return fmt.Errorf("skill %q workflow required phases contain duplicate %q", name, phase)
-		}
+	if err := validateWorkflowPhases(name, "continuation phase", mapping.ContinuationPhases, vocabularies["phases"]); err != nil {
+		return err
 	}
 	if err := validateWorkflowCombination(mapping); err != nil {
 		return fmt.Errorf("skill %q workflow: %w", name, err)
+	}
+	return nil
+}
+
+func validateWorkflowPhases(name, field string, phases, vocabulary []string) error {
+	if phases == nil {
+		return fmt.Errorf("skill %q workflow %ss are missing", name, field)
+	}
+	if !slices.IsSorted(phases) {
+		return fmt.Errorf("skill %q workflow %ss are not sorted", name, field)
+	}
+	for i, phase := range phases {
+		if !slices.Contains(vocabulary, phase) {
+			return workflowValueError(name, field, phase)
+		}
+		if i > 0 && phases[i-1] == phase {
+			return fmt.Errorf("skill %q workflow %ss contain duplicate %q", name, field, phase)
+		}
 	}
 	return nil
 }
@@ -109,10 +119,6 @@ func workflowValueError(name, field string, value any) error {
 
 func validWorkflowKind(value WorkflowKind) bool {
 	return value == WorkflowChain || value == WorkflowTask || value == WorkflowSupport
-}
-
-func validPhaseEffect(value PhaseEffect) bool {
-	return value == PhaseNone || value == PhaseStart || value == PhaseTransition || value == PhaseCurrent
 }
 
 func validRouteEffect(value RouteEffect) bool {
@@ -157,73 +163,76 @@ func validateRouteCoverage(cat *Catalog) error {
 }
 
 func validateWorkflowCombination(mapping WorkflowMapping) error {
-	if mapping.PhaseEffect == PhaseNone {
-		return errors.New("phase effect cannot be none")
+	if len(mapping.ContinuationPhases) == 0 {
+		return errors.New("continuation phases cannot be empty")
 	}
-	if mapping.PhaseEffect == PhaseCurrent {
-		if mapping.Phase != "" || mapping.ImplementationMode != "" || mapping.RouteEffect != RouteNone || mapping.TerminalEffect != TerminalNone {
-			return errors.New("current-phase mapping may only record an activity and required phases")
+	switch mapping.Kind {
+	case WorkflowSupport:
+		if mapping.EntryPhase != "" || mapping.AllowEntryWithoutPhase || len(mapping.EntryPredecessors) != 0 {
+			return errors.New("support mapping cannot enter a phase")
 		}
 		if mapping.Activity == "" {
-			return errors.New("current-phase mapping requires an activity")
+			return errors.New("support mapping requires an activity")
+		}
+		if mapping.ImplementationMode != "" || mapping.RouteEffect != RouteNone || mapping.TerminalEffect != TerminalNone {
+			return errors.New("support mapping may only continue with an activity")
+		}
+	case WorkflowTask:
+		if mapping.EntryPhase == "" {
+			return errors.New("task mapping requires an entry phase")
+		}
+		if !mapping.AllowEntryWithoutPhase || len(mapping.EntryPredecessors) != 0 {
+			return errors.New("task mapping must allow entry without a phase and have no entry predecessors")
+		}
+		if !slices.Contains(mapping.ContinuationPhases, mapping.EntryPhase) {
+			return errors.New("task continuation phases must include its entry phase")
+		}
+	case WorkflowChain:
+		if mapping.EntryPhase == "" {
+			return errors.New("chain mapping requires an entry phase")
+		}
+		if len(mapping.EntryPredecessors) == 0 {
+			return errors.New("chain entry requires a predecessor phase")
+		}
+		if len(mapping.ContinuationPhases) != 1 || mapping.ContinuationPhases[0] != mapping.EntryPhase {
+			return errors.New("chain entry phase is incompatible with continuation phases")
 		}
 	}
-	if mapping.PhaseEffect != PhaseCurrent && mapping.Phase == "" {
-		return errors.New("phase-changing mapping requires a phase")
+	if mapping.Activity != "" && mapping.Kind != WorkflowSupport && (mapping.Kind != WorkflowTask || mapping.EntryPhase != "investigation" || mapping.Activity != "debugging") {
+		return errors.New("activity requires support continuation except debugging investigation entry")
 	}
-	if mapping.Kind == WorkflowSupport && mapping.PhaseEffect != PhaseCurrent {
-		return errors.New("support mapping must use the current phase")
-	}
-	if mapping.Kind == WorkflowChain && mapping.PhaseEffect == PhaseStart && mapping.Phase != "brainstorming" {
-		return errors.New("chain start must enter brainstorming")
-	}
-	if mapping.Kind == WorkflowChain && mapping.PhaseEffect == PhaseTransition && len(mapping.RequiresPhases) == 0 {
-		return errors.New("chain transition requires a predecessor phase")
-	}
-	if mapping.Kind == WorkflowTask && mapping.PhaseEffect != PhaseStart {
-		return errors.New("task mapping must start a phase")
-	}
-	if mapping.PhaseEffect == PhaseStart && len(mapping.RequiresPhases) != 0 {
-		return errors.New("phase start cannot require predecessor phases")
-	}
-	if mapping.Activity != "" && mapping.PhaseEffect != PhaseCurrent && (mapping.Kind != WorkflowTask || mapping.PhaseEffect != PhaseStart || mapping.Phase != "investigation" || mapping.Activity != "debugging") {
-		return errors.New("activity requires the current phase except debugging investigation start")
-	}
-	if mapping.ImplementationMode != "" && (mapping.PhaseEffect != PhaseTransition || mapping.Phase != "implementation") {
-		return errors.New("implementation mode requires an implementation transition")
-	}
-	if mapping.RouteEffect != RouteNone && mapping.PhaseEffect != PhaseTransition && mapping.RouteEffect != RouteSelectBugfix {
-		return errors.New("route effect requires a transition except bugfix selection")
+	if mapping.ImplementationMode != "" && (mapping.Kind != WorkflowChain || mapping.EntryPhase != "implementation") {
+		return errors.New("implementation mode requires an implementation chain entry")
 	}
 	switch mapping.RouteEffect {
 	case RouteNone:
 	case RouteSelectDirect:
-		if mapping.Kind != WorkflowChain || mapping.Phase != "implementation" || mapping.ImplementationMode != "inline-execution" {
-			return errors.New("direct selection requires an inline implementation chain transition")
+		if mapping.Kind != WorkflowChain || mapping.EntryPhase != "implementation" || mapping.ImplementationMode != "inline-execution" {
+			return errors.New("direct selection requires an inline implementation chain entry")
 		}
 	case RouteSelectADR:
-		if mapping.Kind != WorkflowChain || mapping.Phase != "adr-authoring" {
-			return errors.New("ADR selection requires an ADR-authoring chain transition")
+		if mapping.Kind != WorkflowChain || mapping.EntryPhase != "adr-authoring" {
+			return errors.New("ADR selection requires an ADR-authoring chain entry")
 		}
 	case RouteSelectPlan:
-		if mapping.Kind != WorkflowChain || mapping.Phase != "planning" {
-			return errors.New("plan selection requires a planning chain transition")
+		if mapping.Kind != WorkflowChain || mapping.EntryPhase != "planning" {
+			return errors.New("plan selection requires a planning chain entry")
 		}
 	case RoutePromoteADRPlan:
-		if mapping.Kind != WorkflowChain || mapping.Phase != "planning" {
-			return errors.New("ADR-plan promotion requires a planning chain transition")
+		if mapping.Kind != WorkflowChain || mapping.EntryPhase != "planning" {
+			return errors.New("ADR-plan promotion requires a planning chain entry")
 		}
 	case RouteSelectBugfix:
-		if mapping.Kind != WorkflowTask || mapping.PhaseEffect != PhaseStart || mapping.Phase != "brainstorming" {
-			return errors.New("bugfix selection requires a brainstorming task start")
+		if mapping.Kind != WorkflowTask || mapping.EntryPhase != "brainstorming" {
+			return errors.New("bugfix selection requires a brainstorming task entry")
 		}
 	case RouteSelectInvestigationIfUnrouted:
-		if mapping.Kind != WorkflowChain || mapping.Phase != "retrospective" {
-			return errors.New("investigation fallback requires a retrospective chain transition")
+		if mapping.Kind != WorkflowChain || mapping.EntryPhase != "retrospective" {
+			return errors.New("investigation fallback requires a retrospective chain entry")
 		}
 	}
-	if mapping.TerminalEffect != TerminalNone && (mapping.Kind != WorkflowChain || mapping.PhaseEffect != PhaseTransition || mapping.Phase != "retrospective") {
-		return errors.New("terminal effect requires a retrospective chain transition")
+	if mapping.TerminalEffect != TerminalNone && (mapping.Kind != WorkflowChain || mapping.EntryPhase != "retrospective") {
+		return errors.New("terminal effect requires a retrospective chain entry")
 	}
 	if mapping.TerminalEffect == TerminalArmCompletion && mapping.RouteEffect != RouteSelectInvestigationIfUnrouted {
 		return errors.New("completion arming requires investigation fallback routing")

@@ -11,15 +11,16 @@ Backing: test
 
 ### `invariant: effort-lifecycle-and-routes`
 
-Effort identity, route selection, transactional phase transitions, terminal epochs, repairs, and waivers change only through the closed explicit lifecycle request union. A normal chain edge appends one `phase_transitioned` event naming the unmatched start, closing and successor phases, optional route effect, and current causal predecessor frontier; identical retries are idempotent, conflicts remain evidence, and structurally valid illegal events have no state effect.
+Effort identity, route selection, transactional phase transitions, phase continuation, terminal epochs, repairs, and waivers change only through the closed explicit lifecycle request union. Catalog mappings separately declare an entry target, legal entry predecessors, legal continuation phases, route effect, activity, and implementation mode. The router plans exactly one of three effects: start a legal entry target when no phase is open, transactionally transition an allowed predecessor to that target, or append `phase_continued` for an allowed already-open phase. Continuation names the causally visible unmatched start, preserves its phase interval, and explicitly replaces or clears workflow, activity, and implementation-mode attribution; it never emits a same-phase `phase_transitioned` event. A normal chain edge names the unmatched start, closing and successor phases, optional route effect, and current causal predecessor frontier; identical retries are idempotent, conflicts remain evidence, and structurally valid illegal events have no state effect.
 Origin: ADR-0146
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0161
 Backing: test
 
 ### `invariant: trajectory-and-derived-effort-model`
 
-Trajectories preserve parent and fork ancestry so current-path projection follows the active ancestry while all-work projection retains discarded branches. Independent, derived, and reopened efforts use explicit immutable lineage or terminal-epoch operations without reconstructing or double-counting origin work.
+Trajectories preserve parent and fork ancestry so current-path projection follows the active ancestry while all-work projection retains discarded branches. Independent, adopted, derived, and reopened efforts use explicit immutable lineage, truthful adoption boundaries, or terminal-epoch operations without reconstructing or double-counting origin work. Lightweight support work remains explicit attribution inside the current phase; work with its own decision, plan, implementation, or terminal outcome is a separate derived effort rather than an arbitrary phase jump in its parent. Derived detours retain immutable parent effort, trajectory, anchor, return-session, phase, and phase-start lineage while leaving the parent phase and trajectory open for deterministic return settlement.
 Origin: ADR-0146
+Revised-by: ADR-0161
 Backing: test
 
 ### `invariant: privacy-integrity-and-retention`

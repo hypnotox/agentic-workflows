@@ -11,6 +11,29 @@ import (
 	"time"
 )
 
+func TestProtocol21CreationVerificationFaultsRecoverByImmutableRetry(t *testing.T) {
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	requests := []LifecycleRequest{
+		AdoptLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "adopt", IdempotencyKey: "adopt-key", EventID: "adopt", EffortID: "adopted", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, Phase: "planning", Workflow: "writing-plans", TrajectoryID: "trajectory", AnchorID: "anchor"},
+		StartDetourLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "detour-key", EventID: "detour", EffortID: "detour", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"},
+	}
+	for _, request := range requests {
+		ledger, err := NewLedger(newTestProject(t))
+		if err != nil {
+			t.Fatal(err)
+		}
+		originalReadDir := ledger.ops.readDir
+		ledger.ops.readDir = func(string) ([]os.DirEntry, error) { return nil, errInjected }
+		if _, err := ledger.ApplyLifecycle(context.Background(), request); err == nil {
+			t.Fatalf("%T verification fault was hidden", request)
+		}
+		ledger.ops.readDir = originalReadDir
+		if result, err := ledger.ApplyLifecycle(context.Background(), request); err != nil || !result.Idempotent {
+			t.Fatalf("%T retry after committed verification fault = %#v, %v", request, result, err)
+		}
+	}
+}
+
 func TestLeaseMutationFaultMatrix(t *testing.T) {
 	ledger, metadata, _ := createTestEffort(t)
 	path := ledger.paths.appendLease(metadata.EffortID)

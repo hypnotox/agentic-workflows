@@ -36,7 +36,7 @@ bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cu
 `AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog outputs. Pi renders exactly five project-local TypeScript files:
 the two-file `.pi/extensions/awf-subagents/` delegation extension, the checkpoint handoff extension,
 and the two-file `.pi/extensions/awf-dashboard/` telemetry runtime. The dashboard protocol file is
-projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata drives the router and the dashboard's closed `awf_workflow` loader; ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
+projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata separately declares entry targets, allowed entry predecessors, continuation phases, and attribution or route effects. It drives the router and the dashboard's closed `awf_workflow` loader, whose three-effect planner starts an entry phase, transitions from an allowed predecessor, or continues an allowed already-open phase; ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
@@ -45,9 +45,10 @@ Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. O
 resident data that sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim.
 An embedded machine-readable protocol-2 descriptor governs the privacy-minimal event envelope,
 payload union, and closed lifecycle requests without any repository-path field. Go validates and
-appends one JSONL stream per session; one `phase_transitioned` event transactionally closes an
-unmatched phase start, enters its successor, and optionally applies a route effect from the current
-causal frontier. The same engine projects discovery, route, phase, handoff, and trajectory state,
+appends one JSONL stream per session; `phase_transitioned` transactionally closes an unmatched phase
+start, enters its successor, and optionally applies a route effect from the current causal frontier,
+while `phase_continued` preserves that start and replaces or clears current workflow, activity, and
+implementation-mode attribution. The same engine projects discovery, route, phase, handoff, and trajectory state,
 performs leased deterministic terminal-effort retention, and serves canonical selector-driven
 metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor`
 reports exact violations and configured versioned heuristics without a score, automatic repair,
@@ -326,15 +327,18 @@ the current-state checks compare.
 
 An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
 closed route, starts the first named phase, transactionally closes an unmatched phase start and enters
-its successor, manages session association and trajectories, or records a terminal, waiver, or typed
-repair operation. A normal chain edge is one `phase_transitioned` event carrying both phase effects and
-any route effect. Each request is validated against the embedded descriptor and current causal frontier
-before a confined, leased, flushed JSONL append acknowledges success; an identical retry succeeds
-idempotently while conflicting concurrent state remains evidence. Investigation is an
-optional phase and debugging activity; bugfix is a route whose implementation, review, and
-retrospective requirements remain explicit. Parent handoff copies only the active-branch association.
-Tree navigation closes or resumes a known trajectory or forks one; work derived from a terminal effort
-normally creates a new effort with opaque origin metadata, while reopen is an explicit same-effort
+its successor, continues an already-open phase without changing its interval, manages session
+association and trajectories, or records a terminal, waiver, or typed repair operation. A normal chain
+edge is one `phase_transitioned` event carrying both phase effects and any route effect;
+`phase_continued` instead names the visible unmatched start and replaces or clears workflow, activity,
+and implementation-mode attribution. Each request is validated against the embedded descriptor and
+current causal frontier before a confined, leased, flushed JSONL append acknowledges success; an
+identical retry succeeds idempotently while conflicting concurrent state remains evidence.
+Investigation is an optional phase and debugging activity; bugfix is a route whose implementation,
+review, and retrospective requirements remain explicit. Parent handoff copies only the active-branch
+association. Tree navigation closes or resumes a known trajectory or forks one; lightweight support
+work remains current-phase attribution, while work with an independent outcome uses immutable derived
+effort lineage rather than an arbitrary parent phase jump. Reopen remains an explicit same-effort
 choice.
 
 Effort creation commits immutable metadata and exactly one matching first-stream creation event through
@@ -365,10 +369,15 @@ launcher, metadata, and policy snapshot. Launcher queries carry the absolute pro
 `AWF_DASHBOARD_PROJECT_ROOT` and enter the closed private `dashboard-read` grammar; mutation and
 maintenance never do. The dashboard captures one successful protocol-2.1 handshake for the session. Publication is
 reader-before-writer: the rendered local reader recognizes all protocol-2.1 event kinds, metadata,
-and projections while every new 2.1 lifecycle action remains rejected and no adoption or detour tool
-is registered. Its closed-enum workflow loader validates an exclusive trustworthy call, current
-frontier, route and predecessor, applies one durable mapped phase transition or activity, and reads
-only the pre-rendered `.pi/awf-workflows/<name>.md` body after acknowledgement. Normal chain successors route through that loader, and successful retrospective agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves retrospective open. The dashboard assigns a monotonic generation before each canonical launch, coalesces refresh at startup, overlay open, lifecycle settlement, bounded passive boundaries, and explicit refresh, then reads metrics followed by doctor. A completion older than current local or canonical generation is discarded, while an accepted pair updates an open overlay. Rendering never starts a process. A failed resolution, handshake, query, or retention call preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is visible. The muted below-editor widget computes input, output, cache-read, cache-write, and finite permitted cost by visiting each unique active-branch assistant entry once. Cache hit is `cacheRead/(input+cacheRead)` when defined; public `getContextUsage()` contributes only current context percentage and window. Restored entries and nested subagent top-level usage are included, tool-result or compaction usage is not separately recharged, and subscription or automatic-context labels are omitted unless a public safe signal exists. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
+and projections. Phase continuation is enabled only through the validated lifecycle and workflow
+loader paths; adoption, detour creation, and detour return remain disabled until their dedicated
+boundaries are published. The closed-enum workflow loader validates an exclusive trustworthy call,
+current frontier, and route, then uses catalog entry and continuation metadata to plan exactly one
+phase start, transactional transition, or continuation. It reads only the pre-rendered
+`.pi/awf-workflows/<name>.md` body after that effect is durably acknowledged and never emits a
+same-phase transition. Normal chain successors route through that loader, and successful retrospective
+agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves
+retrospective open. The dashboard assigns a monotonic generation before each canonical launch, coalesces refresh at startup, overlay open, lifecycle settlement, bounded passive boundaries, and explicit refresh, then reads metrics followed by doctor. A completion older than current local or canonical generation is discarded, while an accepted pair updates an open overlay. Rendering never starts a process. A failed resolution, handshake, query, or retention call preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is visible. The muted below-editor widget computes input, output, cache-read, cache-write, and finite permitted cost by visiting each unique active-branch assistant entry once. Cache hit is `cacheRead/(input+cacheRead)` when defined; public `getContextUsage()` contributes only current context percentage and window. Restored entries and nested subagent top-level usage are included, tool-result or compaction usage is not separately recharged, and subscription or automatic-context labels are omitted unless a public safe signal exists. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the

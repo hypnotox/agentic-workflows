@@ -343,3 +343,4 @@ small deterministic summary that cannot grow with ledger history or global integ
 - 2026-07-26: Accepted; content-sha256: ff60f69f266ad7356531e3bd8e1b7b533b77eff7002a2ed3f33ec13b1d6c1164
 - 2026-07-26: Implementing; content-sha256: ff60f69f266ad7356531e3bd8e1b7b533b77eff7002a2ed3f33ec13b1d6c1164
 - 2026-07-26: Applied; state-sequence: 51; operations: update `tooling/workflow-telemetry:event-protocol-and-ledger`
+- 2026-07-26: Applied; state-sequence: 52; operations: update `tooling/workflow-telemetry:effort-lifecycle-and-routes`, update `tooling/workflow-telemetry:trajectory-and-derived-effort-model`

@@ -9,36 +9,110 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-func TestStandardWorkflowMappingsAreExactAndComplete(t *testing.T) {
-	want := map[string]WorkflowMapping{
-		"brainstorming":               {Kind: WorkflowChain, PhaseEffect: PhaseStart, Phase: "brainstorming"},
-		"executing-direct":            {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", RouteEffect: RouteSelectDirect, ImplementationMode: "inline-execution", RequiresPhases: []string{"brainstorming"}},
-		"proposing-adr":               {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "adr-authoring", RouteEffect: RouteSelectADR, RequiresPhases: []string{"brainstorming"}},
-		"reviewing-adr":               {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "adr-review", RequiresPhases: []string{"adr-authoring"}},
-		"writing-plans":               {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "planning", RouteEffect: RoutePromoteADRPlan, RequiresPhases: []string{"adr-review", "brainstorming"}},
-		"reviewing-plan":              {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "plan-review", RequiresPhases: []string{"planning"}},
-		"reviewing-plan-resync":       {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "adr-plan-resync", RequiresPhases: []string{"plan-review"}},
-		"executing-plans":             {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", ImplementationMode: "inline-execution", RequiresPhases: []string{"adr-plan-resync", "plan-review"}},
-		"subagent-driven-development": {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", ImplementationMode: "subagent-driven-development", RequiresPhases: []string{"adr-plan-resync", "plan-review"}},
-		"reviewing-impl":              {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation-review", RequiresPhases: []string{"implementation"}},
-		"retrospective":               {Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "retrospective", RouteEffect: RouteSelectInvestigationIfUnrouted, TerminalEffect: TerminalArmCompletion, RequiresPhases: []string{"implementation-review", "investigation"}},
-		"bugfix":                      {Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "brainstorming", RouteEffect: RouteSelectBugfix},
-		"debugging":                   {Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "investigation", Activity: "debugging"},
-		"exploring":                   {Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "exploration"},
-		"tdd":                         {Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "tdd", RequiresPhases: []string{"implementation"}},
-		"adr-lifecycle":               {Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "adr-lifecycle"},
-		"refactor-coupling-audit":     {Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "refactor-coupling-audit", RequiresPhases: []string{"brainstorming"}},
-		"roadmap-graduation":          {Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Activity: "roadmap-graduation"},
+type protocol21WorkflowMapping struct {
+	Kind                   WorkflowKind
+	EntryPhase             string
+	AllowEntryWithoutPhase bool
+	EntryPredecessors      []string
+	ContinuationPhases     []string
+	Activity               string
+	ImplementationMode     string
+	RouteEffect            RouteEffect
+	TerminalEffect         TerminalEffect
+}
+
+// invariant: tooling/workflow-telemetry:effort-lifecycle-and-routes
+func TestProtocol21StandardWorkflowMappingTableIsExact(t *testing.T) {
+	all := []string{"adr-authoring", "adr-plan-resync", "adr-review", "brainstorming", "implementation", "implementation-review", "investigation", "plan-review", "planning", "retrospective"}
+	want := map[string]protocol21WorkflowMapping{
+		"brainstorming":               {Kind: WorkflowChain, EntryPhase: "brainstorming", AllowEntryWithoutPhase: true, EntryPredecessors: []string{"investigation"}, ContinuationPhases: []string{"brainstorming"}},
+		"bugfix":                      {Kind: WorkflowTask, EntryPhase: "brainstorming", AllowEntryWithoutPhase: true, EntryPredecessors: []string{}, ContinuationPhases: []string{"brainstorming"}, RouteEffect: RouteSelectBugfix},
+		"debugging":                   {Kind: WorkflowTask, EntryPhase: "investigation", AllowEntryWithoutPhase: true, EntryPredecessors: []string{}, ContinuationPhases: append([]string{}, all...), Activity: "debugging"},
+		"exploring":                   {Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: append([]string{}, all...), Activity: "exploration"},
+		"tdd":                         {Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: []string{"implementation"}, Activity: "tdd"},
+		"refactor-coupling-audit":     {Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: []string{"brainstorming"}, Activity: "refactor-coupling-audit"},
+		"adr-lifecycle":               {Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: append([]string{}, all...), Activity: "adr-lifecycle"},
+		"roadmap-graduation":          {Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: append([]string{}, all...), Activity: "roadmap-graduation"},
+		"proposing-adr":               {Kind: WorkflowChain, EntryPhase: "adr-authoring", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"adr-authoring"}, RouteEffect: RouteSelectADR},
+		"writing-plans":               {Kind: WorkflowChain, EntryPhase: "planning", EntryPredecessors: []string{"adr-review", "brainstorming"}, ContinuationPhases: []string{"planning"}, RouteEffect: RoutePromoteADRPlan},
+		"reviewing-adr":               {Kind: WorkflowChain, EntryPhase: "adr-review", EntryPredecessors: []string{"adr-authoring"}, ContinuationPhases: []string{"adr-review"}},
+		"reviewing-plan":              {Kind: WorkflowChain, EntryPhase: "plan-review", EntryPredecessors: []string{"planning"}, ContinuationPhases: []string{"plan-review"}},
+		"reviewing-plan-resync":       {Kind: WorkflowChain, EntryPhase: "adr-plan-resync", EntryPredecessors: []string{"plan-review"}, ContinuationPhases: []string{"adr-plan-resync"}},
+		"executing-direct":            {Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"implementation"}, ImplementationMode: "inline-execution", RouteEffect: RouteSelectDirect},
+		"executing-plans":             {Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"adr-plan-resync", "plan-review"}, ContinuationPhases: []string{"implementation"}, ImplementationMode: "inline-execution"},
+		"subagent-driven-development": {Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"adr-plan-resync", "plan-review"}, ContinuationPhases: []string{"implementation"}, ImplementationMode: "subagent-driven-development"},
+		"reviewing-impl":              {Kind: WorkflowChain, EntryPhase: "implementation-review", EntryPredecessors: []string{"implementation"}, ContinuationPhases: []string{"implementation-review"}},
+		"retrospective":               {Kind: WorkflowChain, EntryPhase: "retrospective", EntryPredecessors: []string{"implementation-review", "investigation"}, ContinuationPhases: []string{"retrospective"}, RouteEffect: RouteSelectInvestigationIfUnrouted, TerminalEffect: TerminalArmCompletion},
 	}
-	got := make(map[string]WorkflowMapping, len(Standard.Skills))
+	got := make(map[string]protocol21WorkflowMapping, len(Standard.Skills))
 	for name, spec := range Standard.Skills {
-		if spec.Workflow != nil {
-			got[name] = *spec.Workflow
-		}
+		got[name] = protocol21MappingShape(t, spec.Workflow)
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("standard workflow mappings differ\n got: %#v\nwant: %#v", got, want)
+		t.Fatalf("protocol 2.1 workflow mappings differ\n got: %#v\nwant: %#v", got, want)
 	}
+}
+
+func protocol21MappingShape(t *testing.T, mapping *WorkflowMapping) protocol21WorkflowMapping {
+	t.Helper()
+	if mapping == nil {
+		t.Fatal("workflow mapping is nil")
+	}
+	value := reflect.ValueOf(mapping).Elem()
+	field := func(name string) reflect.Value {
+		got := value.FieldByName(name)
+		if !got.IsValid() {
+			t.Fatalf("WorkflowMapping lacks protocol 2.1 field %s", name)
+		}
+		return got
+	}
+	if field("EntryPredecessors").IsNil() || field("ContinuationPhases").IsNil() {
+		t.Fatal("protocol 2.1 workflow phase slices must be nonnil")
+	}
+	return protocol21WorkflowMapping{
+		Kind: field("Kind").Interface().(WorkflowKind), EntryPhase: field("EntryPhase").String(), AllowEntryWithoutPhase: field("AllowEntryWithoutPhase").Bool(),
+		EntryPredecessors: append([]string{}, field("EntryPredecessors").Interface().([]string)...), ContinuationPhases: append([]string{}, field("ContinuationPhases").Interface().([]string)...),
+		Activity: field("Activity").String(), ImplementationMode: field("ImplementationMode").String(), RouteEffect: field("RouteEffect").Interface().(RouteEffect), TerminalEffect: field("TerminalEffect").Interface().(TerminalEffect),
+	}
+}
+
+// invariant: tooling/workflow-telemetry:effort-lifecycle-and-routes
+func TestProtocol21WorkflowValidationRejectsEntryAndContinuationDefects(t *testing.T) {
+	tests := []struct {
+		name  string
+		field string
+		value any
+		want  string
+	}{
+		{"missing entry phase", "EntryPhase", "", "entry phase"},
+		{"incompatible entry phase", "EntryPhase", "planning", "entry phase"},
+		{"missing entry predecessors", "EntryPredecessors", []string(nil), "entry predecessor"},
+		{"unordered entry predecessors", "EntryPredecessors", []string{"planning", "brainstorming"}, "not sorted"},
+		{"duplicate entry predecessor", "EntryPredecessors", []string{"brainstorming", "brainstorming"}, "duplicate"},
+		{"unknown entry predecessor", "EntryPredecessors", []string{"raw"}, "unknown entry predecessor"},
+		{"missing continuation phases", "ContinuationPhases", []string(nil), "continuation"},
+		{"unordered continuation phases", "ContinuationPhases", []string{"planning", "brainstorming"}, "not sorted"},
+		{"duplicate continuation phase", "ContinuationPhases", []string{"implementation", "implementation"}, "duplicate"},
+		{"unknown continuation phase", "ContinuationPhases", []string{"raw"}, "unknown continuation"},
+		{"incompatible continuation phase", "ContinuationPhases", []string{"planning"}, "continuation"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			mapping := *Standard.Skills["executing-direct"].Workflow
+			value := reflect.ValueOf(&mapping).Elem().FieldByName(tc.field)
+			if !value.IsValid() {
+				t.Fatalf("WorkflowMapping lacks protocol 2.1 field %s", tc.field)
+			}
+			value.Set(reflect.ValueOf(tc.value))
+			err := ValidateWorkflowMappings(&Catalog{Skills: map[string]SkillSpec{"subject": {Workflow: &mapping}}})
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ValidateWorkflowMappings() error = %v, want substring %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestStandardWorkflowMappingsAreExactAndComplete(t *testing.T) {
 	if err := ValidateWorkflowMappings(Standard); err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +176,7 @@ func TestWorkflowMappingsForSkillsRejectsDisabledAndStaleEntries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got["brainstorming"].Phase != "brainstorming" {
+	if len(got) != 2 || got["brainstorming"].EntryPhase != "brainstorming" {
 		t.Fatalf("enabled mappings = %#v", got)
 	}
 	if _, present := got["executing-direct"]; present {
@@ -131,22 +205,17 @@ func TestWorkflowMappingValidationRejectsInvalidCases(t *testing.T) {
 		want string
 	}{
 		{"unknown kind", func(m *WorkflowMapping) { m.Kind = "raw" }, "unknown kind"},
-		{"unknown phase effect", func(m *WorkflowMapping) { m.PhaseEffect = "raw" }, "unknown phase effect"},
 		{"unknown route effect", func(m *WorkflowMapping) { m.RouteEffect = "raw" }, "unknown route effect"},
 		{"unknown terminal effect", func(m *WorkflowMapping) { m.TerminalEffect = "raw" }, "unknown terminal effect"},
-		{"unknown phase", func(m *WorkflowMapping) { m.Phase = "raw" }, "unknown phase"},
+		{"unknown entry phase", func(m *WorkflowMapping) { m.EntryPhase = "raw" }, "unknown entry phase"},
 		{"unknown activity", func(m *WorkflowMapping) { m.Activity = "raw" }, "unknown activity"},
 		{"unknown implementation mode", func(m *WorkflowMapping) { m.ImplementationMode = "raw" }, "unknown implementation mode"},
-		{"unsorted predecessors", func(m *WorkflowMapping) { m.RequiresPhases = []string{"planning", "brainstorming"} }, "not sorted"},
-		{"duplicate predecessors", func(m *WorkflowMapping) { m.RequiresPhases = []string{"brainstorming", "brainstorming"} }, "duplicate"},
-		{"unknown predecessor", func(m *WorkflowMapping) { m.RequiresPhases = []string{"raw"} }, "unknown required phase"},
 		{"impossible terminal mapping", func(m *WorkflowMapping) { m.TerminalEffect = TerminalArmCompletion }, "terminal effect requires"},
 		{"invalid route combination", func(m *WorkflowMapping) { m.RouteEffect = RouteSelectBugfix }, "bugfix selection requires"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			mapping := *Standard.Skills["executing-direct"].Workflow
-			mapping.RequiresPhases = append([]string(nil), mapping.RequiresPhases...)
 			tc.edit(&mapping)
 			cat := &Catalog{Skills: map[string]SkillSpec{"subject": {Workflow: &mapping}}}
 			err := ValidateWorkflowMappings(cat)
@@ -157,32 +226,33 @@ func TestWorkflowMappingValidationRejectsInvalidCases(t *testing.T) {
 	}
 }
 
-func TestWorkflowCombinationRejectsEveryImpossibleShape(t *testing.T) {
+func TestWorkflowCombinationRejectsImpossibleShapes(t *testing.T) {
+	validContinuation := []string{"brainstorming"}
 	tests := []struct {
 		name    string
 		mapping WorkflowMapping
 		want    string
 	}{
-		{"none phase effect", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseNone}, "phase effect cannot be none"},
-		{"current carries phase", WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent, Phase: "implementation", Activity: "tdd"}, "current-phase mapping may only"},
-		{"current lacks activity", WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseCurrent}, "current-phase mapping requires"},
-		{"changing lacks phase", WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart}, "phase-changing mapping requires"},
-		{"support starts", WorkflowMapping{Kind: WorkflowSupport, PhaseEffect: PhaseStart, Phase: "brainstorming"}, "support mapping must"},
-		{"chain starts wrong phase", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseStart, Phase: "planning"}, "chain start must"},
-		{"chain transition lacks predecessor", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "planning"}, "chain transition requires"},
-		{"task transitions", WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseTransition, Phase: "implementation", RequiresPhases: []string{"brainstorming"}}, "task mapping must"},
-		{"start has predecessor", WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "brainstorming", RequiresPhases: []string{"investigation"}}, "phase start cannot"},
-		{"activity outside current", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", Activity: "tdd", RequiresPhases: []string{"brainstorming"}}, "activity requires"},
-		{"mode outside implementation", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "planning", ImplementationMode: "inline-execution", RequiresPhases: []string{"brainstorming"}}, "implementation mode requires"},
-		{"route on start", WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "brainstorming", RouteEffect: RouteSelectDirect}, "route effect requires"},
-		{"bad direct selection", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", RouteEffect: RouteSelectDirect, RequiresPhases: []string{"brainstorming"}}, "direct selection requires"},
-		{"bad ADR selection", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "planning", RouteEffect: RouteSelectADR, RequiresPhases: []string{"brainstorming"}}, "ADR selection requires"},
-		{"bad plan selection", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", RouteEffect: RouteSelectPlan, RequiresPhases: []string{"brainstorming"}}, "plan selection requires"},
-		{"bad ADR-plan promotion", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", RouteEffect: RoutePromoteADRPlan, RequiresPhases: []string{"brainstorming"}}, "ADR-plan promotion requires"},
-		{"bad bugfix selection", WorkflowMapping{Kind: WorkflowTask, PhaseEffect: PhaseStart, Phase: "investigation", RouteEffect: RouteSelectBugfix, Activity: "debugging"}, "bugfix selection requires"},
-		{"bad investigation fallback", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", RouteEffect: RouteSelectInvestigationIfUnrouted, RequiresPhases: []string{"investigation"}}, "investigation fallback requires"},
-		{"bad terminal target", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "implementation", TerminalEffect: TerminalArmCompletion, RequiresPhases: []string{"brainstorming"}}, "terminal effect requires"},
-		{"completion lacks fallback", WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "retrospective", TerminalEffect: TerminalArmCompletion, RequiresPhases: []string{"implementation-review"}}, "completion arming requires"},
+		{"empty continuation", WorkflowMapping{Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: []string{}, Activity: "tdd"}, "cannot be empty"},
+		{"support enters", WorkflowMapping{Kind: WorkflowSupport, EntryPhase: "brainstorming", EntryPredecessors: []string{}, ContinuationPhases: validContinuation, Activity: "tdd"}, "cannot enter"},
+		{"support lacks activity", WorkflowMapping{Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: validContinuation}, "requires an activity"},
+		{"support carries effect", WorkflowMapping{Kind: WorkflowSupport, EntryPredecessors: []string{}, ContinuationPhases: validContinuation, Activity: "tdd", RouteEffect: RouteSelectPlan}, "may only continue"},
+		{"task lacks entry", WorkflowMapping{Kind: WorkflowTask, EntryPredecessors: []string{}, ContinuationPhases: validContinuation}, "requires an entry phase"},
+		{"task cannot enter without phase", WorkflowMapping{Kind: WorkflowTask, EntryPhase: "brainstorming", EntryPredecessors: []string{}, ContinuationPhases: validContinuation}, "must allow entry"},
+		{"task continuation excludes entry", WorkflowMapping{Kind: WorkflowTask, EntryPhase: "investigation", AllowEntryWithoutPhase: true, EntryPredecessors: []string{}, ContinuationPhases: validContinuation}, "must include"},
+		{"chain lacks entry", WorkflowMapping{Kind: WorkflowChain, EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: validContinuation}, "requires an entry phase"},
+		{"chain lacks predecessor", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "brainstorming", EntryPredecessors: []string{}, ContinuationPhases: validContinuation}, "requires a predecessor"},
+		{"chain continues elsewhere", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "planning", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: validContinuation}, "incompatible"},
+		{"bad activity", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "brainstorming", EntryPredecessors: []string{"investigation"}, ContinuationPhases: validContinuation, Activity: "tdd"}, "activity requires"},
+		{"bad mode", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "planning", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"planning"}, ImplementationMode: "inline-execution"}, "implementation mode requires"},
+		{"bad direct", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"implementation"}, RouteEffect: RouteSelectDirect}, "direct selection requires"},
+		{"bad ADR", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "planning", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"planning"}, RouteEffect: RouteSelectADR}, "ADR selection requires"},
+		{"bad plan", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"implementation"}, RouteEffect: RouteSelectPlan}, "plan selection requires"},
+		{"bad promotion", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"implementation"}, RouteEffect: RoutePromoteADRPlan}, "ADR-plan promotion requires"},
+		{"bad bugfix", WorkflowMapping{Kind: WorkflowTask, EntryPhase: "investigation", AllowEntryWithoutPhase: true, EntryPredecessors: []string{}, ContinuationPhases: []string{"investigation"}, Activity: "debugging", RouteEffect: RouteSelectBugfix}, "bugfix selection requires"},
+		{"bad fallback", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"investigation"}, ContinuationPhases: []string{"implementation"}, RouteEffect: RouteSelectInvestigationIfUnrouted}, "investigation fallback requires"},
+		{"bad terminal", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "implementation", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"implementation"}, TerminalEffect: TerminalArmCompletion}, "terminal effect requires"},
+		{"completion lacks fallback", WorkflowMapping{Kind: WorkflowChain, EntryPhase: "retrospective", EntryPredecessors: []string{"investigation"}, ContinuationPhases: []string{"retrospective"}, TerminalEffect: TerminalArmCompletion}, "completion arming requires"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -198,7 +268,7 @@ func TestWorkflowMappingValidationCoversExplicitPlanSelection(t *testing.T) {
 	for name, spec := range Standard.Skills {
 		skills[name] = spec
 	}
-	plan := WorkflowMapping{Kind: WorkflowChain, PhaseEffect: PhaseTransition, Phase: "planning", RouteEffect: RouteSelectPlan, RequiresPhases: []string{"brainstorming"}}
+	plan := WorkflowMapping{Kind: WorkflowChain, EntryPhase: "planning", EntryPredecessors: []string{"brainstorming"}, ContinuationPhases: []string{"planning"}, RouteEffect: RouteSelectPlan}
 	skills["explicit-plan"] = SkillSpec{Workflow: &plan}
 	if err := validateRouteCoverage(&Catalog{Skills: skills}); err != nil {
 		t.Fatal(err)
@@ -215,7 +285,8 @@ func TestWorkflowMappingValidationRejectsUncoveredRoute(t *testing.T) {
 	cat := &Catalog{Skills: make(map[string]SkillSpec, len(Standard.Skills))}
 	for name, spec := range Standard.Skills {
 		mapping := *spec.Workflow
-		mapping.RequiresPhases = append([]string(nil), mapping.RequiresPhases...)
+		mapping.EntryPredecessors = append([]string{}, mapping.EntryPredecessors...)
+		mapping.ContinuationPhases = append([]string{}, mapping.ContinuationPhases...)
 		spec.Workflow = &mapping
 		cat.Skills[name] = spec
 	}

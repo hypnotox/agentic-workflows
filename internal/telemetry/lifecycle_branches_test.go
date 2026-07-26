@@ -27,6 +27,10 @@ func TestLifecycleRequestUnionBuildsEveryMutation(t *testing.T) {
 	origin := &OriginMetadata{EffortID: "origin", TrajectoryID: "origin-trajectory", AnchorID: "origin-anchor"}
 	requests := []LifecycleRequest{
 		CreateLifecycleRequest{LifecycleRequestBase: withAction(base, "create"), CreationMode: "derived", Origin: origin},
+		AdoptLifecycleRequest{LifecycleRequestBase: withAction(base, "adopt"), Route: "direct", Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor"},
+		ContinuePhaseLifecycleRequest{LifecycleRequestBase: withAction(base, "continue-phase"), Phase: "implementation", StartEventID: "start", Workflow: "tdd", Activity: "tdd"},
+		StartDetourLifecycleRequest{LifecycleRequestBase: withAction(base, "start-detour"), CreationMode: "derived", Origin: *origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"},
+		MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-association"},
 		AssociateLifecycleRequest{LifecycleRequestBase: withAction(base, "associate"), TrajectoryID: "trajectory", AssociationOrigin: "handoff", HandoffEventID: "handoff"},
 		DetachLifecycleRequest{LifecycleRequestBase: withAction(base, "detach"), Reason: "manual"},
 		RouteLifecycleRequest{LifecycleRequestBase: withAction(base, "select-route"), Route: "direct"},
@@ -58,6 +62,62 @@ func TestLifecycleRequestUnionBuildsEveryMutation(t *testing.T) {
 func withAction(base LifecycleRequestBase, action string) LifecycleRequestBase {
 	base.Action = action
 	return base
+}
+
+func TestProtocol21StartDetourRejectsNonconstantRequestFields(t *testing.T) {
+	base := LifecycleRequestBase{Action: "start-detour", IdempotencyKey: "key", EventID: "event", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	valid := StartDetourLifecycleRequest{LifecycleRequestBase: base, CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "start", TrajectoryID: "child", AnchorID: "child-anchor", Workflow: "brainstorming"}
+	for _, tc := range []struct {
+		name string
+		edit func(*StartDetourLifecycleRequest)
+		want string
+	}{
+		{"creation mode", func(request *StartDetourLifecycleRequest) { request.CreationMode = "independent" }, "start-detour creationMode must be derived"},
+		{"workflow", func(request *StartDetourLifecycleRequest) { request.Workflow = "debugging" }, "start-detour workflow must be brainstorming"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := valid
+			tc.edit(&request)
+			if _, _, _, _, _, err := lifecycleRequestParts(request); err == nil || err.Error() != tc.want {
+				t.Fatalf("lifecycleRequestParts() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestProtocol21RequestConstructionIsCanonical(t *testing.T) {
+	base := LifecycleRequestBase{IdempotencyKey: "key", EventID: "event", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{}}
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	tests := []struct {
+		name     string
+		request  LifecycleRequest
+		kind     EventKind
+		creating bool
+		metadata EffortMetadata
+		payload  any
+	}{
+		{"adopt", AdoptLifecycleRequest{LifecycleRequestBase: withAction(base, "adopt"), Route: "direct", Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor"}, "effort_adopted", true, EffortMetadata{EffortID: "effort", CreatedAt: base.Timestamp, CreationMode: "adopted"}, EffortAdoptedPayload{CreationMode: "adopted", Route: "direct", Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor", AssociationOrigin: "manual"}},
+		{"continue", ContinuePhaseLifecycleRequest{LifecycleRequestBase: withAction(base, "continue-phase"), Phase: "implementation", StartEventID: "start", Workflow: "tdd", Activity: "tdd"}, "phase_continued", false, EffortMetadata{}, PhaseContinuedPayload{Phase: "implementation", StartEventID: "start", Workflow: "tdd", Activity: "tdd"}},
+		{"detour", StartDetourLifecycleRequest{LifecycleRequestBase: withAction(base, "start-detour"), CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}, "detour_started", true, EffortMetadata{EffortID: "effort", CreatedAt: base.Timestamp, CreationMode: "derived", Origin: &origin, DetourReturn: &DetourReturnMetadata{SessionID: "session", Phase: "implementation", PhaseStartEventID: "start"}}, DetourStartedPayload{CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming", AssociationOrigin: "detour"}},
+		{"return", MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-association"}, "detour_returned", false, EffortMetadata{}, DetourReturnedPayload{TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-association"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, metadata, creating, err := lifecycleRequestEvent(tc.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var event EventEnvelope
+			if err := json.Unmarshal(raw, &event); err != nil {
+				t.Fatal(err)
+			}
+			wantPayload, _ := json.Marshal(tc.payload)
+			if event.Kind != tc.kind || creating != tc.creating || !metadataEqual(metadata, tc.metadata) || string(event.Payload) != string(wantPayload) {
+				t.Fatalf("constructed request = event %#v metadata %#v creating=%v", event, metadata, creating)
+			}
+		})
+	}
 }
 
 func TestLifecycleLegalMutationRows(t *testing.T) {
@@ -427,6 +487,21 @@ func TestRawLedgerRejectsIllegalLifecycleAppend(t *testing.T) {
 	invalid := lifecycleRaw(t, "invalid-complete", "invalid-complete-key", metadata.EffortID, "effort_completed", []string{"event-id"}, EffortTerminalPayload{TerminalEpoch: 1})
 	if _, err := ledger.Append(context.Background(), invalid); err == nil {
 		t.Fatal("raw invalid lifecycle append accepted")
+	}
+}
+
+func TestProtocol21ConflictKeysAreDeterministic(t *testing.T) {
+	continued := protocol21Envelope(t, "continue", "phase_continued", []string{"start"}, PhaseContinuedPayload{Phase: "implementation", StartEventID: "start", Workflow: "tdd"})
+	otherContinuation := protocol21Envelope(t, "other-continue", "phase_continued", []string{"start"}, PhaseContinuedPayload{Phase: "implementation", StartEventID: "start", Workflow: "executing-direct"})
+	started := protocol21Envelope(t, "detour", "detour_started", nil, DetourStartedPayload{CreationMode: "derived", Origin: OriginMetadata{EffortID: "parent", TrajectoryID: "trajectory", AnchorID: "anchor"}, ReturnPhase: "implementation", ReturnPhaseStartEventID: "start", TrajectoryID: "child", AnchorID: "child-anchor", Workflow: "brainstorming", AssociationOrigin: "detour"})
+	returned := protocol21Envelope(t, "returned", "detour_returned", []string{"terminal"}, DetourReturnedPayload{TerminalOutcome: "abandoned", ParentAssociationEventID: "association"})
+	if lifecycleConflictKey(continued) != "phase-open" || !lifecycleEventsConflict(continued, otherContinuation) {
+		t.Fatal("phase continuation did not use the phase-open conflict key")
+	}
+	for _, event := range []EventEnvelope{started, returned} {
+		if lifecycleConflictKey(event) != "effort-state" {
+			t.Fatalf("%s conflict key = %q", event.Kind, lifecycleConflictKey(event))
+		}
 	}
 }
 

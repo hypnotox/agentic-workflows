@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sort"
 )
 
 type EffortState string
@@ -767,6 +768,14 @@ func (l *Ledger) applyLifecycleUnderLease(ctx context.Context, event EventEnvelo
 		}
 		return AppendResult{Event: prior, Idempotent: true}, nil
 	}
+	if event.Kind == "phase_continued" || event.Kind == "detour_returned" {
+		frontier := currentCausalFrontier(read.Events)
+		predecessors := append([]string(nil), event.Predecessors...)
+		sort.Strings(predecessors)
+		if !equalStrings(predecessors, frontier) {
+			return AppendResult{}, fmt.Errorf("lifecycle request does not observe the current causal frontier: got %v, want %v", predecessors, frontier)
+		}
+	}
 	current := projectLifecycleFromRead(read)
 	if event.TrajectoryID == "" {
 		if association, exists := current.Associations[event.SessionID]; exists {
@@ -792,6 +801,23 @@ func (l *Ledger) applyLifecycleUnderLease(ctx context.Context, event EventEnvelo
 		}
 	}
 	return l.Append(ctx, raw)
+}
+
+func currentCausalFrontier(events []EventEnvelope) []string {
+	order, _ := BuildCausalOrder(events)
+	frontier := make(map[string]bool, len(events))
+	for _, event := range order.ordered(events) {
+		for _, predecessor := range order.frontiers[event.EventID] {
+			delete(frontier, predecessor)
+		}
+		frontier[event.EventID] = true
+	}
+	result := make([]string, 0, len(frontier))
+	for eventID := range frontier {
+		result = append(result, eventID)
+	}
+	sort.Strings(result)
+	return result
 }
 
 func lifecycleExclusions(read EffortRead) map[string]bool {
@@ -881,6 +907,27 @@ func lifecycleRequestParts(request LifecycleRequest) (LifecycleRequestBase, Even
 		}
 		payload = marshal(EffortCreatedPayload{CreationMode: typed.CreationMode, OriginEffortID: origin.EffortID, OriginTrajectoryID: origin.TrajectoryID, OriginAnchorID: origin.AnchorID})
 		metadata = EffortMetadata{EffortID: base.EffortID, CreatedAt: base.Timestamp, CreationMode: typed.CreationMode, Origin: typed.Origin}
+	case AdoptLifecycleRequest:
+		base, kind, creating = typed.LifecycleRequestBase, "effort_adopted", true
+		payload = marshal(EffortAdoptedPayload{CreationMode: "adopted", Route: typed.Route, Phase: typed.Phase, Workflow: typed.Workflow, TrajectoryID: typed.TrajectoryID, AnchorID: typed.AnchorID, AssociationOrigin: "manual"})
+		metadata = EffortMetadata{EffortID: base.EffortID, CreatedAt: base.Timestamp, CreationMode: "adopted"}
+	case ContinuePhaseLifecycleRequest:
+		base, kind = typed.LifecycleRequestBase, "phase_continued"
+		payload = marshal(PhaseContinuedPayload{Phase: typed.Phase, StartEventID: typed.StartEventID, Workflow: typed.Workflow, Activity: typed.Activity, ImplementationMode: typed.ImplementationMode})
+	case StartDetourLifecycleRequest:
+		if typed.CreationMode != "derived" {
+			return base, "", nil, metadata, false, errors.New("start-detour creationMode must be derived")
+		}
+		if typed.Workflow != "brainstorming" {
+			return base, "", nil, metadata, false, errors.New("start-detour workflow must be brainstorming")
+		}
+		base, kind, creating = typed.LifecycleRequestBase, "detour_started", true
+		payload = marshal(DetourStartedPayload{CreationMode: typed.CreationMode, Origin: typed.Origin, ReturnPhase: typed.ReturnPhase, ReturnPhaseStartEventID: typed.ReturnPhaseStartEventID, TrajectoryID: typed.TrajectoryID, AnchorID: typed.AnchorID, Workflow: typed.Workflow, AssociationOrigin: "detour"})
+		origin := typed.Origin
+		metadata = EffortMetadata{EffortID: base.EffortID, CreatedAt: base.Timestamp, CreationMode: typed.CreationMode, Origin: &origin, DetourReturn: &DetourReturnMetadata{SessionID: base.SessionID, Phase: typed.ReturnPhase, PhaseStartEventID: typed.ReturnPhaseStartEventID}}
+	case MarkDetourReturnedLifecycleRequest:
+		base, kind = typed.LifecycleRequestBase, "detour_returned"
+		payload = marshal(DetourReturnedPayload{TerminalOutcome: typed.TerminalOutcome, ParentAssociationEventID: typed.ParentAssociationEventID})
 	case AssociateLifecycleRequest:
 		base, kind = typed.LifecycleRequestBase, "session_associated"
 		payload = marshal(SessionAssociatedPayload{AssociationOrigin: typed.AssociationOrigin, TrajectoryID: typed.TrajectoryID, HandoffEventID: typed.HandoffEventID})

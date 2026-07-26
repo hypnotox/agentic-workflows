@@ -70,6 +70,44 @@ func TestCreationAndAppendRejectionMatrix(t *testing.T) {
 	}
 }
 
+func TestProtocol21AppendRequestRetriesCompareCanonicalPayloads(t *testing.T) {
+	base := LifecycleRequestBase{IdempotencyKey: "key", EventID: "event", EffortID: "effort", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{"frontier"}}
+	tests := []struct {
+		name     string
+		request  LifecycleRequest
+		conflict LifecycleRequest
+	}{
+		{"continue", ContinuePhaseLifecycleRequest{LifecycleRequestBase: withAction(base, "continue-phase"), Phase: "implementation", StartEventID: "start", Workflow: "tdd", Activity: "tdd"}, ContinuePhaseLifecycleRequest{LifecycleRequestBase: withAction(base, "continue-phase"), Phase: "implementation", StartEventID: "start", Workflow: "executing-direct"}},
+		{"return", MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: "association"}, MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: "different-association"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, _, _, err := lifecycleRequestEvent(tc.request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var prior EventEnvelope
+			if err := json.Unmarshal(raw, &prior); err != nil {
+				t.Fatal(err)
+			}
+			if equal, err := lifecycleRequestMatchesEvent(prior, raw, prior); err != nil || !equal {
+				t.Fatalf("identical request comparison = %v, %v", equal, err)
+			}
+			conflictRaw, _, _, err := lifecycleRequestEvent(tc.conflict)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var requested EventEnvelope
+			if err := json.Unmarshal(conflictRaw, &requested); err != nil {
+				t.Fatal(err)
+			}
+			if equal, err := lifecycleRequestMatchesEvent(requested, conflictRaw, prior); err != nil || equal {
+				t.Fatalf("conflicting request comparison = %v, %v", equal, err)
+			}
+		})
+	}
+}
+
 func TestAppendMetadataAndNewStreamSyncFailures(t *testing.T) {
 	ledger, metadata, _ := createTestEffort(t)
 	metadataPath := filepath.Join(ledger.paths.effort(metadata.EffortID), "effort.json")

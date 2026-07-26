@@ -32,6 +32,9 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Pi workflow routing now plans three explicit effects: start a phase, transition to its legal
+  target, or continue the open phase with updated attribution. Route-bearing continuations apply
+  their route first and observe the updated frontier; same-phase transition events are removed.
 - Working-memory effort identity now has two sources (ADR-0160). The rendered checkpoint partials
   and the brainstorming skill previously required "the exact active `Effort: <active-effort-id>`
   line" and forbade inventing or inferring an effort ID; both presuppose a runtime-assigned ID,

@@ -12,40 +12,40 @@ Use this router for every governed awf workflow. Do not load governed workflow b
 
 Call `awf_workflow` alone, with no sibling tool calls, and set its `skill` argument to exactly one semantic enum value below:
 
-- `adr-lifecycle`: support; current activity adr-lifecycle
+- `adr-lifecycle`: support; continue phase activity adr-lifecycle
 
-- `brainstorming`: chain; start phase brainstorming
+- `brainstorming`: chain; entry phase brainstorming
 
-- `bugfix`: task; start phase brainstorming route select-bugfix
+- `bugfix`: task; entry phase brainstorming route select-bugfix
 
-- `debugging`: task; start phase investigation activity debugging
+- `debugging`: task; entry phase investigation activity debugging
 
-- `executing-direct`: chain; transition phase implementation route select-direct
+- `executing-direct`: chain; entry phase implementation route select-direct
 
-- `executing-plans`: chain; transition phase implementation
+- `executing-plans`: chain; entry phase implementation
 
-- `exploring`: support; current activity exploration
+- `exploring`: support; continue phase activity exploration
 
-- `proposing-adr`: chain; transition phase adr-authoring route select-adr
+- `proposing-adr`: chain; entry phase adr-authoring route select-adr
 
-- `refactor-coupling-audit`: support; current activity refactor-coupling-audit
+- `refactor-coupling-audit`: support; continue phase activity refactor-coupling-audit
 
-- `retrospective`: chain; transition phase retrospective route select-investigation-if-unrouted terminal arm-completion
+- `retrospective`: chain; entry phase retrospective route select-investigation-if-unrouted terminal arm-completion
 
-- `reviewing-adr`: chain; transition phase adr-review
+- `reviewing-adr`: chain; entry phase adr-review
 
-- `reviewing-impl`: chain; transition phase implementation-review
+- `reviewing-impl`: chain; entry phase implementation-review
 
-- `reviewing-plan`: chain; transition phase plan-review
+- `reviewing-plan`: chain; entry phase plan-review
 
-- `reviewing-plan-resync`: chain; transition phase adr-plan-resync
+- `reviewing-plan-resync`: chain; entry phase adr-plan-resync
 
-- `subagent-driven-development`: chain; transition phase implementation
+- `subagent-driven-development`: chain; entry phase implementation
 
-- `tdd`: support; current activity tdd
+- `tdd`: support; continue phase activity tdd
 
-- `writing-plans`: chain; transition phase planning route promote-adr-plan
+- `writing-plans`: chain; entry phase planning route promote-adr-plan
 
-Choose by the work's semantic intent, not by a filesystem path. The tool validates lifecycle state, records the mapped effect, and returns the fixed pre-rendered body. Follow that returned body exactly.
+Choose by the work's semantic intent, not by a filesystem path. Catalog metadata determines whether the current state may start the workflow's entry phase, transition from an allowed predecessor, or continue an allowed already-open phase. The tool validates lifecycle state, durably records that mapped effect, and only then returns the fixed pre-rendered body. Follow that returned body exactly.
 
 Never pass a path, template text, or workflow body to `awf_workflow`. Never read `.pi/awf-workflows/` as a substitute for the tool.

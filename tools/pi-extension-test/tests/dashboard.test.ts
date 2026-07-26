@@ -517,18 +517,22 @@ test("fork and pre-association tree navigation preserve trajectory truth without
 });
 
 // invariant: tooling/workflow-telemetry:event-protocol-and-ledger
-test("lifecycle tool keeps every protocol 2.1 writer entry disabled", async () => {
+test("lifecycle tool enables continuation but guards adoption and detour settlement entry points", async () => {
   const project = await root();
   try {
     const h = harness(project); assert.deepEqual([...h.tools.keys()], ["awf_lifecycle", "awf_workflow", "awf_metrics", "awf_doctor"]); const tool = h.tools.get("awf_lifecycle"); const base = { idempotencyKey: "key", eventId: "event", effortId: "effort", sessionId: "session", timestamp: "2026-07-22T00:00:00Z", predecessors: [] };
-    const requests = [
+    const guarded = [
       { ...base, action: "adopt", phase: "planning", workflow: "writing-plans", trajectoryId: "trajectory", anchorId: "anchor" },
-      { ...base, action: "continue-phase", phase: "planning", startEventId: "phase-start", workflow: "writing-plans" },
       { ...base, action: "start-detour", creationMode: "derived", origin: { effortId: "parent", trajectoryId: "parent-trajectory", anchorId: "parent-anchor" }, returnPhase: "implementation", returnPhaseStartEventId: "parent-phase", trajectoryId: "child-trajectory", anchorId: "child-anchor", workflow: "brainstorming" },
       { ...base, action: "mark-detour-returned", terminalOutcome: "completed", parentAssociationEventId: "parent-association" },
     ];
-    for (const request of requests) await assert.rejects(execute(tool, request), (error: any) => error?.message === "protocol 2.1 writer is not enabled" && Buffer.byteLength(error.message, "utf8") <= 64, request.action);
-    const writer = createLedgerWriter(h.deps.ledger); await assert.rejects(writer.mutateLifecycle(requests[1] as any), /protocol 2\.1 writer is not enabled/); await writer.shutdown(); assert.equal((await readdir(join(project, ".awf"))).includes("metrics"), false);
+    for (const request of guarded) await assert.rejects(execute(tool, request), (error: any) => error?.message === "protocol 2.1 writer is not enabled" && Buffer.byteLength(error.message, "utf8") <= 64, request.action);
+    const writer = createLedgerWriter(h.deps.ledger); for (const request of guarded) await assert.rejects(writer.mutateLifecycle(request as any), /protocol 2\.1 writer is not enabled/); await writer.shutdown(); assert.equal((await readdir(join(project, ".awf"))).includes("metrics"), false);
+
+    await execute(tool, { ...base, action: "create", creationMode: "independent" });
+    await execute(tool, { ...base, action: "start-phase", idempotencyKey: "start-key", eventId: "phase-start", predecessors: ["event"], phase: "planning" });
+    const continued = await execute(tool, { ...base, action: "continue-phase", idempotencyKey: "continue-key", eventId: "continued", predecessors: ["phase-start"], phase: "planning", startEventId: "phase-start", workflow: "writing-plans" }); assert.equal(continued.details.durable, true);
+    const projection: any = await projectLocalLifecycle(h.deps.ledger, "effort"); assert.equal(projection.effectApplied.has("continued"), true); assert.equal(projection.openPhases.get("phase-start")?.workflow, "writing-plans");
   } finally { await rm(project, { recursive: true, force: true }); }
 });
 

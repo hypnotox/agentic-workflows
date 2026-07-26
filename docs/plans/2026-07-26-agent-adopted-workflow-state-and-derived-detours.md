@@ -38,7 +38,8 @@ and freezes the ADR and plan.
   `.awf/parts/agents-doc/working-memory.md`, `.awf/parts/working-with-awf/commands.md`,
   `.awf/parts/working-with-awf/config-and-overrides.md`,
   `.awf/docs/parts/architecture/overview.md`, `.awf/docs/parts/architecture/data-flow.md`, and
-  `.awf/docs/parts/testing/layout.md`; the exact `.awf/topics/parts/**` files named below.
+  `.awf/docs/parts/testing/layout.md`; the exact `.awf/topics/parts/**` files named below; and
+  `changelog/CHANGELOG.md` for the adopter-visible Phase-2 routing change.
 - **Generated outputs modified only by `./x render`:** `.pi/extensions/awf-dashboard/index.ts`,
   `.pi/extensions/awf-dashboard/protocol.ts`, `.pi/skills/awf-workflow/SKILL.md`, hidden Pi
   workflow bodies, `docs/architecture.md`, `docs/testing.md`, `docs/workflow.md`, rendered topic
@@ -262,11 +263,18 @@ feat(tooling): publish protocol 2.1 readers (applies 0161 batch)
   exactly those declaration-consecutive operations. Update `.awf/parts/workflow/chain.md`,
   `templates/pi/awf-workflow/SKILL.md.tmpl`,
   `.awf/docs/parts/architecture/overview.md`, and
-  `.awf/docs/parts/architecture/data-flow.md`. Run `./x render`, `./x check`,
+  `.awf/docs/parts/architecture/data-flow.md`, and add the Unreleased changelog entry for the
+  adopter-visible three-effect router. Run `./x render`, `./x check`,
   `go test ./internal/telemetry ./internal/catalog ./internal/project`, and `./x pi-test run`, each
-  with zero exit. Stage the named code, tests, templates, authored parts, claim source,
-  ADR/index/lock, and rendered outputs using
-  `git add -u -- internal/telemetry internal/catalog internal/project/render.go internal/project/pi_workflow_render_test.go templates/pi/awf-dashboard/index.ts.tmpl templates/pi/awf-workflow/SKILL.md.tmpl tools/pi-extension-test/tests/workflow.test.ts .awf/parts/workflow/chain.md .awf/docs/parts/architecture/overview.md .awf/docs/parts/architecture/data-flow.md .awf/topics/parts/tooling/workflow-telemetry/current-state.md .pi docs AGENTS.md .awf/awf.lock`.
+  with zero exit. First add this modified plan explicitly with:
+
+  `git add -- docs/plans/2026-07-26-agent-adopted-workflow-state-and-derived-detours.md`
+
+  Then stage the named code, tests, templates, authored parts, claim source,
+  ADR/index/lock, and rendered outputs with:
+
+  `git add -u -- internal/telemetry internal/catalog internal/project/render.go internal/project/pi_workflow_render_test.go templates/pi/awf-dashboard/index.ts.tmpl templates/pi/awf-workflow/SKILL.md.tmpl tools/pi-extension-test/tests/workflow.test.ts tools/pi-extension-test/tests/dashboard.test.ts changelog/CHANGELOG.md .awf/parts/workflow/chain.md .awf/docs/parts/architecture/overview.md .awf/docs/parts/architecture/data-flow.md .awf/topics/parts/tooling/workflow-telemetry/current-state.md .pi docs AGENTS.md .awf/awf.lock examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-dashboard/index.ts examples/sundial/.pi/skills/awf-workflow/SKILL.md`
+
   Then run `./awf check --staged` and `./x gate`, both with zero exit; commit:
 
 ```commit

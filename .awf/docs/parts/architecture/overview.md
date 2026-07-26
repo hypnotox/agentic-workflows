@@ -32,7 +32,7 @@ bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cu
 `AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog outputs. Pi renders exactly five project-local TypeScript files:
 the two-file `.pi/extensions/awf-subagents/` delegation extension, the checkpoint handoff extension,
 and the two-file `.pi/extensions/awf-dashboard/` telemetry runtime. The dashboard protocol file is
-projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata drives the router and the dashboard's closed `awf_workflow` loader; ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
+projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata separately declares entry targets, allowed entry predecessors, continuation phases, and attribution or route effects. It drives the router and the dashboard's closed `awf_workflow` loader, whose three-effect planner starts an entry phase, transitions from an allowed predecessor, or continues an allowed already-open phase; ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
@@ -41,9 +41,10 @@ Workflow telemetry is a separate resident-data boundary under `.awf/metrics/`. O
 resident data that sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim.
 An embedded machine-readable protocol-2 descriptor governs the privacy-minimal event envelope,
 payload union, and closed lifecycle requests without any repository-path field. Go validates and
-appends one JSONL stream per session; one `phase_transitioned` event transactionally closes an
-unmatched phase start, enters its successor, and optionally applies a route effect from the current
-causal frontier. The same engine projects discovery, route, phase, handoff, and trajectory state,
+appends one JSONL stream per session; `phase_transitioned` transactionally closes an unmatched phase
+start, enters its successor, and optionally applies a route effect from the current causal frontier,
+while `phase_continued` preserves that start and replaces or clears current workflow, activity, and
+implementation-mode attribution. The same engine projects discovery, route, phase, handoff, and trajectory state,
 performs leased deterministic terminal-effort retention, and serves canonical selector-driven
 metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor`
 reports exact violations and configured versioned heuristics without a score, automatic repair,

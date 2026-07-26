@@ -118,14 +118,15 @@ type workflowRouterEntry struct {
 }
 
 type workflowLoaderEntry struct {
-	Kind               string   `json:"kind"`
-	PhaseEffect        string   `json:"phaseEffect"`
-	Phase              string   `json:"phase,omitempty"`
-	Activity           string   `json:"activity,omitempty"`
-	ImplementationMode string   `json:"implementationMode,omitempty"`
-	RouteEffect        string   `json:"routeEffect,omitempty"`
-	TerminalEffect     string   `json:"terminalEffect,omitempty"`
-	RequiresPhases     []string `json:"requiresPhases"`
+	Kind                   string   `json:"kind"`
+	EntryPhase             string   `json:"entryPhase,omitempty"`
+	AllowEntryWithoutPhase bool     `json:"allowEntryWithoutPhase"`
+	EntryPredecessors      []string `json:"entryPredecessors"`
+	ContinuationPhases     []string `json:"continuationPhases"`
+	Activity               string   `json:"activity,omitempty"`
+	ImplementationMode     string   `json:"implementationMode,omitempty"`
+	RouteEffect            string   `json:"routeEffect,omitempty"`
+	TerminalEffect         string   `json:"terminalEffect,omitempty"`
 }
 
 func (p *Project) workflowRouterData(names []string) ([]workflowRouterEntry, error) {
@@ -136,9 +137,9 @@ func (p *Project) workflowRouterData(names []string) ([]workflowRouterEntry, err
 	entries := make([]workflowRouterEntry, 0, len(mappings))
 	for _, name := range slices.Sorted(maps.Keys(mappings)) {
 		mapping := mappings[name]
-		effect := string(mapping.PhaseEffect)
-		if mapping.Phase != "" {
-			effect += " phase " + mapping.Phase
+		effect := "continue phase"
+		if mapping.EntryPhase != "" {
+			effect = "entry phase " + mapping.EntryPhase
 		}
 		if mapping.Activity != "" {
 			effect += " activity " + mapping.Activity
@@ -161,15 +162,20 @@ func (p *Project) workflowLoaderData(names []string) (string, error) {
 	}
 	entries := make(map[string]workflowLoaderEntry, len(mappings))
 	for name, mapping := range mappings {
+		entryPredecessors := append([]string{}, mapping.EntryPredecessors...)
+		continuationPhases := append([]string{}, mapping.ContinuationPhases...)
+		slices.Sort(entryPredecessors)
+		slices.Sort(continuationPhases)
 		entries[name] = workflowLoaderEntry{
-			Kind:               string(mapping.Kind),
-			PhaseEffect:        string(mapping.PhaseEffect),
-			Phase:              mapping.Phase,
-			Activity:           mapping.Activity,
-			ImplementationMode: mapping.ImplementationMode,
-			RouteEffect:        string(mapping.RouteEffect),
-			TerminalEffect:     string(mapping.TerminalEffect),
-			RequiresPhases:     append([]string{}, mapping.RequiresPhases...),
+			Kind:                   string(mapping.Kind),
+			EntryPhase:             mapping.EntryPhase,
+			AllowEntryWithoutPhase: mapping.AllowEntryWithoutPhase,
+			EntryPredecessors:      entryPredecessors,
+			ContinuationPhases:     continuationPhases,
+			Activity:               mapping.Activity,
+			ImplementationMode:     mapping.ImplementationMode,
+			RouteEffect:            string(mapping.RouteEffect),
+			TerminalEffect:         string(mapping.TerminalEffect),
 		}
 	}
 	encoded, err := json.Marshal(entries)

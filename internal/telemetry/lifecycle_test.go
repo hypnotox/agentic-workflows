@@ -160,6 +160,8 @@ func protocol2TransitionEnvelope(t *testing.T, eventID string, predecessors []st
 	return envelope
 }
 
+// invariant: tooling/workflow-telemetry:effort-lifecycle-and-routes
+// invariant: tooling/workflow-telemetry:trajectory-and-derived-effort-model
 func TestProtocol21AdoptionAndContinuationProjection(t *testing.T) {
 	adopted := protocol21Envelope(t, "adopt", "effort_adopted", nil, map[string]any{
 		"creationMode": "adopted", "route": "direct", "phase": "implementation",
@@ -196,6 +198,7 @@ func TestProtocol21AdoptionAndContinuationProjection(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:trajectory-and-derived-effort-model
 func TestPhaseLifecycleUpdatesAndClearsCurrentAttribution(t *testing.T) {
 	events := lifecycleBaseEvents()
 	started := appendEvent(events, "start", "phase_started", PhaseStartedPayload{Phase: "implementation", Activity: "tdd", ImplementationMode: "inline-execution"})
@@ -210,6 +213,7 @@ func TestPhaseLifecycleUpdatesAndClearsCurrentAttribution(t *testing.T) {
 	}
 }
 
+// invariant: tooling/workflow-telemetry:trajectory-and-derived-effort-model
 func TestProtocol21DetourLineageAndPostTerminalReturnProjection(t *testing.T) {
 	origin := map[string]any{"effortId": "parent-effort", "trajectoryId": "parent-trajectory", "anchorId": "parent-anchor"}
 	started := protocol21Envelope(t, "detour-start", "detour_started", nil, map[string]any{
@@ -537,6 +541,158 @@ func TestLifecycleAppendIsDurableValidatedAndIdempotent(t *testing.T) {
 	if err != nil || len(read.Records) != 1 {
 		t.Fatalf("invalid append changed durable stream: records=%d err=%v", len(read.Records), err)
 	}
+}
+
+func TestProtocol21ContinuationRequiresWholeCurrentFrontier(t *testing.T) {
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := LifecycleRequestBase{EffortID: "adopted-effort", SessionID: "session-id", Timestamp: "2026-07-22T00:00:00Z"}
+	adopt := AdoptLifecycleRequest{LifecycleRequestBase: withAction(base, "adopt"), Route: "direct", Phase: "implementation", Workflow: "executing-direct", TrajectoryID: "trajectory", AnchorID: "anchor"}
+	adopt.IdempotencyKey, adopt.EventID, adopt.Predecessors = "adopt-key", "adopt", []string{}
+	if _, err := ledger.ApplyLifecycle(context.Background(), adopt); err != nil {
+		t.Fatal(err)
+	}
+	observation := passiveEvent(t, "observation", "observation", base.EffortID, []string{"adopt"})
+	if _, err := ledger.Append(context.Background(), observation); err != nil {
+		t.Fatal(err)
+	}
+	continued := ContinuePhaseLifecycleRequest{LifecycleRequestBase: withAction(base, "continue-phase"), Phase: "implementation", StartEventID: "adopt", Workflow: "tdd", Activity: "tdd"}
+	continued.IdempotencyKey, continued.EventID, continued.Predecessors = "continue-key", "continue", []string{"adopt"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), continued); err == nil || !strings.Contains(err.Error(), "frontier") {
+		t.Fatalf("partial-frontier continuation error = %v", err)
+	}
+	continued.Predecessors = []string{"observation"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), continued); err != nil {
+		t.Fatal(err)
+	}
+	projection := ProjectLifecycle(ledgerReadEvents(t, ledger, base.EffortID))
+	interval := projection.OpenPhases["adopt"]
+	if interval.StartEventID != "adopt" || interval.Workflow != "tdd" || interval.Activity != "tdd" {
+		t.Fatalf("continuation did not preserve and replace phase attribution: %#v", interval)
+	}
+}
+
+// invariant: tooling/workflow-telemetry:trajectory-and-derived-effort-model
+func TestStartingDerivedDetourPreservesActiveParentProjection(t *testing.T) {
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := "2026-07-22T00:00:00Z"
+	parentBase := LifecycleRequestBase{EffortID: "active-parent", SessionID: "parent-session", Timestamp: at}
+	create := CreateLifecycleRequest{LifecycleRequestBase: withAction(parentBase, "create"), CreationMode: "independent"}
+	create.IdempotencyKey, create.EventID, create.Predecessors = "parent-create-key", "parent-create", []string{}
+	if _, err := ledger.ApplyLifecycle(context.Background(), create); err != nil {
+		t.Fatal(err)
+	}
+	route := RouteLifecycleRequest{LifecycleRequestBase: withAction(parentBase, "select-route"), Route: "direct"}
+	route.IdempotencyKey, route.EventID, route.Predecessors = "parent-route-key", "parent-route", []string{"parent-create"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), route); err != nil {
+		t.Fatal(err)
+	}
+	trajectory := TrajectoryLifecycleRequest{LifecycleRequestBase: withAction(parentBase, "start-trajectory"), TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	trajectory.IdempotencyKey, trajectory.EventID, trajectory.Predecessors = "parent-trajectory-key", "parent-trajectory-start", []string{"parent-route"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), trajectory); err != nil {
+		t.Fatal(err)
+	}
+	association := AssociateLifecycleRequest{LifecycleRequestBase: withAction(parentBase, "associate"), TrajectoryID: "parent-trajectory", AssociationOrigin: "manual"}
+	association.IdempotencyKey, association.EventID, association.Predecessors = "parent-association-key", "parent-association", []string{"parent-trajectory-start"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), association); err != nil {
+		t.Fatal(err)
+	}
+	phase := StartPhaseLifecycleRequest{LifecycleRequestBase: withAction(parentBase, "start-phase"), Phase: "implementation", Activity: "tdd", ImplementationMode: "inline-execution"}
+	phase.IdempotencyKey, phase.EventID, phase.Predecessors = "parent-phase-key", "parent-phase-start", []string{"parent-association"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), phase); err != nil {
+		t.Fatal(err)
+	}
+	parentEventsBefore := ledgerReadEvents(t, ledger, parentBase.EffortID)
+	before := ProjectLifecycle(parentEventsBefore)
+	frontierBefore := currentCausalFrontier(parentEventsBefore)
+
+	childBase := LifecycleRequestBase{EffortID: "derived-child", SessionID: "child-session", Timestamp: at}
+	origin := OriginMetadata{EffortID: parentBase.EffortID, TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	detour := StartDetourLifecycleRequest{LifecycleRequestBase: withAction(childBase, "start-detour"), CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-phase-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
+	detour.IdempotencyKey, detour.EventID, detour.Predecessors = "child-detour-key", "child-detour-start", []string{}
+	if _, err := ledger.ApplyLifecycle(context.Background(), detour); err != nil {
+		t.Fatal(err)
+	}
+	parentEventsAfter := ledgerReadEvents(t, ledger, parentBase.EffortID)
+	after := ProjectLifecycle(parentEventsAfter)
+	frontierAfter := currentCausalFrontier(parentEventsAfter)
+	beforePhase, beforeOpen := before.OpenPhases["parent-phase-start"]
+	afterPhase, afterOpen := after.OpenPhases["parent-phase-start"]
+	if before.State != EffortActive || after.State != before.State || !beforeOpen || !afterOpen || beforePhase.Phase != "implementation" || beforePhase.StartEventID != "parent-phase-start" || afterPhase.Phase != beforePhase.Phase || afterPhase.StartEventID != beforePhase.StartEventID {
+		t.Fatalf("derived detour changed parent open phase or start: before=%#v after=%#v", before, after)
+	}
+	if before.ActiveTrajectoryID != "parent-trajectory" || strings.Join(frontierBefore, ",") != "parent-phase-start" || after.ActiveTrajectoryID != before.ActiveTrajectoryID || strings.Join(frontierAfter, ",") != strings.Join(frontierBefore, ",") {
+		t.Fatalf("derived detour changed parent trajectory or frontier: before=%#v after=%#v", before, after)
+	}
+	if before.CurrentWorkflow != "" || before.CurrentActivity != "tdd" || before.CurrentImplementationMode != "inline-execution" || after.CurrentWorkflow != before.CurrentWorkflow || after.CurrentActivity != before.CurrentActivity || after.CurrentImplementationMode != before.CurrentImplementationMode {
+		t.Fatalf("derived detour changed parent attribution: before=%#v after=%#v", before, after)
+	}
+	childRead, err := ledger.ReadEffort(childBase.EffortID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	child := ProjectWorkflow(childRead)
+	if child.Origin == nil || *child.Origin != origin || child.Metadata.DetourReturn == nil || child.Metadata.DetourReturn.SessionID != childBase.SessionID || child.Metadata.DetourReturn.Phase != "implementation" || child.Metadata.DetourReturn.PhaseStartEventID != "parent-phase-start" {
+		t.Fatalf("derived child lost lineage or return metadata: %#v", child)
+	}
+	if child.Lifecycle.ActiveTrajectoryID != "child-trajectory" || child.Lifecycle.State != EffortDiscovery || child.Lifecycle.CurrentWorkflow != "brainstorming" {
+		t.Fatalf("derived child detour projection = %#v", child.Lifecycle)
+	}
+}
+
+func TestProtocol21OnlyReturnIsLegalAfterDetourTerminal(t *testing.T) {
+	ledger, err := NewLedger(newTestProject(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := LifecycleRequestBase{EffortID: "detour-effort", SessionID: "session-id", Timestamp: "2026-07-22T00:00:00Z"}
+	origin := OriginMetadata{EffortID: "parent", TrajectoryID: "parent-trajectory", AnchorID: "parent-anchor"}
+	start := StartDetourLifecycleRequest{LifecycleRequestBase: withAction(base, "start-detour"), CreationMode: "derived", Origin: origin, ReturnPhase: "implementation", ReturnPhaseStartEventID: "parent-start", TrajectoryID: "child-trajectory", AnchorID: "child-anchor", Workflow: "brainstorming"}
+	start.IdempotencyKey, start.EventID, start.Predecessors = "start-key", "detour-start", []string{}
+	if _, err := ledger.ApplyLifecycle(context.Background(), start); err != nil {
+		t.Fatal(err)
+	}
+	abandon := AbandonLifecycleRequest{LifecycleRequestBase: withAction(base, "abandon"), Reason: "blocked"}
+	abandon.IdempotencyKey, abandon.EventID, abandon.Predecessors = "abandon-key", "terminal", []string{"detour-start"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), abandon); err != nil {
+		t.Fatal(err)
+	}
+	continued := ContinuePhaseLifecycleRequest{LifecycleRequestBase: withAction(base, "continue-phase"), Phase: "brainstorming", StartEventID: "detour-start", Workflow: "brainstorming"}
+	continued.IdempotencyKey, continued.EventID, continued.Predecessors = "continue-key", "illegal-continue", []string{"terminal"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), continued); err == nil {
+		t.Fatal("phase continuation was legal after terminal detour state")
+	}
+	observation := passiveEvent(t, "terminal-observation", "terminal-observation", base.EffortID, []string{"terminal"})
+	if _, err := ledger.Append(context.Background(), observation); err != nil {
+		t.Fatal(err)
+	}
+	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-association"}
+	returned.IdempotencyKey, returned.EventID, returned.Predecessors = "return-key", "return", []string{"terminal"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err == nil || !strings.Contains(err.Error(), "frontier") {
+		t.Fatalf("partial-frontier return error = %v", err)
+	}
+	returned.Predecessors, returned.TerminalOutcome = []string{"terminal-observation"}, "completed"
+	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err == nil || !strings.Contains(err.Error(), "outcome") {
+		t.Fatalf("mismatched return outcome error = %v", err)
+	}
+	returned.TerminalOutcome = "abandoned"
+	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func ledgerReadEvents(t *testing.T, ledger *Ledger, effortID string) []EventEnvelope {
+	t.Helper()
+	read, err := ledger.ReadEffort(effortID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return read.Events
 }
 
 func TestReaderRetainsExternalIllegalLifecycleEvidence(t *testing.T) {
