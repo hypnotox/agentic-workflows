@@ -112,6 +112,36 @@ worth considering at the same time is the inverse direction: a file in the diff
 that no part of the message accounts for, which is what catches a `git add -A`
 sweeping another effort's work.
 
+## Bare `awf check` should run every enabled check and report what ran
+
+ADR-0159 was deliberately the first of two decisions: it renamed and regrouped
+the verification commands without changing what bare `awf check` does. The
+follow-on makes bare `awf check` run drift, state, invariants, and, when their
+config knobs are on, the prose and working-memory-citation scans, then report
+every check with a ran or skipped verdict and a reason for each skip. The
+requirement as the user framed it during the ADR-0159 brainstorm: it should
+clearly state what ran and what did not.
+
+Four contracts belong to that decision, all named in ADR-0159 and left
+untouched there. The prose and memory scans call `snapshot.IndexTree` before
+consulting their own knob, so today a disabled gate hard-errors outside a git
+repository instead of reporting itself skipped; the knob check has to move
+ahead of the index read, and what bare check does outside git while a knob is
+ON still needs deciding. The pre-commit payload and `./x gate` between them
+invoke each scan three times, which the report makes visible and which should
+be pruned in the same decision. The exit-code contract when every check is
+skipped is unsettled. And `--staged` could widen from the bare form to the
+children once a report exists to disclose a skip honestly, which ADR-0159
+Decision 3 records as the reason it stayed bare-form-only.
+
+One open design question has no home in ADR-0159 and would otherwise be lost.
+`examples/sundial` is the deliberately smell-free showcase adopter, and it
+enables neither opt-in scan, so a faithful ran/skipped report prints two skip
+lines in the one rendered tree held up as the clean example. Either those lines
+are acceptable output for a healthy project, or the report suppresses a check
+whose knob is off, which weakens the very disclosure the decision exists to
+provide. Settle that before writing the report format, not after.
+
 ## A frozen-state ADR flip can smuggle unreviewed section content
 
 The commit that moves an ADR to Accepted, Implemented, or Abandoned may also mutate the ADR's
