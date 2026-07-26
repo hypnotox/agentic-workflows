@@ -414,11 +414,18 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		}
 	}
 
-	// No rendered skill body on any target may presuppose a runtime-assigned
-	// effort ID. The sweep covers every rendered skill on both renders rather
-	// than the checkpoint-carrying lists: the old forms are unsatisfiable
-	// wherever no runtime assigns an ID, whichever skill carries them, and a
-	// target-conditional branch is exactly where such a form hides (ADR-0160).
+	// No rendered site may presuppose a runtime-assigned effort ID: not a skill
+	// body on any target, and not the neutral docs, where this protocol has its
+	// canonical home. The old forms are unsatisfiable wherever no runtime
+	// assigns an ID, and a target-conditional branch or the canonical doc is
+	// exactly where one hides unseen (ADR-0160).
+	type renderedSite struct{ label, path string }
+	sites := []renderedSite{
+		{"pi/docs/workflow.md", filepath.Join(root, "docs", "workflow.md")},
+		{"pi/AGENTS.md", filepath.Join(root, "AGENTS.md")},
+		{"claude/docs/workflow.md", filepath.Join(nonPiRoot, "docs", "workflow.md")},
+		{"claude/AGENTS.md", filepath.Join(nonPiRoot, "AGENTS.md")},
+	}
 	bodies, err := os.ReadDir(filepath.Join(root, ".pi", "awf-workflows"))
 	if err != nil {
 		t.Fatalf("list rendered pi workflow bodies: %v", err)
@@ -428,14 +435,16 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		if name == entry.Name() {
 			continue
 		}
-		for label, path := range map[string]string{
-			"pi/" + name:     filepath.Join(root, ".pi", "awf-workflows", entry.Name()),
-			"claude/" + name: skillPath(nonPiRoot, name),
-		} {
-			for _, banned := range []string{"<active-effort-id>", "never invent or infer an effort ID", "never infer the ID"} {
-				if strings.Contains(read(t, path), banned) {
-					t.Errorf("skill %q presupposes a runtime-assigned effort ID via %q", label, banned)
-				}
+		sites = append(sites,
+			renderedSite{"pi/" + name, filepath.Join(root, ".pi", "awf-workflows", entry.Name())},
+			renderedSite{"claude/" + name, skillPath(nonPiRoot, name)},
+		)
+	}
+	for _, site := range sites {
+		body := read(t, site.path)
+		for _, banned := range []string{"<active-effort-id>", "never invent or infer an effort ID", "never infer the ID"} {
+			if strings.Contains(body, banned) {
+				t.Errorf("rendered site %q presupposes a runtime-assigned effort ID via %q", site.label, banned)
 			}
 		}
 	}
