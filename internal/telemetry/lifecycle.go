@@ -2,6 +2,8 @@ package telemetry
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -947,12 +949,18 @@ func (l *Ledger) validateDetourReturnAssociation(child EffortRead, event EventEn
 	if err := json.Unmarshal(event.Payload, &payload); err != nil { // coverage-ignore: lifecycle request validation proved the payload
 		return err
 	}
+	current := projectLifecycleFromRead(child)
+	terminal, ok := detourTerminalEvent(child, current)
+	if !ok { // coverage-ignore: the lifecycle projection rejects a return without its current terminal boundary
+		return errors.New("detour return has no current terminal boundary")
+	}
+	identity := detourReturnIdentity(child.Metadata.EffortID, current.TerminalEpoch)
 	parent, err := l.ReadEffort(child.Metadata.Origin.EffortID)
 	if err != nil {
 		return fmt.Errorf("read detour return parent: %w", err)
 	}
 	for _, record := range parent.Records {
-		if record.Event == nil || !record.Applied || record.Event.EventID != payload.ParentAssociationEventID || record.Event.Kind != "session_associated" {
+		if record.Event == nil || !record.Applied || record.Event.EventID != payload.ParentAssociationEventID {
 			continue
 		}
 		var association SessionAssociatedPayload
@@ -960,11 +968,37 @@ func (l *Ledger) validateDetourReturnAssociation(child EffortRead, event EventEn
 			return err
 		}
 		origin, returned := child.Metadata.Origin, child.Metadata.DetourReturn
-		if record.Event.EffortID == origin.EffortID && record.Event.SessionID == returned.SessionID && association.TrajectoryID == origin.TrajectoryID && association.AssociationOrigin == "detour" {
+		if record.Event.Kind == "session_associated" && record.Event.IdempotencyKey == "detour-return-"+identity && record.Event.EventID == "detour-return-event-"+identity+"-parent" && record.Event.EffortID == origin.EffortID && record.Event.SessionID == returned.SessionID && record.Event.Timestamp == terminal.Timestamp && record.Event.TrajectoryID == origin.TrajectoryID && association.TrajectoryID == origin.TrajectoryID && association.AssociationOrigin == "detour" && association.HandoffEventID == "" {
 			return nil
 		}
 	}
-	return errors.New("detour return parent association is not a matching applied parent event")
+	return errors.New("detour return parent association is not the deterministic association for this child terminal epoch")
+}
+
+func detourReturnIdentity(childEffortID string, terminalEpoch uint64) string {
+	identity, _ := json.Marshal(struct {
+		ChildEffortID string `json:"childEffortId"`
+		TerminalEpoch uint64 `json:"terminalEpoch"`
+	}{childEffortID, terminalEpoch})
+	sum := sha256.Sum256(identity)
+	return hex.EncodeToString(sum[:])
+}
+
+func detourTerminalEvent(child EffortRead, current LifecycleProjection) (EventEnvelope, bool) {
+	kind := EventKind("effort_abandoned")
+	if current.State == EffortCompleted {
+		kind = "effort_completed"
+	}
+	for _, record := range child.Records {
+		if record.Event == nil || !record.Applied || record.Event.Kind != kind {
+			continue
+		}
+		var payload EffortTerminalPayload
+		if json.Unmarshal(record.Event.Payload, &payload) == nil && payload.TerminalEpoch == current.TerminalEpoch {
+			return *record.Event, true
+		}
+	}
+	return EventEnvelope{}, false
 }
 
 func currentCausalFrontier(events []EventEnvelope) []string {

@@ -775,7 +775,21 @@ func TestApplyStartDetourReportsParentLeaseHeartbeatAndReleaseFailures(t *testin
 	}
 }
 
-func TestApplyLifecycleRejectsForgedDetourReturnParentAssociation(t *testing.T) {
+func TestDetourReturnIdentityAndTerminalBoundary(t *testing.T) {
+	if got, want := detourReturnIdentity("child", 1), "7ec845cf3ebadce6a7bd3acae661b7d2f5d092684016e4fc90cf9423b582e4fe"; got != want {
+		t.Fatalf("detour return identity = %q, want %q", got, want)
+	}
+	completed := EventEnvelope{EventID: "completed", Kind: "effort_completed", Payload: mustJSON(t, EffortTerminalPayload{TerminalEpoch: 2})}
+	terminal, ok := detourTerminalEvent(EffortRead{Records: []LedgerRecord{{Event: &completed, Applied: true}}}, LifecycleProjection{State: EffortCompleted, TerminalEpoch: 2})
+	if !ok || terminal.EventID != completed.EventID {
+		t.Fatalf("completed terminal boundary = %#v, %v", terminal, ok)
+	}
+	if _, ok := detourTerminalEvent(EffortRead{}, LifecycleProjection{State: EffortAbandoned, TerminalEpoch: 1}); ok {
+		t.Fatal("missing terminal boundary was accepted")
+	}
+}
+
+func TestApplyLifecycleRejectsOtherChildDetourReturnAssociation(t *testing.T) {
 	ledger, err := NewLedger(newTestProject(t))
 	if err != nil {
 		t.Fatal(err)
@@ -789,13 +803,25 @@ func TestApplyLifecycleRejectsForgedDetourReturnParentAssociation(t *testing.T) 
 	if _, err := ledger.ApplyLifecycle(context.Background(), abandon); err != nil {
 		t.Fatal(err)
 	}
-	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "mark-detour-returned", IdempotencyKey: "return-key", EventID: "return", EffortID: "child", SessionID: "session", Timestamp: "2026-07-22T00:00:00Z", Predecessors: []string{"terminal"}}, TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-route"}
-	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err == nil {
-		t.Fatal("forged parent association event ID was accepted")
+	associate := func(childID, predecessor string) AssociateLifecycleRequest {
+		identity := detourReturnIdentity(childID, 1)
+		return AssociateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "associate", IdempotencyKey: "detour-return-" + identity, EventID: "detour-return-event-" + identity + "-parent", EffortID: "parent", SessionID: "session", Timestamp: abandon.Timestamp, Predecessors: []string{predecessor}}, TrajectoryID: origin.TrajectoryID, AssociationOrigin: "detour"}
 	}
-	returned.ParentAssociationEventID = "parent-association"
+	otherChild := associate("other-child", "parent-phase-start")
+	if _, err := ledger.ApplyLifecycle(context.Background(), otherChild); err != nil {
+		t.Fatal(err)
+	}
+	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "mark-detour-returned", IdempotencyKey: "return-key", EventID: "return", EffortID: "child", SessionID: "session", Timestamp: abandon.Timestamp, Predecessors: []string{"terminal"}}, TerminalOutcome: "abandoned", ParentAssociationEventID: otherChild.EventID}
+	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err == nil {
+		t.Fatal("another child's deterministic parent association was accepted")
+	}
+	matchingChild := associate(start.EffortID, otherChild.EventID)
+	if _, err := ledger.ApplyLifecycle(context.Background(), matchingChild); err != nil {
+		t.Fatal(err)
+	}
+	returned.ParentAssociationEventID = matchingChild.EventID
 	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err != nil {
-		t.Fatalf("matching parent association was rejected: %v", err)
+		t.Fatalf("matching deterministic parent association was rejected: %v", err)
 	}
 }
 
@@ -825,7 +851,12 @@ func TestProtocol21OnlyReturnIsLegalAfterDetourTerminal(t *testing.T) {
 	if _, err := ledger.Append(context.Background(), observation); err != nil {
 		t.Fatal(err)
 	}
-	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: "parent-association"}
+	identity := detourReturnIdentity(base.EffortID, 1)
+	association := AssociateLifecycleRequest{LifecycleRequestBase: LifecycleRequestBase{Action: "associate", IdempotencyKey: "detour-return-" + identity, EventID: "detour-return-event-" + identity + "-parent", EffortID: origin.EffortID, SessionID: base.SessionID, Timestamp: base.Timestamp, Predecessors: []string{"parent-start"}}, TrajectoryID: origin.TrajectoryID, AssociationOrigin: "detour"}
+	if _, err := ledger.ApplyLifecycle(context.Background(), association); err != nil {
+		t.Fatal(err)
+	}
+	returned := MarkDetourReturnedLifecycleRequest{LifecycleRequestBase: withAction(base, "mark-detour-returned"), TerminalOutcome: "abandoned", ParentAssociationEventID: association.EventID}
 	returned.IdempotencyKey, returned.EventID, returned.Predecessors = "return-key", "return", []string{"terminal"}
 	if _, err := ledger.ApplyLifecycle(context.Background(), returned); err == nil || !strings.Contains(err.Error(), "frontier") {
 		t.Fatalf("partial-frontier return error = %v", err)
