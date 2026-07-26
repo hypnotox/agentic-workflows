@@ -25,6 +25,7 @@ import {
   validateWorkflowPredecessor,
   validateWorkflowRouteOrder,
   workflowMappings,
+  workflowAgentContent,
   workflowRouteEffect,
   workflowSkillNames,
   workflowToolPreflight,
@@ -100,6 +101,11 @@ test("rendered workflow metadata drives a closed semantic-only schema", async ()
     for (const input of [{ skill: ".pi/awf-workflows/brainstorming.md" }, { skill: "../brainstorming" }, { skill: "disabled" }, { skill: "brainstorming", path: "x" }]) assert.equal(Value.Check(schema, input), false);
     await assert.rejects(execute(h.tools.get("awf_workflow"), "../brainstorming", context({ sessionId: "session" })), /disabled or unknown/);
   } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test("workflow content surfaces a line-safe active effort identity", () => {
+  assert.equal(workflowAgentContent("fixed body\n", "effort-1"), "Active effort ID: effort-1\n\nfixed body\n");
+  for (const effortId of ["effort\nsecond", "effort\u2028second", "effort\u0000second"]) assert.throws(() => workflowAgentContent("body", effortId), /unsafe for agent-visible/);
 });
 
 test("exclusive trustworthy preflight rejects every workflow sibling and stale leaf", () => {
@@ -368,10 +374,10 @@ test("route-bearing task retry recovers after route durability and starts from t
 test("invariant: workflow router acknowledges durably before returning fixed bodies", async () => {
   const root = await projectRoot(); try {
     await bodies(root, ["brainstorming", "exploring", "executing-direct", "reviewing-impl"]); const association = await seed(defaultLedgerDependencies(join(root, ".pi/extensions/awf-dashboard/index.ts"))); const h = await harness(root, async () => association); const tool = h.tools.get("awf_workflow"); const ctx = context(association);
-    const first = await execute(tool, "brainstorming", ctx); assert.equal(first.content[0].text, "fixed body brainstorming\n"); assert.equal(first.details.durable, true); assert.equal(first.details.effortId, "effort"); const firstID = first.details.eventIds[0];
+    const first = await execute(tool, "brainstorming", ctx); assert.equal(first.content[0].text, "Active effort ID: effort\n\nfixed body brainstorming\n"); assert.equal(first.details.durable, true); assert.equal(first.details.effortId, "effort"); const firstID = first.details.eventIds[0];
     const retry = await execute(tool, "brainstorming", ctx); assert.deepEqual(retry.details.eventIds, [firstID]); assert.equal(retry.content[0].text, first.content[0].text);
-    const activity = await execute(tool, "exploring", ctx); assert.equal(activity.content[0].text, "fixed body exploring\n");
-    const direct = await execute(tool, "executing-direct", ctx); assert.equal(direct.content[0].text, "fixed body executing-direct\n");
+    const activity = await execute(tool, "exploring", ctx); assert.equal(activity.content[0].text, "Active effort ID: effort\n\nfixed body exploring\n");
+    const direct = await execute(tool, "executing-direct", ctx); assert.equal(direct.content[0].text, "Active effort ID: effort\n\nfixed body executing-direct\n");
     const projection = await projectLocalLifecycle(h.ledger, "effort"); assert.equal(projection.route, "direct"); assert.deepEqual([...projection.openPhases.values()].map((phase: any) => phase.phase), ["implementation"]);
     await assert.rejects(execute(tool, "reviewing-impl", { sessionManager: { getSessionId: () => "stale" } }), /session association is stale/);
     const stream = await readFile(join(root, ".awf/metrics/efforts/effort/sessions/session.jsonl"), "utf8"); assert.match(stream, /phase_started/); assert.match(stream, /phase_transitioned/); assert.match(stream, /"route":"direct"/);
@@ -436,6 +442,7 @@ test("loader fails closed at identity, session, post-ack cancellation, and body-
   const root = await projectRoot(); try {
     await bodies(root, ["brainstorming"]); const association = await seed(defaultLedgerDependencies(join(root, ".pi/extensions/awf-dashboard/index.ts")), "boundaries"); const unsettled = await harness(root); await assert.rejects(execute(unsettled.tools.get("awf_workflow"), "brainstorming", context(association)), /identity is not settled/);
     const malformed = await harness(root, async () => ({ ...association, effortId: "../bad" })); await assert.rejects(execute(malformed.tools.get("awf_workflow"), "brainstorming", context(association)), /identity is not settled/);
+    const unsafe = await harness(root, async () => ({ ...association, effortId: "unsafe\nidentity" })); await assert.rejects(execute(unsafe.tools.get("awf_workflow"), "brainstorming", context(association)), /unsafe for agent-visible/); assert.doesNotMatch(await readFile(join(root, ".awf/metrics/efforts/boundaries/sessions/session.jsonl"), "utf8"), /phase_started/);
     const fallback = await harness(root, async () => association); const noSessionAPI = { sessionManager: { getLeafEntry: context(association).sessionManager.getLeafEntry } }; assert.equal((await execute(fallback.tools.get("awf_workflow"), "brainstorming", noSessionAPI)).details.durable, true);
     const readFailureRoot = await projectRoot(); try { await bodies(readFailureRoot, ["brainstorming"]); const readAssociation = await seed(defaultLedgerDependencies(join(readFailureRoot, ".pi/extensions/awf-dashboard/index.ts")), "read-failure"); const readFailure = await harness(readFailureRoot, async () => readAssociation); const originalOpen = readFailure.ledger.open; readFailure.ledger.open = async (path: string, flags: number | string, mode?: number) => { if (path.includes("/.pi/awf-workflows/")) throw new Error("removed"); return originalOpen(path, flags, mode); }; await assert.rejects(execute(readFailure.tools.get("awf_workflow"), "brainstorming", context(readAssociation)), /body could not be read safely/); assert.doesNotMatch(await readFile(join(readFailureRoot, ".awf/metrics/efforts/read-failure/sessions/session.jsonl"), "utf8"), /phase_started/); }
     finally { await rm(readFailureRoot, { recursive: true, force: true }); }

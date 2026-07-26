@@ -121,6 +121,10 @@ export interface DashboardState {
 function identifier(value: unknown): value is string {
   return typeof value === "string" && value.length > 0 && Buffer.byteLength(value, "utf8") <= protocolLimits.identifierBytes && value !== "." && value !== ".." && !value.includes("/") && !value.includes("\\");
 }
+export function workflowAgentContent(body: string, effortId: unknown): string {
+  if (!identifier(effortId) || /[\p{Cc}\p{Zl}\p{Zp}]/u.test(effortId)) throw new Error("workflow effort identity is unsafe for agent-visible output");
+  return `Active effort ID: ${effortId}\n\n${body}`;
+}
 function boundedBytes(value: unknown, maximum: number, fallback = "unknown"): string { const text = typeof value === "string" && value ? value : fallback; if (Buffer.byteLength(text, "utf8") <= maximum) return text; let end = text.length; while (end > 0 && Buffer.byteLength(text.slice(0, end), "utf8") > maximum) end--; const bounded = text.slice(0, end); /* c8 ignore next -- runtime guard unreachable because every caller supplies a positive bound larger than its nonempty fallback */ if (!bounded) return fallback; return bounded; }
 function associationValid(value: unknown): value is TelemetryAssociation {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -957,7 +961,7 @@ export function registerDashboard(pi: ExtensionAPI, deps: DashboardDependencies 
     if (signal?.aborted) throw new Error("workflow request canceled"); if (workflowBusy) throw new Error("parallel competing workflow loader call rejected"); workflowBusy = true;
     try {
       const mapping: any = (workflowMappings as any)[skill]; const body = await snapshotWorkflowBody(deps.ledger, workflowBodyPath(deps.extensionFile, skill));
-      if (!association) association = deps.settleWorkflowIdentity ? await deps.settleWorkflowIdentity(skill, ctx) : await provisional?.settleCandidate("workflow"); if (!associationValid(association)) throw new Error("workflow identity is not settled"); state.setWidgetAssociation(association.effortId);
+      if (!association) association = deps.settleWorkflowIdentity ? await deps.settleWorkflowIdentity(skill, ctx) : await provisional?.settleCandidate("workflow"); if (!associationValid(association)) throw new Error("workflow identity is not settled"); const agentContent = workflowAgentContent(body, association.effortId); state.setWidgetAssociation(association.effortId);
       const runtimeSession = ctx?.sessionManager?.getSessionId?.() ?? association.sessionId; if (!identifier(runtimeSession) || runtimeSession !== association.sessionId) throw new Error("workflow session association is stale");
       let projection = await projectLocalLifecycle(deps.ledger, association.effortId); const retry = acknowledgedWorkflowRetry(projection, runtimeSession, skill); const eventIds: string[] = [];
       if (retry) eventIds.push(retry.eventId); else {
@@ -980,7 +984,7 @@ export function registerDashboard(pi: ExtensionAPI, deps: DashboardDependencies 
       }
       if (signal?.aborted) throw new Error("workflow request canceled after durable acknowledgment");
       void refreshCanonical(signal); if (mapping.terminalEffect === "arm-completion") { const projection = await projectLocalLifecycle(deps.ledger, association.effortId); const phase = [...projection.openPhases.values()]; /* c8 ignore next -- runtime guard unreachable because catalog validation permits terminal arming only on an acknowledged retrospective transition */ if (phase.length !== 1 || phase[0]?.phase !== "retrospective") throw new Error("retrospective phase start was not durably applied"); retrospectiveSettlement = { effortId: association.effortId, sessionId: runtimeSession, phaseStartEventId: phase[0].startEventId, toolCallId: _id, failedTool: false, armed: false }; }
-      return { content: [{ type: "text" as const, text: body }], details: { skill, effortId: association.effortId, eventIds, durable: true } };
+      return { content: [{ type: "text" as const, text: agentContent }], details: { skill, effortId: association.effortId, eventIds, durable: true } };
     } finally { workflowBusy = false; }
   }}; pi.registerTool(workflowTool);
   let pendingResume: { id: string; effortId: string; candidateId: string; setupPersisted: boolean; retriesRemaining: number; association?: TelemetryAssociation } | undefined;

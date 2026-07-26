@@ -802,9 +802,9 @@
     },
     ".pi/extensions/awf-dashboard/index.ts": {
       "templateId": "pi/awf-dashboard/index.ts.tmpl",
-      "templateHash": "sha256:e7446e4e9569e5c976153deb1ed9e412dfaedf867742ca2d08ab04837faa67d6",
+      "templateHash": "sha256:19803f7f1810d582204ef9b1124c490d594f549f4121c68d7c46cc7ce9d01edf",
       "configHash": "sha256:f82fc8aec272d707dd21c9643f1f24173e2c29c82aab4a5e5813a3c14dfb6186",
-      "outputHash": "sha256:8eb07fa79fa28ebe7e57068e182751017689a8f187f5cb296701ec8501b16ae2"
+      "outputHash": "sha256:080b6940a1c6f500b7cfa97148903eff605ba789df099626d1bc73287790eac6"
     },
     ".pi/extensions/awf-dashboard/protocol.ts": {
       "templateId": "pi/awf-dashboard/protocol.ts.tmpl",
