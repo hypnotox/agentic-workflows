@@ -519,6 +519,12 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				return err
 			}
 			if exists {
+				// The worktree removal above may have crossed a checkout swap. Recheck
+				// the invoking path immediately before deleting the branch as well.
+				liveRoots, liveErr := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
+				if liveErr != nil || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) {
+					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed before branch deletion"))
+				}
 				tip, err := resolvePartial(s.ctx, s.paths.roots.InvokingRoot, "refs/heads/"+evidence.Branch)
 				if err != nil {
 					return err

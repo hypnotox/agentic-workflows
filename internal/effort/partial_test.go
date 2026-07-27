@@ -711,7 +711,24 @@ func TestPartialEvidenceRestartRecovery(t *testing.T) {
 			t.Fatal(err)
 		}
 		runEffortGit(t, "-C", root, "worktree", "remove", path)
-		repaired, err := fresh(t, root).Repair(record.ID)
+		freshService := fresh(t, root)
+		originalPartialBranches := partialBranches
+		foreign := initEffortRepo(t)
+		partialBranches = func(ctx context.Context, checkout, branchName string) (bool, error) {
+			present, runErr := originalPartialBranches(ctx, checkout, branchName)
+			if present {
+				freshService.paths.roots.CommonDir = filepath.Join(foreign, ".git")
+			}
+			return present, runErr
+		}
+		_, err = freshService.Repair(record.ID)
+		partialBranches = originalPartialBranches
+		if err == nil || !strings.Contains(err.Error(), "live control-root identity changed") {
+			t.Fatalf("swapped branch deletion accepted: %v", err)
+		}
+		freshService = fresh(t, root)
+		freshService = fresh(t, root)
+		repaired, err := freshService.Repair(record.ID)
 		if err != nil {
 			t.Fatal(err)
 		}

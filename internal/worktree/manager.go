@@ -75,6 +75,22 @@ func (m *Manager) validateManagedTarget(path string) error {
 	return nil
 }
 
+// validateLiveInvokingCheckout is deliberately repeated at mutation boundaries.
+// The checkout may have been replaced after Open or after an earlier probe.
+func (m *Manager) validateLiveInvokingCheckout() error {
+	if err := safeManagedPath(m.roots.InvokingRoot); err != nil {
+		return &awfgit.HardSafetyError{Category: "repository-identity", Path: m.roots.InvokingRoot, Err: err}
+	}
+	live, err := awfgit.ResolveControlRoots(m.ctx, m.roots.InvokingRoot)
+	if err != nil {
+		return &awfgit.HardSafetyError{Category: "repository-identity", Path: m.roots.InvokingRoot, Err: err}
+	}
+	if filepath.Clean(live.InvokingRoot) != filepath.Clean(m.roots.InvokingRoot) || filepath.Clean(live.CommonDir) != filepath.Clean(m.roots.CommonDir) || filepath.Clean(live.PrimaryRoot) != filepath.Clean(m.roots.PrimaryRoot) {
+		return &awfgit.HardSafetyError{Category: "repository-identity", Path: m.roots.InvokingRoot, Err: errors.New("invoking checkout identity changed")}
+	}
+	return nil
+}
+
 func (m *Manager) operationFree(path string) error {
 	for _, name := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"} {
 		out, err := m.run(m.ctx, path, "rev-parse", "--git-path", name)
@@ -240,6 +256,10 @@ func (m *Manager) Integrate(id string, force bool, reason string) (effort.Record
 	if err := m.efforts.RecordPartial(evidence); err != nil {
 		return effort.Record{}, fmt.Errorf("record integration partial evidence: %w", err)
 	}
+	if err := m.validateLiveInvokingCheckout(); err != nil {
+		_ = m.efforts.ClearPartial(id, "integration")
+		return effort.Record{}, err
+	}
 	if _, err = m.run(m.ctx, m.roots.InvokingRoot, args...); err != nil {
 		if settleErr := m.efforts.ClearPartial(id, "integration"); settleErr != nil {
 			return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("settle failed integration evidence after merge failure: %w", settleErr)}
@@ -271,6 +291,9 @@ func (m *Manager) RecordManualIntegration(id, commit string, force bool, reason 
 	// resolution. A swapped checkout must remain pending and untouched.
 	if err = m.validateManagedTarget(path); err != nil {
 		return effort.Record{}, err
+	}
+	if filepath.Clean(m.roots.InvokingRoot) == filepath.Clean(path) {
+		return effort.Record{}, &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("cannot record integration from managed worktree")}
 	}
 	if err = exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(id)); err != nil {
 		return effort.Record{}, err
@@ -356,6 +379,10 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	if err := m.efforts.RecordPartial(evidence); err != nil {
 		return effort.Record{}, fmt.Errorf("record removal partial evidence: %w", err)
 	}
+	if err := m.validateLiveInvokingCheckout(); err != nil {
+		_ = m.efforts.ClearPartial(id, "removal")
+		return effort.Record{}, err
+	}
 	removeArgs := []string{"worktree", "remove"}
 	if worktreeRemoveForce {
 		removeArgs = append(removeArgs, "--force")
@@ -367,6 +394,9 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	deleteFlag := "-d"
 	if branchDeleteForce {
 		deleteFlag = "-D"
+	}
+	if err := m.validateLiveInvokingCheckout(); err != nil {
+		return effort.Record{}, err
 	}
 	if _, err = m.run(m.ctx, m.roots.InvokingRoot, "branch", deleteFlag, branch(id)); err != nil {
 		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "delete-worktree-branch", Err: fmt.Errorf("delete managed branch: %w", err)}

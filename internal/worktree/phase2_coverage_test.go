@@ -9,9 +9,133 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 // invariant: tooling/effort-management:managed-worktree-lifecycle
+func TestPhase2LiveInvokingIdentityRefusals(t *testing.T) {
+	m := newManagerForPhase2(t)
+	foreign := newWorktreeRepo(t)
+	original := m.roots.InvokingRoot
+	m.roots.InvokingRoot = t.TempDir()
+	if err := m.validateLiveInvokingCheckout(); err == nil {
+		t.Fatal("non-repository invoking checkout accepted")
+	}
+	m.roots.InvokingRoot = foreign
+	if err := m.validateLiveInvokingCheckout(); err == nil {
+		t.Fatal("foreign invoking checkout accepted")
+	}
+	m.roots.InvokingRoot = original
+	oldLstat := managedLstat
+	managedLstat = func(string) (os.FileInfo, error) { return nil, errors.New("injected invoking path fault") }
+	if err := m.validateLiveInvokingCheckout(); err == nil {
+		t.Fatal("unreadable invoking checkout accepted")
+	}
+	managedLstat = oldLstat
+	m.roots.CommonDir = filepath.Join(foreign, ".git")
+	if err := m.validateLiveInvokingCheckout(); err == nil {
+		t.Fatal("swapped invoking repository identity accepted")
+	}
+}
+
+func TestPhase2ManualIntegrationFromManagedCheckoutRefusedBeforeCommitResolution(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("managed caller", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Add(r.ID, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	path, err := m.managed(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := m.efforts.Show(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.roots.InvokingRoot = path
+	_, err = m.RecordManualIntegration(r.ID, "not-a-revision", false, "")
+	var refusal *awfgit.HardSafetyError
+	if !errors.As(err, &refusal) {
+		t.Fatalf("managed caller error = %T %v", err, err)
+	}
+	after, err := m.efforts.Show(r.ID)
+	if err != nil || after.Integration != effort.IntegrationPending || after.Worktree == nil || before.Integration != after.Integration {
+		t.Fatalf("managed caller changed record: before=%+v after=%+v err=%v", before, after, err)
+	}
+}
+
+func TestPhase2MutationBoundaryRefusesSwappedInvokingCheckout(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("swap during merge", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Add(r.ID, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	foreign := newWorktreeRepo(t)
+	base := m.run
+	m.run = func(ctx context.Context, root string, args ...string) ([]byte, error) {
+		out, runErr := base(ctx, root, args...)
+		if strings.HasPrefix(strings.Join(args, " "), "merge-base") {
+			m.roots.CommonDir = filepath.Join(foreign, ".git")
+		}
+		return out, runErr
+	}
+	if _, err = m.Integrate(r.ID, false, ""); err == nil {
+		t.Fatal("swapped merge target accepted")
+	}
+}
+
+func TestPhase2RemovalPreMutationRefusesSwappedInvokingCheckout(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("swap before removal", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Add(r.ID, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	foreign := newWorktreeRepo(t)
+	base := m.run
+	m.run = func(ctx context.Context, root string, args ...string) ([]byte, error) {
+		out, runErr := base(ctx, root, args...)
+		if strings.HasPrefix(strings.Join(args, " "), "rev-parse --verify awf/") {
+			m.roots.CommonDir = filepath.Join(foreign, ".git")
+		}
+		return out, runErr
+	}
+	if _, err = m.Remove(r.ID, true, "approved removal"); err == nil {
+		t.Fatal("swapped removal target accepted")
+	}
+}
+
+func TestPhase2RemovalBoundaryRefusesSwappedInvokingCheckout(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("swap during removal", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Add(r.ID, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	foreign := newWorktreeRepo(t)
+	base := m.run
+	m.run = func(ctx context.Context, root string, args ...string) ([]byte, error) {
+		out, runErr := base(ctx, root, args...)
+		if strings.HasPrefix(strings.Join(args, " "), "worktree remove") {
+			m.roots.CommonDir = filepath.Join(foreign, ".git")
+		}
+		return out, runErr
+	}
+	if _, err = m.Remove(r.ID, true, "approved removal"); err == nil {
+		t.Fatal("swapped removal target accepted")
+	}
+}
+
 func TestPhase2FailureSettlementAndPreconditions(t *testing.T) {
 	m := newManagerForPhase2(t)
 	originalPrimary := m.roots.PrimaryRoot
