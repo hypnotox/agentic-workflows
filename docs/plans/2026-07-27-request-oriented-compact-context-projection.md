@@ -74,7 +74,14 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
   type ContextSelectorImpact struct { DomainPaths, TopicPaths []string; DeclaredGlobal bool }
   ```
 
-  `ParseContextFacets(values []string, full bool) ([]ContextFacet, error)` validates, deduplicates, and returns the constants in declaration order; `full` supplies all constants and composes with no explicit values. `ContextForOptions(paths []string, options ContextOptions)` and staged/root equivalents are the only semantic assembly funnel; existing public convenience functions either delegate or are removed with their callers. `buildContextRequests(queries []string, set contextPathSet, options ContextOptions) []ContextRequestReport` retains every nonblank raw argument. `contextGroupKey(ContextPathImpact) string` uses deterministic length-prefixed fields from the full semantic impact, including provenance edges, and never rendered text or facet visibility.
+  `ParseContextFacets(values []string, full bool) ([]ContextFacet, error)` validates, deduplicates, and returns the constants in declaration order; `full` supplies all constants and composes with no explicit values. These are the only two production assembly entries:
+
+  ```go
+  func (p *Project) ContextForOptions(paths []string, options ContextOptions) (ContextResult, error)
+  func StagedContextRootOptions(root string, paths []string, options ContextOptions) (ContextResult, error)
+  ```
+
+  The first passes `p.workingTree()` and project-root authority to the common unexported assembler; the second loads one immutable index tree and its staged authority before calling that same assembler. Remove `ContextFor`, `ContextForFull`, `ContextForGitSelection`, `ContextForFullGitSelection`, `StagedContextRoot`, `StagedContextRootFull`, `StagedContextRootGitSelection`, and `StagedContextRootFullGitSelection` after `cmd/awf` and tests move to these entries. `buildContextRequests(queries []string, set contextPathSet, options ContextOptions) []ContextRequestReport` retains every nonblank raw argument. `contextGroupKey(impact ContextPathImpact) string` uses deterministic length-prefixed fields from the full semantic impact, including provenance edges, and never rendered text or facet visibility.
 
   Refactor `assembleContextUniverse` and `classifyContextPath` across `internal/project/context.go` and `context_paths.go` so one selected snapshot supplies both included and excluded census data. Stop traversal at nested adopter and symlink boundaries; never infer absent generated files. Preserve classification precedence and safe glob-literal behavior. `Members` is the complete sorted set only when `Count <= 3` and is an empty non-nil slice otherwise; no other field retains those members. Build the grouping key before facet projection so `--show` and `--full` cannot change grouping. Run `gofmt -w internal/topic internal/project && go test ./internal/topic ./internal/project`; all Task 1.1 tests and preserved snapshot/classification tests must pass.
 
@@ -141,9 +148,39 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
     Pending: 1 operation from ADR-0165
   ```
 
-  Exact and Git entries replace the `Directory`/group lines with `File: <path>` followed by the same eight impact lines; staged uses `Selection: staged`, range uses `Selection: range <literal-range>`, and both render one `[n] <path>` block per sorted selected file. Zero values render `none`, not an omitted label. A group above three has `Group N: <count> files` followed immediately by `Classification` and never a `Members` line. Warnings follow Proofs as one `Warning: <closed-warning-text>` line each. `--show selectors` adds `Selectors: domain=<Go slice>; topic=<Go slice>; both must match`; `evidence` adds `Backing`, `Verify`, and either `Evidence <kind>: <path>:<line>...` or `Evidence <kind>: <count> sites`; `references` adds `Incoming:`/`Outgoing:`; `pending` replaces the bounded Pending line with one `Pending operation: ADR-<n> <op> <claim> [<progress>]` per operation; `artifacts` expands each compact Provenance line with indented Source, Output, and Navigate lines. Category order is Directly related, Applicable invariants, Additional topic rules, Referenced context, Pending. Empty categories are omitted.
+  Exact and Git entries replace the `Directory`/group lines with `File: <path>`, then render the fixed impact labels in this order: Classification, optional Nested root or Symlink target inside repository, Provenance, Domains, Topics, Direct rules, Invariants, Proofs, then Warning lines. Staged uses `Selection: staged`, range uses `Selection: range <literal-range>`, and both render one `[n] <path>` block per sorted selected file. Zero collections render `none`, not an omitted label. A group above three has `Group N: <count> files` followed immediately by `Classification` and never a `Members` line. Classification-specific exact goldens are:
 
-  Explicit ADR goldens use the same request header and impact labels, then `ADR: ADR-<n> <title> [<status>, <mutability>]`, `Authority role: <role>`, and facet lines in declaration/progress order. Static normal output is exactly `context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n`. Preserve uncovered human grammar from `printUncovered` exactly, including section ordering and final newline, changing only JSON removal and capped delivery. Do not emit examples, hidden paths, full claim prose, or an alternate structured form. Run `gofmt -w internal/contextdelivery internal/clispec cmd/awf && go test ./internal/contextdelivery ./internal/topic ./internal/project ./internal/clispec ./cmd/awf`; every focused test passes.
+  ```text
+      Classification: nested-adopter
+      Nested root: examples/child/.awf/config.yaml
+  ```
+
+  ```text
+      Classification: symlink
+      Symlink target inside repository: false
+  ```
+
+  The only warning constants and bytes are `WarningGlobLiteral = "globs are not expanded; pass a directory or an exact file"` and `WarningEligibleUnowned = "no domain owns this path; add a domain selector"`; they render as `Warning: <value>` after Proofs in constant order. Compact nonempty provenance is `Provenance: <role> <identity>`. `--show artifacts` expands it exactly as:
+
+  ```text
+      Provenance: template skills/example/SKILL.md.tmpl
+        Source: templates/skills/example/SKILL.md.tmpl (template source)
+        Output: .pi/awf-workflows/example.md (managed output)
+        Navigate: .pi/awf-workflows/example.md (managed output)
+  ```
+
+  Source, Output, and Navigate each sort by path then label and render once per edge. `--show selectors` adds `Selectors: domain=[<space-separated globs>]; topic=[<space-separated globs>]; both must match`. Evidence follows its claim summary, with `Backing: <mode>` then optional `Verify: <text>`, then marker kinds in `state`, `touches-state`, `invariant` order. At three sites or fewer each site gets its own `Evidence <kind>: <path>:<line>` line; above three the only line is `Evidence <kind>: <count> sites`. `--show references` adds nonempty `Incoming: <comma-space IDs>` then `Outgoing: <comma-space IDs>`. `--show pending` replaces the bounded line with `Pending operation: ADR-<n> <operation> <claim> [<progress>]`, ordered by ADR then declaration. Category order is Directly related, Applicable invariants, Additional topic rules, Referenced context, Pending. Empty categories and empty optional facet fields are omitted.
+
+  Explicit ADR goldens use the same request header and fixed impact labels, then this exact branch, with operation-linked evidence using the same Backing/Verify/Evidence grammar:
+
+  ```text
+      ADR: ADR-0002 Example Decision [Implementing, mutable]
+      Authority role: pending intent or decision history; not current authority
+      Operation: update tooling/example:existing-rule [applied, active-current, state-sequence 7]
+      Operation: add tooling/example:new-rule [remaining, not-yet-current]
+  ```
+
+  Without `--show pending`, omit Operation lines while retaining ADR and Authority role. Without `--show evidence`, omit operation-linked Backing/Verify/Evidence. Without `--show artifacts`, omit expanded Source/Output/Navigate but retain compact Provenance. Static normal output is exactly `context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n`. Preserve uncovered human grammar from `printUncovered` exactly, including section ordering, punctuation, indentation, and final newline, changing only JSON removal and capped delivery; copy its existing clean, Uncovered, Unowned-file, and collapsed-directory cases into golden fixtures before deleting the old renderer. Do not emit examples, hidden paths, full claim prose, or an alternate structured form. Run `gofmt -w internal/contextdelivery internal/clispec cmd/awf && go test ./internal/contextdelivery ./internal/topic ./internal/project ./internal/clispec ./cmd/awf`; every focused test passes.
 
 - [ ] **Task 1.7: Apply ADR operations 1-13, update active documentation, render, and commit.** In `.awf/topics/parts/tooling/context-and-topic/current-state.md`, mutate exactly the first thirteen ADR-0165 operations in declaration order: update `context-adr-operation-projection`, `context-applicability-navigation`, `context-default-excludes-history`, `context-concise-projection`, `context-full-authority-packet`, and `context-known-artifact-navigation`; remove `context-output-parity`; update `context-path-attribution`, `context-read-only`, and `context-static-fallback`; remove `uncovered-output-parity`; add test-backed `context-summary-projection` and `context-terminal-output-cap`. Preserve each update's `Origin`, existing `Revised-by` prefix, and backing mode while appending ADR-0165. New claims use `Origin: ADR-0165`, `Backing: test`, and the proof markers from Tasks 1.4-1.5.
 
@@ -216,7 +253,19 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
   Update `.awf/parts/agents-doc/commands.md` with the concise managed convention: start bare, request only named facets for the active lens, never prescribe `--full`, and consume/delete a valid spill packet. Update `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md` claim `implementer-context-grounding` to cover bare implementation/orientation calls, review facet sets, ADR pending detail, the `--full` ban, and spill consumption. Preserve `Origin: ADR-0155`, append `Revised-by: ADR-0165`, retain `Backing: test`, and keep its proof in `internal/project/spine_test.go`. Run `./x render`; generated root and Sundial `AGENTS.md`, root `.claude/skills/awf-*/SKILL.md` and `.pi/awf-workflows/*.md`, Sundial `.agents/.claude/.cursor/.gemini/.github` skill copies and `.pi/awf-workflows/*.md`, rendered topic/docs outputs, and both locks must change only through rendering. The affected generated set is exactly the output of `git diff --name-only` after starting from a clean Phase 2 tree and running this task's authored edits plus `./x render`; inspect every path and reject unrelated drift.
 
-- [ ] **Task 3.3: Apply operation 15, close ADR-0165, and commit.** Append one Applied event containing exactly `update rendering/workflow-skill-templates:implementer-context-grounding` with the checker-reported next sequence, then append the digest-bearing Implemented event immediately after it and set ADR-0165 status to Implemented. Keep this plan Proposed through implementation review. Add the managed-caller policy to the Unreleased changelog. Run `go test ./internal/project ./internal/evals` and `./x render && ./x check`. Then run `if rg -n 'awf context --full|awf context[^\n]*--json' templates/skills; then exit 1; fi`; the terminal state is no matches and exit zero. Stage exact authored/generated paths, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
+- [ ] **Task 3.3: Apply operation 15, close ADR-0165, and commit.** Append one Applied event containing exactly `update rendering/workflow-skill-templates:implementer-context-grounding` with the checker-reported next sequence, then append the digest-bearing Implemented event immediately after it and set ADR-0165 status to Implemented. Keep this plan Proposed through implementation review. Add the managed-caller policy to the Unreleased changelog. Run `go test ./internal/project ./internal/evals` and `./x render && ./x check`. Then run:
+
+  ```bash
+  if rg -n 'awf context[^\n]*(--full|--json)' templates/skills; then
+    echo "managed skill templates still prescribe a retired context form" >&2
+    exit 1
+  else
+    status=$?
+    [ "$status" -eq 1 ] || exit "$status"
+  fi
+  ```
+
+  The required terminal state is `rg` status 1 (no matches), converted by the branch to command status zero; status greater than 1 propagates as an execution error. Stage exact authored/generated paths, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
 
   ```commit
   feat(rendering): bound managed context packets (implements 0165)
