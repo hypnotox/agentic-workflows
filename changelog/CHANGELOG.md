@@ -100,6 +100,7 @@ query a single version or a range.
   the skill drift resolved by their next `awf sync`.
 
 ### Bug fixes
+- Pi fresh-session handoffs now explicitly identify their restored active effort association and prohibit external-checkpoint adoption or structured resume, preventing a successor from re-adopting the already-associated effort.
 - `awf check` accepts the historical operations for a topic retired after another ADR removes its final claim, rather than reporting its already-removed topic metadata as missing.
 - `awf check` no longer emits the "carries no tags: add a narrow topic tag" advisory for
   governed current-state ADRs (v1 and v2): their closed frontmatter rejects a `tags:` key, so
