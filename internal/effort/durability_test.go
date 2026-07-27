@@ -2,10 +2,12 @@ package effort
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -23,7 +25,7 @@ func TestAtomicReplacementDurabilityOrder(t *testing.T) {
 	if err := atomicReplaceFS(fs, path, []byte("published"), &identity); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"create-temp", "stat-temp", "write-temp", "fsync-temp", "close-temp", "rename", "open-directory", "fsync-directory", "close-directory"}
+	want := []string{"create-temp", "stat-temp", "write-temp", "fsync-temp", "close-temp", "publish", "open-directory", "fsync-directory", "close-directory"}
 	if !reflect.DeepEqual(fs.events, want) {
 		t.Fatalf("durability order = %v, want %v", fs.events, want)
 	}
@@ -35,7 +37,7 @@ func TestAtomicReplacementDurabilityOrder(t *testing.T) {
 
 // invariant: tooling/effort-management:effort-record-authority
 func TestAtomicReplacementFaultsPreserveOldOrPublishedBytesAndContext(t *testing.T) {
-	for _, stage := range []string{"create-temp", "stat-temp", "write-temp", "short-write", "fsync-temp", "close-temp", "rename", "open-directory", "fsync-directory", "close-directory"} {
+	for _, stage := range []string{"create-temp", "stat-temp", "write-temp", "short-write", "fsync-temp", "close-temp", "publish", "open-directory", "fsync-directory", "close-directory"} {
 		t.Run(stage, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "record.json")
@@ -69,18 +71,33 @@ func TestAtomicReplacementFaultsPreserveOldOrPublishedBytesAndContext(t *testing
 }
 
 func TestAtomicReplacementReportsTemporaryCleanupFailure(t *testing.T) {
-	dir := t.TempDir()
-	path := filepath.Join(dir, "record.json")
-	writeEffortFile(t, path, "old")
-	identity, _ := lstatRegular(path)
-	fs := &faultFileSystem{fail: "write-temp", failRemove: true}
-	err := atomicReplaceFS(fs, path, []byte("new"), &identity)
-	if !errors.Is(err, errInjectedDurability) || !errors.Is(err, errInjectedCleanup) || !strings.Contains(err.Error(), path) {
-		t.Fatalf("cleanup failure error = %v", err)
-	}
-	matches, _ := filepath.Glob(filepath.Join(dir, ".effort-*.tmp"))
-	if len(matches) != 1 {
-		t.Fatalf("failed cleanup temp count = %d, want 1", len(matches))
+	for _, published := range []bool{false, true} {
+		t.Run(fmt.Sprintf("published=%t", published), func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "record.json")
+			writeEffortFile(t, path, "old")
+			identity, _ := lstatRegular(path)
+			fs := &faultFileSystem{failRemove: true}
+			if !published {
+				fs.fail = "write-temp"
+			}
+			err := atomicReplaceFS(fs, path, []byte("new"), &identity)
+			if !errors.Is(err, errInjectedCleanup) || (!published && !errors.Is(err, errInjectedDurability)) || !strings.Contains(err.Error(), path) {
+				t.Fatalf("cleanup failure error = %v", err)
+			}
+			if published {
+				if raw, readErr := os.ReadFile(path); readErr != nil || string(raw) != "new" {
+					t.Fatalf("published bytes after cleanup failure = %q, %v", raw, readErr)
+				}
+				if !slices.Contains(fs.events, "fsync-directory") {
+					t.Fatalf("published cleanup failure skipped directory sync: %v", fs.events)
+				}
+			}
+			matches, _ := filepath.Glob(filepath.Join(dir, ".effort-*.tmp"))
+			if len(matches) != 1 {
+				t.Fatalf("failed cleanup temp count = %d, want 1", len(matches))
+			}
+		})
 	}
 }
 
@@ -118,31 +135,65 @@ func TestAtomicReplacementRejectsUnsafeTemporaryAndRacedDestinationIdentities(t 
 		}
 		assertNoEffortTemps(t, dir)
 	})
-	t.Run("absent destination race", func(t *testing.T) {
+	t.Run("replacement destination disappears inside publication", func(t *testing.T) {
 		dir := t.TempDir()
 		path := filepath.Join(dir, "record.json")
-		fs := &faultFileSystem{raceDestination: path}
-		if err := atomicReplaceFS(fs, path, []byte("new"), nil); err == nil || !errors.Is(err, os.ErrExist) {
-			t.Fatalf("destination race error = %v", err)
+		writeEffortFile(t, path, "old")
+		identity, err := lstatRegular(path)
+		if err != nil {
+			t.Fatal(err)
 		}
-		if raw, err := os.ReadFile(path); err != nil || string(raw) != "raced" {
-			t.Fatalf("raced destination = %q, %v", raw, err)
+		fs := &faultFileSystem{removeDestination: true}
+		if err := atomicReplaceFS(fs, path, []byte("new"), &identity); err == nil {
+			t.Fatal("missing replacement destination accepted")
+		}
+		if _, err := os.Lstat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("unexpected replacement destination recreated: %v", err)
 		}
 		assertNoEffortTemps(t, dir)
 	})
+	for _, replacement := range []bool{false, true} {
+		name := "creation"
+		if replacement {
+			name = "replacement"
+		}
+		t.Run(name+" destination race inside publication", func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, "record.json")
+			var expected *fileIdentity
+			if replacement {
+				writeEffortFile(t, path, "old")
+				identity, err := lstatRegular(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				expected = &identity
+			}
+			fs := &faultFileSystem{raceDestination: path, replaceDestination: replacement}
+			if err := atomicReplaceFS(fs, path, []byte("new"), expected); err == nil {
+				t.Fatal("raced destination was published over")
+			}
+			if raw, err := os.ReadFile(path); err != nil || string(raw) != "unexpected" {
+				t.Fatalf("unexpected destination = %q, %v", raw, err)
+			}
+			assertNoEffortTemps(t, dir)
+		})
+	}
 }
 
 var errInjectedDurability = errors.New("injected durability failure")
 var errInjectedCleanup = errors.New("injected cleanup failure")
 
 type faultFileSystem struct {
-	fail            string
-	events          []string
-	outside         string
-	replaceTemp     bool
-	raceDestination string
-	unsafeTemp      bool
-	failRemove      bool
+	fail               string
+	events             []string
+	outside            string
+	replaceTemp        bool
+	raceDestination    string
+	replaceDestination bool
+	removeDestination  bool
+	unsafeTemp         bool
+	failRemove         bool
 }
 
 func (f *faultFileSystem) hit(stage string) error {
@@ -166,11 +217,29 @@ func (f *faultFileSystem) CreateTemp(dir, pattern string) (durableFile, error) {
 	}
 	return &faultDurableFile{File: file, fs: f, kind: "temp"}, nil
 }
-func (f *faultFileSystem) Rename(oldPath, newPath string) error {
-	if err := f.hit("rename"); err != nil {
+func (f *faultFileSystem) Publish(tempPath, path string, expected *fileIdentity) error {
+	if err := f.hit("publish"); err != nil {
 		return err
 	}
-	return os.Rename(oldPath, newPath)
+	if f.removeDestination {
+		if err := os.Remove(path); err != nil {
+			return err
+		}
+	}
+	if f.raceDestination != "" {
+		if f.replaceDestination {
+			replacement := path + ".unexpected"
+			if err := os.WriteFile(replacement, []byte("unexpected"), 0o600); err != nil {
+				return err
+			}
+			if err := os.Rename(replacement, path); err != nil {
+				return err
+			}
+		} else if err := os.WriteFile(path, []byte("unexpected"), 0o600); err != nil {
+			return err
+		}
+	}
+	return publishAtomic(tempPath, path, expected)
 }
 func (f *faultFileSystem) Remove(path string) error {
 	if f.failRemove {
@@ -246,11 +315,6 @@ func (f *faultDurableFile) Close() error {
 			return err
 		}
 		if err := os.Rename(replacement, f.Name()); err != nil {
-			return err
-		}
-	}
-	if f.kind == "temp" && f.fs.raceDestination != "" {
-		if err := os.WriteFile(f.fs.raceDestination, []byte("raced"), 0o600); err != nil {
 			return err
 		}
 	}

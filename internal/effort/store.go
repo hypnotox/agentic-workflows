@@ -60,7 +60,7 @@ type durableFile interface {
 
 type fileSystem interface {
 	CreateTemp(string, string) (durableFile, error)
-	Rename(string, string) error
+	Publish(string, string, *fileIdentity) error
 	Remove(string) error
 	OpenDirectory(string) (durableFile, error)
 }
@@ -70,7 +70,9 @@ type osFileSystem struct{}
 func (osFileSystem) CreateTemp(dir, pattern string) (durableFile, error) {
 	return os.CreateTemp(dir, pattern)
 }
-func (osFileSystem) Rename(oldPath, newPath string) error           { return os.Rename(oldPath, newPath) }
+func (osFileSystem) Publish(tempPath, path string, expected *fileIdentity) error {
+	return publishAtomic(tempPath, path, expected)
+}
 func (osFileSystem) Remove(path string) error                       { return os.Remove(path) }
 func (osFileSystem) OpenDirectory(path string) (durableFile, error) { return os.Open(path) }
 
@@ -314,20 +316,17 @@ func atomicReplaceFS(fs fileSystem, path string, raw []byte, expected *fileIdent
 	if err := requireIdentity(tempPath, tempIdentity); err != nil {
 		return fmt.Errorf("verify temporary file identity %s before publishing %s: %w", tempPath, path, err)
 	}
-	if expected != nil {
-		if err := requireIdentity(path, *expected); err != nil {
-			return fmt.Errorf("verify destination identity %s before rename: %w", path, err)
-		}
-	} else if err := requireAbsent(path); err != nil {
-		return fmt.Errorf("verify absent destination %s before rename: %w", path, err)
-	}
-	if err := fs.Rename(tempPath, path); err != nil {
-		return fmt.Errorf("rename temporary file %s to %s: %w", tempPath, path, err)
+	if err := fs.Publish(tempPath, path, expected); err != nil {
+		return fmt.Errorf("atomically publish temporary file %s to %s: %w", tempPath, path, err)
 	}
 	published = true
+	var cleanupErr error
+	if err := fs.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+		cleanupErr = fmt.Errorf("remove displaced record %s after publishing %s: %w", tempPath, path, err)
+	}
 	directory, err := fs.OpenDirectory(dir)
 	if err != nil {
-		return fmt.Errorf("open directory %s to sync publication of %s: %w", dir, path, err)
+		return errors.Join(cleanupErr, fmt.Errorf("open directory %s to sync publication of %s: %w", dir, path, err))
 	}
 	directoryClosed := false
 	defer func() {
@@ -338,11 +337,11 @@ func atomicReplaceFS(fs fileSystem, path string, raw []byte, expected *fileIdent
 		}
 	}()
 	if err := directory.Sync(); err != nil {
-		return fmt.Errorf("fsync directory %s after publishing %s: %w", dir, path, err)
+		return errors.Join(cleanupErr, fmt.Errorf("fsync directory %s after publishing %s: %w", dir, path, err))
 	}
 	if err := directory.Close(); err != nil {
-		return fmt.Errorf("close directory %s after publishing %s: %w", dir, path, err)
+		return errors.Join(cleanupErr, fmt.Errorf("close directory %s after publishing %s: %w", dir, path, err))
 	}
 	directoryClosed = true
-	return nil
+	return cleanupErr
 }

@@ -290,7 +290,9 @@ func (f *replaceOnCloseFS) CreateTemp(dir, pattern string) (durableFile, error) 
 	}
 	return &replaceOnCloseFile{File: file, owner: f}, nil
 }
-func (f *replaceOnCloseFS) Rename(oldPath, newPath string) error           { return os.Rename(oldPath, newPath) }
+func (f *replaceOnCloseFS) Publish(tempPath, path string, expected *fileIdentity) error {
+	return publishAtomic(tempPath, path, expected)
+}
 func (f *replaceOnCloseFS) Remove(path string) error                       { return os.Remove(path) }
 func (f *replaceOnCloseFS) OpenDirectory(path string) (durableFile, error) { return os.Open(path) }
 

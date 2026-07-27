@@ -68,6 +68,12 @@ func (*HardSafetyError) Forceable() bool { return false }
 // roots using native Git. Native Git is used only for topology discovery;
 // OpenRepo remains the package's read-only go-git boundary.
 func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error) {
+	return resolveControlRoots(ctx, root, runGitBytes)
+}
+
+type nativeGitRunner func(context.Context, string, ...string) ([]byte, error)
+
+func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunner) (ControlRoots, error) {
 	originalRoot, err := cleanAbsolute(root)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, fmt.Errorf("resolve invoking root: %w", err)
@@ -76,21 +82,21 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 		return ControlRoots{}, err
 	}
 
-	bare, err := runGitText(ctx, originalRoot, "rev-parse", "--is-bare-repository")
+	bare, err := runGitTextWith(runner, ctx, originalRoot, "rev-parse", "--is-bare-repository")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("inspect bare-repository state from %s: %w", originalRoot, err)
 	}
-	if bare != "true" && bare != "false" { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if bare != "true" && bare != "false" {
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: originalRoot, Err: fmt.Errorf("unexpected bare-repository response %q", bare)}
 	}
 	if bare == "true" {
 		return ControlRoots{}, &HardSafetyError{Category: "bare-repository", Path: originalRoot}
 	}
-	invokingRoot, err := runGitPath(ctx, originalRoot, "rev-parse", "--show-toplevel")
+	invokingRoot, err := runGitPathWith(runner, ctx, originalRoot, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve invoking checkout from %s: %w", originalRoot, err)
 	}
-	commonDir, err := runGitPath(ctx, originalRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	commonDir, err := runGitPathWith(runner, ctx, originalRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve common Git directory from %s: %w", originalRoot, err)
 	}
@@ -139,7 +145,7 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 
-	porcelain, err := runGitBytes(ctx, originalRoot, "worktree", "list", "--porcelain", "-z")
+	porcelain, err := runner(ctx, originalRoot, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("list worktree topology from %s: %w", originalRoot, err)
 	}
@@ -421,8 +427,8 @@ func worktreeGitDir(worktree string) (string, error) {
 	return filepath.Clean(pointer), nil
 }
 
-func runGitPath(ctx context.Context, root string, args ...string) (string, error) {
-	output, err := runGitBytes(ctx, root, args...)
+func runGitPathWith(runner nativeGitRunner, ctx context.Context, root string, args ...string) (string, error) {
+	output, err := runner(ctx, root, args...)
 	if err != nil {
 		return "", err
 	}
@@ -433,8 +439,8 @@ func runGitPath(ctx context.Context, root string, args ...string) (string, error
 	return cleanAbsolute(value)
 }
 
-func runGitText(ctx context.Context, root string, args ...string) (string, error) {
-	output, err := runGitBytes(ctx, root, args...)
+func runGitTextWith(runner nativeGitRunner, ctx context.Context, root string, args ...string) (string, error) {
+	output, err := runner(ctx, root, args...)
 	if err != nil {
 		return "", err
 	}

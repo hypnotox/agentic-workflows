@@ -94,6 +94,34 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 		}
 	})
 
+	t.Run("native-git-moved-managed-branch", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, now)
+		if _, err := service.New("Repair me", false); err != nil {
+			t.Fatal(err)
+		}
+		managed := service.paths.managedWorktree(idA)
+		if err := os.MkdirAll(filepath.Dir(managed), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+idA, managed, "HEAD")
+		writeEffortFile(t, service.paths.record(idA), schemaRecordJSON(now, worktreeJSON(now), "pending"))
+		before, err := os.ReadFile(service.paths.record(idA))
+		if err != nil {
+			t.Fatal(err)
+		}
+		moved := filepath.Join(root, ".awf", "moved-worktree")
+		runEffortGit(t, "-C", root, "worktree", "move", managed, moved)
+		requireRepairSafety(t, service, "repository-identity")
+		after, err := os.ReadFile(service.paths.record(idA))
+		if err != nil || string(after) != string(before) {
+			t.Fatalf("moved worktree repair changed record: before=%q after=%q err=%v", before, after, err)
+		}
+		if info, err := os.Stat(moved); err != nil || !info.IsDir() {
+			t.Fatalf("moved worktree did not survive refusal: info=%v err=%v", info, err)
+		}
+	})
+
 	t.Run("symlinked-managed-path", func(t *testing.T) {
 		root := initEffortRepo(t)
 		service := openEffortService(t, root, now)

@@ -277,9 +277,15 @@ func (s *Service) repairWorktree(record *Record, result *RepairResult) error {
 	if err != nil {
 		return fmt.Errorf("list native Git registrations for repair of %s: %w", managed, err)
 	}
+	wantBranch := "refs/heads/awf/" + record.ID
 	var exact []awfgit.WorktreeRegistration
 	for _, registration := range registrations {
-		if filepath.Clean(registration.Path) == managed {
+		pathMatches := filepath.Clean(registration.Path) == managed
+		branchMatches := registration.Branch == wantBranch
+		if branchMatches && !pathMatches {
+			return safety("repository-identity", managed, fmt.Errorf("managed branch %q is registered at unexpected path %s", wantBranch, registration.Path))
+		}
+		if pathMatches {
 			exact = append(exact, registration)
 		}
 	}
@@ -305,7 +311,6 @@ func (s *Service) repairWorktree(record *Record, result *RepairResult) error {
 		return nil
 	}
 	registration := exact[0]
-	wantBranch := "refs/heads/awf/" + record.ID
 	if registration.Bare || registration.Detached || registration.Branch != wantBranch || !objectIDPattern.MatchString(registration.HEAD) {
 		return safety("repository-identity", managed, fmt.Errorf("registration has branch %q and HEAD %q, want %q and a full object ID", registration.Branch, registration.HEAD, wantBranch))
 	}
