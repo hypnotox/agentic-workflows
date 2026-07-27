@@ -188,25 +188,35 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
   Default pending uses these exact singular/plural forms: `Pending: 1 operation from ADR-0002`; `Pending: <N> operations from ADR-0002, ADR-0003`; and `Pending: <N> operations from ADR-0002, ADR-0003, ADR-0004 +<M> ADRs`. ADR IDs sort ascending, only the first three render, and `M` is the remaining distinct ADR count. `--show pending` replaces that bounded line with `Pending operation: ADR-<n> <operation> <claim> [<progress>]`, ordered by ADR then declaration. Category order is Directly related, Applicable invariants, Additional topic rules, Referenced context, Pending. Empty categories and empty optional facet fields are omitted.
 
-  Explicit ADR table goldens use the same request header and fixed impact labels. Define the fixture's applied sequence through the ADR/current-state fixture builder and interpolate the returned integer with `%d`; no literal `state-sequence` value appears in the plan or expected string. The closed operation grammar and branches are:
+  Explicit ADR table goldens use the same request header and fixed impact labels. Define each fixture's applied sequence through the ADR/current-state fixture builder and interpolate the returned integer with `%d`; no literal `state-sequence` value appears in the plan or expected string. Use three lifecycle-valid fixtures for the closed operation grammar and branches:
 
   ```text
-      ADR: ADR-0002 Example Decision [Implementing, mutable]
+      ADR: ADR-0002 Proposed Decision [Proposed, mutable]
       Authority role: pending intent or decision history; not current authority
-      Operation: update tooling/example:proposed-rule [proposed, not-yet-current]
-      Operation: add tooling/example:new-rule [remaining, not-yet-current]
+      Operation: add tooling/example:proposed-rule [proposed, not-yet-current]
+  ```
+
+  ```text
+      ADR: ADR-0003 Implementing Decision [Implementing, frozen]
+      Authority role: pending intent or decision history; not current authority
       Operation: update tooling/example:existing-invariant [applied, active-current, state-sequence <fixture-sequence>]
         Current claim: tooling/example:existing-invariant [invariant] Existing invariant summary.
         Backing: test
         Evidence invariant: internal/example/example_test.go:12
+      Operation: add tooling/example:new-rule [remaining, not-yet-current]
+  ```
+
+  ```text
+      ADR: ADR-0004 Abandoned Decision [Abandoned, frozen]
+      Authority role: pending intent or decision history; not current authority
       Operation: remove tooling/example:removed-invariant [applied, historically-removed, state-sequence <fixture-sequence>]
-        Removal history: removed by ADR-0002 at state-sequence <fixture-sequence>
+        Removal history: removed by ADR-0004 at state-sequence <fixture-sequence>
         Backing: test
         Evidence invariant: 4 sites
       Operation: add tooling/example:canceled-rule [canceled, not-yet-current]
   ```
 
-  The golden builder replaces every `<fixture-sequence>` token with `strconv.Itoa(sequence)` where `sequence` is read back from the fixture corpus's canonical operation progress. Proposed is used only for a Proposed ADR; Remaining, Applied, and Canceled come only from canonical progress. `Current claim` renders only for active-current linked claims. `Removal history` renders only for historically removed linked claims and uses canonical `RemovedBy`/sequence data. Backing/Verify/Evidence beneath an operation render only with `--show evidence`; their marker ordering and disclosure threshold are identical to ordinary claims. Without `--show pending`, omit Operation and nested operation-detail lines while retaining ADR and Authority role. Without `--show artifacts`, omit expanded Source/Output/Navigate but retain compact Provenance. Static normal output is exactly `context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n`. Preserve uncovered human grammar from `printUncovered` exactly, including section ordering, punctuation, indentation, and final newline, changing only JSON removal and capped delivery; copy its existing clean, Uncovered, Unowned-file, and collapsed-directory cases into golden fixtures before deleting the old renderer. Do not emit examples, hidden paths, full claim prose, or an alternate structured form. Run `gofmt -w internal/contextdelivery internal/clispec cmd/awf && go test ./internal/contextdelivery ./internal/topic ./internal/project ./internal/clispec ./cmd/awf`; every focused test passes.
+  Each golden builder replaces its `<fixture-sequence>` tokens with `strconv.Itoa(sequence)` where `sequence` is read back from that fixture corpus's canonical operation progress. Proposed is used only for a Proposed ADR; Remaining and Applied are used only for an Implementing ADR; Canceled is used only for an Abandoned ADR, which may retain earlier Applied effects. `Current claim` renders only for active-current linked claims. `Removal history` renders only for historically removed linked claims and uses canonical `RemovedBy`/sequence data. Backing/Verify/Evidence beneath an operation render only with `--show evidence`; their marker ordering and disclosure threshold are identical to ordinary claims. Without `--show pending`, omit Operation and nested operation-detail lines while retaining ADR and Authority role. Without `--show artifacts`, omit expanded Source/Output/Navigate but retain compact Provenance. Static normal output is exactly `context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n`. Preserve uncovered human grammar from `printUncovered` exactly, including section ordering, punctuation, indentation, and final newline, changing only JSON removal and capped delivery; copy its existing clean, Uncovered, Unowned-file, and collapsed-directory cases into golden fixtures before deleting the old renderer. Do not emit examples, hidden paths, full claim prose, or an alternate structured form. Run `gofmt -w internal/contextdelivery internal/clispec cmd/awf && go test ./internal/contextdelivery ./internal/topic ./internal/project ./internal/clispec ./cmd/awf`; every focused test passes.
 
 - [ ] **Task 1.7: Apply ADR operations 1-13, update active documentation, render, and commit.** In `.awf/topics/parts/tooling/context-and-topic/current-state.md`, mutate exactly the first thirteen ADR-0165 operations in declaration order: update `context-adr-operation-projection`, `context-applicability-navigation`, `context-default-excludes-history`, `context-concise-projection`, `context-full-authority-packet`, and `context-known-artifact-navigation`; remove `context-output-parity`; update `context-path-attribution`, `context-read-only`, and `context-static-fallback`; remove `uncovered-output-parity`; add test-backed `context-summary-projection` and `context-terminal-output-cap`. Preserve each update's `Origin`, existing `Revised-by` prefix, and backing mode while appending ADR-0165. New claims use `Origin: ADR-0165`, `Backing: test`, and the proof markers from Tasks 1.4-1.5.
 
