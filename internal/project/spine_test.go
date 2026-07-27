@@ -1056,6 +1056,11 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	if strings.Contains(guide, "File skeleton") {
 		t.Errorf("guide must not carry the file skeleton:\n%s", guide)
 	}
+	for _, forbidden := range []string{"/awf-resume-effort", "awf_adopt_effort", "awf_detour alone"} {
+		if strings.Contains(guide, forbidden) {
+			t.Errorf("guide must not carry Pi-specific handoff protocol %q:\n%s", forbidden, guide)
+		}
+	}
 	for _, skill := range []string{"executing-plans", "brainstorming"} {
 		out := renderSkillGolden(t, skill, map[string]any{
 			"prefix": "example",
