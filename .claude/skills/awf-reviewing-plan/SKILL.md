@@ -30,7 +30,8 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
    - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
-   - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --full <those paths>` itself (`--full`: the reviewer needs the complete authority packet) so the doc-currency and convention-alignment lenses know the owning domains, backed invariants, and related ADRs. Pass the resolved paths, not pasted packet output.
+   - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.
+If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.

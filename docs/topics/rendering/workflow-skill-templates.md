@@ -23,8 +23,9 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Every implementer-chain skill template (executing-plans, subagent-driven-development, writing-plans, bugfix, debugging, tdd, refactor-coupling-audit) carries a concise `awf context` invocation, and the projection-pinning spine test classifies every grounding-carrying skill template into exactly the concise or complete-authority camp.
+Every managed context-calling skill consumes the exact spill notice, verifies the declared byte length, and best-effort deletes the temporary packet after successful or failed use. Brainstorming, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request only `all-rules`, `evidence`, and `pending`; plan/ADR resync requests only `all-rules` and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill contract.
 Origin: ADR-0155
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`

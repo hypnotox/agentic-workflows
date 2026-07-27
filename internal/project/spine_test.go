@@ -262,25 +262,27 @@ func TestExecutingDirectTemplate(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-full-authority-packet
 // invariant: rendering/workflow-skill-templates:implementer-context-grounding
 func TestManagedContextCallersChooseProjection(t *testing.T) {
-	complete := map[string]bool{
-		"adr-lifecycle":         true,
-		"reviewing-impl":        true,
-		"reviewing-plan":        true,
-		"reviewing-plan-resync": true,
+	policies := map[string]string{
+		"adr-lifecycle":               "--show pending",
+		"brainstorming":               "",
+		"bugfix":                      "",
+		"debugging":                   "",
+		"executing-plans":             "",
+		"refactor-coupling-audit":     "",
+		"reviewing-impl":              "--show all-rules --show evidence --show pending",
+		"reviewing-plan":              "--show all-rules --show evidence --show pending",
+		"reviewing-plan-resync":       "--show all-rules --show pending",
+		"subagent-driven-development": "",
+		"tdd":                         "",
+		"writing-plans":               "",
 	}
-	concise := map[string]bool{
-		"brainstorming":               true,
-		"bugfix":                      true,
-		"debugging":                   true,
-		"executing-plans":             true,
-		"refactor-coupling-audit":     true,
-		"subagent-driven-development": true,
-		"tdd":                         true,
-		"writing-plans":               true,
+	spillBytes, err := fs.ReadFile(templates.FS, "partials/context-spill.md")
+	if err != nil {
+		t.Fatalf("read context spill partial: %v", err)
 	}
+	spillContract := strings.TrimSpace(string(spillBytes))
 	seen := map[string]bool{}
 	for name := range catalog.Standard.Skills {
 		templateID := "skills/" + name + "/SKILL.md.tmpl"
@@ -292,33 +294,39 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		if err != nil {
 			t.Fatalf("expand %s: %v", templateID, err)
 		}
+		callCount := 0
 		for lineNumber, line := range strings.Split(expanded, "\n") {
 			if !strings.Contains(line, "awf context") && !strings.Contains(line, "./x context") {
 				continue
 			}
+			callCount++
 			seen[name] = true
-			hasFull := strings.Contains(line, "--full")
-			switch {
-			case complete[name] && !hasFull:
-				t.Errorf("%s:%d complete-authority invocation lacks --full: %s", templateID, lineNumber+1, line)
-			case concise[name] && hasFull:
-				t.Errorf("%s:%d orientation invocation must stay concise: %s", templateID, lineNumber+1, line)
-			case !complete[name] && !concise[name]:
+			policy, ok := policies[name]
+			if !ok {
 				t.Errorf("%s:%d has an unclassified context invocation: %s", templateID, lineNumber+1, line)
+				continue
 			}
-			if complete[name] && strings.Contains(line, "paste the output of") {
-				t.Errorf("%s:%d complete-authority dispatch must instruct the reviewer-run command, not paste output: %s", templateID, lineNumber+1, line)
+			if strings.Contains(line, "--full") || strings.Contains(line, "--json") {
+				t.Errorf("%s:%d prescribes a retired context form: %s", templateID, lineNumber+1, line)
+			}
+			if policy == "" {
+				if strings.Contains(line, "--show") {
+					t.Errorf("%s:%d orientation invocation must use bare context: %s", templateID, lineNumber+1, line)
+				}
+			} else if !strings.Contains(line, "awf context "+policy) {
+				t.Errorf("%s:%d invocation lacks policy %q: %s", templateID, lineNumber+1, policy, line)
+			}
+			if strings.Contains(name, "reviewing-") && strings.Contains(line, "paste the output of") {
+				t.Errorf("%s:%d review dispatch must instruct the reviewer-run command, not paste output: %s", templateID, lineNumber+1, line)
 			}
 		}
-	}
-	for name := range complete {
-		if !seen[name] {
-			t.Errorf("complete-authority template %s has no context invocation", name)
+		if got := strings.Count(expanded, spillContract); got != callCount {
+			t.Errorf("%s expands the context spill contract %d times for %d call sites", templateID, got, callCount)
 		}
 	}
-	for name := range concise {
+	for name := range policies {
 		if !seen[name] {
-			t.Errorf("concise-orientation template %s has no context invocation", name)
+			t.Errorf("managed context template %s has no context invocation", name)
 		}
 	}
 }
