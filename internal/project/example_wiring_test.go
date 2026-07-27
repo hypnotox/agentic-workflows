@@ -118,6 +118,10 @@ func TestPiExtensionContainerGateWiring(t *testing.T) {
 		`dst=/source,readonly`,
 		`--workdir /workspace/repo`,
 		`pi-extension-test: Docker is required by ./x gate`,
+		`test_log="$(mktemp)"`,
+		`>"$test_log" 2>&1`,
+		`cat "$test_log" >&2`,
+		`exit "$test_status"`,
 	} {
 		if !strings.Contains(string(manager), want) {
 			t.Errorf("container manager lost contract %q", want)

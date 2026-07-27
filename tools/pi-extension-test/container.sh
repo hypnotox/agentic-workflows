@@ -131,5 +131,32 @@ prepare_command="$(cat <<'COMMAND'
 find /workspace/repo -mindepth 1 -maxdepth 1 -exec rm -rf {} + && cp -a /source/. /workspace/repo/ && printf '%s\n' '{"type":"module"}' > /workspace/repo/package.json && ln -s /workspace/node_modules /workspace/repo/node_modules && find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 sed -i "s|^// @ts-nocheck$||" && PATH=/workspace/node_modules/.bin:$PATH tsc -p tools/pi-extension-test/tsconfig.json
 COMMAND
 )"
-"$docker_cmd" exec --workdir /workspace/repo "$container" sh -lc "$prepare_command && $test_command"
-printf 'pi-extension-test: tests %ss\n' "$((SECONDS - test_start))"
+if [ "$command_name" = contract ]; then
+  "$docker_cmd" exec --workdir /workspace/repo "$container" sh -lc "$prepare_command && $test_command"
+  printf 'pi-extension-test: tests %ss\n' "$((SECONDS - test_start))"
+  exit 0
+fi
+
+test_log="$(mktemp)"
+cleanup_test_log() {
+  rm -f "$test_log" || true
+}
+if [ -n "${CI:-}" ]; then
+  cleanup() {
+    cleanup_test_log
+    cleanup_ci
+  }
+  trap cleanup EXIT
+else
+  trap cleanup_test_log EXIT
+fi
+
+if "$docker_cmd" exec --workdir /workspace/repo "$container" sh -lc "$prepare_command && $test_command" >"$test_log" 2>&1; then
+  cleanup_test_log
+  printf 'pi-extension-test: tests %ss\n' "$((SECONDS - test_start))"
+else
+  test_status=$?
+  cat "$test_log" >&2
+  cleanup_test_log
+  exit "$test_status"
+fi
