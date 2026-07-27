@@ -91,6 +91,7 @@ Verify: inspect output
 
 // invariant: invariants/topics-and-markers:invariants-duplicate-slug
 // invariant: invariants/topics-and-markers:unbacked-requires-verify-note
+// invariant: tooling/context-and-topic:context-summary-projection
 func TestClaimSummaryMetadata(t *testing.T) {
 	parse := func(summary string) (Claim, error) {
 		body := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\n" + summary + "Origin: ADR-0001\n"
@@ -109,7 +110,12 @@ func TestClaimSummaryMetadata(t *testing.T) {
 		t.Fatalf("valid=%#v err=%v", valid, err)
 	}
 	for name, metadata := range map[string]string{
-		"duplicate": "Summary: one\nSummary: two\n", "out-of-order": "Origin: ADR-0001\nSummary: late\n", "blank": "Summary: \n", "multiline": "Summary: first\nsecond\n", "161": "Summary: " + strings.Repeat("x", 161) + "\n",
+		"duplicate":             "Summary: one\nSummary: two\n",
+		"out-of-order":          "Origin: ADR-0001\nSummary: late\n",
+		"blank":                 "Summary: \n",
+		"multiline":             "Summary: first\nsecond\n",
+		"ASCII 161":             "Summary: " + strings.Repeat("x", 161) + "\n",
+		"Unicode 161 codepoint": "Summary: " + strings.Repeat("é", 161) + "\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			body := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\n" + metadata

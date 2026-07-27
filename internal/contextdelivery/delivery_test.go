@@ -11,7 +11,14 @@ import (
 	"time"
 )
 
-func TestDeliverBoundaryAndSpill(t *testing.T) {
+// invariant: tooling/context-and-topic:context-terminal-output-cap
+func TestTerminalOutputCapDeliveryContract(t *testing.T) {
+	t.Run("exact boundary and secure spill", testDeliverBoundaryAndSpill)
+	t.Run("unsafe temporary locations", testDeliverRejectsUnsafeLocations)
+	t.Run("cleanup and primary errors", testDeliverFailuresCleanUpAndPreservePrimary)
+}
+
+func testDeliverBoundaryAndSpill(t *testing.T) {
 	direct := bytes.Repeat([]byte("x"), 8192)
 	var out bytes.Buffer
 	if err := Deliver(direct, t.TempDir(), &out); err != nil || !bytes.Equal(out.Bytes(), direct) {
@@ -42,7 +49,7 @@ func TestDeliverBoundaryAndSpill(t *testing.T) {
 	os.Remove(lines[1])
 }
 
-func TestDeliverRejectsUnsafeLocations(t *testing.T) {
+func testDeliverRejectsUnsafeLocations(t *testing.T) {
 	oldTemp, oldCanon := tempDir, canonicalPath
 	t.Cleanup(func() { tempDir = oldTemp; canonicalPath = oldCanon })
 	root := t.TempDir()
@@ -119,7 +126,7 @@ func (w *failWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func TestDeliverFailuresCleanUpAndPreservePrimary(t *testing.T) {
+func testDeliverFailuresCleanUpAndPreservePrimary(t *testing.T) {
 	oldTemp, oldCanon, oldCreate, oldRemove := tempDir, canonicalPath, createTemp, removeFile
 	t.Cleanup(func() { tempDir = oldTemp; canonicalPath = oldCanon; createTemp = oldCreate; removeFile = oldRemove })
 	root, tmp := t.TempDir(), t.TempDir()

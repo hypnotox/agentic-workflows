@@ -14,6 +14,8 @@ import (
 // invariant: tooling/context-and-topic:context-spill-observability
 func TestContextSpillObservabilityContract(t *testing.T) {
 	t.Run("wrapper byte and status preservation", testContextRunnerPreservesOutputStatusAndObservesSpills)
+	t.Run("logging failure warning degradation", testContextRunnerLoggingFailureWarnsWithoutChangingSuccess)
+	t.Run("concurrent wrapper records", testContextRunnerConcurrentRecordsDoNotInterleave)
 	t.Run("safe check advisory", testCheckRunnerSpillAdvisoryTracksNonemptySafeLog)
 }
 
@@ -70,6 +72,15 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 		t.Fatal("near miss was logged")
 	}
 
+	stdout, stderr, status = run("malformed")
+	if stdout != "AWF_CONTEXT_SPILL_V1 bytes=bad format=text\n/tmp/nope\n" || !strings.Contains(stderr, "local observability logging failed") || status != 0 {
+		t.Fatalf("malformed stdout=%q stderr=%q status=%d", stdout, stderr, status)
+	}
+	after, _ = os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	if string(after) != before {
+		t.Fatal("malformed notice was logged")
+	}
+
 	stdout, _, status = run("failure")
 	if stdout != "partial\n\n" || status != 7 {
 		t.Fatalf("failure stdout=%q status=%d", stdout, status)
@@ -80,7 +91,7 @@ func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 	}
 }
 
-func TestContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
+func testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
 	root := contextRunnerFixture(t)
 	local := filepath.Join(root, ".awf", "local")
 	if err := os.Mkdir(local, 0o755); err != nil {
@@ -99,7 +110,7 @@ func TestContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
 	}
 }
 
-func TestContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
+func testContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
 	root := contextRunnerFixture(t)
 	const count = 8
 	var wg sync.WaitGroup
@@ -213,6 +224,7 @@ case "${FAKE_MODE:-normal}" in
     printf 'AWF_CONTEXT_SPILL_V1 bytes=9000 format=text\n%s\n' "$PWD/spill.txt"
     ;;
   near) printf 'AWF_CONTEXT_SPILL bytes=9000 format=text\n/tmp/nope\n' ;;
+  malformed) printf 'AWF_CONTEXT_SPILL_V1 bytes=bad format=text\n/tmp/nope\n' ;;
   failure) printf 'partial\n\n'; exit 7 ;;
 esac
 `

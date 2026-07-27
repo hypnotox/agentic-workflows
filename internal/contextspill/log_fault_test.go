@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func TestLogOperationalFailures(t *testing.T) {
+func testLogOperationalFailures(t *testing.T) {
 	if err := Log("", Notice{}, nil); err == nil {
 		t.Fatal("empty root succeeded")
 	}
@@ -104,7 +104,7 @@ func TestLogOperationalFailures(t *testing.T) {
 	}
 }
 
-func TestLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
+func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 	for name, prepare := range map[string]func(string) error{
 		"missing awf": func(string) error { return nil },
 		"awf file":    func(root string) error { return os.WriteFile(filepath.Join(root, ".awf"), nil, 0o600) },
@@ -178,7 +178,7 @@ func TestLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 	})
 }
 
-func TestHasSafeLogRejectsForeignOwnerAndMissingPaths(t *testing.T) {
+func testHasSafeLogRejectsForeignOwnerAndMissingPaths(t *testing.T) {
 	restoreLogOps(t)
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
@@ -206,7 +206,7 @@ func TestHasSafeLogRejectsForeignOwnerAndMissingPaths(t *testing.T) {
 	}
 }
 
-func TestHasSafeLogOperationalErrors(t *testing.T) {
+func testHasSafeLogOperationalErrors(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		set  func()
@@ -268,7 +268,7 @@ func TestHasSafeLogOperationalErrors(t *testing.T) {
 	}
 }
 
-func TestWriteAllFDHandlesPartialWrites(t *testing.T) {
+func testWriteAllFDHandlesPartialWrites(t *testing.T) {
 	restoreLogOps(t)
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {

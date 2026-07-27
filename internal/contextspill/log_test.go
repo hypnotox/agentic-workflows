@@ -9,7 +9,21 @@ import (
 	"time"
 )
 
-func TestParseNoticeContract(t *testing.T) {
+// invariant: tooling/context-and-topic:context-spill-observability
+func TestSpillObservabilityStorageContract(t *testing.T) {
+	t.Run("exact notice grammar", testParseNoticeContract)
+	t.Run("exact record", testLogExactRecord)
+	t.Run("exact record quoting", testShellQuote)
+	t.Run("secure durable concurrent append", testLogSecureAppendAndConcurrency)
+	t.Run("no-follow path rejection", testLogRejectsUnsafePaths)
+	t.Run("operational error preservation", testLogOperationalFailures)
+	t.Run("ownership and descriptor anchoring", testLogDirectoryValidationAndDescriptorAnchoring)
+	t.Run("safe log states", testHasSafeLogRejectsForeignOwnerAndMissingPaths)
+	t.Run("safe log operational errors", testHasSafeLogOperationalErrors)
+	t.Run("partial append writes", testWriteAllFDHandlesPartialWrites)
+}
+
+func testParseNoticeContract(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "spill.txt")
 	if err := os.WriteFile(path, []byte("spill"), 0o600); err != nil {
 		t.Fatal(err)
@@ -49,7 +63,28 @@ func TestParseNoticeContract(t *testing.T) {
 	}
 }
 
-func TestShellQuote(t *testing.T) {
+func testLogExactRecord(t *testing.T) {
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	oldNow := now
+	now = func() time.Time { return time.Date(2026, 7, 27, 12, 34, 56, 123, time.FixedZone("offset", 3600)) }
+	t.Cleanup(func() { now = oldNow })
+	if err := Log(root, Notice{Bytes: 9000, Path: "/tmp/secret"}, []string{"./x", "context", "a b"}); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const want = "2026-07-27T11:34:56.000000123Z\tbytes=9000\tinvocation='./x' 'context' 'a b'\n"
+	if string(data) != want {
+		t.Fatalf("record=%q, want %q", data, want)
+	}
+}
+
+func testShellQuote(t *testing.T) {
 	got := ShellQuote([]string{"./x", "context", "", "a b", "it's"})
 	want := "'./x' 'context' '' 'a b' 'it'\\''s'"
 	if got != want {
@@ -57,7 +92,7 @@ func TestShellQuote(t *testing.T) {
 	}
 }
 
-func TestLogSecureAppendAndConcurrency(t *testing.T) {
+func testLogSecureAppendAndConcurrency(t *testing.T) {
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
@@ -105,7 +140,7 @@ func TestLogSecureAppendAndConcurrency(t *testing.T) {
 	}
 }
 
-func TestLogRejectsUnsafePaths(t *testing.T) {
+func testLogRejectsUnsafePaths(t *testing.T) {
 	t.Run("awf symlink", func(t *testing.T) {
 		root := t.TempDir()
 		if err := os.Symlink(t.TempDir(), filepath.Join(root, ".awf")); err != nil {
