@@ -98,12 +98,12 @@ func TestRenderDoctorHumanDeterministicAndWriteFailures(t *testing.T) {
 			t.Errorf("doctor human missing %q: %s", text, output.String())
 		}
 	}
-	for _, forbidden := range []string{"event", "observed=", "threshold", "baseline", "reconciliation", "explanation", "next"} {
+	for _, forbidden := range []string{"doctor effort=", "event", "observed=", "threshold", "baseline", "reconciliation", "explanation", "next"} {
 		if strings.Contains(output.String(), forbidden) {
 			t.Errorf("doctor human leaked detail %q: %s", forbidden, output.String())
 		}
 	}
-	for failAt := range 5 {
+	for failAt := range 4 {
 		writer := &failAtWriter{failAt: failAt}
 		if err := RenderDoctorHuman(writer, result); err == nil {
 			t.Fatalf("write failure %d was ignored", failAt)

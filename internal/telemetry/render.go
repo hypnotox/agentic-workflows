@@ -91,11 +91,6 @@ func RenderEffortListHuman(out io.Writer, page EffortListPage) error {
 // RenderDoctorHuman reports only deterministic finding and integrity counters.
 // Detailed findings and their evidence remain available in canonical JSON.
 func RenderDoctorHuman(out io.Writer, result DoctorResult) error {
-	if result.Selector.EffortID != nil {
-		if _, err := fmt.Fprintf(out, "doctor effort=%s\n", *result.Selector.EffortID); err != nil {
-			return err
-		}
-	}
 	severity := map[string]int{}
 	rules := map[string]int{}
 	for _, finding := range result.Findings {

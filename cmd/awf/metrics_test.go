@@ -103,7 +103,7 @@ func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	}
 	out.Reset()
 	doctor.inv.bools["--json"] = false
-	if err := runMetrics(doctor); err != nil || !strings.Contains(out.String(), "doctor effort=effort\nfindings warnings=0 violations=0") {
+	if err := runMetrics(doctor); err != nil || out.String() != "findings warnings=0 violations=0\nrules none=0\nintegrity warnings=0 violations=0\nintegrity-rules none=0\n" {
 		t.Fatalf("scoped doctor human = %q, %v", out.String(), err)
 	}
 }
@@ -197,12 +197,12 @@ func TestDoctorUsesConfiguredHeuristicsAndIsReadOnly(t *testing.T) {
 	if err := runMetrics(&cmdCtx{root: root, sub: "doctor", inv: invocation{bools: map[string]bool{}, values: map[string]string{"--effort": "effort"}}, stdout: &out}); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"doctor effort=effort", "findings warnings=1 violations=0", "rules rule=WFH1-COMPACTIONS count=1"} {
+	for _, want := range []string{"findings warnings=1 violations=0", "rules rule=WFH1-COMPACTIONS count=1"} {
 		if !strings.Contains(out.String(), want) {
 			t.Fatalf("human doctor summary missing %q: %s", want, out.String())
 		}
 	}
-	for _, forbidden := range []string{"finding ", "evidence", "observed="} {
+	for _, forbidden := range []string{"doctor effort=", "finding ", "evidence", "observed="} {
 		if strings.Contains(out.String(), forbidden) {
 			t.Fatalf("human doctor leaked %q: %s", forbidden, out.String())
 		}
