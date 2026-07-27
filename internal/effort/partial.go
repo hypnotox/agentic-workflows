@@ -184,4 +184,15 @@ func branchExistsPartial(ctx context.Context, root, branch string) (bool, error)
 	return false, err
 }
 
-func partialAbsent(path string) bool { _, err := os.Lstat(path); return errors.Is(err, os.ErrNotExist) }
+var partialLstat = os.Lstat
+
+func partialAbsent(path string) (bool, error) {
+	_, err := partialLstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("verify managed path absence %s: %w", path, err)
+	}
+	return false, nil
+}

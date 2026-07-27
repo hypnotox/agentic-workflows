@@ -21,11 +21,12 @@ type Options struct {
 var makeManagedDir = os.MkdirAll
 
 type Manager struct {
-	ctx     context.Context
-	roots   awfgit.ControlRoots
-	efforts *effort.Service
-	run     Runner
-	clock   func() time.Time
+	ctx          context.Context
+	roots        awfgit.ControlRoots
+	efforts      *effort.Service
+	run          Runner
+	clock        func() time.Time
+	clearPartial func(string, string) error
 }
 
 func Open(ctx context.Context, invoking string, options Options) (*Manager, error) {
@@ -45,7 +46,7 @@ func Open(ctx context.Context, invoking string, options Options) (*Manager, erro
 	if clock == nil {
 		clock = time.Now
 	}
-	return &Manager{ctx: ctx, roots: roots, efforts: service, run: run, clock: clock}, nil
+	return &Manager{ctx: ctx, roots: roots, efforts: service, run: run, clock: clock, clearPartial: service.ClearPartial}, nil
 }
 func (m *Manager) managed(id string) (string, error) {
 	root, err := m.roots.ResidentRoot(awfgit.ResidentWorktrees)
@@ -102,9 +103,14 @@ func (m *Manager) settleAddFailure(id string, path string, cause error) error {
 				break
 			}
 		}
-		// coverage-ignore: partial checkout OS fault injection.
-		if _, statErr := os.Lstat(path); statErr == nil {
-			mutated = true
+		// Only a positive ENOENT proves that the checkout was not created.
+		// Any other stat result leaves durable evidence for repair.
+		if !mutated {
+			if _, statErr := managedLstat(path); statErr == nil {
+				mutated = true
+			} else if !errors.Is(statErr, os.ErrNotExist) {
+				return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failure is unverifiable: %w (cause: %v)", statErr, cause)}
+			}
 		}
 	}
 	// coverage-ignore: native Git topology race during failure verification.
@@ -112,7 +118,7 @@ func (m *Manager) settleAddFailure(id string, path string, cause error) error {
 		return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failed before registration could settle: %w", cause)}
 	}
 	// coverage-ignore: evidence-directory fsync fault injection.
-	if clearErr := m.efforts.ClearPartial(id, "worktree"); clearErr != nil {
+	if clearErr := m.clearPartial(id, "worktree"); clearErr != nil {
 		return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence after failed add: %w", clearErr)}
 	}
 	return cause
@@ -130,7 +136,7 @@ func (m *Manager) Add(id, base string) (effort.Record, error) {
 	if err != nil {
 		return effort.Record{}, err
 	}
-	if _, err := os.Lstat(path); err == nil {
+	if _, err := managedLstat(path); err == nil {
 		// Do not classify a hostile resident path as an ordinary retryable
 		// collision. The path is manager-owned and must never be a symlink or
 		// another file type, even before Git is asked to create it.

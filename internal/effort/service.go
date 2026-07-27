@@ -490,8 +490,15 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				if _, err := partialGit(s.ctx, s.paths.roots.InvokingRoot, args...); err != nil {
 					return err
 				}
-			} else if !partialAbsent(managed) {
-				return safety("repository-identity", managed, errors.New("unregistered managed path remains"))
+			} else { // coverage-ignore: injected namespace stat faults are exercised at the helper boundary.
+				absent, absentErr := partialAbsent(managed)
+				if absentErr != nil {
+					// coverage-ignore: managed-path stat faults require injected namespace failure during repair.
+					return absentErr
+				}
+				if !absent {
+					return safety("repository-identity", managed, errors.New("unregistered managed path remains"))
+				}
 			}
 			exists, err := partialBranches(s.ctx, s.paths.roots.InvokingRoot, evidence.Branch)
 			if err != nil {
@@ -535,6 +542,8 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 	return nil
 }
 
+var residentOwner = func(path string, info os.FileInfo) error { return validatePathOwner(path, info, nil) }
+
 func managedDirectoryTruth(path string) (bool, error) {
 	info, err := os.Lstat(path)
 	if errors.Is(err, os.ErrNotExist) {
@@ -549,7 +558,7 @@ func managedDirectoryTruth(path string) (bool, error) {
 	if !info.IsDir() {
 		return false, safety("file-type", path, fmt.Errorf("mode %s is not a directory", info.Mode()))
 	}
-	if err := validatePathOwner(path, info, nil); err != nil { // coverage-ignore: requires a foreign-owned directory fixture created by a privileged test process
+	if err := residentOwner(path, info); err != nil {
 		return false, err
 	}
 	return true, nil

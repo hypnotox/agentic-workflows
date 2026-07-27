@@ -58,6 +58,53 @@ func TestPhase2FailureSettlementAndPreconditions(t *testing.T) {
 }
 
 // invariant: tooling/effort-management:managed-worktree-lifecycle
+// invariant: tooling/effort-management:managed-worktree-lifecycle
+func TestPhase2ManualDivergenceForceRepairSurvivesRestart(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("manual restart", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Add(r.ID, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	path, _ := m.managed(r.ID)
+	commitFile(t, path, "restart", "restart")
+	if _, err = m.RecordManualIntegration(r.ID, "HEAD", true, "verified external integration"); err != nil {
+		t.Fatal(err)
+	}
+	base := m.run
+	failed := false
+	m.run = func(ctx context.Context, root string, args ...string) ([]byte, error) {
+		if strings.Join(args, " ") == "branch -D awf/"+r.ID && !failed {
+			failed = true
+			return nil, errors.New("injected post-removal branch failure")
+		}
+		return base(ctx, root, args...)
+	}
+	if _, err = m.Remove(r.ID, true, "verified divergent removal"); err == nil {
+		t.Fatal("post-boundary failure was hidden")
+	}
+	fresh, err := Open(t.Context(), m.roots.InvokingRoot, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = fresh.efforts.Repair(r.ID); err != nil {
+		t.Fatalf("restart repair: %v", err)
+	}
+	repaired, err := fresh.efforts.Show(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repaired.Worktree != nil || repaired.Integration != effort.IntegrationManual {
+		t.Fatalf("repair lost truthful manual disposition: %+v", repaired)
+	}
+	if _, err = nativeRunner(t.Context(), m.roots.InvokingRoot, "show-ref", "--verify", "refs/heads/awf/"+r.ID); err == nil {
+		t.Fatal("forced branch survived repair")
+	}
+}
+
+// invariant: tooling/effort-management:managed-worktree-lifecycle
 func TestPhase2ManualDivergenceUsesPairedForce(t *testing.T) {
 	m := newManagerForPhase2(t)
 	r, err := m.efforts.New("manual divergence", false)
@@ -90,8 +137,35 @@ func newManagerForPhase2(t *testing.T) *Manager {
 	return m
 }
 
+// invariant: tooling/effort-management:managed-worktree-lifecycle
+func TestPhase2AddFailureStatErrorRetainsEvidence(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("stat error", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path, _ := m.managed(r.ID)
+	oldLstat := managedLstat
+	managedLstat = func(string) (os.FileInfo, error) { return nil, errors.New("injected inaccessible checkout") }
+	defer func() { managedLstat = oldLstat }()
+	if err := m.settleAddFailure(r.ID, path, errors.New("injected add failure")); err == nil || !strings.Contains(err.Error(), "unverifiable") {
+		t.Fatalf("stat error settlement = %v", err)
+	}
+	managedLstat = oldLstat
+	m.clearPartial = func(string, string) error { return errors.New("injected evidence clear") }
+	if err := m.settleAddFailure(r.ID, path, errors.New("injected add failure")); err == nil || !strings.Contains(err.Error(), "evidence clear") {
+		t.Fatalf("clear error settlement = %v", err)
+	}
+}
+
 func TestPhase2SafeManagedPathChecksComponents(t *testing.T) {
 	root := t.TempDir()
+	oldOwner := managedOwner
+	managedOwner = func(string, os.FileInfo) error { return errors.New("injected foreign owner") }
+	if err := safeManagedPath(root); err == nil || !strings.Contains(err.Error(), "foreign owner") {
+		t.Fatal("foreign owner accepted")
+	}
+	managedOwner = oldOwner
 	link := filepath.Join(root, "link")
 	if err := os.Symlink(t.TempDir(), link); err != nil {
 		t.Fatal(err)

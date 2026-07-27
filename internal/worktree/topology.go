@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -120,6 +121,10 @@ func exactRegistration(ctx context.Context, run Runner, invoking, path, branch s
 	}
 	return nil
 }
+
+var managedLstat = os.Lstat
+var managedOwner = effort.ValidateCurrentOwner
+
 func safeManagedPath(path string) error {
 	clean := filepath.Clean(path)
 	volume := filepath.VolumeName(clean)
@@ -131,13 +136,21 @@ func safeManagedPath(path string) error {
 			continue
 		}
 		current = filepath.Join(current, component)
-		componentInfo, componentErr := os.Lstat(current)
+		componentInfo, componentErr := managedLstat(current)
 		if componentErr != nil {
 			return componentErr
 		}
 		info = componentInfo
 		if componentInfo.Mode()&os.ModeSymlink != 0 {
 			return &awfgit.HardSafetyError{Category: "symlink", Path: current}
+		}
+		// Shared sticky parents such as /tmp are not manager-owned resident
+		// components; validate ownership once the confined path enters its own
+		// tree.
+		if componentInfo.Mode()&os.ModeSticky == 0 || componentInfo.Mode().Perm()&0o002 == 0 {
+			if err := managedOwner(current, componentInfo); err != nil {
+				return err
+			}
 		}
 	}
 	if info == nil {

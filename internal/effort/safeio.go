@@ -89,6 +89,11 @@ func readRegularNoFollow(path string) ([]byte, fileIdentity, error) {
 	return raw, identity, nil
 }
 
+// ValidateCurrentOwner applies the platform's no-follow owner check to an existing path.
+func ValidateCurrentOwner(path string, info os.FileInfo) error {
+	return validatePathOwner(path, info, nil)
+}
+
 func requireIdentity(path string, expected fileIdentity) error {
 	current, err := lstatRegular(path)
 	if err != nil { // coverage-ignore: callers retain a prior identity; failure here requires a concurrent namespace race
