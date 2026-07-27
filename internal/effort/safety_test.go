@@ -13,6 +13,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortLeafSafetyRefusesSymlinksWithoutTouchingTargets(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -149,6 +150,7 @@ func TestEffortLeafSafetyRefusesHardLinkedLockOutsideResidentRoot(t *testing.T) 
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortLeafSafetyRefusesTypesPermissionsAndForeignOwnership(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openEffortService(t, root, time.Now().UTC())
@@ -169,7 +171,7 @@ func TestEffortLeafSafetyRefusesTypesPermissionsAndForeignOwnership(t *testing.T
 		t.Fatal(err)
 	}
 
-	if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o755); err != nil {
+	if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o775); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := service.New("Bad resident mode", false); err == nil || !strings.Contains(err.Error(), "resident-permissions") {
@@ -248,6 +250,7 @@ func TestEffortListingRefusesUnsafeDirectoryFIFOAndUnreadableRecord(t *testing.T
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortIdentityReplacementIsRefusedAndPreserved(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openEffortService(t, root, time.Now().UTC())

@@ -8,6 +8,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortPathsClosedResidentRoots(t *testing.T) {
 	primary := filepath.Join(t.TempDir(), "primary")
 	p, err := resolvePaths(awfgit.ControlRoots{PrimaryRoot: primary})
@@ -30,6 +31,7 @@ func TestEffortPathsClosedResidentRoots(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortPathsRejectUnsafePrimary(t *testing.T) {
 	if _, err := resolvePaths(awfgit.ControlRoots{PrimaryRoot: "relative"}); err == nil {
 		t.Fatal("relative primary accepted")

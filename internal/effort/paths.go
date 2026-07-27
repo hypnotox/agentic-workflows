@@ -51,8 +51,8 @@ func (p paths) ensure(root string) error {
 	if !info.IsDir() { // coverage-ignore: MkdirAll rejects a non-directory leaf before this check
 		return &awfgit.HardSafetyError{Category: "file-type", Path: root, Err: fmt.Errorf("mode %s is not a directory", info.Mode())}
 	}
-	if info.Mode().Perm() != 0o700 {
-		return &awfgit.HardSafetyError{Category: "resident-permissions", Path: root, Err: fmt.Errorf("mode is %o, want 700", info.Mode().Perm())}
+	if info.Mode().Perm()&0o022 != 0 {
+		return &awfgit.HardSafetyError{Category: "resident-permissions", Path: root, Err: fmt.Errorf("mode is %o, group/world write bits must be clear", info.Mode().Perm())}
 	}
 	// Re-run the control-root proof after creation so a symlink race is never
 	// accepted merely because MkdirAll returned success.

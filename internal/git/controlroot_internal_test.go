@@ -1,9 +1,12 @@
 package git
 
 import (
+	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -41,6 +44,98 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 	if got, err := cleanAbsolute("."); err != nil || !filepath.IsAbs(got) {
 		t.Fatalf("cleanAbsolute = %q, %v", got, err)
 	}
+}
+
+func TestNativeGitFailuresRetainWrappedCauseAndContext(t *testing.T) {
+	nonRepository := filepath.Join(t.TempDir(), "not-a-repository")
+	if err := os.Mkdir(nonRepository, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	_, err := ResolveControlRoots(t.Context(), nonRepository)
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) || !strings.Contains(err.Error(), "inspect bare-repository state") || !strings.Contains(err.Error(), nonRepository) {
+		t.Fatalf("non-repository error lost exit cause or context: %T %v", err, err)
+	}
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	_, err = runGitBytes(ctx, t.TempDir(), "version")
+	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "git -C") {
+		t.Fatalf("canceled Git error lost cause or context: %T %v", err, err)
+	}
+
+	t.Setenv("PATH", t.TempDir())
+	_, err = runGitBytes(t.Context(), t.TempDir(), "version")
+	if !errors.Is(err, exec.ErrNotFound) || !strings.Contains(err.Error(), "git -C") {
+		t.Fatalf("failed Git execution lost cause or context: %T %v", err, err)
+	}
+}
+
+func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake native Git fixture requires a POSIX script")
+	}
+	for _, stage := range []string{"show", "common", "worktree"} {
+		t.Run(stage, func(t *testing.T) {
+			root := t.TempDir()
+			if err := os.Mkdir(filepath.Join(root, ".git"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			bin := t.TempDir()
+			script := filepath.Join(bin, "git")
+			body := "#!/bin/sh\n" +
+				"if [ \"$3\" = rev-parse ] && [ \"$4\" = --is-bare-repository ]; then printf 'false\\n'; exit 0; fi\n" +
+				"if [ \"$3\" = rev-parse ] && [ \"$4\" = --show-toplevel ]; then " + shellStageResult(stage, "show", "printf '%s\\n' \"$2\"") + "; fi\n" +
+				"if [ \"$3\" = rev-parse ] && [ \"$4\" = --path-format=absolute ]; then " + shellStageResult(stage, "common", "printf '%s/.git\\n' \"$2\"") + "; fi\n" +
+				"if [ \"$3\" = worktree ]; then " + shellStageResult(stage, "worktree", "printf 'worktree %s\\000HEAD abc\\000branch refs/heads/main\\000\\000' \"$2\"") + "; fi\n"
+			if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+			_, err := ResolveControlRoots(t.Context(), root)
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) || !strings.Contains(err.Error(), root) {
+				t.Fatalf("%s-stage error lost exit cause or path context: %T %v", stage, err, err)
+			}
+		})
+	}
+
+	t.Run("path-output", func(t *testing.T) {
+		bin := t.TempDir()
+		script := filepath.Join(bin, "git")
+		if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'first\\nsecond\\n'\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		if _, err := runGitPath(t.Context(), t.TempDir(), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
+			t.Fatalf("multiline Git path accepted: %v", err)
+		}
+	})
+
+	t.Run("scalar-output", func(t *testing.T) {
+		bin := t.TempDir()
+		script := filepath.Join(bin, "git")
+		if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf ' false \\n'\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		if _, err := runGitText(t.Context(), t.TempDir(), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
+			t.Fatalf("space-padded Git scalar accepted: %v", err)
+		}
+	})
+
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	if _, err := runGitPath(ctx, t.TempDir(), "path"); !errors.Is(err, context.Canceled) {
+		t.Fatalf("path command error lost cancellation cause: %v", err)
+	}
+}
+
+func shellStageResult(current, target, success string) string {
+	if current == target {
+		return "printf 'stage failure\\n' >&2; exit 7"
+	}
+	return success
 }
 
 func TestListWorktreeRegistrationsErrors(t *testing.T) {

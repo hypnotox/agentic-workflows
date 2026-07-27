@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortPersistedValidationMatrix(t *testing.T) {
 	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
 	valid := persistedRecord{SchemaVersion: 1, ID: idA, Title: "Title", State: StateActive, CreatedAt: now, UpdatedAt: now, Integration: IntegrationNone}
@@ -20,7 +21,9 @@ func TestEffortPersistedValidationMatrix(t *testing.T) {
 		"untrimmed-title": func(r *persistedRecord) { r.Title = " Title" },
 		"state":           func(r *persistedRecord) { r.State = "unknown" },
 		"created-zero":    func(r *persistedRecord) { r.CreatedAt = time.Time{} },
+		"created-non-UTC": func(r *persistedRecord) { r.CreatedAt = now.In(time.FixedZone("local", 3600)) },
 		"updated-zero":    func(r *persistedRecord) { r.UpdatedAt = time.Time{} },
+		"updated-non-UTC": func(r *persistedRecord) { r.UpdatedAt = now.In(time.FixedZone("local", 3600)) },
 		"updated-before":  func(r *persistedRecord) { r.UpdatedAt = now.Add(-time.Second) },
 		"integration":     func(r *persistedRecord) { r.Integration = "unknown" },
 		"worktree-branch": func(r *persistedRecord) {

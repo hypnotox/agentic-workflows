@@ -16,21 +16,21 @@ func TestControlRootPrimaryAndLinkedWorktreeShareAuthority(t *testing.T) {
 	for _, commonForm := range []string{"relative", "absolute"} {
 		t.Run(commonForm+"-commondir-detached-head-and-spaces", func(t *testing.T) {
 			base := filepath.Join(t.TempDir(), "repository fixtures with spaces")
-			primary := filepath.Join(base, "primary checkout")
+			primary := filepath.Join(base, " primary checkout ")
 			initNativeRepo(t, primary)
-			linked := filepath.Join(base, "linked checkout")
+			linked := filepath.Join(base, " linked checkout ")
 			runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
 
 			gitdir := gitdirFromFile(t, filepath.Join(linked, ".git"))
 			commondirPath := filepath.Join(gitdir, "commondir")
-			commondir := strings.TrimSpace(readFile(t, commondirPath))
+			commondir := trimGitOutputLine(readFile(t, commondirPath))
 			if filepath.IsAbs(commondir) {
 				t.Fatalf("native linked-worktree commondir = %q, want relative", commondir)
 			}
 			if commonForm == "absolute" {
-				common := strings.TrimSpace(runGit(t, "-C", linked, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+				common := trimGitOutputLine(runGit(t, "-C", linked, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 				writeFile(t, commondirPath, common+"\n")
-				if rewritten := strings.TrimSpace(readFile(t, commondirPath)); !filepath.IsAbs(rewritten) {
+				if rewritten := trimGitOutputLine(readFile(t, commondirPath)); !filepath.IsAbs(rewritten) {
 					t.Fatalf("rewritten linked-worktree commondir = %q, want absolute", rewritten)
 				}
 			}
@@ -44,7 +44,7 @@ func TestControlRootPrimaryAndLinkedWorktreeShareAuthority(t *testing.T) {
 				t.Fatalf("resolve linked checkout: %v", err)
 			}
 
-			wantCommon := strings.TrimSpace(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+			wantCommon := trimGitOutputLine(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-common-dir"))
 			assertRoots(t, primaryRoots, primary, wantCommon, primary)
 			assertRoots(t, linkedRoots, linked, wantCommon, primary)
 			if primaryRoots.PrimaryRoot != linkedRoots.PrimaryRoot {
@@ -59,21 +59,21 @@ func TestControlRootPrimaryAndLinkedWorktreeShareAuthority(t *testing.T) {
 
 func TestControlRootSeparateGitDirRepository(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "separate git dir fixture")
-	primary := filepath.Join(base, "checkout with spaces")
-	common := filepath.Join(base, "metadata with spaces.git")
+	primary := filepath.Join(base, " checkout with spaces ")
+	common := filepath.Join(base, " metadata with spaces.git ")
 	initNativeSeparateGitDirRepo(t, primary, common)
 
-	if got := strings.TrimSpace(runGit(t, "-C", primary, "rev-parse", "--show-toplevel")); got != cleanAbsolute(t, primary) {
+	if got := trimGitOutputLine(runGit(t, "-C", primary, "rev-parse", "--show-toplevel")); got != cleanAbsolute(t, primary) {
 		t.Fatalf("separate-git-dir show-toplevel = %q, want %q", got, cleanAbsolute(t, primary))
 	}
-	if got := strings.TrimSpace(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-dir")); got != cleanAbsolute(t, common) {
+	if got := trimGitOutputLine(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-dir")); got != cleanAbsolute(t, common) {
 		t.Fatalf("separate-git-dir absolute git-dir = %q, want %q", got, cleanAbsolute(t, common))
 	}
-	if got := strings.TrimSpace(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-common-dir")); got != cleanAbsolute(t, common) {
+	if got := trimGitOutputLine(runGit(t, "-C", primary, "rev-parse", "--path-format=absolute", "--git-common-dir")); got != cleanAbsolute(t, common) {
 		t.Fatalf("separate-git-dir absolute common-dir = %q, want %q", got, cleanAbsolute(t, common))
 	}
 	assertSingleListedNonBarePrimary(t, primary, primary, common)
-	linked := filepath.Join(base, "linked checkout with spaces")
+	linked := filepath.Join(base, " linked checkout with spaces ")
 	runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
 
 	roots, err := awfgit.ResolveControlRoots(t.Context(), primary)
@@ -456,7 +456,7 @@ func gitdirFromFile(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	value, ok := strings.CutPrefix(strings.TrimSpace(string(raw)), "gitdir: ")
+	value, ok := strings.CutPrefix(trimGitOutputLine(string(raw)), "gitdir: ")
 	if !ok {
 		t.Fatalf("%s is not a gitdir pointer: %q", path, raw)
 	}
@@ -464,6 +464,11 @@ func gitdirFromFile(t *testing.T, path string) string {
 		value = filepath.Join(filepath.Dir(path), value)
 	}
 	return filepath.Clean(value)
+}
+
+func trimGitOutputLine(value string) string {
+	value = strings.TrimSuffix(value, "\n")
+	return strings.TrimSuffix(value, "\r")
 }
 
 func readFile(t *testing.T, path string) string {

@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestAtomicReplacementDurabilityOrder(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "record.json")
@@ -32,6 +33,7 @@ func TestAtomicReplacementDurabilityOrder(t *testing.T) {
 	assertNoEffortTemps(t, dir)
 }
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestAtomicReplacementFaultsPreserveOldOrPublishedBytesAndContext(t *testing.T) {
 	for _, stage := range []string{"create-temp", "stat-temp", "write-temp", "short-write", "fsync-temp", "close-temp", "rename", "open-directory", "fsync-directory", "close-directory"} {
 		t.Run(stage, func(t *testing.T) {

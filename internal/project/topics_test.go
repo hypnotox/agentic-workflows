@@ -37,40 +37,43 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	effortTopic, ok := corpus.ByTopicID("tooling/effort-management")
-	if !ok {
-		t.Fatal("tooling/effort-management topic is absent")
+	paths := map[string]string{
+		"cmd/awf/effort.go":                         "tooling/effort-management",
+		"cmd/awf/effort_test.go":                    "tooling/effort-management",
+		"internal/effort/branches_test.go":          "tooling/effort-management",
+		"internal/effort/durability_test.go":        "tooling/effort-management",
+		"internal/effort/memory.go":                 "tooling/effort-management",
+		"internal/effort/memory_test.go":            "tooling/effort-management",
+		"internal/effort/paths.go":                  "tooling/effort-management",
+		"internal/effort/paths_test.go":             "tooling/effort-management",
+		"internal/effort/repair_test.go":            "tooling/effort-management",
+		"internal/effort/safeio.go":                 "tooling/effort-management",
+		"internal/effort/safety_test.go":            "tooling/effort-management",
+		"internal/effort/service.go":                "tooling/effort-management",
+		"internal/effort/service_test.go":           "tooling/effort-management",
+		"internal/effort/store.go":                  "tooling/effort-management",
+		"internal/effort/store_test.go":             "tooling/effort-management",
+		"internal/effort/types.go":                  "tooling/effort-management",
+		"internal/effort/types_test.go":             "tooling/effort-management",
+		"internal/git/controlroot.go":               "tooling/audit-and-snapshots",
+		"internal/git/controlroot_internal_test.go": "tooling/audit-and-snapshots",
+		"internal/git/controlroot_test.go":          "tooling/audit-and-snapshots",
 	}
-	paths := []string{
-		"cmd/awf/effort.go",
-		"cmd/awf/effort_test.go",
-		"internal/effort/branches_test.go",
-		"internal/effort/durability_test.go",
-		"internal/effort/memory.go",
-		"internal/effort/memory_test.go",
-		"internal/effort/paths.go",
-		"internal/effort/paths_test.go",
-		"internal/effort/repair_test.go",
-		"internal/effort/safeio.go",
-		"internal/effort/safety_test.go",
-		"internal/effort/service.go",
-		"internal/effort/service_test.go",
-		"internal/effort/store.go",
-		"internal/effort/store_test.go",
-		"internal/effort/types.go",
-		"internal/effort/types_test.go",
-	}
-	for _, path := range paths {
+	for path, topicID := range paths {
 		t.Run(strings.ReplaceAll(path, "/", "-"), func(t *testing.T) {
 			if _, err := os.Stat(filepath.Join("../..", filepath.FromSlash(path))); err != nil {
 				t.Fatalf("enumerated Phase 1 path does not exist: %v", err)
 			}
-			applicability := topic.ApplicabilityForTopic(effortTopic, corpus.DomainPaths["tooling"], corpus.Markers, []string{path})
+			selected, ok := corpus.ByTopicID(topicID)
+			if !ok {
+				t.Fatalf("expected topic %s is absent", topicID)
+			}
+			applicability := topic.ApplicabilityForTopic(selected, corpus.DomainPaths["tooling"], corpus.Markers, []string{path})
 			if len(applicability.DomainPaths) == 0 {
 				t.Errorf("%s did not independently resolve to the tooling domain", path)
 			}
 			if len(applicability.TopicPaths) == 0 {
-				t.Errorf("%s did not independently resolve to tooling/effort-management", path)
+				t.Errorf("%s did not independently resolve to %s", path, topicID)
 			}
 		})
 	}

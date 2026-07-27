@@ -70,6 +70,29 @@ func TestEffortCommandsFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority
+func TestEffortCommandAcceptsInstalledMemoryDirectory(t *testing.T) {
+	root := commandRepo(t)
+	memoryRoot := filepath.Join(root, ".awf", "memory")
+	if err := os.MkdirAll(memoryRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(memoryRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(memoryRoot, ".gitignore"), []byte("*\n!.gitignore\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	created := runEffortCommand(t, root, "new", []string{"Installed checkout layout"}, map[string]bool{})
+	id := strings.Fields(created)[1]
+	if _, err := os.Stat(filepath.Join(memoryRoot, id+".md")); err != nil {
+		t.Fatalf("default effort memory in installed layout: %v", err)
+	}
+	if info, err := os.Stat(memoryRoot); err != nil || info.Mode().Perm() != 0o755 {
+		t.Fatalf("existing resident mode changed: info=%v err=%v", info, err)
+	}
+}
+
 func TestEffortNoMemoryMemoryListJSONAndReservedWorktree(t *testing.T) {
 	root := commandRepo(t)
 	created := runEffortCommand(t, root, "new", []string{"Without memory"}, map[string]bool{"--no-memory": true})

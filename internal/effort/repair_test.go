@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -13,9 +12,10 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 	now := time.Date(2026, 7, 27, 2, 0, 0, 0, time.UTC)
-	t.Run("reconstruction-registered-present-and-missing-path-retention", func(t *testing.T) {
+	t.Run("present-checkout-without-authoritative-base-evidence", func(t *testing.T) {
 		root := initEffortRepo(t)
 		service := openEffortService(t, root, now)
 		if _, err := service.New("Repair me", false); err != nil {
@@ -26,20 +26,71 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 			t.Fatal(err)
 		}
 		runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+idA, managed, "HEAD")
-		head := stringsTrim(runEffortGitOutput(t, "-C", managed, "rev-parse", "HEAD"))
-		repaired, err := service.Repair(idA)
+		writeEffortFile(t, filepath.Join(managed, "tip.txt"), "tip\n")
+		runEffortGit(t, "-C", managed, "add", "tip.txt")
+		runEffortGit(t, "-C", managed, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "advance tip")
+		before, err := os.ReadFile(service.paths.record(idA))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if repaired.Record.Worktree == nil || repaired.Record.Worktree.Base != head || !repaired.Record.Worktree.AttachedAt.Equal(now) || repaired.Record.Integration != IntegrationPending || len(repaired.Changes) != 2 {
-			t.Fatalf("reconstruction = %#v", repaired)
+		requireRepairSafety(t, service, "repair-evidence")
+		after, err := os.ReadFile(service.paths.record(idA))
+		if err != nil || string(after) != string(before) {
+			t.Fatalf("refused reconstruction changed record: before=%q after=%q err=%v", before, after, err)
+		}
+	})
+
+	t.Run("stale-registration-with-absent-managed-path", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, now)
+		if _, err := service.New("Repair me", false); err != nil {
+			t.Fatal(err)
+		}
+		managed := service.paths.managedWorktree(idA)
+		if err := os.MkdirAll(filepath.Dir(managed), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+idA, managed, "HEAD")
+		if err := os.RemoveAll(managed); err != nil {
+			t.Fatal(err)
+		}
+		before, err := os.ReadFile(service.paths.record(idA))
+		if err != nil {
+			t.Fatal(err)
+		}
+		requireRepairSafety(t, service, "repair-evidence")
+		after, err := os.ReadFile(service.paths.record(idA))
+		if err != nil || string(after) != string(before) {
+			t.Fatalf("stale registration repair changed record: before=%q after=%q err=%v", before, after, err)
+		}
+	})
+
+	t.Run("stale-registration-retains-existing-authoritative-metadata", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, now)
+		if _, err := service.New("Repair me", false); err != nil {
+			t.Fatal(err)
+		}
+		managed := service.paths.managedWorktree(idA)
+		if err := os.MkdirAll(filepath.Dir(managed), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+idA, managed, "HEAD")
+		writeEffortFile(t, service.paths.record(idA), schemaRecordJSON(now, worktreeJSON(now), "pending"))
+		before, err := os.ReadFile(service.paths.record(idA))
+		if err != nil {
+			t.Fatal(err)
 		}
 		if err := os.RemoveAll(managed); err != nil {
 			t.Fatal(err)
 		}
-		retained, err := service.Repair(idA)
-		if err != nil || retained.Record.Worktree == nil || len(retained.Changes) != 0 {
-			t.Fatalf("registered missing-path retention = %#v, %v", retained, err)
+		repaired, err := service.Repair(idA)
+		if err != nil || len(repaired.Changes) != 0 || repaired.Record.Worktree == nil || repaired.Record.Worktree.Base != strings.Repeat("a", 40) {
+			t.Fatalf("stale registration changed existing metadata: result=%#v err=%v", repaired, err)
+		}
+		after, err := os.ReadFile(service.paths.record(idA))
+		if err != nil || string(after) != string(before) {
+			t.Fatalf("stale registration rewrote record: before=%q after=%q err=%v", before, after, err)
 		}
 	})
 
@@ -87,7 +138,7 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 	t.Run("ambiguous-registration", func(t *testing.T) {
 		root := initEffortRepo(t)
 		managed := filepath.Join(root, ".awf", "worktrees", idA)
-		registration := awfgit.WorktreeRegistration{Path: managed, HEAD: stringsRepeat("a", 40), Branch: "refs/heads/awf/" + idA}
+		registration := awfgit.WorktreeRegistration{Path: managed, HEAD: strings.Repeat("a", 40), Branch: "refs/heads/awf/" + idA}
 		service, err := Open(t.Context(), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return idA, nil }, Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
 			return []awfgit.WorktreeRegistration{registration, registration}, nil
 		}})
@@ -103,7 +154,7 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 	t.Run("registered-path-control-root-refusal", func(t *testing.T) {
 		root := initEffortRepo(t)
 		managed := filepath.Join(root, ".awf", "worktrees", idA)
-		registration := awfgit.WorktreeRegistration{Path: managed, HEAD: stringsRepeat("a", 40), Branch: "refs/heads/awf/" + idA}
+		registration := awfgit.WorktreeRegistration{Path: managed, HEAD: strings.Repeat("a", 40), Branch: "refs/heads/awf/" + idA}
 		service, err := Open(t.Context(), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return idA, nil }, Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
 			return []awfgit.WorktreeRegistration{registration}, nil
 		}})
@@ -164,7 +215,7 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 	t.Run("repository-identity-mismatch", func(t *testing.T) {
 		root := initEffortRepo(t)
 		managed := filepath.Join(root, ".awf", "worktrees", idA)
-		registration := awfgit.WorktreeRegistration{Path: managed, HEAD: stringsRepeat("a", 40), Branch: "refs/heads/awf/" + idA}
+		registration := awfgit.WorktreeRegistration{Path: managed, HEAD: strings.Repeat("a", 40), Branch: "refs/heads/awf/" + idA}
 		service, err := Open(t.Context(), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return idA, nil }, Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
 			return []awfgit.WorktreeRegistration{registration}, nil
 		}})
@@ -190,17 +241,3 @@ func requireRepairSafety(t *testing.T, service *Service, category string) {
 		t.Fatalf("repair safety error = %T %v", err, err)
 	}
 }
-
-func runEffortGitOutput(t *testing.T, args ...string) string {
-	t.Helper()
-	cmd := exec.CommandContext(t.Context(), "git", args...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
-	output, err := cmd.Output()
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(output)
-}
-
-func stringsTrim(value string) string              { return strings.TrimSpace(value) }
-func stringsRepeat(value string, count int) string { return strings.Repeat(value, count) }

@@ -56,36 +56,48 @@ func TestEffortRecordAuthorityLifecycleListingCollisionAndMemory(t *testing.T) {
 	if got := []string{listed[0].ID, listed[1].ID}; !reflect.DeepEqual(got, []string{idA, idB}) {
 		t.Fatalf("list order = %v", got)
 	}
+	path, withMemory, err := service.Memory(idA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !withMemory.MemoryPresent || path != filepath.Join(root, ".awf", "memory", idA+".md") {
+		t.Fatalf("memory result path=%q record=%#v", path, withMemory)
+	}
+	createdAt := second.CreatedAt
+	previousUpdate := withMemory.UpdatedAt
 
 	renamed, err := service.Rename(idA, "Renamed display")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if renamed.ID != idA || renamed.Title != "Renamed display" || !renamed.UpdatedAt.After(renamed.CreatedAt) {
+	if renamed.ID != idA || renamed.Title != "Renamed display" || renamed.CreatedAt != createdAt || !renamed.MemoryPresent || !renamed.UpdatedAt.After(previousUpdate) {
 		t.Fatalf("rename = %#v", renamed)
 	}
+	previousUpdate = renamed.UpdatedAt
 	completed, err := service.Complete(idA)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if completed.State != StateCompleted || completed.MemoryPresent || completed.Worktree != nil {
+	if completed.State != StateCompleted || completed.CreatedAt != createdAt || !completed.MemoryPresent || completed.Worktree != nil || !completed.UpdatedAt.After(previousUpdate) {
 		t.Fatalf("complete = %#v", completed)
 	}
+	previousUpdate = completed.UpdatedAt
 	reopened, err := service.Reopen(idA)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reopened.State != StateActive {
+	if reopened.State != StateActive || reopened.CreatedAt != createdAt || !reopened.MemoryPresent || !reopened.UpdatedAt.After(previousUpdate) {
 		t.Fatalf("reopen = %#v", reopened)
 	}
+	previousUpdate = reopened.UpdatedAt
 	abandoned, err := service.Abandon(idA)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if abandoned.State != StateAbandoned {
+	if abandoned.State != StateAbandoned || abandoned.CreatedAt != createdAt || !abandoned.MemoryPresent || !abandoned.UpdatedAt.After(previousUpdate) {
 		t.Fatalf("abandon = %#v", abandoned)
 	}
-	path, withMemory, err := service.Memory(idA)
+	path, withMemory, err = service.Memory(idA)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,6 +113,7 @@ func TestEffortRecordAuthorityLifecycleListingCollisionAndMemory(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 27, 0, 0, 0, 123, time.UTC)
@@ -146,7 +159,7 @@ func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 		t.Fatalf("logical assignments = %v", shown.AssignedSessionIDs)
 	}
 
-	for name, title := range map[string]string{"blank": "   ", "too-long": strings.Repeat("a", 161), "invalid-utf8": string([]byte{0xff})} {
+	for name, title := range map[string]string{"blank": "   ", "too-long": strings.Repeat("a", 161), "too-many-multibyte-bytes": strings.Repeat("é", 81), "invalid-utf8": string([]byte{0xff})} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := normalizeTitle(title); err == nil {
 				t.Fatal("invalid title accepted")
@@ -155,6 +168,7 @@ func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortCorruptionSchemaPairsRepairAndAtomicReplacement(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
@@ -171,6 +185,14 @@ func TestEffortCorruptionSchemaPairsRepairAndAtomicReplacement(t *testing.T) {
 		var corrupt *CorruptError
 		if !errors.As(err, &corrupt) {
 			t.Fatalf("schema error = %T %v", err, err)
+		}
+	}
+	if _, err := service.Repair(idA); err == nil {
+		t.Fatal("repair accepted corrupt schema")
+	} else {
+		var corrupt *CorruptError
+		if !errors.As(err, &corrupt) {
+			t.Fatalf("repair corruption error = %T %v", err, err)
 		}
 	}
 	still, _ := os.ReadFile(recordPath)

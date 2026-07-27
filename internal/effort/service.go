@@ -309,27 +309,27 @@ func (s *Service) repairWorktree(record *Record, result *RepairResult) error {
 	if registration.Bare || registration.Detached || registration.Branch != wantBranch || !objectIDPattern.MatchString(registration.HEAD) {
 		return safety("repository-identity", managed, fmt.Errorf("registration has branch %q and HEAD %q, want %q and a full object ID", registration.Branch, registration.HEAD, wantBranch))
 	}
-	if pathPresent {
-		roots, err := awfgit.ResolveControlRoots(s.ctx, managed)
-		if err != nil {
-			return safety("repository-identity", managed, err)
+	if !pathPresent {
+		if record.Worktree == nil {
+			return safety("repair-evidence", managed, errors.New("git registration has no present managed checkout"))
 		}
-		if filepath.Clean(roots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(roots.InvokingRoot) != managed {
-			return safety("repository-identity", managed, errors.New("registered worktree belongs to a different repository identity"))
-		}
+		return nil
+	}
+	roots, err := awfgit.ResolveControlRoots(s.ctx, managed)
+	if err != nil {
+		return safety("repository-identity", managed, err)
+	}
+	if filepath.Clean(roots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(roots.InvokingRoot) != managed {
+		return safety("repository-identity", managed, errors.New("registered worktree belongs to a different repository identity"))
 	}
 	if record.Worktree != nil {
 		return nil
 	}
-	attached := s.now()
-	reconstructed := &Worktree{Branch: "awf/" + record.ID, Base: registration.HEAD, AttachedAt: attached}
-	result.Changes = append(result.Changes,
-		RepairChange{Field: "worktree", From: nil, To: reconstructed},
-		RepairChange{Field: "integration", From: record.Integration, To: IntegrationPending},
-	)
-	record.Worktree = reconstructed
-	record.Integration = IntegrationPending
-	return nil
+	// Phase 1 has no persisted partial-mutation evidence that authoritatively
+	// records the attachment base. HEAD is the current worktree tip, not its
+	// base, so reconstruction must wait for a later operation to supply such
+	// evidence rather than inventing schema-1 metadata.
+	return safety("repair-evidence", managed, errors.New("authoritative attachment base evidence is unavailable"))
 }
 
 func managedDirectoryTruth(path string) (bool, error) {

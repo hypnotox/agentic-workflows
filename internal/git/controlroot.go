@@ -77,8 +77,8 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 	}
 
 	bare, err := runGitText(ctx, originalRoot, "rev-parse", "--is-bare-repository")
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
+	if err != nil {
+		return ControlRoots{}, fmt.Errorf("inspect bare-repository state from %s: %w", originalRoot, err)
 	}
 	if bare != "true" && bare != "false" { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: originalRoot, Err: fmt.Errorf("unexpected bare-repository response %q", bare)}
@@ -87,12 +87,12 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 		return ControlRoots{}, &HardSafetyError{Category: "bare-repository", Path: originalRoot}
 	}
 	invokingRoot, err := runGitPath(ctx, originalRoot, "rev-parse", "--show-toplevel")
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
+	if err != nil {
+		return ControlRoots{}, fmt.Errorf("resolve invoking checkout from %s: %w", originalRoot, err)
 	}
 	commonDir, err := runGitPath(ctx, originalRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
+	if err != nil {
+		return ControlRoots{}, fmt.Errorf("resolve common Git directory from %s: %w", originalRoot, err)
 	}
 
 	for _, path := range []string{invokingRoot, commonDir} {
@@ -140,8 +140,8 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 	}
 
 	porcelain, err := runGitBytes(ctx, originalRoot, "worktree", "list", "--porcelain", "-z")
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
+	if err != nil {
+		return ControlRoots{}, fmt.Errorf("list worktree topology from %s: %w", originalRoot, err)
 	}
 	records, err := parseWorktreePorcelain(porcelain)
 	if err != nil {
@@ -411,9 +411,9 @@ func worktreeGitDir(worktree string) (string, error) {
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return "", err
 	}
-	pointer, ok := strings.CutPrefix(strings.TrimSpace(string(raw)), "gitdir: ")
-	if !ok || pointer == "" {
-		return "", fmt.Errorf("parse %s: expected gitdir pointer", dotGit)
+	pointer, ok := strings.CutPrefix(removeGitLineDelimiter(string(raw)), "gitdir: ")
+	if !ok || pointer == "" || strings.ContainsAny(pointer, "\r\n\x00") {
+		return "", fmt.Errorf("parse %s: expected one gitdir pointer", dotGit)
 	}
 	if !filepath.IsAbs(pointer) {
 		pointer = filepath.Join(filepath.Dir(dotGit), pointer)
@@ -422,23 +422,35 @@ func worktreeGitDir(worktree string) (string, error) {
 }
 
 func runGitPath(ctx context.Context, root string, args ...string) (string, error) {
-	value, err := runGitText(ctx, root, args...)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	output, err := runGitBytes(ctx, root, args...)
+	if err != nil {
 		return "", err
+	}
+	value := removeGitLineDelimiter(string(output))
+	if value == "" || strings.ContainsAny(value, "\r\n\x00") {
+		return "", fmt.Errorf("git %s returned an invalid path response", strings.Join(args, " "))
 	}
 	return cleanAbsolute(value)
 }
 
 func runGitText(ctx context.Context, root string, args ...string) (string, error) {
 	output, err := runGitBytes(ctx, root, args...)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return "", err
 	}
-	value := strings.TrimSpace(string(output))
-	if value == "" || strings.ContainsRune(value, '\x00') || strings.ContainsRune(value, '\n') { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	value := removeGitLineDelimiter(string(output))
+	if value == "" || strings.TrimSpace(value) != value || strings.ContainsAny(value, "\r\n\x00") {
 		return "", fmt.Errorf("git %s returned an invalid scalar response", strings.Join(args, " "))
 	}
 	return value, nil
+}
+
+func removeGitLineDelimiter(value string) string {
+	if strings.HasSuffix(value, "\n") {
+		value = strings.TrimSuffix(value, "\n")
+		value = strings.TrimSuffix(value, "\r")
+	}
+	return value
 }
 
 func runGitBytes(ctx context.Context, root string, args ...string) ([]byte, error) {
@@ -446,12 +458,12 @@ func runGitBytes(ctx context.Context, root string, args ...string) ([]byte, erro
 	cmd := exec.CommandContext(ctx, "git", fixed...)
 	cmd.Env = isolatedControlRootGitEnvironment(os.Environ())
 	output, err := cmd.Output()
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		var exit *exec.ExitError
-		if errors.As(err, &exit) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		if errors.As(err, &exit) {
 			return nil, fmt.Errorf("git %s: %w: %s", strings.Join(fixed, " "), err, strings.TrimSpace(string(exit.Stderr)))
 		}
-		return nil, fmt.Errorf("git %s: %w", strings.Join(fixed, " "), err) // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		return nil, fmt.Errorf("git %s: %w", strings.Join(fixed, " "), err)
 	}
 	return output, nil
 }

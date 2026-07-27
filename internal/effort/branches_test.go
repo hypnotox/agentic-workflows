@@ -12,6 +12,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
+// invariant: tooling/effort-management:effort-record-authority
 func TestEffortFocusedFailureBranches(t *testing.T) {
 	t.Run("default allocator", func(t *testing.T) {
 		id, err := randomUUIDv4()
@@ -57,8 +58,14 @@ func TestEffortFocusedFailureBranches(t *testing.T) {
 		if err := os.Mkdir(p.efforts, 0o755); err != nil {
 			t.Fatal(err)
 		}
+		if err := p.ensure(p.efforts); err != nil {
+			t.Fatalf("safe Git-created resident mode refused: %v", err)
+		}
+		if err := os.Chmod(p.efforts, 0o775); err != nil {
+			t.Fatal(err)
+		}
 		if err := p.ensure(p.efforts); err == nil || !strings.Contains(err.Error(), "resident-permissions") {
-			t.Fatalf("resident mode error = %v", err)
+			t.Fatalf("group-writable resident mode error = %v", err)
 		}
 	})
 
@@ -93,7 +100,7 @@ func TestEffortFocusedFailureBranches(t *testing.T) {
 		if err := os.MkdirAll(service.paths.memory, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Chmod(service.paths.memory, 0o755); err != nil {
+		if err := os.Chmod(service.paths.memory, 0o777); err != nil {
 			t.Fatal(err)
 		}
 		if _, _, err := service.Memory(idA); err == nil || !strings.Contains(err.Error(), "resident-permissions") {
