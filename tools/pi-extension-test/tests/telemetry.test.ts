@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  collectPiSessionAccounting,
   createLedgerWriter,
   defaultLedgerDependencies,
   projectLocalLifecycle,
@@ -49,6 +50,16 @@ test("invariant: telemetry bar uses only public active-branch and context data",
     for (const path of [".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts", ".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-telemetry/index.ts", ".pi/extensions/awf-telemetry/protocol.ts"]) await access(path);
     await mkdir(join(root, ".awf"), { recursive: true }); await mkdir(join(root, ".pi/awf-workflows"), { recursive: true }); await writeFile(join(root, ".pi/awf-workflows/brainstorming.md"), "brainstorming body\n");
     const h = await telemetryHarness(root);
+    const restored = { effortId: "restored-effort", sessionId: "session", trajectoryId: "trajectory", associationOrigin: "manual" };
+    h.ctx.sessionManager.getBranch = () => [
+      { type: "custom", customType: "awf.telemetry.association.v1", data: restored },
+      { type: "message", id: "parent", message: { role: "assistant", usage: { input: 2, output: 3, cacheRead: 5, cacheWrite: 7, cost: { total: 0.25 } } } },
+      { type: "message", id: "parent", message: { role: "assistant", usage: { input: 200, output: 300, cacheRead: 500, cacheWrite: 700, cost: { total: 25 } } } },
+      { type: "message", id: "nested", message: { role: "assistant", usage: { input: 11, output: 13, cacheRead: 17, cacheWrite: 19, cost: { total: 1.5 } } } },
+      { type: "message", id: "user", message: { role: "user", usage: { input: 999 } } },
+    ];
+    assert.deepEqual(collectPiSessionAccounting(h.ctx), { input: 13, output: 16, cacheRead: 22, cacheWrite: 26, cost: 1.75, contextTokens: 10, contextWindow: 100, contextPercent: 10 }, "restored nested branch accounting charges each assistant entry exactly once");
+    h.ctx.sessionManager.getBranch = () => [];
     assert.deepEqual([...h.tools.keys()], ["awf_lifecycle", "awf_adopt_effort", "awf_detour", "awf_workflow"]);
     assert.deepEqual([...h.commands.keys()], ["awf-resume-effort", "awf-resume-effort-continue"]);
     for (const name of ["awf_metrics", "awf_doctor", "awf-dashboard", "dashboard", "refresh"]) assert.equal(h.tools.has(name) || h.commands.has(name) || h.hooks.has(name), false);
@@ -91,12 +102,31 @@ test("invariant: telemetry runtime retains durable lifecycle, association, passi
     assert.equal(associated.details.durable, true); assert.match(h.widget().render(200)[0], /^\[awf:init\]/);
     const projection = await projectLocalLifecycle(h.ledger, "runtime-effort");
     assert.equal(projection.effectApplied.has("associate"), true); assert.equal(projection.associations.get("session")?.trajectoryId, "trajectory");
-    const originalLstat = h.ledger.lstat; h.ledger.lstat = async () => { throw new Error("passive storage failure"); };
-    await h.hooks.get("tool_execution_end")({ toolCallId: "passive-failure", toolName: "read", isError: false }, h.ctx);
+
+    const originalLstat = h.ledger.lstat; let passiveFailure = false;
+    h.ledger.lstat = async () => { passiveFailure = true; throw new Error("passive storage failure"); };
+    assert.doesNotThrow(() => h.hooks.get("tool_execution_end")({ toolCallId: "passive-failure", toolName: "read", isError: false }, h.ctx), "passive storage failure is nonblocking");
+    await waitFor(() => passiveFailure, "passive observation did not attempt storage");
     h.ledger.lstat = originalLstat;
+
+    await lifecycle.execute("route", { action: "select-route", idempotencyKey: "route-key", eventId: "route", effortId: "runtime-effort", sessionId: "session", timestamp: at, predecessors: ["associate"], route: "direct" });
+    h.ledger.lstat = async () => { throw new Error("explicit lifecycle storage failure"); };
+    await assert.rejects(lifecycle.execute("phase-failure", { action: "start-phase", idempotencyKey: "phase-failure-key", eventId: "phase-failure", effortId: "runtime-effort", sessionId: "session", timestamp: at, predecessors: ["route"], phase: "brainstorming" }), /explicit lifecycle storage failure/);
+    h.ledger.lstat = originalLstat;
+    assert.match(h.widget().render(200)[0], /^\[awf:init\]/, "rejected lifecycle persistence does not report badge success");
+    assert.equal((await projectLocalLifecycle(h.ledger, "runtime-effort")).effectApplied.has("phase-failure"), false);
+
+    await lifecycle.execute("association-create", { action: "create", idempotencyKey: "association-create-key", eventId: "association-create", effortId: "association-failure", sessionId: "session", timestamp: at, predecessors: [], creationMode: "independent" });
+    await lifecycle.execute("association-trajectory", { action: "start-trajectory", idempotencyKey: "association-trajectory-key", eventId: "association-trajectory", effortId: "association-failure", sessionId: "session", timestamp: at, predecessors: ["association-create"], trajectoryId: "association-trajectory", anchorId: "association-anchor" });
+    h.ledger.lstat = async () => { throw new Error("explicit association storage failure"); };
+    await assert.rejects(lifecycle.execute("association-failure", { action: "associate", idempotencyKey: "association-failure-key", eventId: "association-failure", effortId: "association-failure", sessionId: "session", timestamp: at, predecessors: ["association-trajectory"], trajectoryId: "association-trajectory", associationOrigin: "created" }), /explicit association storage failure/);
+    h.ledger.lstat = originalLstat;
+    assert.match(h.widget().render(200)[0], /^\[awf:init\]/, "rejected association persistence does not report badge success");
+    assert.equal((await projectLocalLifecycle(h.ledger, "association-failure")).effectApplied.has("association-failure"), false);
+
     h.hooks.get("tool_execution_end")({ toolCallId: "drain", toolName: "read", isError: false }, h.ctx);
     await h.hooks.get("session_shutdown")({}, h.ctx);
     const events = (await projectLocalLifecycle(h.ledger, "runtime-effort")).events;
-    assert.ok([...events.values()].some((event: any) => event.kind === "tool_observed"), "shutdown drains queued passive telemetry");
+    assert.ok([...events.values()].some((event: any) => event.kind === "tool_observed" && event.payload.tool === "read"), "shutdown drains queued passive telemetry");
   } finally { await rm(root, { recursive: true, force: true }); }
 });
