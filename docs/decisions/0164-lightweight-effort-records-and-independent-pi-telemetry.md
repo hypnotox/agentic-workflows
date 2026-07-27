@@ -74,15 +74,22 @@ preserved rather than rewritten into the new records.
 
 7. Pi telemetry becomes an independent versioned, append-only, session-keyed stream under
    `.awf/metrics/`. Records contain session identity and privacy-minimal observations, never an
-   effort ID, and Pi appends them directly rather than through the awf binary. Reports join new
-   session observations to the current effort assignment; this intentionally permits a later
-   reassignment to change the reporting association. Existing local telemetry is retained and is
-   neither migrated into effort records nor deleted by this decision.
+   effort ID, and Pi appends them directly rather than through the awf binary. The writer holds an
+   exclusive per-session stream lock, validates the versioned header and prior records, appends
+   one complete observation carrying a stable observation ID, and fsyncs it before reporting
+   success. Retrying that ID is idempotent; an unsafe lock, incomplete write, or malformed stream
+   is a refusal that preserves the stream for repair rather than silently truncating or guessing.
+   Reports join new session observations to the current effort assignment; this intentionally
+   permits a later reassignment to change the reporting association. Existing local telemetry is
+   retained and is neither migrated into effort records nor deleted by this decision.
 
 8. Implementation updates the CLI, native-Git boundary, generated Pi extension and guidance,
-   output ownership, documentation, and current-state claims together. It covers closed trees,
-   nested checkouts, uninstall, generated output, and the Sundial adopter, and is delivered by a
-   staged plan before implementation.
+   output ownership, documentation, and current-state claims together. Every changed template
+   preserves `missingkey=zero` rendering and an empty-value output free of no-value tokens, with
+   tests for both. The implementation updates the authored AGENTS.md convention source and
+   renders AGENTS.md in the same transaction. It covers closed trees, nested checkouts, uninstall,
+   generated output, and the Sundial adopter, and is delivered by a staged plan before
+   implementation.
 
 ## State changes
 
@@ -99,6 +106,11 @@ preserved rather than rewritten into the new records.
 - add `tooling/cli:effort-command-contract`
 - update `tooling/cli:metrics-command-contract`
 - update `rendering/singletons-and-payloads:workflow-telemetry-governed-outputs-and-resident-data`
+- update `rendering/singletons-and-payloads:memory-gitignore-always-on`
+- update `rendering/project-output-plan:output-plan-complete`
+- update `rendering/guide-and-doc-templates:working-memory-single-home`
+- update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
+- update `rendering/adapter-outputs:pi-workflow-telemetry-runtime`
 - update `rendering/pi-workflows:pi-session-handoff-lifecycle`
 - update `rendering/pi-workflows:pi-session-handoff-public-contract`
 - update `rendering/pi-workflows:pi-session-handoff-workflow`
@@ -132,6 +144,7 @@ implementation.
 | Keep checkout-local resident roots | Linked worktrees would split one effort's durable resources and assignment state. |
 | Retain adoption and workflow-gated effort creation | It forces artificial history and makes valid independent or resumed work fail at an administrative boundary. |
 | Put effort IDs in telemetry observations | Session-to-effort assignment can happen later and avoids coupling append availability to effort management. |
+| Keep an awf-owned telemetry append boundary | Sending observations through an awf command or service centralizes stream writes, but makes Pi telemetry depend on binary availability, version compatibility, and a new IPC or process-failure boundary. A locked, fsynced direct writer keeps the stream independent while retaining explicit integrity checks. |
 | Allow one Pi session to map to several efforts | It makes report attribution and totals ambiguous; explicit reassignment is the simpler operator-controlled model. |
 
 ## Status history
