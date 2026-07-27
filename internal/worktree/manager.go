@@ -34,13 +34,15 @@ func Open(ctx context.Context, invoking string, options Options) (*Manager, erro
 	if err != nil {
 		return nil, err
 	}
-	service, err := effort.Open(ctx, invoking, effort.Options{Clock: options.Clock})
-	if err != nil {
-		return nil, err
-	}
 	run := options.Runner
 	if run == nil {
 		run = nativeRunner
+	}
+	service, err := effort.Open(ctx, invoking, effort.Options{Clock: options.Clock, Git: func(ctx context.Context, root string, args ...string) ([]byte, error) {
+		return run(ctx, root, args...)
+	}})
+	if err != nil {
+		return nil, err
 	}
 	clock := options.Clock
 	if clock == nil {

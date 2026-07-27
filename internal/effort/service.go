@@ -23,6 +23,7 @@ type Options struct {
 	UUID       func() (string, error)
 	Filesystem fileSystem
 	Worktrees  func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
+	Git        func(context.Context, string, ...string) ([]byte, error)
 }
 
 // Service owns ordinary effort record and memory operations.
@@ -33,6 +34,7 @@ type Service struct {
 	clock     func() time.Time
 	uuid      func() (string, error)
 	worktrees func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
+	git       func(context.Context, string, ...string) ([]byte, error)
 }
 
 func Open(ctx context.Context, invokingRoot string, options Options) (*Service, error) {
@@ -57,7 +59,13 @@ func Open(ctx context.Context, invokingRoot string, options Options) (*Service, 
 	if worktrees == nil {
 		worktrees = awfgit.ListWorktreeRegistrations
 	}
-	return &Service{ctx: ctx, paths: resolved, store: store{paths: resolved, fs: options.Filesystem}, clock: clock, uuid: allocator, worktrees: worktrees}, nil
+	git := options.Git
+	if git == nil {
+		git = func(ctx context.Context, root string, args ...string) ([]byte, error) {
+			return partialGit(ctx, root, args...)
+		}
+	}
+	return &Service{ctx: ctx, paths: resolved, store: store{paths: resolved, fs: options.Filesystem}, clock: clock, uuid: allocator, worktrees: worktrees, git: git}, nil
 }
 
 func randomUUIDv4() (string, error) {
@@ -461,7 +469,9 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 			// Revalidate the live control root and confined resident path immediately
 			// before either destructive operation. Recovery must not trust stale
 			// evidence across a symlink, ownership, or checkout swap.
+			validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
 			liveRoots, err := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
+			err = errors.Join(err, validationErr)
 			if err != nil || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) {
 				return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed"))
 			}
@@ -485,10 +495,9 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				}
 			}
 			if present {
-				if err := safeRecoveryPath(managed); err != nil {
-					return safety("repository-identity", managed, fmt.Errorf("validate managed path before removal: %w", err))
-				}
+				managedValidationErr := validateRecoveryMutationPath(managed)
 				managedRoots, err := awfgit.ResolveControlRoots(s.ctx, managed)
+				err = errors.Join(err, managedValidationErr)
 				if err != nil || filepath.Clean(managedRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(managedRoots.InvokingRoot) != filepath.Clean(managed) { // coverage-ignore: repository identity mismatch is exercised through the preceding hard-safety probes
 					return safety("repository-identity", managed, errors.New("managed checkout identity changed"))
 				}
@@ -502,7 +511,7 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 					args = append(args, "--force")
 				}
 				args = append(args, managed)
-				if _, err := partialGit(s.ctx, s.paths.roots.InvokingRoot, args...); err != nil {
+				if _, err := s.git(s.ctx, s.paths.roots.InvokingRoot, args...); err != nil {
 					return err
 				}
 			} else {
@@ -520,8 +529,10 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 			}
 			if exists {
 				// The worktree removal above may have crossed a checkout swap. Recheck
-				// the invoking path immediately before deleting the branch as well.
+				// every invoking-root component immediately before deleting the branch.
+				validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
 				liveRoots, liveErr := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
+				liveErr = errors.Join(liveErr, validationErr)
 				if liveErr != nil || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) {
 					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed before branch deletion"))
 				}
@@ -536,7 +547,7 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				if evidence.BranchDeleteForce || evidence.DeleteForce {
 					flag = "-D"
 				}
-				if _, err = partialGit(s.ctx, s.paths.roots.InvokingRoot, "branch", flag, evidence.Branch); err != nil {
+				if _, err = s.git(s.ctx, s.paths.roots.InvokingRoot, "branch", flag, evidence.Branch); err != nil {
 					return err
 				}
 			}
@@ -563,6 +574,10 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 }
 
 var residentOwner = func(path string, info os.FileInfo) error { return validatePathOwner(path, info, nil) }
+
+func validateRecoveryMutationPath(path string) error {
+	return safeRecoveryPath(path)
+}
 
 func safeRecoveryPath(path string) error {
 	clean := filepath.Clean(path)

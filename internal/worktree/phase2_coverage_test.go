@@ -254,7 +254,7 @@ func TestPhase2ManualDivergenceUsesPairedForce(t *testing.T) {
 func newManagerForPhase2(t *testing.T) *Manager {
 	t.Helper()
 	root := newWorktreeRepo(t)
-	m, err := Open(t.Context(), root, Options{})
+	m, err := Open(t.Context(), root, Options{Runner: nativeRunner})
 	if err != nil {
 		t.Fatal(err)
 	}

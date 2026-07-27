@@ -179,6 +179,30 @@ func TestRecoveryRemovalPostProbeFaults(t *testing.T) {
 }
 
 func TestSafeRecoveryPathRejectsSymlinkAndOwnerFaults(t *testing.T) {
+	if _, err := Open(t.Context(), filepath.Join(t.TempDir(), "missing"), Options{}); err == nil {
+		t.Fatal("invalid effort root accepted")
+	}
+	if _, err := Open(t.Context(), initEffortRepo(t), Options{Git: func(context.Context, string, ...string) ([]byte, error) { return nil, nil }}); err != nil {
+		t.Fatalf("injected Git seam: %v", err)
+	}
+	rootRepo := initEffortRepo(t)
+	recoveryService, err := Open(t.Context(), rootRepo, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	recoveryRecord, err := recoveryService.New("recovery refusal", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := recoveryService.RecordPartial(PartialEvidence{SchemaVersion: 1, EffortID: recoveryRecord.ID, Action: "removal", Branch: "awf/" + recoveryRecord.ID, CommonDir: filepath.Clean(recoveryService.paths.roots.CommonDir), BranchTip: strings.Repeat("a", 40)}); err != nil {
+		t.Fatal(err)
+	}
+	oldRecoveryOwner := residentOwner
+	residentOwner = func(string, os.FileInfo) error { return os.ErrPermission }
+	if err := recoveryService.recoverPartial(&recoveryRecord, &RepairResult{}); err == nil {
+		t.Fatal("recovery mutation accepted foreign owner")
+	}
+	residentOwner = oldRecoveryOwner
 	if err := safeRecoveryPath(string(filepath.Separator)); err != nil {
 		t.Fatalf("root path: %v", err)
 	}
