@@ -7,8 +7,11 @@ import {
   collectPiSessionAccounting,
   createLedgerWriter,
   defaultLedgerDependencies,
+  defaultTelemetryDependencies,
+  guardMinimumRuntime,
   projectLocalLifecycle,
   registerTelemetry,
+  versionSupported,
 } from "../../../.pi/extensions/awf-telemetry/index.ts";
 import { protocolVersion } from "../../../.pi/extensions/awf-telemetry/protocol.ts";
 
@@ -42,6 +45,25 @@ async function telemetryHarness(root: string) {
   const ctx: any = { sessionManager, getContextUsage: () => ({ tokens: 10, contextWindow: 100, percent: 10 }), ui: { setWidget(_name: string, factory: any) { if (factory) widget = factory({ requestRender() { renders++; } }, { fg: (_style: string, line: string) => line }); } } };
   return { tools, commands, hooks, entries, queued, ledger, ctx, widget: () => widget, renders: () => renders };
 }
+
+test("telemetry minimum-runtime guard and defaults cover supported and rejected hosts", async () => {
+  assert.equal(versionSupported("0.81.1"), true);
+  assert.equal(versionSupported("0.82.0"), true);
+  assert.equal(versionSupported("0.81.0"), false);
+  assert.equal(versionSupported("invalid"), false);
+  const defaults = defaultTelemetryDependencies({} as any);
+  assert.equal(defaults.packageVersion, process.env.npm_package_version ?? "0.81.1");
+  let handler: any; const notifications: any[] = [];
+  const pi: any = { on(name: string, callback: any) { assert.equal(name, "session_start"); handler = callback; } };
+  assert.equal(guardMinimumRuntime(pi, { packageVersion: "0.80.0" }, ["on", "exec"]), false);
+  await handler({}, { ui: { notify(message: string, level: string) { notifications.push([message, level]); } } });
+  await handler({}, { ui: { notify(message: string, level: string) { notifications.push([message, level]); } } });
+  assert.equal(notifications.length, 1);
+  (globalThis as any)[Symbol.for("awf.pi.minimum-runtime-notified")] = false;
+  assert.equal(guardMinimumRuntime(pi, { packageVersion: "0.80.0" }, ["on"]), false);
+  await handler({}, { ui: { notify(message: string, level: string) { notifications.push([message, level]); } } });
+  assert.equal(notifications.length, 2);
+});
 
 // invariant: rendering/pi-workflows:pi-workflow-telemetry-public-contract
 test("invariant: telemetry bar uses only public active-branch and context data", async () => {
