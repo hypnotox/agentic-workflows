@@ -42,6 +42,11 @@ func TestManagerMutationAndProbeFailures(t *testing.T) {
 	}
 	if _, err := m.Add(partial.ID, "HEAD"); err == nil {
 		t.Fatal("partial add hidden")
+	} else {
+		var partialErr *PartialMutationError
+		if !errors.As(err, &partialErr) || !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("partial add causal error = %v", err)
+		}
 	}
 
 	integration, err := m.efforts.New("probe failures", false)

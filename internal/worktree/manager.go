@@ -3,6 +3,7 @@ package worktree
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -103,6 +104,10 @@ func (m *Manager) Add(id, base string) (effort.Record, error) {
 	if err != nil {
 		return effort.Record{}, err
 	}
+	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "worktree", Base: full, Branch: branch(id), Path: path, CommonDir: filepath.Clean(m.roots.CommonDir)}
+	if err := m.efforts.RecordPartial(evidence); err != nil {
+		return effort.Record{}, fmt.Errorf("record worktree partial evidence: %w", err)
+	}
 	if err := makeManagedDir(filepath.Dir(path), 0o700); err != nil {
 		return effort.Record{}, err
 	}
@@ -111,7 +116,10 @@ func (m *Manager) Add(id, base string) (effort.Record, error) {
 	}
 	result, err := m.efforts.AttachWorktree(id, full)
 	if err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree"}
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("attach worktree record: %w", err)}
+	}
+	if err := m.efforts.ClearPartial(id, "worktree"); err != nil {
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence: %w", err)}
 	}
 	return result, nil
 }
@@ -175,12 +183,22 @@ func (m *Manager) Integrate(id string, force bool, reason string) (effort.Record
 	} else {
 		args = []string{"merge", "--no-ff", "-m", "Merge effort " + id, branch(id)}
 	}
+	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "integration", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), Tip: tip, TargetPath: filepath.Clean(m.roots.InvokingRoot), TargetBranch: target, Integration: disposition}
+	if err := m.efforts.RecordPartial(evidence); err != nil {
+		return effort.Record{}, fmt.Errorf("record integration partial evidence: %w", err)
+	}
 	if _, err = m.run(m.ctx, m.roots.InvokingRoot, args...); err != nil {
+		if settleErr := m.efforts.ClearPartial(id, "integration"); settleErr != nil {
+			return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("settle failed integration evidence after merge failure: %w", settleErr)}
+		}
 		return effort.Record{}, &awfgit.HardSafetyError{Category: "merge-conflict", Path: m.roots.InvokingRoot, Err: err}
 	}
 	result, err := m.efforts.SetIntegration(id, disposition)
 	if err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration"}
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("record integration disposition: %w", err)}
+	}
+	if err := m.efforts.ClearPartial(id, "integration"); err != nil {
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("settle integration evidence: %w", err)}
 	}
 	return result, nil
 }
@@ -255,6 +273,15 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	if pending {
 		forceRemove = true
 	}
+	deleteForce := pending && approved(force, reason)
+	branchTip, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, branch(id))
+	if err != nil {
+		return effort.Record{}, err
+	}
+	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "removal", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), DeleteForce: deleteForce, BranchTip: branchTip}
+	if err := m.efforts.RecordPartial(evidence); err != nil {
+		return effort.Record{}, fmt.Errorf("record removal partial evidence: %w", err)
+	}
 	removeArgs := []string{"worktree", "remove"}
 	if forceRemove {
 		removeArgs = append(removeArgs, "--force")
@@ -264,16 +291,18 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 		return effort.Record{}, err
 	}
 	deleteFlag := "-d"
-	// -D is only the explicitly approved destructive pending-removal path.
-	if pending && approved(force, reason) {
+	if deleteForce {
 		deleteFlag = "-D"
 	}
 	if _, err = m.run(m.ctx, m.roots.InvokingRoot, "branch", deleteFlag, branch(id)); err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "delete-worktree-branch"}
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "delete-worktree-branch", Err: fmt.Errorf("delete managed branch: %w", err)}
 	}
 	result, err := m.efforts.RemoveWorktreeMetadata(id, pending)
 	if err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree-removal"}
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree-removal", Err: fmt.Errorf("clear worktree metadata: %w", err)}
+	}
+	if err := m.efforts.ClearPartial(id, "removal"); err != nil {
+		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree-removal", Err: fmt.Errorf("settle removal evidence: %w", err)}
 	}
 	return result, nil
 }

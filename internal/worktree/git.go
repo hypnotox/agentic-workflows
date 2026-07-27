@@ -42,7 +42,7 @@ func resolve(ctx context.Context, run Runner, root, revision string) (string, er
 	return value, nil
 }
 
-var ownedResidentUntracked = regexp.MustCompile(`^\?\? \.awf/(?:efforts/(?:\.lock|\.[0-9a-f-]{36}\.partial|[0-9a-f-]{36}\.json)|worktrees/[0-9a-f-]{36}/?)$`)
+var ownedResidentUntracked = regexp.MustCompile(`^\?\? \.awf/(?:efforts/(?:\.lock|\.[0-9a-f-]{36}\.(?:worktree|integration|removal)\.partial|[0-9a-f-]{36}\.json)|worktrees/[0-9a-f-]{36}/?)$`)
 
 func status(ctx context.Context, run Runner, root string) error {
 	out, err := run(ctx, root, "status", "--porcelain=v1", "-z", "--untracked-files=all")

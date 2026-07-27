@@ -281,6 +281,9 @@ func (s *Service) Repair(id string) (RepairResult, error) {
 			result.Changes = append(result.Changes, RepairChange{Field: "memoryPresent", From: record.MemoryPresent, To: memory})
 			record.MemoryPresent = memory
 		}
+		if err := s.recoverPartial(&record, &result); err != nil {
+			return err
+		}
 		if err := s.repairWorktree(&record, &result); err != nil {
 			return err
 		}
@@ -375,6 +378,161 @@ func (s *Service) repairWorktree(record *Record, result *RepairResult) error {
 	// base, so reconstruction must wait for a later operation to supply such
 	// evidence rather than inventing schema-1 metadata.
 	return safety("repair-evidence", managed, errors.New("authoritative attachment base evidence is unavailable"))
+}
+
+var partialGit = gitPartial
+var partialAncestor = ancestorPartial
+var partialBranches = branchExistsPartial
+var partialClear = func(s store, id, action string) error { return s.clearPartial(id, action) }
+
+func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
+	for _, action := range []string{"worktree", "integration", "removal"} {
+		evidence, _, err := s.store.getPartial(record.ID, action)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return fmt.Errorf("read %s partial evidence: %w", action, err)
+		}
+		if filepath.Clean(evidence.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) {
+			return safety("repository-identity", s.paths.efforts, errors.New("partial evidence repository identity mismatch"))
+		}
+		managed := s.paths.managedWorktree(record.ID)
+		switch action {
+		case "worktree":
+			if evidence.Path != managed {
+				return safety("repair-evidence", managed, errors.New("partial evidence managed path mismatch"))
+			}
+			registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
+			if err != nil {
+				return err
+			}
+			matches := 0
+			var registration awfgit.WorktreeRegistration
+			for _, r := range registrations {
+				if filepath.Clean(r.Path) == filepath.Clean(managed) {
+					matches++
+					registration = r
+				}
+				if r.Branch == "refs/heads/"+evidence.Branch && filepath.Clean(r.Path) != filepath.Clean(managed) {
+					return safety("repository-identity", managed, errors.New("managed branch registered elsewhere"))
+				}
+			}
+			if matches != 1 || registration.Branch != "refs/heads/"+evidence.Branch || registration.HEAD != evidence.Base || registration.Detached || registration.Bare {
+				return safety("repair-evidence", managed, errors.New("partial worktree registration is not exact"))
+			}
+			roots, err := awfgit.ResolveControlRoots(s.ctx, managed)
+			if err != nil {
+				return safety("repository-identity", managed, err)
+			}
+			if filepath.Clean(roots.CommonDir) != filepath.Clean(evidence.CommonDir) {
+				return safety("repository-identity", managed, errors.New("partial worktree common directory mismatch"))
+			}
+			if record.Worktree == nil {
+				record.Worktree = &Worktree{Branch: evidence.Branch, Base: evidence.Base, AttachedAt: s.now()}
+				record.Integration = IntegrationPending
+				result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: nil, To: record.Worktree}, RepairChange{Field: "integration", From: IntegrationNone, To: IntegrationPending})
+			} else if record.Worktree.Branch != evidence.Branch || record.Worktree.Base != evidence.Base {
+				return safety("repair-evidence", managed, errors.New("partial worktree evidence does not match record"))
+			}
+		case "integration":
+			if evidence.TargetPath != s.paths.roots.InvokingRoot {
+				return safety("repair-evidence", evidence.TargetPath, errors.New("partial integration target path mismatch"))
+			}
+			currentBranch, err := partialGit(s.ctx, evidence.TargetPath, "symbolic-ref", "-q", "--short", "HEAD")
+			if err != nil || strings.TrimSpace(string(currentBranch)) != evidence.TargetBranch {
+				return safety("repository-identity", evidence.TargetPath, errors.New("partial integration target branch mismatch"))
+			}
+			contains, err := partialAncestor(s.ctx, evidence.TargetPath, evidence.Tip, "HEAD")
+			if err != nil {
+				return err
+			}
+			if !contains {
+				return safety("repair-evidence", evidence.TargetPath, errors.New("integration target does not contain recorded tip"))
+			}
+			if record.Worktree == nil || record.Worktree.Branch != evidence.Branch {
+				return safety("repair-evidence", managed, errors.New("recorded worktree does not match integration evidence"))
+			}
+			if record.Integration != evidence.Integration {
+				result.Changes = append(result.Changes, RepairChange{Field: "integration", From: record.Integration, To: evidence.Integration})
+				record.Integration = evidence.Integration
+			}
+		case "removal":
+			// A remaining registration is removed only through the already-recorded
+			// policy; an absent registration must also have an absent managed path.
+			registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
+			if err != nil {
+				return err
+			}
+			present := false
+			for _, r := range registrations {
+				if r.Branch == "refs/heads/"+evidence.Branch && filepath.Clean(r.Path) != filepath.Clean(managed) {
+					return safety("repository-identity", managed, errors.New("removal branch registered elsewhere"))
+				}
+				if filepath.Clean(r.Path) == filepath.Clean(managed) {
+					if present || r.Branch != "refs/heads/"+evidence.Branch || r.Detached || r.Bare {
+						return safety("repository-identity", managed, errors.New("removal registration is not exact"))
+					}
+					present = true
+				}
+			}
+			if present {
+				if _, err := managedDirectoryTruth(managed); err != nil {
+					return err
+				}
+			}
+			if present {
+				args := []string{"worktree", "remove"}
+				if evidence.DeleteForce {
+					args = append(args, "--force")
+				}
+				args = append(args, managed)
+				if _, err := partialGit(s.ctx, s.paths.roots.InvokingRoot, args...); err != nil {
+					return err
+				}
+			} else if !partialAbsent(managed) {
+				return safety("repository-identity", managed, errors.New("unregistered managed path remains"))
+			}
+			exists, err := partialBranches(s.ctx, s.paths.roots.InvokingRoot, evidence.Branch)
+			if err != nil {
+				return err
+			}
+			if exists {
+				tip, err := resolvePartial(s.ctx, s.paths.roots.InvokingRoot, "refs/heads/"+evidence.Branch)
+				if err != nil {
+					return err
+				}
+				if tip != evidence.BranchTip {
+					return safety("repair-evidence", managed, errors.New("managed branch identity changed"))
+				}
+				flag := "-d"
+				if evidence.DeleteForce {
+					flag = "-D"
+				}
+				if _, err = partialGit(s.ctx, s.paths.roots.InvokingRoot, "branch", flag, evidence.Branch); err != nil {
+					return err
+				}
+			}
+
+			if record.Worktree != nil {
+				result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: record.Worktree, To: nil})
+				record.Worktree = nil
+			}
+			if record.Integration == IntegrationPending {
+				result.Changes = append(result.Changes, RepairChange{Field: "integration", From: IntegrationPending, To: IntegrationNone})
+				record.Integration = IntegrationNone
+			}
+		}
+		// Publish the derived record before settling evidence. A settlement failure
+		// leaves exact evidence behind for an idempotent later repair.
+		if err := s.store.replace(*record, true); err != nil {
+			return fmt.Errorf("publish recovered %s record: %w", action, err)
+		}
+		if err := partialClear(s.store, record.ID, action); err != nil {
+			return fmt.Errorf("settle recovered %s evidence: %w", action, err)
+		}
+	}
+	return nil
 }
 
 func managedDirectoryTruth(path string) (bool, error) {
