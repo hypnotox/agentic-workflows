@@ -349,7 +349,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:ecdac3afe7b46538bc9950b2962e5d97da878518dbdfa02c426ad95b718d7afc",
+      "outputHash": "sha256:53f72cbb84cb9d4dfab0d49fb4c4c72292e09c50e28286dd7d2454ef1007ad27",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -642,8 +642,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:68d4397b5142ffc8304eaa19a192ad3e92e73f28630bc11c15a42d798ff9ecb7",
-      "outputHash": "sha256:95135003b6bb747c1073ec6db007f09e92281ee1cc844f542f72b7dc091af304"
+      "configHash": "sha256:099143252f5d2db3fa2c0dfc0b2a4e21034d3b1b9925c23fe2496b8324f085d3",
+      "outputHash": "sha256:3982809156102ff6cc4d2b22dbb6516b4e68139840c084b2a5c1fe9bd8f6c7e4"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -690,8 +690,8 @@
     "docs/topics/tooling/workflow-telemetry.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:f72f858812b587ff51414d9ffec9ddf95b8a55a968f55f98363d2f8ce4252c44",
-      "outputHash": "sha256:75b695d81e8e501744379486d3839eeb40058f71a75bb265d23b968c0169e5ba"
+      "configHash": "sha256:8b566a12993e6fc44a298f8e043e50032fcf9862080960a6beb38b310e5e2bcf",
+      "outputHash": "sha256:dd0cd15a0bdd85797a7660a12e7742d6bf0f62e6515144b73ab0293f46fbdb1c"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",

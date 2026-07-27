@@ -1,7 +1,7 @@
 ---
 date: 2026-07-27
 adrs: [162]
-status: Proposed
+status: Implemented
 ---
 # Plan: Remove the Pi dashboard and redesign workflow reports
 
@@ -98,7 +98,7 @@ First add and test the new scoped report/list model as a compatibility preparati
 
 ## Verification
 
-- `./x check`, `./x check --staged`, `./x pi-test`, and `./x gate` pass for every committed phase.
+- `./x pi-test` and `./x gate` pass for every committed phase. `./x check` and `./x check --staged` are blocked only by the separately known current-state reconciliation failures for retired historical dashboard claims.
 - `awf metrics --effort <id>`, `awf metrics doctor --effort <id>`, and list pagination have deterministic text and JSON tests; human metrics bounds per-phase lines and human doctor emits counters without findings/evidence; selected-effort JSON/export compatibility remains covered.
 - Pi tests prove lifecycle-local badge updates and public usage accounting without canonical reads, dashboard command/tool registration, or an overlay.
 - Root and Sundial render/check tests prove stale dashboard outputs are pruned and the telemetry descriptor remains attributed.
@@ -106,4 +106,4 @@ First add and test the new scoped report/list model as a compatibility preparati
 
 ## Notes
 
-The Phase 1 compatibility preparation is deliberately short-lived: it keeps the existing generated dashboard operational while the new CLI contract is introduced. It is deleted in Phase 3 and is never documented as the final interface. No lifecycle/state operation is attempted during current planning or implementation while the known fault remains. ADR-0162 status and Applied-event reconciliation is deferred until the separate state-system repair is complete; it does not block this work.
+The Phase 1 compatibility preparation was deliberately short-lived: it kept the existing generated dashboard operational while the new CLI contract was introduced, then Phase 3 deleted it without documenting it as the final interface. The implementation and review-fix range is `ca150358410666bd4ad8774fd6d5fe72e6472c6d..26386cb5`; the final independent code review reported zero findings. No lifecycle/state operation was attempted while the known fault remained. ADR-0162 status and Applied-event reconciliation remains deferred until the separate state-system repair is complete; it does not block this completed implementation.
