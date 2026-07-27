@@ -141,7 +141,7 @@ export function requestHandoffAssociation(pi: ExtensionAPI): TelemetryAssociatio
 }
 
 export function buildKickoffWrapper(memoryPath: string, kickoff: string): string {
-  return `Read ${memoryPath} first. Repository sources and current-state documentation are authoritative over the checkpoint. This is a managed Pi handoff of the already-associated effort; do not call awf_adopt_effort or /awf-resume-effort. Then continue with this immediate action: ${kickoff}`;
+  return `Read ${memoryPath} first. Repository sources and current-state documentation are authoritative over the checkpoint. This is a managed Pi handoff; the active effort association is already restored, so do not call awf_adopt_effort or /awf-resume-effort. Then continue with this immediate action: ${kickoff}`;
 }
 
 function countdown(ctx: any, deps: HandoffDependencies): Promise<boolean> {
