@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 )
 
@@ -617,7 +619,15 @@ func ownedByCurrentUser(info os.FileInfo) bool {
 	if !uid.IsValid() || !uid.CanUint() {
 		return true
 	}
-	return uid.Uint() == uint64(os.Geteuid())
+	current, err := user.Current()
+	if err != nil { // coverage-ignore: supported release platforms provide the current process identity
+		return false
+	}
+	currentUID, err := strconv.ParseUint(current.Uid, 10, 64)
+	if err != nil { // coverage-ignore: Windows exposes an SID rather than the Unix Uid field inspected above
+		return true
+	}
+	return uid.Uint() == currentUID
 }
 
 func unwrappedError(err error) error {

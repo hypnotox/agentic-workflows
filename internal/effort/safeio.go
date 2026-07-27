@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"syscall"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
@@ -14,11 +13,6 @@ type fileIdentity struct{ info os.FileInfo }
 
 func safety(category, path string, err error) error {
 	return &awfgit.HardSafetyError{Category: category, Path: path, Err: err}
-}
-
-func ownerOK(info os.FileInfo) bool {
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	return !ok || stat.Uid == uint32(os.Geteuid())
 }
 
 func validateLeaf(path string, info os.FileInfo) error {
@@ -35,49 +29,34 @@ func validateLeaf(path string, info os.FileInfo) error {
 	return nil
 }
 
-func linkCount(info os.FileInfo) uint64 {
-	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-		return stat.Nlink
-	}
-	return 1 // coverage-ignore: this package's flock and O_NOFOLLOW implementation targets platforms whose os.FileInfo carries syscall.Stat_t
-}
-
 func lstatRegular(path string) (fileIdentity, error) {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return fileIdentity{}, fmt.Errorf("lstat %s: %w", path, err)
-	}
-	if err := validateLeaf(path, info); err != nil {
-		return fileIdentity{}, err
-	}
-	return fileIdentity{info: info}, nil
+	return platformLstatRegular(path)
 }
 
-func openRegularNoFollow(path string, flags int, mode os.FileMode) (*os.File, fileIdentity, error) {
-	fd, err := syscall.Open(path, flags|syscall.O_NOFOLLOW, uint32(mode.Perm()))
+func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error) {
+	file, err := platformOpenRegularNoFollow(path, create, mode)
 	if err != nil {
-		if errors.Is(err, syscall.ELOOP) {
-			return nil, fileIdentity{}, safety("symlink", path, err)
-		}
-		return nil, fileIdentity{}, fmt.Errorf("open %s without following links: %w", path, err)
+		return nil, fileIdentity{}, err
 	}
-	file := os.NewFile(uintptr(fd), path)
 	closeOnError := func(err error) (*os.File, fileIdentity, error) {
 		_ = file.Close()
 		return nil, fileIdentity{}, err
 	}
 	opened, err := file.Stat()
-	if err != nil { // coverage-ignore: syscall.Open returned a live descriptor; this branch requires a kernel-level fstat failure
-		return closeOnError(fmt.Errorf("fstat %s: %w", path, err))
+	if err != nil { // coverage-ignore: the platform opener returned a live descriptor; this branch requires a kernel-level metadata failure
+		return closeOnError(fmt.Errorf("inspect opened file %s: %w", path, err))
 	}
 	if err := validateLeaf(path, opened); err != nil {
+		return closeOnError(err)
+	}
+	if err := validateOpenedFile(path, file); err != nil { // coverage-ignore: Unix has no additional handle validation; Windows exercises this branch in platform tests
 		return closeOnError(err)
 	}
 	resident, err := os.Lstat(path)
 	if err != nil { // coverage-ignore: the no-follow open just proved this name exists; failure requires a concurrent namespace race
 		return closeOnError(fmt.Errorf("re-lstat %s: %w", path, err))
 	}
-	if err := validateLeaf(path, resident); err != nil { // coverage-ignore: changing the validated leaf type or owner between adjacent open and lstat calls requires a concurrent namespace race
+	if err := validateLeaf(path, resident); err != nil { // coverage-ignore: changing the validated leaf between adjacent open and lstat calls requires a concurrent namespace race
 		return closeOnError(err)
 	}
 	if !os.SameFile(opened, resident) { // coverage-ignore: changing identity between adjacent open and lstat calls requires a concurrent namespace race
@@ -87,7 +66,7 @@ func openRegularNoFollow(path string, flags int, mode os.FileMode) (*os.File, fi
 }
 
 func readRegularNoFollow(path string) ([]byte, fileIdentity, error) {
-	file, identity, err := openRegularNoFollow(path, syscall.O_RDONLY, 0)
+	file, identity, err := openRegularNoFollow(path, false, 0)
 	if err != nil {
 		return nil, fileIdentity{}, err
 	}

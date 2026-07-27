@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -190,20 +189,20 @@ func TestEffortLeafSafetyRefusesTypesPermissionsAndForeignOwnership(t *testing.T
 		t.Fatalf("unsafe lock mode error = %v", err)
 	}
 
-	if runtime.GOOS == "windows" || os.Geteuid() != 0 {
+	if runtime.GOOS == "windows" || testCurrentEUID() != 0 {
 		return
 	}
 	if err := os.Chmod(lock, 0o600); err != nil {
 		t.Fatal(err)
 	}
 	foreignUID := 1
-	if foreignUID == os.Geteuid() {
+	if foreignUID == testCurrentEUID() {
 		foreignUID = 2
 	}
-	if err := os.Chown(lock, foreignUID, -1); err != nil {
+	if err := testChown(lock, foreignUID); err != nil {
 		t.Skipf("foreign ownership unavailable: %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chown(lock, os.Geteuid(), -1) })
+	t.Cleanup(func() { _ = testChown(lock, testCurrentEUID()) })
 	if _, err := lstatRegular(lock); err == nil || !strings.Contains(err.Error(), "foreign-owner") {
 		t.Fatalf("foreign leaf validation error = %v", err)
 	}
@@ -218,7 +217,7 @@ func TestEffortListingRefusesUnsafeDirectoryFIFOAndUnreadableRecord(t *testing.T
 		setup func(string) error
 	}{
 		{"directory", func(path string) error { return os.Mkdir(path, 0o700) }},
-		{"fifo", func(path string) error { return syscall.Mkfifo(path, 0o600) }},
+		{"fifo", func(path string) error { return testMkfifo(path, 0o600) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := initEffortRepo(t)
@@ -234,7 +233,7 @@ func TestEffortListingRefusesUnsafeDirectoryFIFOAndUnreadableRecord(t *testing.T
 			}
 		})
 	}
-	if os.Geteuid() == 0 {
+	if testCurrentEUID() == 0 {
 		return
 	}
 	root := initEffortRepo(t)

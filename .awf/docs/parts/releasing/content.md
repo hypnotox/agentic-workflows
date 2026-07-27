@@ -9,8 +9,11 @@ GoReleaser (`.goreleaser.yaml`) to build cross-platform binaries (linux/darwin/w
 amd64/arm64), package per-OS archives bundling `LICENSE` + `README.md`, write `checksums.txt`,
 and create the GitHub Release whose body is those notes, passed as `--release-notes`. GoReleaser's
 own commit-derived changelog is disabled: deriving notes from commit subjects leaked internal
-commits whose scopes dodged the exclude filters (ADR-0096). Prebuilt binary download
-is the canonical install path; `go install` is the source fallback.
+commits whose scopes dodged the exclude filters (ADR-0096). The effort authority uses each target's
+native no-follow file access, repository lock, and conditional atomic publication primitives: creation
+never overwrites an existing name, while replacement either durably publishes the expected update or
+restores an unexpected raced destination. Prebuilt binary download is the canonical install path;
+`go install` is the source fallback.
 
 ## Versioning
 

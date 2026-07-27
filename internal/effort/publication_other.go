@@ -1,9 +1,21 @@
-//go:build !linux
+//go:build darwin || windows
 
 package effort
 
-import "errors"
+import (
+	"errors"
+	"os"
+)
 
-func publishAtomic(string, string, *fileIdentity) error {
-	return errors.New("atomic conditional effort publication is unsupported on this platform")
+// unexpectedPublicationIdentity verifies the destination displaced by a
+// platform's atomic replacement primitive. A mismatch must be restored before
+// the caller returns this refusal.
+func unexpectedPublicationIdentity(path string, expected *fileIdentity, displaced fileIdentity, inspectErr error) error {
+	if inspectErr == nil && os.SameFile(expected.info, displaced.info) {
+		return nil
+	}
+	if inspectErr != nil {
+		return inspectErr
+	}
+	return safety("identity", path, errors.New("destination changed before atomic publication"))
 }

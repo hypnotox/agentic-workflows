@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
 	"unicode/utf8"
 )
@@ -73,8 +72,10 @@ func (osFileSystem) CreateTemp(dir, pattern string) (durableFile, error) {
 func (osFileSystem) Publish(tempPath, path string, expected *fileIdentity) error {
 	return publishAtomic(tempPath, path, expected)
 }
-func (osFileSystem) Remove(path string) error                       { return os.Remove(path) }
-func (osFileSystem) OpenDirectory(path string) (durableFile, error) { return os.Open(path) }
+func (osFileSystem) Remove(path string) error { return os.Remove(path) }
+func (osFileSystem) OpenDirectory(path string) (durableFile, error) {
+	return openDirectoryForSync(path)
+}
 
 type store struct {
 	paths paths
@@ -93,20 +94,20 @@ func (s store) withLock(fn func() error) error {
 		return fmt.Errorf("prepare effort lock directory %s: %w", s.paths.efforts, err)
 	}
 	path := filepath.Join(s.paths.efforts, ".lock")
-	file, identity, err := openRegularNoFollow(path, syscall.O_CREAT|syscall.O_RDWR, 0o600)
+	file, identity, err := openRegularNoFollow(path, true, 0o600)
 	if err != nil {
 		return fmt.Errorf("open effort lock %s: %w", path, err)
 	}
 	defer func() { _ = file.Close() }()
-	if fileMode, statErr := file.Stat(); statErr != nil { // coverage-ignore: the no-follow opener already fstat-validated this live descriptor
+	if fileMode, statErr := file.Stat(); statErr != nil { // coverage-ignore: the no-follow opener already validated this live descriptor
 		return fmt.Errorf("inspect effort lock %s: %w", path, statErr)
-	} else if fileMode.Mode().Perm() != 0o600 {
-		return safety("unsafe-lock", path, fmt.Errorf("mode is %o, want 600", fileMode.Mode().Perm()))
+	} else if err := validateLockPermissions(path, fileMode); err != nil {
+		return err
 	}
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil { // coverage-ignore: the descriptor is a validated owned regular file and LOCK_EX has no invalid argument
-		return fmt.Errorf("flock effort lock %s: %w", path, err)
+	if err := lockRepositoryFile(file); err != nil { // coverage-ignore: the descriptor is a validated owned regular file and the exclusive lock arguments are fixed
+		return fmt.Errorf("lock effort repository file %s: %w", path, err)
 	}
-	defer func() { _ = syscall.Flock(int(file.Fd()), syscall.LOCK_UN) }()
+	defer func() { _ = unlockRepositoryFile(file) }()
 	if err := requireIdentity(path, identity); err != nil { // coverage-ignore: replacing the lock name between adjacent open and flock calls requires a concurrent namespace race
 		return fmt.Errorf("verify effort lock identity %s after flock: %w", path, err)
 	}

@@ -200,7 +200,7 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 	})
 
 	t.Run("inaccessible-managed-path", func(t *testing.T) {
-		if os.Geteuid() == 0 {
+		if testCurrentEUID() == 0 {
 			t.Skip("root bypasses directory search permissions")
 		}
 		root := initEffortRepo(t)
@@ -221,7 +221,7 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 	})
 
 	t.Run("foreign-owned-managed-path", func(t *testing.T) {
-		if os.Geteuid() != 0 {
+		if testCurrentEUID() != 0 {
 			t.Skip("foreign ownership fixture requires root")
 		}
 		root := initEffortRepo(t)
@@ -233,10 +233,10 @@ func TestEffortRepairUsesUniqueNativeGitRegistrationTruth(t *testing.T) {
 		if err := os.MkdirAll(managed, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Chown(managed, 1, -1); err != nil {
+		if err := testChown(managed, 1); err != nil {
 			t.Skip(err)
 		}
-		t.Cleanup(func() { _ = os.Chown(managed, os.Geteuid(), -1) })
+		t.Cleanup(func() { _ = testChown(managed, testCurrentEUID()) })
 		requireRepairSafety(t, service, "foreign-owner")
 	})
 
