@@ -5,7 +5,7 @@ Pi workflow contracts: subagent tools, session handoff, dashboard, exploration d
 
 **Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/project/**`, `internal/refs/**`, `internal/render/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`, `templates/**`. Both domain and topic selectors must match. Run `awf topic rendering/pi-workflows --coverage` for current matched paths and marker sites.
 
-Pi workflow contracts: governed subagent tools, session handoff, the workflow dashboard, and structured exploration dispatch.
+Pi workflow contracts: governed subagent tools, session handoff, local workflow telemetry, and structured exploration dispatch.
 
 ## Claims
 
@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-The generated Pi handoff extension exposes exactly the closed memoryPath and bounded kickoff schema, confines canonical no-symlink paths to regular files below .awf/memory, requires an `Effort: <id>` matching the independently validated active dashboard association, a persisted TUI, and an exclusive trustworthy tool batch, keeps one correlated pending request, queues its private command, and terminates the calling model turn; missing or mismatched identity refuses handoff before replacement.
+The generated Pi handoff extension exposes exactly the closed memoryPath and bounded kickoff schema, confines canonical no-symlink paths to regular files below .awf/memory, requires an `Effort: <id>` matching the independently validated active telemetry association, a persisted TUI, and an exclusive trustworthy tool batch, keeps one correlated pending request, queues its private command, and terminates the calling model turn; missing or mismatched identity refuses handoff before replacement.
 Origin: ADR-0148
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0162
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
@@ -104,9 +104,8 @@ In the generated Pi extension, every public subagent tool's collapsed view rende
 Origin: ADR-0148
 Backing: test
 
-### `invariant: pi-workflow-dashboard-public-contract`
+### `invariant: pi-workflow-telemetry-public-contract`
 
-The Pi templates publish one descriptor-derived protocol-2.1 vocabulary and a five-file extension surface whose three factories exchange only bounded versioned observations, top-level public Pi usage, and validated active-branch association. The dashboard exposes closed lifecycle, exclusive adoption and detour, and query-only metrics/doctor tools; structured resume; the on-demand overview/phases/history/findings/maintenance overlay; full private adoption-boundary, detour-lineage, pending-return, and returned detail; and confirmed fixed-argument repair, waiver, retention, and purge actions. Agent-facing metrics and doctor content is deterministic allowlist-only plain text, excludes raw canonical JSON, event IDs, evidence, paths, stdout, and stderr, is capped at 4096 UTF-8 bytes, and carries only versioned compact details capped at 1024 UTF-8 bytes. Its optional muted below-editor widget uses `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]` plus a bounded exceptional suffix, and derives footer-parity input, output, cache-read, cache-hit, permitted cost, and current-context fields only from unique active-branch assistant entries and Pi's public context and subscription APIs. Provisional observations remain in a 256-item and 1-MiB in-memory window until deterministic settlement; canonical refreshes are coalesced and generation-ordered, and selected findings are re-resolved under their owning effort and current nonempty frontier before mutation. The surface provides no private-footer import, automatic-context inference, automatic score, blocking diagnosis, reconciliation, daemon, pagination, full-output flag, or local historical aggregation.
-Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161
+The Pi templates publish one descriptor-derived protocol-2.1 vocabulary and a five-file extension surface whose three factories exchange only bounded versioned observations, top-level public Pi usage, and validated active-branch association. The telemetry extension exposes closed lifecycle, exclusive adoption and detour, structured resume, passive event handling, and shutdown draining. Its optional muted below-editor widget uses `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]` and updates only after a successful explicit lifecycle or association action. It derives input, output, cache-read, cache-write, and available cost only from unique active-branch assistant entries and derives current context only from Pi's public context API, without private-footer import, subscription labels, automatic-context inference, or a parity promise. Provisional observations remain in a 256-item and 1-MiB in-memory window until deterministic settlement. The surface has no dashboard command or overlay, canonical metrics or doctor process read, refresh loop, launcher or fallback resolution, Pi metrics or doctor query tool, repair, waiver, retention, or purge control, automatic score, blocking diagnosis, reconciliation, daemon, pagination, full-output flag, or local historical aggregation.
+Origin: ADR-0162
 Backing: test

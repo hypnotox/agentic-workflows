@@ -242,8 +242,8 @@ var piTarget = Target{
 		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-dashboard/index.ts", TemplateID: "pi/awf-dashboard/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-dashboard/protocol.ts", TemplateID: "pi/awf-dashboard/protocol.ts.tmpl", Producer: TargetOutputTelemetryProtocol, Inputs: []TargetOutputInput{{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}}, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-telemetry/index.ts", TemplateID: "pi/awf-telemetry/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
+		{Path: ".pi/extensions/awf-telemetry/protocol.ts", TemplateID: "pi/awf-telemetry/protocol.ts.tmpl", Producer: TargetOutputTelemetryProtocol, Inputs: []TargetOutputInput{{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}}, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 	},
 }
 

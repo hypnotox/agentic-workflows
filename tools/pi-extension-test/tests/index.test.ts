@@ -14,7 +14,7 @@ import defaultExtension, {
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
 import defaultHandoff, { registerHandoff } from "../../../.pi/extensions/awf-handoff/index.ts";
-import { defaultLedgerDependencies, registerDashboard } from "../../../.pi/extensions/awf-dashboard/index.ts";
+import { defaultLedgerDependencies, registerTelemetry } from "../../../.pi/extensions/awf-telemetry/index.ts";
 import { initTheme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
 import { Value } from "typebox/value";
@@ -202,7 +202,7 @@ test("invariant: factory guards reject each missing actual dependency before reg
   const factories: Array<{ name: string; required: string[]; register(pi: any, version: string): void }> = [
     { name: "subagent", required: ["on", "events.emit", "registerTool", "registerCommand", "exec", "getThinkingLevel"], register(api, version) { registerSubagentTools(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-subagents/index.ts", agentDir: "/p-agent", configDirName: ".pi", readFile: async () => "", runner: { run: async () => result } } as any); } },
     { name: "handoff", required: ["on", "events.emit", "registerTool", "registerCommand", "queueCommand"], register(api, version) { registerHandoff(api, { packageVersion: version } as any); } },
-    { name: "dashboard", required: ["on", "events.on", "events.emit", "appendEntry", "registerTool", "registerCommand", "exec"], register(api, version) { registerDashboard(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-dashboard/index.ts", ledger: defaultLedgerDependencies("/p/.pi/extensions/awf-dashboard/index.ts"), exec: api.exec } as any); } },
+    { name: "telemetry", required: ["on", "events.on", "events.emit", "appendEntry", "registerTool", "registerCommand", "queueCommand"], register(api, version) { registerTelemetry(api, { packageVersion: version, extensionFile: "/p/.pi/extensions/awf-telemetry/index.ts", ledger: defaultLedgerDependencies("/p/.pi/extensions/awf-telemetry/index.ts") } as any); } },
   ];
   const complete = () => { const registrations: string[] = []; const api: any = { on() { registrations.push("on"); }, events: { on() { registrations.push("events.on"); }, emit() {} }, appendEntry() {}, registerTool() { registrations.push("tool"); }, registerCommand() { registrations.push("command"); }, queueCommand() {}, exec: async () => ({ code: 0, stdout: "", stderr: "" }), getThinkingLevel: () => "high" }; return { api, registrations }; };
   for (const factory of factories) {

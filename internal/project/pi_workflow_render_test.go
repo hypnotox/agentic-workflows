@@ -56,14 +56,14 @@ func TestPiWorkflowRouterExactOutputSet(t *testing.T) {
 			t.Errorf("old discoverable governed skill survived: %s", path)
 		}
 	}
-	dashboard := renderedByPath(t, files, ".pi/extensions/awf-dashboard/index.ts")
+	telemetry := renderedByPath(t, files, ".pi/extensions/awf-telemetry/index.ts")
 	for _, wantText := range []string{`"exploring":{"kind":"support","allowEntryWithoutPhase":false,"entryPredecessors":[],"continuationPhases":["adr-authoring","adr-plan-resync","adr-review","brainstorming","implementation","implementation-review","investigation","plan-review","planning","retrospective"],"activity":"exploration"}`, `"tdd":{"kind":"support","allowEntryWithoutPhase":false,"entryPredecessors":[],"continuationPhases":["implementation"],"activity":"tdd"}`, `StringEnum(workflowSkillNames as any)`, `name: "awf_workflow"`, `name: "awf_adopt_effort"`, `memoryPath: Type.String()`, `validateAdoptionMemory`, `workflowToolPreflight`, `snapshotWorkflowBody`, `WORKFLOW_BODY_MAX_BYTES`, `fsConstants.O_NOFOLLOW`, `workflowBodyPath(deps.extensionFile, skill)`, `settleWorkflowIdentity(skill, ctx)`, `workflow request canceled after durable acknowledgment`, `pi.on("agent_end"`} {
-		if !strings.Contains(dashboard, wantText) {
-			t.Errorf("dashboard workflow loader missing rendered contract %q", wantText)
+		if !strings.Contains(telemetry, wantText) {
+			t.Errorf("telemetry workflow loader missing rendered contract %q", wantText)
 		}
 	}
-	if strings.Contains(dashboard, `"brainstorming":{"kind":"chain"`) {
-		t.Error("dashboard workflow loader advertised a disabled mapping")
+	if strings.Contains(telemetry, `"brainstorming":{"kind":"chain"`) {
+		t.Error("telemetry workflow loader advertised a disabled mapping")
 	}
 	chainJSON, err := p.workflowLoaderData([]string{"executing-plans"})
 	if err != nil {

@@ -91,8 +91,8 @@ func TestPiTargetRendersExtension(t *testing.T) {
 		".pi/extensions/awf-handoff/index.ts":      {},
 		".pi/extensions/awf-subagents/index.ts":    {},
 		".pi/extensions/awf-subagents/runner.ts":   {},
-		".pi/extensions/awf-dashboard/index.ts":    {},
-		".pi/extensions/awf-dashboard/protocol.ts": {},
+		".pi/extensions/awf-telemetry/index.ts":    {},
+		".pi/extensions/awf-telemetry/protocol.ts": {},
 	}
 	if len(piTarget.Outputs) != len(wantPaths) {
 		t.Fatalf("Pi target output count = %d, want exactly %d", len(piTarget.Outputs), len(wantPaths))
@@ -142,26 +142,31 @@ func TestPiTargetRendersExtension(t *testing.T) {
 			t.Errorf("Pi target rendered extension outside independently pinned set: %s", path)
 		}
 	}
-	dashboard := got[".pi/extensions/awf-dashboard/index.ts"].Content
-	for _, contract := range []string{"dashboard-awf-path", "AWF_DASHBOARD_PROJECT_ROOT=", "runner fallback: dashboard-awf-path is not advertised", "capturedLauncher"} {
-		if !strings.Contains(dashboard, contract) {
-			t.Errorf("Pi dashboard omitted pinned-runtime resolution contract %q", contract)
+	telemetry := got[".pi/extensions/awf-telemetry/index.ts"].Content
+	for _, retired := range []string{"awf-dashboard", "awf_metrics", "awf_doctor", "refreshCanonical", "DashboardOverlay", "pi.exec("} {
+		if strings.Contains(telemetry, retired) {
+			t.Errorf("Pi telemetry retains retired dashboard surface %q", retired)
 		}
 	}
-	protocol := got[".pi/extensions/awf-dashboard/protocol.ts"].Content
+	for _, contract := range []string{"registerTelemetry", "createTelemetryState", "telemetryWidget", "awf_lifecycle", "awf_adopt_effort", "awf_detour", "awf_workflow", "session_shutdown"} {
+		if !strings.Contains(telemetry, contract) {
+			t.Errorf("Pi telemetry omitted retained local contract %q", contract)
+		}
+	}
+	protocol := got[".pi/extensions/awf-telemetry/protocol.ts"].Content
 	if !strings.HasPrefix(protocol, "// "+bannerText+"\n// @ts-nocheck\n") || strings.Count(protocol, bannerText) != 1 {
 		t.Fatalf("protocol TypeScript prefix is not the exact two-line provenance prefix: %q", protocol[:min(len(protocol), 100)])
 	}
-	beforeDashboard := got[".pi/extensions/awf-dashboard/index.ts"]
-	beforeProtocol := got[".pi/extensions/awf-dashboard/protocol.ts"]
+	beforeTelemetry := got[".pi/extensions/awf-telemetry/index.ts"]
+	beforeProtocol := got[".pi/extensions/awf-telemetry/protocol.ts"]
 	p.Cfg.WorkflowTelemetry.Widget.Enabled = !p.Cfg.WorkflowTelemetry.Widget.Enabled
 	widgetFiles, err := p.RenderAll()
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, file := range widgetFiles {
-		if file.Path == beforeDashboard.Path && (file.Content == beforeDashboard.Content || file.ConfigHash == beforeDashboard.ConfigHash) {
-			t.Error("widget setting did not isolate a dashboard byte/hash change")
+		if file.Path == beforeTelemetry.Path && (file.Content == beforeTelemetry.Content || file.ConfigHash == beforeTelemetry.ConfigHash) {
+			t.Error("widget setting did not isolate a telemetry byte/hash change")
 		}
 		if file.Path == beforeProtocol.Path && (file.Content != beforeProtocol.Content || file.ConfigHash != beforeProtocol.ConfigHash) {
 			t.Error("widget setting changed descriptor-derived protocol output")
@@ -218,7 +223,7 @@ func TestPiTargetRendersExtension(t *testing.T) {
 	}
 }
 
-func TestDashboardProtocolDescriptorAttribution(t *testing.T) {
+func TestTelemetryProtocolDescriptorAttribution(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
 	if err != nil {
@@ -228,7 +233,7 @@ func TestDashboardProtocolDescriptorAttribution(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const output = ".pi/extensions/awf-dashboard/protocol.ts"
+	const output = ".pi/extensions/awf-telemetry/protocol.ts"
 	want := OutputInput{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}
 	found := false
 	for _, node := range op.Nodes {
@@ -261,7 +266,7 @@ func TestDashboardProtocolDescriptorAttribution(t *testing.T) {
 	}
 }
 
-func TestDashboardWidgetConfigHashIsolation(t *testing.T) {
+func TestTelemetryWidgetConfigHashIsolation(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
 	if err != nil {
@@ -285,14 +290,14 @@ func TestDashboardWidgetConfigHashIsolation(t *testing.T) {
 	afterEnabled := render()
 	p.Cfg.WorkflowTelemetry.Widget.ShowCost = !p.Cfg.WorkflowTelemetry.Widget.ShowCost
 	afterCost := render()
-	const dashboard = ".pi/extensions/awf-dashboard/index.ts"
+	const telemetry = ".pi/extensions/awf-telemetry/index.ts"
 	for _, after := range []map[string]RenderedFile{afterEnabled, afterCost} {
-		if after[dashboard].ConfigHash == before[dashboard].ConfigHash || after[dashboard].Content == before[dashboard].Content {
-			t.Fatal("dashboard widget config did not change dashboard bytes and config hash")
+		if after[telemetry].ConfigHash == before[telemetry].ConfigHash || after[telemetry].Content == before[telemetry].Content {
+			t.Fatal("telemetry widget config did not change telemetry bytes and config hash")
 		}
 	}
 	for path, file := range before {
-		if path == dashboard {
+		if path == telemetry {
 			continue
 		}
 		if afterEnabled[path].ConfigHash != file.ConfigHash || afterEnabled[path].Content != file.Content || afterCost[path].ConfigHash != file.ConfigHash || afterCost[path].Content != file.Content {
@@ -330,40 +335,17 @@ func provePiContractBehavior(t *testing.T, clauses ...string) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-pinned-development-runtime
-func TestPiPinnedDevelopmentRuntimeBehavioralProof(t *testing.T) {
+// invariant: rendering/adapter-outputs:pi-workflow-telemetry-runtime
+func TestPiWorkflowTelemetryRuntimeContract(t *testing.T) {
 	provePiContractBehavior(t,
-		"pinned runtime enforces bootstrap precedence",
-		"pinned runtime limits repository fallback eligibility and bounded dual causes",
-		"pinned runtime passes the project root and captures one launcher per session",
+		"telemetry runtime retains durable lifecycle, association, passive events, and shutdown drain",
 	)
 }
 
-// invariant: rendering/adapter-outputs:pi-workflow-dashboard-runtime
-func TestPiWorkflowDashboardRuntimeContract(t *testing.T) {
+// invariant: rendering/pi-workflows:pi-workflow-telemetry-public-contract
+func TestPiWorkflowTelemetryPublicContract(t *testing.T) {
 	provePiContractBehavior(t,
-		"dashboard runtime covers lifecycle, queries, privacy, association, and passive telemetry",
-		"lifecycle projector rejects illegal historical effects and closed transitions",
-		"historical lifecycle projection excludes every illegal effect class",
-		"recovery parity executes staging, tombstone, trash, and ambiguity states",
-		"dashboard storage guards reject injected metadata stream and identity faults",
-		"staging recovery validates an independently inspected surviving lease",
-		"retrospective settlement observes externally finished and completed state",
-		"registered provisional overflow associates the settled candidate",
-		"finding actions require canonical ownership eligibility and a current frontier",
-		"canonical refresh is coalesced generation ordered and cancellation safe",
-		"handoff transfers exact association and success setup data",
-		"subagent context and observations are exact closed bounded and private",
-	)
-}
-
-// invariant: rendering/pi-workflows:pi-workflow-dashboard-public-contract
-func TestPiWorkflowDashboardPublicContract(t *testing.T) {
-	provePiContractBehavior(t,
-		"dashboard public contract covers overlay, maintenance, widget, and disposal",
-		"dashboard registration covers widget refresh and graceful settlement",
-		"footer accounting uses public active-branch and context sources exactly once",
-		"widget badge placement state and exceptional suffixes follow the public contract",
+		"telemetry bar uses only public active-branch and context data",
 	)
 }
 
@@ -965,7 +947,6 @@ func TestPiMinimumRuntimeContract(t *testing.T) {
 	provePiContractBehavior(t,
 		"subagent minimum runtime rejects unsupported version before registration",
 		"factory guards reject each missing actual dependency before registration",
-		"dashboard minimum runtime rejects missing factory APIs and degrades context APIs",
 	)
 }
 

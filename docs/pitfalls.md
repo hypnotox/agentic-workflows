@@ -6,13 +6,13 @@
 
 _Domains: rendering_
 
-Do not maintain dashboard-local token counters, add tool-result usage after Pi has folded top-level usage into an assistant message, or charge summaries and compactions as new historical work. Traverse the active branch once by stable entry ID, sum public assistant usage including restored and nested-subagent totals, and use `getContextUsage()` only for current context. Keep subscription and automatic-context labels absent without a public signal. Likewise, assign canonical refresh generations before launch and reject stale completions; asynchronous refresh must not overwrite a newer validated local badge.
+Do not maintain telemetry-local token counters, add tool-result usage after Pi has folded top-level usage into an assistant message, or charge summaries and compactions as new historical work. Traverse the active branch once by stable entry ID, sum public assistant usage including restored and nested-subagent totals, and use `getContextUsage()` only for current context. Keep subscription, automatic-context, private-footer, and parity labels absent without a public signal. Update the local badge only after a successful explicit lifecycle or association action; do not add a refresh path.
 
 ## Provisional and finding failures are authority boundaries
 
 _Domains: rendering, tooling_
 
-A fresh Pi session may lose only its uncommitted process-local window of 256 observations and 1 MiB; do not imply a durable spool or silently reassign overflow history. A repair or waiver is not authorized by the overlay selection alone: re-resolve the finding under its owning `effortId`, exact evidence and scope, eligible reason, and current nonempty causal frontier, and append nothing on any mismatch.
+A fresh Pi session may lose only its uncommitted process-local window of 256 observations and 1 MiB; do not imply a durable spool or silently reassign overflow history. Repair and waiver are CLI maintenance actions, not Pi telemetry controls; re-resolve a finding under its owning `effortId`, exact evidence and scope, eligible reason, and current nonempty causal frontier, and append nothing on any mismatch.
 
 ## Parity checks need independent observations
 

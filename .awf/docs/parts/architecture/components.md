@@ -4,8 +4,8 @@
   `disable`, `new`, `audit`, `metrics`, `doctor`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, where `check` is a group carrying the whole
   verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
-  plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
-  `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
+  plus a temporary closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+  `internal/clispec` command table (ADR-0094). This Phase 3 transitional compatibility dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads; Pi telemetry does not invoke it. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
@@ -14,7 +14,7 @@
   subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
   to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
   from the same metadata. Excluded runner commands carry their user-facing safety reason.
-- **`cmd/awf-dashboard-launcher/`**: immutable cached launcher for repository dashboard development. It verifies adjacent metadata, executable, launcher, and policy digests, accepts only the public read shapes, requires `AWF_DASHBOARD_PROJECT_ROOT`, and replaces itself with the sibling awf binary's private `dashboard-read` translation.
+- **`cmd/awf-dashboard-launcher/`**: temporary Phase 3 compatibility launcher for the legacy private dashboard-read transport. Pi telemetry does not resolve or invoke it.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
@@ -101,7 +101,7 @@
   workflow-conformance rules; powers `awf audit` and the blocking `awf check commit`
   (ADR-0017, ADR-0036).
 - **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
-- **`internal/dashboardruntime/`**: resolves and compare-and-swap advances `refs/awf/dashboard-runtime`, materializes only the pinned commit, derives the complete validated telemetry policy snapshot, and publishes or verifies private immutable XDG cache entries under an OS advisory lock. Stable sentinels distinguish unsafe paths, refs, builds, collisions, snapshots, and concurrent advances.
+- **`internal/dashboardruntime/`**: temporary Phase 3 compatibility code for the legacy private dashboard-read transport. It is not a Pi telemetry dependency and is removed with that transport.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
@@ -159,8 +159,7 @@
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension,
   `templates/pi/awf-handoff/` contains the main-session handoff state machine, and
-  `templates/pi/awf-dashboard/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, bounded provisional identity state machine, closed tools, generation-ordered canonical refresh, muted below-editor footer-parity widget, overlay, and publication wrapper
-  for the descriptor-derived protocol; `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
+  `templates/pi/awf-telemetry/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, bounded provisional identity state machine, local muted below-editor widget, shutdown drain, and publication wrapper for the descriptor-derived protocol; it has no overlay, refresh, query tool, launcher, or maintenance control. `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
   single-use private command after settlement, runs the cancellable countdown and revalidation,
   creates a parent-linked session, independently validates and copies the matching active association during `newSession.setup`, restores it before kickoff,
   and submits kickoff only through the replacement context. Pi-rendered workflow
@@ -178,7 +177,7 @@
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% statement, branch,
   function, and line coverage harness for every dogfooded generated extension. Cross-language tests
   hold descriptor validation and recovery behavior in parity; an in-memory pinned Pi runtime loads all
-  three factories and exercises producer exchange, provisional settlement and failure bounds, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, unique-entry footer accounting with top-level subagent usage, badge placement and styling, finding-owned mutation rejection, widget and overlay registration, lifecycle append and shutdown drain, canonical generation races and cancellation, and degraded mode. Its
+  three factories and exercises producer exchange, provisional settlement and failure bounds, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, unique-entry public-usage accounting with top-level subagent usage, local badge placement and styling, lifecycle append and shutdown drain, and the absence of canonical reads, query tools, overlays, and maintenance controls. Its
   repo-keyed persistent container snapshots current source and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.

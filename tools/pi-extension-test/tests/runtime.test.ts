@@ -114,7 +114,7 @@ async function realHandoffRuntime(root: string, options: { cancel?: boolean; pre
   await mkdir(join(root, ".pi/extensions"), { recursive: true });
   await cp(join(process.cwd(), ".pi/extensions/awf-handoff"), join(root, ".pi/extensions/awf-handoff"), { recursive: true });
   await cp(join(process.cwd(), ".pi/extensions/awf-subagents"), join(root, ".pi/extensions/awf-subagents"), { recursive: true });
-  await cp(join(process.cwd(), ".pi/extensions/awf-dashboard"), join(root, ".pi/extensions/awf-dashboard"), { recursive: true });
+  await cp(join(process.cwd(), ".pi/extensions/awf-telemetry"), join(root, ".pi/extensions/awf-telemetry"), { recursive: true });
   await symlink(join(process.cwd(), "node_modules"), join(root, "node_modules"), "dir");
   const sessionDir = join(root, "sessions");
   await mkdir(sessionDir, { recursive: true });

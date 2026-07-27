@@ -644,7 +644,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			}
 			target := t
 			data := p.data(config.Sidecar{})
-			if targetOutput.TemplateID == "pi/awf-dashboard/index.ts.tmpl" {
+			if targetOutput.TemplateID == "pi/awf-telemetry/index.ts.tmpl" {
 				routed, routeErr := p.routedWorkflowNames()
 				if routeErr != nil { // coverage-ignore: effectiveSkills and the earlier routed render parsed the same enabled sidecars in this render pass
 					return nil, routeErr

@@ -7,7 +7,7 @@ import {
   protocolVersion,
   validateLifecycleRequest,
   validateTelemetryEvent,
-} from "../../../.pi/extensions/awf-dashboard/protocol.ts";
+} from "../../../.pi/extensions/awf-telemetry/protocol.ts";
 
 function valueFor(field: any): any {
   if (field.vocabulary) return (protocolDescriptor.vocabularies as any)[field.vocabulary][0];

@@ -119,6 +119,7 @@ func TestResolveInitializesAbsentRefAtHEADAtomically(t *testing.T) {
 }
 
 // invariant: tooling/dashboard-runtime:pinned-development-runtime-cache
+// invariant: rendering/pi-runtime:pi-pinned-development-runtime
 func TestPinnedDevelopmentRuntimeCacheBehavioralProof(t *testing.T) {
 	t.Run("ref initialization", TestResolveInitializesAbsentRefAtHEADAtomically)
 	t.Run("ref advance compare and swap", TestAdvanceUsesCompareAndSwapAgainstCapturedRef)

@@ -50,7 +50,7 @@ Backing: test
 
 ### `invariant: canonical-projections-and-diagnostics`
 
-Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, and expose stable exact and heuristic findings with an owning `effortId`, thresholds, baselines, confidence, and typed remediation. The dashboard retains the complete parsed canonical objects privately for overlay inspection, while query-tool details contain only the versioned `awf-compact-v1` marker, normalized selector, truncation flag, and final displayed effort, finding, and integrity-code counts in fixed insertion order. Metrics sorts effort rows by ID and displays at most eight; doctor sorts severity, rule, integrity, and findings deterministically and displays at most five findings. Repair and waiver inputs re-resolve that effort-owned finding and require eligible reason, matching evidence and scope, and the current nonempty causal frontier; no projection derives an opaque health score.
+Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, and expose stable exact and heuristic findings with an owning `effortId`, thresholds, baselines, confidence, and typed remediation. The CLI renders concise deterministic selected-effort reports, while `--json` preserves the selected canonical projection. Pi does not receive canonical results, aggregate them locally, or expose query tools. Repair and waiver inputs re-resolve that effort-owned finding and require eligible reason, matching evidence and scope, and the current nonempty causal frontier; no projection derives an opaque health score.
 Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161
+Revised-by: ADR-0149, ADR-0161, ADR-0162
 Backing: test

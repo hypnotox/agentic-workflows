@@ -35,8 +35,8 @@ resolved against a built-in registry of adapters (`claude`, `codex`, `copilot`, 
 bridge file (`CLAUDE.md`/`GEMINI.md`), `cursor` and `copilot` emit no bridge (Cursor reads
 `AGENTS.md` natively), and `codex` emits TOML agent profiles. A target may also declare non-catalog outputs. Pi renders exactly five project-local TypeScript files:
 the two-file `.pi/extensions/awf-subagents/` delegation extension, the checkpoint handoff extension,
-and the two-file `.pi/extensions/awf-dashboard/` telemetry runtime. The dashboard protocol file is
-projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata separately declares entry targets, allowed entry predecessors, continuation phases, and attribution or route effects. It drives the router and the dashboard's closed `awf_workflow` loader, whose three-effect planner starts an entry phase, transitions from an allowed predecessor, or continues an allowed already-open phase without restarting it; external checkpoints use exclusive normalized adoption and material independent outcomes use derived detours with deterministic return. Ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
+and the two-file `.pi/extensions/awf-telemetry/` local telemetry runtime. The telemetry protocol file is
+projected from the Go-owned machine descriptor rather than maintained as a second vocabulary. Pi also renders one discoverable `.pi/skills/awf-workflow/SKILL.md` router, separately discoverable reviewer agents, and fixed governed bodies under the managed non-discovered `.pi/awf-workflows/` tree. Catalog lifecycle metadata separately declares entry targets, allowed entry predecessors, continuation phases, and attribution or route effects. It drives the router and the telemetry extension's closed `awf_workflow` loader, whose three-effect planner starts an entry phase, transitions from an allowed predecessor, or continues an allowed already-open phase without restarting it; external checkpoints use exclusive normalized adoption and material independent outcomes use derived detours with deterministic return. Ordinary individually discoverable workflow skills remain only on non-Pi targets. awf's own config tree lives at `.awf/`, decoupled from any one runtime's directory.
 
 Context assembly uses one selected-universe boundary. A request path is normalized separately from its effective paths; one working or index snapshot supplies classification, authority, applicability evidence, and artifact attribution. Symlinks are preserved as inert target bytes but excluded at every authority-parser seam. The context universe owns snapshot-consistent path expansion, nested-adopter boundaries, current-state corpora, markers, and output declarations; projection and CLI rendering consume that model without reopening the tree.
 
@@ -48,22 +48,9 @@ payload union, and closed lifecycle requests without any repository-path field. 
 appends one JSONL stream per session; `phase_transitioned` transactionally closes an unmatched phase
 start, enters its successor, and optionally applies a route effect from the current causal frontier,
 while `phase_continued` preserves that start and replaces or clears current workflow, activity, and
-implementation-mode attribution. Pi's exclusive detour boundary atomically creates a derived brainstorming child with immutable parent return lineage while leaving the parent phase open; terminal child return then durably associates the exact parent and marks the child before switching the active association. The same engine projects discovery, route, phase, handoff, and trajectory state,
-performs leased deterministic terminal-effort retention, and serves canonical selector-driven
-metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor`
-reports exact violations and configured versioned heuristics without a score, automatic repair,
-blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver
-inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The Pi dashboard writes conforming events and refreshes
-both canonical results only at controlled boundaries; resolution or handshake failures remain visibly
-stale or degraded. A fresh session holds at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 bytes only in process memory until router selection or `/awf-resume-effort <effort-id>` resolves identity; overflow settles first, graceful boundaries retry, and a pre-commit process crash can lose only that bounded window. Working memory is optional and identifies an effort one-way through `Effort: <id>`; no ledger metadata stores a memory path, and only a validated matching file permits Pi handoff. The muted below-editor widget immediately maps validated local state to `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]` with bounded exceptional suffixes. It sums public usage from each unique active-branch assistant entry exactly once and uses public context usage only for the current percentage and window; restored entries and top-level nested-subagent usage participate, while tool results, summaries, and compactions are not charged separately.
+implementation-mode attribution. Pi's exclusive detour boundary atomically creates a derived brainstorming child with immutable parent return lineage while leaving the parent phase open; terminal child return then durably associates the exact parent and marks the child before switching the active association. The same engine projects discovery, route, phase, handoff, and trajectory state, performs leased deterministic terminal-effort retention, and serves canonical selector-driven metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf doctor` reports exact violations and configured versioned heuristics without a score, automatic repair, blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The local Pi telemetry extension writes conforming events but never reads canonical metrics or doctor results. A fresh session holds at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 bytes only in process memory until router selection or `/awf-resume-effort <effort-id>` resolves identity; overflow settles first, graceful boundaries retry, and a pre-commit process crash can lose only that bounded window. Working memory is optional and identifies an effort one-way through `Effort: <id>`; no ledger metadata stores a memory path, and only a validated matching file permits Pi handoff. The muted below-editor widget updates only after a successful explicit lifecycle or association action, maps local state to `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]`, sums public usage from each unique active-branch assistant entry exactly once, and uses public context usage only for the current percentage and window; restored entries and top-level nested-subagent usage participate, while tool results, summaries, and compactions are not charged separately.
 
-For from-source development, `refs/awf/dashboard-runtime` pins one committed implementation independently
-of the checkout. `internal/dashboardruntime` materializes that commit privately, builds under a normalized
-Go environment, and atomically publishes an immutable content-addressed awf binary, closed launcher,
-metadata, and complete telemetry-policy snapshot under the XDG cache. The private launcher admits only
-canonical JSON metrics, export, protocol, and doctor reads; normal mutations and maintenance retain the
-live-project version gate. Pi captures one successful launcher per session, so explicit reviewed ref
-advancement affects only new sessions.
+The dashboard runtime and private transport remain in the repository only as Phase 3 transitional compatibility code for the legacy top-level CLI bridge. Pi telemetry does not resolve, launch, or invoke them.
 
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
@@ -77,8 +64,8 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `disable`, `new`, `audit`, `metrics`, `doctor`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, where `check` is a group carrying the whole
   verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
-  plus the closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
-  `internal/clispec` command table (ADR-0094). The private dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads. The gated commands enforce the binary-version gate
+  plus a temporary closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+  `internal/clispec` command table (ADR-0094). This Phase 3 transitional compatibility dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads; Pi telemetry does not invoke it. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
@@ -87,7 +74,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
   to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
   from the same metadata. Excluded runner commands carry their user-facing safety reason.
-- **`cmd/awf-dashboard-launcher/`**: immutable cached launcher for repository dashboard development. It verifies adjacent metadata, executable, launcher, and policy digests, accepts only the public read shapes, requires `AWF_DASHBOARD_PROJECT_ROOT`, and replaces itself with the sibling awf binary's private `dashboard-read` translation.
+- **`cmd/awf-dashboard-launcher/`**: temporary Phase 3 compatibility launcher for the legacy private dashboard-read transport. Pi telemetry does not resolve or invoke it.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
@@ -174,7 +161,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   workflow-conformance rules; powers `awf audit` and the blocking `awf check commit`
   (ADR-0017, ADR-0036).
 - **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
-- **`internal/dashboardruntime/`**: resolves and compare-and-swap advances `refs/awf/dashboard-runtime`, materializes only the pinned commit, derives the complete validated telemetry policy snapshot, and publishes or verifies private immutable XDG cache entries under an OS advisory lock. Stable sentinels distinguish unsafe paths, refs, builds, collisions, snapshots, and concurrent advances.
+- **`internal/dashboardruntime/`**: temporary Phase 3 compatibility code for the legacy private dashboard-read transport. It is not a Pi telemetry dependency and is removed with that transport.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:
@@ -232,8 +219,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`templates/`**: embedded skill, agent, doc, agent-guide, and target-output template bodies.
   `templates/pi/awf-subagents/` contains the two-file Pi delegation extension,
   `templates/pi/awf-handoff/` contains the main-session handoff state machine, and
-  `templates/pi/awf-dashboard/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, bounded provisional identity state machine, closed tools, generation-ordered canonical refresh, muted below-editor footer-parity widget, overlay, and publication wrapper
-  for the descriptor-derived protocol; `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
+  `templates/pi/awf-telemetry/` contains the writer, lifecycle-enforcing workflow loader, structured resume command, bounded provisional identity state machine, local muted below-editor widget, shutdown drain, and publication wrapper for the descriptor-derived protocol; it has no overlay, refresh, query tool, launcher, or maintenance control. `templates/pi/awf-workflow/` renders the concise semantic router. The handoff extension validates a durable memory file and its exact effort identity, queues a
   single-use private command after settlement, runs the cancellable countdown and revalidation,
   creates a parent-linked session, independently validates and copies the matching active association during `newSession.setup`, restores it before kickoff,
   and submits kickoff only through the replacement context. Pi-rendered workflow
@@ -251,7 +237,7 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 - **`tools/pi-extension-test/`**: the Docker-only strict TypeScript and 100% statement, branch,
   function, and line coverage harness for every dogfooded generated extension. Cross-language tests
   hold descriptor validation and recovery behavior in parity; an in-memory pinned Pi runtime loads all
-  three factories and exercises producer exchange, provisional settlement and failure bounds, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, unique-entry footer accounting with top-level subagent usage, badge placement and styling, finding-owned mutation rejection, widget and overlay registration, lifecycle append and shutdown drain, canonical generation races and cancellation, and degraded mode. Its
+  three factories and exercises producer exchange, provisional settlement and failure bounds, router phase transitions, structured replacement resume, memory-identity handoff association, retrospective settlement, unique-entry public-usage accounting with top-level subagent usage, local badge placement and styling, lifecycle append and shutdown drain, and the absence of canonical reads, query tools, overlays, and maintenance controls. Its
   repo-keyed persistent container snapshots current source and keeps npm dependencies off the host.
 - **`changelog/`**: embeds the hand-maintained `CHANGELOG.md` (ADR-0041); a top-level package
   because `go:embed` cannot embed a file outside its own package directory.
@@ -278,9 +264,9 @@ sidecars/parts, and stale `INDEX.md`) while a stale schema generation gates with
 upgrade`" message (ADR-0010). Target descriptors, including optional outputs, producer kinds, declared inputs, and dispatch
 capabilities, enter every target-scoped config hash. Pi's five target outputs use `//` provenance valid
 in TypeScript and otherwise follow ordinary planned-output, drift, sync-repair, and cleanup paths.
-Four are template-produced; the dashboard protocol output combines its publication wrapper with the
+Four are template-produced; the telemetry protocol output combines its publication wrapper with the
 embedded telemetry descriptor, so descriptor bytes participate in source attribution, rendered
-content, and the lock hash. Only the dashboard index hashes the two widget display settings.
+content, and the lock hash. Only the telemetry index hashes the two widget display settings.
 
 The topic producer discovers paired
 `.awf/topics/metadata/<domain>/<topic>.yaml` and
@@ -359,24 +345,14 @@ re-resolution of the selected finding under its `effortId`, with matching eviden
 eligible reason, and the current nonempty causal frontier. Purge is a separately confirmed destructive
 operation.
 
-The Pi dashboard restores association from the active branch. A fresh root session instead creates a deterministic provisional candidate and buffers at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 protocol encoding in memory. The first `awf_workflow` selection settles creation, association, ordered flush, and its catalog-mapped lifecycle effect before returning the fixed hidden body. `/awf-resume-effort <effort-id>` can discard an uncommitted candidate and queue private replacement setup for a validated discovery or active effort; completed work requires a separate reopen, and abandoned or pruned work refuses resume. Overflow settles the candidate first, then a later resume uses the closed `provisional-overflow-resume` abandonment reason before detach and association, without reassigning committed observations. The dashboard otherwise writes passive observations through a
-serialized durable queue and drains it at shutdown. An enabled project bootstrap is authoritative.
-Without one, the dashboard tries `awf` on `PATH`, then uses the repository runner only when its usage
-advertises `dashboard-awf-path`; absence, execution failure, version refusal, or protocol refusal may
-trigger that fallback. The runner resolves `refs/awf/dashboard-runtime`, initializes an absent ref to
-`HEAD`, materializes only that commit, and reuses or atomically publishes the content-addressed awf,
-launcher, metadata, and policy snapshot. Launcher queries carry the absolute project root in
-`AWF_DASHBOARD_PROJECT_ROOT` and enter the closed private `dashboard-read` grammar; mutation and
-maintenance never do. The dashboard captures one successful protocol-2.1 handshake for the session. Publication is
-reader-before-writer: the rendered local reader recognizes all protocol-2.1 event kinds, metadata,
-and projections. Phase continuation is enabled only through the validated lifecycle and workflow
+The Pi telemetry extension restores association from the active branch. A fresh root session instead creates a deterministic provisional candidate and buffers at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 protocol encoding in memory. The first `awf_workflow` selection settles creation, association, ordered flush, and its catalog-mapped lifecycle effect before returning the fixed hidden body. `/awf-resume-effort <effort-id>` can discard an uncommitted candidate and queue private replacement setup for a validated discovery or active effort; completed work requires a separate reopen, and abandoned or pruned work refuses resume. Overflow settles the candidate first, then a later resume uses the closed `provisional-overflow-resume` abandonment reason before detach and association, without reassigning committed observations. The telemetry extension otherwise writes passive observations through a serialized durable queue and drains it at shutdown. It performs no process read, bootstrap, PATH, launcher, fallback, or private transport resolution. Publication is reader-before-writer: the rendered local reader recognizes all protocol-2.1 event kinds, metadata, and projections. Phase continuation is enabled only through the validated lifecycle and workflow
 loader paths; adoption is enabled only through its normalized-memory boundary, and detour creation is enabled only through exclusive `awf_detour`. That tool derives one atomic child creation from the explicit child ID and exact active parent lineage, persists child association after durability, and never mutates the parent. Completion and abandonment reproject the terminal child, associate the recorded parent against its whole frontier with deterministic identity, append the child return marker, persist the parent custom association, and only then switch selection. Frontier races retry before identity exists; durable parent association or child marker events are reused during startup recovery, while a failure keeps the child selected and pending-return children stay outside retention. The closed-enum workflow loader validates an exclusive trustworthy call,
 current frontier, and route, then uses catalog entry and continuation metadata to plan exactly one
 phase start, transactional transition, or continuation. It reads only the pre-rendered
 `.pi/awf-workflows/<name>.md` body after that effect is durably acknowledged and never emits a
 same-phase transition. Normal chain successors route through that loader, and successful retrospective
 agent settlement completes idempotently; cancellation, shutdown, or an intervening failed tool leaves
-retrospective open. The dashboard assigns a monotonic generation before each canonical launch, coalesces refresh at startup, overlay open, lifecycle settlement, bounded passive boundaries, and explicit refresh, then reads metrics followed by doctor. A completion older than current local or canonical generation is discarded, while an accepted pair updates an open overlay. Parsed canonical metrics and doctor objects remain private dashboard state. The agent-facing query tools instead build deterministic allowlist-only plain-text summaries, sanitize controls and path-shaped tokens, retain only bounded selector/details metadata, and cap UTF-8 content at 4096 bytes and serialized details at 1024 bytes; they never expose raw canonical JSON, event IDs, evidence, paths, stdout, or stderr, and omitted detail, sanitation, cardinality limits, or byte fitting adds the one dashboard footer. Rendering never starts a process. A failed resolution, handshake, query, or retention call preserves the last complete pair as stale or exposes a degraded state; dual resolution failure keeps both bounded causes, passive collection remains non-blocking, and explicit lifecycle failure is visible. The muted below-editor widget computes input, output, cache-read, cache-write, and finite permitted cost by visiting each unique active-branch assistant entry once. Cache hit is `cacheRead/(input+cacheRead)` when defined; public `getContextUsage()` contributes only current context percentage and window. Restored entries and nested subagent top-level usage are included, tool-result or compaction usage is not separately recharged, and subscription or automatic-context labels are omitted unless a public safe signal exists. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
+retrospective open. The local telemetry extension has no canonical launch, refresh generation, overlay, query tool, maintenance control, or private report state. Rendering never starts a process. Passive collection remains non-blocking and explicit lifecycle or association failure is visible through that action without changing the badge. The muted below-editor widget updates only after successful explicit lifecycle or association actions and computes input, output, cache-read, cache-write, and finite available cost by visiting each unique active-branch assistant entry once. Public `getContextUsage()` contributes only current context percentage and window. Restored entries and nested subagent top-level usage are included, tool-result or compaction usage is not separately recharged, and subscription, automatic-context, and private-footer labels are absent. Working memory is never created by effort settlement and the ledger stores no memory path. When a file exists, its exact `Effort: <id>` is the one-way bridge used by structured continuation and by `handoff_session`, which independently validates matching association, installs it during child setup, and restores it before kickoff.
 
 Convention-part bodies are **raw input** (ADR-0034): only awf-owned template defaults are run
 through `text/template`. During assembly each part slot is filled with a brace-free sentinel, the
@@ -415,12 +391,8 @@ bytes, so a comment-only edit reflags stale and self-settles.
 - **`encoding/json`, `crypto/sha256`, process execution, and filesystem primitives** (standard library): parse,
   fingerprint, and project the normative telemetry descriptor, implement its confined durable
   append-only resident ledger, produce canonical metrics, normalized exports, and diagnostic
-  results, and publish the locked immutable dashboard development cache without a database,
-  background daemon, or TypeScript aggregation engine.
-- **Git and the Go toolchain**: repository-only dashboard fallback inputs. Git resolves, materializes,
-  and compare-and-swap advances the local pinned ref; the selected Go binary performs two normalized
-  builds from that committed tree. They are development requirements, not runtime dependencies of an
-  installed adopter binary.
+  results without a database, background daemon, or TypeScript aggregation engine. The legacy dashboard development cache remains only as Phase 3 transitional compatibility code and is not a Pi telemetry dependency.
+- **Git and the Go toolchain**: temporary repository-only inputs for the legacy dashboard fallback pending Phase 3 removal. They are not runtime dependencies of Pi telemetry or an installed adopter binary.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s
@@ -438,9 +410,9 @@ bytes, so a comment-only edit reflags stale and self-settles.
   `main` outside `internal/testsupport/` (ADR-0063). This repo only, not part of the rendered standard.
 - **Pi ai/TUI 0.81.1, compatible coding-agent 0.81.1, and TypeBox 1.1.38**: peer APIs used only by the generated Pi
   extensions at runtime; they are supplied by the adopter's Pi installation and are not dependencies
-  of the awf binary. The dashboard additionally requires custom session entries, widget and overlay
-  APIs, lifecycle events, and shutdown notification; all three extension factories fail closed before
-  functional registration when their required minimum surface is absent. The test package pins pi-ai
+  of the awf binary. The telemetry extension requires custom session entries, widget APIs, lifecycle
+  events, and shutdown notification, not an overlay API; all three extension factories fail closed
+  before functional registration when their required minimum surface is absent. The test package pins pi-ai
   and pi-tui directly at 0.81.1, TypeBox directly at 1.1.38, and coding-agent to the checksummed
   `hypnotox/pi` `fork-v0.81.1-awf.3` release URL because the official coding-agent 0.81.1 artifact
   lacks `ExtensionAPI.queueCommand`. Its lockfile SRI is
