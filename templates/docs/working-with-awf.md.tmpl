@@ -34,7 +34,7 @@ file and reports that fact; only an explicitly confirmed metrics purge removes e
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
 - `awf metrics --effort <ID> [selectors] [--json]`: print canonical workflow metrics for exactly one resident compatible effort. The `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND inside that effort; a missing, unknown, incompatible, or empty selection is an error. `--json` preserves the selected canonical projection. Use `awf metrics export --format json` for the existing export projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
-- `awf metrics doctor --effort <ID> [selectors] [--json]`: report effort-owned exact and config-driven heuristic findings for one selected effort. It is read-only and advisory, so findings do not change its exit status. The transitional top-level `awf doctor` remains available until the dashboard compatibility bridge is retired.
+- `awf metrics doctor --effort <ID> [selectors] [--json]`: report effort-owned exact and config-driven heuristic findings for one selected effort. It is read-only and advisory, so findings do not change its exit status.
 - `awf metrics list [--limit N] [--cursor TOKEN] [--json]`: list resident efforts newest-first by immutable creation time, with ID tie breaks and explicit opaque pagination. The default limit is 10 and the maximum is 100; incompatible efforts remain discoverable but cannot be selected.
 - `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, transactional phase transition, trajectory, terminal, waiver, or typed repair operation. Protocol 2 uses `transition-phase` for a normal chain edge so one event closes the named start and enters its successor, optionally with a route effect. Repair and waiver requests name the selected finding's owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible input is rejected without append. A failed validation or durable write is an error, never a claimed success.
 - `awf metrics retain --dry-run --json`: preview deterministic terminal-effort retention. Omit `--dry-run` to apply it. `awf metrics purge --effort <ID> --confirm --json` is the separately confirmed destructive cleanup surface and refuses active efforts.
@@ -231,7 +231,7 @@ Pi also renders the separate `handoff_session` extension for persisted interacti
 
 ### Pi workflow telemetry and dashboard
 
-Pi renders a third extension factory under `.pi/extensions/awf-dashboard/`. Together the three Pi
+Pi renders a third extension factory under `.pi/extensions/awf-telemetry/`. Together the three Pi
 extensions comprise exactly five generated TypeScript files. `protocol.ts` is derived from awf's
 machine-readable Go descriptor; its vocabulary, bounds, validation, input attribution, rendered hash,
 and Go/TypeScript parity are not maintained by hand in the wrapper template.
@@ -252,16 +252,7 @@ selecting an anchor before association detaches. Current-path totals follow acti
 all-work totals retain discarded branches. Work continuing from a terminal effort should normally
 create a new `derived` effort; `reopen` is an explicit same-effort choice and creates a new trajectory.
 
-The compact widget is display-only and does not replace Pi's footer. `/awf-dashboard` opens overview,
-phase, history, finding, and maintenance views. Canonical reads occur at startup, overlay open,
-lifecycle settlement, bounded passive boundaries, and manual refresh. An enabled `.awf/bootstrap.sh`
-is authoritative. Otherwise the extension tries `awf` on `PATH` and, after absence, execution failure,
-project-version refusal, or protocol refusal, uses only an advertised repository
-`dashboard-awf-path` fallback. It captures one successfully handshaken launcher for the session, then
-runs metrics followed by doctor. Rendering never spawns, there is no polling or daemon, and TypeScript
-never reimplements historical aggregation or diagnosis. Resolution, version, protocol, or query
-failure leaves the last complete pair visibly stale or exposes a degraded state. Direct conforming
-lifecycle tools remain registered; passive observation failure never interrupts work.
+The compact telemetry bar is display-only, uses local lifecycle state and public usage APIs, and never reads canonical reports or opens an overlay.
 
 Findings expose their owning `effortId`, stable rule, evidence, threshold or baseline, confidence, and
 next action. The dashboard has no composite score and never blocks work or applies a repair, waiver,

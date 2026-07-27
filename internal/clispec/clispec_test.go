@@ -152,16 +152,19 @@ func TestLookup(t *testing.T) {
 			}
 		}
 	}
-	doctor, ok := Lookup("doctor")
-	if !ok || doctor.Gating != Gated || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
-		t.Fatalf("doctor spec = %#v, found %v", doctor, ok)
+	if _, ok := Lookup("doctor"); ok {
+		t.Fatal("top-level doctor must be retired")
+	}
+	doctor, ok := metrics.Child("doctor")
+	if !ok || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
+		t.Fatalf("metrics doctor spec = %#v, found %v", doctor, ok)
 	}
 }
 
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "audit", "metrics", "doctor", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "audit", "metrics", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

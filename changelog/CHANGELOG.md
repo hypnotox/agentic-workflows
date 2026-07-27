@@ -9,6 +9,10 @@ query a single version or a range.
 ## [Unreleased]
 
 ### Breaking changes
+
+- Remove the Pi dashboard, Pi query tools, top-level `awf doctor`, and dashboard runtime commands. Use `awf metrics --effort`, `awf metrics doctor --effort`, and `awf metrics list` for scoped reports and discovery.
+
+### Breaking changes
 - The verification commands are regrouped under `awf check` and `awf sync` is renamed to
   `awf render` (ADR-0159). There are no aliases, on the ADR-0093 precedent: `awf sync` becomes
   `awf render`, `awf invariants` becomes `awf check invariants`, `awf prose-gate` becomes

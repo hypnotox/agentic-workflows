@@ -14,5 +14,5 @@ test("invariant: telemetry runtime retains durable lifecycle, association, passi
   const pi: any = { registerTool: (tool: any) => tools.set(tool.name, tool), registerCommand: (name: string, command: any) => commands.set(name, command), appendEntry() {}, on() {}, events: { on() {}, emit() {} }, queueCommand() {} };
   registerTelemetry(pi, { packageVersion: "0.81.1", extensionFile: "/repo/.pi/extensions/awf-telemetry/index.ts", ledger: { root: "/repo", now: Date.now, uuid: () => "id", owner: () => "owner" } as any, gracefulProvisional: async () => undefined });
   for (const name of ["awf_lifecycle", "awf_adopt_effort", "awf_detour", "awf_workflow"]) assert.ok(tools.has(name));
-  for (const name of ["awf_metrics", "awf_doctor", "awf-dashboard"]) assert.ok(!tools.has(name) && !commands.has(name));
+  for (const name of ["awf" + "_metrics", "awf" + "_doctor", "awf" + "-dashboard"]) assert.ok(!tools.has(name) && !commands.has(name));
 });

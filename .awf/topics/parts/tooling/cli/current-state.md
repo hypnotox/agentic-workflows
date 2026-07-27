@@ -102,9 +102,9 @@ Backing: test
 
 ### `invariant: version-compat-gate`
 
-Every ordinary gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted. The only bypass is the private closed `dashboard-read` dispatch.
+Every ordinary gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted.
 Origin: ADR-0039
-Revised-by: ADR-0150, ADR-0153
+Revised-by: ADR-0150, ADR-0153, ADR-0162
 Backing: test
 
 ### `invariant: metrics-command-contract`
@@ -114,21 +114,3 @@ Origin: ADR-0153
 Revised-by: ADR-0156, ADR-0162
 Backing: test
 
-### `invariant: metrics-legacy-doctor-bridge`
-
-The temporary gated top-level `awf doctor` bridge remains available until dashboard retirement; it accepts the existing shared selectors and remains read-only.
-Origin: ADR-0162
-Backing: test
-
-### `invariant: doctor-command-contract`
-
-The gated `awf doctor` command consumes the same shared effort, session, phase, and time selectors and the same storage interpretation as `awf metrics`, remains read-only, and never changes exit status merely because findings exist.
-Origin: ADR-0153
-Revised-by: ADR-0156
-Backing: test
-
-### `invariant: dashboard-read-dispatch`
-
-Before reading telemetry, the private closed `dashboard-read` dispatch validates its exact read-only argv, absolute canonical project root, adjacent pinned executable, metadata and policy digests, repository identity, pinned commit, snapshot schema and protocol, and confined metrics root without loading live tracked config; no mutation or maintenance shape can reach dispatch. The `awf metrics` and `awf doctor` read helpers accept an explicit root and validated telemetry policy so the dispatch can invoke only the protocol, JSON metrics, JSON export, and JSON doctor shapes against its immutable policy snapshot while ordinary invocations retain live project and version gates.
-Origin: ADR-0153
-Backing: test

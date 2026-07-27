@@ -105,31 +105,6 @@ func normalMetricsReadDeps(root string) (metricsReadDeps, error) {
 
 var metricsReadDepsForRoot = normalMetricsReadDeps
 
-func runMetricsQueryWith(c *cmdCtx, deps metricsReadDeps) error {
-	selector, err := parseTelemetrySelector(c.inv)
-	if err != nil {
-		return err
-	}
-	reads, err := readTelemetryQueryInputs(deps.Root)
-	if err != nil {
-		return boundedTelemetryError(deps.Root, err)
-	}
-	result, err := telemetry.AggregateMetrics(reads, selector, telemetry.MetricsOptions{
-		GeneratedAt: telemetryNow(),
-		Retention: telemetry.RetentionPolicy{
-			MaxCompletedEffortAgeDays: deps.Policy.Retention.MaxCompletedEffortAgeDays,
-			MaxCompletedEffortCount:   deps.Policy.Retention.MaxCompletedEffortCount,
-		},
-	})
-	if err != nil { // coverage-ignore: parsing validated the selector used by aggregation
-		return boundedTelemetryError(c.root, err)
-	}
-	if c.inv.bools["--json"] {
-		return writeMetricsJSON(c.stdout, result)
-	}
-	return telemetry.RenderMetricsHuman(c.stdout, result)
-}
-
 func runMetricsSelectedWith(c *cmdCtx, deps metricsReadDeps) error {
 	selector, err := parseTelemetrySelector(c.inv)
 	if err != nil {

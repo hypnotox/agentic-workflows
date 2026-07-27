@@ -5,7 +5,7 @@ package (`package <pkg>` or the black-box `package <pkg>_test` where a test need
 unexported identifiers). Template golden tests (render assertions against the embedded catalog)
 live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
 command functions directly (not a subprocess) against a temp directory built with `t.TempDir()`,
-in `cmd/awf/*_test.go`. The private dashboard-read, dashboard runtime, and launcher tests are temporary Phase 3 compatibility coverage for a legacy CLI bridge; Pi telemetry never invokes that transport.
+in `cmd/awf/*_test.go`.
 
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
 files, no production source). Each scenario runs a full `Project.SyncReport` over a fixture config derived

@@ -86,7 +86,7 @@ tombstoned rename into private trash. Bare `awf
 metrics` and JSON export aggregate resident efforts through the shared effort/session/phase/time
 selector into deterministic current-path, all-work, session, phase, trajectory, integrity, and
 retention projections; JSONL export emits only validated normalized envelopes in stable stream order.
-`awf doctor` reads the same state, evaluates exact rules and configured comparable-route heuristics,
+`awf metrics doctor --effort <id>` reads the same state, evaluates exact rules and configured comparable-route heuristics,
 and renders advisory effort-owned evidence without writing resident state or changing exit status
 because of a finding. Waivers and typed repairs append only after explicit confirmation and
 re-resolution of the selected finding under its `effortId`, with matching evidence and scope, an

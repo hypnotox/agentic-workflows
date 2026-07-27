@@ -214,16 +214,6 @@ Recursively purge one named terminal effort only after explicit confirmation.
 		},
 	},
 	{
-		Name: "doctor", Summary: "Diagnose workflow telemetry without blocking",
-		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"},
-		MinPos: 0, MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf doctor [--effort ID] [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
-
-Report exact and configured heuristic findings read-only. Findings are advisory
-and do not alter the command exit status.
-`,
-	},
-	{
 		Name: "list", Summary: "Show targets and their per-project state (all kinds, or one)",
 		MaxPos: 1, Gating: Gated,
 		HelpBody: `Usage: awf list [<kind>]

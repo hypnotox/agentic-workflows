@@ -18,6 +18,5 @@ that effort and `--json` preserves its canonical projection. `awf metrics list`
 is the bounded unscoped discovery surface: it is newest-first, defaults to 10
 rows, accepts at most 100, and continues only through its opaque cursor. An
 incompatible resident effort is listed without projection details but cannot be
-selected. The top-level `awf doctor` remains a temporary CLI compatibility bridge
-until Phase 3; Pi telemetry does not invoke it. Applying retention or confirmed
+selected. Applying retention or confirmed
 `awf metrics purge` is explicit maintenance, never an agent query action.

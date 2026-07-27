@@ -4,23 +4,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 )
 
-func runDoctor(c *cmdCtx) error {
-	deps, err := normalMetricsReadDeps(c.root)
-	if err != nil {
-		return boundedTelemetryError(c.root, err)
-	}
-	return runDoctorWith(c, deps)
-}
-
 func runDoctorSelectedWith(c *cmdCtx, deps metricsReadDeps) error {
-	return runDoctorWithSelection(c, deps, true)
+	return runDoctorWithSelection(c, deps)
 }
 
-func runDoctorWith(c *cmdCtx, deps metricsReadDeps) error {
-	return runDoctorWithSelection(c, deps, false)
-}
-
-func runDoctorWithSelection(c *cmdCtx, deps metricsReadDeps, selected bool) error {
+func runDoctorWithSelection(c *cmdCtx, deps metricsReadDeps) error {
 	selector, err := parseTelemetrySelector(c.inv)
 	if err != nil {
 		return err
@@ -31,11 +19,7 @@ func runDoctorWithSelection(c *cmdCtx, deps metricsReadDeps, selected bool) erro
 	}
 	diagnostics := deps.Policy.Diagnostics
 	thresholds := diagnostics.Thresholds
-	diagnose := telemetry.Diagnose
-	if selected {
-		diagnose = telemetry.DiagnoseSelected
-	}
-	result, err := diagnose(reads, selector, telemetry.HeuristicOptions{
+	result, err := telemetry.DiagnoseSelected(reads, selector, telemetry.HeuristicOptions{
 		Enabled:                diagnostics.HeuristicsEnabled,
 		MinimumBaselineSamples: diagnostics.MinimumBaselineSamples,
 		BaselinePercentile:     diagnostics.BaselinePercentile,

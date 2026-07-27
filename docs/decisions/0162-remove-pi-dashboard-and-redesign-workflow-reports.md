@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-27
 ---
 # ADR-0162: Remove the Pi dashboard and redesign workflow reports
@@ -158,3 +158,5 @@ documentation, and current-state authority. Existing resident ledgers are not re
 - 2026-07-27: Implementing; content-sha256: b92150c006e08e8191cc753101824b35a2ed50f8e65c6facda645c9a90c8f6c8
 - 2026-07-27: Applied; state-sequence: 57; operations: update `tooling/cli:metrics-command-contract`, add `tooling/cli:metrics-legacy-doctor-bridge`
 - 2026-07-27: Applied; state-sequence: 58; operations: update `tooling/workflow-telemetry:canonical-projections-and-diagnostics`, update `rendering/pi-workflows:pi-session-handoff-public-contract`, remove `rendering/pi-workflows:pi-workflow-dashboard-public-contract`, add `rendering/pi-workflows:pi-workflow-telemetry-public-contract`, remove `rendering/adapter-outputs:pi-workflow-dashboard-runtime`, add `rendering/adapter-outputs:pi-workflow-telemetry-runtime`, update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-runtime:pi-minimum-runtime`, update `rendering/pi-runtime:pi-real-runtime-smoke`
+- 2026-07-27: Applied; state-sequence: 59; operations: update `tooling/workflow-telemetry:event-protocol-and-ledger`, update `tooling/workflow-telemetry:privacy-integrity-and-retention`, remove `tooling/dashboard-runtime:pinned-development-runtime-cache`, update `tooling/cli:version-compat-gate`, remove `tooling/cli:doctor-command-contract`, remove `tooling/cli:dashboard-read-dispatch`, remove `rendering/companion-scripts:dashboard-development-runtime-commands`, remove `rendering/pi-runtime:pi-pinned-development-runtime`
+- 2026-07-27: Implemented; content-sha256: b92150c006e08e8191cc753101824b35a2ed50f8e65c6facda645c9a90c8f6c8

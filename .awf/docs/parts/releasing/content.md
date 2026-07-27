@@ -107,47 +107,7 @@ broken release config fails CI before any tag is pushed.
 
 ## Real Pi extension smoke
 
-Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later build first verified
-to expose the queued-command, persisted-session, custom-entry, widget, overlay, and shutdown APIs
-required by all three extension factories. From a clean reviewed commit, run `./x check`, `./x gate`,
-and the independent implementation review before `./x dashboard-awf-advance <reviewed-commit>`.
-Confirm it reports the old and new pinned commits plus one launcher path. Do not stage the local ref or
-XDG cache. Start a new Pi session after advancement; an already-running session must retain its old
-captured launcher.
-
-1. Run one successful exploration call with a named task, `targeted` breadth, `paths` detail, and an
-   explicit authenticated lower-cost child model. Run more than ten independent exploration calls
-   and confirm FIFO progress as slots release. Follow a bounded not-found with a fresh corrected or
-   broader call. Emit an implementation call beside a sibling and confirm whole-batch retry-alone
-   rejection. Intermediate activity must remain in tool details; only the final report enters
-   model-visible content.
-2. Create an independent telemetry effort in discovery, explicitly select its route, and start and
-   finish the applicable phases. Debugging is an investigation activity; bugfix is a route rather
-   than a phase. Confirm `/awf-dashboard` opens, manual refresh runs a protocol handshake followed by
-   canonical metrics then doctor, the widget appears without replacing the footer, and findings show
-   owning effort, rule, evidence, threshold or baseline, confidence, and next action without a
-   composite score. Confirm a normal chain edge produces one protocol-2 transition event with both
-   closing and successor phase effects.
-3. Create a durable checkpoint and invoke `handoff_session` alone. Cancel once during the five-second
-   window and confirm the old session stays active. Complete a second handoff and verify parent
-   lineage, preserved history, exact kickoff memory path, and copied active association. Also exercise
-   kickoff submission failure and editor fallback; replacement teardown remains nontransactional.
-4. Fork a trajectory, record work, resume the prior branch, and confirm current-path and all-work
-   totals differ without losing the discarded branch. From a terminal effort, create a derived effort
-   and confirm its opaque origin groups history without adding the parent totals; exercise `reopen`
-   separately only as an explicit same-effort choice.
-5. Open findings and maintenance. Cancel one waiver or repair confirmation and one destructive purge
-   confirmation and verify no write or process action occurs. Confirm stale-frontier, empty-frontier,
-   cross-effort, mismatched-evidence, and ineligible-reason repair or waiver attempts append nothing.
-   Run retention dry-run, then an approved apply against terminal candidates. Complete the effort,
-   shut down Pi, and verify queued events were drained and retained history remains readable.
-6. With bootstrap disabled and `awf` absent from `PATH`, confirm the repository runner advertises
-   `dashboard-awf-path`, canonical protocol, metrics, and doctor reads succeed through the pinned
-   launcher, and a second refresh reuses the same launcher without rebuilding. Compare the muted below-editor widget with Pi's public footer on a restored branch after one nested subagent: unique assistant input, output, cache-read, cache-hit (`cacheRead/(input+cacheRead)`), permitted cost, and current context percentage/window must match, and unavailable subscription or automatic-context labels must be absent. Confirm `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, and `[awf:abandoned]` changes are immediate and an older delayed refresh cannot overwrite a newer local state. Dirty an unrelated
-   checkout file and confirm reads retain the pinned semantics. Then make the advertised fallback
-   unavailable too: direct conforming lifecycle registration and passive work remain non-blocking,
-   while metrics, doctor, widget, and overlay visibly report both bounded resolution causes as degraded
-   or stale. No render path may spawn a process.
+Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later compatible build. From a clean reviewed commit, run `./x check`, `./x gate`, and the independent implementation review. Start a new Pi session and exercise exploration, router transitions, structured resume, handoff association, nested detours, lifecycle durability, shutdown drain, and the muted local telemetry bar. Verify the bar updates after successful explicit actions, uses public usage and context APIs, and does not register query tools, invoke canonical reports, open an overlay, or resolve a launcher. Use `awf metrics list` to discover efforts and `awf metrics --effort <id>` or `awf metrics doctor --effort <id>` for explicit reports.
 
 Before inspecting persisted data, interrupt one unresolved provisional session before its creation commit and confirm the documented loss is confined to its process-local 256-observation/1-MiB window; then exercise overflow and graceful settlement and confirm deterministic recovery or a visible bounded failure. Re-resolve a selected finding and verify cross-effort, stale-evidence, ineligible-reason, and empty-frontier repair or waiver attempts append nothing.
 

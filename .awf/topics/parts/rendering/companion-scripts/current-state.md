@@ -2,13 +2,6 @@ Rendered companion script contracts: the bootstrap and upgrade scripts, the comm
 
 ## Claims
 
-### `invariant: dashboard-development-runtime-commands`
-
-The awf repository's hand-maintained project runner `./x` advertises `dashboard-awf-path` and `dashboard-awf-advance [commit]`: path prints only the resolved immutable launcher path to standard output with diagnostics on standard error, while advance reports the old commit, new commit, and launcher path after publish-before-compare-and-swap advancement. The rendered wrapper carries no repository-only commands, so adopters do not acquire source-layout assumptions.
-Origin: ADR-0150
-Revised-by: ADR-0156
-Backing: test
-
 ### `invariant: bootstrap-checksum`
 
 The rendered `awf-bootstrap.sh` performs a SHA-256 checksum verification of the downloaded archive before it installs the binary, so the download is always integrity-checked ahead of use.

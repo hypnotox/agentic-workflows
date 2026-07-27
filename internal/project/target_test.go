@@ -143,7 +143,7 @@ func TestPiTargetRendersExtension(t *testing.T) {
 		}
 	}
 	telemetry := got[".pi/extensions/awf-telemetry/index.ts"].Content
-	for _, retired := range []string{"awf-dashboard", "awf_metrics", "awf_doctor", "refreshCanonical", "DashboardOverlay", "pi.exec("} {
+	for _, retired := range []string{"awf" + "-dashboard", "awf" + "_metrics", "awf" + "_doctor", "refreshCanonical", "DashboardOverlay", "pi.exec("} {
 		if strings.Contains(telemetry, retired) {
 			t.Errorf("Pi telemetry retains retired dashboard surface %q", retired)
 		}

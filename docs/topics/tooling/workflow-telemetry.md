@@ -3,7 +3,7 @@
 
 Durable effort telemetry, projections, retention, and workflow diagnosis.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/telemetry/**`. Both domain and topic selectors must match. Run `awf topic tooling/workflow-telemetry --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `internal/telemetry/**`. Both domain and topic selectors must match. Run `awf topic tooling/workflow-telemetry --coverage` for current matched paths and marker sites.
 
 The telemetry package owns the protocol-2 privacy-minimal event contract, confined append-only resident ledger, transactional phase lifecycle and trajectory model, deterministic terminal-effort retention, and canonical metrics and effort-owned diagnostic projections. Selectors, aggregation, exact workflow violations, versioned heuristic signals, and safe repair or waiver inputs share one deterministic Go interpretation for CLI and runtime consumers.
 
@@ -11,9 +11,9 @@ The telemetry package owns the protocol-2 privacy-minimal event contract, confin
 
 ### `invariant: event-protocol-and-ledger`
 
-One embedded machine-readable descriptor defines protocol version 2.1, closed event, payload, activity, route-action, and lifecycle-request vocabularies, bounded identifiers and categories, recursive privacy exclusions, compatible-minor preservation, and the append-only per-session JSONL ledger. Protocol 2.1 preserves protocol-2.0 history without migration and adds `effort_adopted`/`adopt`, `phase_continued`/`continue-phase`, `detour_started`/`start-detour`, and `detour_returned`/`mark-detour-returned`; the creation-kind set is exactly `effort_created`, `effort_adopted`, and `detour_started`, with one immutable matching first-stream creation record. Creation validates immutable metadata agreement, while creation and append validate confinement, ownership, leases, durability, idempotency, and corrupt-stream evidence without protocol-1 compatibility or inferred missing state. Closed lifecycle mutation and causal-append paths, not passive append, require the exact current causal frontier. Any unsupported required kind or protocol interpretation suppresses the entire effort from lifecycle, metrics, diagnostics, cohorts, and retention and yields one bounded compatibility result. The pinned runtime requires a 2.1 handshake, and publication advances its compatible reader before enabling any 2.1 writer.
+One embedded machine-readable descriptor defines protocol version 2.1, closed event, payload, activity, route-action, and lifecycle-request vocabularies, bounded identifiers and categories, recursive privacy exclusions, compatible-minor preservation, and the append-only per-session JSONL ledger. Protocol 2.1 preserves protocol-2.0 history without migration and adds `effort_adopted`/`adopt`, `phase_continued`/`continue-phase`, `detour_started`/`start-detour`, and `detour_returned`/`mark-detour-returned`; the creation-kind set is exactly `effort_created`, `effort_adopted`, and `detour_started`, with one immutable matching first-stream creation record. Creation validates immutable metadata agreement, while creation and append validate confinement, ownership, leases, durability, idempotency, and corrupt-stream evidence without protocol-1 compatibility or inferred missing state. Closed lifecycle mutation and causal-append paths, not passive append, require the exact current causal frontier. Any unsupported required kind or protocol interpretation suppresses the entire effort from lifecycle, metrics, diagnostics, cohorts, and retention and yields one bounded compatibility result.
 Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161
+Revised-by: ADR-0149, ADR-0161, ADR-0162
 Backing: test
 
 ### `invariant: effort-lifecycle-and-routes`
@@ -44,9 +44,9 @@ Backing: test
 
 ### `invariant: privacy-integrity-and-retention`
 
-Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Pi invokes canonical JSON only as private dashboard transport: `awf_metrics` and `awf_doctor` construct non-JSON allowlist-only summaries with no raw JSON, process output, paths, event IDs, evidence, or per-scope integrity. They sanitize controls and path-shaped tokens before deterministic ordering, UTF-8-safely cap selectors at 256 bytes, explanations and next actions at 512 bytes, tool content at 4096 bytes, and compact JSON details at 1024 bytes. Truncation, sanitization, omitted canonical detail, or cardinality limits produce exactly one `details: /awf-dashboard` footer; malformed canonical results expose only a bounded degraded category. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.
+Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Pi never invokes canonical metrics or doctor reads; reports remain explicit effort-scoped CLI commands. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.
 Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161
+Revised-by: ADR-0149, ADR-0161, ADR-0162
 Backing: test
 
 ### `invariant: anchor-claims-and-location-metadata`

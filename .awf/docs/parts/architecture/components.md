@@ -4,7 +4,7 @@
   `disable`, `new`, `audit`, `metrics`, `doctor`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, where `check` is a group carrying the whole
   verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
-  plus a temporary closed private `dashboard-read` dispatch, dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
+  dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
   `internal/clispec` command table (ADR-0094). This Phase 3 transitional compatibility dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads; Pi telemetry does not invoke it. The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
@@ -14,7 +14,6 @@
   subcommands, as a data-only importable leaf. `cmd/awf` attaches handler funcs
   to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
   from the same metadata. Excluded runner commands carry their user-facing safety reason.
-- **`cmd/awf-dashboard-launcher/`**: temporary Phase 3 compatibility launcher for the legacy private dashboard-read transport. Pi telemetry does not resolve or invoke it.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
   `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
   helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
@@ -101,7 +100,6 @@
   workflow-conformance rules; powers `awf audit` and the blocking `awf check commit`
   (ADR-0017, ADR-0036).
 - **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
-- **`internal/dashboardruntime/`**: temporary Phase 3 compatibility code for the legacy private dashboard-read transport. It is not a Pi telemetry dependency and is removed with that transport.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:

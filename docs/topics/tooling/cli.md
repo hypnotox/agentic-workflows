@@ -3,7 +3,7 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/dashboardruntime/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. The command table now includes canonical workflow metrics querying and export plus read-only, non-blocking workflow diagnosis over shared structured selectors.
 
@@ -109,9 +109,9 @@ Backing: test
 
 ### `invariant: version-compat-gate`
 
-Every ordinary gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted. The only bypass is the private closed `dashboard-read` dispatch.
+Every ordinary gated command routes through gate(), which refuses to proceed when the running binary is behind the project on either axis: the config schema generation exceeds the binary's current generation, or the lock's awfVersion is semver-greater than the binary's version. A binary at or ahead of the project on both axes is permitted.
 Origin: ADR-0039
-Revised-by: ADR-0150, ADR-0153
+Revised-by: ADR-0150, ADR-0153, ADR-0162
 Backing: test
 
 ### `invariant: metrics-command-contract`
@@ -119,23 +119,4 @@ Backing: test
 The gated `awf metrics --effort <id>` and `awf metrics doctor --effort <id>` commands require exactly one resident compatible effort and apply shared session, phase, and time selectors with AND inside it; missing, unknown, incompatible, and empty selections fail without a repository-wide fallback. Selected metrics `--json` preserves the canonical projection, exports remain unchanged, and the closed `awf metrics list [--limit N] [--cursor TOKEN] [--json]` discovery child pages resident efforts newest-first by immutable creation time and byte-ascending ID ties. Its opaque versioned cursor validates its resident ordering tuple; limits default to 10 and range from 1 through 100. Incompatible efforts remain cursor-eligible metadata-only rows.
 Origin: ADR-0153
 Revised-by: ADR-0156, ADR-0162
-Backing: test
-
-### `invariant: metrics-legacy-doctor-bridge`
-
-The temporary gated top-level `awf doctor` bridge remains available until dashboard retirement; it accepts the existing shared selectors and remains read-only.
-Origin: ADR-0162
-Backing: test
-
-### `invariant: doctor-command-contract`
-
-The gated `awf doctor` command consumes the same shared effort, session, phase, and time selectors and the same storage interpretation as `awf metrics`, remains read-only, and never changes exit status merely because findings exist.
-Origin: ADR-0153
-Revised-by: ADR-0156
-Backing: test
-
-### `invariant: dashboard-read-dispatch`
-
-Before reading telemetry, the private closed `dashboard-read` dispatch validates its exact read-only argv, absolute canonical project root, adjacent pinned executable, metadata and policy digests, repository identity, pinned commit, snapshot schema and protocol, and confined metrics root without loading live tracked config; no mutation or maintenance shape can reach dispatch. The `awf metrics` and `awf doctor` read helpers accept an explicit root and validated telemetry policy so the dispatch can invoke only the protocol, JSON metrics, JSON export, and JSON doctor shapes against its immutable policy snapshot while ordinary invocations retain live project and version gates.
-Origin: ADR-0153
 Backing: test
