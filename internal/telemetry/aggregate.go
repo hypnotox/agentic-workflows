@@ -99,6 +99,7 @@ func aggregateEffort(read EffortRead, workflow WorkflowProjection, events []Even
 		DerivedEffortIDs:          append([]string(nil), workflow.DerivedEffortIDs...),
 		Origin:                    workflow.Origin,
 		Integrity:                 integrityNotices(workflow.Integrity, selectedIDs),
+		openPhase:                 currentOpenPhase(workflow.Lifecycle),
 	}
 	result.Sessions = aggregateGroupedScopes(allEvents, func(event EventEnvelope) []string { return []string{event.SessionID} })
 	phases := projectEventPhases(read.Events)
@@ -122,6 +123,16 @@ func aggregateEffort(read EffortRead, workflow WorkflowProjection, events []Even
 		return nil
 	})
 	return result
+}
+
+func currentOpenPhase(lifecycle LifecycleProjection) Phase {
+	if lifecycle.State != EffortActive || len(lifecycle.OpenPhases) != 1 {
+		return ""
+	}
+	for _, interval := range lifecycle.OpenPhases {
+		return interval.Phase
+	}
+	return "" // coverage-ignore: a one-item map always enters the range above
 }
 
 func eventsForIDs(byID map[string]EventEnvelope, ids []string) []EventEnvelope {

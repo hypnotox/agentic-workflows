@@ -127,7 +127,7 @@ func TestRetentionProjectionCountLastRunAndInvalidCandidate(t *testing.T) {
 
 func TestRenderMetricsHumanWriteFailures(t *testing.T) {
 	result := MetricsResult{SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: time.Now(), Efforts: []EffortProjection{{EffortID: "effort", CurrentPath: ScopeProjection{ScopeID: "current"}, AllWork: ScopeProjection{ScopeID: "all"}}}, Retention: RetentionState{Candidates: []string{}}, Integrity: []IntegrityNotice{{Code: "code", Severity: "warning", Scope: "scope", EventIDs: []string{}, Explanation: "explanation"}}}
-	for failAt := range 6 {
+	for failAt := range 4 {
 		writer := &failAtWriter{failAt: failAt}
 		if err := RenderMetricsHuman(writer, result); err == nil {
 			t.Fatalf("write failure %d was ignored", failAt)

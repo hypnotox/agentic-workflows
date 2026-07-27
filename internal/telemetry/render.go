@@ -8,14 +8,17 @@ import (
 // RenderMetricsHuman renders only the stable MetricsResult model. It never
 // reads storage or recomputes projection state.
 func RenderMetricsHuman(out io.Writer, result MetricsResult) error {
-	if _, err := fmt.Fprintf(out, "workflow metrics schema %d protocol %d generated %s\n", result.SchemaVersion, result.ProtocolMajor, result.GeneratedAt.Format("2006-01-02T15:04:05.999999999Z07:00")); err != nil {
-		return err
-	}
 	for _, effort := range result.Efforts {
-		if _, err := fmt.Fprintf(out, "effort %s state=%s route=%s trajectory=%s\n", effort.EffortID, effort.State, effort.Route, effort.ActiveTrajectoryID); err != nil {
+		lifecycle := "discovery=true"
+		if effort.State == string(EffortActive) {
+			lifecycle = fmt.Sprintf("phase=%s", effort.openPhase)
+		} else if effort.State == string(EffortCompleted) || effort.State == string(EffortAbandoned) {
+			lifecycle = "outcome=" + effort.State
+		}
+		if _, err := fmt.Fprintf(out, "effort %s state=%s route=%s %s\n", effort.EffortID, effort.State, effort.Route, lifecycle); err != nil {
 			return err
 		}
-		for _, scope := range append([]ScopeProjection{effort.CurrentPath, effort.AllWork}, append(append([]ScopeProjection{}, effort.Sessions...), append(effort.Phases, effort.Trajectories...)...)...) {
+		for _, scope := range []ScopeProjection{effort.CurrentPath, effort.AllWork} {
 			if _, err := fmt.Fprintf(out, "  scope %s input=%d output=%d cache-read=%d cache-write=%d cost=%g duration-ms=%d compactions=%d handoffs=%d tool-failures=%d gate-failures=%d subagents=%d rework=%d events=%d\n",
 				scope.ScopeID, scope.Usage.InputTokens, scope.Usage.OutputTokens, scope.Usage.CacheReadTokens, scope.Usage.CacheWriteTokens, scope.Usage.CostUSD, scope.Usage.DurationMS,
 				scope.Counters.Compactions, scope.Counters.Handoffs, scope.Counters.ToolFailures, scope.Counters.GateFailures, scope.Counters.SubagentInvocations, scope.Counters.ImplementationRework, len(scope.EventIDs)); err != nil {
@@ -23,15 +26,16 @@ func RenderMetricsHuman(out io.Writer, result MetricsResult) error {
 			}
 		}
 	}
-	if _, err := fmt.Fprintf(out, "retention terminal=%d candidates=%d max-age-days=%d max-count=%d\n", result.Retention.TerminalEffortCount, len(result.Retention.Candidates), result.Retention.MaxAgeDays, result.Retention.MaxCount); err != nil {
-		return err
-	}
+	warnings, violations := 0, 0
 	for _, notice := range result.Integrity {
-		if _, err := fmt.Fprintf(out, "integrity %s severity=%s scope=%s events=%d %s\n", notice.Code, notice.Severity, notice.Scope, len(notice.EventIDs), notice.Explanation); err != nil {
-			return err
+		if notice.Severity == "warning" {
+			warnings++
+		} else {
+			violations++
 		}
 	}
-	return nil
+	_, err := fmt.Fprintf(out, "diagnostics warnings=%d violations=%d\n", warnings, violations)
+	return err
 }
 
 // RenderEffortListHuman renders the bounded resident discovery page.

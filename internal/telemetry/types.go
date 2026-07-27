@@ -529,6 +529,7 @@ type EffortProjection struct {
 	DerivedEffortIDs          []string                    `json:"derivedEffortIds"`
 	Origin                    *OriginMetadata             `json:"origin,omitempty"`
 	Integrity                 []IntegrityNotice           `json:"integrity"`
+	openPhase                 Phase
 }
 
 type MetricsResult struct {

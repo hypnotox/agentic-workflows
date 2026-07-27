@@ -66,9 +66,59 @@ func TestAggregateMetricsScopesOrderingAndPrivacy(t *testing.T) {
 	if err := RenderMetricsHuman(&human, result); err != nil {
 		t.Fatal(err)
 	}
-	for _, semantic := range []string{fmt.Sprintf("effort %s state=active route=direct", "effort"), "input=17 output=11", "cost=0.75 duration-ms=50", "compactions=2", "integrity partial-final-line severity=warning"} {
+	for _, semantic := range []string{fmt.Sprintf("effort %s state=active route=direct", "effort"), "input=17 output=11", "cost=0.75 duration-ms=50", "compactions=2", "diagnostics warnings=1 violations=0"} {
 		if !strings.Contains(human.String(), semantic) {
 			t.Fatalf("human output lacks %q:\n%s", semantic, human.String())
+		}
+	}
+}
+
+func TestCurrentOpenPhase(t *testing.T) {
+	for _, test := range []struct {
+		name      string
+		lifecycle LifecycleProjection
+		want      Phase
+	}{
+		{"single active phase", LifecycleProjection{State: EffortActive, OpenPhases: map[string]PhaseInterval{"start": {Phase: "implementation"}}}, "implementation"},
+		{"discovery", LifecycleProjection{State: EffortDiscovery, OpenPhases: map[string]PhaseInterval{"start": {Phase: "brainstorming"}}}, ""},
+		{"no open phase", LifecycleProjection{State: EffortActive, OpenPhases: map[string]PhaseInterval{}}, ""},
+		{"multiple open phases", LifecycleProjection{State: EffortActive, OpenPhases: map[string]PhaseInterval{"one": {Phase: "brainstorming"}, "two": {Phase: "implementation"}}}, ""},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := currentOpenPhase(test.lifecycle); got != test.want {
+				t.Errorf("current open phase = %q, want %q", got, test.want)
+			}
+		})
+	}
+}
+
+func TestRenderMetricsHumanSelectedEffortIsConciseAcrossLifecycleStates(t *testing.T) {
+	scope := func(id string) ScopeProjection {
+		return ScopeProjection{ScopeID: id, Usage: UsageTotals{InputTokens: 1}, EventIDs: []string{"event"}}
+	}
+	result := MetricsResult{Efforts: []EffortProjection{
+		{EffortID: "open", State: string(EffortActive), Route: "direct", openPhase: "implementation", CurrentPath: scope("current-path"), AllWork: scope("all-work"), Sessions: []ScopeProjection{scope("session")}},
+		{EffortID: "terminal", State: string(EffortCompleted), Route: "direct", CurrentPath: scope("current-path"), AllWork: scope("all-work"), Phases: []ScopeProjection{scope("implementation")}},
+		{EffortID: "discovery", State: string(EffortDiscovery), CurrentPath: scope("current-path"), AllWork: scope("all-work"), Trajectories: []ScopeProjection{scope("trajectory")}},
+	}, Integrity: []IntegrityNotice{{Severity: "warning"}, {Severity: "violation"}}}
+	var out bytes.Buffer
+	if err := RenderMetricsHuman(&out, result); err != nil {
+		t.Fatal(err)
+	}
+	got := out.String()
+	for _, want := range []string{
+		"effort open state=active route=direct phase=implementation",
+		"effort terminal state=completed route=direct outcome=completed",
+		"effort discovery state=discovery route= discovery=true",
+		"scope current-path input=1", "scope all-work input=1", "diagnostics warnings=1 violations=1",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("human output missing %q:\n%s", want, got)
+		}
+	}
+	for _, forbidden := range []string{"scope session", "scope implementation", "scope trajectory", "retention ", "integrity ", "trajectory="} {
+		if strings.Contains(got, forbidden) {
+			t.Errorf("human output is not concise; contains %q:\n%s", forbidden, got)
 		}
 	}
 }
