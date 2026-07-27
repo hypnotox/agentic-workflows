@@ -82,11 +82,10 @@ rewrite. Readers retain malformed or illegal evidence without applying its state
 unsupported required kind or protocol interpretation suppresses the whole effort from lifecycle,
 metrics, diagnostics, cohorts, and retention and produces one bounded compatibility notice instead of
 a partial projection. Retention rechecks terminal state under the same effort lease before a
-tombstoned rename into private trash. Bare `awf
-metrics` and JSON export aggregate resident efforts through the shared effort/session/phase/time
-selector into deterministic current-path, all-work, session, phase, trajectory, integrity, and
-retention projections; JSONL export emits only validated normalized envelopes in stable stream order.
-`awf metrics doctor --effort <id>` reads the same state, evaluates exact rules and configured comparable-route heuristics,
+tombstoned rename into private trash. `awf metrics --effort <id>` aggregates one selected resident effort through the shared
+session/phase/time selector into deterministic current-path and all-work projections; JSON export
+preserves that selected canonical projection, while JSONL export emits only validated normalized
+envelopes in stable stream order. `awf metrics doctor --effort <id>` reads the same state, evaluates exact rules and configured comparable-route heuristics,
 and renders advisory effort-owned evidence without writing resident state or changing exit status
 because of a finding. Waivers and typed repairs append only after explicit confirmation and
 re-resolution of the selected finding under its `effortId`, with matching evidence and scope, an
