@@ -84,6 +84,12 @@ Normal, uncovered, and static context render completely before delivery: at most
 Origin: ADR-0165
 Backing: test
 
+### `invariant: context-spill-observability`
+
+The repository-local `./x context` preserves context stdout and child status byte-for-byte; after an exact successful spill notice it appends a UTC timestamp, rendered byte count, and POSIX-shell-quoted invocation, never the spill path, to an owner-only no-follow flock-serialized ignored log. Recognition or logging failure only warns on stderr, and `./x check` emits a non-failing advisory while a safe nonempty log remains for operator-owned resolution or promotion and removal.
+Origin: ADR-0165
+Backing: test
+
 ### `invariant: describe-read-only`
 
 awf init --describe prints the var descriptor set as JSON to stdout and creates no files under the target root.

@@ -37,6 +37,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- The awf source repository now provides `./x context`, which preserves context output and status while recording path-free spill observations in an ignored owner-only locked local log. Logging failures warn without hiding a delivered spill, and `./x check` gives a non-failing advisory until the operator resolves or promotes the issue and removes the log.
 - `awf context` now preserves request blocks, groups equivalent directory descendants without disclosing large member sets, deduplicates authority globally, and offers six bounded repeatable detail facets with `--full` as their canonical union.
 - Context output now writes unchanged through 8,192 bytes and securely delivers larger complete renderings through a caller-owned mode-0600 temporary file and versioned two-line notice.
 - Pi workflows can now detour into an explicit derived child effort and return to the exact open

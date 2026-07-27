@@ -86,6 +86,8 @@ Default authority is a bounded impact map: one topic summary, applicable invaria
 
 `cmd/awf` renders normal, uncovered, and static output completely before calling `internal/contextdelivery`. Results through 8,192 bytes write unchanged. Larger results securely spill exact bytes to a canonical mode-0600 temporary file outside the repository and stdout receives only the versioned two-line byte-count/text/path notice; a successful direct-command caller owns deletion, while every failed delivery best-effort removes the spill and preserves its primary error. `ContextForOptions` and `StagedContextRootOptions` are the only production assembly entries, and both derive config, lock, topics, markers, declarations, classifications, census, and authority from one selected snapshot without repository mutation or byte reload. Static fallback remains successful, human-only, and capped. `--uncovered` retains its coverage universe and collapse grammar while sharing the delivery boundary.
 
+The hand-written source runner adds `./x context` without changing the public CLI. It captures and replays context stdout exactly, preserves the child status, and invokes the private `cmd/contextspilllog` helper only after success. `internal/contextspill` recognizes only the reserved notice grammar and records a UTC timestamp, rendered bytes, and shell-quoted invocation without the temporary path under the ignored owner-only `.awf/local/context-spills.log`; no-follow ownership checks and `flock` serialize durable appends. Recognition or logging failure warns without changing a successful context result or deleting its spill. `./x check` emits a non-failing advisory while a safe nonempty log remains, and the operator owns resolution or promotion and removal.
+
 
 ## Topics
 

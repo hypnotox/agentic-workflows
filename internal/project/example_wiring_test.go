@@ -78,6 +78,11 @@ func TestExampleAdopterWiring(t *testing.T) {
 	}
 	script := string(raw)
 	for _, want := range []string{
+		`context)`,
+		`./awf context "$@" >"$capture"`,
+		`go run ./cmd/contextspilllog --root "$PWD"`,
+		`resolve or promote the issue`,
+		`|check|context|`,
 		`(cd examples/sundial && "$bindir/awf" render)`,
 		`out="$(cd examples/sundial && "$bindir/awf" check)"`,
 		`grep -q '^note: '`,

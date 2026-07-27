@@ -23,3 +23,6 @@
 !.pi/
 .pi/awf-subagents.local.json
 !GEMINI.md
+
+# Repository-local context spill observability is operator-owned and ignored.
+.awf/local/
