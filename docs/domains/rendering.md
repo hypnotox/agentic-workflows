@@ -20,13 +20,13 @@ The render engine is a marker-section overlay (`<!-- awf:section -->`) layered o
 ADR-0123 extends `Target` with descriptor-owned outputs and makes every adapter artifact fold its
 full target descriptor into `ConfigHash`. ADR-0149 adds exact catalog workflow mappings and replaces Pi's individually discoverable governed skills with `.pi/skills/awf-workflow/SKILL.md` plus managed fixed bodies under `.pi/awf-workflows/`; output planning, config hashes, reference scans, drift, stale pruning, target disable, and uninstall own both forms. ADR-0146 extends the producer model and Pi declares five
 TypeScript outputs: two under `.pi/extensions/awf-subagents/`, the separate
-`.pi/extensions/awf-handoff/index.ts`, and dashboard index/protocol files. ADR-0144 gives this
+`.pi/extensions/awf-handoff/index.ts`, and telemetry index/protocol files. ADR-0144 gives this
 executable surface direct rendering/adapter-outputs ownership while generated-output classification
 continues to exclude it from whole-tree coverage. The outputs use `//` provenance and join the same manifest drift,
 sync-repair, planned-output, and cleanup paths as other generated files. The templates preserve
 `missingkey=zero` publication safety and are rendered automatically whenever Pi is enabled. The
 protocol producer projects the embedded descriptor into constants, types, bounds, classifiers, and
-validators rather than duplicating its vocabulary in the wrapper template. The dashboard restores
+validators rather than duplicating its vocabulary in the wrapper template. Telemetry restores
 association only from the active branch, never spawns during rendering, and exposes no automatic
 score, blocking diagnosis, or reconciliation. The
 runner retains the last 20 structured assistant and tool-lifecycle events, caps each complete event
@@ -66,7 +66,7 @@ ADR-0157 reshapes the agent guide into an entry-point router and makes the neutr
 - [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
 - [Local artifacts](../topics/rendering/local-artifacts.md): Local skill, agent, and doc declarations and their catalog and render semantics.
 - [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime floor and its boundaries.
-- [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, dashboard, exploration dispatch.
+- [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, local telemetry, exploration dispatch.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.
 - [Singletons and payloads](../topics/rendering/singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, telemetry, file modes.

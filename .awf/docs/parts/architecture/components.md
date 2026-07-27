@@ -1,11 +1,11 @@
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `render`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `metrics`, `doctor`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `metrics`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, where `check` is a group carrying the whole
   verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
   dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
-  `internal/clispec` command table (ADR-0094). This Phase 3 transitional compatibility dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads; Pi telemetry does not invoke it. The gated commands enforce the binary-version gate
+  `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,

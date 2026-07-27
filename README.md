@@ -78,7 +78,7 @@ bridge file. `targets` defaults to `[claude]`; set it to whichever runtimes your
 uses.
 
 A compatible Pi 0.81.1+ build exposing the required queued-command, persisted-session, custom-entry,
-widget, overlay, and shutdown APIs receives three trusted project-extension factories across exactly
+widget, and shutdown APIs receives three trusted project-extension factories across exactly
 five generated TypeScript files. The subagent extension registers `subagent_grounding`,
 `subagent_explore`, `subagent_review`, and `subagent_implement`. Every role accepts an optional exact
 `model` selection and otherwise inherits the parent. Exploration requires `{task, breadth, detail}`:
@@ -87,12 +87,10 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. A separate `handoff_session` tool continues from an exact durable `.awf/memory/` checkpoint in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional. The dashboard extension adds
-explicit discovery, route, phase, association, trajectory, terminal, waiver, and repair lifecycle;
-a muted local telemetry bar with no dashboard or canonical report transport.
-Its protocol file is derived from the Go-owned descriptor. Parent handoff copies only the validated
-active-branch association, and controlled refresh remains visibly stale or degraded when the pinned
-binary or handshake is unavailable. Telemetry excludes prompts, assistant text, tool arguments,
+activity stays outside parent model content. A separate `handoff_session` tool continues from an exact durable `.awf/memory/` checkpoint in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional. The telemetry extension adds explicit discovery, route, phase, association, trajectory, terminal,
+waiver, and repair lifecycle; a muted local telemetry bar with no dashboard or canonical report
+transport. Its protocol file is derived from the Go-owned descriptor. Parent handoff copies only the
+validated active-branch association. Telemetry excludes prompts, assistant text, tool arguments,
 command output, and repository paths other than the bounded checkpoint identifier. Diagnostics are
 advisory evidence, never an automatic score, workflow block, or reconciliation.
 

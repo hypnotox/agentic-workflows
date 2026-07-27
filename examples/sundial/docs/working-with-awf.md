@@ -226,9 +226,9 @@ enters parent model content.
 Brainstorming uses grounding, while brainstorming, debugging, and coupling audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
 extension files are `awf check` drift; run `awf render` to repair them.
 
-Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime does not expose the readonly persisted-session query. Workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments on the routine checkpoint's clear branch, after persistence and the continuity notice, or after explicit approval at a mandatory boundary; it rejects unsupported print, JSON, RPC, ephemeral, and in-memory sessions. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory file are preserved, cleanup is manual, and automatic kickoff uses only the replacement context. If kickoff submission fails, the exact wrapper remains in the new editor for manual submission. A post-queue failure that leaves the old session active raises a visible failure notice and places the prepared kickoff wrapper in that session's editor as the recovery path; the extension never retries automatically and never starts a model turn itself, and the durable checkpoint remains valid. Validation and cancellation preserve the old active session, but teardown after replacement begins is not transactional and may terminate the runtime. During a successful handoff, the extension synchronously requests the dashboard's validated active association and copies that plain custom entry through `newSession.setup`; absence or incompatibility never guesses from ancestry or working-memory prose.
+Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime does not expose the readonly persisted-session query. Workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments on the routine checkpoint's clear branch, after persistence and the continuity notice, or after explicit approval at a mandatory boundary; it rejects unsupported print, JSON, RPC, ephemeral, and in-memory sessions. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory file are preserved, cleanup is manual, and automatic kickoff uses only the replacement context. If kickoff submission fails, the exact wrapper remains in the new editor for manual submission. A post-queue failure that leaves the old session active raises a visible failure notice and places the prepared kickoff wrapper in that session's editor as the recovery path; the extension never retries automatically and never starts a model turn itself, and the durable checkpoint remains valid. Validation and cancellation preserve the old active session, but teardown after replacement begins is not transactional and may terminate the runtime. During a successful handoff, the extension synchronously requests telemetry's validated active association and copies that plain custom entry through `newSession.setup`; absence or incompatibility never guesses from ancestry or working-memory prose.
 
-### Pi workflow telemetry and dashboard
+### Pi workflow telemetry
 
 Pi renders a third extension factory under `.pi/extensions/awf-telemetry/`. Together the three Pi
 extensions comprise exactly five generated TypeScript files. `protocol.ts` is derived from awf's
@@ -254,11 +254,11 @@ create a new `derived` effort; `reopen` is an explicit same-effort choice and cr
 The compact telemetry bar is display-only, uses local lifecycle state and public usage APIs, and never reads canonical reports or opens an overlay.
 
 Findings expose their owning `effortId`, stable rule, evidence, threshold or baseline, confidence, and
-next action. The dashboard has no composite score and never blocks work or applies a repair, waiver,
-retention purge, or association change automatically. Typed repair and waiver actions require
-confirmation, re-resolve the selected finding under its effort, and append only with matching evidence
-and scope, an eligible reason, and the current nonempty causal frontier. Maintenance uses fixed
-argument arrays, with a second confirmation for destructive purge.
+next action through explicit effort-scoped CLI reports. They never create a composite score, block work,
+or apply a repair, waiver, retention purge, or association change automatically. Typed repair and waiver
+actions require confirmation, re-resolve the selected finding under its effort, and append only with
+matching evidence and scope, an eligible reason, and the current nonempty causal frontier. Maintenance
+uses fixed argument arrays, with a second confirmation for destructive purge.
 
 Resident events may contain bounded opaque identifiers, timestamps, route/phase/activity values,
 model and tool names, duration, token/cache/cost totals, workflow counters, and categorized outcomes.

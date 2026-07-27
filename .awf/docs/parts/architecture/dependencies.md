@@ -5,8 +5,7 @@
 - **`encoding/json`, `crypto/sha256`, process execution, and filesystem primitives** (standard library): parse,
   fingerprint, and project the normative telemetry descriptor, implement its confined durable
   append-only resident ledger, produce canonical metrics, normalized exports, and diagnostic
-  results without a database, background daemon, or TypeScript aggregation engine. The legacy dashboard development cache remains only as Phase 3 transitional compatibility code and is not a Pi telemetry dependency.
-- **Git and the Go toolchain**: temporary repository-only inputs for the legacy dashboard fallback pending Phase 3 removal. They are not runtime dependencies of Pi telemetry or an installed adopter binary.
+  results without a database, background daemon, or TypeScript aggregation engine.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s

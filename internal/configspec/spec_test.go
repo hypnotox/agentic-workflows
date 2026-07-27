@@ -327,8 +327,8 @@ func TestWorkflowTelemetrySpecContract(t *testing.T) {
 	expected := map[string]contract{
 		"workflowTelemetry.retention.maxCompletedEffortAgeDays":              {"90", "non-negative integer", "Maximum age in days for terminal effort metrics; zero disables age-based retention.", "Consumed by workflow metrics retention."},
 		"workflowTelemetry.retention.maxCompletedEffortCount":                {"100", "non-negative integer", "Maximum number of terminal efforts retained repository-wide; zero disables count-based retention.", "Consumed by workflow metrics retention."},
-		"workflowTelemetry.widget.enabled":                                   {"true", "bool", "Shows the compact active-effort Pi widget when the dashboard target is installed.", "Consumed by the Pi workflow dashboard."},
-		"workflowTelemetry.widget.showCost":                                  {"true", "bool", "Shows cost in the compact widget without changing collection or export.", "Consumed by the Pi workflow dashboard widget."},
+		"workflowTelemetry.widget.enabled":                                   {"true", "bool", "Shows the compact active-effort Pi telemetry widget when the Pi target is installed.", "Consumed by the Pi telemetry extension."},
+		"workflowTelemetry.widget.showCost":                                  {"true", "bool", "Shows cost in the compact widget without changing collection or export.", "Consumed by the Pi telemetry widget."},
 		"workflowTelemetry.diagnostics.heuristicsEnabled":                    {"true", "bool", "Enables heuristic workflow findings; exact diagnostics remain enabled when false.", "Consumed by workflow diagnosis."},
 		"workflowTelemetry.diagnostics.minimumBaselineSamples":               {"10", "positive integer", "Minimum comparable completed-effort sample count required for historical heuristic baselines.", "Consumed by workflow diagnosis."},
 		"workflowTelemetry.diagnostics.baselinePercentile":                   {"95", "integer from 1 through 100", "Nearest-rank percentile used for historical heuristic baselines.", "Consumed by workflow diagnosis."},

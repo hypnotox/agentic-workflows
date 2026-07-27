@@ -50,7 +50,6 @@ start, enters its successor, and optionally applies a route effect from the curr
 while `phase_continued` preserves that start and replaces or clears current workflow, activity, and
 implementation-mode attribution. Pi's exclusive detour boundary atomically creates a derived brainstorming child with immutable parent return lineage while leaving the parent phase open; terminal child return then durably associates the exact parent and marks the child before switching the active association. The same engine projects discovery, route, phase, handoff, and trajectory state, performs leased deterministic terminal-effort retention, and serves canonical selector-driven metrics and diagnosis. `awf metrics` queries or exports that model, while read-only `awf metrics doctor --effort <id>` reports exact violations and configured versioned heuristics without a score, automatic repair, blocking verdict, or daemon. Every finding carries its owning effort so confirmed repair and waiver inputs can be re-resolved against matching evidence, scope, eligibility, and the current frontier. The local Pi telemetry extension writes conforming events but never reads canonical metrics or doctor results. A fresh session holds at most 256 privacy-filtered observations and 1 MiB of canonical UTF-8 bytes only in process memory until router selection or `/awf-resume-effort <effort-id>` resolves identity; overflow settles first, graceful boundaries retry, and a pre-commit process crash can lose only that bounded window. Working memory is optional and identifies an effort one-way through `Effort: <id>`; no ledger metadata stores a memory path, and only a validated matching file permits Pi handoff. The muted below-editor widget updates only after a successful explicit lifecycle or association action, maps local state to `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]`, sums public usage from each unique active-branch assistant entry exactly once, and uses public context usage only for the current percentage and window; restored entries and top-level nested-subagent usage participate, while tool results, summaries, and compactions are not charged separately.
 
-The dashboard runtime and private transport remain in the repository only as Phase 3 transitional compatibility code for the legacy top-level CLI bridge. Pi telemetry does not resolve, launch, or invoke them.
 
 The reader-injected output declaration builder is the shared boundary between rendering and navigation. It exposes every producer path and its exact authored inputs before rendering. A derived, invocation-local artifact index joins those declarations with layout, catalog, config, topic, ADR, and manifest facts for source/output navigation; it is not persisted and never becomes a second output authority.
 
@@ -61,11 +60,11 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `render`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `metrics`, `doctor`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `metrics`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, where `check` is a group carrying the whole
   verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
   dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
-  `internal/clispec` command table (ADR-0094). This Phase 3 transitional compatibility dispatch is recognized before ordinary project guarding and admits only pinned snapshot-backed reads; Pi telemetry does not invoke it. The gated commands enforce the binary-version gate
+  `internal/clispec` command table (ADR-0094). The gated commands enforce the binary-version gate
   (ADR-0010, ADR-0039) before opening the project; the driver pre-gates the always-gated ones,
   while `config`/`context`/`new` gate in-handler after their static-fallback / name-validation check.
 - **`internal/clispec/`**: the declarative CLI command table (ADR-0094): each command's flags,
@@ -389,8 +388,7 @@ bytes, so a comment-only edit reflags stale and self-settles.
 - **`encoding/json`, `crypto/sha256`, process execution, and filesystem primitives** (standard library): parse,
   fingerprint, and project the normative telemetry descriptor, implement its confined durable
   append-only resident ledger, produce canonical metrics, normalized exports, and diagnostic
-  results without a database, background daemon, or TypeScript aggregation engine. The legacy dashboard development cache remains only as Phase 3 transitional compatibility code and is not a Pi telemetry dependency.
-- **Git and the Go toolchain**: temporary repository-only inputs for the legacy dashboard fallback pending Phase 3 removal. They are not runtime dependencies of Pi telemetry or an installed adopter binary.
+  results without a database, background daemon, or TypeScript aggregation engine.
 - **`text/template`** (standard library): the rendering engine; ADR-0001 owns its
   publication-safety contract.
 - **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for `awf audit`'s

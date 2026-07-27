@@ -876,7 +876,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:37a42870b89b507433b8010198db267903a15f7e23c35aa170c332d9696c1a64",
+      "outputHash": "sha256:5859632fbb629226b12b1d003488bb26fac5d0c2250cdd4f9d53a47675711d61",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -998,9 +998,9 @@
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:a23228217475186d972bf254a815d6ead98d11c525d44b79e42fa21fbb1f6944",
+      "templateHash": "sha256:d3cc653a5ac3eef49d925aacf47628b28962e03eb12c58e6de08f08343f23cc5",
       "configHash": "sha256:c35f2ef3cc76acf3dd202acfcddfac6410df8be6faf1beaa0e0e9f38c63126e4",
-      "outputHash": "sha256:5d2f7b2ec6bedc176eba39ade86fe53709a92999c88d41801b9e448fc676f44a"
+      "outputHash": "sha256:4fbe39c1f477a6b00cb90febddc15496dc68b06d95206d39d343ff9997fd954f"
     }
   },
   "adrFormatV1From": 4,

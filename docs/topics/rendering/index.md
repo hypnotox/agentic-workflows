@@ -9,7 +9,7 @@
 - [Inplace and placeholders](inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
 - [Local artifacts](local-artifacts.md): Local skill, agent, and doc declarations and their catalog and render semantics.
 - [Pi runtime](pi-runtime.md): The Pi runtime floor and its boundaries.
-- [Pi workflows](pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, dashboard, exploration dispatch.
+- [Pi workflows](pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, local telemetry, exploration dispatch.
 - [Project output plan](project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](render-engine.md): The template overlay render engine and its reference resolution.
 - [Singletons and payloads](singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, telemetry, file modes.
