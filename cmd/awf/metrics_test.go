@@ -68,6 +68,7 @@ func TestMetricsProtocolAndGrammar(t *testing.T) {
 }
 
 // invariant: tooling/cli:metrics-command-contract
+// invariant: tooling/cli:metrics-legacy-doctor-bridge
 // invariant: tooling/cli:doctor-command-contract
 func TestMetricsAndDoctorCommandContract(t *testing.T) {
 	root := telemetryProject(t)
@@ -94,17 +95,8 @@ func TestMetricsAndDoctorCommandContract(t *testing.T) {
 
 	var out bytes.Buffer
 	query := &cmdCtx{root: root, inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &out}
-	if err := runMetrics(query); err != nil {
-		t.Fatal(err)
-	}
-	wantMetrics := "{\"schemaVersion\":1,\"protocolMajor\":2,\"generatedAt\":\"2026-07-22T01:02:03Z\",\"selector\":{},\"efforts\":[],\"retention\":{\"maxAgeDays\":90,\"maxCount\":100,\"terminalEffortCount\":0,\"candidates\":[]},\"integrity\":[]}\n"
-	if out.String() != wantMetrics {
-		t.Fatalf("metrics JSON = %q, want %q", out.String(), wantMetrics)
-	}
-	out.Reset()
-	query.inv.bools["--json"] = false
-	if err := runMetrics(query); err != nil || out.String() != "workflow metrics schema 1 protocol 2 generated 2026-07-22T01:02:03Z\nretention terminal=0 candidates=0 max-age-days=90 max-count=100\n" {
-		t.Fatalf("metrics human = %q, %v", out.String(), err)
+	if err := runMetrics(query); err == nil {
+		t.Fatal("metrics accepted an unselected report")
 	}
 
 	out.Reset()
@@ -183,7 +175,7 @@ func TestMetricsJSONLRejectsMalformedCompleteInputWithoutOutput(t *testing.T) {
 		t.Fatalf("malformed JSONL export err=%v output=%q", err, out.String())
 	}
 	out.Reset()
-	query := &cmdCtx{root: root, inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &out}
+	query := &cmdCtx{root: root, inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{"--effort": "effort"}}, stdout: &out}
 	if err := runMetrics(query); err != nil || !strings.Contains(out.String(), `"code":"malformed-complete-line"`) {
 		t.Fatalf("metrics must report readable corruption: err=%v output=%q", err, out.String())
 	}
@@ -539,6 +531,115 @@ func TestTelemetryRecoveryFailureAndAmbiguity(t *testing.T) {
 	}
 	if _, _, err := telemetryLedgerWithRecovery(ambiguous); err == nil {
 		t.Fatal("expected ambiguous recovery error")
+	}
+}
+
+func TestScopedMetricsDoctorAndListCommands(t *testing.T) {
+	root := telemetryProject(t)
+	createRequest(t, root, "effort", "create")
+
+	var out bytes.Buffer
+	metrics := &cmdCtx{root: root, inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{"--effort": "effort"}}, stdout: &out}
+	if err := runMetrics(metrics); err != nil || !strings.Contains(out.String(), `"effortId":"effort"`) {
+		t.Fatalf("scoped metrics = %q, %v", out.String(), err)
+	}
+	out.Reset()
+	metrics.inv.bools["--json"] = false
+	if err := runMetrics(metrics); err != nil || !strings.Contains(out.String(), "state=discovery") {
+		t.Fatalf("scoped metrics text = %q, %v", out.String(), err)
+	}
+
+	for _, values := range []map[string]string{{}, {"--effort": "missing"}, {"--effort": "effort", "--session": "missing"}} {
+		metrics.inv.values, metrics.inv.bools["--json"] = values, true
+		if err := runMetrics(metrics); err == nil {
+			t.Fatalf("metrics accepted invalid selection %#v", values)
+		}
+	}
+
+	out.Reset()
+	doctor := &cmdCtx{root: root, sub: "doctor", inv: invocation{bools: map[string]bool{"--json": true}, values: map[string]string{"--effort": "effort"}}, stdout: &out}
+	if err := runMetrics(doctor); err != nil || !strings.Contains(out.String(), `"effortId":"effort"`) {
+		t.Fatalf("scoped doctor = %q, %v", out.String(), err)
+	}
+	doctor.inv.values = map[string]string{}
+	if err := runMetrics(doctor); err == nil {
+		t.Fatal("metrics doctor accepted an unselected report")
+	}
+
+	out.Reset()
+	list := &cmdCtx{root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}
+	if err := runMetrics(list); err != nil || !strings.Contains(out.String(), "created=2026-07-22T00:00:00Z") {
+		t.Fatalf("effort list = %q, %v", out.String(), err)
+	}
+	for _, limit := range []string{"invalid", "0", "101"} {
+		list.inv.values = map[string]string{"--limit": limit}
+		if err := runMetrics(list); err == nil {
+			t.Fatalf("list accepted limit %q", limit)
+		}
+	}
+	list.inv.values = map[string]string{"--limit": ""}
+	if err := runMetrics(list); err == nil {
+		t.Fatal("list accepted an empty limit")
+	}
+	list.inv.values = map[string]string{"--cursor": "invalid"}
+	if err := runMetrics(list); err == nil {
+		t.Fatal("list accepted invalid cursor")
+	}
+	list.inv.values, list.inv.bools["--json"] = map[string]string{}, true
+	out.Reset()
+	if err := runMetrics(list); err != nil || !strings.Contains(out.String(), `"schemaVersion":1`) {
+		t.Fatalf("effort list JSON = %q, %v", out.String(), err)
+	}
+}
+
+func TestLegacyMetricsQueryCompatibilityFailures(t *testing.T) {
+	root := telemetryProject(t)
+	deps, err := normalMetricsReadDeps(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runMetricsQueryWith(&cmdCtx{inv: invocation{values: map[string]string{"--phase": "invalid"}}, stdout: io.Discard}, deps); err == nil {
+		t.Fatal("legacy metrics query accepted an invalid selector")
+	}
+	broken := t.TempDir()
+	if err := os.Mkdir(filepath.Join(broken, ".awf"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(broken, ".awf", "metrics"), []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMetricsQueryWith(&cmdCtx{stdout: io.Discard}, metricsReadDeps{Root: broken}); err == nil {
+		t.Fatal("legacy metrics query accepted invalid storage")
+	}
+	createRequest(t, root, "effort", "legacy-create")
+	if err := runMetricsQueryWith(&cmdCtx{inv: invocation{values: map[string]string{}, bools: map[string]bool{}}, stdout: failingMetricsWriter{}}, deps); err == nil {
+		t.Fatal("legacy metrics query ignored a rendering failure")
+	}
+}
+
+func TestMetricsSelectedAndListReadFailures(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing")
+	if err := runMetrics(&cmdCtx{root: missing, inv: invocation{values: map[string]string{"--effort": "effort"}}, stdout: io.Discard}); err == nil {
+		t.Fatal("scoped metrics accepted a missing config")
+	}
+	if err := runMetrics(&cmdCtx{root: missing, sub: "doctor", inv: invocation{values: map[string]string{"--effort": "effort"}}, stdout: io.Discard}); err == nil {
+		t.Fatal("scoped doctor accepted a missing config")
+	}
+	originalDeps := metricsReadDepsForRoot
+	metricsReadDepsForRoot = func(string) (metricsReadDeps, error) { return metricsReadDeps{}, errors.New("injected config failure") }
+	t.Cleanup(func() { metricsReadDepsForRoot = originalDeps })
+	if err := runMetrics(&cmdCtx{root: missing, sub: "doctor", inv: invocation{values: map[string]string{"--effort": "effort"}}, stdout: io.Discard}); err == nil {
+		t.Fatal("scoped doctor accepted a dependency failure")
+	}
+	broken := t.TempDir()
+	if err := os.Mkdir(filepath.Join(broken, ".awf"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(broken, ".awf", "metrics"), []byte("not a directory"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMetricsListWith(&cmdCtx{inv: invocation{values: map[string]string{}}, stdout: io.Discard}, metricsReadDeps{Root: broken}); err == nil {
+		t.Fatal("list accepted invalid storage")
 	}
 }
 

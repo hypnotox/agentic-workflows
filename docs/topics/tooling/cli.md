@@ -116,9 +116,15 @@ Backing: test
 
 ### `invariant: metrics-command-contract`
 
-The gated `awf metrics` command queries canonical projections or exports validated normalized events through shared effort, session, phase, and time selectors while keeping mutation and maintenance children closed to their own flags.
+The gated `awf metrics --effort <id>` and `awf metrics doctor --effort <id>` commands require exactly one resident compatible effort and apply shared session, phase, and time selectors with AND inside it; missing, unknown, incompatible, and empty selections fail without a repository-wide fallback. Selected metrics `--json` preserves the canonical projection, exports remain unchanged, and the closed `awf metrics list [--limit N] [--cursor TOKEN] [--json]` discovery child pages resident efforts newest-first by immutable creation time and byte-ascending ID ties. Its opaque versioned cursor validates its resident ordering tuple; limits default to 10 and range from 1 through 100. Incompatible efforts remain cursor-eligible metadata-only rows.
 Origin: ADR-0153
-Revised-by: ADR-0156
+Revised-by: ADR-0156, ADR-0162
+Backing: test
+
+### `invariant: metrics-legacy-doctor-bridge`
+
+The temporary gated top-level `awf doctor` bridge remains available until dashboard retirement; it accepts the existing shared selectors and remains read-only.
+Origin: ADR-0162
 Backing: test
 
 ### `invariant: doctor-command-contract`

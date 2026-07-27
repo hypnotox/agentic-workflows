@@ -12,7 +12,15 @@ func runDoctor(c *cmdCtx) error {
 	return runDoctorWith(c, deps)
 }
 
+func runDoctorSelectedWith(c *cmdCtx, deps metricsReadDeps) error {
+	return runDoctorWithSelection(c, deps, true)
+}
+
 func runDoctorWith(c *cmdCtx, deps metricsReadDeps) error {
+	return runDoctorWithSelection(c, deps, false)
+}
+
+func runDoctorWithSelection(c *cmdCtx, deps metricsReadDeps, selected bool) error {
 	selector, err := parseTelemetrySelector(c.inv)
 	if err != nil {
 		return err
@@ -23,7 +31,11 @@ func runDoctorWith(c *cmdCtx, deps metricsReadDeps) error {
 	}
 	diagnostics := deps.Policy.Diagnostics
 	thresholds := diagnostics.Thresholds
-	result, err := telemetry.Diagnose(reads, selector, telemetry.HeuristicOptions{
+	diagnose := telemetry.Diagnose
+	if selected {
+		diagnose = telemetry.DiagnoseSelected
+	}
+	result, err := diagnose(reads, selector, telemetry.HeuristicOptions{
 		Enabled:                diagnostics.HeuristicsEnabled,
 		MinimumBaselineSamples: diagnostics.MinimumBaselineSamples,
 		BaselinePercentile:     diagnostics.BaselinePercentile,

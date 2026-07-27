@@ -34,6 +34,30 @@ func RenderMetricsHuman(out io.Writer, result MetricsResult) error {
 	return nil
 }
 
+// RenderEffortListHuman renders the bounded resident discovery page.
+func RenderEffortListHuman(out io.Writer, page EffortListPage) error {
+	for _, effort := range page.Efforts {
+		if effort.Incompatible {
+			if _, err := fmt.Fprintf(out, "effort %s created=%s incompatible\n", effort.EffortID, effort.CreatedAt.Format("2006-01-02T15:04:05.999999999Z07:00")); err != nil {
+				return err
+			}
+			continue
+		}
+		lastApplied := ""
+		if effort.LastAppliedAt != nil {
+			lastApplied = effort.LastAppliedAt.Format("2006-01-02T15:04:05.999999999Z07:00")
+		}
+		if _, err := fmt.Fprintf(out, "effort %s created=%s applied=%s state=%s route=%s phase=%s outcome=%s discovery=%t\n", effort.EffortID, effort.CreatedAt.Format("2006-01-02T15:04:05.999999999Z07:00"), lastApplied, effort.State, effort.Route, effort.Phase, effort.Outcome, effort.Discovery); err != nil {
+			return err
+		}
+	}
+	if page.NextCursor != "" {
+		_, err := fmt.Fprintf(out, "next-cursor %s\n", page.NextCursor)
+		return err
+	}
+	return nil
+}
+
 // RenderDoctorHuman renders only the stable DoctorResult model. Findings are
 // advisory output and do not imply a process exit status.
 func RenderDoctorHuman(out io.Writer, result DoctorResult) error {

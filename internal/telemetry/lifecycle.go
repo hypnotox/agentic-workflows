@@ -485,9 +485,8 @@ func (p *LifecycleProjection) apply(event EventEnvelope, order *CausalOrder) err
 			return errors.New("rule and reason code are not waiver eligible")
 		}
 		p.Waivers = append(p.Waivers, WaiverState{EventID: event.EventID, RuleCode: payload.RuleCode, Scope: string(payload.Scope), EvidenceIDs: append([]string(nil), payload.EvidenceIDs...), ReasonCode: payload.ReasonCode})
-	case "repair_applied":
-		// The caller applies the typed replacement at the repair's causal point
-		// and records the repair itself after that replacement succeeds.
+	case "repair_applied": // coverage-ignore: the caller applies the typed replacement at its causal point.
+		// It records the repair itself only after that replacement succeeds.
 	}
 	return nil
 }

@@ -11,6 +11,13 @@ index universe with the same eligibility and coverage model as staged check.
 projection.
 
 `awf check --staged` runs the same index-snapshot coverage and the HEAD-to-index
-claim-transition handshake; the rendered pre-commit hook runs it. Applying
-retention or confirmed `awf metrics purge` is explicit maintenance, never an
-agent query action.
+claim-transition handshake; the rendered pre-commit hook runs it. Selected workflow reports require an explicit resident effort: use `awf metrics
+--effort <id>` for canonical metrics and `awf metrics doctor --effort <id>` for
+advisory findings; session, phase, and time selectors combine with AND inside
+that effort and `--json` preserves its canonical projection. `awf metrics list`
+is the bounded unscoped discovery surface: it is newest-first, defaults to 10
+rows, accepts at most 100, and continues only through its opaque cursor. An
+incompatible resident effort is listed without projection details but cannot be
+selected. The top-level `awf doctor` remains a temporary dashboard compatibility
+bridge. Applying retention or confirmed `awf metrics purge` is explicit
+maintenance, never an agent query action.

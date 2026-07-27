@@ -39,10 +39,11 @@ by this repository's own checks (ADR-0090).
 - `awf upgrade`: migrate the config tree after upgrading the awf binary. When the lock carries a bridge attestation, plain upgrade instead performs the final current-state cutover, verifying the sealed HEAD and tree digest, journaling the migration approval-file deletion and permanent lock, and promoting the sealed format cutoff and gaps.
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
-- `awf metrics --json`: print the canonical workflow metrics projection. The `--effort`, `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND. Use `awf metrics export --format json` for that projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
+- `awf metrics --effort <ID> [selectors] [--json]`: print canonical workflow metrics for exactly one resident compatible effort. The `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND inside that effort; a missing, unknown, incompatible, or empty selection is an error. `--json` preserves the selected canonical projection. Use `awf metrics export --format json` for the existing export projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
+- `awf metrics doctor --effort <ID> [selectors] [--json]`: report effort-owned exact and config-driven heuristic findings for one selected effort. It is read-only and advisory, so findings do not change its exit status. The transitional top-level `awf doctor` remains available until the dashboard compatibility bridge is retired.
+- `awf metrics list [--limit N] [--cursor TOKEN] [--json]`: list resident efforts newest-first by immutable creation time, with ID tie breaks and explicit opaque pagination. The default limit is 10 and the maximum is 100; incompatible efforts remain discoverable but cannot be selected.
 - `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, transactional phase transition, trajectory, terminal, waiver, or typed repair operation. Protocol 2 uses `transition-phase` for a normal chain edge so one event closes the named start and enters its successor, optionally with a route effect. Repair and waiver requests name the selected finding's owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible input is rejected without append. A failed validation or durable write is an error, never a claimed success.
 - `awf metrics retain --dry-run --json`: preview deterministic terminal-effort retention. Omit `--dry-run` to apply it. `awf metrics purge --effort <ID> --confirm --json` is the separately confirmed destructive cleanup surface and refuses active efforts.
-- `awf doctor --json`: report effort-owned exact and config-driven heuristic findings over the same selectors. It is read-only and advisory, so findings do not change its exit status. There is no automatic health score, workflow block, waiver, repair, or reconciliation.
 - `awf check drift`: report only the stale or hand-edited rendered output, including the config-tree hygiene sweep, without the current-state evaluation bare `awf check` runs with it.
 - `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check --staged`, which applies to the bare form alone.
 - `awf check invariants`: report the current-state topic invariant claims and their backing state.
@@ -66,9 +67,16 @@ index universe with the same eligibility and coverage model as staged check.
 projection.
 
 `awf check --staged` runs the same index-snapshot coverage and the HEAD-to-index
-claim-transition handshake; the rendered pre-commit hook runs it. Applying
-retention or confirmed `awf metrics purge` is explicit maintenance, never an
-agent query action.
+claim-transition handshake; the rendered pre-commit hook runs it. Selected workflow reports require an explicit resident effort: use `awf metrics
+--effort <id>` for canonical metrics and `awf metrics doctor --effort <id>` for
+advisory findings; session, phase, and time selectors combine with AND inside
+that effort and `--json` preserves its canonical projection. `awf metrics list`
+is the bounded unscoped discovery surface: it is newest-first, defaults to 10
+rows, accepts at most 100, and continues only through its opaque cursor. An
+incompatible resident effort is listed without projection details but cannot be
+selected. The top-level `awf doctor` remains a temporary dashboard compatibility
+bridge. Applying retention or confirmed `awf metrics purge` is explicit
+maintenance, never an agent query action.
 
 
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->

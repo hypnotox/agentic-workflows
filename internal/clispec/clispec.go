@@ -170,12 +170,22 @@ There is no default range, so an audit never reports over commits nobody named.
 		Name: "metrics", Summary: "Query, export, and maintain workflow telemetry",
 		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"},
 		MinPos: 0, MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf metrics [--effort ID] [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
+		HelpBody: `Usage: awf metrics --effort ID [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
 
-Print canonical workflow metrics. Selectors combine with logical AND; since is
-inclusive and until is exclusive.
+Print canonical metrics for exactly one resident compatible effort. Selectors
+combine with logical AND; since is inclusive and until is exclusive.
 `,
 		Children: []Command{
+			{Name: "doctor", Summary: "Diagnose one workflow effort without blocking", BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"}, MinPos: 0, MaxPos: 0,
+				HelpBody: `Usage: awf metrics doctor --effort ID [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
+
+Report exact and configured heuristic findings for exactly one resident compatible effort.
+`},
+			{Name: "list", Summary: "List resident workflow efforts", BoolFlags: []string{"--json"}, ValueFlags: []string{"--limit", "--cursor"}, MinPos: 0, MaxPos: 0,
+				HelpBody: `Usage: awf metrics list [--limit N] [--cursor TOKEN] [--json]
+
+List resident efforts newest first. Limit defaults to 10 and is at most 100.
+`},
 			{Name: "export", Summary: "Export canonical metrics or normalized events", ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until", "--format"}, MinPos: 0, MaxPos: 0,
 				HelpBody: `Usage: awf metrics export [selectors] --format <json|jsonl>
 

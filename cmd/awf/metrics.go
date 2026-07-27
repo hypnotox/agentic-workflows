@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -25,18 +26,21 @@ type metricsReadDeps struct {
 
 func runMetrics(c *cmdCtx) error {
 	switch c.sub {
-	case "":
-		deps, err := normalMetricsReadDeps(c.root)
+	case "", "doctor", "list", "export":
+		deps, err := metricsReadDepsForRoot(c.root)
 		if err != nil {
 			return boundedTelemetryError(c.root, err)
 		}
-		return runMetricsQueryWith(c, deps)
-	case "export":
-		deps, err := normalMetricsReadDeps(c.root)
-		if err != nil {
-			return boundedTelemetryError(c.root, err)
+		switch c.sub {
+		case "":
+			return runMetricsSelectedWith(c, deps)
+		case "doctor":
+			return runDoctorSelectedWith(c, deps)
+		case "list":
+			return runMetricsListWith(c, deps)
+		default:
+			return runMetricsExportWith(c, deps)
 		}
-		return runMetricsExportWith(c, deps)
 	case "protocol":
 		if !c.inv.bools["--json"] {
 			return &usageErr{"usage: awf metrics protocol --json"}
@@ -99,6 +103,8 @@ func normalMetricsReadDeps(root string) (metricsReadDeps, error) {
 	return metricsReadDeps{Root: root, Policy: cfg.WorkflowTelemetry}, nil
 }
 
+var metricsReadDepsForRoot = normalMetricsReadDeps
+
 func runMetricsQueryWith(c *cmdCtx, deps metricsReadDeps) error {
 	selector, err := parseTelemetrySelector(c.inv)
 	if err != nil {
@@ -122,6 +128,57 @@ func runMetricsQueryWith(c *cmdCtx, deps metricsReadDeps) error {
 		return writeMetricsJSON(c.stdout, result)
 	}
 	return telemetry.RenderMetricsHuman(c.stdout, result)
+}
+
+func runMetricsSelectedWith(c *cmdCtx, deps metricsReadDeps) error {
+	selector, err := parseTelemetrySelector(c.inv)
+	if err != nil {
+		return err
+	}
+	reads, err := readTelemetryQueryInputs(deps.Root)
+	if err != nil {
+		return boundedTelemetryError(deps.Root, err)
+	}
+	result, err := telemetry.AggregateSelectedMetrics(reads, selector, telemetry.MetricsOptions{
+		GeneratedAt: telemetryNow(),
+		Retention: telemetry.RetentionPolicy{
+			MaxCompletedEffortAgeDays: deps.Policy.Retention.MaxCompletedEffortAgeDays,
+			MaxCompletedEffortCount:   deps.Policy.Retention.MaxCompletedEffortCount,
+		},
+	})
+	if err != nil {
+		return boundedTelemetryError(c.root, err)
+	}
+	if c.inv.bools["--json"] {
+		return writeMetricsJSON(c.stdout, result)
+	}
+	return telemetry.RenderMetricsHuman(c.stdout, result)
+}
+
+func runMetricsListWith(c *cmdCtx, deps metricsReadDeps) error {
+	limit := telemetry.DefaultEffortPageLimit
+	if value, present := c.inv.values["--limit"]; present {
+		if value == "" {
+			return &usageErr{"--limit must be an integer"}
+		}
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
+			return &usageErr{"--limit must be an integer"}
+		}
+		limit = parsed
+	}
+	reads, err := readTelemetryQueryInputs(deps.Root)
+	if err != nil {
+		return boundedTelemetryError(deps.Root, err)
+	}
+	page, err := telemetry.ListEfforts(reads, limit, c.inv.values["--cursor"])
+	if err != nil {
+		return boundedTelemetryError(c.root, err)
+	}
+	if c.inv.bools["--json"] {
+		return writeMetricsJSON(c.stdout, page)
+	}
+	return telemetry.RenderEffortListHuman(c.stdout, page)
 }
 
 func runMetricsExportWith(c *cmdCtx, deps metricsReadDeps) error {
