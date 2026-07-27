@@ -83,14 +83,6 @@ preserved rather than rewritten into the new records.
    permits a later reassignment to change the reporting association. Existing local telemetry is
    retained and is neither migrated into effort records nor deleted by this decision.
 
-8. Implementation updates the CLI, native-Git boundary, generated Pi extension and guidance,
-   output ownership, documentation, and current-state claims together. Every changed template
-   preserves `missingkey=zero` rendering and an empty-value output free of no-value tokens, with
-   tests for both. The implementation updates the authored AGENTS.md convention source and
-   renders AGENTS.md in the same transaction. It covers closed trees, nested checkouts, uninstall,
-   generated output, and the Sundial adopter, and is delivered by a staged plan before
-   implementation.
-
 ## State changes
 
 - add `tooling/effort-management:effort-record-authority`
