@@ -9,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 )
 
+// invariant: tooling/effort-management:managed-worktree-lifecycle
 func TestManualIntegrationAndNonFastForwardMerge(t *testing.T) {
 	root := newWorktreeRepo(t)
 	m, err := Open(t.Context(), root, Options{})

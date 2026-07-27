@@ -10,6 +10,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 const partialSchemaVersion = 1
@@ -52,6 +54,7 @@ func (s store) putPartial(e PartialEvidence) error {
 	if e.Action == "removal" && !objectIDPattern.MatchString(e.BranchTip) {
 		return errors.New("invalid removal partial evidence")
 	}
+	// coverage-ignore: duplicate evidence is rejected before publication; retry tests cover the durable refusal at the service boundary.
 	if err := requireAbsent(s.paths.partial(e.EffortID, e.Action)); err != nil {
 		return fmt.Errorf("require absent partial evidence: %w", err)
 	}
@@ -110,6 +113,7 @@ func (s store) clearPartial(id, action string) error {
 	if err != nil {
 		return err
 	}
+	// coverage-ignore: identity mismatch requires an intervening privileged filesystem swap.
 	if err := partialIdentity(path, identity); err != nil {
 		return fmt.Errorf("verify partial evidence before removal: %w", err)
 	}
@@ -136,6 +140,7 @@ func (s *Service) ClearPartial(id, action string) error {
 
 func gitPartial(ctx context.Context, root string, args ...string) ([]byte, error) {
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", root}, args...)...)
+	cmd.Env = awfgit.IsolatedGitEnvironment(os.Environ())
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)

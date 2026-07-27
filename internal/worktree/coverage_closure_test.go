@@ -9,6 +9,7 @@ import (
 	"testing"
 )
 
+// invariant: tooling/effort-management:managed-worktree-lifecycle
 func TestCoverageClosurePublicFaultContracts(t *testing.T) {
 	// An existing non-directory parent is a filesystem refusal, not a Git collision.
 	root := newWorktreeRepo(t)
@@ -112,6 +113,119 @@ func TestCoverageClosurePublicFaultContracts(t *testing.T) {
 		t.Fatal("empty registration accepted")
 	}
 	_ = path
+}
+
+// invariant: tooling/effort-management:managed-worktree-lifecycle
+func TestCoverageClosureSafetyAndRestartBranches(t *testing.T) {
+	root := newWorktreeRepo(t)
+	m, err := Open(t.Context(), root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// A live directory which is not a repository is an identity fault, not a
+	// permission or collision result.
+	plain := filepath.Join(t.TempDir(), "plain")
+	if err := os.MkdirAll(plain, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := m.validateManagedTarget(plain); err == nil {
+		t.Fatal("non-repository target accepted")
+	}
+
+	// A registered worktree in this repository is an ordinary collision.
+	collision, err := m.efforts.New("collision", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	collisionPath, err := m.managed(collision.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	git(t, "-C", root, "worktree", "add", "-b", "collision-branch", collisionPath, "HEAD")
+	if _, err := m.Add(collision.ID, "HEAD"); err == nil || !strings.Contains(err.Error(), "managed path already exists") {
+		t.Fatalf("collision result = %v", err)
+	}
+	git(t, "-C", root, "worktree", "remove", collisionPath)
+
+	// Each pre-registration failure has independently discriminating evidence.
+	for _, mode := range []string{"registration", "resident"} {
+		t.Run("add failure "+mode, func(t *testing.T) {
+			r, err := m.efforts.New(mode, false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path, err := m.managed(r.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			original := m.run
+			m.run = func(ctx context.Context, commandRoot string, args ...string) ([]byte, error) {
+				joined := strings.Join(args, " ")
+				if strings.HasPrefix(joined, "worktree list") && mode == "registration" {
+					return []byte("worktree " + path + "\x00branch refs/heads/awf/" + r.ID + "\x00\x00"), nil
+				}
+				if strings.HasPrefix(joined, "worktree add") {
+					if mode == "resident" {
+						if err := os.Mkdir(path, 0o700); err != nil {
+							t.Fatal(err)
+						}
+					}
+					return nil, errors.New("injected pre-registration add failure")
+				}
+				return original(ctx, commandRoot, args...)
+			}
+			_, err = m.Add(r.ID, "HEAD")
+			m.run = original
+			if err == nil || !strings.Contains(err.Error(), "partial Git mutation") {
+				t.Fatalf("settlement result = %v", err)
+			}
+		})
+	}
+
+	// Removing a manually recorded integration must distinguish target and
+	// ancestry probe faults, including after reopening the service.
+	manual, err := m.efforts.New("manual probes", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = m.Add(manual.ID, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	manualPath, _ := m.managed(manual.ID)
+	commitFile(t, manualPath, "manual-probe", "manual-probe")
+	if _, err = m.RecordManualIntegration(manual.ID, "HEAD", true, "external integration"); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := Open(t.Context(), root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseRunner := reopened.run
+	reopened.run = func(ctx context.Context, commandRoot string, args ...string) ([]byte, error) {
+		if strings.HasPrefix(strings.Join(args, " "), "rev-parse --verify HEAD^{commit}") && commandRoot == reopened.roots.InvokingRoot {
+			return nil, errors.New("injected target probe failure")
+		}
+		return baseRunner(ctx, commandRoot, args...)
+	}
+	if _, err = reopened.Remove(manual.ID, true, "approved repair"); err == nil || !strings.Contains(err.Error(), "target probe failure") {
+		t.Fatalf("target probe result = %v", err)
+	}
+	reopened.run = func(ctx context.Context, commandRoot string, args ...string) ([]byte, error) {
+		if strings.HasPrefix(strings.Join(args, " "), "merge-base") {
+			return nil, errors.New("injected ancestry probe failure")
+		}
+		return baseRunner(ctx, commandRoot, args...)
+	}
+	if _, err = reopened.Remove(manual.ID, true, "approved repair"); err == nil || !strings.Contains(err.Error(), "ancestry probe failure") {
+		t.Fatalf("ancestry probe result = %v", err)
+	}
+}
+
+func TestCoverageClosureSafeManagedPathRoot(t *testing.T) {
+	if err := safeManagedPath(string(filepath.Separator)); err == nil {
+		t.Fatal("root accepted as managed path")
+	}
 }
 
 func TestCoverageClosureRemovePartialMutations(t *testing.T) {

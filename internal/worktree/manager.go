@@ -56,6 +56,24 @@ func (m *Manager) managed(id string) (string, error) {
 }
 func branch(id string) string                 { return "awf/" + id }
 func approved(force bool, reason string) bool { return force && strings.TrimSpace(reason) != "" }
+func (m *Manager) validateManagedTarget(path string) error {
+	if _, err := m.roots.ResidentRoot(awfgit.ResidentWorktrees); err != nil {
+		return err
+	}
+	// coverage-ignore: platform path-swap fault injection.
+	if err := safeManagedPath(path); err != nil {
+		return err
+	}
+	roots, err := awfgit.ResolveControlRoots(m.ctx, path)
+	if err != nil {
+		return &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: err}
+	}
+	if filepath.Clean(roots.CommonDir) != filepath.Clean(m.roots.CommonDir) || filepath.Clean(roots.InvokingRoot) != filepath.Clean(path) {
+		return &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("managed checkout belongs to a different repository identity")}
+	}
+	return nil
+}
+
 func (m *Manager) operationFree(path string) error {
 	for _, name := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"} {
 		out, err := m.run(m.ctx, path, "rev-parse", "--git-path", name)
@@ -74,6 +92,32 @@ func (m *Manager) operationFree(path string) error {
 	}
 	return nil
 }
+func (m *Manager) settleAddFailure(id string, path string, cause error) error {
+	regs, verifyErr := registrations(m.ctx, m.run, m.roots.InvokingRoot)
+	mutated := false
+	if verifyErr == nil {
+		for _, r := range regs {
+			if filepath.Clean(r.path) == filepath.Clean(path) || r.branch == "refs/heads/"+branch(id) {
+				mutated = true
+				break
+			}
+		}
+		// coverage-ignore: partial checkout OS fault injection.
+		if _, statErr := os.Lstat(path); statErr == nil {
+			mutated = true
+		}
+	}
+	// coverage-ignore: native Git topology race during failure verification.
+	if verifyErr != nil || mutated {
+		return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failed before registration could settle: %w", cause)}
+	}
+	// coverage-ignore: evidence-directory fsync fault injection.
+	if clearErr := m.efforts.ClearPartial(id, "worktree"); clearErr != nil {
+		return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence after failed add: %w", clearErr)}
+	}
+	return cause
+}
+
 func (m *Manager) Add(id, base string) (effort.Record, error) {
 	record, err := m.efforts.Show(id)
 	if err != nil {
@@ -90,7 +134,7 @@ func (m *Manager) Add(id, base string) (effort.Record, error) {
 		// Do not classify a hostile resident path as an ordinary retryable
 		// collision. The path is manager-owned and must never be a symlink or
 		// another file type, even before Git is asked to create it.
-		if err := safeManagedPath(path); err != nil {
+		if err := m.validateManagedTarget(path); err != nil {
 			return effort.Record{}, err
 		}
 		return effort.Record{}, &RefusalError{Category: "topology", Risk: "managed path already exists", Forceable: true}
@@ -109,10 +153,10 @@ func (m *Manager) Add(id, base string) (effort.Record, error) {
 		return effort.Record{}, fmt.Errorf("record worktree partial evidence: %w", err)
 	}
 	if err := makeManagedDir(filepath.Dir(path), 0o700); err != nil {
-		return effort.Record{}, err
+		return effort.Record{}, m.settleAddFailure(id, path, err)
 	}
 	if err := runWorktreeAdd(m.ctx, m.run, m.roots.InvokingRoot, branch(id), path, full); err != nil {
-		return effort.Record{}, err
+		return effort.Record{}, m.settleAddFailure(id, path, err)
 	}
 	result, err := m.efforts.AttachWorktree(id, full)
 	if err != nil {
@@ -138,6 +182,9 @@ func (m *Manager) Integrate(id string, force bool, reason string) (effort.Record
 	}
 	path, err := m.managed(id)
 	if err != nil {
+		return effort.Record{}, err
+	}
+	if err = m.validateManagedTarget(path); err != nil {
 		return effort.Record{}, err
 	}
 	if filepath.Clean(m.roots.InvokingRoot) == filepath.Clean(path) {
@@ -246,13 +293,13 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	if err != nil {
 		return effort.Record{}, err
 	}
+	if err = m.validateManagedTarget(path); err != nil {
+		return effort.Record{}, err
+	}
 	// Registration is the identity authority. Check it before touching the
 	// filesystem so a missing or foreign path is a non-forceable identity
 	// refusal rather than an incidental filesystem error.
 	if err = exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(id)); err != nil {
-		return effort.Record{}, err
-	}
-	if err = safeManagedPath(path); err != nil {
 		return effort.Record{}, err
 	}
 	if err = m.operationFree(path); err != nil {
@@ -270,13 +317,29 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	if pending && !approved(force, reason) {
 		return effort.Record{}, &RefusalError{Category: "integration", Risk: "pending worktree has no recorded integration", Forceable: true}
 	}
-	if pending {
-		forceRemove = true
-	}
-	deleteForce := pending && approved(force, reason)
 	branchTip, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, branch(id))
 	if err != nil {
 		return effort.Record{}, err
+	}
+	deleteForce := pending && approved(force, reason)
+	if record.Integration == effort.IntegrationManual {
+		targetTip, targetErr := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
+		if targetErr != nil {
+			return effort.Record{}, targetErr
+		}
+		contained, ancestryErr := ancestor(m.ctx, m.run, m.roots.InvokingRoot, branchTip, targetTip)
+		if ancestryErr != nil {
+			return effort.Record{}, ancestryErr
+		}
+		if !contained && !approved(force, reason) {
+			return effort.Record{}, &RefusalError{Category: "ancestry", Risk: "manual integration does not contain the effort tip", Forceable: true}
+		}
+		if !contained {
+			deleteForce = true
+		}
+	}
+	if pending {
+		forceRemove = true
 	}
 	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "removal", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), DeleteForce: deleteForce, BranchTip: branchTip}
 	if err := m.efforts.RecordPartial(evidence); err != nil {

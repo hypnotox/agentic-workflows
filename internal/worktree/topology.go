@@ -121,12 +121,27 @@ func exactRegistration(ctx context.Context, run Runner, invoking, path, branch s
 	return nil
 }
 func safeManagedPath(path string) error {
-	info, err := os.Lstat(path)
-	if err != nil {
-		return err
+	clean := filepath.Clean(path)
+	volume := filepath.VolumeName(clean)
+	remainder := strings.TrimPrefix(strings.TrimPrefix(clean, volume), string(filepath.Separator))
+	current := volume + string(filepath.Separator)
+	var info os.FileInfo
+	for _, component := range strings.Split(remainder, string(filepath.Separator)) {
+		if component == "" {
+			continue
+		}
+		current = filepath.Join(current, component)
+		componentInfo, componentErr := os.Lstat(current)
+		if componentErr != nil {
+			return componentErr
+		}
+		info = componentInfo
+		if componentInfo.Mode()&os.ModeSymlink != 0 {
+			return &awfgit.HardSafetyError{Category: "symlink", Path: current}
+		}
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return &awfgit.HardSafetyError{Category: "symlink", Path: path}
+	if info == nil {
+		return errors.New("managed path has no components")
 	}
 	if !info.IsDir() {
 		return &awfgit.HardSafetyError{Category: "file-type", Path: path}
