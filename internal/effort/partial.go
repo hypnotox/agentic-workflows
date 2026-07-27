@@ -28,8 +28,15 @@ type PartialEvidence struct {
 	TargetPath    string      `json:"targetPath,omitempty"`
 	TargetBranch  string      `json:"targetBranch,omitempty"`
 	Integration   Integration `json:"integration,omitempty"`
-	DeleteForce   bool        `json:"deleteForce,omitempty"`
-	BranchTip     string      `json:"branchTip,omitempty"`
+	// WorktreeRemoveForce and BranchDeleteForce are independent recovery policy
+	// decisions. A dirty checkout may require native worktree removal force
+	// while its already-integrated branch must still use the safe delete form.
+	WorktreeRemoveForce bool `json:"worktreeRemoveForce,omitempty"`
+	BranchDeleteForce   bool `json:"branchDeleteForce,omitempty"`
+	// DeleteForce is retained for reading schema-1 evidence written before the
+	// policies were split; new evidence never writes it.
+	DeleteForce bool   `json:"deleteForce,omitempty"`
+	BranchTip   string `json:"branchTip,omitempty"`
 }
 
 func (p paths) partial(id, action string) string {

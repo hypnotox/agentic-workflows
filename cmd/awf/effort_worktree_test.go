@@ -12,6 +12,29 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
+func TestEffortGrammarRejectsActionMismatchedFlags(t *testing.T) {
+	cases := []struct {
+		name string
+		ctx  cmdCtx
+		want string
+	}{
+		{"base without worktree", cmdCtx{sub: "new", inv: invocation{values: map[string]string{"--base": "HEAD"}}}, "requires --worktree"},
+		{"add force", cmdCtx{sub: "worktree", inv: invocation{positionals: []string{"add"}, bools: map[string]bool{"--force": true}}}, "not allowed"},
+		{"remove base", cmdCtx{sub: "worktree", inv: invocation{positionals: []string{"remove"}, values: map[string]string{"--base": "HEAD"}}}, "--base is not allowed"},
+		{"partial approval", cmdCtx{sub: "integrate", inv: invocation{bools: map[string]bool{"--force": true}}}, "provided together"},
+		{"integrate base", cmdCtx{sub: "integrate", inv: invocation{values: map[string]string{"--base": "HEAD"}}}, "--base is not allowed"},
+		{"manual base", cmdCtx{sub: "integrated", inv: invocation{values: map[string]string{"--base": "HEAD", "--commit": "HEAD"}}}, "--base is not allowed"},
+		{"manual commit", cmdCtx{sub: "integrated", inv: invocation{}}, "--commit is required"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := validateEffortGrammar(&tc.ctx); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error=%v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestEffortAttachmentErrorContracts(t *testing.T) {
 	cause := &worktree.RefusalError{Category: "cleanliness", Risk: "dirty", Forceable: true}
 	err := newWorktreeAttachmentError("id", cause)
@@ -33,7 +56,7 @@ func TestEffortAttachmentErrorContracts(t *testing.T) {
 		t.Fatalf("open failure=%v", err)
 	}
 	for _, sub := range []string{"worktree", "integrate", "integrated"} {
-		if err := runEffort(&cmdCtx{root: root, sub: sub, inv: invocation{positionals: map[string][]string{"worktree": {"add", "x"}, "integrate": {"x"}, "integrated": {"x"}}[sub], bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); err == nil {
+		if err := runEffort(&cmdCtx{root: root, sub: sub, inv: invocation{positionals: map[string][]string{"worktree": {"add", "x"}, "integrate": {"x"}, "integrated": {"x"}}[sub], bools: map[string]bool{}, values: map[string]string{"--commit": "HEAD"}}, stdout: &out}); err == nil {
 			t.Fatalf("%s accepted injected open failure", sub)
 		}
 	}

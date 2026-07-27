@@ -109,7 +109,7 @@ func (m *Manager) settleAddFailure(id string, path string, cause error) error {
 			if _, statErr := managedLstat(path); statErr == nil {
 				mutated = true
 			} else if !errors.Is(statErr, os.ErrNotExist) {
-				return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failure is unverifiable: %w (cause: %v)", statErr, cause)}
+				return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failure is unverifiable: %w (cause: %w)", statErr, cause)}
 			}
 		}
 	}
@@ -267,6 +267,11 @@ func (m *Manager) RecordManualIntegration(id, commit string, force bool, reason 
 	if err != nil {
 		return effort.Record{}, err
 	}
+	// Validate the confined target before any registration lookup or HEAD
+	// resolution. A swapped checkout must remain pending and untouched.
+	if err = m.validateManagedTarget(path); err != nil {
+		return effort.Record{}, err
+	}
 	if err = exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(id)); err != nil {
 		return effort.Record{}, err
 	}
@@ -311,10 +316,10 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	if err = m.operationFree(path); err != nil {
 		return effort.Record{}, err
 	}
-	forceRemove := false
+	worktreeRemoveForce := false
 	if err = status(m.ctx, m.run, path); err != nil {
 		if r, ok := errors.AsType[*RefusalError](err); ok && r.Forceable && approved(force, reason) {
-			forceRemove = true
+			worktreeRemoveForce = true
 		} else {
 			return effort.Record{}, err
 		}
@@ -327,7 +332,7 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 	if err != nil {
 		return effort.Record{}, err
 	}
-	deleteForce := pending && approved(force, reason)
+	branchDeleteForce := pending && approved(force, reason)
 	if record.Integration == effort.IntegrationManual {
 		targetTip, targetErr := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
 		if targetErr != nil {
@@ -341,18 +346,18 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 			return effort.Record{}, &RefusalError{Category: "ancestry", Risk: "manual integration does not contain the effort tip", Forceable: true}
 		}
 		if !contained {
-			deleteForce = true
+			branchDeleteForce = true
 		}
 	}
 	if pending {
-		forceRemove = true
+		worktreeRemoveForce = true
 	}
-	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "removal", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), DeleteForce: deleteForce, BranchTip: branchTip}
+	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "removal", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), WorktreeRemoveForce: worktreeRemoveForce, BranchDeleteForce: branchDeleteForce, BranchTip: branchTip}
 	if err := m.efforts.RecordPartial(evidence); err != nil {
 		return effort.Record{}, fmt.Errorf("record removal partial evidence: %w", err)
 	}
 	removeArgs := []string{"worktree", "remove"}
-	if forceRemove {
+	if worktreeRemoveForce {
 		removeArgs = append(removeArgs, "--force")
 	}
 	removeArgs = append(removeArgs, path)
@@ -360,7 +365,7 @@ func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, e
 		return effort.Record{}, err
 	}
 	deleteFlag := "-d"
-	if deleteForce {
+	if branchDeleteForce {
 		deleteFlag = "-D"
 	}
 	if _, err = m.run(m.ctx, m.roots.InvokingRoot, "branch", deleteFlag, branch(id)); err != nil {

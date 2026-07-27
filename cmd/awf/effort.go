@@ -16,6 +16,9 @@ import (
 var openWorktreeManager = worktree.Open
 
 func runEffort(c *cmdCtx) error {
+	if err := validateEffortGrammar(c); err != nil {
+		return err
+	}
 	service, err := effort.Open(context.Background(), c.root, effort.Options{})
 	if err != nil {
 		return err
@@ -120,9 +123,6 @@ func runEffort(c *cmdCtx) error {
 		if err != nil {
 			return err
 		}
-		if c.inv.values["--commit"] == "" {
-			return &usageErr{"awf effort integrated: --commit is required"}
-		}
 		record, err := manager.RecordManualIntegration(id, c.inv.values["--commit"], c.inv.bools["--force"], c.inv.values["--reason"])
 		return runEffortMutation(c.stdout, record, err)
 	case "repair":
@@ -165,6 +165,38 @@ func newWorktreeAttachmentError(id string, err error) error {
 		category = refusal.Category
 	}
 	return &worktreeAttachmentError{EffortID: id, Category: category, Cause: err}
+}
+
+func validateEffortGrammar(c *cmdCtx) error {
+	force, reason := c.inv.bools["--force"], strings.TrimSpace(c.inv.values["--reason"])
+	if c.sub == "worktree" && len(c.inv.positionals) > 0 && c.inv.positionals[0] == "add" && (force || reason != "") {
+		return &usageErr{"awf effort worktree add: --force and --reason are not allowed"}
+	}
+	if force != (reason != "") {
+		return &usageErr{fmt.Sprintf("awf effort %s: --force and --reason must be provided together", c.sub)}
+	}
+	switch c.sub {
+	case "new":
+		if c.inv.values["--base"] != "" && !c.inv.bools["--worktree"] {
+			return &usageErr{"awf effort new: --base requires --worktree"}
+		}
+	case "worktree":
+		if len(c.inv.positionals) > 0 && c.inv.positionals[0] != "add" && c.inv.values["--base"] != "" {
+			return &usageErr{"awf effort worktree remove: --base is not allowed"}
+		}
+	case "integrate":
+		if c.inv.values["--base"] != "" {
+			return &usageErr{"awf effort integrate: --base is not allowed"}
+		}
+	case "integrated":
+		if c.inv.values["--base"] != "" {
+			return &usageErr{"awf effort integrated: --base is not allowed"}
+		}
+		if c.inv.values["--commit"] == "" {
+			return &usageErr{"awf effort integrated: --commit is required"}
+		}
+	}
+	return nil
 }
 
 func runEffortMutation(out io.Writer, record effort.Record, err error) error {

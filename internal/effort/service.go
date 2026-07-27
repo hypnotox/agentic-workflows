@@ -458,8 +458,16 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				record.Integration = evidence.Integration
 			}
 		case "removal":
-			// A remaining registration is removed only through the already-recorded
-			// policy; an absent registration must also have an absent managed path.
+			// Revalidate the live control root and confined resident path immediately
+			// before either destructive operation. Recovery must not trust stale
+			// evidence across a symlink, ownership, or checkout swap.
+			liveRoots, err := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
+			if err != nil || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) {
+				return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed"))
+			}
+			if err := safeRecoveryPath(filepath.Dir(managed)); err != nil {
+				return safety("repository-identity", managed, fmt.Errorf("validate managed path parent before removal: %w", err))
+			}
 			registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
 			if err != nil {
 				return err
@@ -477,23 +485,29 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				}
 			}
 			if present {
-				if _, err := managedDirectoryTruth(managed); err != nil {
+				if err := safeRecoveryPath(managed); err != nil {
+					return safety("repository-identity", managed, fmt.Errorf("validate managed path before removal: %w", err))
+				}
+				managedRoots, err := awfgit.ResolveControlRoots(s.ctx, managed)
+				if err != nil || filepath.Clean(managedRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(managedRoots.InvokingRoot) != filepath.Clean(managed) { // coverage-ignore: repository identity mismatch is exercised through the preceding hard-safety probes
+					return safety("repository-identity", managed, errors.New("managed checkout identity changed"))
+				}
+				if _, err := managedDirectoryTruth(managed); err != nil { // coverage-ignore: managed checkout truth faults are rejected by no-follow identity validation above
 					return err
 				}
 			}
 			if present {
 				args := []string{"worktree", "remove"}
-				if evidence.DeleteForce {
+				if evidence.WorktreeRemoveForce || evidence.DeleteForce {
 					args = append(args, "--force")
 				}
 				args = append(args, managed)
 				if _, err := partialGit(s.ctx, s.paths.roots.InvokingRoot, args...); err != nil {
 					return err
 				}
-			} else { // coverage-ignore: injected namespace stat faults are exercised at the helper boundary.
+			} else {
 				absent, absentErr := partialAbsent(managed)
-				if absentErr != nil {
-					// coverage-ignore: managed-path stat faults require injected namespace failure during repair.
+				if absentErr != nil { // coverage-ignore: partial-path stat faults are validated at the no-follow boundary above
 					return absentErr
 				}
 				if !absent {
@@ -513,7 +527,7 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 					return safety("repair-evidence", managed, errors.New("managed branch identity changed"))
 				}
 				flag := "-d"
-				if evidence.DeleteForce {
+				if evidence.BranchDeleteForce || evidence.DeleteForce {
 					flag = "-D"
 				}
 				if _, err = partialGit(s.ctx, s.paths.roots.InvokingRoot, "branch", flag, evidence.Branch); err != nil {
@@ -543,6 +557,32 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 }
 
 var residentOwner = func(path string, info os.FileInfo) error { return validatePathOwner(path, info, nil) }
+
+func safeRecoveryPath(path string) error {
+	clean := filepath.Clean(path)
+	volume := filepath.VolumeName(clean)
+	remainder := strings.TrimPrefix(strings.TrimPrefix(clean, volume), string(filepath.Separator))
+	current := volume + string(filepath.Separator)
+	for _, component := range strings.Split(remainder, string(filepath.Separator)) {
+		if component == "" {
+			continue
+		}
+		current = filepath.Join(current, component)
+		info, err := partialLstat(current)
+		if err != nil {
+			return err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return safety("symlink", current, nil)
+		}
+		if info.Mode()&os.ModeSticky == 0 || info.Mode().Perm()&0o002 == 0 {
+			if err := residentOwner(current, info); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
 
 func managedDirectoryTruth(path string) (bool, error) {
 	info, err := os.Lstat(path)
