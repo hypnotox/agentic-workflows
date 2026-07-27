@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
+
+var openWorktreeManager = worktree.Open
 
 func runEffort(c *cmdCtx) error {
 	service, err := effort.Open(context.Background(), c.root, effort.Options{})
@@ -19,12 +23,23 @@ func runEffort(c *cmdCtx) error {
 	id := firstPos(c.inv.positionals)
 	switch c.sub {
 	case "new":
-		if c.inv.bools["--worktree"] {
-			return &usageErr{"awf effort new: --worktree is reserved until managed worktrees are available"}
-		}
 		record, err := service.New(id, !c.inv.bools["--no-memory"])
 		if err != nil {
 			return err
+		}
+		if c.inv.bools["--worktree"] {
+			// Keep the durable allocation separately: a failed Add returns a zero
+			// record and must not erase the ID reported by the partial-create
+			// contract.
+			createdID := record.ID
+			manager, openErr := openWorktreeManager(context.Background(), c.root, worktree.Options{})
+			if openErr != nil {
+				return newWorktreeAttachmentError(createdID, openErr)
+			}
+			record, err = manager.Add(createdID, c.inv.values["--base"])
+			if err != nil {
+				return newWorktreeAttachmentError(createdID, err)
+			}
 		}
 		return writeEffortText(c.stdout, record)
 	case "list":
@@ -75,6 +90,41 @@ func runEffort(c *cmdCtx) error {
 	case "reopen":
 		record, err := service.Reopen(id)
 		return runEffortMutation(c.stdout, record, err)
+	case "worktree":
+		if len(c.inv.positionals) != 2 {
+			return &usageErr{"usage: awf effort worktree <add|remove> <id>"}
+		}
+		manager, err := openWorktreeManager(context.Background(), c.root, worktree.Options{})
+		if err != nil {
+			return err
+		}
+		var record effort.Record
+		switch c.inv.positionals[0] {
+		case "add":
+			record, err = manager.Add(c.inv.positionals[1], c.inv.values["--base"])
+		case "remove":
+			record, err = manager.Remove(c.inv.positionals[1], c.inv.bools["--force"], c.inv.values["--reason"])
+		default:
+			return &usageErr{"usage: awf effort worktree <add|remove> <id>"}
+		}
+		return runEffortMutation(c.stdout, record, err)
+	case "integrate":
+		manager, err := openWorktreeManager(context.Background(), c.root, worktree.Options{})
+		if err != nil {
+			return err
+		}
+		record, err := manager.Integrate(id, c.inv.bools["--force"], c.inv.values["--reason"])
+		return runEffortMutation(c.stdout, record, err)
+	case "integrated":
+		manager, err := openWorktreeManager(context.Background(), c.root, worktree.Options{})
+		if err != nil {
+			return err
+		}
+		if c.inv.values["--commit"] == "" {
+			return &usageErr{"awf effort integrated: --commit is required"}
+		}
+		record, err := manager.RecordManualIntegration(id, c.inv.values["--commit"], c.inv.bools["--force"], c.inv.values["--reason"])
+		return runEffortMutation(c.stdout, record, err)
 	case "repair":
 		result, err := service.Repair(id)
 		if err != nil {
@@ -93,8 +143,28 @@ func runEffort(c *cmdCtx) error {
 		}
 		return nil
 	default:
-		return &usageErr{"usage: awf effort <new|list|show|rename|memory|complete|abandon|reopen|repair>"}
+		return &usageErr{"usage: awf effort <new|list|show|rename|memory|worktree|integrate|integrated|complete|abandon|reopen|repair>"}
 	}
+}
+
+type worktreeAttachmentError struct {
+	EffortID string
+	Category string
+	Cause    error
+}
+
+func (e *worktreeAttachmentError) Error() string {
+	return fmt.Sprintf("effortId=%s state=active worktreeAttached=false category=%s next=\"awf effort worktree add %s\": %v", e.EffortID, e.Category, e.EffortID, e.Cause)
+}
+func (e *worktreeAttachmentError) Unwrap() error { return e.Cause }
+
+func newWorktreeAttachmentError(id string, err error) error {
+	category := "unknown"
+	var refusal *worktree.RefusalError
+	if errors.As(err, &refusal) {
+		category = refusal.Category
+	}
+	return &worktreeAttachmentError{EffortID: id, Category: category, Cause: err}
 }
 
 func runEffortMutation(out io.Writer, record effort.Record, err error) error {

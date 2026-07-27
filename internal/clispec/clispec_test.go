@@ -134,13 +134,13 @@ func TestLookup(t *testing.T) {
 		t.Errorf("topic flags = %q", got)
 	}
 	effort, ok := Lookup("effort")
-	if !ok || len(effort.Children) != 9 {
+	if !ok || len(effort.Children) != 12 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
 	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--no-memory,--worktree" {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
-	for _, name := range []string{"new", "list", "show", "rename", "memory", "complete", "abandon", "reopen", "repair"} {
+	for _, name := range []string{"new", "list", "show", "rename", "memory", "worktree", "integrate", "integrated", "complete", "abandon", "reopen", "repair"} {
 		if _, found := effort.Child(name); !found {
 			t.Errorf("effort child %q missing", name)
 		}

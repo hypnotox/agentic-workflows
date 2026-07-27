@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -93,7 +94,7 @@ func TestEffortCommandAcceptsInstalledMemoryDirectory(t *testing.T) {
 	}
 }
 
-func TestEffortNoMemoryMemoryListJSONAndReservedWorktree(t *testing.T) {
+func TestEffortNoMemoryMemoryListJSONAndManagedWorktree(t *testing.T) {
 	root := commandRepo(t)
 	created := runEffortCommand(t, root, "new", []string{"Without memory"}, map[string]bool{"--no-memory": true})
 	id := strings.Fields(created)[1]
@@ -116,15 +117,43 @@ func TestEffortNoMemoryMemoryListJSONAndReservedWorktree(t *testing.T) {
 	if envelope.SchemaVersion != 1 || len(envelope.Efforts) != 1 || envelope.Efforts[0].ID != id {
 		t.Fatalf("list JSON = %#v", envelope)
 	}
-	ctx := &cmdCtx{root: root, sub: "new", inv: invocation{positionals: []string{"Rejected"}, bools: map[string]bool{"--worktree": true}}, stdout: &bytes.Buffer{}}
-	if err := runEffort(ctx); err == nil || !strings.Contains(err.Error(), "reserved") {
+	ctx := &cmdCtx{root: root, sub: "new", inv: invocation{positionals: []string{"Attached"}, bools: map[string]bool{"--worktree": true}, values: map[string]string{}}, stdout: &bytes.Buffer{}}
+	if err := runEffort(ctx); err != nil {
 		t.Fatalf("--worktree error = %v", err)
+	}
+	if !strings.Contains(ctx.stdout.(*bytes.Buffer).String(), "integration=pending") {
+		t.Fatalf("--worktree output = %q", ctx.stdout.(*bytes.Buffer).String())
 	}
 }
 
 type effortErrorWriter struct{}
 
 func (effortErrorWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
+
+func TestEffortNewWorktreeAttachmentFailurePreservesRecordAndContract(t *testing.T) {
+	root := commandRepo(t)
+	ctx := &cmdCtx{root: root, sub: "new", inv: invocation{
+		positionals: []string{"attachment failure"},
+		bools:       map[string]bool{"--worktree": true},
+		values:      map[string]string{"--base": "missing-revision"},
+	}, stdout: &bytes.Buffer{}}
+	err := runEffort(ctx)
+	var attachment *worktreeAttachmentError
+	if !errors.As(err, &attachment) {
+		t.Fatalf("attachment failure=%T %v", err, err)
+	}
+	if attachment.EffortID == "" || attachment.Category != "unknown" || !strings.Contains(err.Error(), "state=active worktreeAttached=false") || !strings.Contains(err.Error(), "next=\"awf effort worktree add "+attachment.EffortID) {
+		t.Fatalf("attachment contract=%v", err)
+	}
+	service, openErr := effort.Open(t.Context(), root, effort.Options{})
+	if openErr != nil {
+		t.Fatal(openErr)
+	}
+	record, showErr := service.Show(attachment.EffortID)
+	if showErr != nil || record.State != effort.StateActive || !record.MemoryPresent || record.Worktree != nil {
+		t.Fatalf("failed attachment did not preserve ordinary creation: %#v %v", record, showErr)
+	}
+}
 
 func TestEffortCommandRefusalsAndOutputErrors(t *testing.T) {
 	root := commandRepo(t)

@@ -156,6 +156,46 @@ func (s *Service) Reopen(id string) (Record, error) {
 	})
 }
 
+// AttachWorktree records a successfully-created manager-owned checkout.
+func (s *Service) AttachWorktree(id, base string) (Record, error) {
+	return s.mutate(id, func(record *Record) error {
+		if record.Worktree != nil {
+			return errors.New("effort already has a managed worktree")
+		}
+		record.Worktree = &Worktree{Branch: "awf/" + id, Base: base, AttachedAt: s.now()}
+		record.Integration = IntegrationPending
+		return nil
+	})
+}
+
+// SetIntegration retains the supplied explicit integration disposition.
+func (s *Service) SetIntegration(id string, integration Integration) (Record, error) {
+	return s.mutate(id, func(record *Record) error {
+		if record.Worktree == nil {
+			return errors.New("effort has no managed worktree")
+		}
+		record.Integration = integration
+		return nil
+	})
+}
+
+// RemoveWorktreeMetadata clears an attached checkout while retaining its disposition.
+func (s *Service) RemoveWorktreeMetadata(id string, resetPending bool) (Record, error) {
+	return s.mutate(id, func(record *Record) error {
+		if record.Worktree == nil {
+			return errors.New("effort has no managed worktree")
+		}
+		if record.Integration == IntegrationPending && !resetPending {
+			return errors.New("pending integration cannot be removed without approved recovery")
+		}
+		record.Worktree = nil
+		if resetPending {
+			record.Integration = IntegrationNone
+		}
+		return nil
+	})
+}
+
 func (s *Service) transition(id string, state State) (Record, error) {
 	return s.mutate(id, func(record *Record) error {
 		if record.State != StateActive {

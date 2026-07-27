@@ -174,10 +174,10 @@ There is no default range, so an audit never reports over commits nobody named.
 Create, inspect, rename, repair, and change the lifecycle of lightweight local efforts.
 `,
 		Children: []Command{
-			{Name: "new", Summary: "Create an active effort", BoolFlags: []string{"--no-memory", "--worktree"}, MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort new <title> [--no-memory]
+			{Name: "new", Summary: "Create an active effort", BoolFlags: []string{"--no-memory", "--worktree"}, ValueFlags: []string{"--base"}, MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort new <title> [--no-memory] [--worktree [--base <revision>]]
 
-Create an active effort and, by default, its working-memory file. --worktree is reserved until managed worktrees are available and is rejected in this release.
+Create an active effort and, by default, its working-memory file. --worktree attaches the fixed managed branch at the explicit base or caller HEAD.
 `},
 			{Name: "list", Summary: "List efforts by stable ID", BoolFlags: []string{"--json"}, MaxPos: 0,
 				HelpBody: `Usage: awf effort list [--json]
@@ -219,6 +219,14 @@ Return a completed or abandoned effort to active state.
 
 Repair only metadata derivable from confined resident filesystem truth and report every change.
 `},
+			{Name: "worktree", Summary: "Attach or remove a managed worktree", BoolFlags: []string{"--force"}, ValueFlags: []string{"--base", "--reason"}, MinPos: 2, MaxPos: 2,
+				HelpBody: `Usage: awf effort worktree add <id> [--base <revision>]
+       awf effort worktree remove <id> [--force --reason <text>]
+
+Manage the fixed-path, fixed-branch worktree for one effort.
+`},
+			{Name: "integrate", Summary: "Integrate a managed worktree", BoolFlags: []string{"--force"}, ValueFlags: []string{"--reason"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort integrate <id> [--force --reason <text>]\n"},
+			{Name: "integrated", Summary: "Record manual integration", BoolFlags: []string{"--force"}, ValueFlags: []string{"--commit", "--reason"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort integrated <id> --commit <revision> [--force --reason <text>]\n"},
 		},
 	},
 	{

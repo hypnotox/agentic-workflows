@@ -5,7 +5,7 @@ package (`package <pkg>` or the black-box `package <pkg>_test` where a test need
 unexported identifiers). Template golden tests (render assertions against the embedded catalog)
 live in `internal/project/spine_test.go`. CLI integration tests drive the `awf` binary's
 command functions directly (not a subprocess) against a temp directory built with `t.TempDir()`,
-in `cmd/awf/*_test.go`.
+in `cmd/awf/*_test.go`. Native-Git managed-worktree tests in `internal/worktree` use real temporary repositories to prove fixed branch/path attachment, clean preconditions, integration disposition, and explicit removal; these mutation tests run on the Linux host while Go compilation remains covered for every release target.
 
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
 files, no production source). Each scenario runs a full `Project.SyncReport` over a fixture config derived
