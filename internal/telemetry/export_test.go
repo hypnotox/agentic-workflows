@@ -76,8 +76,9 @@ func TestNormalizedExportOrdersSessionsAndLines(t *testing.T) {
 
 func TestRenderDoctorHumanDeterministicAndWriteFailures(t *testing.T) {
 	observed := 3.0
+	effort := "effort"
 	result := DoctorResult{
-		SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC),
+		SchemaVersion: 1, ProtocolMajor: 2, GeneratedAt: time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC), Selector: Selector{EffortID: &effort},
 		Findings: []Finding{{
 			Code: "WFH1-TEST", Type: "heuristic", Severity: "warning", Scope: "effort", Confidence: "high", Waived: false,
 			Evidence:       FindingEvidence{EventIDs: []string{"event"}, CounterIDs: []string{}, ObservedValue: &observed, Unit: "count"},
@@ -92,12 +93,17 @@ func TestRenderDoctorHumanDeterministicAndWriteFailures(t *testing.T) {
 	if err := RenderDoctorHuman(&output, result); err != nil {
 		t.Fatal(err)
 	}
-	for _, text := range []string{"workflow doctor schema 1", "observed=3count", "threshold kind=absolute", "baseline route=direct", "reconciliation kind=correct-phase", "integrity clock"} {
+	for _, text := range []string{"findings warnings=1 violations=0", "rules rule=WFH1-TEST count=1", "integrity warnings=1 violations=0", "integrity-rules rule=clock count=1"} {
 		if !strings.Contains(output.String(), text) {
 			t.Errorf("doctor human missing %q: %s", text, output.String())
 		}
 	}
-	for failAt := range 9 {
+	for _, forbidden := range []string{"event", "observed=", "threshold", "baseline", "reconciliation", "explanation", "next"} {
+		if strings.Contains(output.String(), forbidden) {
+			t.Errorf("doctor human leaked detail %q: %s", forbidden, output.String())
+		}
+	}
+	for failAt := range 5 {
 		writer := &failAtWriter{failAt: failAt}
 		if err := RenderDoctorHuman(writer, result); err == nil {
 			t.Fatalf("write failure %d was ignored", failAt)

@@ -476,6 +476,7 @@ type ScopeProjection struct {
 	Usage    UsageTotals `json:"usage"`
 	Counters Counters    `json:"counters"`
 	EventIDs []string    `json:"eventIds"`
+	turns    uint64
 }
 
 type IntegrityNotice struct {

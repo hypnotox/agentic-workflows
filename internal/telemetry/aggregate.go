@@ -181,6 +181,7 @@ func aggregateScope(scopeID string, events []EventEnvelope) ScopeProjection {
 		result.EventIDs = append(result.EventIDs, event.EventID)
 		switch event.Kind {
 		case "usage_observed":
+			result.turns++
 			var payload UsageObservedPayload
 			if json.Unmarshal(event.Payload, &payload) == nil {
 				addUsage(&result.Usage, payload.InputTokens, payload.OutputTokens, payload.CacheReadTokens, payload.CacheWriteTokens, payload.CostUSD, payload.DurationMS)

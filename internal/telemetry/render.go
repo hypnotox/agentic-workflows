@@ -3,15 +3,18 @@ package telemetry
 import (
 	"fmt"
 	"io"
+	"sort"
 )
 
-// RenderMetricsHuman renders only the stable MetricsResult model. It never
-// reads storage or recomputes projection state.
+const maximumHumanPhaseSummaries = 10
+
+// RenderMetricsHuman renders the selected effort as a concise footer-like
+// summary. It never reads storage or recomputes projection state.
 func RenderMetricsHuman(out io.Writer, result MetricsResult) error {
 	for _, effort := range result.Efforts {
-		lifecycle := "discovery=true"
+		lifecycle := "discovery"
 		if effort.State == string(EffortActive) {
-			lifecycle = fmt.Sprintf("phase=%s", effort.openPhase)
+			lifecycle = "phase=" + string(effort.openPhase)
 		} else if effort.State == string(EffortCompleted) || effort.State == string(EffortAbandoned) {
 			lifecycle = "outcome=" + effort.State
 		}
@@ -19,23 +22,46 @@ func RenderMetricsHuman(out io.Writer, result MetricsResult) error {
 			return err
 		}
 		for _, scope := range []ScopeProjection{effort.CurrentPath, effort.AllWork} {
-			if _, err := fmt.Fprintf(out, "  scope %s input=%d output=%d cache-read=%d cache-write=%d cost=%g duration-ms=%d compactions=%d handoffs=%d tool-failures=%d gate-failures=%d subagents=%d rework=%d events=%d\n",
-				scope.ScopeID, scope.Usage.InputTokens, scope.Usage.OutputTokens, scope.Usage.CacheReadTokens, scope.Usage.CacheWriteTokens, scope.Usage.CostUSD, scope.Usage.DurationMS,
-				scope.Counters.Compactions, scope.Counters.Handoffs, scope.Counters.ToolFailures, scope.Counters.GateFailures, scope.Counters.SubagentInvocations, scope.Counters.ImplementationRework, len(scope.EventIDs)); err != nil {
+			if err := renderScopeHuman(out, "scope", scope); err != nil {
+				return err
+			}
+		}
+		phases := append([]ScopeProjection(nil), effort.Phases...)
+		sort.Slice(phases, func(i, j int) bool { return phases[i].ScopeID < phases[j].ScopeID })
+		shown := len(phases)
+		if shown > maximumHumanPhaseSummaries {
+			shown = maximumHumanPhaseSummaries
+		}
+		if _, err := fmt.Fprintf(out, "phases total=%d shown=%d\n", len(phases), shown); err != nil {
+			return err
+		}
+		for _, phase := range phases[:shown] {
+			if _, err := fmt.Fprintf(out, "  phase %s turns=%d input=%d output=%d cache-read=%d cache-write=%d cost=%g\n", phase.ScopeID, phase.turns, phase.Usage.InputTokens, phase.Usage.OutputTokens, phase.Usage.CacheReadTokens, phase.Usage.CacheWriteTokens, phase.Usage.CostUSD); err != nil {
 				return err
 			}
 		}
 	}
-	warnings, violations := 0, 0
-	for _, notice := range result.Integrity {
+	warnings, violations := countIntegritySeverities(result.Integrity)
+	_, err := fmt.Fprintf(out, "diagnostics warnings=%d violations=%d\n", warnings, violations)
+	return err
+}
+
+func renderScopeHuman(out io.Writer, label string, scope ScopeProjection) error {
+	_, err := fmt.Fprintf(out, "  %s %s input=%d output=%d cache-read=%d cache-write=%d cost=%g duration-ms=%d compactions=%d handoffs=%d tool-failures=%d gate-failures=%d subagents=%d rework=%d events=%d\n",
+		label, scope.ScopeID, scope.Usage.InputTokens, scope.Usage.OutputTokens, scope.Usage.CacheReadTokens, scope.Usage.CacheWriteTokens, scope.Usage.CostUSD, scope.Usage.DurationMS,
+		scope.Counters.Compactions, scope.Counters.Handoffs, scope.Counters.ToolFailures, scope.Counters.GateFailures, scope.Counters.SubagentInvocations, scope.Counters.ImplementationRework, len(scope.EventIDs))
+	return err
+}
+
+func countIntegritySeverities(notices []IntegrityNotice) (warnings, violations int) {
+	for _, notice := range notices {
 		if notice.Severity == "warning" {
 			warnings++
 		} else {
 			violations++
 		}
 	}
-	_, err := fmt.Fprintf(out, "diagnostics warnings=%d violations=%d\n", warnings, violations)
-	return err
+	return warnings, violations
 }
 
 // RenderEffortListHuman renders the bounded resident discovery page.
@@ -62,46 +88,50 @@ func RenderEffortListHuman(out io.Writer, page EffortListPage) error {
 	return nil
 }
 
-// RenderDoctorHuman renders only the stable DoctorResult model. Findings are
-// advisory output and do not imply a process exit status.
+// RenderDoctorHuman reports only deterministic finding and integrity counters.
+// Detailed findings and their evidence remain available in canonical JSON.
 func RenderDoctorHuman(out io.Writer, result DoctorResult) error {
-	if _, err := fmt.Fprintf(out, "workflow doctor schema %d protocol %d generated %s\n", result.SchemaVersion, result.ProtocolMajor, result.GeneratedAt.Format("2006-01-02T15:04:05.999999999Z07:00")); err != nil {
+	if result.Selector.EffortID != nil {
+		if _, err := fmt.Fprintf(out, "doctor effort=%s\n", *result.Selector.EffortID); err != nil {
+			return err
+		}
+	}
+	severity := map[string]int{}
+	rules := map[string]int{}
+	for _, finding := range result.Findings {
+		severity[finding.Severity]++
+		rules[finding.Code]++
+	}
+	if _, err := fmt.Fprintf(out, "findings warnings=%d violations=%d\n", severity["warning"], severity["violation"]); err != nil {
 		return err
 	}
-	for _, finding := range result.Findings {
-		if _, err := fmt.Fprintf(out, "finding %s effort=%s type=%s severity=%s confidence=%s scope=%s waived=%t\n  evidence events=%v counters=%v",
-			finding.Code, finding.EffortID, finding.Type, finding.Severity, finding.Confidence, finding.Scope, finding.Waived, finding.Evidence.EventIDs, finding.Evidence.CounterIDs); err != nil {
-			return err
-		}
-		if finding.Evidence.ObservedValue != nil {
-			if _, err := fmt.Fprintf(out, " observed=%g%s", *finding.Evidence.ObservedValue, finding.Evidence.Unit); err != nil {
-				return err
-			}
-		}
-		if _, err := fmt.Fprintln(out); err != nil {
-			return err
-		}
-		if finding.Threshold != nil {
-			if _, err := fmt.Fprintf(out, "  threshold kind=%s comparator=%s value=%g%s\n", finding.Threshold.Kind, finding.Threshold.Comparator, finding.Threshold.Value, finding.Threshold.Unit); err != nil {
-				return err
-			}
-		}
-		if finding.Baseline != nil {
-			if _, err := fmt.Fprintf(out, "  baseline route=%s rule=%d samples=%d percentile=%d value=%g%s\n", finding.Baseline.Route, finding.Baseline.RuleVersion, finding.Baseline.SampleCount, finding.Baseline.Percentile, finding.Baseline.Value, finding.Baseline.Unit); err != nil {
-				return err
-			}
-		}
-		if finding.Reconciliation != nil {
-			if _, err := fmt.Fprintf(out, "  reconciliation kind=%s sources=%v replacement=%s payload=%s\n", finding.Reconciliation.Kind, finding.Reconciliation.SourceEventIDs, finding.Reconciliation.Replacement.EventKind, finding.Reconciliation.Replacement.Payload); err != nil {
-				return err
-			}
-		}
-		if _, err := fmt.Fprintf(out, "  %s\n  next: %s\n", finding.Explanation, finding.NextAction); err != nil {
-			return err
-		}
+	if err := renderCountSummary(out, "rules", "rule", rules); err != nil {
+		return err
 	}
+	integritySeverity := map[string]int{}
+	integrityRules := map[string]int{}
 	for _, notice := range result.Integrity {
-		if _, err := fmt.Fprintf(out, "integrity %s severity=%s scope=%s events=%d %s\n", notice.Code, notice.Severity, notice.Scope, len(notice.EventIDs), notice.Explanation); err != nil {
+		integritySeverity[notice.Severity]++
+		integrityRules[notice.Code]++
+	}
+	if _, err := fmt.Fprintf(out, "integrity warnings=%d violations=%d\n", integritySeverity["warning"], integritySeverity["violation"]); err != nil {
+		return err
+	}
+	return renderCountSummary(out, "integrity-rules", "rule", integrityRules)
+}
+
+func renderCountSummary(out io.Writer, label, key string, counts map[string]int) error {
+	keys := make([]string, 0, len(counts))
+	for value := range counts {
+		keys = append(keys, value)
+	}
+	sort.Strings(keys)
+	if len(keys) == 0 {
+		_, err := fmt.Fprintf(out, "%s none=0\n", label)
+		return err
+	}
+	for _, value := range keys {
+		if _, err := fmt.Fprintf(out, "%s %s=%s count=%d\n", label, key, value, counts[value]); err != nil {
 			return err
 		}
 	}

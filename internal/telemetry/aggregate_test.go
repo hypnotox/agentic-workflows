@@ -66,7 +66,7 @@ func TestAggregateMetricsScopesOrderingAndPrivacy(t *testing.T) {
 	if err := RenderMetricsHuman(&human, result); err != nil {
 		t.Fatal(err)
 	}
-	for _, semantic := range []string{fmt.Sprintf("effort %s state=active route=direct", "effort"), "input=17 output=11", "cost=0.75 duration-ms=50", "compactions=2", "diagnostics warnings=1 violations=0"} {
+	for _, semantic := range []string{fmt.Sprintf("effort %s state=active route=direct", "effort"), "input=17 output=11", "cost=0.75 duration-ms=50", "compactions=2", "phases total=1 shown=1", "phase implementation turns=1", "diagnostics warnings=1 violations=0"} {
 		if !strings.Contains(human.String(), semantic) {
 			t.Fatalf("human output lacks %q:\n%s", semantic, human.String())
 		}
@@ -109,17 +109,31 @@ func TestRenderMetricsHumanSelectedEffortIsConciseAcrossLifecycleStates(t *testi
 	for _, want := range []string{
 		"effort open state=active route=direct phase=implementation",
 		"effort terminal state=completed route=direct outcome=completed",
-		"effort discovery state=discovery route= discovery=true",
-		"scope current-path input=1", "scope all-work input=1", "diagnostics warnings=1 violations=1",
+		"effort discovery state=discovery route= discovery",
+		"scope current-path input=1", "scope all-work input=1", "phases total=1 shown=1", "phase implementation turns=0", "diagnostics warnings=1 violations=1",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("human output missing %q:\n%s", want, got)
 		}
 	}
-	for _, forbidden := range []string{"scope session", "scope implementation", "scope trajectory", "retention ", "integrity ", "trajectory="} {
+	for _, forbidden := range []string{"scope session", "scope trajectory", "retention ", "integrity ", "trajectory="} {
 		if strings.Contains(got, forbidden) {
 			t.Errorf("human output is not concise; contains %q:\n%s", forbidden, got)
 		}
+	}
+}
+
+func TestRenderMetricsHumanBoundsPhaseSummaries(t *testing.T) {
+	phases := make([]ScopeProjection, maximumHumanPhaseSummaries+1)
+	for index := range phases {
+		phases[index] = ScopeProjection{ScopeID: fmt.Sprintf("phase-%02d", index)}
+	}
+	var out bytes.Buffer
+	if err := RenderMetricsHuman(&out, MetricsResult{Efforts: []EffortProjection{{EffortID: "effort", CurrentPath: ScopeProjection{ScopeID: "current-path"}, AllWork: ScopeProjection{ScopeID: "all-work"}, Phases: phases}}}); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "phases total=11 shown=10") || strings.Contains(out.String(), "phase phase-10") {
+		t.Fatalf("phase summary was not bounded deterministically: %s", out.String())
 	}
 }
 

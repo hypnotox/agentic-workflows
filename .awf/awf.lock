@@ -702,8 +702,8 @@
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
       "templateHash": "sha256:d3cc653a5ac3eef49d925aacf47628b28962e03eb12c58e6de08f08343f23cc5",
-      "configHash": "sha256:d81a69f6da83db7536c1e25a99c070b669acd465e94658a2e3829cd5f4bea4b8",
-      "outputHash": "sha256:1a027e0e5502999286ed2dac8a7814a4721cd5819c779924727196210fdaf9f4"
+      "configHash": "sha256:450a712c1312e2cc314e8429d0b8455287d731e98723a0c25545a8bd4f4733d4",
+      "outputHash": "sha256:381d3d06a66b7cb0c825f92689e34644944c829e98f7a48115ba8dfbc3f399d3"
     }
   },
   "adrFormatV1From": 137,
