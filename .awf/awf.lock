@@ -349,7 +349,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:53f72cbb84cb9d4dfab0d49fb4c4c72292e09c50e28286dd7d2454ef1007ad27",
+      "outputHash": "sha256:cd7398342b9560b9901dc564c69a26fafd8ff648254aec52f5f2f5e2e456bf93",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -408,7 +408,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:67eefd288d2d14718dfa6bd06769b5eff0410452df8429ade0b0a6222a0907f4",
+      "outputHash": "sha256:fcce6e2863118d10b7c84fcb4a4e3abb736df386358afc02a98e50219c2e9263",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -651,6 +651,12 @@
       "configHash": "sha256:170b7f64d56fba8d6425e7f4905f0c1de6f02d12efb37a88a7ca7d306d87645d",
       "outputHash": "sha256:32d0d2fc1ab5e48124798fd94aaffff4f8a6895bd259165c697e835265210ede"
     },
+    "docs/topics/tooling/effort-management.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:335276b7129093383b8dedea7f9726a9ffcc3debed58ece8f9875d94048ef988",
+      "outputHash": "sha256:795d7edc8c79fef74af73d1160fa7ff468952c9c5f0daecea81209d5de232430"
+    },
     "docs/topics/tooling/evaluations.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
@@ -660,8 +666,8 @@
     "docs/topics/tooling/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:38d4d08108bf6e573523b4170ac5563440d6cc56f7fb537ee2439b1769236940",
-      "outputHash": "sha256:9e6a31686f679d8bb5810a17175c74d920a62e2e335d8197b5fa33a3b9cae5a0"
+      "configHash": "sha256:c4a519ccd0535f279a9f303dc51a521e50507cc0510a4396d2c379eb251d9afd",
+      "outputHash": "sha256:54dbdf903997b01ad5e4bccb5576f538bdd7b9e2be8dcc25b700a9018d9cca17"
     },
     "docs/topics/tooling/init-and-enablement.md": {
       "templateId": "topics/topic.md.tmpl",

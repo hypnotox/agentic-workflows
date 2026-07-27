@@ -98,6 +98,7 @@ Working assembly uses `ContextFor`; staged assembly enters through `StagedContex
 - [CLI](../topics/tooling/cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](../topics/tooling/changelog-and-release.md): The changelog pipeline and release-notes contracts.
 - [Context and topic](../topics/tooling/context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
+- [Effort management](../topics/tooling/effort-management.md): Binary-owned effort records, optional resources, and session assignment.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
 - [Init and enablement](../topics/tooling/init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
