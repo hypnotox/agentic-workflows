@@ -264,7 +264,16 @@ func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[s
 		complete := true
 		for _, history := range histories {
 			sort.SliceStable(history, func(i, j int) bool { return history[i].seq < history[j].seq })
-			if history[0].op.Verb != adr.OpAdd || history[len(history)-1].op.Verb != adr.OpRemove {
+			adds, removes := 0, 0
+			for _, operation := range history {
+				if operation.op.Verb == adr.OpAdd {
+					adds++
+				}
+				if operation.op.Verb == adr.OpRemove {
+					removes++
+				}
+			}
+			if history[0].op.Verb != adr.OpAdd || history[len(history)-1].op.Verb != adr.OpRemove || adds != 1 || removes != 1 {
 				complete = false
 			}
 		}

@@ -193,6 +193,14 @@ func TestCheckDestinationTopicRetiredWithFinalClaim(t *testing.T) {
 	if got := messages(currentstate.Check(records, nil)); strings.Contains(got, "targets missing topic d/retired") {
 		t.Fatalf("final-claim removal did not permit retiring its topic:\n%s", got)
 	}
+
+	t.Run("invalid history retains missing-topic finding", func(t *testing.T) {
+		invalid := append([]adr.ADR(nil), records...)
+		invalid = append(invalid, rec("0139", "Implemented", 3, op(adr.OpRemove, "d/retired:only")))
+		if got := messages(currentstate.Check(invalid, nil)); !strings.Contains(got, "targets missing topic d/retired") {
+			t.Fatalf("invalid removal history retired its topic:\n%s", got)
+		}
+	})
 }
 
 func TestCheckDestinationTopic(t *testing.T) {
