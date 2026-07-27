@@ -54,10 +54,15 @@ preserved rather than rewritten into the new records.
    caller's HEAD unless an explicit base is supplied, remains after completion and across sessions,
    and is removed only by an explicit ownership, integration, and cleanliness-checked operation.
    Managed integration is explicit: fast-forward when possible, otherwise a normal merge commit;
-   manual integration may be recorded. Recoverable cleanliness or topology refusal identifies the
-   risk and permits `--force --reason <truthful explanation>`; destructive topology operations
-   retain strict checks. Native Git commands implement linked-worktree mutations because the
-   existing Go Git dependency is read-only for this purpose.
+   manual integration may be recorded. Integration disposition remains on the effort after removal,
+   a newly attached worktree resets it to pending, and reopening an effort does not change it.
+   Recoverable cleanliness or topology refusal identifies the risk and permits
+   `--force --reason <truthful explanation>`; destructive topology operations retain strict checks.
+   Native Git commands implement linked-worktree mutations because the existing Go Git dependency
+   is read-only for this purpose. If `effort new --worktree` creates the effort but worktree creation
+   fails, the effort and its memory remain available, the failure reports the allocated ID, and the
+   agent may retry worktree attachment or repair the record; the binary never hides a partial Git
+   mutation behind a claimed rollback.
 
 5. Pi may select one optional effort for its session through `/awf-effort new <title>`, `use <id>`,
    `clear`, `show`, and `rename <title>`. Repository-wide current-state assignment permits a Pi
@@ -73,26 +78,39 @@ preserved rather than rewritten into the new records.
    telemetry lifecycle association.
 
 7. Pi telemetry becomes an independent versioned, append-only, session-keyed stream under
-   `.awf/metrics/`. Records contain session identity and privacy-minimal observations, never an
-   effort ID, and Pi appends them directly rather than through the awf binary. The writer holds an
-   exclusive per-session stream lock, validates the versioned header and prior records, appends
-   one complete observation carrying a stable observation ID, and fsyncs it before reporting
-   success. Retrying that ID is idempotent; an unsafe lock, incomplete write, or malformed stream
-   is a refusal that preserves the stream for repair rather than silently truncating or guessing.
-   Reports join new session observations to the current effort assignment; this intentionally
-   permits a later reassignment to change the reporting association. Existing local telemetry is
-   retained and is neither migrated into effort records nor deleted by this decision.
+   `.awf/metrics/`. Records contain session identity and closed privacy-minimal usage, tool, gate,
+   subagent, compaction, and handoff observations, never an effort ID, route, phase, trajectory,
+   repository path, command argument, conversational text, or tool input/output. Pi appends them
+   directly rather than through the awf binary. The writer holds an exclusive per-session stream
+   lock, validates the versioned header and prior records, appends one complete observation carrying
+   a stable observation ID, and fsyncs it before reporting success. Retrying that ID is idempotent;
+   an unsafe lock, incomplete write, or malformed stream is a refusal that preserves the stream for
+   repair rather than silently truncating or guessing. Reports join new session observations to the
+   current effort assignment; this intentionally permits a later reassignment to change the
+   reporting association. `awf metrics doctor` remains only as deterministic stream-integrity
+   diagnosis, not lifecycle or heuristic workflow diagnosis. Existing protocol-1 and protocol-2
+   local telemetry remains byte-preserved and read-only and is neither migrated into effort records
+   nor deleted by this decision.
+
+8. Retire the tracked `workflowTelemetry` configuration block through the next normal schema
+   migration. Its retention, widget, baseline, and heuristic thresholds have no truthful consumer
+   after the lifecycle projector and phase widget are removed. The migration removes only that
+   known block, preserves unrelated configuration and historical resident telemetry, and advances
+   the lock generation and minimum binary version in the ordinary upgrade transaction.
 
 ## State changes
 
 - add `tooling/effort-management:effort-record-authority`
 - add `tooling/effort-management:managed-worktree-lifecycle`
 - add `tooling/effort-management:session-effort-assignment`
+- remove `config/configuration:workflow-telemetry-settings`
+- update `config/migrations-and-locks:workflow-telemetry-config-migration`
 - update `tooling/workflow-telemetry:event-protocol-and-ledger`
 - remove `tooling/workflow-telemetry:effort-lifecycle-and-routes`
 - remove `tooling/workflow-telemetry:trajectory-and-derived-effort-model`
 - remove `tooling/workflow-telemetry:external-adoption-boundary`
 - remove `tooling/workflow-telemetry:derived-detour-return`
+- remove `tooling/workflow-telemetry:anchor-claims-and-location-metadata`
 - update `tooling/workflow-telemetry:privacy-integrity-and-retention`
 - update `tooling/workflow-telemetry:canonical-projections-and-diagnostics`
 - add `tooling/cli:effort-command-contract`
@@ -121,7 +139,9 @@ invoking worktree's tracked configuration.
 Pi has fewer failure modes and less private state, but it no longer enforces workflow discipline
 or provides lifecycle-derived reports. Session reassignment deliberately changes report joins, so
 one Pi session cannot accurately represent concurrent efforts. Worktrees consume disk and remain
-until explicitly removed; explicit retention is safer than automatic deletion.
+until explicitly removed; explicit retention is safer than automatic deletion. Removing the
+workflowTelemetry block is an adopter-visible config migration, but retaining settings with no
+consumer would misrepresent the supported controls.
 
 The scope replaces several load-bearing contracts and crosses the binary, native Git, Pi, rendered
 outputs, and documentation. A staged plan and comprehensive safety tests are required before
@@ -138,6 +158,7 @@ implementation.
 | Put effort IDs in telemetry observations | Session-to-effort assignment can happen later and avoids coupling append availability to effort management. |
 | Keep an awf-owned telemetry append boundary | Sending observations through an awf command or service centralizes stream writes, but makes Pi telemetry depend on binary availability, version compatibility, and a new IPC or process-failure boundary. A locked, fsynced direct writer keeps the stream independent while retaining explicit integrity checks. |
 | Allow one Pi session to map to several efforts | It makes report attribution and totals ambiguous; explicit reassignment is the simpler operator-controlled model. |
+| Preserve the workflowTelemetry settings as inert compatibility fields | Strict accepted configuration implies supported behavior; retaining controls for removed retention, lifecycle diagnosis, and widgets would be misleading. |
 
 ## Status history
 
