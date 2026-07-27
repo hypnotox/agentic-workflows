@@ -7,6 +7,8 @@ paths:
   - internal/clispec/**
   - internal/initspec/**
   - internal/git/**
+  - internal/effort/**
+  - internal/worktree/**
   - internal/testsupport/**
   - internal/snapshot/**
   - internal/telemetry/**

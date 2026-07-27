@@ -167,6 +167,61 @@ There is no default range, so an audit never reports over commits nobody named.
 `,
 	},
 	{
+		Name: "effort", Summary: "Manage lightweight repository-local efforts",
+		MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf effort <subcommand>
+
+Create, inspect, rename, repair, and change the lifecycle of lightweight local efforts.
+`,
+		Children: []Command{
+			{Name: "new", Summary: "Create an active effort", BoolFlags: []string{"--no-memory", "--worktree"}, MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort new <title> [--no-memory]
+
+Create an active effort and, by default, its working-memory file. --worktree is reserved until managed worktrees are available and is rejected in this release.
+`},
+			{Name: "list", Summary: "List efforts by stable ID", BoolFlags: []string{"--json"}, MaxPos: 0,
+				HelpBody: `Usage: awf effort list [--json]
+
+List every lightweight effort in stable ID order.
+`},
+			{Name: "show", Summary: "Show one effort", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort show <id> [--json]
+
+Show one logical effort record, including current session assignments.
+`},
+			{Name: "rename", Summary: "Rename one effort", MinPos: 2, MaxPos: 2,
+				HelpBody: `Usage: awf effort rename <id> <title>
+
+Change display metadata without changing the stable ID or resource paths.
+`},
+			{Name: "memory", Summary: "Create an effort's memory file", MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort memory <id>
+
+Create or confirm the effort-owned normalized working-memory file.
+`},
+			{Name: "complete", Summary: "Complete an active effort", MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort complete <id>
+
+Mark an active effort completed while retaining its resources.
+`},
+			{Name: "abandon", Summary: "Abandon an active effort", MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort abandon <id>
+
+Mark an active effort abandoned while retaining its resources.
+`},
+			{Name: "reopen", Summary: "Reopen a terminal effort", MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort reopen <id>
+
+Return a completed or abandoned effort to active state.
+`},
+			{Name: "repair", Summary: "Repair derivable effort metadata", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort repair <id> [--json]
+
+Repair only metadata derivable from confined resident filesystem truth and report every change.
+`},
+		},
+	},
+	{
 		Name: "metrics", Summary: "Query, export, and maintain workflow telemetry",
 		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"},
 		MinPos: 0, MaxPos: 0, Gating: Gated,

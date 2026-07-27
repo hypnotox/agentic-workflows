@@ -28,6 +28,31 @@ func topicProject(t *testing.T) string {
 	writeADR(t, root, "0001-topic.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Topic"), testsupport.WithBody("## Decision\n\n1. Topic.\n")))
 	return root
 }
+func TestRepositoryEffortManagementCoverage(t *testing.T) {
+	p, err := Open("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, err := p.Topics()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"cmd/awf/effort.go", "internal/effort/types.go", "internal/worktree/manager.go"} {
+		t.Run(strings.ReplaceAll(path, "/", "-"), func(t *testing.T) {
+			matched := topic.TopicsForPath(corpus, path)
+			found := false
+			for _, candidate := range matched {
+				if candidate.ID.String() == "tooling/effort-management" {
+					found = candidate.ID.Domain == "tooling"
+				}
+			}
+			if !found {
+				t.Fatalf("%s did not resolve to tooling/effort-management: %#v", path, matched)
+			}
+		})
+	}
+}
+
 func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/bad.yaml"), "title: [bad\n")

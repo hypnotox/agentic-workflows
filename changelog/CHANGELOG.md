@@ -35,6 +35,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Add binary-owned lightweight effort records as repository-local resident state. `awf effort` now supports memory-by-default creation, deterministic list/show output, rename, explicit memory creation, complete, abandon, reopen, and confined repair from primary or linked worktrees; managed worktree creation remains reserved for the next implementation phase.
 - Pi workflows can now detour into an explicit derived child effort and return to the exact open
   parent phase only after the child terminal event, parent association, return marker, and session
   selection are durably settled. Interrupted completion and abandonment retry the same canonical

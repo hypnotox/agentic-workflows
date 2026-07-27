@@ -133,6 +133,18 @@ func TestLookup(t *testing.T) {
 	if got := strings.Join(topic.BoolFlags, ","); got != "--history,--references,--coverage,--json" {
 		t.Errorf("topic flags = %q", got)
 	}
+	effort, ok := Lookup("effort")
+	if !ok || len(effort.Children) != 9 {
+		t.Fatalf("effort spec = %#v, found %v", effort, ok)
+	}
+	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--no-memory,--worktree" {
+		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
+	}
+	for _, name := range []string{"new", "list", "show", "rename", "memory", "complete", "abandon", "reopen", "repair"} {
+		if _, found := effort.Child(name); !found {
+			t.Errorf("effort child %q missing", name)
+		}
+	}
 	metrics, ok := Lookup("metrics")
 	if !ok || strings.Join(metrics.BoolFlags, ",") != "--json" || strings.Join(metrics.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
 		t.Fatalf("metrics query spec = %#v, found %v", metrics, ok)
@@ -164,7 +176,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "audit", "metrics", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "audit", "effort", "metrics", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

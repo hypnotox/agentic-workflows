@@ -1,7 +1,7 @@
 ## Components
 
 - **`cmd/awf/`**: CLI entry point; `init`, `render`, `check`, `list`, `config`, `context`, `enable`,
-  `disable`, `new`, `audit`, `metrics`, `upgrade`, `uninstall`,
+  `disable`, `new`, `audit`, `effort`, `metrics`, `upgrade`, `uninstall`,
   `changelog`, `version` subcommands, where `check` is a group carrying the whole
   verification surface (`drift`, `state`, `invariants`, `prose`, `memory`, `commit`),
   dispatched by a generic parse-once driver (`dispatch.go`) over the declarative
@@ -99,6 +99,7 @@
 - **`internal/audit/`**: go-git-backed collection of the branch's commits plus the advisory
   workflow-conformance rules; powers `awf audit` and the blocking `awf check commit`
   (ADR-0017, ADR-0036).
+- **`internal/effort/`**: owns schema-1 lightweight effort records and normalized optional memory. It allocates lowercase UUIDv4 IDs, resolves repository-wide resident roots through native Git, serializes mutations under an owner-only repository lock, atomically replaces current-state JSON, preserves corrupt inputs, and joins assigned session IDs from the separate assignment authority without persisting that relationship twice. The reachable Phase 1 CLI supports new, list, show, rename, memory, complete, abandon, reopen, and repair; managed worktree creation remains reserved and rejected until its safety manager is available.
 - **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
@@ -134,7 +135,7 @@
 - **`internal/plan/`**: parses plan files under `docs/plans` and scaffolds new ones
   (`ParseDir`/`NewFile`); date-prefixed rather than sequentially numbered, unlike `internal/adr`
   (ADR-0097, ADR-0098). Read by the `awf check` plan-link validation and `awf new plan`.
-- **`internal/git/`**: centralised tolerant go-git repo-open (linked worktrees, submodules, the
+- **`internal/git/`**: native-Git control-root resolution identifies the invoking checkout, absolute common directory, and one confined primary checkout for repository-wide resident state, refusing bare, ambiguous, missing, symlinked, foreign-owned, or identity-mismatched topology as non-forceable hard safety failures. It otherwise provides centralised tolerant go-git repo-open (linked worktrees, submodules, the
   `worktreeConfig`-extension workaround) plus eligible working-path, commit-blob, range-blob, and
   staged-blob readers (each carrying its executable mode); read-only,
   shared by `awf audit` and `awf context`, and feeding the `internal/snapshot` seam that

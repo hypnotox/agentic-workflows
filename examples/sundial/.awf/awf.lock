@@ -840,7 +840,7 @@
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:cb34fcab4b52b7b38211c0dc520971b30d777c6bd6c10057642134c10c138862",
       "configHash": "sha256:661810b09f0cd676c999136730da1336f3584aa68c0773d425b81a237b723aa0",
-      "outputHash": "sha256:97e3e6b101d9b175248c20a6c05b4a98bd235b759482554cf7db5fe9c1d2b5e3"
+      "outputHash": "sha256:a109e081015baf6d202eaef5e59874ba4e13ec64559f949cd340046d6d681b40"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",

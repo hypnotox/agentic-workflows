@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-27
 ---
 # ADR-0164: Lightweight effort records and independent Pi telemetry
@@ -163,3 +163,5 @@ implementation.
 ## Status history
 
 - 2026-07-27: Proposed
+- 2026-07-27: Implementing; content-sha256: 13fe97f744f2a7c14fe59a7d8b2c117f5267d481885409d99c91525d461a70c2
+- 2026-07-27: Applied; state-sequence: 61; operations: add `tooling/effort-management:effort-record-authority`

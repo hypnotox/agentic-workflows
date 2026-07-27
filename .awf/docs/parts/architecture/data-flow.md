@@ -59,6 +59,8 @@ additionally path-filters them to the decision-record directories, so only a sta
 reaches its detector. The same snapshot seam serves the working, index, commit, and range universes
 the current-state checks compare.
 
+An `awf effort` command asks native Git for the invoking checkout, absolute common directory, and authoritative primary checkout. The invoking checkout remains tracked configuration authority, while the primary checkout's confined `.awf/efforts/` and `.awf/memory/` roots hold repository-wide local orchestration state. New allocates a lowercase UUIDv4 and creates normalized memory by default; list and show join any separately stored session assignments; rename and lifecycle operations atomically replace one schema-1 record under the repository lock; and repair changes only confined filesystem facts it can prove. Missing or malformed resident state is refused without rewriting the evidence. No effort record governs tracked project truth.
+
 An explicit protocol-2 lifecycle request creates an undecided discovery effort, selects or changes a
 closed route, starts the first named phase, transactionally closes an unmatched phase start and enters
 its successor, continues an already-open phase without changing its interval, manages session

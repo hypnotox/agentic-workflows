@@ -1,4 +1,9 @@
-<!-- awf:comment Replace the placeholder prose below, edit metadata paths, and add reviewed claims manually. -->
-Current project contracts for this topic are documented here.
+The awf binary owns lightweight repository-local effort records and their optional resident resources. These records coordinate local work without replacing tracked project authority.
 
 ## Claims
+
+### `invariant: effort-record-authority`
+
+The awf binary is the only allocator of lowercase UUIDv4 effort IDs and owns schema-1 current-state records at stable ID-derived paths, replacing each record atomically under a repository-local lock. A valid record has a trimmed nonblank UTF-8 title of at most 160 bytes; active, completed, or abandoned state; immutable UTC creation time and monotonic UTC update time; filesystem-truth memory presence; an exact legal worktree/integration pair; and sorted assigned session IDs joined logically from the separate assignment authority rather than duplicated in the persisted record. Creation defaults to normalized effort-owned memory, rename changes display metadata only, lifecycle changes retain memory and worktree metadata, reopen accepts either terminal state, and repair preserves corrupt input while changing and reporting only facts derivable from confined resident state. This binary-owned state is repository-local orchestration authority only; Git-tracked code, ADRs, plans, and documentation remain durable project truth and are never governed by an effort record.
+Origin: ADR-0164
+Backing: test
