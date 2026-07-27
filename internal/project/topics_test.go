@@ -47,6 +47,7 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 		"internal/effort/paths.go":                  "tooling/effort-management",
 		"internal/effort/paths_test.go":             "tooling/effort-management",
 		"internal/effort/platform_test.go":          "tooling/effort-management",
+		"internal/effort/platform_windows_test.go":  "tooling/effort-management",
 		"internal/effort/publication_darwin.go":     "tooling/effort-management",
 		"internal/effort/publication_linux.go":      "tooling/effort-management",
 		"internal/effort/publication_other.go":      "tooling/effort-management",
@@ -55,6 +56,7 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 		"internal/effort/safeio.go":                 "tooling/effort-management",
 		"internal/effort/safeio_darwin.go":          "tooling/effort-management",
 		"internal/effort/safeio_linux.go":           "tooling/effort-management",
+		"internal/effort/safeio_linux_test.go":      "tooling/effort-management",
 		"internal/effort/safeio_unix.go":            "tooling/effort-management",
 		"internal/effort/safeio_windows.go":         "tooling/effort-management",
 		"internal/effort/safety_test.go":            "tooling/effort-management",
@@ -69,6 +71,9 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 		"internal/git/controlroot.go":               "tooling/audit-and-snapshots",
 		"internal/git/controlroot_internal_test.go": "tooling/audit-and-snapshots",
 		"internal/git/controlroot_test.go":          "tooling/audit-and-snapshots",
+		"internal/git/controlroot_unix.go":          "tooling/audit-and-snapshots",
+		"internal/git/controlroot_windows.go":       "tooling/audit-and-snapshots",
+		"internal/git/controlroot_windows_test.go":  "tooling/audit-and-snapshots",
 	}
 	for path, topicID := range paths {
 		t.Run(strings.ReplaceAll(path, "/", "-"), func(t *testing.T) {

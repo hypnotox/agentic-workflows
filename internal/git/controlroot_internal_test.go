@@ -249,14 +249,20 @@ func (f controlRootFileInfo) IsDir() bool        { return false }
 func (f controlRootFileInfo) Sys() any           { return f.sys }
 
 func TestControlRootOwnershipReflectionFallbacks(t *testing.T) {
-	for _, sys := range []any{nil, "not-struct", struct{ Other uint32 }{1}, &struct{ Other uint32 }{1}} {
-		if !ownedByCurrentUser(controlRootFileInfo{sys: sys}) {
-			t.Fatalf("unknown ownership representation %T refused", sys)
+	unknown := []any{nil, "not-struct", struct{ Other uint32 }{1}, &struct{ Other uint32 }{1}}
+	var pointer *struct{ Uid uint32 }
+	unknown = append(unknown, pointer)
+	for _, sys := range unknown {
+		got := ownedByCurrentUser(controlRootFileInfo{sys: sys})
+		if runtime.GOOS == "windows" && got {
+			t.Fatalf("Windows ownership representation without SID %T accepted", sys)
+		}
+		if runtime.GOOS != "windows" && !got {
+			t.Fatalf("unknown Unix ownership representation %T refused", sys)
 		}
 	}
-	var pointer *struct{ Uid uint32 }
-	if !ownedByCurrentUser(controlRootFileInfo{sys: pointer}) {
-		t.Fatal("nil ownership pointer refused")
+	if runtime.GOOS == "windows" {
+		return
 	}
 	if !ownedByCurrentUser(controlRootFileInfo{sys: struct{ Uid uint32 }{uint32(os.Geteuid())}}) {
 		t.Fatal("current owner refused")

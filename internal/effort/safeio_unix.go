@@ -16,12 +16,22 @@ func ownerOK(info os.FileInfo) bool {
 	return !ok || stat.Uid == uint32(os.Geteuid())
 }
 
+func validatePathOwner(path string, info os.FileInfo, _ *os.File) error {
+	if !ownerOK(info) { // coverage-ignore: exercised only when the test process has privilege to create a foreign-owned fixture
+		return safety("foreign-owner", path, nil)
+	}
+	return nil
+}
+
 func platformLstatRegular(path string) (fileIdentity, error) {
 	info, err := os.Lstat(path)
 	if err != nil {
 		return fileIdentity{}, fmt.Errorf("lstat %s: %w", path, err)
 	}
 	if err := validateLeaf(path, info); err != nil {
+		return fileIdentity{}, err
+	}
+	if err := validatePathOwner(path, info, nil); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
 		return fileIdentity{}, err
 	}
 	return fileIdentity{info: info}, nil

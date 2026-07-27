@@ -21,8 +21,6 @@ func validateLeaf(path string, info os.FileInfo) error {
 		return safety("symlink", path, nil)
 	case !info.Mode().IsRegular():
 		return safety("file-type", path, fmt.Errorf("mode %s is not a regular file", info.Mode()))
-	case !ownerOK(info): // coverage-ignore: exercised only when the test process has privilege to create a foreign-owned fixture
-		return safety("foreign-owner", path, nil)
 	case linkCount(info) != 1:
 		return safety("identity", path, fmt.Errorf("regular file has %d links, want 1", linkCount(info)))
 	}
@@ -47,6 +45,9 @@ func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, 
 		return closeOnError(fmt.Errorf("inspect opened file %s: %w", path, err))
 	}
 	if err := validateLeaf(path, opened); err != nil {
+		return closeOnError(err)
+	}
+	if err := validatePathOwner(path, opened, file); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
 		return closeOnError(err)
 	}
 	if err := validateOpenedFile(path, file); err != nil { // coverage-ignore: Unix has no additional handle validation; Windows exercises this branch in platform tests
@@ -108,6 +109,9 @@ func requireAbsent(path string) error {
 		return fmt.Errorf("lstat destination %s: %w", path, err)
 	}
 	if err := validateLeaf(path, info); err != nil {
+		return err
+	}
+	if err := validatePathOwner(path, info, nil); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
 		return err
 	}
 	return os.ErrExist

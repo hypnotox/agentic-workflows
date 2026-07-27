@@ -351,8 +351,8 @@ func managedDirectoryTruth(path string) (bool, error) {
 	if !info.IsDir() {
 		return false, safety("file-type", path, fmt.Errorf("mode %s is not a directory", info.Mode()))
 	}
-	if !ownerOK(info) { // coverage-ignore: exercised only when the test process has privilege to create a foreign-owned directory fixture
-		return false, safety("foreign-owner", path, nil)
+	if err := validatePathOwner(path, info, nil); err != nil { // coverage-ignore: requires a foreign-owned directory fixture created by a privileged test process
+		return false, err
 	}
 	return true, nil
 }

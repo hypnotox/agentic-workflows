@@ -15,8 +15,12 @@ and create the GitHub Release whose body is those notes, passed as `--release-no
 own commit-derived changelog is disabled: deriving notes from commit subjects leaked internal
 commits whose scopes dodged the exclude filters (ADR-0096). The effort authority uses each target's
 native no-follow file access, repository lock, and conditional atomic publication primitives: creation
-never overwrites an existing name, while replacement either durably publishes the expected update or
-restores an unexpected raced destination. Prebuilt binary download is the canonical install path;
+never overwrites an existing name, while replacement either publishes the expected update or restores
+an unexpected raced destination. On Windows, creation uses MoveFileEx write-through; replacement uses
+ReplaceFileW with its supported zero flags, then reopens the published no-follow file and calls
+FlushFileBuffers. Windows documents no directory-fsync equivalent, so the contract claims atomic
+namespace replacement and an explicit published-file flush, not Unix directory-fsync semantics.
+Prebuilt binary download is the canonical install path;
 `go install` is the source fallback.
 
 ## Versioning

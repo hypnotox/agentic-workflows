@@ -5,6 +5,7 @@ package effort
 import (
 	"errors"
 	"fmt"
+	"os"
 	"syscall"
 	"unsafe"
 
@@ -13,51 +14,123 @@ import (
 
 var replaceFileW = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFileW")
 
-const replaceFileWriteThrough = 0x00000001
+type windowsPublicationAPI struct {
+	move    func(string, string, uint32) error
+	replace func(string, string, string, uint32) error
+	inspect func(string) (fileIdentity, error)
+	same    func(fileIdentity, fileIdentity) bool
+	flush   func(string, fileIdentity) error
+}
 
-// publishAtomic uses a write-through no-replace move for creation. ReplaceFileW
-// atomically saves the displaced destination before installing the new file;
-// an identity mismatch is atomically restored, preserving the raced bytes.
+var nativeWindowsPublicationAPI = windowsPublicationAPI{
+	move: func(fromPath, toPath string, flags uint32) error {
+		from, err := windows.UTF16PtrFromString(fromPath)
+		if err != nil {
+			return fmt.Errorf("encode move source %s: %w", fromPath, err)
+		}
+		to, err := windows.UTF16PtrFromString(toPath)
+		if err != nil {
+			return fmt.Errorf("encode move destination %s: %w", toPath, err)
+		}
+		return windows.MoveFileEx(from, to, flags)
+	},
+	replace: replaceFile,
+	inspect: lstatRegular,
+	same: func(left, right fileIdentity) bool {
+		return os.SameFile(left.info, right.info)
+	},
+	flush: flushPublishedWindowsFile,
+}
+
+// publishAtomic uses MoveFileEx with its documented write-through flag for
+// creation. ReplaceFileW accepts only its documented merge-error flags, so
+// replacement uses zero flags and then reopens and flushes the published file.
+// Windows documents no directory fsync primitive; the namespace operation is
+// atomic, while the explicit file flush is the available durability boundary.
 func publishAtomic(tempPath, path string, expected *fileIdentity) error {
-	if expected == nil {
-		from, err := windows.UTF16PtrFromString(tempPath)
-		if err != nil {
-			return fmt.Errorf("encode creation source %s: %w", tempPath, err)
-		}
-		to, err := windows.UTF16PtrFromString(path)
-		if err != nil {
-			return fmt.Errorf("encode creation destination %s: %w", path, err)
-		}
-		return windows.MoveFileEx(from, to, windows.MOVEFILE_WRITE_THROUGH)
-	}
+	return publishAtomicWindows(tempPath, path, expected, nativeWindowsPublicationAPI)
+}
 
-	displacedPath := tempPath + ".displaced"
-	if err := replaceFile(path, tempPath, displacedPath); err != nil {
-		return err
+func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api windowsPublicationAPI) error {
+	published, err := api.inspect(tempPath)
+	if err != nil {
+		return fmt.Errorf("inspect Windows publication source %s: %w", tempPath, err)
 	}
-	displaced, err := lstatRegular(displacedPath)
-	mismatch := unexpectedPublicationIdentity(path, expected, displaced, err)
-	if mismatch == nil {
-		from, encodeErr := windows.UTF16PtrFromString(displacedPath)
-		if encodeErr != nil { // coverage-ignore: displacedPath was derived from an already encoded filesystem path
-			return fmt.Errorf("encode displaced effort record %s: %w", displacedPath, encodeErr)
+	if expected == nil {
+		if err := api.move(tempPath, path, windows.MOVEFILE_WRITE_THROUGH); err != nil {
+			return err
 		}
-		to, encodeErr := windows.UTF16PtrFromString(tempPath)
-		if encodeErr != nil { // coverage-ignore: tempPath was accepted by CreateTemp
-			return fmt.Errorf("encode displaced cleanup path %s: %w", tempPath, encodeErr)
-		}
-		if moveErr := windows.MoveFileEx(from, to, windows.MOVEFILE_WRITE_THROUGH); moveErr != nil {
-			return fmt.Errorf("retain displaced effort record %s for cleanup after publishing %s: %w", displacedPath, path, moveErr)
+		if err := api.flush(path, published); err != nil {
+			return fmt.Errorf("flush created file %s after atomic publication: %w", path, err)
 		}
 		return nil
 	}
-	if rollbackErr := replaceFile(path, displacedPath, tempPath); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
+
+	displacedPath := tempPath + ".displaced"
+	if err := api.replace(path, tempPath, displacedPath, 0); err != nil {
+		return err
+	}
+	displaced, inspectErr := api.inspect(displacedPath)
+	mismatch := unexpectedWindowsPublicationIdentity(path, expected, displaced, inspectErr, api.same)
+	if mismatch == nil {
+		if err := api.move(displacedPath, tempPath, windows.MOVEFILE_WRITE_THROUGH); err != nil {
+			return fmt.Errorf("retain displaced effort record %s for cleanup after publishing %s: %w", displacedPath, path, err)
+		}
+		if err := api.flush(path, published); err != nil {
+			return fmt.Errorf("flush replaced file %s after atomic publication: %w", path, err)
+		}
+		return nil
+	}
+	if rollbackErr := api.replace(path, displacedPath, tempPath, 0); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
 		return errors.Join(mismatch, fmt.Errorf("restore unexpected destination at %s after refused publication: %w", path, rollbackErr))
+	}
+	if inspectErr == nil {
+		if flushErr := api.flush(path, displaced); flushErr != nil {
+			return errors.Join(mismatch, fmt.Errorf("flush restored unexpected destination %s: %w", path, flushErr))
+		}
 	}
 	return mismatch
 }
 
-func replaceFile(path, replacement, backup string) error {
+func unexpectedWindowsPublicationIdentity(path string, expected *fileIdentity, displaced fileIdentity, inspectErr error, same func(fileIdentity, fileIdentity) bool) error {
+	if inspectErr == nil && same(*expected, displaced) {
+		return nil
+	}
+	if inspectErr != nil {
+		return inspectErr
+	}
+	return safety("identity", path, errors.New("destination changed before atomic publication"))
+}
+
+func flushPublishedWindowsFile(path string, expected fileIdentity) error {
+	file, err := openWindowsPathNoFollow(path, windows.GENERIC_READ|windows.GENERIC_WRITE, windows.OPEN_EXISTING, false)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("inspect reopened published file %s: %w", path, err)
+	}
+	if err := validateLeaf(path, info); err != nil {
+		return err
+	}
+	if err := validatePathOwner(path, info, file); err != nil {
+		return err
+	}
+	if err := validateOpenedFile(path, file); err != nil {
+		return err
+	}
+	if !os.SameFile(expected.info, info) {
+		return safety("identity", path, errors.New("published file changed before durability flush"))
+	}
+	if err := windows.FlushFileBuffers(windows.Handle(file.Fd())); err != nil {
+		return err
+	}
+	return nil
+}
+
+func replaceFile(path, replacement, backup string, flags uint32) error {
 	pathPtr, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return fmt.Errorf("encode replaced path %s: %w", path, err)
@@ -74,7 +147,7 @@ func replaceFile(path, replacement, backup string) error {
 		uintptr(unsafe.Pointer(pathPtr)),
 		uintptr(unsafe.Pointer(replacementPtr)),
 		uintptr(unsafe.Pointer(backupPtr)),
-		replaceFileWriteThrough,
+		uintptr(flags),
 		0,
 		0,
 	)

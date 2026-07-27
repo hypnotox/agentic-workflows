@@ -6,10 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
-	"reflect"
-	"strconv"
 	"strings"
 )
 
@@ -405,12 +402,9 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 
 func worktreeGitDir(worktree string) (string, error) {
 	dotGit := filepath.Join(worktree, ".git")
-	info, err := os.Lstat(dotGit)
+	info, err := platformLstatComponent(dotGit, false)
 	if err != nil {
 		return "", err
-	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return "", &HardSafetyError{Category: "symlink", Path: dotGit}
 	}
 	if info.IsDir() {
 		return filepath.Clean(dotGit), nil
@@ -523,12 +517,8 @@ func lstatComponents(path string) error {
 			continue
 		}
 		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
-		if err != nil {
-			return fmt.Errorf("lstat %s: %w", current, err)
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return &HardSafetyError{Category: "symlink", Path: current}
+		if _, err := platformLstatComponent(current, false); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -544,50 +534,29 @@ func lstatExistingComponents(path string) error {
 			continue
 		}
 		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
-		if os.IsNotExist(err) {
+		if _, err := platformLstatComponent(current, false); os.IsNotExist(unwrappedError(err)) {
 			return nil
-		}
-		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return fmt.Errorf("lstat %s: %w", current, err)
-		}
-		if info.Mode()&os.ModeSymlink != 0 { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return &HardSafetyError{Category: "symlink", Path: current}
+		} else if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+			return err
 		}
 	}
 	return nil
 }
 
 func lstatResidentComponents(primary, resident string) error {
-	info, err := os.Lstat(primary)
-	if os.IsNotExist(err) {
+	if _, err := platformLstatComponent(primary, true); os.IsNotExist(unwrappedError(err)) {
 		return nil
-	}
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return fmt.Errorf("lstat %s: %w", primary, err)
-	}
-	if info.Mode()&os.ModeSymlink != 0 { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return &HardSafetyError{Category: "symlink", Path: primary}
-	}
-	if !ownedByCurrentUser(info) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return &HardSafetyError{Category: "foreign-owner", Path: primary}
+	} else if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		return err
 	}
 	relative, _ := filepath.Rel(primary, resident)
 	current := primary
 	for _, component := range strings.Split(relative, string(filepath.Separator)) {
 		current = filepath.Join(current, component)
-		info, err := os.Lstat(current)
-		if os.IsNotExist(err) {
+		if _, err := platformLstatComponent(current, true); os.IsNotExist(unwrappedError(err)) {
 			return nil
-		}
-		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return fmt.Errorf("lstat %s: %w", current, err)
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return &HardSafetyError{Category: "symlink", Path: current}
-		}
-		if !ownedByCurrentUser(info) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return &HardSafetyError{Category: "foreign-owner", Path: current}
+		} else if err != nil {
+			return err
 		}
 	}
 	return nil
@@ -599,35 +568,6 @@ func identityError(path string, err error) error {
 		return err
 	}
 	return &HardSafetyError{Category: "repository-identity", Path: path, Err: err}
-}
-
-func ownedByCurrentUser(info os.FileInfo) bool {
-	value := reflect.ValueOf(info.Sys())
-	if !value.IsValid() {
-		return true
-	}
-	if value.Kind() == reflect.Pointer {
-		if value.IsNil() {
-			return true
-		}
-		value = value.Elem()
-	}
-	if value.Kind() != reflect.Struct {
-		return true
-	}
-	uid := value.FieldByName("Uid")
-	if !uid.IsValid() || !uid.CanUint() {
-		return true
-	}
-	current, err := user.Current()
-	if err != nil { // coverage-ignore: supported release platforms provide the current process identity
-		return false
-	}
-	currentUID, err := strconv.ParseUint(current.Uid, 10, 64)
-	if err != nil { // coverage-ignore: Windows exposes an SID rather than the Unix Uid field inspected above
-		return true
-	}
-	return uid.Uint() == currentUID
 }
 
 func unwrappedError(err error) error {
