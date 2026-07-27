@@ -55,10 +55,11 @@ func Check(records []adr.ADR, corpusTopics []topic.Topic) []Finding {
 	projected, projectionFindings := projectADRs(records)
 	applied := appliedOperations(projected)
 	removed := removedSet(applied)
+	retiredTopics := retiredTopicOperations(applied, topics)
 	findings := append([]Finding(nil), projectionFindings...)
 	findings = append(findings, checkSequences(projected)...)
 	findings = append(findings, checkOperationHistory(applied, hasLegacyRecord(records))...)
-	findings = append(findings, checkForward(projected, claims, topics, removed)...)
+	findings = append(findings, checkForward(projected, claims, topics, retiredTopics, removed)...)
 	findings = append(findings, checkBackward(records, applied, claims)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
@@ -197,14 +198,14 @@ func removedSet(applied []operationAt) map[string]bool {
 	return removed
 }
 
-func checkForward(projected []projectedADR, claims map[string]topic.Claim, topics map[string]bool, removed map[string]bool) []Finding {
+func checkForward(projected []projectedADR, claims map[string]topic.Claim, topics, retiredTopics map[string]bool, removed map[string]bool) []Finding {
 	var findings []Finding
 	for _, p := range projected {
 		needsTopic := p.record.ReachedAccepted() || len(p.progress.Applied) != 0 || p.record.IsImplemented()
 		for _, applied := range p.progress.Applied {
 			op := applied.Operation
 			if needsTopic {
-				findings = append(findings, checkTopic(p.record, op, topics)...)
+				findings = append(findings, checkTopic(p.record, op, topics, retiredTopics[op.ID])...)
 			}
 			claim, present := claims[op.ID]
 			findings = append(findings, checkAppliedOp(p.record, op, claim, present, removed[op.ID])...)
@@ -217,13 +218,13 @@ func checkForward(projected []projectedADR, claims map[string]topic.Claim, topic
 				claim, present := claims[op.ID]
 				findings = append(findings, checkAbandonedOp(p.record, op, claim, present)...)
 				if p.record.ReachedAccepted() {
-					findings = append(findings, checkTopic(p.record, op, topics)...)
+					findings = append(findings, checkTopic(p.record, op, topics, false)...)
 				}
 			}
 		}
 		for _, op := range p.progress.Remaining {
 			if needsTopic {
-				findings = append(findings, checkTopic(p.record, op, topics)...)
+				findings = append(findings, checkTopic(p.record, op, topics, false)...)
 			}
 			if op.Verb == adr.OpAdd && removed[op.ID] {
 				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Number, op.ID)})
@@ -235,12 +236,47 @@ func checkForward(projected []projectedADR, claims map[string]topic.Claim, topic
 	return findings
 }
 
-func checkTopic(a adr.ADR, op adr.Operation, topics map[string]bool) []Finding {
+func checkTopic(a adr.ADR, op adr.Operation, topics map[string]bool, retired bool) []Finding {
 	topicID, _, _ := strings.Cut(op.ID, ":")
-	if !topics[topicID] {
+	if !topics[topicID] && !retired {
 		return []Finding{{Error, fmt.Sprintf("ADR-%s operation %s targets missing topic %s", a.Number, op.Verb, topicID)}}
 	}
 	return nil
+}
+
+// retiredTopicOperations identifies applied claims that fully document a topic
+// retired with its final claim. Their historical operations require no active
+// topic metadata, unlike pending or canceled operations.
+func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[string]bool {
+	byTopic := map[string]map[string][]operationAt{}
+	for _, operation := range applied {
+		topicID, _, _ := strings.Cut(operation.op.ID, ":")
+		if topics[topicID] {
+			continue
+		}
+		if byTopic[topicID] == nil {
+			byTopic[topicID] = map[string][]operationAt{}
+		}
+		byTopic[topicID][operation.op.ID] = append(byTopic[topicID][operation.op.ID], operation)
+	}
+	retired := map[string]bool{}
+	for _, histories := range byTopic {
+		complete := true
+		for _, history := range histories {
+			sort.SliceStable(history, func(i, j int) bool { return history[i].seq < history[j].seq })
+			if history[0].op.Verb != adr.OpAdd || history[len(history)-1].op.Verb != adr.OpRemove {
+				complete = false
+			}
+		}
+		if complete {
+			for _, history := range histories {
+				for _, operation := range history {
+					retired[operation.op.ID] = true
+				}
+			}
+		}
+	}
+	return retired
 }
 
 func checkPendingOp(a adr.ADR, op adr.Operation, present bool) []Finding {

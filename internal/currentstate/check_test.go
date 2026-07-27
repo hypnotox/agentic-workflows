@@ -185,6 +185,16 @@ func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 	}
 }
 
+func TestCheckDestinationTopicRetiredWithFinalClaim(t *testing.T) {
+	records := []adr.ADR{
+		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/retired:only")),
+		rec("0138", "Implemented", 2, op(adr.OpRemove, "d/retired:only")),
+	}
+	if got := messages(currentstate.Check(records, nil)); strings.Contains(got, "targets missing topic d/retired") {
+		t.Fatalf("final-claim removal did not permit retiring its topic:\n%s", got)
+	}
+}
+
 func TestCheckDestinationTopic(t *testing.T) {
 	for _, verb := range []adr.OpVerb{adr.OpAdd, adr.OpUpdate, adr.OpRemove} {
 		t.Run("Accepted "+string(verb)+" missing", func(t *testing.T) {
