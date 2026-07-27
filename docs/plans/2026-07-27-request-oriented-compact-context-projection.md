@@ -20,7 +20,7 @@ The hand-written `x` runner captures `./awf context` output byte-for-byte, repla
 ## File structure
 
 - **Created:** `internal/contextdelivery/delivery.go`, `internal/contextdelivery/delivery_test.go`; `internal/contextspill/log.go`, `internal/contextspill/log_test.go`; `cmd/contextspilllog/main.go`, `cmd/contextspilllog/main_test.go`; `internal/project/context_wrapper_test.go`; `templates/partials/context-spill.md`; this plan.
-- **Modified:** `internal/topic/topic.go`, `internal/topic/topic_test.go`; `internal/project/context.go`, `context_paths.go`, `context_projection.go`, `context_artifacts.go`, `context_adr.go` and their same-basename `_test.go` files; `cmd/awf/context.go`, `context_test.go`, `dispatch.go`; `internal/clispec/clispec.go`, `clispec_test.go`; `internal/project/spine_test.go`, `example_wiring_test.go`; `x`, `.gitignore`; `README.md`, `changelog/CHANGELOG.md`; `.awf/parts/working-with-awf/commands.md`, `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/prepend.md`, `.awf/docs/parts/roadmap/ideas.md`, `.awf/docs/parts/testing/layout.md`, `.awf/domains/parts/tooling/current-state.md`; `.awf/topics/parts/tooling/context-and-topic/current-state.md`, `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`; `templates/docs/working-with-awf.md.tmpl`; the context-calling skill templates named in Phase 3; ADR-0165 and this plan; generated root and Sundial docs, skills, workflows, decision index, and lock files selected by `./x render`.
+- **Modified:** `internal/topic/topic.go`, `internal/topic/topic_test.go`; `internal/project/context.go`, `context_paths.go`, `context_projection.go`, `context_artifacts.go`, `context_adr.go` and their same-basename `_test.go` files; `cmd/awf/context.go`, `context_test.go`, `dispatch.go`; `internal/clispec/clispec.go`, `clispec_test.go`; `internal/project/spine_test.go`, `example_wiring_test.go`; `x`, `.gitignore`; `README.md`, `changelog/CHANGELOG.md`; `.awf/parts/agents-doc/commands.md`, `.awf/parts/working-with-awf/commands.md`, `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/prepend.md`, `.awf/docs/parts/roadmap/ideas.md`, `.awf/docs/parts/testing/layout.md`, `.awf/domains/parts/tooling/current-state.md`; `.awf/topics/parts/tooling/context-and-topic/current-state.md`, `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`; `templates/docs/working-with-awf.md.tmpl`; the context-calling skill templates named in Phase 3; ADR-0165 and this plan; generated root and Sundial agent guides, docs, skills, workflows, decision index, and lock files selected by `./x render`.
 - **Deleted:** none. Obsolete JSON structs, tags, render branches, and JSON-focused tests are removed from the modified Go files rather than deleting a whole file.
 
 ## Phase 1: Replace the context result and cap delivery
@@ -38,14 +38,45 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
   In `internal/project/context_test.go`, add working/index divergence, no-planned-output, request-order, mixed-directory-over-20-files, static fallback, and existing classification-preservation fixtures. Tests must initially fail against the old model. Run `go test ./internal/topic ./internal/project -run 'Summary|ContextRequest|ContextGroup|ContextCensus|MixedDirectory|StaticContext'`; failure must be confined to the new expectations.
 
-- [ ] **Task 1.2: Implement Summary parsing, census, and stable grouping.** In `internal/topic/topic.go`, add `Summary string` to `Claim`; recognize `Summary:` as reserved metadata; require it before `Origin:`, nonblank, single-line, and at most 160 Unicode code points. In `internal/project/context_paths.go`, replace `ContextProjection`, flat `ContextRequest.EffectivePaths`, `ContextPath`, and JSON-shaped structs with a human-contract-neutral model containing:
-  - a closed `ContextFacet` enum in canonical order `all-rules`, `evidence`, `selectors`, `references`, `pending`, `artifacts`, plus validation and normalized-set helpers;
-  - a `ContextOptions` carrying normalized facets and selection origin;
-  - ordered request reports retaining raw display and normalized lookup values;
-  - exact/Git path entries, directory census counts, and directory groups with optional disclosed members;
-  - semantic path attribution and warnings sufficient to build a canonical comparison key without rendered text.
+- [ ] **Task 1.2: Implement Summary parsing, census, and stable grouping.** In `internal/topic/topic.go`, add `Summary string` to `Claim`; recognize `Summary:` as reserved metadata; require it before `Origin:`, nonblank, single-line, and at most 160 Unicode code points. In `internal/project/context_paths.go`, replace `ContextProjection`, flat `ContextRequest.EffectivePaths`, `ContextPath`, and JSON-shaped structs with these contract-bearing declarations (existing `DomainRef`, `ArtifactRecord`, `ADRArtifactContext`, and claim-detail types may be narrowed and reused behind the named fields):
 
-  Refactor `buildContextRequests`, `assembleContextUniverse`, and `classifyContextPath` across `internal/project/context.go` and `context_paths.go` so one selected snapshot supplies both included and excluded census data. Stop traversal at nested adopter and symlink boundaries; never infer absent generated files. Preserve classification precedence and safe glob-literal behavior. Build the grouping key from complete semantic identity before projection so `--show` and `--full` cannot change grouping. Preserve public `ContextFor`, staged-root, Git-selection, artifact, uncovered, and static entry points through options-based internal helpers rather than parallel concise/full implementations. Run `gofmt -w internal/topic internal/project && go test ./internal/topic ./internal/project`; all Task 1.1 tests and preserved snapshot/classification tests must pass.
+  ```go
+  type ContextFacet string
+  const (
+      FacetAllRules ContextFacet = "all-rules"
+      FacetEvidence ContextFacet = "evidence"
+      FacetSelectors ContextFacet = "selectors"
+      FacetReferences ContextFacet = "references"
+      FacetPending ContextFacet = "pending"
+      FacetArtifacts ContextFacet = "artifacts"
+  )
+  type ContextSelection string
+  const (
+      SelectionExplicit ContextSelection = "explicit"
+      SelectionStaged ContextSelection = "staged"
+      SelectionRange ContextSelection = "range"
+  )
+  type ContextOptions struct { Selection ContextSelection; Range string; Facets []ContextFacet }
+  type ContextResult struct { Selection ContextSelection; Range string; Requests []ContextRequestReport; Topics []TopicImpact }
+  type ContextRequestReport struct { Index int; Argument, Lookup string; Kind RequestStatus; Exact *ContextExactEntry; Directory *ContextDirectory }
+  type ContextExactEntry struct { Path string; Context ContextPathImpact }
+  type ContextDirectory struct { Included int; Excluded []ContextClassificationCount; Groups []ContextGroup }
+  type ContextClassificationCount struct { Classification PathClassification; Count int }
+  type ContextGroup struct { Count int; Members []string; Context ContextPathImpact }
+  type ContextPathImpact struct { Classification PathClassification; NestedRoot string; TargetInsideRepository *bool; Provenance []ContextProvenance; Domains []DomainRef; Topics []ContextPathTopic; DirectRuleIDs, InvariantIDs, ProofIDs []string; Warnings []ContextWarning; ADR *ADRArtifactContext }
+  type ContextProvenance struct { Role, Identity string; Sources, Outputs, Navigation []ArtifactLink }
+  type ContextPathTopic struct { ID string; DirectClaimIDs []string }
+  type ContextWarning string
+  type TopicImpact struct { ID, Title, Summary string; Direct, Invariants, Additional, Referenced []ContextClaimImpact; Pending ContextPendingImpact; Selectors *ContextSelectorImpact }
+  type ContextClaimImpact struct { ID, Type, Summary, Backing, Verify string; Evidence []ContextEvidence; Incoming, Outgoing []string }
+  type ContextEvidence struct { Kind string; Count int; Sites []topic.MarkerSite }
+  type ContextPendingImpact struct { OperationCount int; ADRs []string; AdditionalADRCount int; Operations []PendingChange }
+  type ContextSelectorImpact struct { DomainPaths, TopicPaths []string; DeclaredGlobal bool }
+  ```
+
+  `ParseContextFacets(values []string, full bool) ([]ContextFacet, error)` validates, deduplicates, and returns the constants in declaration order; `full` supplies all constants and composes with no explicit values. `ContextForOptions(paths []string, options ContextOptions)` and staged/root equivalents are the only semantic assembly funnel; existing public convenience functions either delegate or are removed with their callers. `buildContextRequests(queries []string, set contextPathSet, options ContextOptions) []ContextRequestReport` retains every nonblank raw argument. `contextGroupKey(ContextPathImpact) string` uses deterministic length-prefixed fields from the full semantic impact, including provenance edges, and never rendered text or facet visibility.
+
+  Refactor `assembleContextUniverse` and `classifyContextPath` across `internal/project/context.go` and `context_paths.go` so one selected snapshot supplies both included and excluded census data. Stop traversal at nested adopter and symlink boundaries; never infer absent generated files. Preserve classification precedence and safe glob-literal behavior. `Members` is the complete sorted set only when `Count <= 3` and is an empty non-nil slice otherwise; no other field retains those members. Build the grouping key before facet projection so `--show` and `--full` cannot change grouping. Run `gofmt -w internal/topic internal/project && go test ./internal/topic ./internal/project`; all Task 1.1 tests and preserved snapshot/classification tests must pass.
 
 - [ ] **Task 1.3: Specify authority categories and every facet.** Rewrite `internal/project/context_projection_test.go` around the closest-category order: directly related claims, applicable non-direct invariants, additional topic rules, referenced context, then pending changes. Assert a directly marker-selected invariant stays direct, a claim occupies only its closest category, and authority shared by request blocks renders once. Cover summary behavior exactly:
   - prefer valid `Claim.Summary`;
@@ -71,7 +102,48 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
 - [ ] **Task 1.6: Implement delivery, CLI grammar, and human rendering.** Create `internal/contextdelivery/delivery.go` with `Deliver(rendered []byte, repositoryRoot string, stdout io.Writer) error` and test-only injectable seams. Canonicalize `os.TempDir()` and repository root before `os.CreateTemp`; reject unsafe containment/newlines; verify owner-only permissions; write/close the exact complete rendering before emitting the two notice lines; use complete-write loops; and clean up on every failed delivery path. Successful callers own deletion.
 
-  In `internal/clispec/clispec.go`, remove `--json`, add repeatable `--show`, and document facets, grouping, the 8 KiB boundary, notice grammar, and caller deletion. In `cmd/awf/dispatch.go`, normalize repeated facet values and pass options. Rewrite `cmd/awf/context.go` so normal, uncovered, and static text render into `bytes.Buffer` through human-only renderers and then call `contextdelivery.Deliver`; remove JSON encoding, concise/full branches, and direct streaming. Render each request as `[n] <original argument>`, show directory census/groups and exact/Git entries under the request, and render globally deduplicated authority categories after requests. Do not emit examples, hidden paths, full claim prose, or an alternate structured form. Run `gofmt -w internal/contextdelivery internal/clispec cmd/awf && go test ./internal/contextdelivery ./internal/topic ./internal/project ./internal/clispec ./cmd/awf`; every focused test passes.
+  In `internal/clispec/clispec.go`, remove `--json`, add repeatable `--show`, and document facets, grouping, the 8 KiB boundary, notice grammar, and caller deletion. In `cmd/awf/dispatch.go`, normalize repeated facet values and pass options. Rewrite `cmd/awf/context.go` so normal, uncovered, and static text render into `bytes.Buffer` through human-only renderers and then call `contextdelivery.Deliver`; remove JSON encoding, concise/full branches, and direct streaming. Pin the sole text contract in table-driven golden fixtures. The representative directory/default grammar is exactly:
+
+  ```text
+  context: live state for this project
+  Selection: explicit
+
+  ## Requests
+  [1] internal/example
+    Directory: 5 included; 2 excluded
+    Excluded: generated-output=1, context-ignored=1
+    Group 1: 2 files
+      Members: internal/example/a.go, internal/example/b.go
+      Classification: covered
+      Provenance: none
+      Domains: tooling
+      Topics: tooling/example
+      Direct rules: tooling/example:direct-rule
+      Invariants: tooling/example:always-safe
+      Proofs: tooling/example:always-safe
+    Group 2: 3 files
+      Members: internal/example/c.go, internal/example/d.go, internal/example/e.go
+      Classification: covered
+      Provenance: none
+      Domains: tooling
+      Topics: tooling/example
+      Direct rules: none
+      Invariants: tooling/example:always-safe
+      Proofs: tooling/example:always-safe
+
+  ## Authority
+  tooling/example - Example
+    Summary: Example implementation authority.
+    Directly related:
+      tooling/example:direct-rule [rule] Direct rule summary.
+    Applicable invariants:
+      tooling/example:always-safe [invariant] Safety summary.
+    Pending: 1 operation from ADR-0165
+  ```
+
+  Exact and Git entries replace the `Directory`/group lines with `File: <path>` followed by the same eight impact lines; staged uses `Selection: staged`, range uses `Selection: range <literal-range>`, and both render one `[n] <path>` block per sorted selected file. Zero values render `none`, not an omitted label. A group above three has `Group N: <count> files` followed immediately by `Classification` and never a `Members` line. Warnings follow Proofs as one `Warning: <closed-warning-text>` line each. `--show selectors` adds `Selectors: domain=<Go slice>; topic=<Go slice>; both must match`; `evidence` adds `Backing`, `Verify`, and either `Evidence <kind>: <path>:<line>...` or `Evidence <kind>: <count> sites`; `references` adds `Incoming:`/`Outgoing:`; `pending` replaces the bounded Pending line with one `Pending operation: ADR-<n> <op> <claim> [<progress>]` per operation; `artifacts` expands each compact Provenance line with indented Source, Output, and Navigate lines. Category order is Directly related, Applicable invariants, Additional topic rules, Referenced context, Pending. Empty categories are omitted.
+
+  Explicit ADR goldens use the same request header and impact labels, then `ADR: ADR-<n> <title> [<status>, <mutability>]`, `Authority role: <role>`, and facet lines in declaration/progress order. Static normal output is exactly `context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n`. Preserve uncovered human grammar from `printUncovered` exactly, including section ordering and final newline, changing only JSON removal and capped delivery. Do not emit examples, hidden paths, full claim prose, or an alternate structured form. Run `gofmt -w internal/contextdelivery internal/clispec cmd/awf && go test ./internal/contextdelivery ./internal/topic ./internal/project ./internal/clispec ./cmd/awf`; every focused test passes.
 
 - [ ] **Task 1.7: Apply ADR operations 1-13, update active documentation, render, and commit.** In `.awf/topics/parts/tooling/context-and-topic/current-state.md`, mutate exactly the first thirteen ADR-0165 operations in declaration order: update `context-adr-operation-projection`, `context-applicability-navigation`, `context-default-excludes-history`, `context-concise-projection`, `context-full-authority-packet`, and `context-known-artifact-navigation`; remove `context-output-parity`; update `context-path-attribution`, `context-read-only`, and `context-static-fallback`; remove `uncovered-output-parity`; add test-backed `context-summary-projection` and `context-terminal-output-cap`. Preserve each update's `Origin`, existing `Revised-by` prefix, and backing mode while appending ADR-0165. New claims use `Origin: ADR-0165`, `Backing: test`, and the proof markers from Tasks 1.4-1.5.
 
@@ -85,13 +157,40 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
 ## Phase 2: Observe spills through the repository runner
 
-- [ ] **Task 2.1: Specify secure recognition, logging, and runner behavior.** Add `internal/contextspill/log_test.go` for an exact two-line parser that accepts only the reserved prefix, decimal bytes, closed `format=text`, one absolute canonical newline-free path, and one final newline. It must reject near misses without logging. For a valid notice, test UTC RFC3339Nano timestamp, declared byte count, and shell-escaped `./x context` argv, with no spill path in the record. Test `.awf/local` mode 0700, log mode 0600, no-follow component checks, current-owner checks, `flock`-serialized append, non-interleaved concurrent records, and fsync/close/error preservation. Add `// invariant: tooling/context-and-topic:context-spill-observability` to this focused suite.
+- [ ] **Task 2.1: Specify secure recognition, logging, and runner behavior.** Add `internal/contextspill/log_test.go` for these production APIs and exact record contract:
 
-  Add `cmd/contextspilllog/main_test.go` for the private helper grammar `contextspilllog --root <root> --notice-file <capture> -- <invocation...>`: valid notices log, non-notices exit zero silently, and security/logging errors exit nonzero with no stdout. Add `internal/project/context_wrapper_test.go` with a copied `x` and fake sibling `awf`; assert normal and spill stdout are byte-identical, including final newlines; the child status is preserved; a valid spill logs without its path; near misses do not log; logging failure warns on stderr but does not change a successful context result; concurrent calls do not interleave; and `./x check` emits a stderr advisory only while a nonempty log exists. Extend `internal/project/example_wiring_test.go` to pin `context` in the runner usage/delegation and the non-failing check advisory.
+  ```go
+  type Notice struct { Bytes uint64; Path string }
+  func ParseNotice(data []byte) (notice Notice, recognized bool, err error)
+  func Log(root string, notice Notice, invocation []string) error
+  func ShellQuote(argv []string) string
+  ```
 
-- [ ] **Task 2.2: Implement the private logger and byte-preserving runner arm.** Create `internal/contextspill/log.go` with exact notice parsing and a Linux/Unix owner-only no-follow locked append modeled on the repository's existing secure resident-file primitives. Create `cmd/contextspilllog/main.go` as the only production caller. It reads the capture file, returns success for non-notices, and logs recognized notices without deleting the spill.
+  `ParseNotice` returns `recognized=false, err=nil` when the reserved prefix is absent; once the prefix is present, any grammar/canonical-path error is recognized and non-nil so the wrapper warns. `ShellQuote` renders every argument as one POSIX single-quoted word, including empty as `''`, and encodes an embedded quote with the literal four-byte separator `'\''`. `Log` appends exactly `<UTC-RFC3339Nano>\tbytes=<decimal>\tinvocation=<ShellQuote(argv)>\n`; it never serializes `Notice.Path`.
 
-  In `x`, add `context)` and its usage token. Use `mktemp` plus a trap, redirect `./awf context "$@"` into the capture without command substitution, save its status, replay the capture with `cat`, and invoke `go run ./cmd/contextspilllog --root "$PWD" --notice-file "$capture" -- ./x context "$@"` only after a successful child result. A logger failure prints a warning to stderr and leaves the replayed stdout/status unchanged. In `check)`, emit a non-failing stderr advisory when `.awf/local/context-spills.log` is a nonempty safe regular file; tell the operator to resolve or promote the issue and remove the log. Add `.awf/local/` to `.gitignore`. Run `gofmt -w internal/contextspill cmd/contextspilllog internal/project && go test ./internal/contextspill ./cmd/contextspilllog ./internal/project`; all security, concurrency, and wiring tests pass.
+  Tests accept only the reserved two-line notice, decimal bytes, closed `format=text`, one absolute canonical newline-free path, and one final newline. Test `.awf/local` mode 0700, log mode 0600, no-follow component checks, current-owner checks, `flock`-serialized append, non-interleaved concurrent records, and fsync/close/error preservation. Add `// invariant: tooling/context-and-topic:context-spill-observability` to this focused suite. Add `cmd/contextspilllog/main_test.go` for the private helper grammar `contextspilllog --root <root> --notice-file <capture> -- <invocation...>`: valid notices log, non-notices exit zero silently, and recognized-invalid or security/logging errors exit nonzero with no stdout. Add `internal/project/context_wrapper_test.go` with a copied `x` and fake sibling `awf`; assert normal and spill stdout are byte-identical, including final newlines; the child status is preserved; a valid spill logs without its path; near misses do not log; logging failure warns on stderr but does not change a successful context result; concurrent calls do not interleave; and `./x check` emits a stderr advisory only while a nonempty log exists. Extend `internal/project/example_wiring_test.go` to pin `context` in the runner usage/delegation and the non-failing check advisory.
+
+- [ ] **Task 2.2: Implement the private logger and byte-preserving runner arm.** Create `internal/contextspill/log.go` with the Task 2.1 APIs and injectable clock/syscall seams. `Log` performs these branches in order: canonicalize root; lstat `.awf` and reject a symlink/non-directory/foreign owner; lstat `.awf/local`, creating it with 0700 when absent, then lstat and reject symlink/non-directory/foreign owner/non-0700 mode; open `context-spills.log` with append/create, close-on-exec, and no-follow flags at 0600; fstat and reject non-regular/foreign-owner/non-0600 files; acquire exclusive `flock`; write the complete record in a short-write loop; fsync; unlock; close. The first operational failure is returned; later unlock/close failures replace success only, never an earlier error. Always attempt unlock and close after acquisition. Create `cmd/contextspilllog/main.go` as the only production caller: read the bounded capture, call `ParseNotice`, return zero for unrecognized data, and call `Log` for a valid recognized notice without deleting the spill.
+
+  In `x`, add `context)` and its usage token. Use this exact `set -e`-safe control shape, with the existing top-level trap extended to remove the capture:
+
+  ```bash
+  capture="$(mktemp)"
+  if ./awf context "$@" >"$capture"; then
+    status=0
+  else
+    status=$?
+  fi
+  cat "$capture"
+  if [ "$status" -eq 0 ]; then
+    if ! go run ./cmd/contextspilllog --root "$PWD" --notice-file "$capture" -- ./x context "$@"; then
+      echo "context: warning: spill delivered but local observability logging failed" >&2
+    fi
+  fi
+  exit "$status"
+  ```
+
+  The implementation must compose cleanup with any existing trap rather than overwrite it. In `check)`, emit a non-failing stderr advisory when `.awf/local/context-spills.log` is a nonempty safe regular file; tell the operator to resolve or promote the issue and remove the log. Add `.awf/local/` to `.gitignore`. Run `gofmt -w internal/contextspill cmd/contextspilllog internal/project && go test ./internal/contextspill ./cmd/contextspilllog ./internal/project`; all security, concurrency, and wiring tests pass.
 
 - [ ] **Task 2.3: Apply operation 14, document local observability, render, and commit.** Add `tooling/context-and-topic:context-spill-observability` to `.awf/topics/parts/tooling/context-and-topic/current-state.md` with the exact wrapper/log/advisory contract, `Origin: ADR-0165`, `Backing: test`, and the Task 2.1 proof marker. Append one ADR Applied event containing exactly `add tooling/context-and-topic:context-spill-observability` with the checker-reported next sequence. Update `README.md`, `.awf/parts/working-with-awf/commands.md`, `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/testing/layout.md`, `.awf/domains/parts/tooling/current-state.md`, and `changelog/CHANGELOG.md` for `./x context`, the ignored advisory log, warning-only degradation, operator-owned removal, and the private helper. Run `./x render && ./x check`, stage explicitly, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
 
@@ -115,9 +214,9 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
 - [ ] **Task 3.2: Batch-update authored skill templates and generated targets.** Apply the policy from Task 3.1 to this exhaustive affected-site set: `templates/skills/brainstorming/SKILL.md.tmpl`, `bugfix/SKILL.md.tmpl`, `debugging/SKILL.md.tmpl`, `executing-plans/SKILL.md.tmpl`, `refactor-coupling-audit/SKILL.md.tmpl`, `subagent-driven-development/SKILL.md.tmpl`, `tdd/SKILL.md.tmpl`, `writing-plans/SKILL.md.tmpl`, `reviewing-impl/SKILL.md.tmpl`, `reviewing-plan/SKILL.md.tmpl`, `reviewing-plan-resync/SKILL.md.tmpl`, and `adr-lifecycle/SKILL.md.tmpl`. Include `context-spill` at each call site and retain dispatch ownership of resolved arguments. Do not add context grounding to skills that do not already have a resolved path set.
 
-  Update `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md` claim `implementer-context-grounding` to cover bare implementation/orientation calls, review facet sets, ADR pending detail, the `--full` ban, and spill consumption. Preserve `Origin: ADR-0155`, append `Revised-by: ADR-0165`, retain `Backing: test`, and keep its proof in `internal/project/spine_test.go`. Run `./x render`; generated root `.claude/skills/awf-*/SKILL.md` and `.pi/awf-workflows/*.md`, Sundial `.agents/.claude/.cursor/.gemini/.github` skill copies and `.pi/awf-workflows/*.md`, rendered topic/docs outputs, and both locks must change only through rendering. The affected generated set is exactly the output of `git diff --name-only` after starting from a clean Phase 2 tree and running this task's authored edits plus `./x render`; inspect every path and reject unrelated drift.
+  Update `.awf/parts/agents-doc/commands.md` with the concise managed convention: start bare, request only named facets for the active lens, never prescribe `--full`, and consume/delete a valid spill packet. Update `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md` claim `implementer-context-grounding` to cover bare implementation/orientation calls, review facet sets, ADR pending detail, the `--full` ban, and spill consumption. Preserve `Origin: ADR-0155`, append `Revised-by: ADR-0165`, retain `Backing: test`, and keep its proof in `internal/project/spine_test.go`. Run `./x render`; generated root and Sundial `AGENTS.md`, root `.claude/skills/awf-*/SKILL.md` and `.pi/awf-workflows/*.md`, Sundial `.agents/.claude/.cursor/.gemini/.github` skill copies and `.pi/awf-workflows/*.md`, rendered topic/docs outputs, and both locks must change only through rendering. The affected generated set is exactly the output of `git diff --name-only` after starting from a clean Phase 2 tree and running this task's authored edits plus `./x render`; inspect every path and reject unrelated drift.
 
-- [ ] **Task 3.3: Apply operation 15, close ADR-0165, and commit.** Append one Applied event containing exactly `update rendering/workflow-skill-templates:implementer-context-grounding` with the checker-reported next sequence, then append the digest-bearing Implemented event immediately after it and set ADR-0165 status to Implemented. Keep this plan Proposed through implementation review. Add the managed-caller policy to the Unreleased changelog. Run `go test ./internal/project ./internal/evals`, `./x render && ./x check`, and searches that return no active managed-template matches for `awf context --full` or `awf context .*--json`. Stage exact authored/generated paths, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
+- [ ] **Task 3.3: Apply operation 15, close ADR-0165, and commit.** Append one Applied event containing exactly `update rendering/workflow-skill-templates:implementer-context-grounding` with the checker-reported next sequence, then append the digest-bearing Implemented event immediately after it and set ADR-0165 status to Implemented. Keep this plan Proposed through implementation review. Add the managed-caller policy to the Unreleased changelog. Run `go test ./internal/project ./internal/evals` and `./x render && ./x check`. Then run `if rg -n 'awf context --full|awf context[^\n]*--json' templates/skills; then exit 1; fi`; the terminal state is no matches and exit zero. Stage exact authored/generated paths, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
 
   ```commit
   feat(rendering): bound managed context packets (implements 0165)
@@ -125,9 +224,9 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
 ## Phase 4: Review and freeze the implementation record
 
-- [ ] **Task 4.1: Audit and review the concrete implementation range.** From a clean tree, resolve `<implementation-base>` as the parent of the Phase 1 commit and `<implementation-head>` as `HEAD`. Run `./awf audit <implementation-base>..<implementation-head>` and `./x audit-local <implementation-base>..<implementation-head>`; both finish without Error findings. Run `./x context --show all-rules --show evidence --show pending $(git diff --name-only <implementation-base>..<implementation-head>)`; if it spills, read and byte-verify the packet and remove it after use. Invoke `subagent_review` with kind `code`, the concrete SHA range, ADR-0165, this plan, and the packet. Require review of snapshot isolation, census boundaries, stable grouping, relevance precedence, Unicode summary limits, bounded evidence/references/pending, artifact and ADR semantics, JSON removal, spill security/cleanup, runner byte preservation and log races, generated caller parity, state-operation order, and documentation.
+- [ ] **Task 4.1: Enter the governed implementation review with the concrete range.** From a clean tree, resolve `<implementation-base>` as the parent of the Phase 1 commit and `<implementation-head>` as `HEAD`. Call `awf_workflow` alone with `skill: "reviewing-impl"`; do not invoke the review body or `subagent_review` directly. Supply the concrete range, ADR-0165, and this plan when that workflow requests its review brief. Add these required concerns to its ordinary lenses: snapshot isolation, census boundaries, stable grouping, relevance precedence, Unicode summary limits, bounded evidence/references/pending, artifact and ADR semantics, JSON removal, spill security/cleanup, runner byte preservation and log races, generated caller parity, state-operation order, and documentation. The governed workflow owns `./awf audit`, `./x audit-local`, purpose-specific context facets, the report-only code review, finding routing, and its single verify pass.
 
-- [ ] **Task 4.2: Resolve findings and freeze the accepted plan.** Apply mechanical and authority-determined fixes in new focused commits; stop for user approval if a finding changes ADR-0165. Repeat the fresh code review once after fixes and require zero findings. Record concrete implementation commit IDs and final audit/review results under Notes, set this plan's frontmatter to `status: Implemented`, and run `./x render && ./x check`. Stage the plan and changed generated records explicitly, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
+- [ ] **Task 4.2: Resolve findings through the governed workflow and freeze the accepted plan.** Apply mechanical and authority-determined fixes only as directed by `reviewing-impl`, in new focused commits; stop for user approval if a finding changes ADR-0165. Require that workflow's verify pass to report zero residual findings. Record concrete implementation commit IDs and final audit/review results under Notes, set this plan's frontmatter to `status: Implemented`, and run `./x render && ./x check`. Stage the plan and changed generated records explicitly, run `./awf check --staged` and `./x gate`; every command exits zero. Commit:
 
   ```commit
   docs(plans): implement compact context projection
