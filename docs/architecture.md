@@ -106,7 +106,8 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   provenance across records. It also renders `INDEX.md` (In flight and History) from a `Corpus`
   rather than parsing.
 - **`internal/topic/`**: the strict, path-derived current-state topic parser and one per-invocation
-  corpus. It pairs metadata and constrained Markdown parts, resolves Implemented-ADR provenance and
+  corpus. It pairs metadata and constrained Markdown parts, including optional one-line claim
+  `Summary:` metadata bounded to 160 Unicode code points, resolves Implemented-ADR provenance and
   direct claim references, validates configured relevance, touches, and proof markers, computes
   focused topic coverage, and builds deterministic topic, index, and domain-navigation render models.
   Its claims are the active authority the current-state runtime reads for context, coverage, and
@@ -141,11 +142,11 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   `Project` can be opened, so they construct the corpus through `adr.LoadCorpus` rather than
   taking a threaded view.
 - **`internal/project/`**: orchestrates config + catalog + render + manifest into `Sync()` and
-  `Check()`; golden tests live here. Its read-only context path builds one working- or index-backed
-  universe, expands request paths to effective paths, applies the precedence-ordered primary
-  classification, resolves safe authority and applicability, derives artifact navigation from
-  reader-injected output declarations, and then selects the concise or full projection without
-  writing or reloading from another universe. A single ordered kind-descriptor table (`kind.go`) is the sole
+  `Check()`; golden tests live here. Its context path builds one working- or index-backed universe,
+  preserves request order, produces exact-file entries or bounded directory censuses, groups by the
+  complete facet-independent semantic impact, globally deduplicates authority into closest
+  categories, and projects only canonically selected bounded facets without reloading bytes or
+  mutating repository state. A single ordered kind-descriptor table (`kind.go`) is the sole
   per-kind dispatch source; enable array, catalog pool, declared sections, output path, and labels
   resolve through it across `list`/`enable`/`check`/`validate` (ADR-0027). `singleton.go`'s
   `plainSingletons` derives from the catalog's `Mandatory` non-agents-doc entries: the render/validate
@@ -159,6 +160,10 @@ ADR-0124 makes `internal/project.OutputPlan` the deterministic authority for eve
   workflow-conformance rules; powers `awf audit` and the blocking `awf check commit`
   (ADR-0017, ADR-0036).
 - **`internal/telemetry/`**: owns the embedded protocol-2 event and lifecycle descriptor, its deterministic TypeScript projection, strict no-repository-path privacy and compatibility validation, confined append-only per-session JSONL ledger, transactional causal phase transitions, trajectory projections, leased deterministic retention, selectors, aggregation, normalized export, and exact plus heuristic diagnosis with effort-owned findings. `.awf/metrics/` is resident data rather than rendered output; explicit lifecycle writes fail on durability errors, while metrics and doctor read the same canonical result models. Repair and waiver requests must match the selected finding's effort, evidence, scope, eligibility, and current nonempty frontier. Protocol-1 data is never migrated or automatically deleted. The threat model covers accidental truncation, incompatible writers, unsafe file types, traversal, and symlink or reparse redirection, not a hostile process already running as the same user or cryptographic tamper evidence.
+- **`internal/contextdelivery/`**: the context output boundary. It writes complete human renderings
+  through 8,192 bytes unchanged and otherwise securely creates a canonical mode-0600 temporary file
+  outside the repository, writes exact bytes, and emits the versioned two-line notice; failed
+  delivery best-effort removes the spill while successful direct callers own deletion.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:

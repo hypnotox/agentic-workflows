@@ -91,6 +91,44 @@ Verify: inspect output
 
 // invariant: invariants/topics-and-markers:invariants-duplicate-slug
 // invariant: invariants/topics-and-markers:unbacked-requires-verify-note
+func TestClaimSummaryMetadata(t *testing.T) {
+	parse := func(summary string) (Claim, error) {
+		body := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\n" + summary + "Origin: ADR-0001\n"
+		got, err := ParsePart(TopicID{"a", "b"}, "part", []byte(body))
+		if err != nil {
+			return Claim{}, err
+		}
+		return got.Claims[0], nil
+	}
+	absent, err := parse("")
+	if err != nil || absent.Summary != "" {
+		t.Fatalf("absent=%#v err=%v", absent, err)
+	}
+	valid, err := parse("Summary: A compact summary.\n")
+	if err != nil || valid.Summary != "A compact summary." {
+		t.Fatalf("valid=%#v err=%v", valid, err)
+	}
+	for name, metadata := range map[string]string{
+		"duplicate": "Summary: one\nSummary: two\n", "out-of-order": "Origin: ADR-0001\nSummary: late\n", "blank": "Summary: \n", "multiline": "Summary: first\nsecond\n", "161": "Summary: " + strings.Repeat("x", 161) + "\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			body := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\n" + metadata
+			if name != "out-of-order" {
+				body += "Origin: ADR-0001\n"
+			}
+			if _, err := ParsePart(TopicID{"a", "b"}, "part", []byte(body)); err == nil {
+				t.Fatal("accepted invalid Summary")
+			}
+		})
+	}
+	for _, value := range []string{strings.Repeat("x", 160), strings.Repeat("é", 160)} {
+		claim, err := parse("Summary: " + value + "\n")
+		if err != nil || len([]rune(claim.Summary)) != 160 {
+			t.Fatalf("summary runes=%d err=%v", len([]rune(claim.Summary)), err)
+		}
+	}
+}
+
 func TestParsePartRejected(t *testing.T) {
 	head := "### `rule: x`\nProse.\nOrigin: ADR-0001\n"
 	cases := map[string]string{

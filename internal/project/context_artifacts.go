@@ -26,20 +26,16 @@ const (
 )
 
 type ArtifactLink struct {
-	Path  string `json:"path"`
-	Label string `json:"label"`
+	Path, Label string
 }
 type ArtifactSnapshot struct {
-	InManifest bool `json:"inManifest"`
-	Drifted    bool `json:"drifted"`
+	InManifest, Drifted bool
 }
 type ArtifactRecord struct {
-	Role       ArtifactRole      `json:"role"`
-	Identity   string            `json:"identity"`
-	Sources    []ArtifactLink    `json:"sources"`
-	Outputs    []ArtifactLink    `json:"outputs"`
-	Navigation []ArtifactLink    `json:"navigation"`
-	Snapshot   *ArtifactSnapshot `json:"snapshot,omitempty"`
+	Role                         ArtifactRole
+	Identity                     string
+	Sources, Outputs, Navigation []ArtifactLink
+	Snapshot                     *ArtifactSnapshot
 }
 
 type artifactAuthorities struct {

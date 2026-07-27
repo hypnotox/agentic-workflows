@@ -19,8 +19,8 @@
   (their closed frontmatter rejects a `tags:` key), so the claim's unqualified "each ADR"
   drifts further from behavior with every new governed ADR; the mutation needs a
   config-domain ADR.
-- Narrow the ADR-0148 successor topics' mirrored path selectors per area so broad-path
-  `awf context --full` packets shrink (deferred by ADR-0148 Decision item 4).
+- Design a structured context result only when a demonstrated consumer can define its contract;
+  ADR-0165 deliberately removed speculative JSON rather than preserving a hidden path census.
 - Enforce the plan freeze mechanically: `awf check --staged` could refuse a diff that edits a
   `docs/plans/` file whose HEAD `status:` is `Implemented`. The recorded "record implementation
   deviations before the terminal artifact transaction" pitfall did not prevent the ADR-0151

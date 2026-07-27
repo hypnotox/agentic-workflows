@@ -5,6 +5,21 @@ import (
 	"testing"
 )
 
+func TestContextHumanOnlyFacetSpec(t *testing.T) {
+	context, ok := Lookup("context")
+	if !ok {
+		t.Fatal("missing context")
+	}
+	if strings.Contains(strings.Join(context.BoolFlags, " "), "--json") || !strings.Contains(strings.Join(context.ValueFlags, " "), "--show") || !strings.Contains(strings.Join(context.Repeatable, " "), "--show") {
+		t.Fatalf("context spec=%#v", context)
+	}
+	for _, text := range []string{"all-rules", "8,192", "caller", "JSON is not supported"} {
+		if !strings.Contains(context.HelpBody, text) {
+			t.Errorf("help missing %q", text)
+		}
+	}
+}
+
 // Every command and child carries non-empty identifying metadata, and top-level
 // names are unique.
 func TestCommandsWellFormed(t *testing.T) {

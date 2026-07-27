@@ -17,50 +17,25 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// DomainRef is an owning domain and its rendered current-state doc path, derived
-// by convention (never a sidecar field - ADR-0086).
-type DomainRef struct {
-	Name         string `json:"name"`
-	CurrentState string `json:"currentState"`
-}
+// DomainRef is an owning domain and its rendered current-state doc path.
+type DomainRef struct{ Name, CurrentState string }
 
-// PendingChange is one remaining governed ADR operation targeting a matched
-// topic. It is not yet current and renders separately from current claims.
 type PendingChange struct {
-	ADR      string `json:"adr"`
-	Title    string `json:"title"`
-	Status   string `json:"status"`
-	Applied  int    `json:"applied"`
-	Declared int    `json:"declared"`
-	Op       string `json:"op"`
-	Claim    string `json:"claim"`
+	ADR, Title, Status string
+	Applied, Declared  int
+	Op, Claim          string
+	Progress           string
 }
 
-// ContextFor assembles the read-only current-state context for paths over the
-// working-tree universe (ADR-0134, ADR-0135). It loads exactly one working Tree,
-// so the selection never mixes a working and an index universe, and it writes
-// nothing.
-func (p *Project) ContextFor(paths []string) (ContextResult, error) {
-	return p.contextFor(paths, false, ContextConcise)
+type contextAssemblyState struct {
+	Loaded       currentstate.Loaded
+	Tree         *snapshot.Tree
+	Lock         *manifest.Lock
+	Config       *config.Config
+	Declarations []OutputDeclaration
 }
 
-// ContextForFull returns the complete authority projection from the same model.
-func (p *Project) ContextForFull(paths []string) (ContextResult, error) {
-	return p.contextFor(paths, false, ContextFull)
-}
-
-// ContextForGitSelection preserves Git-selected request status while resolving
-// authority against the same single working universe.
-func (p *Project) ContextForGitSelection(paths []string) (ContextResult, error) {
-	return p.contextFor(paths, true, ContextConcise)
-}
-
-// ContextForFullGitSelection combines Git request attribution with full authority.
-func (p *Project) ContextForFullGitSelection(paths []string) (ContextResult, error) {
-	return p.contextFor(paths, true, ContextFull)
-}
-
-func (p *Project) contextFor(paths []string, gitSelected bool, projection ContextProjection) (ContextResult, error) {
+func (p *Project) ContextForOptions(paths []string, options ContextOptions) (ContextResult, error) {
 	ws, err := p.workingCurrentState()
 	if err != nil {
 		return ContextResult{}, err
@@ -74,36 +49,14 @@ func (p *Project) contextFor(paths []string, gitSelected bool, projection Contex
 	if err != nil {
 		return ContextResult{}, err
 	}
-	selectedADRs := adr.NewCorpus(ws.Loaded.ADRs)
-	decls, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, selectedADRs)
-	if err != nil {
+	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, adr.NewCorpus(ws.Loaded.ADRs))
+	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextResult{}, err
 	}
-	return universe.assembleContextUniverse(ws.Loaded, ws.Tree, ws.Lock, ws.Cfg, decls, paths, gitSelected, projection), nil
+	return universe.assembleContextUniverse(contextAssemblyState{Loaded: ws.Loaded, Tree: ws.Tree, Lock: ws.Lock, Config: ws.Cfg, Declarations: declarations}, paths, options)
 }
 
-// StagedContextRoot assembles every result from one immutable index universe.
-func StagedContextRoot(root string, paths []string) (ContextResult, error) {
-	return stagedContextRoot(root, paths, false, ContextConcise)
-}
-
-// StagedContextRootFull returns the full projection from the immutable index.
-func StagedContextRootFull(root string, paths []string) (ContextResult, error) {
-	return stagedContextRoot(root, paths, false, ContextFull)
-}
-
-// StagedContextRootGitSelection preserves Git-selected request status in the
-// immutable index universe.
-func StagedContextRootGitSelection(root string, paths []string) (ContextResult, error) {
-	return stagedContextRoot(root, paths, true, ContextConcise)
-}
-
-// StagedContextRootFullGitSelection combines Git attribution and full authority.
-func StagedContextRootFullGitSelection(root string, paths []string) (ContextResult, error) {
-	return stagedContextRoot(root, paths, true, ContextFull)
-}
-
-func stagedContextRoot(root string, paths []string, gitSelected bool, projection ContextProjection) (ContextResult, error) {
+func StagedContextRootOptions(root string, paths []string, options ContextOptions) (ContextResult, error) {
 	p := &Project{Root: root}
 	state, err := p.indexCurrentState()
 	if err != nil {
@@ -118,12 +71,11 @@ func stagedContextRoot(root string, paths []string, gitSelected bool, projection
 	if err != nil {
 		return ContextResult{}, err
 	}
-	selectedADRs := adr.NewCorpus(state.Loaded.ADRs)
-	decls, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, snapshotTreeReader{tree: state.Tree}, selectedADRs)
-	if err != nil { // coverage-ignore: effectiveCatalog just parsed the same selected sidecars and declaration enumeration has no other error source
+	declarations, err := BuildOutputDeclarations(state.Cfg, p.Cat, p.Targets, snapshotTreeReader{tree: state.Tree}, adr.NewCorpus(state.Loaded.ADRs))
+	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextResult{}, err
 	}
-	return p.assembleContextUniverse(state.Loaded, state.Tree, state.Lock, state.Cfg, decls, paths, gitSelected, projection), nil
+	return p.assembleContextUniverse(contextAssemblyState{Loaded: state.Loaded, Tree: state.Tree, Lock: state.Lock, Config: state.Cfg, Declarations: declarations}, paths, options)
 }
 
 type indexState struct {
@@ -153,64 +105,128 @@ func (p *Project) indexCurrentState() (indexState, error) {
 	return indexState{Loaded: loaded, Tree: tree, Lock: lock, Cfg: cfg}, nil
 }
 
-// assembleContextUniverse classifies requests and resolves authority from one
-// selected snapshot independently of coverage eligibility.
-func (p *Project) assembleContextUniverse(loaded currentstate.Loaded, tree *snapshot.Tree, lock *manifest.Lock, cfg *config.Config, declarations []OutputDeclaration, queries []string, gitSelected bool, projection ContextProjection) ContextResult {
+func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []string, options ContextOptions) (ContextResult, error) {
+	if options.Selection == "" {
+		options.Selection = SelectionExplicit
+	}
 	outputs := map[string]bool{}
-	for _, d := range declarations {
+	for _, d := range state.Declarations {
 		if !d.Reservation {
 			outputs[d.Path] = true
 		}
 	}
-	files := tree.List()
 	nested := []string{}
-	for _, f := range files {
+	for _, f := range state.Tree.List() {
 		if !isMetricsResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
 			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
 	}
 	slices.Sort(nested)
-	set := contextPathSet{tree: tree, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore), nested: nested, outputs: outputs, ignores: cfg.ContextIgnore, domainPaths: loaded.Topics.DomainPaths}
-	requests, attribution := buildContextRequests(queries, gitSelected, set)
-	res := ContextResult{Projection: projection, Requests: requests, Topics: []InvocationTopicContext{}, Paths: []ContextPath{}}
+	set := contextPathSet{tree: state.Tree, eligible: eligiblePaths(state.Tree, state.Lock, state.Config.ContextIgnore), nested: nested, outputs: outputs, ignores: state.Config.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]ContextPathImpact{}}
+	selectedADRs := adr.NewCorpus(state.Loaded.ADRs)
 	lay := p.layout()
-	currentPaths := safelyMatchablePaths(tree)
-	applicableByID := map[string]topic.Topic{}
-	selectingByID := map[string][]string{}
-	for _, path := range slices.Sorted(maps.Keys(attribution)) {
-		class, nestedRoot, targetInside := classifyContextPath(path, set)
-		selectedADRs := adr.NewCorpus(loaded.ADRs)
-		cp := ContextPath{Path: path, Requests: slices.Clone(attribution[path]), Classification: class, TargetInsideRepository: targetInside, NestedRoot: nestedRoot, Domains: []DomainRef{}, Topics: []PathTopicRef{}, Artifacts: artifactRecords(path, declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})}
-		applyArtifactSnapshots(cp.Artifacts, path, tree, lock)
-		cp.GlobLiteral = !gitSelected && (class == PathNotFound || class == PathContextIgnored) && globLiteralQuery(path)
+	makeImpact := func(filePath string, explicit bool) ContextPathImpact {
+		class, nestedRoot, targetInside := classifyContextPath(filePath, set)
+		records := artifactRecords(filePath, state.Declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})
+		applyArtifactSnapshots(records, filePath, state.Tree, state.Lock)
+		impact := ContextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []ContextWarning{}}
+		for _, record := range records {
+			impact.Provenance = append(impact.Provenance, ContextProvenance{Role: string(record.Role), Identity: record.Identity, Sources: cloneArtifactLinks(record.Sources), Outputs: cloneArtifactLinks(record.Outputs), Navigation: cloneArtifactLinks(record.Navigation)})
+		}
+		literalGlob := explicit && (class == PathNotFound || class == PathContextIgnored) && globLiteralQuery(filePath)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
-		if safe && !cp.GlobLiteral {
-			for _, d := range slices.Sorted(maps.Keys(loaded.Topics.DomainPaths)) {
-				if pathMatchesAny(loaded.Topics.DomainPaths[d], path) {
-					cp.Domains = append(cp.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
+		if safe && !literalGlob {
+			for _, d := range slices.Sorted(maps.Keys(state.Loaded.Topics.DomainPaths)) {
+				if pathMatchesAny(state.Loaded.Topics.DomainPaths[d], filePath) {
+					impact.Domains = append(impact.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
 				}
 			}
-			for _, t := range topic.TopicsForPath(loaded.Topics, path) {
-				id := t.ID.String()
-				applicableByID[id] = t
-				selectingByID[id] = append(selectingByID[id], path)
-				cp.Topics = append(cp.Topics, pathTopicRef(t, loaded.Topics, path))
+			for _, t := range topic.TopicsForPath(state.Loaded.Topics, filePath) {
+				ref := ContextPathTopic{ID: t.ID.String(), DirectClaimIDs: []string{}}
+				for _, claim := range t.Claims {
+					direct := false
+					for _, site := range state.Loaded.Topics.Markers.ForClaim(claim.ID) {
+						if site.Path == filePath {
+							direct = true
+							break
+						}
+					}
+					if direct {
+						ref.DirectClaimIDs = append(ref.DirectClaimIDs, claim.ID)
+						if claim.Type == topic.Rule {
+							impact.DirectRuleIDs = append(impact.DirectRuleIDs, claim.ID)
+						}
+					}
+					if claim.Type == topic.Invariant {
+						impact.InvariantIDs = append(impact.InvariantIDs, claim.ID)
+						if claim.Backing == topic.TestBacking {
+							impact.ProofIDs = append(impact.ProofIDs, claim.ID)
+						}
+					}
+				}
+				slices.Sort(ref.DirectClaimIDs)
+				impact.Topics = append(impact.Topics, ref)
 			}
 		}
-		if explicitContextPath(requests, path) {
-			cp.ADR = projectADRArtifact(path, lay.ADRDir, adr.NewCorpus(loaded.ADRs), loaded.Topics, projection)
+		if literalGlob {
+			impact.Warnings = append(impact.Warnings, WarningGlobLiteral)
 		}
-		res.Paths = append(res.Paths, cp)
+		if class == PathEligibleUnowned {
+			impact.Warnings = append(impact.Warnings, WarningEligibleUnowned)
+		}
+		slices.Sort(impact.DirectRuleIDs)
+		impact.DirectRuleIDs = slices.Compact(impact.DirectRuleIDs)
+		slices.Sort(impact.InvariantIDs)
+		impact.InvariantIDs = slices.Compact(impact.InvariantIDs)
+		slices.Sort(impact.ProofIDs)
+		impact.ProofIDs = slices.Compact(impact.ProofIDs)
+		if explicit {
+			impact.ADR = projectADRArtifact(filePath, lay.ADRDir, selectedADRs, state.Loaded.Topics, options.Facets)
+		}
+		return impact
 	}
-	for _, id := range slices.Sorted(maps.Keys(applicableByID)) {
-		pending := pendingChanges(loaded.ADRs, map[string]bool{id: true})
-		res.Topics = append(res.Topics, projectInvocationTopic(applicableByID[id], loaded.Topics, selectingByID[id], currentPaths, pending, projection))
+	for _, f := range state.Tree.List() {
+		set.impacts[f.Path] = makeImpact(f.Path, false)
 	}
-	return res
+	for _, raw := range queries {
+		if strings.TrimSpace(raw) != "" {
+			q := filepath.ToSlash(filepath.Clean(raw))
+			set.impacts[q] = makeImpact(q, options.Selection == SelectionExplicit)
+		}
+	}
+	requests := buildContextRequests(queries, set, options)
+	directByTopic := map[string][]string{}
+	applicable := map[string]topic.Topic{}
+	for _, request := range requests {
+		impacts := []ContextPathImpact{}
+		if request.Exact != nil {
+			impacts = append(impacts, request.Exact.Context)
+		}
+		if request.Directory != nil {
+			for _, group := range request.Directory.Groups {
+				impacts = append(impacts, group.Context)
+			}
+		}
+		for _, impact := range impacts {
+			for _, ref := range impact.Topics {
+				if t, ok := state.Loaded.Topics.ByTopicID(ref.ID); ok {
+					applicable[ref.ID] = t
+				}
+				directByTopic[ref.ID] = append(directByTopic[ref.ID], ref.DirectClaimIDs...)
+			}
+		}
+	}
+	result := ContextResult{Selection: options.Selection, Range: options.Range, Requests: requests, Topics: []TopicImpact{}}
+	currentPaths := safelyMatchablePaths(state.Tree)
+	for _, id := range slices.Sorted(maps.Keys(applicable)) {
+		ids := directByTopic[id]
+		slices.Sort(ids)
+		ids = slices.Compact(ids)
+		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, ids, currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
+	}
+	return result, nil
 }
 
-// pendingChanges returns remaining Accepted and Implementing operations whose
-// claims target a matched topic, sorted by ADR number then claim ID.
 func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChange {
 	var out []PendingChange
 	corpus := adr.NewCorpus(adrs)
@@ -224,18 +240,9 @@ func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChan
 		}
 		declared := len(progress.Applied) + len(progress.Remaining) + len(progress.Canceled)
 		for _, op := range progress.Remaining {
-			if !matchedTopics[topicOfClaim(op.ID)] {
-				continue
+			if matchedTopics[topicOfClaim(op.ID)] {
+				out = append(out, PendingChange{ADR: a.Number, Title: strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "), Status: a.Status, Applied: len(progress.Applied), Declared: declared, Op: string(op.Verb), Claim: op.ID, Progress: "remaining"})
 			}
-			out = append(out, PendingChange{
-				ADR:      a.Number,
-				Title:    strings.TrimPrefix(a.Title, "ADR-"+a.Number+": "),
-				Status:   a.Status,
-				Applied:  len(progress.Applied),
-				Declared: declared,
-				Op:       string(op.Verb),
-				Claim:    op.ID,
-			})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -246,19 +253,15 @@ func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChan
 	})
 	return out
 }
-
-// topicOfClaim returns the `<domain>/<topic>` prefix of a qualified claim ID.
-func topicOfClaim(claimID string) string {
-	if i := strings.Index(claimID, ":"); i >= 0 {
-		return claimID[:i]
+func topicOfClaim(id string) string {
+	if i := strings.Index(id, ":"); i >= 0 {
+		return id[:i]
 	}
-	return claimID // coverage-ignore: every ADR operation ID is a validated qualified claim ID
+	return id
 }
-
-// pathMatchesAny reports whether path matches any of globs.
-func pathMatchesAny(globs []string, path string) bool {
+func pathMatchesAny(globs []string, p string) bool {
 	for _, g := range globs {
-		if pathglob.Match(g, path) {
+		if pathglob.Match(g, p) {
 			return true
 		}
 	}

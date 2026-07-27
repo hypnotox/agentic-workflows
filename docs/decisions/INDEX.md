@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-0164: Lightweight effort records and independent Pi telemetry](0164-lightweight-effort-records-and-independent-pi-telemetry.md) (Proposed)
-- [ADR-0165: Request-Oriented Compact Context Projection](0165-request-oriented-compact-context-projection.md) (Proposed)
+- [ADR-0165: Request-Oriented Compact Context Projection](0165-request-oriented-compact-context-projection.md) (Implementing)
 
 ## History
 
