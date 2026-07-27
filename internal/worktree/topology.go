@@ -23,10 +23,24 @@ func (e *RefusalError) Error() string {
 	return "worktree refusal (" + e.Category + "): " + e.Risk
 }
 
-type PartialMutationError struct{ EffortID, Repair string }
+type PartialMutationError struct {
+	EffortID, Repair string
+	Err              error
+}
 
 func (e *PartialMutationError) Error() string {
-	return fmt.Sprintf("effort %s has partial Git mutation; repair with awf effort repair %s (%s)", e.EffortID, e.EffortID, e.Repair)
+	message := fmt.Sprintf("effort %s has partial Git mutation; repair with awf effort repair %s (%s)", e.EffortID, e.EffortID, e.Repair)
+	if e.Err != nil {
+		message += ": " + e.Err.Error()
+	}
+	return message
+}
+
+func (e *PartialMutationError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
 }
 
 type registration struct {

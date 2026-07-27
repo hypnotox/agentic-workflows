@@ -458,7 +458,7 @@ func removeGitLineDelimiter(value string) string {
 func runGitBytes(ctx context.Context, root string, args ...string) ([]byte, error) {
 	fixed := append([]string{"-C", root}, args...)
 	cmd := exec.CommandContext(ctx, "git", fixed...)
-	cmd.Env = isolatedControlRootGitEnvironment(os.Environ())
+	cmd.Env = IsolatedGitEnvironment(os.Environ())
 	output, err := cmd.Output()
 	if err != nil {
 		var exit *exec.ExitError
@@ -470,7 +470,9 @@ func runGitBytes(ctx context.Context, root string, args ...string) ([]byte, erro
 	return output, nil
 }
 
-func isolatedControlRootGitEnvironment(inherited []string) []string {
+// IsolatedGitEnvironment removes inherited repository selection, config, and
+// credential controls before a native Git command is run against a validated root.
+func IsolatedGitEnvironment(inherited []string) []string {
 	filtered := make([]string, 0, len(inherited)+7)
 	for _, entry := range inherited {
 		key, _, _ := strings.Cut(entry, "=")

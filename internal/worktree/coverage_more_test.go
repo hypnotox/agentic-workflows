@@ -13,8 +13,11 @@ func TestWorktreeErrorsAndTopologyMatrix(t *testing.T) {
 	if (&RefusalError{Category: "x"}).Error() != "worktree refusal (x)" {
 		t.Fatal("refusal formatting")
 	}
-	if (&PartialMutationError{EffortID: "id", Repair: "fix"}).Error() == "" {
-		t.Fatal("partial formatting")
+	cause := errors.New("record fault")
+	partial := &PartialMutationError{EffortID: "id", Repair: "fix", Err: cause}
+	var nilPartial *PartialMutationError
+	if partial.Error() == "" || !errors.Is(partial, cause) || (&PartialMutationError{}).Unwrap() != nil || nilPartial.Unwrap() != nil {
+		t.Fatal("partial formatting or cause")
 	}
 	bad := func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("fault") }
 	if _, err := nativeRunner(t.Context(), filepath.Join(t.TempDir(), "missing"), "status"); err == nil {

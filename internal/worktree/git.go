@@ -7,7 +7,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
+
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 type Runner func(context.Context, string, ...string) ([]byte, error)
@@ -15,7 +18,7 @@ type Runner func(context.Context, string, ...string) ([]byte, error)
 func nativeRunner(ctx context.Context, root string, args ...string) ([]byte, error) {
 	fixed := append([]string{"-C", root}, args...)
 	cmd := exec.CommandContext(ctx, "git", fixed...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1", "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = awfgit.IsolatedGitEnvironment(os.Environ())
 	out, err := cmd.Output()
 	if err != nil {
 		var exit *exec.ExitError
@@ -38,8 +41,11 @@ func resolve(ctx context.Context, run Runner, root, revision string) (string, er
 	}
 	return value, nil
 }
+
+var ownedResidentUntracked = regexp.MustCompile(`^\?\? \.awf/(?:efforts/(?:\.lock|\.[0-9a-f-]{36}\.partial|[0-9a-f-]{36}\.json)|worktrees/[0-9a-f-]{36}/?)$`)
+
 func status(ctx context.Context, run Runner, root string) error {
-	out, err := run(ctx, root, "status", "--porcelain=v1", "-z")
+	out, err := run(ctx, root, "status", "--porcelain=v1", "-z", "--untracked-files=all")
 	if err != nil {
 		return err
 	}
@@ -47,9 +53,9 @@ func status(ctx context.Context, run Runner, root string) error {
 		if entry == "" {
 			continue
 		}
-		// Repository-local resident state is intentionally untracked and does not
-		// make the caller's source checkout unsafe to merge.
-		if strings.HasPrefix(entry, "?? .awf/") {
+		// These are the closed, repository-owned resident leaves created by this
+		// manager. Everything else below .awf is ordinary untracked content.
+		if ownedResidentUntracked.MatchString(entry) {
 			continue
 		}
 		return &RefusalError{Category: "cleanliness", Risk: "checkout has tracked, untracked, or staged changes", Forceable: true}
