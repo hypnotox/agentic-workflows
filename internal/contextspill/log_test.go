@@ -9,7 +9,6 @@ import (
 	"time"
 )
 
-// invariant: tooling/context-and-topic:context-spill-observability
 func TestParseNoticeContract(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "spill.txt")
 	if err := os.WriteFile(path, []byte("spill"), 0o600); err != nil {

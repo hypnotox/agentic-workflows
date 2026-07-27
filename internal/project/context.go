@@ -230,7 +230,9 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChange {
 	var out []PendingChange
 	corpus := adr.NewCorpus(adrs)
-	for _, a := range corpus.All() {
+	ordered := slices.Clone(corpus.All())
+	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].Number < ordered[j].Number })
+	for _, a := range ordered {
 		if !a.IsAccepted() && !a.IsImplementing() {
 			continue
 		}
@@ -245,12 +247,6 @@ func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChan
 			}
 		}
 	}
-	sort.Slice(out, func(i, j int) bool {
-		if out[i].ADR != out[j].ADR {
-			return out[i].ADR < out[j].ADR
-		}
-		return out[i].Claim < out[j].Claim
-	})
 	return out
 }
 func topicOfClaim(id string) string {
@@ -273,9 +269,9 @@ func pathMatchesAny(globs []string, p string) bool {
 // and the domain-owned paths with no claim-bearing scoped topic (ADR-0134).
 // ScanRoots echoes the requested roots (empty = whole repository).
 type UncoveredResult struct {
-	ScanRoots []string         `json:"scanRoots"`
-	Unowned   []UnownedEntry   `json:"unowned"`
-	Uncovered []UncoveredTopic `json:"uncovered"`
+	ScanRoots []string
+	Unowned   []UnownedEntry
+	Uncovered []UncoveredTopic
 }
 
 // UnownedEntry is one collapsed unowned node: UnownedCount is the in-scope
@@ -283,15 +279,15 @@ type UncoveredResult struct {
 // beneath it that coverage excludes (generated, context-ignored, metrics-resident,
 // or nested-adopter). Plain file entries keep ExcludedCount zero.
 type UnownedEntry struct {
-	Path          string `json:"path"`
-	UnownedCount  int    `json:"unownedCount"`
-	ExcludedCount int    `json:"excludedCount"`
+	Path          string
+	UnownedCount  int
+	ExcludedCount int
 }
 
 // UncoveredTopic is one domain-owned path lacking a scoped topic that covers it.
 type UncoveredTopic struct {
-	Path   string `json:"path"`
-	Domain string `json:"domain"`
+	Path   string
+	Domain string
 }
 
 // Uncovered assembles the coverage report over the working-tree eligible paths:

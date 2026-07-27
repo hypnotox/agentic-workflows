@@ -8,19 +8,49 @@ import (
 )
 
 // invariant: tooling/context-and-topic:context-summary-projection
-func TestClaimSummaryProjection(t *testing.T) {
+func TestClaimSummaryParserAndProjection(t *testing.T) {
+	parse := func(metadata, prose string) (topic.Claim, error) {
+		part := "Intro.\n\n## Claims\n\n### `rule: x`\n" + prose + "\n" + metadata + "Origin: ADR-0001\n"
+		parsed, err := topic.ParsePart(topic.TopicID{Domain: "alpha", Slug: "one"}, "part", []byte(part))
+		if err != nil {
+			return topic.Claim{}, err
+		}
+		return parsed.Claims[0], nil
+	}
+	declared := strings.Repeat("é", 160)
+	claim, err := parse("Summary: "+declared+"\n", "ignored")
+	if err != nil || claimSummary(claim) != declared || len([]rune(claimSummary(claim))) != 160 {
+		t.Fatalf("declared summary=%q err=%v", claimSummary(claim), err)
+	}
+	for name, metadata := range map[string]string{
+		"out of order": "Origin: ADR-0001\nSummary: late\n",
+		"over limit":   "Summary: " + strings.Repeat("é", 161) + "\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			part := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\n" + metadata
+			if name != "out of order" {
+				part += "Origin: ADR-0001\n"
+			}
+			if _, err := topic.ParsePart(topic.TopicID{Domain: "alpha", Slug: "one"}, "part", []byte(part)); err == nil {
+				t.Fatal("accepted invalid Summary metadata")
+			}
+		})
+	}
 	cases := []struct {
-		claim topic.Claim
+		prose string
 		want  string
 	}{
-		{topic.Claim{Summary: "Declared", Prose: "ignored"}, "Declared"},
-		{topic.Claim{Prose: "First\nline.\n\nSecond."}, "First line."},
-		{topic.Claim{Prose: strings.Repeat("a", 160)}, strings.Repeat("a", 160)},
-		{topic.Claim{Prose: strings.Repeat("a", 161)}, strings.Repeat("a", 157) + "..."},
-		{topic.Claim{Prose: strings.Repeat("word ", 40)}, strings.TrimSpace(strings.Repeat("word ", 31)) + "..."},
+		{"First\nline.\n\nSecond.", "First line."},
+		{strings.Repeat("a", 160), strings.Repeat("a", 160)},
+		{strings.Repeat("a", 161), strings.Repeat("a", 157) + "..."},
+		{strings.Repeat("word ", 40), strings.TrimSpace(strings.Repeat("word ", 31)) + "..."},
 	}
 	for _, tc := range cases {
-		if got := claimSummary(tc.claim); got != tc.want {
+		claim, err := parse("", tc.prose)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := claimSummary(claim); got != tc.want {
 			t.Errorf("len=%d got=%q want=%q", len([]rune(got)), got, tc.want)
 		}
 	}

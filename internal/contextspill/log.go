@@ -8,11 +8,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 const noticePrefix = "AWF_CONTEXT_SPILL_V1"
@@ -25,14 +25,13 @@ type Notice struct {
 
 var (
 	now       = time.Now
-	lstatPath = os.Lstat
-	mkdirPath = os.Mkdir
-	openFile  = syscall.Open
-	fstatFile = syscall.Fstat
-	flockFile = syscall.Flock
-	writeFile = syscall.Write
-	fsyncFile = syscall.Fsync
-	closeFile = syscall.Close
+	openAt    = unix.Openat
+	mkdirAt   = unix.Mkdirat
+	fstatFile = unix.Fstat
+	flockFile = unix.Flock
+	writeFile = unix.Write
+	fsyncFile = unix.Fsync
+	closeFile = unix.Close
 )
 
 // ParseNotice recognizes the closed two-line context spill notice grammar.
@@ -76,44 +75,32 @@ func ShellQuote(argv []string) string {
 }
 
 // Log appends one path-free spill record beneath the repository-local private
-// directory. It rejects symlink, ownership, type, and permission surprises.
+// directory. Every descendant is opened relative to its verified parent
+// descriptor, preventing path substitution between inspection and use.
 func Log(root string, notice Notice, invocation []string) error {
-	canonicalRoot, err := canonicalRoot(root)
+	rootFD, err := openRepositoryRoot(root)
 	if err != nil {
 		return err
 	}
-	awf := filepath.Join(canonicalRoot, ".awf")
-	if err := inspectOwnedDirectory(awf, false); err != nil {
-		return fmt.Errorf("inspect .awf: %w", err)
+	defer func() { _ = closeFile(rootFD) }()
+	awfFD, err := openOwnedDirectoryAt(rootFD, ".awf", 0)
+	if err != nil {
+		return fmt.Errorf("open .awf: %w", err)
 	}
-	local := filepath.Join(awf, "local")
-	if err := mkdirPath(local, 0o700); err != nil && !errors.Is(err, os.ErrExist) {
-		return fmt.Errorf("create .awf/local: %w", err)
+	defer func() { _ = closeFile(awfFD) }()
+	localFD, err := openLocalDirectory(awfFD)
+	if err != nil {
+		return err
 	}
-	if err := inspectOwnedDirectory(local, true); err != nil {
-		return fmt.Errorf("inspect .awf/local: %w", err)
-	}
-	logPath := filepath.Join(local, "context-spills.log")
-	fd, err := openFile(logPath, syscall.O_WRONLY|syscall.O_APPEND|syscall.O_CREAT|syscall.O_CLOEXEC|syscall.O_NOFOLLOW, 0o600)
+	defer func() { _ = closeFile(localFD) }()
+	fd, err := openAt(localFD, "context-spills.log", unix.O_WRONLY|unix.O_APPEND|unix.O_CREAT|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0o600)
 	if err != nil {
 		return fmt.Errorf("open context spill log: %w", err)
 	}
+	first := inspectOwnedFD(fd, unix.S_IFREG, 0o600, "context spill log")
 	acquired := false
-	var first error
-	var stat syscall.Stat_t
-	statErr := fstatFile(fd, &stat)
-	switch {
-	case statErr != nil:
-		first = fmt.Errorf("inspect context spill log: %w", statErr)
-	case stat.Mode&syscall.S_IFMT != syscall.S_IFREG:
-		first = errors.New("inspect context spill log: not a regular file")
-	case stat.Mode&0o777 != 0o600:
-		first = fmt.Errorf("inspect context spill log: mode is %04o, want 0600", stat.Mode&0o777)
-	case uint64(stat.Uid) != uint64(os.Getuid()):
-		first = errors.New("inspect context spill log: owned by another user")
-	}
 	if first == nil {
-		if err := flockFile(fd, syscall.LOCK_EX); err != nil {
+		if err := flockFile(fd, unix.LOCK_EX); err != nil {
 			first = fmt.Errorf("lock context spill log: %w", err)
 		} else {
 			acquired = true
@@ -121,9 +108,8 @@ func Log(root string, notice Notice, invocation []string) error {
 	}
 	if first == nil {
 		record := fmt.Sprintf("%s\tbytes=%d\tinvocation=%s\n", now().UTC().Format(time.RFC3339Nano), notice.Bytes, ShellQuote(invocation))
-		first = writeAllFD(fd, []byte(record))
-		if first != nil {
-			first = fmt.Errorf("write context spill log: %w", first)
+		if err := writeAllFD(fd, []byte(record)); err != nil {
+			first = fmt.Errorf("write context spill log: %w", err)
 		}
 	}
 	if first == nil {
@@ -132,7 +118,7 @@ func Log(root string, notice Notice, invocation []string) error {
 		}
 	}
 	if acquired {
-		if err := flockFile(fd, syscall.LOCK_UN); first == nil && err != nil {
+		if err := flockFile(fd, unix.LOCK_UN); first == nil && err != nil {
 			first = fmt.Errorf("unlock context spill log: %w", err)
 		}
 	}
@@ -140,6 +126,58 @@ func Log(root string, notice Notice, invocation []string) error {
 		first = fmt.Errorf("close context spill log: %w", err)
 	}
 	return first
+}
+
+// HasSafeLog reports whether a nonempty observability log exists after opening
+// every component relative to a verified parent descriptor. An absent local
+// directory or log is a safe empty state.
+func HasSafeLog(root string) (bool, error) {
+	rootFD, err := openRepositoryRoot(root)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = closeFile(rootFD) }()
+	awfFD, err := openOwnedDirectoryAt(rootFD, ".awf", 0)
+	if err != nil {
+		return false, fmt.Errorf("open .awf: %w", err)
+	}
+	defer func() { _ = closeFile(awfFD) }()
+	localFD, err := openOwnedDirectoryAt(awfFD, "local", 0o700)
+	if errors.Is(err, unix.ENOENT) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("open .awf/local: %w", err)
+	}
+	defer func() { _ = closeFile(localFD) }()
+	fd, err := openAt(localFD, "context-spills.log", unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if errors.Is(err, unix.ENOENT) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("open context spill log: %w", err)
+	}
+	defer func() { _ = closeFile(fd) }()
+	var stat unix.Stat_t
+	if err := fstatFile(fd, &stat); err != nil {
+		return false, fmt.Errorf("inspect context spill log: %w", err)
+	}
+	if err := validateOwnedStat(stat, unix.S_IFREG, 0o600); err != nil {
+		return false, fmt.Errorf("inspect context spill log: %w", err)
+	}
+	return stat.Size > 0, nil
+}
+
+func openRepositoryRoot(root string) (int, error) {
+	canonical, err := canonicalRoot(root)
+	if err != nil {
+		return -1, err
+	}
+	fd, err := openAt(unix.AT_FDCWD, canonical, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		return -1, fmt.Errorf("open repository root: %w", err)
+	}
+	return fd, nil
 }
 
 func canonicalRoot(root string) (string, error) {
@@ -157,51 +195,57 @@ func canonicalRoot(root string) (string, error) {
 	return canonical, nil
 }
 
-func inspectOwnedDirectory(path string, private bool) error {
-	info, err := lstatPath(path)
+func openLocalDirectory(awfFD int) (int, error) {
+	fd, err := openOwnedDirectoryAt(awfFD, "local", 0o700)
+	if errors.Is(err, unix.ENOENT) {
+		if mkdirErr := mkdirAt(awfFD, "local", 0o700); mkdirErr != nil && !errors.Is(mkdirErr, unix.EEXIST) {
+			return -1, fmt.Errorf("create .awf/local: %w", mkdirErr)
+		}
+		fd, err = openOwnedDirectoryAt(awfFD, "local", 0o700)
+	}
 	if err != nil {
-		return err
+		return -1, fmt.Errorf("open .awf/local: %w", err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-		return errors.New("unsafe non-directory or symlink path")
+	return fd, nil
+}
+
+func openOwnedDirectoryAt(parent int, name string, mode uint32) (int, error) {
+	fd, err := openAt(parent, name, unix.O_RDONLY|unix.O_DIRECTORY|unix.O_CLOEXEC|unix.O_NOFOLLOW, 0)
+	if err != nil {
+		return -1, err
 	}
-	uid, ok := fileUID(info)
-	if !ok {
-		return errors.New("ownership unavailable")
+	if err := inspectOwnedFD(fd, unix.S_IFDIR, mode, "directory"); err != nil {
+		_ = closeFile(fd)
+		return -1, err
 	}
-	if uid != uint64(os.Getuid()) {
-		return errors.New("owned by another user")
+	return fd, nil
+}
+
+func inspectOwnedFD(fd int, kind uint32, mode uint32, label string) error {
+	var stat unix.Stat_t
+	if err := fstatFile(fd, &stat); err != nil {
+		return fmt.Errorf("inspect %s: %w", label, err)
 	}
-	if private && info.Mode().Perm() != 0o700 {
-		return fmt.Errorf("mode is %04o, want 0700", info.Mode().Perm())
+	if err := validateOwnedStat(stat, kind, mode); err != nil {
+		return fmt.Errorf("inspect %s: %w", label, err)
 	}
 	return nil
 }
 
-func fileUID(info os.FileInfo) (uint64, bool) {
-	value := reflect.ValueOf(info.Sys())
-	if !value.IsValid() {
-		return 0, false
-	}
-	if value.Kind() == reflect.Pointer {
-		if value.IsNil() {
-			return 0, false
+func validateOwnedStat(stat unix.Stat_t, kind uint32, mode uint32) error {
+	if stat.Mode&unix.S_IFMT != kind {
+		if kind == unix.S_IFREG {
+			return errors.New("not a regular file")
 		}
-		value = value.Elem()
+		return errors.New("not a directory")
 	}
-	if value.Kind() != reflect.Struct {
-		return 0, false
+	if mode != 0 && stat.Mode&0o777 != mode {
+		return fmt.Errorf("mode is %04o, want %04o", stat.Mode&0o777, mode)
 	}
-	field := value.FieldByName("Uid")
-	if !field.IsValid() {
-		return 0, false
+	if uint64(stat.Uid) != uint64(os.Getuid()) {
+		return errors.New("owned by another user")
 	}
-	switch field.Kind() {
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return field.Uint(), true
-	default:
-		return 0, false
-	}
+	return nil
 }
 
 func writeAllFD(fd int, data []byte) error {

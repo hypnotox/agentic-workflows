@@ -56,7 +56,14 @@ func Deliver(rendered []byte, repositoryRoot string, stdout io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("create context spill: %w", err)
 	}
-	cleanup := func() { _ = removeFile(f.Name()) }
+	closed := false
+	cleanup := func() {
+		if !closed {
+			_ = f.Close()
+			closed = true
+		}
+		_ = removeFile(f.Name())
+	}
 	fail := func(stage string, err error) error { cleanup(); return fmt.Errorf("%s: %w", stage, err) }
 	info, err := f.Stat()
 	if err != nil {
@@ -76,8 +83,10 @@ func Deliver(rendered []byte, repositoryRoot string, stdout io.Writer) error {
 		return fail("write context spill", err)
 	}
 	if err := f.Close(); err != nil {
+		closed = true
 		return fail("close context spill", err)
 	}
+	closed = true
 	first := []byte(fmt.Sprintf("AWF_CONTEXT_SPILL_V1 bytes=%d format=text\n", len(rendered)))
 	if err := writeFull(stdout, first); err != nil {
 		return fail("write context spill notice first line", err)

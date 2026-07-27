@@ -11,7 +11,13 @@ import (
 	"testing"
 )
 
-func TestContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
+// invariant: tooling/context-and-topic:context-spill-observability
+func TestContextSpillObservabilityContract(t *testing.T) {
+	t.Run("wrapper byte and status preservation", testContextRunnerPreservesOutputStatusAndObservesSpills)
+	t.Run("safe check advisory", testCheckRunnerSpillAdvisoryTracksNonemptySafeLog)
+}
+
+func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 	root := contextRunnerFixture(t)
 	run := func(mode string) (string, string, int) {
 		t.Helper()
@@ -130,7 +136,7 @@ func TestContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
 	}
 }
 
-func TestCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
+func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
 	root := contextRunnerFixture(t)
 	fakeBin := filepath.Join(root, "fake-bin")
 	if err := os.Mkdir(fakeBin, 0o755); err != nil {
@@ -170,6 +176,12 @@ func TestCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
 	}
 	if stderr := run(); strings.Contains(stderr, "resolve or promote the issue") {
 		t.Fatalf("empty log advisory: %q", stderr)
+	}
+	if err := os.Chmod(logPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if stderr := run(); !strings.Contains(stderr, "advisory inspection failed") || strings.Contains(stderr, "check: advisory:") {
+		t.Fatalf("unsafe log inspection was not warning-only: %q", stderr)
 	}
 }
 

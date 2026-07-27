@@ -83,8 +83,8 @@ None.
 	abandoned := adr.ADR{Number: "0004", Title: "ADR-0004: Abandoned", Filename: "0004-abandoned.md", Status: "Abandoned", Format: adr.CurrentStateV2, Operations: []adr.Operation{remove, add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 8, Operations: []adr.Operation{remove}}}}
 	add2 := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:another", Slug: "another"}
 	changes := pendingChanges([]adr.ADR{{Number: "0001", Status: "Implemented"}, {Number: "0003", Title: "ADR-0003: Later", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}}, {Number: "0002", Title: "ADR-0002: Pending", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add, add2}}}, map[string]bool{"alpha/one": true})
-	if len(changes) != 3 || changes[0].ADR != "0002" || changes[0].Claim != "alpha/one:another" {
-		t.Fatalf("pending=%#v", changes)
+	if len(changes) != 3 || changes[0].ADR != "0002" || changes[0].Claim != "alpha/one:new-rule" || changes[1].Claim != "alpha/one:another" || changes[2].ADR != "0003" {
+		t.Fatalf("pending declaration order=%#v", changes)
 	}
 	if got := pendingChanges([]adr.ADR{{Number: "0002", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}}}, map[string]bool{"other/topic": true}); len(got) != 0 {
 		t.Fatal(got)

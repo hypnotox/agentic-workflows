@@ -39,6 +39,31 @@ func TestRun(t *testing.T) {
 	}
 }
 
+func TestRunSafeLogAdvisory(t *testing.T) {
+	root := t.TempDir()
+	local := filepath.Join(root, ".awf", "local")
+	if err := os.MkdirAll(local, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if status := run([]string{"--check-log", "--root", root}, &stdout, &stderr); status != 0 || stdout.Len() != 0 || stderr.Len() != 0 {
+		t.Fatalf("empty status=%d stdout=%q stderr=%q", status, stdout.String(), stderr.String())
+	}
+	if err := os.WriteFile(filepath.Join(local, "context-spills.log"), []byte("record\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if status := run([]string{"--check-log", "--root", root}, &stdout, &stderr); status != 0 || !strings.Contains(stderr.String(), "resolve or promote") {
+		t.Fatalf("nonempty status=%d stderr=%q", status, stderr.String())
+	}
+	if err := os.Chmod(filepath.Join(local, "context-spills.log"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stderr.Reset()
+	if status := run([]string{"--check-log", "--root", root}, &stdout, &stderr); status == 0 || !strings.Contains(stderr.String(), "want 0600") {
+		t.Fatalf("unsafe status=%d stderr=%q", status, stderr.String())
+	}
+}
+
 func TestRunUnrecognizedIsSilent(t *testing.T) {
 	capture := filepath.Join(t.TempDir(), "capture")
 	if err := os.WriteFile(capture, []byte("ordinary context\n"), 0o600); err != nil {
