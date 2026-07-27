@@ -36,6 +36,13 @@ func TestEffortCommandsFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	if !strings.Contains(listed, "effort "+id+" ") {
 		t.Fatalf("linked list = %q", listed)
 	}
+	wantMemory := "effort " + id + " memory=" + filepath.Join(primary, ".awf", "memory", id+".md") + "\n"
+	if got := runEffortCommand(t, primary, "memory", []string{id}, nil); got != wantMemory {
+		t.Fatalf("primary memory output = %q, want %q", got, wantMemory)
+	}
+	if got := runEffortCommand(t, linked, "memory", []string{id}, nil); got != wantMemory {
+		t.Fatalf("linked memory output = %q, want %q", got, wantMemory)
+	}
 
 	shownJSON := runEffortCommand(t, linked, "show", []string{id}, map[string]bool{"--json": true})
 	var shown effort.Record
@@ -71,8 +78,9 @@ func TestEffortNoMemoryMemoryListJSONAndReservedWorktree(t *testing.T) {
 		t.Fatalf("--no-memory output = %q", created)
 	}
 	memory := runEffortCommand(t, root, "memory", []string{id}, nil)
-	if memory != "effort "+id+" memory=.awf/memory/"+id+".md\n" {
-		t.Fatalf("memory output = %q", memory)
+	wantMemory := "effort " + id + " memory=" + filepath.Join(root, ".awf", "memory", id+".md") + "\n"
+	if memory != wantMemory {
+		t.Fatalf("memory output = %q, want %q", memory, wantMemory)
 	}
 	listed := runEffortCommand(t, root, "list", nil, map[string]bool{"--json": true})
 	var envelope struct {

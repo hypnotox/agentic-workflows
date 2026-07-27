@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -13,62 +12,37 @@ func memorySkeleton(id string) []byte {
 }
 
 func (p paths) createMemory(id string) (string, error) {
-	if err := p.ensure(p.memory); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return "", err
+	if err := p.ensure(p.memory); err != nil {
+		return "", fmt.Errorf("prepare memory directory %s: %w", p.memory, err)
 	}
 	path := p.memoryFile(id)
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-	if errors.Is(err, os.ErrExist) {
-		raw, readErr := os.ReadFile(path)
-		if readErr != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-			return "", fmt.Errorf("inspect existing memory: %w", readErr)
-		}
+	raw, _, err := readRegularNoFollow(path)
+	if err == nil {
 		if strings.HasPrefix(string(raw), "Effort: "+id+"\n") {
 			return path, nil
 		}
 		return "", fmt.Errorf("refuse existing non-owned memory file %s", path)
 	}
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return "", fmt.Errorf("create memory: %w", err)
+	if !errors.Is(err, os.ErrNotExist) {
+		return "", fmt.Errorf("inspect memory destination %s: %w", path, err)
 	}
-	if _, err := file.Write(memorySkeleton(id)); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		_ = file.Close()
-		_ = os.Remove(path)
-		return "", err
-	}
-	if err := file.Sync(); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		_ = file.Close()
-		return "", err
-	}
-	if err := file.Close(); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return "", err
-	}
-	dir, err := os.Open(filepath.Dir(path))
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return "", err
-	}
-	defer dir.Close()
-	if err := dir.Sync(); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return "", err
+	if err := atomicReplaceFS(p.filesystem(), path, memorySkeleton(id), nil); err != nil {
+		return "", fmt.Errorf("publish memory file %s: %w", path, err)
 	}
 	return path, nil
 }
 
 func (p paths) memoryTruth(id string) (bool, error) {
+	if err := p.validate(p.memory); err != nil {
+		return false, fmt.Errorf("validate memory resident root before truth read: %w", err)
+	}
 	path := p.memoryFile(id)
-	info, err := os.Lstat(path)
+	raw, _, err := readRegularNoFollow(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return false, err
-	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-		return false, fmt.Errorf("unsafe memory path %s", path)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return false, err
+	if err != nil {
+		return false, fmt.Errorf("inspect memory truth at %s: %w", path, err)
 	}
 	if !strings.HasPrefix(string(raw), "Effort: "+id+"\n") {
 		return false, fmt.Errorf("memory file %s is not owned by effort %s", path, id)

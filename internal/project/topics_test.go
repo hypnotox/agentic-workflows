@@ -37,17 +37,40 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"cmd/awf/effort.go", "internal/effort/types.go", "internal/worktree/manager.go"} {
+	effortTopic, ok := corpus.ByTopicID("tooling/effort-management")
+	if !ok {
+		t.Fatal("tooling/effort-management topic is absent")
+	}
+	paths := []string{
+		"cmd/awf/effort.go",
+		"cmd/awf/effort_test.go",
+		"internal/effort/branches_test.go",
+		"internal/effort/durability_test.go",
+		"internal/effort/memory.go",
+		"internal/effort/memory_test.go",
+		"internal/effort/paths.go",
+		"internal/effort/paths_test.go",
+		"internal/effort/repair_test.go",
+		"internal/effort/safeio.go",
+		"internal/effort/safety_test.go",
+		"internal/effort/service.go",
+		"internal/effort/service_test.go",
+		"internal/effort/store.go",
+		"internal/effort/store_test.go",
+		"internal/effort/types.go",
+		"internal/effort/types_test.go",
+	}
+	for _, path := range paths {
 		t.Run(strings.ReplaceAll(path, "/", "-"), func(t *testing.T) {
-			matched := topic.TopicsForPath(corpus, path)
-			found := false
-			for _, candidate := range matched {
-				if candidate.ID.String() == "tooling/effort-management" {
-					found = candidate.ID.Domain == "tooling"
-				}
+			if _, err := os.Stat(filepath.Join("../..", filepath.FromSlash(path))); err != nil {
+				t.Fatalf("enumerated Phase 1 path does not exist: %v", err)
 			}
-			if !found {
-				t.Fatalf("%s did not resolve to tooling/effort-management: %#v", path, matched)
+			applicability := topic.ApplicabilityForTopic(effortTopic, corpus.DomainPaths["tooling"], corpus.Markers, []string{path})
+			if len(applicability.DomainPaths) == 0 {
+				t.Errorf("%s did not independently resolve to the tooling domain", path)
+			}
+			if len(applicability.TopicPaths) == 0 {
+				t.Errorf("%s did not independently resolve to tooling/effort-management", path)
 			}
 		})
 	}

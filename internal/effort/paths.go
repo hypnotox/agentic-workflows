@@ -14,37 +14,52 @@ type paths struct {
 	memory    string
 	worktrees string
 	assign    string
+	fs        fileSystem
 }
 
 func resolvePaths(roots awfgit.ControlRoots) (paths, error) {
 	efforts, err := roots.ResidentRoot(awfgit.ResidentEfforts)
 	if err != nil {
-		return paths{}, err
+		return paths{}, fmt.Errorf("resolve efforts resident root: %w", err)
 	}
 	memory, err := roots.ResidentRoot(awfgit.ResidentMemory)
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return paths{}, err
+	if err != nil {
+		return paths{}, fmt.Errorf("resolve memory resident root: %w", err)
 	}
 	worktrees, err := roots.ResidentRoot(awfgit.ResidentWorktrees)
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return paths{}, err
+	if err != nil {
+		return paths{}, fmt.Errorf("resolve worktrees resident root: %w", err)
 	}
 	assign, err := roots.ResidentRoot(awfgit.ResidentAssignments)
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return paths{}, err
+	if err != nil {
+		return paths{}, fmt.Errorf("resolve assignments resident root: %w", err)
 	}
 	return paths{roots: roots, efforts: efforts, memory: memory, worktrees: worktrees, assign: assign}, nil
 }
 
 func (p paths) ensure(root string) error {
-	if err := os.MkdirAll(root, 0o700); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
+	if err := os.MkdirAll(root, 0o700); err != nil {
 		return fmt.Errorf("create resident root %s: %w", root, err)
 	}
-	if err := os.Chmod(root, 0o700); err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return fmt.Errorf("secure resident root %s: %w", root, err)
+	info, err := os.Lstat(root)
+	if err != nil { // coverage-ignore: MkdirAll just proved this exact path exists; only a concurrent namespace race can make the adjacent lstat fail
+		return fmt.Errorf("inspect resident root %s: %w", root, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 { // coverage-ignore: MkdirAll rejects a symlink leaf before this check; ancestor symlinks are rejected by ResidentRoot revalidation
+		return &awfgit.HardSafetyError{Category: "symlink", Path: root}
+	}
+	if !info.IsDir() { // coverage-ignore: MkdirAll rejects a non-directory leaf before this check
+		return &awfgit.HardSafetyError{Category: "file-type", Path: root, Err: fmt.Errorf("mode %s is not a directory", info.Mode())}
+	}
+	if info.Mode().Perm() != 0o700 {
+		return &awfgit.HardSafetyError{Category: "resident-permissions", Path: root, Err: fmt.Errorf("mode is %o, want 700", info.Mode().Perm())}
 	}
 	// Re-run the control-root proof after creation so a symlink race is never
 	// accepted merely because MkdirAll returned success.
+	return p.validate(root)
+}
+
+func (p paths) validate(root string) error {
 	var name awfgit.ResidentName
 	switch root {
 	case p.efforts:
@@ -59,13 +74,20 @@ func (p paths) ensure(root string) error {
 		return fmt.Errorf("unknown resident root %s", root)
 	}
 	resolved, err := p.roots.ResidentRoot(name)
-	if err != nil { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
-		return err
+	if err != nil {
+		return fmt.Errorf("revalidate resident root %s: %w", root, err)
 	}
-	if filepath.Clean(resolved) != filepath.Clean(root) { // coverage-ignore: requires an injected OS durability or filesystem fault after the operation prerequisite succeeded
+	if filepath.Clean(resolved) != filepath.Clean(root) { // coverage-ignore: the closed root-to-ResidentName switch maps each input back to the identical cleaned path
 		return fmt.Errorf("resident root changed from %s to %s", root, resolved)
 	}
 	return nil
+}
+
+func (p paths) filesystem() fileSystem {
+	if p.fs == nil {
+		return osFileSystem{}
+	}
+	return p.fs
 }
 
 func (p paths) record(id string) string          { return filepath.Join(p.efforts, id+".json") }

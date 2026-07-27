@@ -240,6 +240,19 @@ func TestControlRootRejectsMissingNonPrunableWorktreeGitFile(t *testing.T) {
 	requireNonForceableHardSafety(t, err, "repository-identity", linked)
 }
 
+func TestControlRootRejectsMissingListedGitdirPointerTarget(t *testing.T) {
+	base := t.TempDir()
+	primary := filepath.Join(base, "primary")
+	initNativeRepo(t, primary)
+	linked := filepath.Join(base, "linked")
+	runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+	missing := filepath.Join(base, "missing-gitdir-target")
+	writeFile(t, filepath.Join(linked, ".git"), "gitdir: "+missing+"\n")
+
+	_, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	requireNonForceableHardSafety(t, err, "repository-identity", linked)
+}
+
 func TestControlRootRejectsRepositoryIdentityMismatch(t *testing.T) {
 	base := t.TempDir()
 	primary := filepath.Join(base, "first-primary")

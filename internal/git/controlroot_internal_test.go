@@ -12,7 +12,7 @@ import (
 func TestControlRootInternalParserAndHelpers(t *testing.T) {
 	valid := []byte("worktree /a\x00HEAD abc\x00branch refs/heads/main\x00\x00worktree /b\x00HEAD def\x00detached\x00prunable missing administrative files\x00\x00worktree /bare\x00bare\x00\x00")
 	records, err := parseWorktreePorcelain(valid)
-	if err != nil || len(records) != 3 || !records[0].branch || !records[1].detached || !records[1].prunable || !records[2].bare {
+	if err != nil || len(records) != 3 || records[0].branch != "refs/heads/main" || records[0].head != "abc" || !records[1].detached || !records[1].prunable || !records[2].bare {
 		t.Fatalf("valid parse = %#v, %v", records, err)
 	}
 	cases := [][]byte{
@@ -40,6 +40,27 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 	}
 	if got, err := cleanAbsolute("."); err != nil || !filepath.IsAbs(got) {
 		t.Fatalf("cleanAbsolute = %q, %v", got, err)
+	}
+}
+
+func TestListWorktreeRegistrationsErrors(t *testing.T) {
+	if _, err := ListWorktreeRegistrations(t.Context(), filepath.Join(t.TempDir(), "not-a-repository")); err == nil {
+		t.Fatal("non-repository registration list succeeded")
+	}
+	bin := t.TempDir()
+	script := filepath.Join(bin, "git")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'malformed\\000'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if _, err := ListWorktreeRegistrations(t.Context(), t.TempDir()); err == nil {
+		t.Fatal("malformed registration topology accepted")
+	}
+	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'worktree relative\\000HEAD abc\\000branch refs/heads/main\\000\\000'\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ListWorktreeRegistrations(t.Context(), t.TempDir()); err == nil {
+		t.Fatal("relative registration path accepted")
 	}
 }
 

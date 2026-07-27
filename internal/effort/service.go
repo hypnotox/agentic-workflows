@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"time"
@@ -18,27 +19,32 @@ import (
 
 // Options supplies deterministic dependencies to focused tests.
 type Options struct {
-	Clock func() time.Time
-	UUID  func() (string, error)
+	Clock      func() time.Time
+	UUID       func() (string, error)
+	Filesystem fileSystem
+	Worktrees  func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
 }
 
 // Service owns ordinary effort record and memory operations.
 type Service struct {
-	paths paths
-	store store
-	clock func() time.Time
-	uuid  func() (string, error)
+	ctx       context.Context
+	paths     paths
+	store     store
+	clock     func() time.Time
+	uuid      func() (string, error)
+	worktrees func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
 }
 
 func Open(ctx context.Context, invokingRoot string, options Options) (*Service, error) {
 	roots, err := awfgit.ResolveControlRoots(ctx, invokingRoot)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve effort control roots from %s: %w", invokingRoot, err)
 	}
 	resolved, err := resolvePaths(roots)
-	if err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("resolve effort resident paths from %s: %w", roots.PrimaryRoot, err)
 	}
+	resolved.fs = options.Filesystem
 	clock := options.Clock
 	if clock == nil {
 		clock = time.Now
@@ -47,14 +53,16 @@ func Open(ctx context.Context, invokingRoot string, options Options) (*Service, 
 	if allocator == nil {
 		allocator = randomUUIDv4
 	}
-	return &Service{paths: resolved, store: store{paths: resolved}, clock: clock, uuid: allocator}, nil
+	worktrees := options.Worktrees
+	if worktrees == nil {
+		worktrees = awfgit.ListWorktreeRegistrations
+	}
+	return &Service{ctx: ctx, paths: resolved, store: store{paths: resolved, fs: options.Filesystem}, clock: clock, uuid: allocator, worktrees: worktrees}, nil
 }
 
 func randomUUIDv4() (string, error) {
 	var raw [16]byte
-	if _, err := rand.Read(raw[:]); err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-		return "", err
-	}
+	_, _ = rand.Read(raw[:]) // crypto/rand.Read fills the slice or terminates the process.
 	raw[6] = raw[6]&0x0f | 0x40
 	raw[8] = raw[8]&0x3f | 0x80
 	encoded := hex.EncodeToString(raw[:])
@@ -78,16 +86,16 @@ func (s *Service) New(title string, withMemory bool) (Record, error) {
 			if !uuidV4Pattern.MatchString(id) {
 				return fmt.Errorf("allocator returned invalid UUIDv4 %q", id)
 			}
-			if _, err := os.Lstat(s.paths.record(id)); err == nil {
+			if err := requireAbsent(s.paths.record(id)); errors.Is(err, os.ErrExist) {
 				continue
-			} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-				return err
+			} else if err != nil {
+				return fmt.Errorf("check effort ID collision at %s: %w", s.paths.record(id), err)
 			}
 			now := s.now()
 			created = Record{SchemaVersion: SchemaVersion, ID: id, Title: title, State: StateActive, CreatedAt: now, UpdatedAt: now, Integration: IntegrationNone}
 			if withMemory {
-				if _, err := s.paths.createMemory(id); err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-					return err
+				if _, err := s.paths.createMemory(id); err != nil {
+					return fmt.Errorf("create default memory for effort %s: %w", id, err)
 				}
 				created.MemoryPresent = true
 			}
@@ -173,8 +181,8 @@ func (s *Service) mutate(id string, change func(*Record) error) (Record, error) 
 			now = record.UpdatedAt.Add(time.Nanosecond)
 		}
 		record.UpdatedAt = now
-		if err := s.store.replace(record, true); err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-			return err
+		if err := s.store.replace(record, true); err != nil {
+			return fmt.Errorf("replace mutated effort record %s: %w", s.paths.record(id), err)
 		}
 		result = record
 		return nil
@@ -196,7 +204,7 @@ func (s *Service) Memory(id string) (string, Record, error) {
 		}
 		path, err = s.paths.createMemory(id)
 		if err != nil {
-			return err
+			return fmt.Errorf("create memory for effort %s: %w", id, err)
 		}
 		if !record.MemoryPresent {
 			now := s.now()
@@ -204,8 +212,8 @@ func (s *Service) Memory(id string) (string, Record, error) {
 				now = record.UpdatedAt.Add(time.Nanosecond)
 			}
 			record.MemoryPresent, record.UpdatedAt = true, now
-			if err := s.store.replace(record, true); err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-				return err
+			if err := s.store.replace(record, true); err != nil {
+				return fmt.Errorf("publish memory presence in effort record %s: %w", s.paths.record(id), err)
 			}
 		}
 		result = record
@@ -226,28 +234,15 @@ func (s *Service) Repair(id string) (RepairResult, error) {
 			return err
 		}
 		memory, err := s.paths.memoryTruth(id)
-		if err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-			return err
+		if err != nil {
+			return fmt.Errorf("derive memory truth for effort %s: %w", id, err)
 		}
 		if record.MemoryPresent != memory {
 			result.Changes = append(result.Changes, RepairChange{Field: "memoryPresent", From: record.MemoryPresent, To: memory})
 			record.MemoryPresent = memory
 		}
-		if record.Worktree != nil {
-			info, statErr := os.Lstat(s.paths.managedWorktree(id))
-			switch {
-			case errors.Is(statErr, os.ErrNotExist):
-				result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: record.Worktree, To: nil})
-				record.Worktree = nil
-				if record.Integration == IntegrationPending {
-					result.Changes = append(result.Changes, RepairChange{Field: "integration", From: IntegrationPending, To: IntegrationNone})
-					record.Integration = IntegrationNone
-				}
-			case statErr != nil: // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-				return statErr
-			case info.Mode()&os.ModeSymlink != 0 || !info.IsDir():
-				return fmt.Errorf("unsafe managed worktree path %s", s.paths.managedWorktree(id))
-			}
+		if err := s.repairWorktree(&record, &result); err != nil {
+			return err
 		}
 		if len(result.Changes) > 0 {
 			now := s.now()
@@ -255,8 +250,8 @@ func (s *Service) Repair(id string) (RepairResult, error) {
 				now = record.UpdatedAt.Add(time.Nanosecond)
 			}
 			record.UpdatedAt = now
-			if err := s.store.replace(record, true); err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-				return err
+			if err := s.store.replace(record, true); err != nil {
+				return fmt.Errorf("publish repaired effort record %s: %w", s.paths.record(id), err)
 			}
 		}
 		result.Record = record
@@ -266,11 +261,95 @@ func (s *Service) Repair(id string) (RepairResult, error) {
 		return RepairResult{}, err
 	}
 	record, err := s.joinAssignments(result.Record)
-	if err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-		return RepairResult{}, err
+	if err != nil {
+		return RepairResult{}, fmt.Errorf("join assignments after repairing effort %s: %w", id, err)
 	}
 	result.Record = record
 	return result, nil
+}
+
+func (s *Service) repairWorktree(record *Record, result *RepairResult) error {
+	if err := s.paths.validate(s.paths.worktrees); err != nil {
+		return fmt.Errorf("validate worktree resident root before repair: %w", err)
+	}
+	managed := filepath.Clean(s.paths.managedWorktree(record.ID))
+	registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
+	if err != nil {
+		return fmt.Errorf("list native Git registrations for repair of %s: %w", managed, err)
+	}
+	var exact []awfgit.WorktreeRegistration
+	for _, registration := range registrations {
+		if filepath.Clean(registration.Path) == managed {
+			exact = append(exact, registration)
+		}
+	}
+	if len(exact) > 1 {
+		return safety("repository-identity", managed, fmt.Errorf("managed path has %d Git registrations", len(exact)))
+	}
+	pathPresent, err := managedDirectoryTruth(managed)
+	if err != nil {
+		return err
+	}
+	if len(exact) == 0 {
+		if pathPresent {
+			return safety("repository-identity", managed, errors.New("resident directory is not registered by native Git"))
+		}
+		if record.Worktree != nil {
+			result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: record.Worktree, To: nil})
+			record.Worktree = nil
+			if record.Integration == IntegrationPending {
+				result.Changes = append(result.Changes, RepairChange{Field: "integration", From: IntegrationPending, To: IntegrationNone})
+				record.Integration = IntegrationNone
+			}
+		}
+		return nil
+	}
+	registration := exact[0]
+	wantBranch := "refs/heads/awf/" + record.ID
+	if registration.Bare || registration.Detached || registration.Branch != wantBranch || !objectIDPattern.MatchString(registration.HEAD) {
+		return safety("repository-identity", managed, fmt.Errorf("registration has branch %q and HEAD %q, want %q and a full object ID", registration.Branch, registration.HEAD, wantBranch))
+	}
+	if pathPresent {
+		roots, err := awfgit.ResolveControlRoots(s.ctx, managed)
+		if err != nil {
+			return safety("repository-identity", managed, err)
+		}
+		if filepath.Clean(roots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(roots.InvokingRoot) != managed {
+			return safety("repository-identity", managed, errors.New("registered worktree belongs to a different repository identity"))
+		}
+	}
+	if record.Worktree != nil {
+		return nil
+	}
+	attached := s.now()
+	reconstructed := &Worktree{Branch: "awf/" + record.ID, Base: registration.HEAD, AttachedAt: attached}
+	result.Changes = append(result.Changes,
+		RepairChange{Field: "worktree", From: nil, To: reconstructed},
+		RepairChange{Field: "integration", From: record.Integration, To: IntegrationPending},
+	)
+	record.Worktree = reconstructed
+	record.Integration = IntegrationPending
+	return nil
+}
+
+func managedDirectoryTruth(path string) (bool, error) {
+	info, err := os.Lstat(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("lstat managed worktree %s: %w", path, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return false, safety("symlink", path, nil)
+	}
+	if !info.IsDir() {
+		return false, safety("file-type", path, fmt.Errorf("mode %s is not a directory", info.Mode()))
+	}
+	if !ownerOK(info) { // coverage-ignore: exercised only when the test process has privilege to create a foreign-owned directory fixture
+		return false, safety("foreign-owner", path, nil)
+	}
+	return true, nil
 }
 
 type assignmentFile struct {
@@ -279,28 +358,32 @@ type assignmentFile struct {
 }
 
 func (s *Service) readAssignments() (map[string]string, error) {
-	raw, err := os.ReadFile(s.paths.assignments())
+	if err := s.paths.validate(s.paths.assign); err != nil {
+		return nil, fmt.Errorf("validate assignment resident root before read: %w", err)
+	}
+	path := s.paths.assignments()
+	raw, _, err := readRegularNoFollow(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return map[string]string{}, nil
 	}
-	if err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("read assignment authority %s: %w", path, err)
 	}
 	var file assignmentFile
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&file); err != nil {
-		return nil, &CorruptError{Path: s.paths.assignments(), Err: err}
+		return nil, &CorruptError{Path: path, Err: err}
 	}
 	if err := requireJSONEOF(decoder); err != nil {
-		return nil, &CorruptError{Path: s.paths.assignments(), Err: err}
+		return nil, &CorruptError{Path: path, Err: err}
 	}
 	if file.SchemaVersion != SchemaVersion || file.Sessions == nil {
-		return nil, &CorruptError{Path: s.paths.assignments(), Err: errors.New("unsupported assignment schema")}
+		return nil, &CorruptError{Path: path, Err: errors.New("unsupported assignment schema")}
 	}
 	for session, id := range file.Sessions {
 		if strings.TrimSpace(session) != session || session == "" || len(session) > 160 || !uuidV4Pattern.MatchString(id) {
-			return nil, &CorruptError{Path: s.paths.assignments(), Err: errors.New("invalid assignment entry")}
+			return nil, &CorruptError{Path: path, Err: errors.New("invalid assignment entry")}
 		}
 	}
 	return file.Sessions, nil
@@ -319,8 +402,8 @@ func sessionsFor(assignments map[string]string, id string) []string {
 
 func (s *Service) joinAssignments(record Record) (Record, error) {
 	assignments, err := s.readAssignments()
-	if err != nil { // coverage-ignore: dependency failure is preserved unchanged and covered at the dependency boundary
-		return Record{}, err
+	if err != nil {
+		return Record{}, fmt.Errorf("join assignment authority for effort %s: %w", record.ID, err)
 	}
 	record.AssignedSessionIDs = sessionsFor(assignments, record.ID)
 	return record, nil

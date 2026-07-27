@@ -34,7 +34,7 @@ func TestEffortMemoryTruthAndIdempotence(t *testing.T) {
 	if err := os.Mkdir(path, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.paths.memoryTruth(idA); err == nil || !strings.Contains(err.Error(), "unsafe") {
+	if _, err := service.paths.memoryTruth(idA); err == nil || !strings.Contains(err.Error(), "file-type") {
 		t.Fatalf("directory memory = %v", err)
 	}
 	if err := os.Remove(path); err != nil {

@@ -129,14 +129,14 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 	if err := lstatComponents(invokingGitDir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
+		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 	invokingGitDirIdentity, err := filepath.EvalSymlinks(invokingGitDir)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: invokingRoot, Err: err}
 	}
 	if err := lstatComponents(invokingGitDir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
+		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 
 	porcelain, err := runGitBytes(ctx, originalRoot, "worktree", "list", "--porcelain", "-z")
@@ -198,14 +198,14 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 			return ControlRoots{}, identityError(worktree, err)
 		}
 		if err := lstatComponents(gitdir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return ControlRoots{}, err
+			return ControlRoots{}, identityError(worktree, err)
 		}
 		gitdirIdentity, err := filepath.EvalSymlinks(gitdir)
 		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 			return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: worktree, Err: err}
 		}
 		if err := lstatComponents(gitdir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return ControlRoots{}, err
+			return ControlRoots{}, identityError(worktree, err)
 		}
 		if sameCleanPath(gitdirIdentity, commonIdentity) {
 			primaries = append(primaries, worktree)
@@ -250,11 +250,43 @@ func (r ControlRoots) ResidentRoot(name ResidentName) (string, error) {
 
 type worktreeRecord struct {
 	path     string
-	head     bool
-	branch   bool
+	head     string
+	branch   string
 	detached bool
 	bare     bool
 	prunable bool
+}
+
+// WorktreeRegistration is one native-Git worktree registration.
+type WorktreeRegistration struct {
+	Path     string
+	HEAD     string
+	Branch   string
+	Detached bool
+	Bare     bool
+	Prunable bool
+}
+
+// ListWorktreeRegistrations returns the repository's native-Git registrations
+// without consulting or scanning filesystem ancestors.
+func ListWorktreeRegistrations(ctx context.Context, invokingRoot string) ([]WorktreeRegistration, error) {
+	output, err := runGitBytes(ctx, invokingRoot, "worktree", "list", "--porcelain", "-z")
+	if err != nil {
+		return nil, fmt.Errorf("list Git worktrees from %s: %w", invokingRoot, err)
+	}
+	records, err := parseWorktreePorcelain(output)
+	if err != nil {
+		return nil, &HardSafetyError{Category: "repository-identity", Path: invokingRoot, Err: err}
+	}
+	result := make([]WorktreeRegistration, 0, len(records))
+	for _, record := range records {
+		if !filepath.IsAbs(record.path) {
+			return nil, &HardSafetyError{Category: "unconfined", Path: record.path, Err: errors.New("git registration path is not absolute")}
+		}
+		path := filepath.Clean(record.path)
+		result = append(result, WorktreeRegistration{Path: path, HEAD: record.head, Branch: record.branch, Detached: record.detached, Bare: record.bare, Prunable: record.prunable})
+	}
+	return result, nil
 }
 
 func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
@@ -277,17 +309,17 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 			return errors.New("worktree record has no path")
 		}
 		if current.bare {
-			if current.head || current.branch || current.detached {
+			if current.head != "" || current.branch != "" || current.detached {
 				return errors.New("bare worktree record has checkout fields")
 			}
 			if current.prunable {
 				return errors.New("bare worktree record is prunable")
 			}
 		} else {
-			if !current.head {
+			if current.head == "" {
 				return errors.New("non-bare worktree record has no HEAD")
 			}
-			if current.branch == current.detached {
+			if (current.branch != "") == current.detached {
 				return errors.New("non-bare worktree record must be exactly branched or detached")
 			}
 		}
@@ -327,12 +359,12 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 				return nil, fmt.Errorf("field %q requires a value", key)
 			}
 			if key == "HEAD" {
-				current.head = true
+				current.head = value
 			} else {
 				if seen["detached"] { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 					return nil, errors.New("worktree is both branched and detached")
 				}
-				current.branch = true
+				current.branch = value
 			}
 		case "detached":
 			if hasValue || seen["branch"] {

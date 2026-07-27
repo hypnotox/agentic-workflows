@@ -40,21 +40,20 @@ func TestEffortServiceRefusalsAndRepairWorktreeTruth(t *testing.T) {
 	}
 	writeEffortFile(t, recordPath, schemaRecordJSON(now, worktreeJSON(now), "pending"))
 	managed := filepath.Join(root, ".awf", "worktrees", idA)
-	if err := os.MkdirAll(managed, 0o700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(managed), 0o700); err != nil {
 		t.Fatal(err)
 	}
+	runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+idA, managed, "HEAD")
 	unchanged, err := service.Repair(idA)
 	if err != nil || len(unchanged.Changes) != 0 || unchanged.Record.Worktree == nil {
 		t.Fatalf("present worktree repair = %#v, %v", unchanged, err)
 	}
-	if err := os.Remove(managed); err != nil {
-		t.Fatal(err)
-	}
+	runEffortGit(t, "-C", root, "worktree", "remove", managed)
 	if err := os.WriteFile(managed, []byte("unsafe"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Repair(idA); err == nil || !strings.Contains(err.Error(), "unsafe") {
-		t.Fatalf("unsafe worktree repair = %v", err)
+	if _, err := service.Repair(idA); err == nil {
+		t.Fatal("unsafe worktree path accepted")
 	}
 }
 

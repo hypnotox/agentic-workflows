@@ -1,12 +1,14 @@
 package effort
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -118,6 +120,19 @@ func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 	if record.AssignedSessionIDs != nil {
 		t.Fatalf("new assignments = %#v, want nil", record.AssignedSessionIDs)
 	}
+	var persistedKeys map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &persistedKeys); err != nil {
+		t.Fatal(err)
+	}
+	wantKeys := []string{"createdAt", "id", "integration", "memoryPresent", "schemaVersion", "state", "title", "updatedAt", "worktree"}
+	gotKeys := make([]string, 0, len(persistedKeys))
+	for key := range persistedKeys {
+		gotKeys = append(gotKeys, key)
+	}
+	sort.Strings(gotKeys)
+	if !reflect.DeepEqual(gotKeys, wantKeys) {
+		t.Fatalf("persisted authority fields = %v, want exactly %v", gotKeys, wantKeys)
+	}
 	assignmentDir := filepath.Join(root, ".awf", "assignments")
 	if err := os.MkdirAll(assignmentDir, 0o700); err != nil {
 		t.Fatal(err)
@@ -204,8 +219,40 @@ func TestEffortCorruptionSchemaPairsRepairAndAtomicReplacement(t *testing.T) {
 		})
 	}
 
+	writeEffortFile(t, recordPath, schemaRecordJSON(now, worktreeJSON(now), "pending"))
+	completed, err := service.Complete(idA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if completed.Worktree == nil || completed.Integration != IntegrationPending {
+		t.Fatalf("completion discarded worktree authority: %#v", completed)
+	}
+	reopened, err := service.Reopen(idA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abandoned, err := service.Abandon(idA)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reopened.Worktree == nil || abandoned.Worktree == nil || abandoned.Integration != IntegrationPending {
+		t.Fatalf("lifecycle discarded worktree authority: reopened=%#v abandoned=%#v", reopened, abandoned)
+	}
+
 	writeEffortFile(t, recordPath, schemaRecordJSON(now, "null", "none"))
-	if err := atomicReplace(recordPath, []byte(schemaRecordJSON(now.Add(time.Second), "null", "none"))); err != nil {
+	if err := atomicReplaceForTest(recordPath, []byte(schemaRecordJSON(now.Add(time.Second), "null", "none"))); err != nil {
+		t.Fatal(err)
+	}
+	newPath := filepath.Join(filepath.Dir(recordPath), idB+".json")
+	if err := atomicReplaceForTest(newPath, []byte("new")); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(newPath); err != nil || string(got) != "new" {
+		t.Fatalf("new atomic publication = %q, %v", got, err)
+	}
+	cleanup := filepath.Join(filepath.Dir(recordPath), ".remove-me")
+	writeEffortFile(t, cleanup, "temp")
+	if err := (osFileSystem{}).Remove(cleanup); err != nil {
 		t.Fatal(err)
 	}
 	info, err := os.Stat(recordPath)
@@ -235,6 +282,16 @@ func TestEffortMemoryRefusesForeignExistingFile(t *testing.T) {
 	if got, _ := os.ReadFile(path); string(got) != "foreign\n" {
 		t.Fatalf("foreign memory changed to %q", got)
 	}
+}
+
+func atomicReplaceForTest(path string, raw []byte) error {
+	var expected *fileIdentity
+	if identity, err := lstatRegular(path); err == nil {
+		expected = &identity
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	return atomicReplaceFS(osFileSystem{}, path, raw, expected)
 }
 
 func openEffortService(t *testing.T, root string, now time.Time) *Service {

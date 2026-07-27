@@ -60,11 +60,11 @@ func runEffort(c *cmdCtx) error {
 		}
 		return writeEffortText(c.stdout, record)
 	case "memory":
-		_, record, err := service.Memory(id)
+		path, record, err := service.Memory(id)
 		if err != nil {
 			return err
 		}
-		_, err = fmt.Fprintf(c.stdout, "effort %s memory=.awf/memory/%s.md\n", record.ID, record.ID)
+		_, err = fmt.Fprintf(c.stdout, "effort %s memory=%s\n", record.ID, path)
 		return err
 	case "complete":
 		record, err := service.Complete(id)
