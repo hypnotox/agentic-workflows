@@ -344,16 +344,18 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 	if !strings.Contains(projectWorkflow, effortRecommendation) {
 		t.Errorf("authoritative workflow checkpoint guidance missing %q", effortRecommendation)
 	}
+	sentenceBoundary := regexp.MustCompile(`[.!?](?:\s+|$)`)
 	for label, body := range map[string]string{"catalog workflow": workflow, "project workflow": projectWorkflow} {
-		for _, line := range strings.Split(strings.ToLower(body), "\n") {
-			mentionsTaskOrHelper := strings.Contains(line, "checkbox task") || strings.Contains(line, "batch-helper return") || strings.Contains(line, "helper return")
-			if mentionsTaskOrHelper && strings.Contains(line, "checkpoint") && !strings.Contains(line, "not checkpoint boundaries") {
-				t.Errorf("%s adds a task/helper checkpoint trigger: %q", label, line)
+		for _, sentence := range sentenceBoundary.Split(strings.ToLower(body), -1) {
+			mentionsTaskOrHelper := strings.Contains(sentence, "checkbox task") || strings.Contains(sentence, "batch-helper return") || strings.Contains(sentence, "helper return")
+			negatesCheckpointBoundary := strings.Contains(sentence, "not checkpoint boundaries") || (strings.Contains(sentence, "not ") && strings.Contains(sentence, "checkpoint boundaries"))
+			if mentionsTaskOrHelper && strings.Contains(sentence, "checkpoint") && !negatesCheckpointBoundary {
+				t.Errorf("%s adds a task/helper checkpoint trigger: %q", label, sentence)
 			}
-			mentionsLifecycle := strings.Contains(line, "selection") || strings.Contains(line, "assignment") || strings.Contains(line, "adoption") || strings.Contains(line, "detour") || strings.Contains(line, "telemetry-lifecycle")
-			requiresCheckpointGate := strings.Contains(line, "required before a routine checkpoint") || strings.Contains(line, "requires a routine checkpoint") || strings.Contains(line, "checkpoint gate")
+			mentionsLifecycle := strings.Contains(sentence, "selection") || strings.Contains(sentence, "assignment") || strings.Contains(sentence, "adoption") || strings.Contains(sentence, "detour") || strings.Contains(sentence, "telemetry-lifecycle")
+			requiresCheckpointGate := strings.Contains(sentence, "required before a routine checkpoint") || strings.Contains(sentence, "requires a routine checkpoint") || strings.Contains(sentence, "checkpoint gate")
 			if mentionsLifecycle && requiresCheckpointGate {
-				t.Errorf("%s adds a lifecycle checkpoint gate: %q", label, line)
+				t.Errorf("%s adds a lifecycle checkpoint gate: %q", label, sentence)
 			}
 		}
 	}
