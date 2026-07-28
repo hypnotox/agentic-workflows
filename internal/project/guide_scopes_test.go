@@ -29,6 +29,15 @@ import (
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
 // invariant: rendering/workflow-skill-templates:workflow-transitions-advisory
 func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
+	profile := catalog.Standard.Skills["subagent-driven-development"].Profile
+	if profile.Purpose != "Implement a plan through reviewed phase owners." || profile.Trigger != "Use when a plan phase benefits from delegated implementation ownership." {
+		t.Fatalf("subagent-driven profile = %#v", profile)
+	}
+	for _, old := range []string{"reviewed subagent tasks", "delegated implementation tasks"} {
+		if strings.Contains(profile.Purpose, old) || strings.Contains(profile.Trigger, old) {
+			t.Errorf("subagent-driven profile retains %q", old)
+		}
+	}
 	skills := maps.Clone(catalog.Standard.Skills)
 	names := slices.Sorted(maps.Keys(skills))
 	skills["local"] = catalog.SkillSpec{Profile: catalog.WorkflowProfile{}}

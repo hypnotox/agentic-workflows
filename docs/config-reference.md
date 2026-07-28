@@ -65,7 +65,7 @@ declined; the generic prose renders).
 - `gateCmd`: Command that runs the full pre-commit gate (tests, lint, coverage). Consumed while an enabled artifact's template references it, and by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel).
   State: set (`./x gate`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push, plans-template, skill adr-lifecycle, skill bugfix, skill debugging, skill executing-plans, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill tdd, skill writing-plans.
 - `gateCmdFull`: Command for the full/extended gate tier, if the project has one. Consumed while an enabled artifact's template references it.
-  State: set (`./x gate full`). Consumed by: doc workflow, hooks pre-push, skill bugfix, skill debugging, skill executing-plans, skill subagent-driven-development.
+  State: set (`./x gate full`). Consumed by: doc workflow, hooks pre-push, skill bugfix, skill debugging.
 - `checkCmd`: Command that checks rendered output for drift. Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
   State: set (`./x check`). Consumed by: agents-doc, doc workflow, hooks pre-commit, hooks pre-push.
 - `commitGateCmd`: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the rendered `./awf` wrapper (the generic `awf` when the runner singleton is disabled). Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.
@@ -77,7 +77,7 @@ declined; the generic prose renders).
 - `testCmd`: Command that runs the test suite. Consumed while an enabled artifact's template references it.
   State: set (`go test ./...`). Consumed by: agents-doc, skill tdd.
 - `activeMdRegenCmd`: Command that regenerates the generated ADR decision index (INDEX.md). Consumed while an enabled artifact's template references it (the decision-index regeneration steps in the chain skills).
-  State: set (`./x render`). Consumed by: agent adr-reviewer, skill adr-lifecycle, skill executing-plans, skill proposing-adr, skill subagent-driven-development.
+  State: set (`./x render`). Consumed by: agent adr-reviewer, skill adr-lifecycle, skill proposing-adr.
 - `awfInvokeCmd`: Command the rendered ./awf wrapper execs to invoke awf. Leave empty to resolve the bootstrap-pinned binary, falling back to PATH awf. Consumed by the rendered runner wrapper template while the runner singleton is enabled.
   State: set (`go run ./cmd/awf`). Consumed by: runner.
 - `invariantTestPath`: Path or glob where invariant-backing tests live. Consumed while an enabled artifact's template references it (the invariant-backing guidance in the decision docs and skills).

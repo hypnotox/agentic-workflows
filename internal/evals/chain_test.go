@@ -229,8 +229,7 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 // retrospective instead carries the deletion step.
 var routineCheckpointSkills = []string{
 	"proposing-adr", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
-	"executing-plans", "subagent-driven-development", "executing-direct",
-	"reviewing-impl", "bugfix", "debugging",
+	"executing-direct", "reviewing-impl", "bugfix", "debugging",
 }
 
 // approvalCheckpointSkills are the two mandatory approval boundaries: the end
@@ -300,9 +299,7 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		}
 	}
 	perTask := map[string]string{
-		"executing-plans":             "After each independently resumable committed and reviewed task",
-		"subagent-driven-development": "After each implemented and reviewed task",
-		"executing-direct":            "after each independently resumable committed and reviewed change",
+		"executing-direct": "after each independently resumable committed and reviewed change",
 	}
 	for name, sentence := range perTask {
 		body := read(t, piSkillPath(name))

@@ -48,11 +48,17 @@ Rendered workflow skills describe catalog relationships only as recommendations.
 Origin: ADR-0167
 Backing: test
 
+### `invariant: phase-transaction-ownership`
+
+A rendered plan phase is one independently green coherent implementation transaction with an explicit per-phase inline or subagent-driven owner; checkbox tasks are ordered steps rather than default dispatch, review, checkpoint, or commit boundaries. One commit-capable implementer owns a complete subagent-driven phase from a known green baseline through staged check, gate, and closing commit, while the parent owns inline integration, sequential commit-disabled batch helpers, report-only review settlement, phase checkpointing, and explicit dirty-state recovery without blind task-level succession.
+Origin: ADR-0166
+Backing: test
+
 ### `invariant: plan-task-detail-modes`
 
-The rendered plan-authoring skill, plan reviewer, and implementation-plans README accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, and render coherently with empty variables.
+The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template accept exact content/diffs or implementation-ready pseudocode with a closed application contract, require exact form for machine-consumed and other contract-bearing representations, preserve the specialized batch task and no-placeholder boundary, require one coherent green transaction and an inline or subagent-driven owner per phase, reject coupled phases, and require any optional helper partition to be exhaustive, path-disjoint, shared-file-safe, and command-confined. Every surface renders coherently with empty variables.
 Origin: ADR-0148
-Revised-by: ADR-0157
+Revised-by: ADR-0157, ADR-0166
 Backing: test
 
 ### `invariant: reviewers-report-only`

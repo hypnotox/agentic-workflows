@@ -32,6 +32,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 {{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; optionally set exact `model` as `provider/model-id`; omission inherits the parent. The brief must include:
 {{ else }}3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
 {{ end }}   - The absolute plan path.
+   - The declared per-phase ownership, phase context, closing subjects, and any helper partitions alongside created/modified paths, so review assesses the same phase boundary.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.
 <!-- awf:include context-spill -->
@@ -58,7 +59,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 <!-- awf:section hand-off -->
 7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
    - If at least one linked ADR exists (named in the plan header or the session context), invoke `{{ .prefix }}-reviewing-plan-resync` to catch plan-vs-finalised-ADR(s) drift.
-   - If no ADR exists, the chain proceeds directly to implementation: invoke the target-native inline or subagent-driven execution skill according to task structure.
+   - If no ADR exists, the chain proceeds directly to implementation: invoke the target-native inline or subagent-driven execution skill according to each phase's declared ownership.
 
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->

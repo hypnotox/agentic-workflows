@@ -70,15 +70,16 @@ unambiguous paths without repeating the same root in every list item.
   `.claude/skills/awf-{writing-plans,executing-plans,subagent-driven-development,reviewing-plan,reviewing-plan-resync}/SKILL.md`,
   `.pi/skills/awf-{writing-plans,executing-plans,subagent-driven-development,reviewing-plan,reviewing-plan-resync}/SKILL.md`,
   `docs/plans/README.md`, `docs/plans/template.md`, `docs/workflow.md`,
-  `docs/working-with-awf.md`, `docs/glossary.md`, `docs/roadmap.md`,
+  `docs/working-with-awf.md`, `docs/config-reference.md`, `docs/glossary.md`, `docs/roadmap.md`,
   `docs/topics/rendering/workflow-skill-templates.md`, `docs/topics/rendering/pi-workflows.md`, and
   `docs/domains/rendering.md`.
 - **Generated Sundial outputs:** `examples/sundial/.awf/awf.lock`,
   `examples/sundial/.{claude,cursor,gemini,pi}/agents/plan-reviewer.md`,
+  `examples/sundial/.{codex,github}/agents/plan-reviewer.{toml,agent.md}`,
   `examples/sundial/.{agents,claude,cursor,gemini,github,pi}/skills/sundial-{writing-plans,executing-plans,subagent-driven-development,reviewing-plan,reviewing-plan-resync}/SKILL.md`,
   `examples/sundial/docs/plans/README.md`, `examples/sundial/docs/plans/template.md`,
-  `examples/sundial/docs/workflow.md`, `examples/sundial/docs/working-with-awf.md`, and
-  `examples/sundial/AGENTS.md`.
+  `examples/sundial/docs/workflow.md`, `examples/sundial/docs/working-with-awf.md`,
+  `examples/sundial/docs/config-reference.md`, and `examples/sundial/AGENTS.md`.
 - **Deleted:** the `coupled-phase escape` entry from `.awf/docs/glossary.yaml` and its generated
   row from `docs/glossary.md`; no file is deleted.
 

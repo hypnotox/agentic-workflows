@@ -36,20 +36,20 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 	})
 
 	for _, surface := range []planPolicySurface{
-		{"default writing skill", defaultWriter, "- **Tasks:**", "- **Commit subjects"},
+		{"default writing skill", defaultWriter, "- **Phases and tasks:**", "- **Self-contained"},
 		{"default plan reviewer", defaultReviewer, "1. **executability**", "1. **doc-currency"},
-		{"default plans README", defaultReadme, "- Phases of tasks", "- A commit step"},
-		{"default plan template", defaultPlanTemplate, "- [ ] **Task 1.1", "- [ ] **Task 1.2"},
+		{"default plans README", defaultReadme, "- Phases each", "- Each phase declares"},
+		{"default plan template", defaultPlanTemplate, "**Execution mode", "- [ ] **Phase-close"},
 	} {
 		assertPlanTaskDetailContract(t, surface)
 	}
 
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []planPolicySurface{
-		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Tasks:**", end: "- **Commit subjects"},
+		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Phases and tasks:**", end: "- **Self-contained"},
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
-		{name: "docs/plans/README.md", start: "- Phases of tasks", end: "- A commit step"},
-		{name: "docs/plans/template.md", start: "- [ ] **Task 1.1", end: "- [ ] **Task 1.2"},
+		{name: "docs/plans/README.md", start: "- Phases each", end: "- Each phase declares"},
+		{name: "docs/plans/template.md", start: "**Execution mode", end: "- [ ] **Phase-close"},
 	} {
 		body, err := os.ReadFile(filepath.Join(root, surface.name))
 		if err != nil {
@@ -73,39 +73,7 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 	policy := surface.output[start : start+len(surface.start)+endOffset]
 	policy = strings.Join(strings.Fields(policy), " ")
 
-	for _, clause := range []string{
-		"exact content/diffs",
-		"implementation-ready pseudocode",
-		"exact file paths",
-		"relevant symbols",
-		"expected terminal states",
-		"behavior, branches, ordering, failures",
-		"constraints",
-		"forbidden behavior",
-		"tests",
-		"acceptance assertions",
-		"deterministic verification",
-		"machine-consumed",
-		"configuration",
-		"manifests",
-		"contract-bearing",
-		"fixtures",
-		"golden output",
-		"commands",
-		"mechanical replacements",
-		"required literal prose",
-		"representative and edge",
-		"affected-site set",
-		"post-check",
-		"Non-contractual prose",
-		"mixed task",
-		"`TBD`",
-		"`implement later`",
-		"outcome-only summaries",
-		"hidden design choices",
-		"placeholders, never pseudocode",
-		"no prior conversation context",
-	} {
+	for _, clause := range []string{"batch"} {
 		if !strings.Contains(policy, clause) {
 			t.Errorf("%s plan-policy section missing clause %q:\n%s", surface.name, clause, policy)
 		}

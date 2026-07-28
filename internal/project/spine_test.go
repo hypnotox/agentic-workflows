@@ -197,7 +197,7 @@ func TestPlanReviewerAgent(t *testing.T) {
 	planPhrases := []string{
 		"scope-completeness",
 		"executability",
-		"closing commit passes the project's gate on its own",
+		"one declared closing commit and passes the gate on its own",
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
 		"model, ownership, representations, translation boundaries, dependency direction, and test seams",
@@ -381,7 +381,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design",
 		}},
 		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "Status report", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "allowCommits: true",
 		}},
 		"bugfix": {wants: []string{
 			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit",
@@ -434,7 +434,7 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		return ""
 	}
 	const subagentTemplate = "skills/subagent-driven-development/SKILL.md.tmpl"
-	const scopedContext = "Only the task-relevant scoped design context: semantic boundary and ownership; external/internal representations and their translation point; allowed dependency direction; preparatory-refactor decision; prohibited bolt-on shortcuts; and validation expectations. The implementer preserves these choices, reports when grounded source invalidates them, and does not replan, broaden the task, or perform unrelated cleanup."
+	const scopedContext = "semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations"
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()}
 
 	context := renderSection(t, subagentTemplate, "procedure-extract-context", data)
@@ -449,13 +449,13 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 	}{
 		{
 			name: "Pi", data: map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
-			dispatch: "**Per task, call `subagent_implement` alone in its parent tool batch.**", review: "**After a `DONE` implementer reports, call `subagent_review` once with `kind: \"code\"`.**", reportOnly: "The review is report-only:",
-			wants: []string{"Include the scoped design context above in this `task`: only task-relevant facts in all six categories, with the preserve-or-report boundary and no replanning, scope broadening, or unrelated cleanup.", "set `allowCommits` explicitly", "Never dispatch implementation tasks in parallel.", "**Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`."},
+			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
+			wants: []string{"allowCommits: true", "complete phase", "Stage the complete transaction"},
 		},
 		{
 			name: "generic", data: data,
-			dispatch: "**Per task, dispatch one implementer subagent** in fresh context.", review: "**After a `DONE` implementer reports, dispatch one review subagent.**", reportOnly: "Dispatch ONE report-only review subagent",
-			wants: []string{"Include the scoped design context above in this prompt: only task-relevant facts in all six categories, with the preserve-or-report boundary and no replanning, scope broadening, or unrelated cleanup.", "**Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`."},
+			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
+			wants: []string{"complete phase", "Stage the complete transaction"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -479,7 +479,7 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 	}
 
 	inline := renderSection(t, "skills/executing-plans/SKILL.md.tmpl", "procedure-per-task", data)
-	const inlineContext = "Extract only the current task's semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations from the plan before editing; preserve those choices or report grounded source facts that invalidate them, without replanning, broadening scope, or unrelated cleanup."
+	const inlineContext = "Iterate phases, not tasks"
 	if !strings.Contains(inline, inlineContext) {
 		t.Errorf("inline current-task context is not closed to the six categories:\n%s", inline)
 	}
@@ -573,14 +573,14 @@ func TestWritingPlansTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to writing-plans
 	loadBearing := []string{
-		"one reviewable, logically-coherent change",
+		"Execution mode",
+		"one independently green coherent implementation transaction",
+		"ordered steps",
 		"exact file paths",
-		"No placeholders",
-		"whose first production use lands in a later phase",
-		"cannot be sliced",
 		"example-reviewing-plan",
 		"batch task",
-		"affected-site set",
+		"path-disjoint",
+		"dead-code escape",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -661,9 +661,10 @@ func TestExecutingPlansTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to executing-plans
 	loadBearing := []string{
-		"one commit per task",
-		"final Applied batch",
-		"record implementation findings",
+		"Iterate phases, not tasks",
+		"parent owns",
+		"commit-disabled helpers",
+		"report-only phase review",
 		"example-reviewing-impl",
 	}
 	for _, phrase := range loadBearing {
@@ -694,14 +695,13 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 
 	// Assert load-bearing phrases unique to subagent-driven-development
 	loadBearing := []string{
-		"one subagent per task",
-		"Sequential dispatch only, never parallel",
-		"fresh context per task",
+		"complete phase",
+		"allowCommits: true",
+		"known clean and green baseline",
+		"report-only phase review",
 		"example-reviewing-impl",
 		"example-executing-plans",
-		"DONE_WITH_CONCERNS",
-		"dispatch one review subagent",
-		"final Applied batch",
+		"dirty-state inventory",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1020,6 +1020,8 @@ func TestReviewingPlanTemplate(t *testing.T) {
 		"user-decision",
 		"example-reviewing-plan-resync",
 		"scope-completeness",
+		"per-phase ownership",
+		"helper partitions",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1049,6 +1051,8 @@ func TestReviewingPlanResyncTemplate(t *testing.T) {
 		"plan-reviewer",
 		"scope-completeness",
 		"doc-currency",
+		"per-phase ownership",
+		"helper partitions",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {
@@ -1405,7 +1409,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/executing-plans/SKILL.md.tmpl",
-		want: []string{"the project's gate (fast tier)", "Auto-commit when green"},
+		want: []string{"the project's gate", "Auto-commit the phase only when green"},
 	},
 	{
 		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
@@ -1445,7 +1449,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"**Validate before every commit.**", "run the project's gate", "defense in depth", "Sequential dispatch only, never parallel"},
+		want: []string{"known clean and green baseline", "the project's gate", "defense in depth", "Sequential dispatch only, never parallel"},
 	},
 	{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",

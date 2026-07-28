@@ -27,23 +27,19 @@ linked ADR).
 <!-- awf:section phases -->
 ## Phase 1: <name>
 
-- [ ] **Task 1.1: <what>.** Name exact file paths and relevant symbols, exact commands with expected
-  terminal states, and either exact content/diffs or implementation-ready pseudocode. Pseudocode
-  specifies behavior, branches, ordering, failures, constraints, forbidden behavior, tests,
-  acceptance assertions, and deterministic verification. Exact form remains mandatory for
-  machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden
-  output, commands, mechanical replacements, required literal prose, and the specialized batch
-  task's representative and edge. Non-contractual prose may use qualifying instructions; a mixed
-  task may combine both forms. The batch task retains its affected-site set and post-check. `TBD`,
-  `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
-  pseudocode. The task remains executable by an agent with no prior conversation context. A task is
-  one reviewable, logically-coherent change (a whole new file is one task).
-- [ ] **Task 1.2: Verify and commit.** Run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; `git add` the exact paths; commit with a
-  Conventional-Commits subject, placed in a fenced code block tagged `commit` so `awf check`
-  validates its length and type before you commit (tag a display-only example `commit awf-ignore`
-  to skip it). Every phase's closing commit passes {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the gate{{ end }} on its own, unless the
-  change genuinely cannot be sliced, in which case mark the coupled phases and share one closing
-  commit, stating why.
+**Execution mode: inline.** This phase is one independently green coherent implementation transaction.
+- [ ] **Task 1.1: <what>.** Name exact paths, relevant symbols, commands with terminal states, and exact
+  content/diffs or implementation-ready pseudocode covering behavior, branches, ordering, failures,
+  constraints, forbidden behavior, tests, acceptance assertions, and deterministic verification.
+- [ ] **Task 1.2: <what>.** Continue the ordered implementation steps. A batch retains an exact
+  representative, exact edge unless identical everywhere, exhaustive sites, and a deterministic post-check;
+  optional sequential commit-disabled helpers have path-disjoint assigned subsets and never own shared files.
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run `awf check --staged`
+  then {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}; create the one phase-closing commit:
+
+```commit
+feat(scope): describe phase outcome
+```
 <!-- awf:end -->
 
 <!-- awf:section verification -->

@@ -23,7 +23,14 @@ func TestPlanReviewerStepExactnessSanctionsBatch(t *testing.T) {
 			desc, _ = m["description"].(string)
 		}
 	}
-	if !strings.Contains(desc, "batch task") {
-		t.Errorf("step-exactness should sanction the batch task, got: %q", desc)
+	for _, clause := range []string{"batch task", "inline or subagent-driven", "green transaction", "path-disjoint", "parent-owned shared files", "command-confined"} {
+		if !strings.Contains(desc, clause) {
+			t.Errorf("step-exactness missing %q: %q", clause, desc)
+		}
+	}
+	for _, forbidden := range []string{"coupled phase", "coupled-phase", "one commit per task"} {
+		if strings.Contains(desc, forbidden) {
+			t.Errorf("step-exactness retains %q: %q", forbidden, desc)
+		}
 	}
 }

@@ -193,10 +193,7 @@ errors, offers an embedded recommended preset only when every referenced model i
 registered and authenticated, presents per-model pricing with request-wide tiers distinguished
 from base rates alongside context and output limits and capability markers, enforces the
 project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
-cancellation. Long implementations should favor sequential
-implementation subagents so the orchestrating parent stays lean: length and parent-context
-pressure are explicit reasons to prefer subagent implementation, while coupling remains the
-residual reason to stay inline.
+cancellation. Long implementations may select delegated ownership per phase so the orchestrating parent stays lean: a subagent-driven phase has one commit-capable owner from a clean green baseline through its closing commit, while inline phases remain parent-owned. This guidance does not promise runtime phase enforcement; Pi serialization and exclusive implementation-tool batching are unchanged.
 
 Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
 names the project search universe and searched surfaces. After not-found, inconclusive, unverified,

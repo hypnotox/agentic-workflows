@@ -1,108 +1,57 @@
 ---
 name: {{ .prefix }}-subagent-driven-development
-description: Use to execute a written {{ .prefix }} plan by dispatching one subagent per task (fresh context per task) when the plan's tasks are mostly independent. Sequential dispatch only, never parallel. Per-task review after each implementer. Terminal handoff to {{ .prefix }}-reviewing-impl. Companion to {{ .prefix }}-executing-plans.
+description: Use to execute a written {{ .prefix }} plan through reviewed phase owners.
 ---
 
 # {{ .prefix }}-subagent-driven-development
 
 <!-- awf:section positioning -->
-The `implementation` chain node, subagent-dispatch shape. Wraps `{{ .layout.workflowRef }}` step 6 ("Implementation") when a plan's tasks are independent enough to dispatch one subagent per task. Companion to `{{ .prefix }}-executing-plans`. Long implementations and parent-context pressure favor this dispatch shape, keeping the orchestrating parent lean, while tight task coupling may still justify the inline companion; the orchestrator decides case by case.
+The subagent implementation chain iterates phases. It preserves sequential implementation dispatch and exclusive implementation-tool batching.
 <!-- awf:end -->
-
 <!-- awf:section per-task-review-note -->
-**Per-task review is the recommended discipline.** After each implementer subagent reports `DONE`, dispatch one review subagent (spec-adherence + code quality combined) before advancing to the next task; catching issues per task is cheaper than catching them in the final pass. Skipping it leaves the terminal `{{ .prefix }}-reviewing-impl` as the only quality gate; no other review stands behind it, so the whole-branch review absorbs everything per-task review would have caught.
+**Phase review is report-only.** The parent settles findings after the phase-closing commit.
 <!-- awf:end -->
-
 <!-- awf:section when-to-invoke -->
 ## When to invoke
 
-Invoke when:
-- A plan exists under `{{ .layout.plansDir }}/YYYY-MM-DD-<topic>.md`, AND
-- Plan tasks are mostly independent: each task can be implemented without seeing prior tasks' context, AND
-- Fresh context per task is valuable (each task touches a distinct subsystem; the main session stays the orchestrator, holding coordination context across tasks).
-
-The agent picks between this skill and `{{ .prefix }}-executing-plans` by inspecting the plan's phase structure and task coupling. For tightly-coupled sequential plans where state flows between tasks, use `{{ .prefix }}-executing-plans` instead.
-
-If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl` at the end.
+Invoke when a plan phase benefits from delegated implementation ownership. A plan may mix modes; hand inline phases to `{{ .prefix }}-executing-plans`.
 <!-- awf:end -->
 
 ## Procedure
-
 <!-- awf:section procedure-resolve-plan -->
-1. **Resolve the plan path.** Use the most-recent mutable plan under `{{ .layout.plansDir }}/` that this chain run is implementing, or the path the user passes explicitly. A plan is mutable while its own `status:` frontmatter is `Proposed` and freezes when that flips to `Implemented`, independent of any linked ADR's status.
+1. Resolve the mutable plan and read every declared phase mode.
 <!-- awf:end -->
-
 <!-- awf:section procedure-raise-concerns -->
-2. **Read the plan, raise concerns before dispatching.** Critical gaps surface to the user before any subagent runs: missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N"). Do not guess.
+2. Stop for missing phase context, paths, boundaries, checks, or closing subject.
 <!-- awf:end -->
-
 <!-- awf:section procedure-extract-context -->
-3. **Extract each task's full text + scene-setting context.** Per `{{ .layout.maintainableCodeDesign }}`, preserve the plan's settled structural choices, including any bounded enabling refactor, reassess them if grounded source contradicts them, and stop and escalate rather than accept a bolt-on workaround. The dispatched subagent does NOT see this conversation. Capture, in the subagent's prompt:
-   - The task's exact file paths, content, and commands from the plan.
-   - The plan phase the task belongs to (one sentence locating the task in the larger work).
-   - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
-   - The project conventions for the next step.
-   - Only the task-relevant scoped design context: semantic boundary and ownership; external/internal representations and their translation point; allowed dependency direction; preparatory-refactor decision; prohibited bolt-on shortcuts; and validation expectations. The implementer preserves these choices, reports when grounded source invalidates them, and does not replan, broaden the task, or perform unrelated cleanup.
-   - The resolved bare grounding command for the task, `awf context <the task's exact paths>`, with the instruction that the subagent runs it first (orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where an edit touches a claimed surface) before editing.
+3. Per `{{ .layout.maintainableCodeDesign }}`, preserve the plan's settled structural choices, including a bounded enabling refactor; reassess them if grounded source contradicts them and stop and escalate rather than accept a bolt-on workaround. Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and V2 operation batch. The owner runs `awf context <the phase's exact paths>` before editing.
 <!-- awf:include context-spill -->
+The owner preserves the settled design or reports invalidating source facts; does not replan, broaden the task, or perform unrelated cleanup.
 <!-- awf:end -->
-
 <!-- awf:section dispatch-conventions -->
-{{ if .targetSubagentTools }}4. **Per task, call `subagent_implement` alone in its parent tool batch.** Put the complete fresh-context task in `task`, set `allowCommits` explicitly, optionally set exact `model` as `provider/model-id` (omission inherits the parent), and wait for it before any other tool call or delegation. Never dispatch implementation tasks in parallel. Bake these conventions into `task` verbatim:
-{{ else }}4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
-{{ end }}   - Include the scoped design context above in this {{ if .targetSubagentTools }}`task`{{ else }}prompt{{ end }}: only task-relevant facts in all six categories, with the preserve-or-report boundary and no replanning, scope broadening, or unrelated cleanup.
-   - **Validate before every commit.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth. Use the fast tier by default{{ with .vars.gateCmdFull }}; use `{{ . }}` for the pre-push tier when a pre-push-only surface is involved{{ end }}. See `{{ .layout.workflowRef }}`.
-   - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
-   - **No amending prior commits.** Fixes land as new commits on top.
-   - **Docs travel with the change.** Any commit changing reality updates the corresponding docs or `AGENTS.md` in the same commit.
-   - **Apply V2 batches atomically.** A task applying frozen operations appends one Applied event and stages exactly its matching claim mutations; first, middle, and final pairs are independently checked.
-   - **Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`.
+4. For a `subagent-driven` phase, verify a known clean and green baseline. Call one implementation child alone in its parent tool batch with `allowCommits: true`{{ if .targetSubagentTools }}, optionally set exact `model` as `provider/model-id`; omission inherits the parent{{ end }}, and the complete phase. The commit-capable owner performs all ordered work. Stage the complete transaction, run `awf check --staged`, then {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass; the hook repeats the staged check as defense in depth, then creates the declared phase-closing commit. Never dispatch concurrent implementers or helpers as phase owners.
 <!-- awf:end -->
-
 <!-- awf:section procedure-status-handling -->
-5. **Handle the implementer's status:**
-   - **`DONE`** → run the per-task review if present, then advance to the next task.
-   - **`DONE_WITH_CONCERNS`** → read the concerns before proceeding. If they are about correctness or scope, address them before review. If they are observations, note them and proceed.
-   - **`NEEDS_CONTEXT`** → provide the missing context and re-dispatch the implementer.
-   - **`BLOCKED`** → assess: context gap → re-dispatch with more context; task too large → escalate; reasoning failure → re-dispatch with a more capable model, or escalate. Never blindly retry without changes.
+5. Validate the reported commit and clean checkout, then dispatch one report-only phase review. The parent owns focused settlement commits and checkpoints only after findings resolve. If an owner stops dirty, inventory `git status --short`, diff, completed and remaining work, prior concerns, and failed checks. Choose parent completion, restore the known green baseline and redispatch the complete revised phase, or stop for user input. An explicit transfer carries the complete revised phase, dirty-state inventory, completed and remaining work, prior concerns, and recovery verification; a blind successor instruction for one task is forbidden.
 <!-- awf:end -->
-
 <!-- awf:section per-task-review -->
-{{ if .targetSubagentTools }}6. **After a `DONE` implementer reports, call `subagent_review` once with `kind: "code"`.** Put the task requirements, created SHA(s), enforced invariants, spec-adherence check, and code-quality check in `task` before marking the task done. The review is report-only: apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
-{{ else }}6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE report-only review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
-{{ end }}After each implemented and reviewed task, run the complete routine protocol below before advancing.
-
-<!-- awf:include checkpoint-routine -->
+6. Review is report-only and phase-level; review fixes remain parent-owned and do not recreate the original transaction.
 <!-- awf:end -->
-
 <!-- awf:section final-task-adr-flip -->
-7. **Final task: freeze the plan and complete ADR progress.** Flip the plan to Implemented and record findings. For a V2 ADR, append the final Applied batch with exactly its claim mutations before the Implemented status event, or use a direct implicit transition when all operations land together. If execution stops, Abandoned preserves Applied effects and cancels Remaining operations. The prompt must then instruct running `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} render{{ end }}` to regenerate `{{ .layout.indexMd }}` and stage it; the ADR commit runs the gate, so the drift test must pass.
+7. Apply V2 batches atomically with matching claims and lifecycle events in the owning phase.
 <!-- awf:end -->
-
 <!-- awf:section terminal-step -->
-8. **Terminal step:** invoke `{{ .prefix }}-reviewing-impl` via the project's skill-invocation mechanism. That skill dispatches an implementation-review subagent against the current-session SHA range, routes the findings by the agent's classification, and applies fixes as new commits on top.
-
-<!-- awf:include checkpoint-routine -->
+8. After all settled phases, invoke `{{ .prefix }}-reviewing-impl`.
 <!-- awf:end -->
 
 ## Notes
-
 <!-- awf:section notes -->
-- **Sequential dispatch only, never parallel.** File-level conflicts and ADR-flip ordering require tasks to run one at a time.
-- The whole-branch review at the terminal step covers the current-session diff and is the final quality gate; any per-task review in play is a lighter check before advancing to the next task.
-- One concern per commit; auto-commit when green.
-- **Expected output is non-negotiable.** Never adjust an expected/golden value to make a test pass; this rule travels into the dispatched prompt verbatim.
+- Sequential dispatch only, never parallel. Helpers remain sequential, commit-disabled, path-disjoint, and parent-integrated.
+- Expected output is non-negotiable.
 <!-- awf:end -->
-
 <!-- awf:section red-flags -->
 ## Red flags
 
-These thoughts mean stop; you're rationalizing:
-
-| Rationalization | Reality |
-|---|---|
-| "I'll dispatch the tasks in parallel to save time." | Sequential only. Parallel dispatch races on files and the ADR flip. |
-| "The implementer reported DONE; advance." | DONE is a claim, not a verification. Run the per-task review first. |
-| "It came back BLOCKED; retry the same prompt." | Never blindly retry. Change the context, task size, or model. |
-| "Per-task review is optional; skip it to move faster." | Then the terminal review is the only gate, and it absorbs everything you skipped. |
+Do not casually dispatch over a dirty checkout, infer plan-wide mode, or let a helper own a shared file or closing commit.
 <!-- awf:end -->

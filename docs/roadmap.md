@@ -4,6 +4,10 @@
 <!-- awf:edit ideas: from .awf/docs/parts/roadmap/ideas.md -->
 ## Ideas
 
+- Design concurrent same-checkout batch helpers only after scope enforcement, incidental-write
+  attribution, failure attribution, and deterministic integration are specified; worktree-isolated
+  and patch-producing parallel workers remain out of scope for the current workflow contract.
+
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
 - Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
   `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR

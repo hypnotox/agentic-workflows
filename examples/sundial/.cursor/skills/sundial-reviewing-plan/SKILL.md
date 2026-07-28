@@ -29,6 +29,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-plan/dispatch-subagent.md to override -->
 3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
    - The absolute plan path.
+   - The declared per-phase ownership, phase context, closing subjects, and any helper partitions alongside created/modified paths, so review assesses the same phase boundary.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
@@ -51,7 +52,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-plan/hand-off.md to override -->
 7. **Hand off after review settles.** Once the review converges (no user-decision findings, or all user decisions resolved):
    - If at least one linked ADR exists (named in the plan header or the session context), invoke `sundial-reviewing-plan-resync` to catch plan-vs-finalised-ADR(s) drift.
-   - If no ADR exists, the chain proceeds directly to implementation: invoke the target-native inline or subagent-driven execution skill according to task structure.
+   - If no ADR exists, the chain proceeds directly to implementation: invoke the target-native inline or subagent-driven execution skill according to each phase's declared ownership.
 
 **Routine checkpoint.** At this boundary:
 1. Working memory is optional; do not create a file merely because this checkpoint was reached. If the effort already uses `.awf/memory/<effort-slug>.md`, update it in its own tool batch: confirm its `Effort: <effort-id>` line names this effort, rewriting it when a runtime has since assigned an active ID, set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`. If the work independently warrants creating memory now, create it before `Phase:` with this effort's identity on the `Effort: <effort-id>` line: a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface; never adopt another effort's identity.
