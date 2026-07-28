@@ -57,13 +57,16 @@ of `awf context` output is not part of this decision.
    durable project-owned record, or decline it with the resulting trade-off stated. Do not expand
    scope, hide debt, or manufacture a refactor solely to satisfy a heuristic.
 
-4. Integrate concise, stage-appropriate obligations into brainstorming, writing plans, executing
-   plans, executing direct changes, subagent-driven development, and bug fixing. Brainstorming
-   identifies the relevant model, boundaries, representations, dependency direction, and refactor
-   decision. Planning turns those choices into executable tasks and validation. Every implementation
-   path preserves them, reassesses when source facts invalidate them, and rejects shortcuts that
-   merely bolt correctness onto the wrong abstraction. The concise workflow text points to the
-   mandatory guide rather than duplicating it.
+4. Integrate concise, stage-appropriate obligations into brainstorming, proposing ADRs, coupling
+   audits, writing plans, test-driven development, executing plans, executing direct changes,
+   subagent-driven development, and bug fixing. Brainstorming identifies the relevant model,
+   boundaries, representations, dependency direction, and refactor decision. ADR authoring and
+   coupling audits preserve applicable structural choices and expose constraints or enabling work;
+   test-driven development selects seams and tests that support rather than distort the model.
+   Planning turns those choices into executable tasks and validation. Every implementation path
+   preserves them, reassesses when source facts invalidate them, and rejects shortcuts that merely
+   bolt correctness onto the wrong abstraction. The concise workflow text points to the mandatory
+   guide rather than duplicating it.
 
 5. Require implementation orchestrators to pass the scoped implementer the relevant semantic
    boundaries, representations, dependency direction, refactor decision, prohibited shortcuts, and
@@ -94,6 +97,9 @@ of `awf context` output is not part of this decision.
 
 9. Keep `awf context` projection, formatting, spill behavior, command usability, and related workflow
    ergonomics unchanged. Any redesign of that surface requires a separate decision and effort.
+
+10. Every lifecycle status transition of this ADR runs `./x render` and commits the regenerated
+    `docs/decisions/INDEX.md` and lock update in the same transaction.
 
 ## State changes
 
