@@ -20,6 +20,8 @@ by this repository's own checks (ADR-0090).
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
 Use `awf effort new "<outcome>"` for optional durable coordination. `awf effort` creates memory by default and manages opt-in worktrees. Efforts do not carry Pi-session state.
 
+For `awf context`, bare directories provide tier-0 census, compact grouping, provenance, topic counts, and bounded pending orientation; bare exact, staged, and range-selected files additionally provide tier-1 `State`, `Touches`, and `Proofs` relationships from actual markers. The eight named facets expand directory relationships, non-direct authority, evidence, selectors, references, pending operations, or artifacts; only `artifacts` refines groups, and `--full` is their union. Output above 8,192 bytes retains secure caller-owned spill delivery.
+
 
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
 The three repository-wide resident roots are `.awf/efforts`, `.awf/memory`, and `.awf/worktrees`. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state preserved by render, drift checks, and uninstall. Schema generation 21 removes obsolete metrics and assignment residents during upgrade.

@@ -53,6 +53,23 @@ func TestContextRequestUniverse(t *testing.T) {
 	if len(res.Topics) != 2 {
 		t.Fatalf("topics=%#v", res.Topics)
 	}
+	wantDirectoryRelationships := ContextRelationships{State: []string{"alpha/one:order"}, Touches: []string{}, Proofs: []string{"alpha/one:tested"}}
+	if !reflect.DeepEqual(res.Requests[0].Directory.Relationships, wantDirectoryRelationships) {
+		t.Fatalf("directory relationships=%#v", res.Requests[0].Directory.Relationships)
+	}
+	if !reflect.DeepEqual(res.Requests[1].Exact.Context.Relationships, (ContextRelationships{State: []string{"alpha/one:order"}, Touches: []string{}, Proofs: []string{}})) {
+		t.Fatalf("file relationships=%#v", res.Requests[1].Exact.Context.Relationships)
+	}
+	var alpha TopicImpact
+	for _, impact := range res.Topics {
+		if impact.ID == "alpha/one" {
+			alpha = impact
+		}
+	}
+	wantSources := []ContextRelationshipSource{{RequestIndex: 2, Kinds: []string{"State"}}, {RequestIndex: 3, Kinds: []string{"State"}}}
+	if len(alpha.Direct) != 1 || alpha.Direct[0].ID != "alpha/one:order" || !reflect.DeepEqual(alpha.Direct[0].Sources, wantSources) || len(alpha.Invariants) != 0 {
+		t.Fatalf("mixed request authority=%#v", alpha)
+	}
 	glob, err := p.ContextForOptions([]string{"internal/foo/*.go"}, ContextOptions{})
 	if err != nil || len(glob.Requests) != 1 || len(glob.Requests[0].Exact.Context.Warnings) != 1 {
 		t.Fatalf("glob=%#v err=%v", glob, err)

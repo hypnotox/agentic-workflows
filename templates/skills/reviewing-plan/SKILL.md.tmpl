@@ -33,7 +33,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 {{ else }}3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes:
 {{ end }}   - The absolute plan path.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
-   - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.
+   - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the non-direct invariant summaries, additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.
 <!-- awf:include context-spill -->
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 

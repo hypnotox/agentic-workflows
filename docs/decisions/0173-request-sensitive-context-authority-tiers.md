@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-28
 ---
 # ADR-0173: Request-Sensitive Context Authority Tiers
@@ -201,3 +201,4 @@ remain authoritative for larger adopter data and explicit detail.
 ## Status history
 
 - 2026-07-28: Proposed
+- 2026-07-28: Implemented; content-sha256: aa39c3bd2b29e99083a7dd35f3867211c02e4112e14cf4ec816aa16668af17ca; state-sequence: 77

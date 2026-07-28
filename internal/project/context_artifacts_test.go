@@ -135,6 +135,28 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	}
 }
 
+func TestContextArtifactFacetAloneRefinesGroupKey(t *testing.T) {
+	base := ContextPathImpact{
+		Classification: PathCovered,
+		Provenance:     []ContextProvenance{{Role: "template", Identity: "shared", Sources: []ArtifactLink{{Path: "a", Label: "source"}}, Outputs: []ArtifactLink{{Path: "out-a", Label: "output"}}, Navigation: []ArtifactLink{{Path: "nav-a", Label: "navigation"}}}},
+		Domains:        []DomainRef{{Name: "d", CurrentState: "docs/domains/d.md"}},
+		Topics:         []ContextPathTopic{{ID: "d/t"}},
+		Relationships:  ContextRelationships{State: []string{"d/t:a"}, Touches: []string{}, Proofs: []string{}},
+		Warnings:       []ContextWarning{},
+	}
+	other := base
+	other.Provenance = []ContextProvenance{{Role: "template", Identity: "shared", Sources: []ArtifactLink{{Path: "b", Label: "source"}}, Outputs: []ArtifactLink{{Path: "out-b", Label: "output"}}, Navigation: []ArtifactLink{{Path: "nav-b", Label: "navigation"}}}}
+	other.Relationships = ContextRelationships{State: []string{"d/t:b"}, Touches: []string{}, Proofs: []string{}}
+	for _, facets := range [][]ContextFacet{nil, {FacetRelationships}, {FacetInvariants}, {FacetAllRules}, {FacetEvidence}, {FacetReferences}} {
+		if contextGroupKey(base, facets) != contextGroupKey(other, facets) {
+			t.Fatalf("authority facets refined artifact grouping: %v", facets)
+		}
+	}
+	if contextGroupKey(base, []ContextFacet{FacetArtifacts}) == contextGroupKey(other, []ContextFacet{FacetArtifacts}) {
+		t.Fatal("artifacts facet did not refine detailed provenance")
+	}
+}
+
 func TestProjectTreeReaders(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "a.txt", Mode: snapshot.Regular, Bytes: []byte("a")}, {Path: "link", Mode: snapshot.Symlink, Bytes: []byte("a.txt")}})
 	if err != nil {

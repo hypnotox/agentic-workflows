@@ -10,11 +10,12 @@ awf renders tracked workflow guidance from `.awf/`, while its binary owns local 
 - `internal/worktree` owns opt-in native-Git managed worktrees.
 - `internal/migrate` applies schema upgrades, including removal of obsolete disposable residents.
 - Generated Pi extensions provide subagent dispatch and effort-independent session handoff.
-- `cmd/awf` is the command binary; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide its bounded project checks.
+- `internal/project` assembles request-sensitive context: tier-0 directory orientation, actual marker-kind file and directory relationships, topic-level authority expansion, and artifact-sensitive grouping.
+- `cmd/awf` renders context tiers and per-topic authority counts before unchanged direct-or-spill delivery; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide its bounded project checks.
 
 
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
-The invoking checkout supplies tracked configuration and native workflow skills. Native Git resolves one primary control root for resident efforts, memory, and worktrees. Pi invokes the binary only for explicit effort management; handoff uses an optional confined memory file without effort selection.
+The invoking checkout supplies tracked configuration and native workflow skills. For context requests, the project snapshot classifies selected paths, preserves actual `State`, `Touches`, and `Proofs` file relationships plus separate directory aggregates, groups directories by tier-0-visible fields unless `artifacts` exposes detailed edges, and expands topic authority only through the request tier or named facets. The CLI renders that projection and preserves unchanged direct-or-spill delivery. Native Git resolves one primary control root for resident efforts, memory, and worktrees. Pi invokes the binary only for explicit effort management; handoff uses an optional confined memory file without effort selection.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->

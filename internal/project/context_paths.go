@@ -15,15 +15,17 @@ import (
 type ContextFacet string
 
 const (
-	FacetAllRules   ContextFacet = "all-rules"
-	FacetEvidence   ContextFacet = "evidence"
-	FacetSelectors  ContextFacet = "selectors"
-	FacetReferences ContextFacet = "references"
-	FacetPending    ContextFacet = "pending"
-	FacetArtifacts  ContextFacet = "artifacts"
+	FacetRelationships ContextFacet = "relationships"
+	FacetInvariants    ContextFacet = "invariants"
+	FacetAllRules      ContextFacet = "all-rules"
+	FacetEvidence      ContextFacet = "evidence"
+	FacetSelectors     ContextFacet = "selectors"
+	FacetReferences    ContextFacet = "references"
+	FacetPending       ContextFacet = "pending"
+	FacetArtifacts     ContextFacet = "artifacts"
 )
 
-var allContextFacets = []ContextFacet{FacetAllRules, FacetEvidence, FacetSelectors, FacetReferences, FacetPending, FacetArtifacts}
+var allContextFacets = []ContextFacet{FacetRelationships, FacetInvariants, FacetAllRules, FacetEvidence, FacetSelectors, FacetReferences, FacetPending, FacetArtifacts}
 
 type ContextSelection string
 
@@ -113,12 +115,8 @@ type ContextPathImpact struct {
 	Domains                []DomainRef
 	Topics                 []ContextPathTopic
 	Relationships          ContextRelationships
-	// Phase-2 legacy projection inputs.
-	DirectRuleIDs []string
-	InvariantIDs  []string
-	ProofIDs      []string
-	Warnings      []ContextWarning
-	ADR           *ADRArtifactContext
+	Warnings               []ContextWarning
+	ADR                    *ADRArtifactContext
 }
 
 type ContextProvenance struct {
@@ -128,8 +126,6 @@ type ContextProvenance struct {
 
 type ContextPathTopic struct {
 	ID string
-	// Phase-2 legacy projection input.
-	DirectClaimIDs []string
 }
 
 type ContextWarning string
@@ -139,15 +135,27 @@ const (
 	WarningEligibleUnowned ContextWarning = "no domain owns this path; add a domain selector"
 )
 
+type ContextAuthorityCounts struct {
+	Invariants int
+	Rules      int
+}
+
 type TopicImpact struct {
 	ID, Title, Summary                         string
+	Counts                                     ContextAuthorityCounts
 	Direct, Invariants, Additional, Referenced []ContextClaimImpact
 	Pending                                    ContextPendingImpact
 	Selectors                                  *ContextSelectorImpact
 }
 
+type ContextRelationshipSource struct {
+	RequestIndex int
+	Kinds        []string
+}
+
 type ContextClaimImpact struct {
 	ID, Type, Summary, Backing, Verify string
+	Sources                            []ContextRelationshipSource
 	Evidence                           []ContextEvidence
 	Incoming, Outgoing                 []string
 }
@@ -273,7 +281,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 				}
 				dir.Included++
 				dir.Relationships = unionContextRelationships(dir.Relationships, impact.Relationships)
-				key := contextGroupKey(impact)
+				key := contextGroupKey(impact, options.Facets)
 				g := groups[key]
 				if g == nil {
 					g = &ContextGroup{Members: []string{}, Context: impact}
@@ -355,7 +363,7 @@ func compactContextRelationships(relationships ContextRelationships) ContextRela
 	return relationships
 }
 
-func contextGroupKey(impact ContextPathImpact) string {
+func contextGroupKey(impact ContextPathImpact, facets []ContextFacet) string {
 	var b strings.Builder
 	add := func(s string) {
 		var n [8]byte
@@ -373,20 +381,22 @@ func contextGroupKey(impact ContextPathImpact) string {
 	for _, p := range impact.Provenance {
 		add(p.Role)
 		add(p.Identity)
-		for _, e := range p.Sources {
-			add("s")
-			add(e.Path)
-			add(e.Label)
-		}
-		for _, e := range p.Outputs {
-			add("o")
-			add(e.Path)
-			add(e.Label)
-		}
-		for _, e := range p.Navigation {
-			add("n")
-			add(e.Path)
-			add(e.Label)
+		if slices.Contains(facets, FacetArtifacts) {
+			for _, e := range p.Sources {
+				add("s")
+				add(e.Path)
+				add(e.Label)
+			}
+			for _, e := range p.Outputs {
+				add("o")
+				add(e.Path)
+				add(e.Label)
+			}
+			for _, e := range p.Navigation {
+				add("n")
+				add(e.Path)
+				add(e.Label)
+			}
 		}
 	}
 	for _, d := range impact.Domains {
@@ -395,14 +405,6 @@ func contextGroupKey(impact ContextPathImpact) string {
 	}
 	for _, t := range impact.Topics {
 		add(t.ID)
-		for _, id := range t.DirectClaimIDs {
-			add(id)
-		}
-	}
-	for _, ids := range [][]string{impact.DirectRuleIDs, impact.InvariantIDs, impact.ProofIDs} {
-		for _, id := range ids {
-			add(id)
-		}
 	}
 	for _, w := range impact.Warnings {
 		add(string(w))

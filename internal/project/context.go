@@ -133,7 +133,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 		class, nestedRoot, targetInside := classifyContextPath(filePath, set)
 		records := artifactRecords(filePath, state.Declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})
 		applyArtifactSnapshots(records, filePath, state.Tree, state.Lock)
-		impact := ContextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: emptyContextRelationships(), DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []ContextWarning{}}
+		impact := ContextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []ContextWarning{}}
 		for _, record := range records {
 			impact.Provenance = append(impact.Provenance, ContextProvenance{Role: string(record.Role), Identity: record.Identity, Sources: cloneArtifactLinks(record.Sources), Outputs: cloneArtifactLinks(record.Outputs), Navigation: cloneArtifactLinks(record.Navigation)})
 		}
@@ -147,30 +147,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 				}
 			}
 			for _, t := range topic.TopicsForPath(state.Loaded.Topics, filePath) {
-				ref := ContextPathTopic{ID: t.ID.String(), DirectClaimIDs: []string{}}
-				for _, claim := range t.Claims {
-					direct := false
-					for _, site := range state.Loaded.Topics.Markers.ForClaim(claim.ID) {
-						if site.Path == filePath {
-							direct = true
-							break
-						}
-					}
-					if direct {
-						ref.DirectClaimIDs = append(ref.DirectClaimIDs, claim.ID)
-						if claim.Type == topic.Rule {
-							impact.DirectRuleIDs = append(impact.DirectRuleIDs, claim.ID)
-						}
-					}
-					if claim.Type == topic.Invariant {
-						impact.InvariantIDs = append(impact.InvariantIDs, claim.ID)
-						if claim.Backing == topic.TestBacking {
-							impact.ProofIDs = append(impact.ProofIDs, claim.ID)
-						}
-					}
-				}
-				slices.Sort(ref.DirectClaimIDs)
-				impact.Topics = append(impact.Topics, ref)
+				impact.Topics = append(impact.Topics, ContextPathTopic{ID: t.ID.String()})
 			}
 		}
 		if literalGlob {
@@ -179,12 +156,6 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 		if class == PathEligibleUnowned {
 			impact.Warnings = append(impact.Warnings, WarningEligibleUnowned)
 		}
-		slices.Sort(impact.DirectRuleIDs)
-		impact.DirectRuleIDs = slices.Compact(impact.DirectRuleIDs)
-		slices.Sort(impact.InvariantIDs)
-		impact.InvariantIDs = slices.Compact(impact.InvariantIDs)
-		slices.Sort(impact.ProofIDs)
-		impact.ProofIDs = slices.Compact(impact.ProofIDs)
 		if explicit {
 			impact.ADR = projectADRArtifact(filePath, lay.ADRDir, selectedADRs, state.Loaded.Topics, options.Facets)
 		}
@@ -200,16 +171,20 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 		}
 	}
 	requests := buildContextRequests(queries, set, options)
-	directByTopic := map[string][]string{}
+	directSources := map[string]map[int]map[string]bool{}
 	applicable := map[string]topic.Topic{}
 	for _, request := range requests {
 		impacts := []ContextPathImpact{}
 		if request.Exact != nil {
 			impacts = append(impacts, request.Exact.Context)
+			addContextRelationshipSources(directSources, request.Index, request.Exact.Context.Relationships)
 		}
 		if request.Directory != nil {
 			for _, group := range request.Directory.Groups {
 				impacts = append(impacts, group.Context)
+			}
+			if slices.Contains(options.Facets, FacetRelationships) {
+				addContextRelationshipSources(directSources, request.Index, request.Directory.Relationships)
 			}
 		}
 		for _, impact := range impacts {
@@ -217,19 +192,56 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 				if t, ok := state.Loaded.Topics.ByTopicID(ref.ID); ok {
 					applicable[ref.ID] = t
 				}
-				directByTopic[ref.ID] = append(directByTopic[ref.ID], ref.DirectClaimIDs...)
 			}
 		}
 	}
 	result := ContextResult{Selection: options.Selection, Range: options.Range, Requests: requests, Topics: []TopicImpact{}}
 	currentPaths := safelyMatchablePaths(state.Tree)
 	for _, id := range slices.Sorted(maps.Keys(applicable)) {
-		ids := directByTopic[id]
-		slices.Sort(ids)
-		ids = slices.Compact(ids)
-		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, ids, currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
+		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, contextRelationshipSources(directSources), currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
 	}
 	return result, nil
+}
+
+func addContextRelationshipSources(dst map[string]map[int]map[string]bool, requestIndex int, relationships ContextRelationships) {
+	for _, kind := range []struct {
+		label string
+		ids   []string
+	}{
+		{label: "State", ids: relationships.State},
+		{label: "Touches", ids: relationships.Touches},
+		{label: "Proofs", ids: relationships.Proofs},
+	} {
+		for _, id := range kind.ids {
+			byRequest := dst[id]
+			if byRequest == nil {
+				byRequest = map[int]map[string]bool{}
+				dst[id] = byRequest
+			}
+			kinds := byRequest[requestIndex]
+			if kinds == nil {
+				kinds = map[string]bool{}
+				byRequest[requestIndex] = kinds
+			}
+			kinds[kind.label] = true
+		}
+	}
+}
+
+func contextRelationshipSources(in map[string]map[int]map[string]bool) map[string][]ContextRelationshipSource {
+	out := map[string][]ContextRelationshipSource{}
+	for id, byRequest := range in {
+		for _, requestIndex := range slices.Sorted(maps.Keys(byRequest)) {
+			kinds := []string{}
+			for _, kind := range []string{"State", "Touches", "Proofs"} {
+				if byRequest[requestIndex][kind] {
+					kinds = append(kinds, kind)
+				}
+			}
+			out[id] = append(out[id], ContextRelationshipSource{RequestIndex: requestIndex, Kinds: kinds})
+		}
+	}
+	return out
 }
 
 func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChange {

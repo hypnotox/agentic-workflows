@@ -17,7 +17,7 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	covered := ContextPathImpact{Classification: PathCovered, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: ContextRelationships{State: []string{"d/t:kept"}, Touches: []string{}, Proofs: []string{}}, DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Provenance: []ContextProvenance{}, Warnings: []ContextWarning{}}
+	covered := ContextPathImpact{Classification: PathCovered, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: ContextRelationships{State: []string{"d/t:kept"}, Touches: []string{}, Proofs: []string{}}, Provenance: []ContextProvenance{}, Warnings: []ContextWarning{}}
 	set := contextPathSet{tree: tree, nested: []string{"nested"}, outputs: map[string]bool{"generated": true}, ignores: []string{"ignored/**"}, domainPaths: map[string][]string{"d": {"owned/**"}}, impacts: map[string]ContextPathImpact{}}
 	for _, f := range tree.List() {
 		class, nested, target := classifyContextPath(f.Path, set)
@@ -105,38 +105,78 @@ func TestContextRelationshipsCollectDeduplicateAndUnion(t *testing.T) {
 }
 
 func TestContextFacetsAndGroupKey(t *testing.T) {
-	facets, err := ParseContextFacets([]string{"pending", "all-rules", "pending"}, false)
+	facets, err := ParseContextFacets([]string{"pending", "relationships", "invariants", "all-rules", "pending"}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(facets, []ContextFacet{FacetAllRules, FacetPending}) {
+	if !reflect.DeepEqual(facets, []ContextFacet{"relationships", "invariants", FacetAllRules, FacetPending}) {
 		t.Fatal(facets)
 	}
 	full, err := ParseContextFacets([]string{"pending"}, true)
-	wantFull := []ContextFacet{FacetAllRules, FacetEvidence, FacetSelectors, FacetReferences, FacetPending, FacetArtifacts}
+	wantFull := []ContextFacet{"relationships", "invariants", FacetAllRules, FacetEvidence, FacetSelectors, FacetReferences, FacetPending, FacetArtifacts}
 	if err != nil || !reflect.DeepEqual(full, wantFull) {
 		t.Fatalf("full=%v want=%v err=%v", full, wantFull, err)
 	}
 	if _, err := ParseContextFacets([]string{"unknown"}, false); err == nil {
 		t.Fatal("unknown accepted")
 	}
-	a := ContextPathImpact{Classification: PathCovered, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []ContextWarning{}}
+	a := ContextPathImpact{Classification: PathCovered, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []ContextWarning{}}
 	inside := true
 	a.TargetInsideRepository = &inside
 	a.Provenance = []ContextProvenance{{Role: "template", Identity: "x", Sources: []ArtifactLink{{Path: "s", Label: "source"}}, Outputs: []ArtifactLink{{Path: "o", Label: "output"}}, Navigation: []ArtifactLink{{Path: "n", Label: "navigation"}}}}
 	a.Domains = []DomainRef{{Name: "d", CurrentState: "docs/d.md"}}
-	a.Topics = []ContextPathTopic{{ID: "d/t", DirectClaimIDs: []string{"d/t:r"}}}
-	a.DirectRuleIDs = []string{"d/t:r"}
-	a.InvariantIDs = []string{"d/t:i"}
-	a.ProofIDs = []string{"d/t:i"}
+	a.Topics = []ContextPathTopic{{ID: "d/t"}}
+	a.Relationships = ContextRelationships{State: []string{"d/t:r"}, Touches: []string{}, Proofs: []string{"d/t:i"}}
 	a.ADR = &ADRArtifactContext{Number: "0001", Status: "Implementing", Operations: []ADROperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current", StateSequence: 2}}}
-	_ = contextGroupKey(a)
+	_ = contextGroupKey(a, nil)
 	b := a
 	b.Warnings = []ContextWarning{WarningGlobLiteral}
-	if contextGroupKey(a) == contextGroupKey(b) {
+	if contextGroupKey(a, nil) == contextGroupKey(b, nil) {
 		t.Fatal("warning omitted from key")
 	}
 	if !strings.Contains(string(WarningEligibleUnowned), "no domain") {
 		t.Fatal("warning contract")
+	}
+}
+
+func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
+	tree, err := snapshot.NewTree([]snapshot.File{{Path: "dir/a.go", Mode: snapshot.Regular}, {Path: "dir/b.go", Mode: snapshot.Regular}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	makeImpact := func(claim, source string) ContextPathImpact {
+		return ContextPathImpact{
+			Classification: PathCovered,
+			Provenance:     []ContextProvenance{{Role: "template", Identity: "shared", Sources: []ArtifactLink{{Path: source, Label: "source"}}, Outputs: []ArtifactLink{}, Navigation: []ArtifactLink{}}},
+			Domains:        []DomainRef{{Name: "d", CurrentState: "docs/domains/d.md"}},
+			Topics:         []ContextPathTopic{{ID: "d/t"}},
+			Relationships:  ContextRelationships{State: []string{claim}, Touches: []string{}, Proofs: []string{}},
+			Warnings:       []ContextWarning{},
+		}
+	}
+	set := contextPathSet{tree: tree, impacts: map[string]ContextPathImpact{
+		"dir/a.go": makeImpact("d/t:a", "source-a"),
+		"dir/b.go": makeImpact("d/t:b", "source-b"),
+	}}
+	cases := []struct {
+		name   string
+		facets []ContextFacet
+		groups int
+	}{
+		{name: "bare", groups: 1},
+		{name: "artifacts", facets: []ContextFacet{FacetArtifacts}, groups: 2},
+		{name: "relationships", facets: []ContextFacet{"relationships"}, groups: 1},
+		{name: "invariants", facets: []ContextFacet{"invariants"}, groups: 1},
+		{name: "all-rules", facets: []ContextFacet{FacetAllRules}, groups: 1},
+		{name: "evidence", facets: []ContextFacet{FacetEvidence}, groups: 1},
+		{name: "references", facets: []ContextFacet{FacetReferences}, groups: 1},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			request := buildContextRequests([]string{"dir"}, set, ContextOptions{Selection: SelectionExplicit, Facets: tc.facets})[0]
+			if got := len(request.Directory.Groups); got != tc.groups {
+				t.Fatalf("groups=%d want=%d: %#v", got, tc.groups, request.Directory.Groups)
+			}
+		})
 	}
 }

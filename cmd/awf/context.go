@@ -185,9 +185,13 @@ func renderContext(out io.Writer, res project.ContextResult, header string, face
 				}
 				renderPathImpact(out, g.Context, "    ", facets)
 			}
+			if containsFacet(facets, project.FacetRelationships) {
+				renderRelationships(out, request.Directory.Relationships, "  ")
+			}
 		} else if request.Exact != nil {
 			fmt.Fprintf(out, "  File: %s\n", request.Exact.Path)
 			renderPathImpact(out, request.Exact.Context, "  ", facets)
+			renderRelationships(out, request.Exact.Context.Relationships, "  ")
 		}
 	}
 	fmt.Fprintln(out, "\n## Authority")
@@ -235,9 +239,6 @@ func renderPathImpact(out io.Writer, impact project.ContextPathImpact, indent st
 	}
 	fmt.Fprintf(out, "%sDomains: %s\n", indent, renderList(domains))
 	fmt.Fprintf(out, "%sTopics: %s\n", indent, renderList(topics))
-	fmt.Fprintf(out, "%sDirect rules: %s\n", indent, renderList(impact.DirectRuleIDs))
-	fmt.Fprintf(out, "%sInvariants: %s\n", indent, renderList(impact.InvariantIDs))
-	fmt.Fprintf(out, "%sProofs: %s\n", indent, renderList(impact.ProofIDs))
 	for _, w := range impact.Warnings {
 		fmt.Fprintf(out, "%sWarning: %s\n", indent, w)
 	}
@@ -264,8 +265,24 @@ func renderPathImpact(out io.Writer, impact project.ContextPathImpact, indent st
 	}
 }
 
+func renderRelationships(out io.Writer, relationships project.ContextRelationships, indent string) {
+	for _, relationship := range []struct {
+		label string
+		ids   []string
+	}{
+		{label: "State", ids: relationships.State},
+		{label: "Touches", ids: relationships.Touches},
+		{label: "Proofs", ids: relationships.Proofs},
+	} {
+		if len(relationship.ids) > 0 {
+			fmt.Fprintf(out, "%s%s: %s\n", indent, relationship.label, strings.Join(relationship.ids, ", "))
+		}
+	}
+}
+
 func renderTopicImpact(out io.Writer, t project.TopicImpact) {
 	fmt.Fprintf(out, "%s - %s\n  Summary: %s\n", t.ID, t.Title, t.Summary)
+	fmt.Fprintf(out, "  Authority counts: invariants=%d, rules=%d\n", t.Counts.Invariants, t.Counts.Rules)
 	if t.Selectors != nil {
 		domain := strings.Join(t.Selectors.DomainPaths, " ")
 		topicPaths := strings.Join(t.Selectors.TopicPaths, " ")
@@ -310,6 +327,13 @@ func renderClaimCategory(out io.Writer, label string, claims []project.ContextCl
 	fmt.Fprintf(out, "  %s:\n", label)
 	for _, claim := range claims {
 		fmt.Fprintf(out, "    %s [%s] %s\n", claim.ID, claim.Type, claim.Summary)
+		if len(claim.Sources) > 0 {
+			entries := make([]string, 0, len(claim.Sources))
+			for _, source := range claim.Sources {
+				entries = append(entries, fmt.Sprintf("request %d [%s]", source.RequestIndex, strings.Join(source.Kinds, ", ")))
+			}
+			fmt.Fprintf(out, "      Sources: %s\n", strings.Join(entries, "; "))
+		}
 		if claim.Backing != "" {
 			fmt.Fprintf(out, "      Backing: %s\n", claim.Backing)
 		}

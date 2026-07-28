@@ -35,7 +35,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 {{ end }}
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
-   - The affected context instruction: with the concrete SHAs substituted, direct the reviewer to run `awf context --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})` itself so the doc-currency and convention lenses receive the additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved SHA range, not pasted packet output.
+   - The affected context instruction: with the concrete SHAs substituted, direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})` itself so the doc-currency and convention lenses receive the non-direct invariant summaries, additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved SHA range, not pasted packet output.
 <!-- awf:include context-spill -->
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 

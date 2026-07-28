@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0166: Phase transaction ownership](0166-phase-transaction-ownership.md) (Proposed)
-- [ADR-0173: Request-Sensitive Context Authority Tiers](0173-request-sensitive-context-authority-tiers.md) (Proposed)
 
 ## History
 
@@ -177,3 +176,4 @@
 - [ADR-0170: Derive plain singleton authority from catalog metadata](0170-derive-plain-singleton-authority-from-catalog-metadata.md) (Implemented)
 - [ADR-0171: Qualify and prove plain singleton rendering](0171-qualify-and-prove-plain-singleton-rendering.md) (Implemented)
 - [ADR-0172: Narrow plain singleton content authority to proven identity](0172-narrow-plain-singleton-content-authority-to-proven-identity.md) (Implemented)
+- [ADR-0173: Request-Sensitive Context Authority Tiers](0173-request-sensitive-context-authority-tiers.md) (Implemented)
