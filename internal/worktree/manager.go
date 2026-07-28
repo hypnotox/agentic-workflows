@@ -179,6 +179,15 @@ func (m *Manager) Add(id, base string) (effort.Record, error) {
 	if err := makeManagedDir(filepath.Dir(path), 0o700); err != nil {
 		return effort.Record{}, m.settleAddFailure(id, path, err)
 	}
+	// Evidence is published before the final identity check so a checkout swap
+	// cannot turn an accepted preflight into a foreign Git mutation.
+	if err := m.validateLiveInvokingCheckout(); err != nil {
+		// coverage-ignore: evidence cleanup durability fault
+		if clearErr := m.efforts.ClearPartial(id, "worktree"); clearErr != nil {
+			return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence after identity refusal: %w", clearErr)}
+		}
+		return effort.Record{}, err
+	}
 	if err := runWorktreeAdd(m.ctx, m.run, m.roots.InvokingRoot, branch(id), path, full); err != nil {
 		return effort.Record{}, m.settleAddFailure(id, path, err)
 	}

@@ -495,14 +495,22 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				}
 			}
 			if present {
+				// Establish directory truth before the final no-follow and Git
+				// identity validation. No probe may intervene before removal.
+				if _, err := managedDirectoryTruth(managed); err != nil {
+					return err
+				}
 				managedValidationErr := validateRecoveryMutationPath(managed)
 				managedRoots, err := awfgit.ResolveControlRoots(s.ctx, managed)
 				err = errors.Join(err, managedValidationErr)
 				if err != nil || filepath.Clean(managedRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(managedRoots.InvokingRoot) != filepath.Clean(managed) { // coverage-ignore: repository identity mismatch is exercised through the preceding hard-safety probes
 					return safety("repository-identity", managed, errors.New("managed checkout identity changed"))
 				}
-				if _, err := managedDirectoryTruth(managed); err != nil { // coverage-ignore: managed checkout truth faults are rejected by no-follow identity validation above
-					return err
+				validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
+				liveRoots, err := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
+				err = errors.Join(err, validationErr)
+				if err != nil || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) { // coverage-ignore: repository identity mismatch is exercised through the preceding hard-safety probes
+					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed"))
 				}
 			}
 			if present {
@@ -528,20 +536,20 @@ func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
 				return err
 			}
 			if exists {
-				// The worktree removal above may have crossed a checkout swap. Recheck
-				// every invoking-root component immediately before deleting the branch.
-				validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
-				liveRoots, liveErr := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
-				liveErr = errors.Join(liveErr, validationErr)
-				if liveErr != nil || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) {
-					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed before branch deletion"))
-				}
 				tip, err := resolvePartial(s.ctx, s.paths.roots.InvokingRoot, "refs/heads/"+evidence.Branch)
 				if err != nil {
 					return err
 				}
 				if tip != evidence.BranchTip {
 					return safety("repair-evidence", managed, errors.New("managed branch identity changed"))
+				}
+				// Recheck every invoking-root component immediately before deleting
+				// the branch; no probe may intervene before the mutation.
+				validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
+				liveRoots, liveErr := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
+				liveErr = errors.Join(liveErr, validationErr)
+				if liveErr != nil || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) {
+					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed before branch deletion"))
 				}
 				flag := "-d"
 				if evidence.BranchDeleteForce || evidence.DeleteForce {

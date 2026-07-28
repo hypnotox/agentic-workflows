@@ -766,3 +766,120 @@ func TestPartialEvidenceRestartRecovery(t *testing.T) {
 		}
 	})
 }
+
+func TestPartialRecoveryRemovalUsesIndependentForceArguments(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		removeForce bool
+		branchForce bool
+	}{
+		{name: "worktree force only", removeForce: true},
+		{name: "branch force only", branchForce: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			s := openEffortService(t, root, time.Now())
+			r, err := s.New("recorded recovery", false)
+			if err != nil {
+				t.Fatal(err)
+			}
+			base, err := resolvePartial(t.Context(), root, "HEAD")
+			if err != nil {
+				t.Fatal(err)
+			}
+			path := s.paths.managedWorktree(r.ID)
+			if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+r.ID, path, base)
+			if _, err := s.AttachWorktree(r.ID, base); err != nil {
+				t.Fatal(err)
+			}
+			tip, err := resolvePartial(t.Context(), root, "awf/"+r.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.RecordPartial(PartialEvidence{SchemaVersion: 1, EffortID: r.ID, Action: "removal", Branch: "awf/" + r.ID, CommonDir: filepath.Clean(s.paths.roots.CommonDir), WorktreeRemoveForce: tc.removeForce, BranchDeleteForce: tc.branchForce, BranchTip: tip}); err != nil {
+				t.Fatal(err)
+			}
+			var calls [][]string
+			s.git = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+				calls = append(calls, append([]string(nil), args...))
+				return nil, nil
+			}
+			if err := s.recoverPartial(&r, &RepairResult{}); err != nil {
+				t.Fatal(err)
+			}
+			wantRemove := []string{"worktree", "remove"}
+			if tc.removeForce {
+				wantRemove = append(wantRemove, "--force")
+			}
+			wantRemove = append(wantRemove, path)
+			wantBranch := []string{"branch", "-d", "awf/" + r.ID}
+			if tc.branchForce {
+				wantBranch[1] = "-D"
+			}
+			if len(calls) != 2 || !slicesEqual(calls[0], wantRemove) || !slicesEqual(calls[1], wantBranch) {
+				t.Fatalf("recovery calls = %#v, want %#v then %#v", calls, wantRemove, wantBranch)
+			}
+		})
+	}
+}
+
+func TestPartialRecoveryRemovalSwapAfterRegistrationDoesNotMutate(t *testing.T) {
+	root := initEffortRepo(t)
+	s := openEffortService(t, root, time.Now())
+	r, err := s.New("swapped recovery", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := resolvePartial(t.Context(), root, "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := s.paths.managedWorktree(r.ID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	runEffortGit(t, "-C", root, "worktree", "add", "-b", "awf/"+r.ID, path, base)
+	if _, err := s.AttachWorktree(r.ID, base); err != nil {
+		t.Fatal(err)
+	}
+	tip, err := resolvePartial(t.Context(), root, "awf/"+r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordPartial(PartialEvidence{SchemaVersion: 1, EffortID: r.ID, Action: "removal", Branch: "awf/" + r.ID, CommonDir: filepath.Clean(s.paths.roots.CommonDir), BranchTip: tip}); err != nil {
+		t.Fatal(err)
+	}
+	foreign := initEffortRepo(t)
+	originalWorktrees := s.worktrees
+	s.worktrees = func(ctx context.Context, checkout string) ([]awfgit.WorktreeRegistration, error) {
+		registrations, err := originalWorktrees(ctx, checkout)
+		s.paths.roots.CommonDir = filepath.Join(foreign, ".git")
+		return registrations, err
+	}
+	var calls [][]string
+	s.git = func(_ context.Context, _ string, args ...string) ([]byte, error) {
+		calls = append(calls, append([]string(nil), args...))
+		return nil, nil
+	}
+	if err := s.recoverPartial(&r, &RepairResult{}); err == nil {
+		t.Fatal("swapped recovery accepted")
+	}
+	if len(calls) != 0 {
+		t.Fatalf("destructive recovery calls = %#v", calls)
+	}
+}
+
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

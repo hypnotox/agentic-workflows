@@ -262,6 +262,37 @@ func newManagerForPhase2(t *testing.T) *Manager {
 }
 
 // invariant: tooling/effort-management:managed-worktree-lifecycle
+func TestPhase2AddIdentitySwapAfterEvidenceDoesNotMutate(t *testing.T) {
+	m := newManagerForPhase2(t)
+	r, err := m.efforts.New("add identity swap", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldMkdir := makeManagedDir
+	defer func() { makeManagedDir = oldMkdir }()
+	foreign := newWorktreeRepo(t)
+	makeManagedDir = func(path string, perm os.FileMode) error {
+		if err := oldMkdir(path, perm); err != nil {
+			return err
+		}
+		m.roots.CommonDir = filepath.Join(foreign, ".git")
+		return nil
+	}
+	called := false
+	m.run = func(ctx context.Context, root string, args ...string) ([]byte, error) {
+		if strings.HasPrefix(strings.Join(args, " "), "worktree add") {
+			called = true
+		}
+		return nativeRunner(ctx, root, args...)
+	}
+	if _, err := m.Add(r.ID, "HEAD"); err == nil {
+		t.Fatal("swapped add accepted")
+	}
+	if called {
+		t.Fatal("worktree add was called after identity swap")
+	}
+}
+
 func TestPhase2AddFailureStatErrorRetainsEvidence(t *testing.T) {
 	m := newManagerForPhase2(t)
 	r, err := m.efforts.New("stat error", false)
