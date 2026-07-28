@@ -360,7 +360,7 @@ text, rendering, gating, and one closing commit.
   `internal/project/target_test.go`; Phase 1's assertions must already prove the new text. Do not add
   a proof marker for an unbacked claim or move these markers to generated files.
 
-- [ ] **Task 2.2: Append the final Applied batch and freeze ADR-0166 and this plan.** In
+- [ ] **Task 2.2: Append the final Applied batch and freeze ADR-0166.** In
   `docs/decisions/0166-phase-transaction-ownership.md`, append one Applied event with the next global
   state sequence and exactly these declaration-order operations:
 
@@ -369,12 +369,11 @@ text, rendering, gating, and one closing commit.
   ```
 
   Then change ADR-0166 frontmatter from `Implementing` to `Implemented` and append its Implemented
-  event with the unchanged frozen content SHA-256. Change this plan's `status:` from `Proposed` to
-  `Implemented`. Before that flip, update this plan's Notes with the settled Phase 1 and Phase 2
-  implementation findings, or state explicitly that no implementation finding occurred; only then
-  freeze the body and checkbox history. If execution stops before this transaction, append
-  `Abandoned` with a rationale instead: Phase 1's Applied operations remain active and these two
-  unapplied operations become Canceled.
+  event with the unchanged frozen content SHA-256. Leave this plan `Proposed` until the phase-closing
+  commit has undergone its required report-only review and settlement, because findings cannot be
+  recorded before that review exists. If execution stops before this transaction, append `Abandoned`
+  with a rationale instead: Phase 1's Applied operations remain active and these two unapplied
+  operations become Canceled.
 
   Run `./x render` to regenerate `docs/decisions/INDEX.md`, `.awf/awf.lock`, the two topic docs,
   `docs/domains/rendering.md`, and any lock-linked adopter outputs. Do not hand-edit a generated
@@ -405,10 +404,24 @@ text, rendering, gating, and one closing commit.
   ```
 
   Require a clean worktree after commit. The parent then performs one report-only phase review over
-  the Phase 2 commit, resolves every finding through focused parent-owned commits that each repeat
-  the staged check and full gate, and records the settled phase checkpoint only after findings
-  resolve. The later whole-implementation review does not substitute for this phase review because
-  the phase contract requires settlement before its checkpoint.
+  the Phase 2 commit. The later whole-implementation review does not substitute for this phase
+  review because the phase contract requires settlement before its checkpoint.
+
+- [ ] **Task 2.4: Settle review findings and freeze this plan.** Resolve every Phase 2 review finding
+  through focused parent-owned commits that each stage the complete settlement, run
+  `./awf check --staged`, pass `./x gate`, and never amend the phase-closing commit. In the final
+  settlement commit, update this plan's Notes with the settled Phase 1 and Phase 2 implementation
+  findings, or state explicitly that no implementation finding occurred, then change this plan's
+  `status:` from `Proposed` to `Implemented`. Stage this plan explicitly, require
+  `./awf check --staged` and `./x gate` to pass, and commit exactly:
+
+  ```commit
+  docs(plans): freeze phase transaction ownership plan
+  ```
+
+  Freeze the body and checkbox history at that commit, require `git status --short` to print no
+  output, and record the settled phase checkpoint only after all findings resolve and the plan is
+  frozen.
 
 ## Verification
 
