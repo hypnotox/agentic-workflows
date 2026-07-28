@@ -569,8 +569,15 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	byPath := map[string]string{}
+	subagentArtifacts := map[string]int{
+		".claude/skills/example-subagent-driven-development/SKILL.md": 0,
+		".pi/skills/example-subagent-driven-development/SKILL.md":     0,
+	}
 	for _, file := range files {
 		byPath[file.Path] = file.Content
+		if _, ok := subagentArtifacts[file.Path]; ok && file.TemplateID == "skills/subagent-driven-development/SKILL.md.tmpl" {
+			subagentArtifacts[file.Path]++
+		}
 	}
 	categories := []string{
 		"semantic boundary and ownership",
@@ -597,6 +604,11 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	}
 	if got := len(byPath); got != len(files) {
 		t.Fatalf("rendered outputs contain duplicate paths: %d files, %d paths", len(files), got)
+	}
+	for path, got := range subagentArtifacts {
+		if got != 1 {
+			t.Errorf("%s rendered %d subagent-driven-development artifacts from its template, want 1", path, got)
+		}
 	}
 	docs := 0
 	for _, file := range files {

@@ -335,42 +335,78 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
 func TestMaintainableCodeSubagentContract(t *testing.T) {
-	categories := []string{
-		"semantic boundary and ownership",
-		"external/internal representations and their translation point",
-		"allowed dependency direction",
-		"preparatory-refactor decision",
-		"prohibited bolt-on shortcuts",
-		"validation expectations",
+	renderSection := func(t *testing.T, templateID, section string, data map[string]any) string {
+		t.Helper()
+		src, err := fs.ReadFile(templates.FS, templateID)
+		if err != nil {
+			t.Fatalf("read %s: %v", templateID, err)
+		}
+		expanded, err := render.ExpandIncludes(string(src), templates.FS)
+		if err != nil {
+			t.Fatalf("expand %s: %v", templateID, err)
+		}
+		for _, segment := range render.ParseSections(expanded) {
+			if segment.IsSection && segment.Name == section {
+				out, err := render.Execute(segment.Text, data, nil, "test")
+				if err != nil {
+					t.Fatalf("render %s section %s: %v", templateID, section, err)
+				}
+				assertNoLeaks(t, out)
+				return out
+			}
+		}
+		t.Fatalf("%s has no %s section", templateID, section)
+		return ""
 	}
-	boundary := []string{"preserves these choices", "reports when grounded source invalidates them", "does not replan, broaden the task, or perform unrelated cleanup"}
-	for label, data := range map[string]map[string]any{
-		"Pi dispatch":      {"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
-		"generic dispatch": {"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()},
+	const subagentTemplate = "skills/subagent-driven-development/SKILL.md.tmpl"
+	const scopedContext = "Only the task-relevant scoped design context: semantic boundary and ownership; external/internal representations and their translation point; allowed dependency direction; preparatory-refactor decision; prohibited bolt-on shortcuts; and validation expectations. The implementer preserves these choices, reports when grounded source invalidates them, and does not replan, broaden the task, or perform unrelated cleanup."
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()}
+
+	context := renderSection(t, subagentTemplate, "procedure-extract-context", data)
+	if !strings.Contains(context, scopedContext) {
+		t.Errorf("scoped context is not closed to the six task-relevant categories:\n%s", context)
+	}
+
+	for _, tc := range []struct {
+		name, dispatch, review, reportOnly string
+		data                               map[string]any
+		wants                              []string
+	}{
+		{
+			name: "Pi", data: map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
+			dispatch: "**Per task, call `subagent_implement` alone in its parent tool batch.**", review: "**After a `DONE` implementer reports, call `subagent_review` once with `kind: \"code\"`.**", reportOnly: "The review is report-only:",
+			wants: []string{"Include the scoped design context above in this `task`: only task-relevant facts in all six categories, with the preserve-or-report boundary and no replanning, scope broadening, or unrelated cleanup.", "set `allowCommits` explicitly", "Never dispatch implementation tasks in parallel.", "**Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`."},
+		},
+		{
+			name: "generic", data: data,
+			dispatch: "**Per task, dispatch one implementer subagent** in fresh context.", review: "**After a `DONE` implementer reports, dispatch one review subagent.**", reportOnly: "Dispatch ONE report-only review subagent",
+			wants: []string{"Include the scoped design context above in this prompt: only task-relevant facts in all six categories, with the preserve-or-report boundary and no replanning, scope broadening, or unrelated cleanup.", "**Status report.** On completion, report one of: `DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, or `BLOCKED`."},
+		},
 	} {
-		t.Run(label, func(t *testing.T) {
-			out := renderSkillGolden(t, "subagent-driven-development", data)
-			for _, want := range append(categories, boundary...) {
-				if !strings.Contains(out, want) {
-					t.Errorf("subagent contract missing %q:\n%s", want, out)
+		t.Run(tc.name, func(t *testing.T) {
+			dispatch := renderSection(t, subagentTemplate, "dispatch-conventions", tc.data)
+			if !strings.Contains(dispatch, tc.dispatch) {
+				t.Errorf("dispatch branch missing its instruction %q:\n%s", tc.dispatch, dispatch)
+			}
+			for _, want := range tc.wants {
+				if !strings.Contains(dispatch, want) {
+					t.Errorf("dispatch branch missing %q:\n%s", want, dispatch)
 				}
 			}
-			behavior := []string{"Sequential dispatch only, never parallel", "DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED", "After a `DONE` implementer reports", "report-only"}
-			if label == "Pi dispatch" {
-				behavior = append(behavior, "allowCommits")
+			review := renderSection(t, subagentTemplate, "per-task-review", tc.data)
+			if !strings.Contains(review, tc.review) {
+				t.Errorf("review branch missing its instruction %q:\n%s", tc.review, review)
 			}
-			for _, want := range behavior {
-				if !strings.Contains(out, want) {
-					t.Errorf("subagent behavior missing %q:\n%s", want, out)
-				}
+			if !strings.Contains(review, tc.reportOnly) {
+				t.Errorf("review branch lost report-only clause %q:\n%s", tc.reportOnly, review)
 			}
 		})
 	}
-	inline := renderSkillGolden(t, "executing-plans", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()})
-	for _, want := range append(categories, "without replanning, broadening scope, or unrelated cleanup") {
-		if !strings.Contains(inline, want) {
-			t.Errorf("inline contract missing %q:\n%s", want, inline)
-		}
+
+	inline := renderSection(t, "skills/executing-plans/SKILL.md.tmpl", "procedure-per-task", data)
+	const inlineContext = "Extract only the current task's semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, and validation expectations from the plan before editing; preserve those choices or report grounded source facts that invalidate them, without replanning, broadening scope, or unrelated cleanup."
+	if !strings.Contains(inline, inlineContext) {
+		t.Errorf("inline current-task context is not closed to the six categories:\n%s", inline)
 	}
 }
 
