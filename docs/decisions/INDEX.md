@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0166: Phase transaction ownership](0166-phase-transaction-ownership.md) (Proposed)
+- [ADR-0173: Request-Sensitive Context Authority Tiers](0173-request-sensitive-context-authority-tiers.md) (Proposed)
 
 ## History
 
