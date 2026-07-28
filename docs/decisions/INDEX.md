@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-0166: Phase transaction ownership](0166-phase-transaction-ownership.md) (Proposed)
-- [ADR-0168: Make maintainable code design a workflow obligation](0168-make-maintainable-code-design-a-workflow-obligation.md) (Proposed)
+- [ADR-0168: Make maintainable code design a workflow obligation](0168-make-maintainable-code-design-a-workflow-obligation.md) (Implementing)
 
 ## History
 

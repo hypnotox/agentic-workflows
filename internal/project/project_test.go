@@ -30,21 +30,22 @@ func scaffold(t *testing.T, configYAML string) string {
 // needs updating here, not at every hand-built fixture across the package.
 func testLayout() map[string]any {
 	return map[string]any{
-		"docsDir":          "docs",
-		"adrDir":           "docs/decisions",
-		"indexMd":          "docs/decisions/INDEX.md",
-		"adrReadme":        "docs/decisions/README.md",
-		"adrTemplate":      "docs/decisions/template.md",
-		"plansDir":         "docs/plans",
-		"plansReadme":      "docs/plans/README.md",
-		"plansTemplate":    "docs/plans/template.md",
-		"docs":             map[string]any{},
-		"workflowRef":      "docs/workflow.md",
-		"docStandard":      "docs/doc-standard.md",
-		"agentsMdStandard": "docs/agents-md-standard.md",
-		"workingWithAwf":   "docs/working-with-awf.md",
-		"configReference":  "docs/config-reference.md",
-		"domainsDir":       "docs/domains",
+		"docsDir":                "docs",
+		"adrDir":                 "docs/decisions",
+		"indexMd":                "docs/decisions/INDEX.md",
+		"adrReadme":              "docs/decisions/README.md",
+		"adrTemplate":            "docs/decisions/template.md",
+		"plansDir":               "docs/plans",
+		"plansReadme":            "docs/plans/README.md",
+		"plansTemplate":          "docs/plans/template.md",
+		"docs":                   map[string]any{},
+		"workflowRef":            "docs/workflow.md",
+		"docStandard":            "docs/doc-standard.md",
+		"agentsMdStandard":       "docs/agents-md-standard.md",
+		"workingWithAwf":         "docs/working-with-awf.md",
+		"maintainableCodeDesign": "docs/maintainable-code-design.md",
+		"configReference":        "docs/config-reference.md",
+		"domainsDir":             "docs/domains",
 	}
 }
 
@@ -986,19 +987,20 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	// wrong derivation is caught, not just a present key.
 	tm := l.templateMap()
 	wantTM := map[string]string{
-		"docsDir":          "documentation",
-		"adrDir":           "documentation/decisions",
-		"indexMd":          "documentation/decisions/INDEX.md",
-		"plansDir":         "documentation/plans",
-		"domainsDir":       "documentation/domains",
-		"adrReadme":        "documentation/decisions/README.md",
-		"adrTemplate":      "documentation/decisions/template.md",
-		"plansReadme":      "documentation/plans/README.md",
-		"plansTemplate":    "documentation/plans/template.md",
-		"workflowRef":      "documentation/workflow.md",
-		"docStandard":      "documentation/doc-standard.md",
-		"agentsMdStandard": "documentation/agents-md-standard.md",
-		"workingWithAwf":   "documentation/working-with-awf.md",
+		"docsDir":                "documentation",
+		"adrDir":                 "documentation/decisions",
+		"indexMd":                "documentation/decisions/INDEX.md",
+		"plansDir":               "documentation/plans",
+		"domainsDir":             "documentation/domains",
+		"adrReadme":              "documentation/decisions/README.md",
+		"adrTemplate":            "documentation/decisions/template.md",
+		"plansReadme":            "documentation/plans/README.md",
+		"plansTemplate":          "documentation/plans/template.md",
+		"workflowRef":            "documentation/workflow.md",
+		"docStandard":            "documentation/doc-standard.md",
+		"agentsMdStandard":       "documentation/agents-md-standard.md",
+		"workingWithAwf":         "documentation/working-with-awf.md",
+		"maintainableCodeDesign": "documentation/maintainable-code-design.md",
 	}
 	for k, want := range wantTM {
 		if tm[k] != want {
@@ -1008,11 +1010,11 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "documentation/architecture.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 5 fixed dir keys + docs + 9 mandatory-singleton keys = 15 (agents-doc has
+	// 5 fixed dir keys + docs + 10 mandatory-singleton keys = 16 (agents-doc has
 	// no TemplateKey and is excluded; the generated config reference is
 	// layout-exposed like its hash-checked siblings).
-	if len(tm) != 15 {
-		t.Errorf("templateMap has %d keys, want 15", len(tm))
+	if len(tm) != 16 {
+		t.Errorf("templateMap has %d keys, want 16", len(tm))
 	}
 	if got := p.docOutPath("architecture"); got != "documentation/architecture.md" {
 		t.Errorf("docOutPath = %q", got)
@@ -1368,8 +1370,8 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 			t.Errorf("Document map should unconditionally cite %q (%s; docs: array is empty):\n%s", line, name, got)
 		}
 	}
-	if mapped != 5 {
-		t.Errorf("expected 5 DocumentMap entries, iterated %d", mapped)
+	if mapped != 6 {
+		t.Errorf("expected 6 DocumentMap entries, iterated %d", mapped)
 	}
 }
 

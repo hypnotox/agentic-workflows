@@ -198,10 +198,11 @@ var Standard = &Catalog{
 		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
 			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "working-memory", "commands", "document-map",
 		}},
-		"adr-readme":     {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "lifecycle", "state-changes", "index"}},
-		"adr-template":   {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
-		"plans-readme":   {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
-		"plans-template": {Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
+		"adr-readme":               {Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "lifecycle", "state-changes", "index"}},
+		"adr-template":             {Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
+		"plans-readme":             {Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
+		"plans-template":           {Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
+		"maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
 		"workflow": {Mandatory: true, DocumentMap: true, Title: "Workflow", Desc: "principles, the brainstorm/ADR/plan chain, commit discipline", Path: "workflow.md", TemplateKey: "workflowRef", TID: "docs/workflow.md.tmpl", Sections: []string{
 			"principles", "chain", "working-memory", "commit-discipline", "doc-currency", "composing-the-gate", "local-hooks", "ci",
 		}},

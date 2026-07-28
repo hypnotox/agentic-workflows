@@ -3,6 +3,8 @@ package project
 import (
 	"fmt"
 	"io/fs"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -143,6 +145,65 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 }
 
 // invariant: rendering/catalog-and-targets:adr-singleton-section-parity
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide
+func TestMaintainableCodeDesignGuide(t *testing.T) {
+	entry, ok := catalog.Standard.Docs["maintainable-code-design"]
+	if !ok {
+		t.Fatal("maintainable-code-design catalog entry missing")
+	}
+	wantSections := []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}
+	if !entry.Mandatory || !entry.DocumentMap || entry.Title != "Maintainable Code Design" || entry.Desc != "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design" || entry.Path != "maintainable-code-design.md" || entry.TemplateKey != "maintainableCodeDesign" || entry.TID != "docs/maintainable-code-design.md.tmpl" || strings.Join(entry.Sections, ",") != strings.Join(wantSections, ",") {
+		t.Errorf("catalog entry = %#v, want mandatory document-map guide with sections %v", entry, wantSections)
+	}
+
+	src, err := fs.ReadFile(templates.FS, entry.TID)
+	if err != nil {
+		t.Fatalf("read %s: %v", entry.TID, err)
+	}
+	var markers []string
+	for _, section := range render.ParseSections(string(src)) {
+		if section.IsSection {
+			markers = append(markers, section.Name)
+		}
+	}
+	if strings.Join(markers, ",") != strings.Join(wantSections, ",") {
+		t.Errorf("markers = %v, want %v", markers, wantSections)
+	}
+
+	out := renderGolden(t, entry.TID, map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}})
+	assertNoLeaks(t, out)
+	for _, want := range append([]string{"# Maintainable Code Design", "SOLID", "DRY", "YAGNI", "Strategy", "Adapter", "without mechanically adding wrapper types"}, append([]string{"## Decision posture", "## SOLID, DRY, and YAGNI", "## Semantic modeling", "## Boundaries and dependency direction", "## Illustrative pattern toolbox", "## Preparatory refactoring", "## Failure modes"}, []string{"perform it first", "include it in the current effort", "defer it in a durable project-owned record", "decline it with the trade-off stated"}...)...) {
+		if !strings.Contains(out, want) {
+			t.Errorf("guide missing %q:\n%s", want, out)
+		}
+	}
+	for _, forbidden := range []string{"./x", "github.com/hypnotox/agentic-workflows", "internal/", ".go", "Go package", "<no value>", "{{", "}}", "awf:section", "awf:end"} {
+		if strings.Contains(out, forbidden) {
+			t.Errorf("guide leaked %q:\n%s", forbidden, out)
+		}
+	}
+
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatalf("Sync: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/maintainable-code-design.md")); err != nil {
+		t.Errorf("maintainable-code guide not written: %v", err)
+	}
+	agents, err := os.ReadFile(filepath.Join(root, "AGENTS.md"))
+	if err != nil {
+		t.Fatalf("read AGENTS.md: %v", err)
+	}
+	line := "- **Maintainable Code Design:** [docs/maintainable-code-design.md](docs/maintainable-code-design.md), decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design"
+	if !strings.Contains(string(agents), line) {
+		t.Errorf("AGENTS.md missing mandatory guide document-map entry %q:\n%s", line, agents)
+	}
+}
+
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	lay := testLayout()

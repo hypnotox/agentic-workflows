@@ -108,6 +108,7 @@ Command specifics, effort and lifecycle contracts, and upgrade behaviour: see do
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md), layout, content, and rules for the agent guide
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md), how-to-write rules for all awf-managed prose
+- **Maintainable Code Design:** [docs/maintainable-code-design.md](docs/maintainable-code-design.md), decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design
 - **Workflow:** [docs/workflow.md](docs/workflow.md), principles, the brainstorm/ADR/plan chain, commit discipline
 - **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md), day-to-day usage: commands, overrides, placeholders, and the sync/check loop
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies
