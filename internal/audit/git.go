@@ -16,23 +16,23 @@ import (
 // evaluates it (it holds the repo root); it is range-independent, unlike the
 // commit-history rules in evaluate.
 // touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
-func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
+func ruleUncommittedChanges(repoRoot string, in Inputs) ([]Finding, error) {
 	if !in.UncommittedChanges {
-		return nil
+		return nil, nil
 	}
 	tracked, untracked, err := awfgit.WorktreeChangeCounts(repoRoot)
-	if err != nil { // coverage-ignore: Run calls Collect first, which validates the same repository before this live-state rule
-		return nil
+	if err != nil {
+		return nil, err
 	}
 	if tracked == 0 && untracked == 0 {
-		return nil
+		return nil, nil
 	}
 	return []Finding{{
 		Severity: Error,
 		Rule:     "uncommitted-changes",
 		Detail: fmt.Sprintf("working tree not clean: %d tracked change(s), %d untracked file(s); commit or discard before concluding the implementation",
 			tracked, untracked),
-	}}
+	}}, nil
 }
 
 // Collect returns the commits reachable from head but not from base, as neutral

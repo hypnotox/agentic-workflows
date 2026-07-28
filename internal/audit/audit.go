@@ -103,7 +103,11 @@ func Run(repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
 	findings := evaluate(commits, in)
 	// The clean-working-tree rule reads live state, so it runs here (with the repo
 	// root) rather than in the commit-only evaluate.
-	findings = append(findings, ruleUncommittedChanges(repoRoot, in)...)
+	liveFindings, err := ruleUncommittedChanges(repoRoot, in)
+	if err != nil {
+		return nil, 0, err
+	}
+	findings = append(findings, liveFindings...)
 	return findings, len(commits), nil
 }
 

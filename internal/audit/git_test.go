@@ -296,12 +296,21 @@ func TestToCommitRootAndFileText(t *testing.T) {
 	}
 }
 
+func uncommittedFindings(t *testing.T, dir string, enabled bool) []Finding {
+	t.Helper()
+	findings, err := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: enabled}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return findings
+}
+
 func TestRuleUncommittedChanges(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 
 	// Clean tree: no finding.
-	if f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}}); len(f) != 0 {
+	if f := uncommittedFindings(t, dir, true); len(f) != 0 {
 		t.Fatalf("clean tree should yield no finding, got %#v", f)
 	}
 
@@ -313,7 +322,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}})
+	f := uncommittedFindings(t, dir, true)
 	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
 	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != Error || f[0].Commit != "" {
 		t.Fatalf("dirty tree finding = %#v", f)
@@ -328,7 +337,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	}
 
 	// Disabled: no finding even when dirty.
-	if f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: false}}); len(f) != 0 {
+	if f := uncommittedFindings(t, dir, false); len(f) != 0 {
 		t.Fatalf("disabled rule should yield no finding, got %#v", f)
 	}
 }
@@ -348,7 +357,7 @@ func TestRuleUncommittedChangesIgnoresManagedWorktreeResidents(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}}); len(f) != 0 {
+	if f := uncommittedFindings(t, dir, true); len(f) != 0 {
 		t.Fatalf("ignored managed-worktree residents should yield no finding, got %#v", f)
 	}
 }
@@ -375,6 +384,16 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 	}
 }
 
+func TestRunPropagatesNativeStatusError(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	t.Setenv("PATH", t.TempDir())
+
+	if _, _, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}}); err == nil {
+		t.Fatal("Run unexpectedly accepted unavailable native Git status")
+	}
+}
+
 func TestCollectWorktreeConfigExtension(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
@@ -398,7 +417,7 @@ func TestRuleUncommittedChangesWorktreeConfigExtension(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}})
+	f := uncommittedFindings(t, dir, true)
 	if len(f) != 1 || f[0].Rule != "uncommitted-changes" {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}
