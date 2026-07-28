@@ -38,11 +38,13 @@ If no plan exists, implement directly, then invoke `awf-reviewing-impl` at the e
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
    - The project conventions for the next step.
+   - Only the task-relevant scoped design context: semantic boundary and ownership; external/internal representations and their translation point; allowed dependency direction; preparatory-refactor decision; prohibited bolt-on shortcuts; and validation expectations. The implementer preserves these choices, reports when grounded source invalidates them, and does not replan, broaden the task, or perform unrelated cleanup.
    - The resolved bare grounding command for the task, `awf context <the task's exact paths>`, with the instruction that the subagent runs it first (orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where an edit touches a claimed surface) before editing.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
 <!-- awf:edit dispatch-conventions: default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
 4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:
+   - Include the scoped design context above in this prompt: only task-relevant facts in all six categories, with the preserve-or-report boundary and no replanning, scope broadening, or unrelated cleanup.
    - **Validate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth. Use the fast tier by default; use `./x gate full` for the pre-push tier when a pre-push-only surface is involved. See `docs/workflow.md`.
    - **Conventional Commits.** `<type>(<scope>): <subject>`, subject under 72 chars, body explains the *why*.
    - **No amending prior commits.** Fixes land as new commits on top.
@@ -58,7 +60,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
    - **`BLOCKED`** → assess: context gap → re-dispatch with more context; task too large → escalate; reasoning failure → re-dispatch with a more capable model, or escalate. Never blindly retry without changes.
 
 <!-- awf:edit per-task-review: default; create .awf/skills/parts/subagent-driven-development/per-task-review.md to override -->
-6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
+6. **After a `DONE` implementer reports, dispatch one review subagent.** Dispatch ONE report-only review subagent covering spec-adherence and code quality before marking the task done. Pass it: the task's requirements, the commit SHA(s) just created, and any invariants the project enforces. Apply mechanical findings directly; escalate genuine blockers. The whole-branch review at the terminal step covers the current-session diff; this per-task review is the gate before advancing.
 After each implemented and reviewed task, run the complete routine protocol below before advancing.
 
 **Routine checkpoint.** At this boundary:

@@ -307,8 +307,6 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 		}},
 		"subagent-driven-development": {wants: []string{
 			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "Status report", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED",
-		}, rejects: []string{
-			"external/internal representations", "translation point", "allowed dependency direction", "prohibited bolt-on shortcuts", "validation expectations",
 		}},
 		"bugfix": {wants: []string{
 			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit",
@@ -332,6 +330,47 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
+func TestMaintainableCodeSubagentContract(t *testing.T) {
+	categories := []string{
+		"semantic boundary and ownership",
+		"external/internal representations and their translation point",
+		"allowed dependency direction",
+		"preparatory-refactor decision",
+		"prohibited bolt-on shortcuts",
+		"validation expectations",
+	}
+	boundary := []string{"preserves these choices", "reports when grounded source invalidates them", "does not replan, broaden the task, or perform unrelated cleanup"}
+	for label, data := range map[string]map[string]any{
+		"Pi dispatch":      {"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
+		"generic dispatch": {"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()},
+	} {
+		t.Run(label, func(t *testing.T) {
+			out := renderSkillGolden(t, "subagent-driven-development", data)
+			for _, want := range append(categories, boundary...) {
+				if !strings.Contains(out, want) {
+					t.Errorf("subagent contract missing %q:\n%s", want, out)
+				}
+			}
+			behavior := []string{"Sequential dispatch only, never parallel", "DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED", "After a `DONE` implementer reports", "report-only"}
+			if label == "Pi dispatch" {
+				behavior = append(behavior, "allowCommits")
+			}
+			for _, want := range behavior {
+				if !strings.Contains(out, want) {
+					t.Errorf("subagent behavior missing %q:\n%s", want, out)
+				}
+			}
+		})
+	}
+	inline := renderSkillGolden(t, "executing-plans", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()})
+	for _, want := range append(categories, "without replanning, broadening scope, or unrelated cleanup") {
+		if !strings.Contains(inline, want) {
+			t.Errorf("inline contract missing %q:\n%s", want, inline)
+		}
 	}
 }
 

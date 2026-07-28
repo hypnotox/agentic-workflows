@@ -557,6 +557,58 @@ func TestMultiTargetRender(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
+func TestMaintainableCodeMultiTargetParity(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills:\n  - subagent-driven-development\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	byPath := map[string]string{}
+	for _, file := range files {
+		byPath[file.Path] = file.Content
+	}
+	categories := []string{
+		"semantic boundary and ownership",
+		"external/internal representations and their translation point",
+		"allowed dependency direction",
+		"preparatory-refactor decision",
+		"prohibited bolt-on shortcuts",
+		"validation expectations",
+		"does not replan, broaden the task, or perform unrelated cleanup",
+	}
+	for _, path := range []string{
+		".claude/skills/example-subagent-driven-development/SKILL.md",
+		".pi/skills/example-subagent-driven-development/SKILL.md",
+	} {
+		out := byPath[path]
+		if out == "" {
+			t.Fatalf("missing rendered skill %q", path)
+		}
+		for _, want := range categories {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing handoff semantic %q:\n%s", path, want, out)
+			}
+		}
+	}
+	if got := len(byPath); got != len(files) {
+		t.Fatalf("rendered outputs contain duplicate paths: %d files, %d paths", len(files), got)
+	}
+	docs := 0
+	for _, file := range files {
+		if file.Path == "docs/maintainable-code-design.md" {
+			docs++
+		}
+	}
+	if docs != 1 {
+		t.Errorf("maintainable design guide renders %d times, want 1", docs)
+	}
+}
+
 // invariant: config/configuration:targets-default-claude
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ntargets:\n  - nope\n")
