@@ -40,7 +40,7 @@ Severity is informational only; the dispatching skill routes by classification k
 ## Universal lenses
 
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
-Apply all five lenses to every plan:
+Apply all lenses to every plan:
 
 1. **scope-completeness**: every ADR Decision item has a matching task; no scope creep beyond what the ADR authorises; phase ordering is correct (no task depending on a later task's output); for resync mode, flag plan-vs-finalised-ADR drift specifically (items the ADR added or revised that the plan still treats by the older shape).
 
@@ -53,6 +53,8 @@ Apply all five lenses to every plan:
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
 1. **testing-discipline**: behaviour-changing tasks have regression tests; test placement in the tier that exercises the bug's surface; test-first ordering for bug fixes (failing test before or in the same commit as the fix); new invariants extend the invariant test suite where one exists.
+
+1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check that the relevant model, ownership, representations, translation boundaries, dependency direction, and test seams are explicit; necessary enabling refactors are ordered before dependent behavior, bounded to the failure they prevent, and deterministically verifiable; larger refactors have an explicit approved, deferred, or declined disposition; flag needless indirection and pattern mandates.
 
 ## Project-specific focus items
 

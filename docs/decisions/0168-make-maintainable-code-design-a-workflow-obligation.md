@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-28
 ---
 # ADR-0168: Make maintainable code design a workflow obligation
@@ -148,3 +148,5 @@ must move together. It therefore requires a reviewed implementation plan after t
 - 2026-07-28: Applied; state-sequence: 69; operations: add `rendering/guide-and-doc-templates:maintainable-code-design-guide`
 - 2026-07-28: Applied; state-sequence: 70; operations: add `rendering/workflow-skill-templates:maintainable-code-stage-coverage`
 - 2026-07-28: Applied; state-sequence: 71; operations: add `rendering/workflow-skill-templates:maintainable-code-subagent-contract`
+- 2026-07-28: Applied; state-sequence: 72; operations: add `rendering/workflow-skill-templates:maintainable-code-review-lenses`
+- 2026-07-28: Implemented; content-sha256: 5e6e3b2f3b3b066a5faec3ad1a7d81accd2599ce89546edb2d5f556a371eaa49

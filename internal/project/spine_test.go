@@ -138,6 +138,18 @@ func TestAdrReviewerAgent(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
+	for _, phrase := range []string{
+		"structural-design",
+		"docs/maintainable-code-design.md",
+		"semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract",
+		"only when a Decision changes",
+		"cohesion, representation isolation, dependency direction, enabling-refactor disposition, testable seams, and justification for indirection",
+		"skip this lens rather than manufacturing structural requirements",
+	} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected structural-design phrase %q in output:\n%s", phrase, out)
+		}
+	}
 }
 
 func TestPlanReviewerAgent(t *testing.T) {
@@ -186,6 +198,14 @@ func TestPlanReviewerAgent(t *testing.T) {
 		"scope-completeness",
 		"executability",
 		"closing commit passes the project's gate on its own",
+		"maintainable-design",
+		"docs/maintainable-code-design.md",
+		"model, ownership, representations, translation boundaries, dependency direction, and test seams",
+		"ordered before dependent behavior",
+		"bounded to the failure they prevent",
+		"deterministically verifiable",
+		"approved, deferred, or declined disposition",
+		"needless indirection and pattern mandates",
 	}
 	for _, phrase := range planPhrases {
 		if !strings.Contains(out, phrase) {
@@ -240,10 +260,49 @@ func TestCodeReviewerAgent(t *testing.T) {
 	implPhrases := []string{
 		"correctness",
 		"plan-adherence",
+		"maintainable-design",
+		"docs/maintainable-code-design.md",
+		"cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design",
+		"behavior bolted onto an unsuitable abstraction",
+		"refactoring scope silently broadened",
 	}
 	for _, phrase := range implPhrases {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected impl-lens phrase %q in output:\n%s", phrase, out)
+		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses
+func TestMaintainableCodeReviewLenses(t *testing.T) {
+	outputs := map[string]string{
+		"plan": renderAgentGolden(t, "plan-reviewer", map[string]any{
+			"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+			"layout": map[string]any{"plansDir": "docs/plans"},
+		}),
+		"code": renderAgentGolden(t, "code-reviewer", map[string]any{
+			"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(),
+		}),
+		"adr": renderAgentGolden(t, "adr-reviewer", map[string]any{
+			"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+			"layout": map[string]any{"adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md"},
+		}),
+	}
+	contracts := map[string][]string{
+		"plan": {"explicit", "ordered before dependent behavior", "bounded to the failure they prevent", "deterministically verifiable", "approved, deferred, or declined disposition"},
+		"code": {"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability", "needless indirection", "conformance to the settled design"},
+		"adr":  {"semantic model", "representation", "module/package boundary", "dependency direction", "ownership boundary", "comparable structural contract", "only when a Decision changes", "skip this lens"},
+	}
+	for name, out := range outputs {
+		for _, want := range append([]string{"docs/maintainable-code-design.md", "Report-only"}, contracts[name]...) {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s reviewer missing %q:\n%s", name, want, out)
+			}
+		}
+		for _, banned := range []string{"Edit the", "Apply a fix", "Commit the change", "Loop a re-review"} {
+			if strings.Contains(out, banned) {
+				t.Errorf("%s reviewer must remain report-only, found directive %q:\n%s", name, banned, out)
+			}
 		}
 	}
 }
@@ -1302,15 +1361,15 @@ var unsetFallbackCases = []fallbackCase{
 	{
 		tmpl: "agents/adr-reviewer.md.tmpl",
 		want: []string{"Regen command: `awf render`."},
-		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
+		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
 		tmpl: "agents/plan-reviewer.md.tmpl",
-		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
+		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
 		tmpl: "agents/code-reviewer.md.tmpl",
-		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits"},
+		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
 		tmpl: "agents-doc/AGENTS.md.tmpl",

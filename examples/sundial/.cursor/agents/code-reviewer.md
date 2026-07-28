@@ -38,7 +38,7 @@ Severity is informational only; the dispatching skill routes by classification k
 ## Universal lenses
 
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/code-reviewer/universal-lenses.md to override -->
-Apply all five lenses to every implementation diff:
+Apply all lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
 
@@ -51,6 +51,8 @@ Apply all five lenses to every implementation diff:
 1. **application-pair-correctness**: review first, middle, final, direct, and abandonment pairs for immutable event prefixes, consecutive sequences, truthful Applied/Remaining/Canceled partitions, and current-claim truth.
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; new dependencies justified in commit body.
+
+1. **maintainable-design**: consult `docs/maintainable-code-design.md` and check cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and conformance to the settled design; flag behavior bolted onto an unsuitable abstraction or refactoring scope silently broadened beyond the settled design.
 
 ## Project-specific focus items
 

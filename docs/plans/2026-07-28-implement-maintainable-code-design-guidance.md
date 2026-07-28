@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 adrs: [168]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Maintainable Code Design Guidance
 
@@ -496,6 +496,7 @@ values, not executor path notation.
 
 ## Notes
 
+- Task 4.1 rendering also regenerated the Sundial adopter's reviewer agents and lock, plus the active rendering topic document at `docs/topics/rendering/workflow-skill-templates.md`; these generated outputs were staged with the terminal transaction.
 - The exact section identifiers are the public convention-part API. Do not rename them during
   implementation without returning the Proposed plan to review.
 - Let `S` be the next repository-global state sequence at execution start. The four ADR application
