@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -99,17 +100,52 @@ func TestPhase2RemovalPreMutationRefusesSwappedInvokingCheckout(t *testing.T) {
 	if _, err = m.Add(r.ID, "HEAD"); err != nil {
 		t.Fatal(err)
 	}
+	path, err := m.managed(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := m.efforts.Show(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
 	foreign := newWorktreeRepo(t)
 	base := m.run
+	var calls [][]string
+	swapped := false
+	removeAfterSwap := false
 	m.run = func(ctx context.Context, root string, args ...string) ([]byte, error) {
-		out, runErr := base(ctx, root, args...)
-		if strings.HasPrefix(strings.Join(args, " "), "rev-parse --verify awf/") {
+		argv := append([]string{root}, args...)
+		calls = append(calls, append([]string(nil), argv...))
+		if len(args) == 3 && args[0] == "rev-parse" && args[1] == "--verify" && args[2] == "awf/"+r.ID+"^{commit}" {
 			m.roots.CommonDir = filepath.Join(foreign, ".git")
+			swapped = true
 		}
-		return out, runErr
+		if swapped && len(args) >= 2 && args[0] == "worktree" && args[1] == "remove" {
+			removeAfterSwap = true
+		}
+		return base(ctx, root, args...)
 	}
 	if _, err = m.Remove(r.ID, true, "approved removal"); err == nil {
 		t.Fatal("swapped removal target accepted")
+	}
+	if !swapped {
+		t.Fatalf("injected swap was not reached; argv=%q", calls)
+	}
+	if removeAfterSwap {
+		t.Fatalf("git worktree remove invoked after injected swap; argv=%q", calls)
+	}
+	if _, err := os.Lstat(path); err != nil {
+		t.Fatalf("managed path after refusal: %v", err)
+	}
+	if err := exactRegistration(t.Context(), nativeRunner, m.roots.InvokingRoot, path, "refs/heads/awf/"+r.ID); err != nil {
+		t.Fatalf("managed registration after refusal: %v", err)
+	}
+	after, err := m.efforts.Show(r.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(before, after) {
+		t.Fatalf("effort record changed after refusal: before=%+v after=%+v", before, after)
 	}
 }
 
