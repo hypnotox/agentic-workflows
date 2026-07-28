@@ -139,6 +139,7 @@ func TestContextFacetsAndGroupKey(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "dir/a.go", Mode: snapshot.Regular}, {Path: "dir/b.go", Mode: snapshot.Regular}})
 	if err != nil {

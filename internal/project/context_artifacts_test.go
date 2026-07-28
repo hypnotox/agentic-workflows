@@ -135,6 +135,7 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	}
 }
 
+// invariant: tooling/context-and-topic:context-known-artifact-navigation
 func TestContextArtifactFacetAloneRefinesGroupKey(t *testing.T) {
 	base := ContextPathImpact{
 		Classification: PathCovered,

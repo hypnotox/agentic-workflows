@@ -5,3 +5,6 @@
   date)` returns clamped, polar-safe sunrise/sunset pairs.
 - **`internal/schedule/`:** formats seven `almanac.Day` values as the plain-text
   sun table.
+- **Workflow context:** `awf context` provides tier-0 directory orientation and
+  tier-1 marker relationships for exact or Git-selected files; named facets
+  expand topic authority without changing the application dependency graph.

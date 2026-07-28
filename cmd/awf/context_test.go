@@ -129,9 +129,18 @@ func TestRunContextRendersMarkerRelationships(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-terminal-output-cap
+// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 	root := ctxCmdFixture(t)
+	partPath := filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md")
+	part, err := os.ReadFile(partPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part = bytes.Replace(part, []byte("Order is deterministic.\nOrigin:"), []byte("Order is deterministic.\n\nFULL PROSE SECRET.\nOrigin:"), 1)
+	if err := os.WriteFile(partPath, part, 0o644); err != nil {
+		t.Fatal(err)
+	}
 	p, err := project.Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -154,8 +163,12 @@ func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 		renderContext(&out, result, "header", facets)
 		return out.String()
 	}
-	if got, want := render(full), render(explicit); got != want {
+	got, want := render(full), render(explicit)
+	if got != want {
 		t.Fatalf("full differs from union:\n--- full ---\n%s\n--- union ---\n%s", got, want)
+	}
+	if strings.Count(got, "alpha/one - One") != 1 || strings.Count(got, "Authority counts: invariants=2, rules=1") != 1 || strings.Contains(got, "FULL PROSE SECRET") || strings.Contains(got, "Direct rules:") {
+		t.Fatalf("full restored repetition, prose, or legacy rosters:\n%s", got)
 	}
 }
 
@@ -198,6 +211,7 @@ func TestBareRepositoryContextFitsDirectDelivery(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-terminal-output-cap
 func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	oldDeliver := deliverContext
 	var sizes []int

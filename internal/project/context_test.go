@@ -40,6 +40,7 @@ func ctxFiles() map[string]string {
 }
 
 // invariant: tooling/context-and-topic:context-read-only
+// invariant: tooling/context-and-topic:context-path-attribution
 func TestContextRequestUniverse(t *testing.T) {
 	p := csRepo(t, ctxConfig, ctxFiles())
 	before := snapshotTreeForContext(t, p.Root)

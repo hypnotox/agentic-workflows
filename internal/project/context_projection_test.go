@@ -45,8 +45,6 @@ func TestClaimSummaryProjection(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-concise-projection
-// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestProjectionHelpers(t *testing.T) {
 	changes := []PendingChange{{ADR: "0004"}, {ADR: "0001"}, {ADR: "0002"}, {ADR: "0003"}}
 	bounded := contextPending(changes, false)
@@ -70,6 +68,8 @@ func TestProjectionHelpers(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-concise-projection
+// invariant: tooling/context-and-topic:context-path-attribution
 func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 	files := ctxFiles()
 	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
@@ -117,6 +117,8 @@ func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-concise-projection
+// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	files := ctxFiles()
 	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `rule: extra`\nExtra.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTested.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect.\n"
@@ -169,7 +171,7 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	if got := ids(alpha.Direct); !reflect.DeepEqual(got, []string{"alpha/one:order", "alpha/one:tested"}) {
 		t.Fatalf("expanded direct=%v", got)
 	}
-	if len(alpha.Direct[0].Evidence) == 0 || !reflect.DeepEqual(ids(alpha.Referenced), []string{"core/g:everywhere"}) {
+	if len(alpha.Direct[0].Evidence) == 0 || !reflect.DeepEqual(ids(alpha.Referenced), []string{"core/g:everywhere"}) || len(alpha.Referenced[0].Evidence) != 0 {
 		t.Fatalf("enriched direct=%#v referenced=%#v", alpha.Direct, alpha.Referenced)
 	}
 	invariants, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"invariants"}})
@@ -231,5 +233,8 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	}
 	if len(alpha.Direct[0].Outgoing) != 1 || alpha.Direct[0].Outgoing[0] != "core/g:everywhere" {
 		t.Fatalf("refs=%#v", alpha.Direct[0])
+	}
+	if len(alpha.Referenced) != 0 {
+		t.Fatalf("globally visible claim repeated as referenced=%#v", alpha.Referenced)
 	}
 }

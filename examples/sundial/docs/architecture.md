@@ -17,6 +17,9 @@ persistence, no network, no configuration files.
   date)` returns clamped, polar-safe sunrise/sunset pairs.
 - **`internal/schedule/`:** formats seven `almanac.Day` values as the plain-text
   sun table.
+- **Workflow context:** `awf context` provides tier-0 directory orientation and
+  tier-1 marker relationships for exact or Git-selected files; named facets
+  expand topic authority without changing the application dependency graph.
 
 
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
@@ -25,6 +28,9 @@ persistence, no network, no configuration files.
 `main` → `schedule.Week(location, today)` → seven `almanac.Sun` calls → formatted
 table on stdout. Errors exist only at the argument boundary; the model itself is
 total: polar day and night collapse to full- or zero-length days (ADR-0001).
+Development context separately classifies requested paths, groups directories by
+visible tier-0 fields, and expands direct relationships or broader authority only
+through the file tier and explicit facets.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->

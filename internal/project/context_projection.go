@@ -8,7 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[string][]ContextRelationshipSource, currentPaths []string, pending []PendingChange, facets []ContextFacet) TopicImpact {
+func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[string][]ContextRelationshipSource, globallyVisible, referencedSeen map[string]bool, currentPaths []string, pending []PendingChange, facets []ContextFacet) TopicImpact {
 	out := TopicImpact{ID: t.ID.String(), Title: t.Metadata.Title, Summary: t.Metadata.Summary, Direct: []ContextClaimImpact{}, Invariants: []ContextClaimImpact{}, Additional: []ContextClaimImpact{}, Referenced: []ContextClaimImpact{}, Pending: contextPending(pending, slices.Contains(facets, FacetPending))}
 	for _, claim := range t.Claims {
 		if claim.Type == topic.Invariant {
@@ -17,7 +17,6 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 			out.Counts.Rules++
 		}
 	}
-	visible := map[string]bool{}
 	for _, claim := range t.Claims {
 		category := ""
 		switch {
@@ -35,7 +34,6 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 		if category == "direct" {
 			impact.Sources = cloneContextRelationshipSources(directSources[claim.ID])
 		}
-		visible[claim.ID] = true
 		switch category {
 		case "direct":
 			out.Direct = append(out.Direct, impact)
@@ -62,7 +60,7 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 				items[i].Incoming = nonNilStrings(corpus.Incoming(items[i].ID))
 				items[i].Outgoing = nonNilStrings(corpus.Outgoing(items[i].ID))
 				for _, id := range append(slices.Clone(items[i].Incoming), items[i].Outgoing...) {
-					if !visible[id] {
+					if !globallyVisible[id] && !referencedSeen[id] {
 						refs[id] = true
 					}
 				}
@@ -79,7 +77,8 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[st
 		slices.Sort(refIDs)
 		for _, id := range refIDs {
 			if claim, ok := byID[id]; ok {
-				out.Referenced = append(out.Referenced, projectClaimImpact(claim, corpus, facets))
+				out.Referenced = append(out.Referenced, projectClaimImpact(claim, corpus, nil))
+				referencedSeen[id] = true
 			}
 		}
 	}

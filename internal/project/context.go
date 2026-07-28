@@ -197,10 +197,25 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	}
 	result := ContextResult{Selection: options.Selection, Range: options.Range, Requests: requests, Topics: []TopicImpact{}}
 	currentPaths := safelyMatchablePaths(state.Tree)
+	projectedSources := contextRelationshipSources(directSources)
+	globallyVisible := contextVisibleClaimIDs(applicable, projectedSources, options.Facets)
+	referencedSeen := map[string]bool{}
 	for _, id := range slices.Sorted(maps.Keys(applicable)) {
-		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, contextRelationshipSources(directSources), currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
+		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
 	}
 	return result, nil
+}
+
+func contextVisibleClaimIDs(applicable map[string]topic.Topic, directSources map[string][]ContextRelationshipSource, facets []ContextFacet) map[string]bool {
+	visible := map[string]bool{}
+	for _, t := range applicable {
+		for _, claim := range t.Claims {
+			if len(directSources[claim.ID]) > 0 || claim.Type == topic.Invariant && slices.Contains(facets, FacetInvariants) || claim.Type != topic.Invariant && slices.Contains(facets, FacetAllRules) {
+				visible[claim.ID] = true
+			}
+		}
+	}
+	return visible
 }
 
 func addContextRelationshipSources(dst map[string]map[int]map[string]bool, requestIndex int, relationships ContextRelationships) {
