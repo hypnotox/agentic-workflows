@@ -53,8 +53,11 @@ spill, and bounded pending contracts.
 
 2. Tier 0 contains the directory census, compact groups, primary classification, compact artifact
    provenance, owning domains, applicable topic IDs, one-line topic summaries, authority counts,
-   warnings, and ADR-0165's bounded pending-operation summary. It does not render direct claim-ID
-   rosters, invariant or proof rosters, or claim summaries.
+   warnings, and ADR-0165's bounded pending-operation summary. Authority counts report, per
+   applicable topic, the number of active invariant claims and active non-invariant rule claims;
+   pending operation counts remain separate. Hidden directory relationships do not contribute to
+   these counts or to tier-0 group equivalence. Tier 0 does not render direct claim-ID rosters,
+   invariant or proof rosters, or claim summaries.
 
 3. Tier 1 adds only relationships actually declared on the selected file. File relationships are
    represented by marker kind and render only non-empty `State`, `Touches`, and `Proofs` claim-ID
@@ -70,8 +73,12 @@ spill, and bounded pending contracts.
 
 5. Add `relationships` to the closed `--show` facet set. `--show relationships` promotes directory
    requests to tier 1 by expanding their request-level aggregated direct relationships in the
-   authority projection. It does not add applicable non-direct invariants and does not fragment
-   directory groups by descendant marker combinations.
+   authority projection. Claim bodies remain globally deduplicated, but every directly related
+   claim carries sorted source attribution by request index and marker kind; source attribution is
+   additive and is never removed by claim deduplication. Each request block retains its own marker
+   sets, so a mixed invocation shows exactly which directory or file established each relationship.
+   The facet does not add applicable non-direct invariants and does not fragment directory groups by
+   descendant marker combinations.
 
 6. Add `invariants` to the closed `--show` facet set. `--show invariants` renders one-line summaries
    for applicable non-direct invariant claims. Direct invariant claims already visible through a
@@ -112,23 +119,27 @@ spill, and bounded pending contracts.
     render no more than 8,192 bytes. Arbitrarily many requests, adopter topics, explicit facets,
     and pending data remain data-dependent.
 
-14. Managed workflow callers keep their lens-specific invocations: orientation and implementation
-    begin bare; plan and implementation review request `all-rules`, `evidence`, and `pending`;
-    plan/ADR resync requests `all-rules` and `pending`; ADR lifecycle requests pending detail where
-    needed; and no managed caller prescribes `--full`. Exact, staged, and range-selected files
-    receive tier-1 relationships without a new flag, while a managed directory query remains tier
-    0 unless its lens explicitly needs another facet. Spill consumption remains unchanged.
+14. Managed workflow callers keep lens-specific invocations: orientation and implementation begin
+    bare; plan and implementation review request `invariants`, `all-rules`, `evidence`, and
+    `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; ADR lifecycle
+    requests pending detail where needed; and no managed caller prescribes `--full`. Exact, staged,
+    and range-selected files receive tier-1 relationships without a new flag, while a managed
+    directory query remains tier 0 unless its lens explicitly needs another facet. Spill
+    consumption remains unchanged.
 
-15. Help, the working guide and its template, the agent-guide command convention, glossary and
-    architecture descriptions, testing guidance, current-state claims, rendered topic documents,
-    managed caller guards, and stale testing prose move with implementation. Documentation must no
-    longer describe removed context JSON parity or recommend routine managed `--full` use.
+15. Help, `README.md`, the working guide and its template, the agent-guide command convention,
+    glossary and architecture descriptions, testing guidance, current-state claims, rendered topic
+    documents, managed caller guards, stale testing prose, and an Unreleased entry in
+    `changelog/CHANGELOG.md` move with implementation. Documentation must no longer describe removed
+    context JSON parity or recommend routine managed `--full` use.
 
 16. Tests cover independent and composed new facets, full-as-union, evidence and references as
     non-expanding enrichments, marker-kind file relationships, actual proof-marker filtering,
-    request-level directory aggregation, mixed directory and exact-file isolation, tier-0 grouping,
-    artifact-sensitive grouping, bounded pending summaries, help errors, managed caller packets,
-    representative byte budgets, snapshot preservation, and generated documentation parity.
+    request-level directory aggregation and source attribution, mixed directory and exact-file
+    isolation, defined tier-0 counts and grouping, artifact-sensitive grouping, bounded pending
+    summaries, help errors, managed caller packets, representative byte budgets, snapshot
+    preservation, and generated documentation parity. Every affected template continues to render
+    with empty-string variables under `missingkey=zero` without emitting a no-value token.
 
 17. State changes apply in declaration order through checked application batches. Updates preserve
     `Origin`, the existing `Revised-by` prefix, and backing mode while appending ADR-0173. Every
