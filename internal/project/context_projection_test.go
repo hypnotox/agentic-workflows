@@ -10,6 +10,7 @@ import (
 )
 
 // invariant: tooling/context-and-topic:context-summary-projection
+// invariant: tooling/context-and-topic:context-concise-projection
 func TestClaimSummaryProjection(t *testing.T) {
 	parse := func(summary, prose string) topic.Claim {
 		t.Helper()
@@ -122,6 +123,10 @@ func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	files := ctxFiles()
 	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `rule: extra`\nExtra.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTested.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect.\n"
+	files[".awf/topics/metadata/alpha/two.yaml"] = "title: Two\nsummary: The second topic.\npaths:\n  - internal/foo/**\n"
+	files[".awf/topics/parts/alpha/two/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n"
+	files[".awf/topics/parts/core/g/current-state.md"] = "Intro.\n\n## Claims\n\n### `invariant: everywhere`\nGlobal invariant.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect global state.\n"
+	files["internal/evidence/core.go"] = "package evidence\n// state: core/g:everywhere\n"
 	p := csRepo(t, ctxConfig, files)
 	find := func(res ContextResult, id string) TopicImpact {
 		t.Helper()
@@ -171,8 +176,23 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	if got := ids(alpha.Direct); !reflect.DeepEqual(got, []string{"alpha/one:order", "alpha/one:tested"}) {
 		t.Fatalf("expanded direct=%v", got)
 	}
-	if len(alpha.Direct[0].Evidence) == 0 || !reflect.DeepEqual(ids(alpha.Referenced), []string{"core/g:everywhere"}) || len(alpha.Referenced[0].Evidence) != 0 {
+	if len(alpha.Direct[0].Evidence) == 0 || !reflect.DeepEqual(ids(alpha.Referenced), []string{"core/g:everywhere"}) || len(alpha.Referenced[0].Evidence) != 0 || alpha.Referenced[0].Backing != "" || alpha.Referenced[0].Verify != "" {
 		t.Fatalf("enriched direct=%#v referenced=%#v", alpha.Direct, alpha.Referenced)
+	}
+	globalDedup, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules, FacetReferences}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	referencedEverywhere := 0
+	for _, topicImpact := range globalDedup.Topics {
+		for _, claim := range topicImpact.Referenced {
+			if claim.ID == "core/g:everywhere" {
+				referencedEverywhere++
+			}
+		}
+	}
+	if referencedEverywhere != 1 {
+		t.Fatalf("globally deduplicated referenced target count=%d: %#v", referencedEverywhere, globalDedup.Topics)
 	}
 	invariants, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"invariants"}})
 	if err != nil {

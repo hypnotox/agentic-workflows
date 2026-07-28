@@ -129,6 +129,7 @@ func TestRunContextRendersMarkerRelationships(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-concise-projection
 // invariant: tooling/context-and-topic:context-full-authority-packet
 func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 	root := ctxCmdFixture(t)
