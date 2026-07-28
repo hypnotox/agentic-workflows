@@ -60,6 +60,10 @@ query a single version or a range.
   before `awf render` or `awf check` will pass, the same requirement the other three hook-referenced
   awf-verb vars already carry.
 
+### Bug fixes
+
+- Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.
+
 ## [0.22.0] - 2026-07-24
 
 ### Features
