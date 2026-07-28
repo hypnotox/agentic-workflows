@@ -1,7 +1,6 @@
 package project
 
 import (
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -36,9 +35,6 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	applyArtifactSnapshots(generated, "docs/out.md", tree, lock)
 	if generated[0].Snapshot == nil || !generated[0].Snapshot.InManifest || !generated[0].Snapshot.Drifted {
 		t.Fatalf("snapshot=%#v", generated[0].Snapshot)
-	}
-	if _, err := json.Marshal(source); err != nil {
-		t.Fatal(err)
 	}
 }
 

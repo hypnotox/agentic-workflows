@@ -11,52 +11,52 @@ The read-only orientation surfaces: awf context, awf topic, describe, and uncove
 
 ### `invariant: context-adr-operation-projection`
 
-An explicit governed ADR path projects its parsed identity, lifecycle, mutability, non-authoritative prose role, and declaration-ordered Proposed, Remaining, Applied, or Canceled operation progress from canonical application batches; full mode adds only operation-linked current or removed claim history and marker detail.
+An explicit governed ADR request always projects parsed identity, lifecycle, mutability, and its non-authoritative role; the pending facet adds every declaration and canonical progress in declaration order, evidence adds only operation-linked current or removal history with bounded marker evidence, and artifacts adds deterministic attribution.
 Origin: ADR-0148
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: context-applicability-navigation`
 
-Topic and context applicability share one evidence model that lists owning-domain selectors and topic selectors separately and states that both must match; awf topic --coverage reports the sorted concrete matched paths and marker sites, while context reports the matched-path count with a coverage drilldown, and neither claims symbolic glob intersection.
+Topic and context applicability share one evidence model: awf topic --coverage remains the unbounded drilldown for matched paths and marker sites, while the context selectors facet reports owning-domain and topic selector declarations separately, states that both must match, and never lists matched paths.
 Origin: ADR-0148
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: context-default-excludes-history`
 
-Concise path context renders full detail only for claims selected directly by exact-path state, touches-state, or invariant proof markers, reports every remaining rostered claim as an ID with a detail-omission line and topic drilldown, and never expands Implemented ADRs, historical plans, referenced claim bodies, or unrelated ADR history.
+Default context authority is a compact impact map with one topic summary, every applicable invariant summary, and summaries only for directly marker-selected rules; it excludes additional rules, full claim prose, reference expansion, detailed pending operations, Implemented ADR prose, historical plans, and unrelated ADR history.
 Origin: ADR-0148
+Revised-by: ADR-0165
 Backing: unbacked
-Verify: On a fixture with claim provenance, ADR tags and relations, linked plans, and claim references, grouped concise context reports the claim-ID roster and direct-claim detail but differs from both context --full and explicit awf topic <claim-id> --history output.
+Verify: On a fixture with indirect rules, references, pending operations, and ADR history, bare context contains only the topic, applicable-invariant, directly selected rule, and bounded pending summaries; named facets add only their declared detail.
 
 ### `invariant: context-concise-projection`
 
-Context assembles one topic entry per applicable topic per invocation: concise entries carry the uncapped current claim-ID roster, the full detail of exactly the marker-selected direct-claim union, and, when any rostered claim's detail is omitted, an explicit detail-omission line with the topic drilldown.
+Context renders globally deduplicated authority in closest-category order: directly related claims, applicable non-direct invariants, additional topic rules, referenced context, then pending changes; every visible claim has a bounded one-line summary and occupies only its closest category.
 Origin: ADR-0153
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: context-full-authority-packet`
 
-`context --full` renders every current claim's full detail and pending operations once per applicable topic with no detail-omission line, from the same non-recursive semantic model as the concise projection; managed complete-authority callers (the reviewer dispatches, plan resync included, and the ADR lifecycle) instruct `--full` runs whose arguments the dispatching parent resolves, while implementer and orientation callers stay concise.
+Repeatable context facets compose in canonical declaration order without changing grouping or relevance, and --full is byte-for-byte the union of all-rules, evidence, selectors, references, pending, and artifacts; neither form restores full prose, an expanded path census, or per-path authority repetition.
 Origin: ADR-0148
-Revised-by: ADR-0153, ADR-0155
+Revised-by: ADR-0153, ADR-0155, ADR-0165
 Backing: test
 
 ### `invariant: context-known-artifact-navigation`
 
-Known config, lock, manifest, template, convention-part, authored-data, topic-metadata, claim-part, decision-record, and managed-output artifacts receive deterministic role, source, output, and navigation attribution from loaded authorities rather than path-lookalike heuristics.
+Known config, lock, manifest, template, convention-part, authored-data, topic-metadata, claim-part, decision-record, and managed-output artifacts receive compact deterministic provenance from loaded authorities rather than path-lookalike heuristics; the artifacts facet expands sorted source, output, and navigation edges, and full provenance participates in grouping even when compact.
 Origin: ADR-0148
-Backing: test
-
-### `invariant: context-output-parity`
-
-The human-readable and --json renderings of `awf context` consume the same selected concise or full semantic result, so serialization changes presentation only and concise JSON contains no hidden full block.
-Origin: ADR-0148
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: context-path-attribution`
 
-Context preserves normalized request queries separately from sorted effective paths, records directory expansion status, and emits each unique effective path once with every sorted request that selected it and non-null result collections; a path's topic collection is an attribution of topic IDs and direct-claim IDs, while topic authority lives in the sorted invocation-level topic collection.
+Context preserves every nonblank positional token's original display spelling and input order, including repeats, while slash-clean normalization is lookup-only; each request remains an independent exact-file or directory block, Git selections remain sorted individual entries, directory descendants group by complete semantic impact, and authority shared across blocks renders once.
 Origin: ADR-0148
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: context-path-classification`
@@ -67,14 +67,28 @@ Backing: test
 
 ### `invariant: context-read-only`
 
-The `awf context` command assembles each query from one selected working-tree or immutable index universe and writes no config, lock, output, or cache; staged config, lock, topic, marker, path, and artifact inputs never mix with dirty working bytes.
+Direct awf context assembly reads one selected working-tree or immutable index universe and never mutates repository config, lock, outputs, or caches; staged config, lock, topic, marker, path, and artifact inputs never mix with dirty working bytes, while successful oversize delivery may create only the caller-owned external temporary file.
 Origin: ADR-0148
+Revised-by: ADR-0165
 Backing: test
 
 ### `invariant: context-static-fallback`
 
-Run outside an adopted tree, where no config file is present, concise and full `awf context` both degrade to a successful static empty answer that states live classification and authority require adoption, mirroring `awf config`.
+Outside an adopted tree where no config is present, awf context succeeds with one human-only, capped static empty answer that states live classification and authority require adoption.
 Origin: ADR-0148
+Revised-by: ADR-0165
+Backing: test
+
+### `invariant: context-summary-projection`
+
+Optional claim Summary metadata is one nonblank line of at most 160 Unicode code points before Origin; context prefers it, otherwise whitespace-folds the first prose paragraph and deterministically truncates above 160 code points at the last boundary at or before 157, or hard-cuts there, before appending ASCII ....
+Origin: ADR-0165
+Backing: test
+
+### `invariant: context-terminal-output-cap`
+
+Normal, uncovered, and static context render completely before delivery: at most 8,192 bytes write unchanged, while larger output securely spills exact bytes to a mode-0600 canonical temporary path outside the repository and emits only the versioned two-line notice; every post-create failure best-effort removes the spill while preserving the primary error.
+Origin: ADR-0165
 Backing: test
 
 ### `invariant: describe-read-only`
@@ -86,11 +100,5 @@ Backing: test
 ### `invariant: uncovered-collapses-directories`
 
 In the coverage report, a directory all of whose scanned tracked descendants are owned by no domain is reported as that single topmost directory with a trailing slash, never as its individual files.
-Origin: ADR-0148
-Backing: test
-
-### `invariant: uncovered-output-parity`
-
-The human-readable and JSON renderings of the coverage report present the same uncovered and unowned sets, because both are printed from one assembled result.
 Origin: ADR-0148
 Backing: test

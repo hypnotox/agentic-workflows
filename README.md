@@ -170,11 +170,14 @@ authored part (`.awf/topics/parts/<domain>/<topic>/current-state.md`) and render
 `docs/topics/`. `awf new topic` scaffolds the pair; `awf topic <domain>/<topic>` reads it back,
 active by default, with `--history` resolving removed claim identities.
 
-**`awf context` answers "what governs this file?"** Point it at any path and it resolves the
-owning domain(s), the applicable rules and invariants, and any pending ADR operations (with
-applied-to-total progress) for that code, so an agent or reviewer sees the live constraints
-without reading the whole ADR corpus. `--staged` and `--range <a>..<b>` resolve paths from git,
-`--uncovered` reports code no topic owns yet, and `--json` emits the same data.
+**`awf context` answers "what governs this request?"** Exact files and sorted Git selections stay
+individual, while each directory reports included/excluded counts and groups descendants with the
+same complete semantic impact. Groups disclose every member only through three files, and shared
+authority renders once with bounded topic, invariant, direct-rule, and pending summaries. Repeat
+`--show` for `all-rules`, `evidence`, `selectors`, `references`, `pending`, or `artifacts`; `--full`
+is their union, never a path census. Human text is the only contract. Results through 8,192 bytes
+write unchanged; larger direct-command results securely spill exact bytes outside the repository
+and return a two-line notice whose temporary file the successful caller owns and deletes.
 
 **Invariants are enforced, not just documented.** An invariant claim declares its backing:
 `Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug>`) on a
@@ -274,7 +277,7 @@ disk.
 | `awf metrics doctor --effort <id> [selectors] [--json]` | Read exact and heuristic findings for one effort. Findings are advisory and do not change exit status. |
 | `awf check invariants` | Report documented invariants that lack a backing comment in source. |
 | `awf config` | Describe every config key and var, with this project's live state when run inside one. |
-| `awf context <paths>` | Report owning domains, topic summaries, applicable rules and invariants with backing contracts, and Accepted or Implementing pending changes and progress. Resolve paths from git with `--staged` or `--range <a>..<b>`; `--json` emits the same data. `--uncovered` reports eligible unowned and uncovered paths. |
+| `awf context <paths>` | Report request-oriented compact impact: exact files and Git selections stay individual, directories group equivalent descendants, authority renders once, and named `--show` facets add bounded detail. `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
 | `awf check memory` | Scan staged decision records for a citation of a specific working-memory file; blocking, opt-in per project. |

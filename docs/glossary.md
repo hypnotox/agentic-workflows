@@ -5,13 +5,14 @@
 Project jargon and what each term means; start here when a term is unfamiliar. Sorted by term.
 
 - **Anchor claim:** The ability of a ledger event to be the target of a payload anchor reference. Owned exclusively by `trajectory_closed` events keyed on `payload.anchorId`, declared in the protocol descriptor's required `anchorClaimKinds` vocabulary; references resolve causally forward only, and ambiguity within the claiming set is an `ambiguous-anchor` violation. The envelope `piAnchorId` is observation-location metadata, never a claim.
-- **Applicability evidence:** Separate owning-domain and topic selectors and the rule that both must match; the concrete current matched paths and marker sites live in `awf topic <id> --coverage`, while rendered docs carry selectors only and context carries the matched-path count. It is not symbolic glob intersection.
-- **Artifact role:** One closed attribution kind assigned from loaded project authorities, with source, output, and navigation links.
-- **Concise context:** The default orientation projection: each applicable topic once with its uncapped claim-ID roster, the full detail of directly marked claims, and an explicit detail-omission line with drilldown, plus per-path classification and attribution.
-- **Effective path:** One unique file path selected literally or by request-directory expansion and classified independently.
-- **Full authority packet:** The untruncated `awf context --full` projection containing every applicable current claim once per topic, with backing, direct sites and references, scopes, matched-path counts with coverage drilldowns, pending operations, and artifact navigation.
-- **Primary classification:** Exactly one precedence-ordered context status for an effective path, such as covered, generated output, symlink, or not found.
-- **Request path:** A normalized user or Git-selected query retained separately from the effective paths it selects.
+- **Applicability evidence:** Separate owning-domain and topic selectors plus the rule that both must match. Context's selectors facet shows declarations without paths; concrete matched paths and marker sites live in `awf topic <id> --coverage`.
+- **Artifact role:** One closed attribution kind assigned from loaded project authorities. Context shows compact role and identity by default; the artifacts facet adds sorted source, output, and navigation edges.
+- **Context facet:** One bounded optional detail lens selected by repeatable `--show`: `all-rules`, `evidence`, `selectors`, `references`, `pending`, or `artifacts`. `--full` is their canonical union and never changes grouping.
+- **Context group:** The included descendants of one directory request that share the complete classification, provenance, domain, topic, direct-rule, invariant/proof, and warning identity. It always carries a count, lists all members through three, and discloses none above three.
+- **Context impact report:** The request-oriented human-only `awf context` result: exact files and Git selections remain individual, directories carry censuses and groups, and authority is globally deduplicated into closest relevance categories with bounded summaries.
+- **Primary classification:** Exactly one precedence-ordered context status for an observed path, such as covered, generated output, symlink, or not found.
+- **Request path:** One original nonblank positional token retained in input order and display spelling; normalized lookup is separate and does not deduplicate repeated requests.
+- **Spill notice:** The exact two-line `AWF_CONTEXT_SPILL_V1` delivery descriptor emitted when a complete context rendering exceeds 8,192 bytes. It carries decimal byte count, closed text format, and a canonical external temporary path whose successful caller owns and deletes.
 
 
 | Term | Meaning |

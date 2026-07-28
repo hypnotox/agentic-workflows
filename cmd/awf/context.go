@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -11,178 +10,139 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/contextdelivery"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// runContext prints the read-only current-state context for the given
-// repo-relative paths: their owning domains, the applicable topics with their
-// current claims, any Accepted-ADR pending changes on those topics, and each
-// unowned path. Explicit paths and --range query the working universe; --staged
-// queries the index universe. When no explicit paths are given, --staged/--range
-// resolve them from git first (a bad selector still errors, an empty selector is
-// a usage error). It then mirrors runConfig's gate + static-fallback shape: a
-// genuinely absent config prints the pre-adoption notice; any other stat fault
-// is an error; inside a tree the binary-version gate runs before Open.
-func runContext(cwd string, paths []string, staged bool, rng string, asJSON, uncovered bool, stdout io.Writer) error {
-	return runContextProjection(cwd, paths, staged, rng, asJSON, uncovered, false, stdout)
-}
-
-func runContextProjection(cwd string, paths []string, staged bool, rng string, asJSON, uncovered, full bool, stdout io.Writer) error {
-	if full && uncovered {
-		return &usageErr{"awf context: --full cannot be combined with --uncovered"}
+func runContext(cwd string, paths []string, staged bool, rng string, uncovered, full bool, shows []string, stdout io.Writer) error {
+	facets, err := project.ParseContextFacets(shows, full)
+	if err != nil {
+		return &usageErr{"awf context: " + err.Error()}
+	}
+	if uncovered && (full || len(shows) > 0) {
+		return &usageErr{"awf context: --show and --full cannot be combined with --uncovered"}
 	}
 	if uncovered {
-		return runUncovered(cwd, paths, staged, rng, asJSON, stdout)
+		return runUncovered(cwd, paths, staged, rng, stdout)
 	}
-	gitSelected := len(paths) == 0
+	selection := project.SelectionExplicit
+	if staged {
+		selection = project.SelectionStaged
+	} else if rng != "" {
+		selection = project.SelectionRange
+	}
 	if len(paths) == 0 {
 		if !staged && rng == "" {
-			return &usageErr{"usage: awf context <path>... [--json] [--full] [--staged] [--range <a>..<b>]"}
+			return &usageErr{"usage: awf context <path>... [--show <facet>] [--full] [--staged] [--range <a>..<b>]"}
 		}
-		resolved, err := awfgit.ChangedPaths(cwd, staged, rng)
-		if err != nil {
-			return err
+		resolved, e := awfgit.ChangedPaths(cwd, staged, rng)
+		if e != nil {
+			return e
 		}
 		if len(resolved) == 0 {
 			return &usageErr{"awf context: no changed paths for the given selector"}
 		}
 		paths = resolved
 	}
+	options := project.ContextOptions{Selection: selection, Range: rng, Facets: facets}
+	var result project.ContextResult
+	header := "context: live state for this project"
 	if staged {
 		if err := gateStaged(cwd); err != nil {
 			return err
 		}
-		var res project.ContextResult
-		var err error
-		switch {
-		case full && gitSelected:
-			res, err = project.StagedContextRootFullGitSelection(cwd, paths)
-		case full:
-			res, err = project.StagedContextRootFull(cwd, paths)
-		case gitSelected:
-			res, err = project.StagedContextRootGitSelection(cwd, paths)
-		default:
-			res, err = project.StagedContextRoot(cwd, paths)
+		result, err = project.StagedContextRootOptions(cwd, paths, options)
+		header = "context: staged state for this project"
+	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
+		if !errors.Is(statErr, fs.ErrNotExist) {
+			return statErr
 		}
-		if err != nil {
+		result = project.ContextResult{Selection: selection, Range: rng, Requests: []project.ContextRequestReport{}, Topics: []project.TopicImpact{}}
+		header = "context (static: not inside an awf project; live classification and authority require an adopted project)"
+	} else {
+		if err := gate(cwd); err != nil {
 			return err
 		}
-		return printContext(stdout, res, asJSON, "context: staged state for this project")
-	}
-	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return err
+		p, e := project.Open(cwd)
+		if e != nil { // coverage-ignore: gate just loaded the same config and project presence; failure requires a concurrent filesystem race
+			return e
 		}
-		projection := project.ContextConcise
-		if full {
-			projection = project.ContextFull
-		}
-		return printContext(stdout, project.ContextResult{Projection: projection, Requests: []project.ContextRequest{}, Topics: []project.InvocationTopicContext{}, Paths: []project.ContextPath{}}, asJSON,
-			"context (static: not inside an awf project; live classification and authority require an adopted project)")
-	}
-	if err := gate(cwd); err != nil {
-		return err
-	}
-	p, err := project.Open(cwd)
-	if err != nil {
-		return err
-	}
-	var res project.ContextResult
-	switch {
-	case full && gitSelected:
-		res, err = p.ContextForFullGitSelection(paths)
-	case full:
-		res, err = p.ContextForFull(paths)
-	case gitSelected:
-		res, err = p.ContextForGitSelection(paths)
-	default:
-		res, err = p.ContextFor(paths)
+		result, err = p.ContextForOptions(paths, options)
 	}
 	if err != nil {
 		return err
 	}
-	return printContext(stdout, res, asJSON, "context: live state for this project")
+	var out bytes.Buffer
+	renderContext(&out, result, header, facets)
+	return contextdelivery.Deliver(out.Bytes(), cwd, stdout)
 }
 
-// runUncovered serves `awf context --uncovered`: the whole-tree coverage report.
-// Positional args are optional scan roots; --range is rejected. With --staged,
-// every input comes from the immutable index universe.
-func runUncovered(cwd string, scanRoots []string, staged bool, rng string, asJSON bool, stdout io.Writer) error {
+func runUncovered(cwd string, roots []string, staged bool, rng string, stdout io.Writer) error {
 	if rng != "" {
 		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --range"}
 	}
+	var result project.UncoveredResult
+	var err error
+	header := "context --uncovered: coverage gaps for this project"
 	if staged {
-		if err := gateStaged(cwd); err != nil {
-			return err
+		if err = gateStaged(cwd); err == nil {
+			result, err = project.StagedUncoveredRoot(cwd, roots)
 		}
-		res, err := project.StagedUncoveredRoot(cwd, scanRoots)
-		if err != nil {
-			return err
+		header = "context --uncovered: staged coverage gaps for this project"
+	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
+		if !errors.Is(statErr, fs.ErrNotExist) {
+			return statErr
 		}
-		return printUncovered(stdout, res, asJSON, "context --uncovered: staged coverage gaps for this project")
-	}
-	if _, err := os.Stat(config.ConfigPath(cwd)); err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return err
+		result = project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(roots)}
+		header = "context --uncovered (static: not inside an awf project; live coverage appears inside one)"
+	} else {
+		if err = gate(cwd); err == nil {
+			var p *project.Project
+			p, err = project.Open(cwd)
+			if err == nil { // coverage-ignore: gate just loaded the same project; an Open failure requires a concurrent filesystem race
+				result, err = p.Uncovered(roots)
+			}
 		}
-		return printUncovered(stdout, project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(scanRoots)}, asJSON,
-			"context --uncovered (static: not inside an awf project; live coverage appears inside one)")
 	}
-	if err := gate(cwd); err != nil {
-		return err
-	}
-	p, err := project.Open(cwd)
 	if err != nil {
 		return err
 	}
-	res, err := p.Uncovered(scanRoots)
-	if err != nil {
-		return err
-	}
-	return printUncovered(stdout, res, asJSON, "context --uncovered: coverage gaps for this project")
+	var out bytes.Buffer
+	renderUncovered(&out, result, header)
+	return contextdelivery.Deliver(out.Bytes(), cwd, stdout)
 }
 
-// printUncovered renders res as JSON or human-readable text. Both modes read the
-// same assembled res, so they cannot diverge.
-func printUncovered(stdout io.Writer, res project.UncoveredResult, asJSON bool, header string) error {
-	if asJSON {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(res)
-	}
-	fmt.Fprintln(stdout, header)
+func renderUncovered(out io.Writer, res project.UncoveredResult, header string) {
+	fmt.Fprintln(out, header)
 	if len(res.ScanRoots) > 0 {
-		fmt.Fprintf(stdout, "\nscan roots: %v\n", res.ScanRoots)
+		fmt.Fprintf(out, "\nscan roots: %v\n", res.ScanRoots)
 	}
 	if len(res.Uncovered) == 0 && len(res.Unowned) == 0 {
-		fmt.Fprintln(stdout, "\nall scanned paths are owned and covered by a scoped topic")
-		return nil
+		fmt.Fprintln(out, "\nall scanned paths are owned and covered by a scoped topic")
+		return
 	}
 	if len(res.Uncovered) > 0 {
-		fmt.Fprintln(stdout, "\n## Uncovered (owned by a domain, no scoped topic)")
+		fmt.Fprintln(out, "\n## Uncovered (owned by a domain, no scoped topic)")
 		for _, u := range res.Uncovered {
-			fmt.Fprintf(stdout, "  %s (%s)\n", u.Path, u.Domain)
+			fmt.Fprintf(out, "  %s (%s)\n", u.Path, u.Domain)
 		}
 	}
 	if len(res.Unowned) > 0 {
-		fmt.Fprintln(stdout, "\n## Unowned (configure a domain to own these)")
+		fmt.Fprintln(out, "\n## Unowned (configure a domain to own these)")
 		for _, u := range res.Unowned {
 			if u.Path != "." && !strings.HasSuffix(u.Path, "/") {
-				fmt.Fprintf(stdout, "  %s\n", u.Path)
+				fmt.Fprintf(out, "  %s\n", u.Path)
 				continue
 			}
-			fmt.Fprintf(stdout, "  %s (%s", u.Path, countNoun(u.UnownedCount, "unowned file"))
+			fmt.Fprintf(out, "  %s (%s", u.Path, countNoun(u.UnownedCount, "unowned file"))
 			if u.ExcludedCount > 0 {
-				fmt.Fprintf(stdout, "; %s excluded from coverage beneath", countNoun(u.ExcludedCount, "file"))
+				fmt.Fprintf(out, "; %s excluded from coverage beneath", countNoun(u.ExcludedCount, "file"))
 			}
-			fmt.Fprintln(stdout, ")")
+			fmt.Fprintln(out, ")")
 		}
 	}
-	return nil
 }
-
-// countNoun renders "1 <noun>" or "<n> <noun>s" for the uncovered annotations.
 func countNoun(n int, noun string) string {
 	if n == 1 {
 		return "1 " + noun
@@ -190,151 +150,202 @@ func countNoun(n int, noun string) string {
 	return fmt.Sprintf("%d %ss", n, noun)
 }
 
-// printContext renders res as JSON or human-readable text. Both modes read the
-// same assembled res, so they cannot diverge.
-func printContext(stdout io.Writer, res project.ContextResult, asJSON bool, header string) error {
-	if asJSON {
-		enc := json.NewEncoder(stdout)
-		enc.SetIndent("", "  ")
-		if err := enc.Encode(res); err != nil {
-			return fmt.Errorf("write context JSON: %w", err)
-		}
-		return nil
+func renderContext(out io.Writer, res project.ContextResult, header string, facets []project.ContextFacet) {
+	fmt.Fprintln(out, header)
+	if res.Selection == project.SelectionRange {
+		fmt.Fprintf(out, "Selection: range %s\n", res.Range)
+	} else {
+		fmt.Fprintf(out, "Selection: %s\n", res.Selection)
 	}
-	var out bytes.Buffer
-	fmt.Fprintln(&out, header)
-	fmt.Fprintf(&out, "Projection: %s\n", res.Projection)
-	fmt.Fprintln(&out, "\n## Requests")
-	for _, r := range res.Requests {
-		fmt.Fprintf(&out, "  %s [%s]: %v\n", r.Query, r.Status, r.EffectivePaths)
+	fmt.Fprintln(out, "\n## Requests")
+	if len(res.Requests) == 0 {
+		fmt.Fprintln(out, "  none")
 	}
-	fmt.Fprintln(&out, "\n## Topics")
-	for i := 0; i < len(res.Topics); {
-		domain := topicDomain(res.Topics[i].ID)
-		j := i
-		for j < len(res.Topics) && topicDomain(res.Topics[j].ID) == domain {
-			j++
-		}
-		printTopicGroup(&out, domain, res.Topics[i:j])
-		i = j
-	}
-	fmt.Fprintln(&out, "\n## Effective paths")
-	for _, p := range res.Paths {
-		fmt.Fprintf(&out, "\n%s [%s] (requests: %v)\n", p.Path, p.Classification, p.Requests)
-		if p.NestedRoot != "" {
-			fmt.Fprintf(&out, "  Nested root: %s\n", p.NestedRoot)
-		}
-		if p.TargetInsideRepository != nil {
-			fmt.Fprintf(&out, "  Symlink target inside repository: %t\n", *p.TargetInsideRepository)
-		}
-		if p.GlobLiteral {
-			fmt.Fprintln(&out, "  globs are not expanded; pass a directory or an exact file")
-		}
-		if p.Classification == project.PathEligibleUnowned {
-			fmt.Fprintln(&out, "  No domain owns this path; add a domain glob to a configured domain to own it (see: awf context --uncovered)")
-		}
-		for _, d := range p.Domains {
-			fmt.Fprintf(&out, "  Domain: %s (%s)\n", d.Name, d.CurrentState)
-		}
-		for _, t := range p.Topics {
-			fmt.Fprintf(&out, "  Topic: %s\n", t.ID)
-			if len(t.DirectClaimIDs) > 0 {
-				fmt.Fprintf(&out, "    Direct claims: %s\n", strings.Join(t.DirectClaimIDs, ", "))
+	for _, request := range res.Requests {
+		fmt.Fprintf(out, "[%d] %s\n", request.Index, request.Argument)
+		if request.Directory != nil {
+			excluded := 0
+			for _, c := range request.Directory.Excluded {
+				excluded += c.Count
 			}
-		}
-		for _, a := range p.Artifacts {
-			fmt.Fprintf(&out, "  Artifact: %s %s (navigation)\n", a.Role, a.Identity)
-			for _, link := range a.Sources {
-				fmt.Fprintf(&out, "    Source: %s (%s)\n", link.Path, link.Label)
-			}
-			for _, link := range a.Outputs {
-				fmt.Fprintf(&out, "    Output: %s (%s)\n", link.Path, link.Label)
-			}
-			for _, link := range a.Navigation {
-				fmt.Fprintf(&out, "    Navigate: %s (%s)\n", link.Path, link.Label)
-			}
-		}
-		if p.ADR != nil {
-			fmt.Fprintf(&out, "  ADR navigation: ADR-%s %s [%s, %s]\n", p.ADR.Number, p.ADR.Title, p.ADR.Status, p.ADR.Mutability)
-			fmt.Fprintf(&out, "    Authority role: %s\n", p.ADR.AuthorityRole)
-			for _, operation := range p.ADR.Operations {
-				fmt.Fprintf(&out, "    %s %s [%s, %s]", operation.Operation, operation.Claim, operation.Progress, operation.ClaimState)
-				if operation.StateSequence != 0 {
-					fmt.Fprintf(&out, " state-sequence %d", operation.StateSequence)
+			fmt.Fprintf(out, "  Directory: %d included; %d excluded\n", request.Directory.Included, excluded)
+			if len(request.Directory.Excluded) > 0 {
+				parts := []string{}
+				for _, c := range request.Directory.Excluded {
+					parts = append(parts, fmt.Sprintf("%s=%d", c.Classification, c.Count))
 				}
-				fmt.Fprintln(&out)
-				if operation.Detail != nil && operation.Detail.Current != nil {
-					printClaimDetail(&out, "Current", *operation.Detail.Current)
+				fmt.Fprintf(out, "  Excluded: %s\n", strings.Join(parts, ", "))
+			}
+			for i, g := range request.Directory.Groups {
+				fmt.Fprintf(out, "  Group %d: %d files\n", i+1, g.Count)
+				if len(g.Members) > 0 {
+					fmt.Fprintf(out, "    Members: %s\n", strings.Join(g.Members, ", "))
+				}
+				renderPathImpact(out, g.Context, "    ", facets)
+			}
+		} else if request.Exact != nil {
+			fmt.Fprintf(out, "  File: %s\n", request.Exact.Path)
+			renderPathImpact(out, request.Exact.Context, "  ", facets)
+		}
+	}
+	fmt.Fprintln(out, "\n## Authority")
+	if len(res.Topics) == 0 {
+		fmt.Fprintln(out, "  none")
+	}
+	for _, impact := range res.Topics {
+		renderTopicImpact(out, impact)
+	}
+}
+
+func renderPathImpact(out io.Writer, impact project.ContextPathImpact, indent string, facets []project.ContextFacet) {
+	fmt.Fprintf(out, "%sClassification: %s\n", indent, impact.Classification)
+	if impact.NestedRoot != "" {
+		fmt.Fprintf(out, "%sNested root: %s\n", indent, impact.NestedRoot)
+	}
+	if impact.TargetInsideRepository != nil {
+		fmt.Fprintf(out, "%sSymlink target inside repository: %t\n", indent, *impact.TargetInsideRepository)
+	}
+	if len(impact.Provenance) == 0 {
+		fmt.Fprintf(out, "%sProvenance: none\n", indent)
+	} else {
+		for _, p := range impact.Provenance {
+			fmt.Fprintf(out, "%sProvenance: %s %s\n", indent, p.Role, p.Identity)
+			if containsFacet(facets, project.FacetArtifacts) {
+				for _, e := range p.Sources {
+					fmt.Fprintf(out, "%s  Source: %s (%s)\n", indent, e.Path, e.Label)
+				}
+				for _, e := range p.Outputs {
+					fmt.Fprintf(out, "%s  Output: %s (%s)\n", indent, e.Path, e.Label)
+				}
+				for _, e := range p.Navigation {
+					fmt.Fprintf(out, "%s  Navigate: %s (%s)\n", indent, e.Path, e.Label)
 				}
 			}
 		}
 	}
-	if _, err := stdout.Write(out.Bytes()); err != nil {
-		return fmt.Errorf("write context: %w", err)
+	domains := []string{}
+	for _, d := range impact.Domains {
+		domains = append(domains, d.Name)
 	}
-	return nil
-}
-
-// topicDomain returns the domain segment of a domain-qualified topic ID.
-func topicDomain(id string) string {
-	if i := strings.Index(id, "/"); i >= 0 {
-		return id[:i]
+	topics := []string{}
+	for _, t := range impact.Topics {
+		topics = append(topics, t.ID)
 	}
-	return id // coverage-ignore: every topic ID is a validated domain-qualified ID
-}
-
-// printTopicGroup renders one domain's consecutive topics: the domain-selector
-// block prints once per group (never for an all-global group), each topic keeps
-// its own selector, matched, claim, and detail lines.
-func printTopicGroup(out io.Writer, domain string, group []project.InvocationTopicContext) {
-	for _, t := range group {
-		if !t.Applicability.DeclaredGlobal {
-			fmt.Fprintf(out, "\nDomain %s paths: %v\n  Both domain and topic selectors must match.\n", domain, t.Applicability.DomainPaths)
-			break
+	fmt.Fprintf(out, "%sDomains: %s\n", indent, renderList(domains))
+	fmt.Fprintf(out, "%sTopics: %s\n", indent, renderList(topics))
+	fmt.Fprintf(out, "%sDirect rules: %s\n", indent, renderList(impact.DirectRuleIDs))
+	fmt.Fprintf(out, "%sInvariants: %s\n", indent, renderList(impact.InvariantIDs))
+	fmt.Fprintf(out, "%sProofs: %s\n", indent, renderList(impact.ProofIDs))
+	for _, w := range impact.Warnings {
+		fmt.Fprintf(out, "%sWarning: %s\n", indent, w)
+	}
+	if impact.ADR != nil {
+		a := impact.ADR
+		fmt.Fprintf(out, "%sADR: ADR-%s %s [%s, %s]\n", indent, a.Number, a.Title, a.Status, a.Mutability)
+		fmt.Fprintf(out, "%sAuthority role: %s\n", indent, a.AuthorityRole)
+		for _, op := range a.Operations {
+			fmt.Fprintf(out, "%sOperation: %s %s [%s, %s", indent, op.Operation, op.Claim, op.Progress, op.ClaimState)
+			if op.StateSequence != 0 {
+				fmt.Fprintf(out, ", state-sequence %d", op.StateSequence)
+			}
+			fmt.Fprintln(out, "]")
+			if op.Detail != nil {
+				if op.Detail.Current != nil {
+					fmt.Fprintf(out, "%s  Current claim: %s [%s] %s\n", indent, op.Detail.Current.ID, op.Detail.Current.Type, op.Detail.Current.Summary)
+				}
+				if op.Detail.History != nil && op.Detail.History.RemovedBy != nil {
+					fmt.Fprintf(out, "%s  Removal history: removed by ADR-%s at state-sequence %d\n", indent, op.Detail.History.RemovedBy.Number, op.Detail.History.RemovedBy.StateSequence)
+				}
+				renderEvidence(out, op.Detail.Current, op.Detail.Evidence, indent+"  ")
+			}
 		}
 	}
-	for _, t := range group {
-		fmt.Fprintf(out, "\n%s - %s\n", t.ID, t.Title)
-		if t.Applicability.DeclaredGlobal {
-			fmt.Fprintf(out, "  Global topic within owning domain selectors: %v\n", t.Applicability.DomainPaths)
+}
+
+func renderTopicImpact(out io.Writer, t project.TopicImpact) {
+	fmt.Fprintf(out, "%s - %s\n  Summary: %s\n", t.ID, t.Title, t.Summary)
+	if t.Selectors != nil {
+		domain := strings.Join(t.Selectors.DomainPaths, " ")
+		topicPaths := strings.Join(t.Selectors.TopicPaths, " ")
+		if t.Selectors.DeclaredGlobal {
+			topicPaths = "global"
+		}
+		fmt.Fprintf(out, "  Selectors: domain=[%s]; topic=%s; both must match\n", domain, func() string {
+			if topicPaths == "global" {
+				return topicPaths
+			}
+			return "[" + topicPaths + "]"
+		}())
+	}
+	renderClaimCategory(out, "Directly related", t.Direct)
+	renderClaimCategory(out, "Applicable invariants", t.Invariants)
+	renderClaimCategory(out, "Additional topic rules", t.Additional)
+	renderClaimCategory(out, "Referenced context", t.Referenced)
+	if len(t.Pending.Operations) > 0 {
+		for _, p := range t.Pending.Operations {
+			fmt.Fprintf(out, "  Pending operation: ADR-%s %s %s [%s]\n", p.ADR, p.Op, p.Claim, p.Progress)
+		}
+	} else if t.Pending.OperationCount > 0 {
+		noun := "operations"
+		if t.Pending.OperationCount == 1 {
+			noun = "operation"
+		}
+		ids := []string{}
+		for _, id := range t.Pending.ADRs {
+			ids = append(ids, "ADR-"+id)
+		}
+		suffix := ""
+		if t.Pending.AdditionalADRCount > 0 {
+			suffix = fmt.Sprintf(" +%d ADRs", t.Pending.AdditionalADRCount)
+		}
+		fmt.Fprintf(out, "  Pending: %d %s from %s%s\n", t.Pending.OperationCount, noun, strings.Join(ids, ", "), suffix)
+	}
+}
+func renderClaimCategory(out io.Writer, label string, claims []project.ContextClaimImpact) {
+	if len(claims) == 0 {
+		return
+	}
+	fmt.Fprintf(out, "  %s:\n", label)
+	for _, claim := range claims {
+		fmt.Fprintf(out, "    %s [%s] %s\n", claim.ID, claim.Type, claim.Summary)
+		if claim.Backing != "" {
+			fmt.Fprintf(out, "      Backing: %s\n", claim.Backing)
+		}
+		if claim.Verify != "" {
+			fmt.Fprintf(out, "      Verify: %s\n", claim.Verify)
+		}
+		renderEvidence(out, &claim, claim.Evidence, "      ")
+		if len(claim.Incoming) > 0 {
+			fmt.Fprintf(out, "      Incoming: %s\n", strings.Join(claim.Incoming, ", "))
+		}
+		if len(claim.Outgoing) > 0 {
+			fmt.Fprintf(out, "      Outgoing: %s\n", strings.Join(claim.Outgoing, ", "))
+		}
+	}
+}
+func renderEvidence(out io.Writer, claim *project.ContextClaimImpact, evidence []project.ContextEvidence, indent string) {
+	_ = claim
+	for _, e := range evidence {
+		if len(e.Sites) == 0 {
+			fmt.Fprintf(out, "%sEvidence %s: %d sites\n", indent, e.Kind, e.Count)
 		} else {
-			fmt.Fprintf(out, "  Topic paths: %v\n", t.Applicability.TopicPaths)
-		}
-		fmt.Fprintf(out, "  Matched paths: %d (drill down: %s)\n", t.Applicability.MatchedPathCount, t.CoverageCommand)
-		fmt.Fprintf(out, "  Claims (%d): %s\n", len(t.ClaimIDs), strings.Join(t.ClaimIDs, ", "))
-		if len(t.DirectClaims) > 0 {
-			fmt.Fprintln(out, "  Direct claims:")
-			for _, claim := range t.DirectClaims {
-				printClaimDetail(out, "Direct claim", claim)
-			}
-		}
-		if t.OmittedDetailCount > 0 {
-			fmt.Fprintf(out, "  Details omitted for %d claim(s); drill down: %s\n", t.OmittedDetailCount, t.TopicCommand)
-		}
-		if t.Full != nil {
-			fmt.Fprintln(out, "  Full authority:")
-			for _, claim := range t.Full.Claims {
-				printClaimDetail(out, "Claim", claim)
-			}
-			for _, pending := range t.Full.Pending {
-				fmt.Fprintf(out, "      Pending: ADR-%s %s %s\n", pending.ADR, pending.Op, pending.Claim)
+			for _, site := range e.Sites {
+				fmt.Fprintf(out, "%sEvidence %s: %s:%d\n", indent, e.Kind, site.Path, site.Line)
 			}
 		}
 	}
 }
-
-func printClaimDetail(out io.Writer, label string, claim project.ClaimDetail) {
-	fmt.Fprintf(out, "      %s: %s [%s] %s\n", label, claim.ID, claim.Type, claim.Prose)
-	if claim.Backing != "" {
-		fmt.Fprintf(out, "        Backing: %s\n", claim.Backing)
+func renderList(values []string) string {
+	if len(values) == 0 {
+		return "none"
 	}
-	if claim.Verify != "" {
-		fmt.Fprintf(out, "        Verify: %s\n", claim.Verify)
+	return strings.Join(values, ", ")
+}
+func containsFacet(facets []project.ContextFacet, want project.ContextFacet) bool {
+	for _, f := range facets {
+		if f == want {
+			return true
+		}
 	}
-	for _, site := range claim.Sites {
-		fmt.Fprintf(out, "        Site: %s:%d [%s]\n", site.Path, site.Line, site.Kind)
-	}
-	if len(claim.References.Incoming) > 0 || len(claim.References.Outgoing) > 0 {
-		fmt.Fprintf(out, "        References: incoming %v; outgoing %v\n", claim.References.Incoming, claim.References.Outgoing)
-	}
+	return false
 }

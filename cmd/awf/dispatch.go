@@ -105,10 +105,7 @@ var handlers = map[string]handler{
 	"list":    func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"config":  func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"context": func(c *cmdCtx) error {
-		if c.inv.bools["--full"] {
-			return runContextProjection(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--json"], c.inv.bools["--uncovered"], true, c.stdout)
-		}
-		return runContext(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--json"], c.inv.bools["--uncovered"], c.stdout)
+		return runContext(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout)
 	},
 	"topic": func(c *cmdCtx) error {
 		return runTopic(c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.inv.bools["--json"], c.stdout)

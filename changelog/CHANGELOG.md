@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Remove `awf context --json` from normal and uncovered modes. Context now has one human-text contract; a future structured form will require a demonstrated consumer.
+
 - Remove the Pi dashboard, Pi query tools, top-level `awf doctor`, and dashboard runtime commands. Use `awf metrics --effort`, `awf metrics doctor --effort`, and `awf metrics list` for scoped reports and discovery.
 
 - The verification commands are regrouped under `awf check` and `awf sync` is renamed to
@@ -37,6 +39,8 @@ query a single version or a range.
 ### Features
 - Add safe managed effort worktrees. `awf effort new --worktree`, `worktree add`, `integrate`, `integrated`, and `worktree remove` use fixed manager-owned paths and branches, native-Git topology checks, explicit integration dispositions, and paired force/reason recovery only for recoverable risks.
 - Add binary-owned lightweight effort records as repository-local resident state. `awf effort` now supports memory-by-default creation, deterministic list/show output, rename, explicit memory creation, complete, abandon, reopen, and confined repair from primary or linked worktrees; managed worktree creation remains reserved for the next implementation phase.
+- `awf context` now preserves request blocks, groups equivalent directory descendants without disclosing large member sets, deduplicates authority globally, and offers six bounded repeatable detail facets with `--full` as their canonical union.
+- Context output now writes unchanged through 8,192 bytes and securely delivers larger complete renderings through a caller-owned mode-0600 temporary file and versioned two-line notice.
 - Pi workflows can now detour into an explicit derived child effort and return to the exact open
   parent phase only after the child terminal event, parent association, return marker, and session
   selection are durably settled. Interrupted completion and abandonment retry the same canonical

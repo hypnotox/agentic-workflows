@@ -129,12 +129,12 @@ func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
 	if output, err := initRepo.CombinedOutput(); err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
-	context, err := p.ContextFor([]string{".awf/metrics/efforts/e/.awf/config.yaml"})
+	context, err := p.ContextForOptions([]string{".awf/metrics/efforts/e/.awf/config.yaml"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(context.Paths) != 1 || context.Paths[0].Classification != PathNotFound || context.Paths[0].NestedRoot != "" {
-		t.Fatalf("resident adversarial adopter entered discovery: %#v", context.Paths)
+	if len(context.Requests) != 1 || context.Requests[0].Exact == nil || context.Requests[0].Exact.Context.Classification != PathNotFound || context.Requests[0].Exact.Context.NestedRoot != "" {
+		t.Fatalf("resident adversarial adopter entered discovery: %#v", context.Requests)
 	}
 	if drift, err := p.Check(); err != nil || len(drift) != 0 {
 		t.Fatalf("resident descendant entered sync/check: drift=%#v err=%v", drift, err)
@@ -265,22 +265,22 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 		t.Fatal(err)
 	}
 	const extension = ".pi/extensions/awf-subagents/index.ts"
-	result, err := p.ContextFor([]string{extension})
+	result, err := p.ContextForOptions([]string{extension}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Paths) != 1 || result.Paths[0].Classification != PathGeneratedOutput {
-		t.Fatalf("extension classification = %#v", result.Paths)
+	if len(result.Requests) != 1 || result.Requests[0].Exact == nil || result.Requests[0].Exact.Context.Classification != PathGeneratedOutput {
+		t.Fatalf("extension classification = %#v", result.Requests)
 	}
-	path := result.Paths[0]
-	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic PathTopicRef) bool { return topic.ID == "rendering/adapter-outputs" }) {
+	path := result.Requests[0].Exact.Context
+	if !slices.ContainsFunc(path.Domains, func(domain DomainRef) bool { return domain.Name == "rendering" }) || !slices.ContainsFunc(path.Topics, func(topic ContextPathTopic) bool { return topic.ID == "rendering/adapter-outputs" }) {
 		t.Fatalf("extension ownership = domains %#v topics %#v", path.Domains, path.Topics)
 	}
-	expanded, err := p.ContextFor([]string{".pi/extensions"})
+	expanded, err := p.ContextForOptions([]string{".pi/extensions"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(expanded.Paths) != 0 || len(expanded.Requests) != 1 || expanded.Requests[0].Status != RequestDirectoryEmpty {
+	if len(expanded.Requests) != 1 || expanded.Requests[0].Kind != RequestDirectoryEmpty || expanded.Requests[0].Directory == nil || expanded.Requests[0].Directory.Included != 0 {
 		t.Fatalf("generated extension entered whole-tree expansion: %#v", expanded)
 	}
 }

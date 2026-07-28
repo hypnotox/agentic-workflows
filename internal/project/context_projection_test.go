@@ -1,111 +1,88 @@
 package project
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: tooling/context-and-topic:context-full-authority-packet
+// invariant: tooling/context-and-topic:context-summary-projection
+func TestClaimSummaryProjection(t *testing.T) {
+	cases := []struct {
+		claim topic.Claim
+		want  string
+	}{
+		{topic.Claim{Summary: "Declared", Prose: "ignored"}, "Declared"},
+		{topic.Claim{Prose: "First\nline.\n\nSecond."}, "First line."},
+		{topic.Claim{Prose: strings.Repeat("a", 160)}, strings.Repeat("a", 160)},
+		{topic.Claim{Prose: strings.Repeat("a", 161)}, strings.Repeat("a", 157) + "..."},
+		{topic.Claim{Prose: strings.Repeat("word ", 40)}, strings.TrimSpace(strings.Repeat("word ", 31)) + "..."},
+	}
+	for _, tc := range cases {
+		if got := claimSummary(tc.claim); got != tc.want {
+			t.Errorf("len=%d got=%q want=%q", len([]rune(got)), got, tc.want)
+		}
+	}
+}
+
 // invariant: tooling/context-and-topic:context-concise-projection
-func TestContextConciseAndFullProjectionBoundaries(t *testing.T) {
+// invariant: tooling/context-and-topic:context-full-authority-packet
+func TestProjectionHelpers(t *testing.T) {
+	changes := []PendingChange{{ADR: "0004"}, {ADR: "0001"}, {ADR: "0002"}, {ADR: "0003"}}
+	bounded := contextPending(changes, false)
+	if bounded.OperationCount != 4 || bounded.AdditionalADRCount != 1 || len(bounded.Operations) != 0 {
+		t.Fatal(bounded)
+	}
+	expanded := contextPending(changes, true)
+	if len(expanded.Operations) != 4 {
+		t.Fatal(expanded)
+	}
+	var corpus topic.Corpus
+	if got := claimStateForOperation("remove", "d/t:x", "applied", corpus, nil); got != "historically-removed" {
+		t.Fatal(got)
+	}
+	history := &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "1"}}
+	if got := claimStateForOperation("add", "d/t:x", "applied", corpus, history); got != "historically-removed" {
+		t.Fatal(got)
+	}
+	if got := claimStateForOperation("add", "d/t:x", "remaining", corpus, nil); got != "not-yet-current" {
+		t.Fatal(got)
+	}
+}
+
+func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	files := ctxFiles()
-	files["internal/foo/y.go"] = "package foo\n// touches-state: alpha/one:stable - direct implementation\n// touches-state: alpha/one:order - direct ordering\n// touches-state: alpha/one:aaa - direct early claim\n"
-	part := strings.Replace(files[".awf/topics/parts/alpha/one/current-state.md"], "Origin: ADR-0001\nBacking: unbacked", "Origin: ADR-0001\nReferences: alpha/one:order\nBacking: unbacked", 1)
-	files[".awf/topics/parts/alpha/one/current-state.md"] = part + "\n### `rule: aaa`\nEarly alphabetic claim.\nOrigin: ADR-0001\n"
+	files["internal/foo/a_test.go"] = "package foo\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	files["internal/foo/b_test.go"] = "package foo\n// invariant: alpha/one:tested\n"
+	files["internal/foo/c_test.go"] = "package foo\n// invariant: alpha/one:tested\n"
+	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder prose.\nSummary: Order summary.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n"
 	p := csRepo(t, ctxConfig, files)
-	concise, err := p.ContextFor([]string{"internal/foo/y.go"})
+	ws, err := p.workingCurrentState()
 	if err != nil {
 		t.Fatal(err)
 	}
-	full, err := p.ContextForFull([]string{"internal/foo/y.go"})
+	if got := claimStateForOperation("add", "alpha/one:order", "applied", ws.Loaded.Topics, nil); got != "active-current" {
+		t.Fatal(got)
+	}
+	facets, _ := ParseContextFacets([]string{"all-rules", "evidence", "selectors", "references", "pending"}, false)
+	res, err := p.ContextForOptions([]string{"internal/foo/x.go", "internal/foo/y_test.go"}, ContextOptions{Selection: SelectionExplicit, Facets: facets})
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected, err := p.ContextForFullGitSelection([]string{"internal/foo/y.go"})
-	if err != nil || selected.Requests[0].Status != RequestGitSelected || selected.Projection != ContextFull {
-		t.Fatalf("full Git selection = %#v, %v", selected, err)
-	}
-	if concise.Projection != ContextConcise || full.Projection != ContextFull {
-		t.Fatalf("projections = %q, %q", concise.Projection, full.Projection)
-	}
-	conciseTopic, ok := topicByID(concise, "alpha/one")
-	if !ok {
-		t.Fatalf("alpha/one absent: %#v", concise.Topics)
-	}
-	fullTopic, _ := topicByID(full, "alpha/one")
-	if len(conciseTopic.DirectClaims) != 3 || conciseTopic.DirectClaims[0].ID != "alpha/one:aaa" || conciseTopic.DirectClaims[1].ID != "alpha/one:order" || conciseTopic.DirectClaims[2].ID != "alpha/one:stable" || conciseTopic.OmittedDetailCount != 1 || conciseTopic.Full != nil {
-		t.Fatalf("concise topic = %#v", conciseTopic)
-	}
-	if len(conciseTopic.ClaimIDs) != 4 {
-		t.Fatalf("concise roster = %#v; want the full uncapped roster", conciseTopic.ClaimIDs)
-	}
-	if len(conciseTopic.DirectClaims[2].References.Incoming) != 0 || len(conciseTopic.DirectClaims[2].References.Outgoing) != 0 {
-		t.Fatalf("concise references leaked: %#v", conciseTopic.DirectClaims[2].References)
-	}
-	// The full projection renders each claim's detail exactly once, under Full;
-	// the direct union stays empty and the omission count zero.
-	if fullTopic.Full == nil || len(fullTopic.Full.Claims) != 4 || len(fullTopic.DirectClaims) != 0 || fullTopic.OmittedDetailCount != 0 {
-		t.Fatalf("full topic = %#v", fullTopic)
-	}
-	if got := strings.Join(concise.Paths[0].Topics[0].DirectClaimIDs, ","); got != "alpha/one:aaa,alpha/one:order,alpha/one:stable" {
-		t.Fatalf("path attribution = %q", got)
-	}
-	// invariant: tooling/context-and-topic:context-applicability-navigation
-	if conciseTopic.Applicability.MatchedPathCount == 0 || conciseTopic.CoverageCommand != "awf topic alpha/one --coverage" {
-		t.Fatalf("applicability brief = %#v via %q; want a matched-path count with the coverage drilldown", conciseTopic.Applicability, conciseTopic.CoverageCommand)
-	}
-	// A claim marker-selected by two queried paths dedupes into one direct
-	// detail whose sites carry both paths, and the topic still projects once.
-	multi, err := p.ContextFor([]string{"internal/foo/x.go", "internal/foo/y.go"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(multi.Topics) != 2 {
-		t.Fatalf("multi-path topics = %#v; want alpha/one and core/g once each", multi.Topics)
-	}
-	multiOne, _ := topicByID(multi, "alpha/one")
-	var orderDetails []ClaimDetail
-	for _, d := range multiOne.DirectClaims {
-		if d.ID == "alpha/one:order" {
-			orderDetails = append(orderDetails, d)
+	var alpha TopicImpact
+	for _, impact := range res.Topics {
+		if impact.ID == "alpha/one" {
+			alpha = impact
 		}
 	}
-	if len(orderDetails) != 1 {
-		t.Fatalf("union detail count for alpha/one:order = %d; want exactly one deduplicated detail", len(orderDetails))
+	if len(alpha.Direct) != 2 || len(alpha.Invariants) != 1 || len(alpha.Additional) != 0 || alpha.Selectors == nil {
+		t.Fatalf("alpha=%#v", alpha)
 	}
-	sitePaths := map[string]bool{}
-	for _, s := range orderDetails[0].Sites {
-		sitePaths[s.Path] = true
+	if alpha.Direct[0].Summary != "Order summary." || len(alpha.Direct[1].Evidence) == 0 {
+		t.Fatalf("direct=%#v", alpha.Direct)
 	}
-	if !sitePaths["internal/foo/x.go"] || !sitePaths["internal/foo/y.go"] {
-		t.Fatalf("union sites = %#v; want both selecting paths", orderDetails[0].Sites)
-	}
-	encoded, err := json.Marshal(concise)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(encoded), `"full"`) {
-		t.Fatalf("concise JSON contains full key: %s", encoded)
-	}
-	for _, claim := range fullTopic.Full.Claims {
-		if claim.Sites == nil || claim.References.Incoming == nil || claim.References.Outgoing == nil {
-			t.Fatalf("full claim has nil collections: %#v", claim)
-		}
-	}
-	if got := nonNilStrings(nil); got == nil || len(got) != 0 {
-		t.Fatalf("nil string projection = %#v", got)
-	}
-	if got := strings.Join(nonNilStrings([]string{"b", "a", "a"}), ","); got != "a,b" {
-		t.Fatalf("sorted string projection = %q", got)
-	}
-	history := &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002"}}
-	if got := claimStateForOperation("update", "alpha/one:gone", "applied", topic.Corpus{}, history); got != "historically-removed" {
-		t.Fatalf("removed state = %q", got)
-	}
-	if got := claimStateForOperation("remove", "alpha/one:gone", "applied", topic.Corpus{}, nil); got != "historically-removed" {
-		t.Fatalf("applied remove state = %q", got)
+	if len(alpha.Direct[0].Outgoing) != 1 || alpha.Direct[0].Outgoing[0] != "core/g:everywhere" {
+		t.Fatalf("refs=%#v", alpha.Direct[0])
 	}
 }

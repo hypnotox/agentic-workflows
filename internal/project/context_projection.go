@@ -3,90 +3,164 @@ package project
 import (
 	"slices"
 	"strings"
+	"unicode"
 
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// projectInvocationTopic renders one applicable topic exactly once for the
-// whole invocation. selectingPaths is the sorted set of effective paths the
-// topic applies to; in the concise projection the marker-selected direct-claim
-// union renders with full detail (sites filtered to selectingPaths), while the
-// full projection leaves DirectClaims empty so each claim's detail renders
-// exactly once, under Full (ADR-0147).
-func projectInvocationTopic(t topic.Topic, corpus topic.Corpus, selectingPaths []string, currentPaths []string, pending []PendingChange, projection ContextProjection) InvocationTopicContext {
-	a := topic.ApplicabilityForTopic(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers, currentPaths)
-	out := InvocationTopicContext{
-		ID: t.ID.String(), Title: t.Metadata.Title, Summary: t.Metadata.Summary,
-		Applicability: TopicApplicabilityBrief{
-			DomainPaths: a.DomainPaths, TopicPaths: a.TopicPaths,
-			DeclaredGlobal: a.DeclaredGlobal, MatchedPathCount: len(a.MatchedPaths),
-		},
-		ClaimIDs: []string{}, DirectClaims: []ClaimDetail{},
-		TopicCommand: "awf topic " + t.ID.String(),
+func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directIDs []string, currentPaths []string, pending []PendingChange, facets []ContextFacet) TopicImpact {
+	directSet := map[string]bool{}
+	for _, id := range directIDs {
+		directSet[id] = true
 	}
-	out.CoverageCommand = out.TopicCommand + " --coverage"
+	out := TopicImpact{ID: t.ID.String(), Title: t.Metadata.Title, Summary: t.Metadata.Summary, Direct: []ContextClaimImpact{}, Invariants: []ContextClaimImpact{}, Additional: []ContextClaimImpact{}, Referenced: []ContextClaimImpact{}, Pending: contextPending(pending, slices.Contains(facets, FacetPending))}
+	visible := map[string]bool{}
 	for _, claim := range t.Claims {
-		out.ClaimIDs = append(out.ClaimIDs, claim.ID)
-	}
-	slices.Sort(out.ClaimIDs)
-	if projection == ContextFull {
-		full := &FullTopicContext{Claims: []ClaimDetail{}, Pending: []PendingChange{}}
-		for _, claim := range t.Claims {
-			full.Claims = append(full.Claims, contextClaimDetail(claim, corpus, nil, true))
+		category := ""
+		switch {
+		case directSet[claim.ID]:
+			category = "direct"
+		case claim.Type == topic.Invariant:
+			category = "invariant"
+		case slices.Contains(facets, FacetAllRules):
+			category = "additional"
 		}
-		slices.SortFunc(full.Claims, func(a, b ClaimDetail) int { return strings.Compare(a.ID, b.ID) })
-		full.Pending = append(full.Pending, pending...)
-		out.Full = full
-		return out
-	}
-	selecting := map[string]bool{}
-	for _, p := range selectingPaths {
-		selecting[p] = true
-	}
-	for _, claim := range t.Claims {
-		detail := contextClaimDetail(claim, corpus, selecting, false)
-		if len(detail.Sites) > 0 {
-			out.DirectClaims = append(out.DirectClaims, detail)
+		if category == "" {
+			continue
+		}
+		impact := projectClaimImpact(claim, corpus, facets)
+		visible[claim.ID] = true
+		switch category {
+		case "direct":
+			out.Direct = append(out.Direct, impact)
+		case "invariant":
+			out.Invariants = append(out.Invariants, impact)
+		case "additional":
+			out.Additional = append(out.Additional, impact)
 		}
 	}
-	slices.SortFunc(out.DirectClaims, func(a, b ClaimDetail) int { return strings.Compare(a.ID, b.ID) })
-	out.OmittedDetailCount = len(out.ClaimIDs) - len(out.DirectClaims)
-	return out
-}
-
-// pathTopicRef attributes t to one effective path with the path's own directly
-// marker-selected claim IDs (ADR-0147).
-func pathTopicRef(t topic.Topic, corpus topic.Corpus, path string) PathTopicRef {
-	ref := PathTopicRef{ID: t.ID.String(), DirectClaimIDs: []string{}}
-	for _, claim := range t.Claims {
-		for _, site := range corpus.Markers.ForClaim(claim.ID) {
-			if site.Path == path {
-				ref.DirectClaimIDs = append(ref.DirectClaimIDs, claim.ID)
-				break
+	if slices.Contains(facets, FacetSelectors) {
+		a := topic.ApplicabilityForTopic(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers, currentPaths)
+		out.Selectors = &ContextSelectorImpact{DomainPaths: nonNilStrings(a.DomainPaths), TopicPaths: nonNilStrings(a.TopicPaths), DeclaredGlobal: a.DeclaredGlobal}
+	}
+	if slices.Contains(facets, FacetReferences) {
+		byID := map[string]topic.Claim{}
+		for _, candidate := range corpus.All() {
+			for _, claim := range candidate.Claims {
+				byID[claim.ID] = claim
+			}
+		}
+		refs := map[string]bool{}
+		applyEdges := func(items []ContextClaimImpact) []ContextClaimImpact {
+			for i := range items {
+				items[i].Incoming = nonNilStrings(corpus.Incoming(items[i].ID))
+				items[i].Outgoing = nonNilStrings(corpus.Outgoing(items[i].ID))
+				for _, id := range append(slices.Clone(items[i].Incoming), items[i].Outgoing...) {
+					if !visible[id] {
+						refs[id] = true
+					}
+				}
+			}
+			return items
+		}
+		out.Direct = applyEdges(out.Direct)
+		out.Invariants = applyEdges(out.Invariants)
+		out.Additional = applyEdges(out.Additional)
+		refIDs := make([]string, 0, len(refs))
+		for id := range refs {
+			refIDs = append(refIDs, id)
+		}
+		slices.Sort(refIDs)
+		for _, id := range refIDs {
+			if claim, ok := byID[id]; ok {
+				out.Referenced = append(out.Referenced, projectClaimImpact(claim, corpus, facets))
 			}
 		}
 	}
-	slices.Sort(ref.DirectClaimIDs)
-	return ref
+	sortClaims := func(items []ContextClaimImpact) {
+		slices.SortFunc(items, func(a, b ContextClaimImpact) int { return strings.Compare(a.ID, b.ID) })
+	}
+	sortClaims(out.Direct)
+	sortClaims(out.Invariants)
+	sortClaims(out.Additional)
+	sortClaims(out.Referenced)
+	return out
 }
 
-// contextClaimDetail projects one claim's full detail. A nil selecting set
-// keeps every marker site; a non-nil set filters sites to the selecting paths.
-func contextClaimDetail(claim topic.Claim, corpus topic.Corpus, selecting map[string]bool, includeReferences bool) ClaimDetail {
-	detail := ClaimDetail{
-		ID: claim.ID, Type: string(claim.Type), Prose: claim.Prose, Backing: string(claim.Backing), Verify: claim.Verify,
-		Sites: []topic.MarkerSite{}, References: ClaimReferences{Incoming: []string{}, Outgoing: []string{}},
+func projectClaimImpact(claim topic.Claim, corpus topic.Corpus, facets []ContextFacet) ContextClaimImpact {
+	out := ContextClaimImpact{ID: claim.ID, Type: string(claim.Type), Summary: claimSummary(claim), Evidence: []ContextEvidence{}, Incoming: []string{}, Outgoing: []string{}}
+	if slices.Contains(facets, FacetEvidence) {
+		out.Backing, out.Verify = string(claim.Backing), claim.Verify
+		out.Evidence = contextEvidenceForClaim(claim.ID, corpus)
 	}
-	for _, site := range corpus.Markers.ForClaim(claim.ID) {
-		if selecting == nil || selecting[site.Path] {
-			detail.Sites = append(detail.Sites, site)
+	return out
+}
+
+func contextEvidenceForClaim(claimID string, corpus topic.Corpus) []ContextEvidence {
+	out := []ContextEvidence{}
+	for _, kind := range []topic.MarkerKind{topic.StateMarker, topic.TouchesMarker, topic.ProofMarker} {
+		sites := []topic.MarkerSite{}
+		for _, site := range corpus.Markers.ForClaim(claimID) {
+			if site.Kind == kind {
+				sites = append(sites, site)
+			}
+		}
+		if len(sites) == 0 {
+			continue
+		}
+		slices.SortFunc(sites, func(a, b topic.MarkerSite) int {
+			if a.Path != b.Path {
+				return strings.Compare(a.Path, b.Path)
+			}
+			return a.Line - b.Line
+		})
+		e := ContextEvidence{Kind: string(kind), Count: len(sites), Sites: []topic.MarkerSite{}}
+		if len(sites) <= 3 {
+			e.Sites = sites
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+func claimSummary(claim topic.Claim) string {
+	if claim.Summary != "" {
+		return claim.Summary
+	}
+	paragraph := strings.Split(strings.ReplaceAll(claim.Prose, "\r\n", "\n"), "\n\n")[0]
+	folded := strings.Join(strings.Fields(paragraph), " ")
+	runes := []rune(folded)
+	if len(runes) <= 160 {
+		return folded
+	}
+	cut := 157
+	for i := cut; i > 0; i-- {
+		if unicode.IsSpace(runes[i-1]) {
+			cut = i - 1
+			break
 		}
 	}
-	if includeReferences {
-		detail.References.Incoming = nonNilStrings(corpus.Incoming(claim.ID))
-		detail.References.Outgoing = nonNilStrings(corpus.Outgoing(claim.ID))
+	return string(runes[:cut]) + "..."
+}
+
+func contextPending(changes []PendingChange, expanded bool) ContextPendingImpact {
+	out := ContextPendingImpact{OperationCount: len(changes), ADRs: []string{}, Operations: []PendingChange{}}
+	seen := map[string]bool{}
+	for _, change := range changes {
+		if !seen[change.ADR] {
+			seen[change.ADR] = true
+			out.ADRs = append(out.ADRs, change.ADR)
+		}
 	}
-	return detail
+	slices.Sort(out.ADRs)
+	if len(out.ADRs) > 3 {
+		out.AdditionalADRCount = len(out.ADRs) - 3
+		out.ADRs = out.ADRs[:3]
+	}
+	if expanded {
+		out.Operations = append(out.Operations, changes...)
+	}
+	return out
 }
 
 func nonNilStrings(in []string) []string {
@@ -98,16 +172,7 @@ func nonNilStrings(in []string) []string {
 	return slices.Compact(out)
 }
 
-func explicitContextPath(requests []ContextRequest, path string) bool {
-	for _, request := range requests {
-		if request.Status == RequestLiteral && request.Query == path && len(request.EffectivePaths) == 1 && request.EffectivePaths[0] == path {
-			return true
-		}
-	}
-	return false
-}
-
-func claimStateForOperation(operation string, claimID string, progress string, corpus topic.Corpus, history *topic.ClaimHistory) string {
+func claimStateForOperation(operation, claimID, progress string, corpus topic.Corpus, history *topic.ClaimHistory) string {
 	if _, ok := corpus.ByClaimID(claimID); ok {
 		return "active-current"
 	}
@@ -119,7 +184,4 @@ func claimStateForOperation(operation string, claimID string, progress string, c
 	}
 	return "not-yet-current"
 }
-
-func trimADRTitle(number, title string) string {
-	return strings.TrimPrefix(title, "ADR-"+number+": ")
-}
+func trimADRTitle(number, title string) string { return strings.TrimPrefix(title, "ADR-"+number+": ") }

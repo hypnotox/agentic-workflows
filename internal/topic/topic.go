@@ -53,6 +53,7 @@ type Claim struct {
 	ID, Slug              string
 	Type                  ClaimType
 	Prose                 string
+	Summary               string
 	Origin                string
 	RevisedBy, References []string
 	Backing               Backing
@@ -276,6 +277,19 @@ func parseClaim(id TopicID, typ ClaimType, slug string, lines []string) (Claim, 
 		pos++
 		return v, nil
 	}
+	var err error
+	if pos < len(meta) && strings.HasPrefix(meta[pos], "Summary: ") {
+		c.Summary, err = need("Summary: ")
+		if err != nil { // coverage-ignore: the identical prefix guard above makes need succeed
+			return Claim{}, err
+		}
+		if c.Summary == "" || strings.ContainsAny(c.Summary, "\r\n") { // coverage-ignore: line tokenization and metadata recognition reject blank or multiline values before this semantic guard
+			return Claim{}, errors.New("summary must be one nonempty line")
+		}
+		if len([]rune(c.Summary)) > 160 {
+			return Claim{}, errors.New("summary must be at most 160 Unicode code points")
+		}
+	}
 	origin, err := need("Origin: ")
 	if err != nil {
 		return Claim{}, err
@@ -331,7 +345,7 @@ func parseClaim(id TopicID, typ ClaimType, slug string, lines []string) (Claim, 
 
 func isMetadataLine(line string) bool {
 	t := strings.TrimSpace(line)
-	for _, p := range []string{"Origin: ", "Revised-by: ", "References: ", "Backing: ", "Verify: "} {
+	for _, p := range []string{"Summary: ", "Origin: ", "Revised-by: ", "References: ", "Backing: ", "Verify: "} {
 		if strings.HasPrefix(t, p) {
 			return true
 		}
@@ -339,7 +353,7 @@ func isMetadataLine(line string) bool {
 	return false
 }
 func reservedMetadata(line string) bool {
-	for _, p := range []string{"Origin", "Revised-by", "References", "Backing", "Verify"} {
+	for _, p := range []string{"Summary", "Origin", "Revised-by", "References", "Backing", "Verify"} {
 		if strings.HasPrefix(line, p+":") || strings.HasPrefix(line, p+" ") {
 			return true
 		}

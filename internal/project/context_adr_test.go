@@ -4,125 +4,97 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // invariant: tooling/context-and-topic:context-adr-operation-projection
-func TestADRArtifactProjectionUsesLifecycleApplicationRecords(t *testing.T) {
-	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:new"}
-	update := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/one:existing"}
-	cases := []struct {
-		name, status string
-		history      []adr.HistoryEvent
-		want         []string
-		sequences    []int
-	}{
-		{name: "proposed", status: "Proposed", want: []string{"proposed", "proposed"}, sequences: []int{0, 0}},
-		{name: "accepted", status: "Accepted", want: []string{"remaining", "remaining"}, sequences: []int{0, 0}},
-		{name: "implementing", status: "Implementing", history: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 7, Operations: []adr.Operation{add}}}, want: []string{"applied", "remaining"}, sequences: []int{7, 0}},
-		{name: "implemented", status: "Implemented", history: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 8, Operations: []adr.Operation{add, update}}}, want: []string{"applied", "applied"}, sequences: []int{8, 8}},
-		{name: "abandoned", status: "Abandoned", history: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 9, Operations: []adr.Operation{add}}}, want: []string{"applied", "canceled"}, sequences: []int{9, 0}},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			record := adr.ADR{Number: "0002", Title: "ADR-0002: Example", Filename: "0002-example.md", Status: tc.status, Format: adr.CurrentStateV2, Operations: []adr.Operation{add, update}, History: tc.history}
-			got := projectADRArtifact("docs/decisions/0002-example.md", "docs/decisions", adr.NewCorpus([]adr.ADR{record}), topic.Corpus{}, ContextConcise)
-			if got == nil || got.Number != "0002" || got.Title != "Example" || len(got.Operations) != 2 {
-				t.Fatalf("projection = %#v", got)
-			}
-			for i := range got.Operations {
-				if got.Operations[i].Progress != tc.want[i] || got.Operations[i].StateSequence != tc.sequences[i] || got.Operations[i].Detail != nil {
-					t.Errorf("operation %d = %#v", i, got.Operations[i])
-				}
-			}
-			if tc.status == "Proposed" && (got.Mutability != "mutable" || got.AuthorityRole != "pending intent, never current authority") {
-				t.Errorf("proposed authority = %#v", got)
-			}
-			if tc.status == "Accepted" {
-				full := projectADRArtifact("docs/decisions/0002-example.md", "docs/decisions", adr.NewCorpus([]adr.ADR{record}), topic.Corpus{}, ContextFull)
-				if full.Operations[0].Detail == nil || full.Operations[0].Detail.Current != nil || full.Operations[0].Detail.MarkerSites == nil {
-					t.Errorf("pending full detail = %#v", full.Operations[0])
-				}
-			}
-		})
-	}
-}
-
-func TestADRArtifactFullProjectionLinksCurrentClaimHistory(t *testing.T) {
+func TestContextADRProjection(t *testing.T) {
 	files := ctxFiles()
-	files["docs/decisions/0002-example.md"] = acceptedV1(t, "0002", "Example", "2026-07-20", "- update `alpha/one:stable`")
+	raw := `---
+format: current-state-v1
+status: Proposed
+date: 2026-07-27
+---
+# ADR-0002: Example
+
+## Context
+
+Context.
+
+## Decision
+
+1. Decision.
+
+## State changes
+
+- add ` + "`alpha/one:new-rule`" + `
+
+## Consequences
+
+Consequence.
+
+## Alternatives Considered
+
+None.
+
+## Status history
+
+- 2026-07-27: Proposed
+`
 	p := csRepo(t, ctxConfig, files)
-	writeCutoffLock(t, p, 2)
-	result, err := p.ContextForFull([]string{"docs/decisions/0002-example.md"})
+	ws, err := p.workingCurrentState()
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := result.Paths[0].ADR
-	if got == nil || len(got.Operations) != 1 || got.Operations[0].Detail == nil || got.Operations[0].Detail.Current == nil || got.Operations[0].Detail.History == nil {
-		t.Fatalf("full ADR projection = %#v", got)
-	}
-	if got.Operations[0].ClaimState != "active-current" || got.Operations[0].Detail.MarkerSites == nil {
-		t.Fatalf("full operation detail = %#v", got.Operations[0])
-	}
-	if sites := nonNilMarkerSites(nil); sites == nil || len(sites) != 0 {
-		t.Fatalf("nil marker sites = %#v", sites)
-	}
-	inputSites := []topic.MarkerSite{{Path: "x", Line: 1}}
-	if sites := nonNilMarkerSites(inputSites); len(sites) != 1 || &sites[0] == &inputSites[0] {
-		t.Fatalf("marker-site copy = %#v", sites)
-	}
-}
-
-func TestADRArtifactProjectionInvalidProgressStaysBounded(t *testing.T) {
-	op := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:new"}
-	record := adr.ADR{Number: "0002", Title: "ADR-0002: Example", Filename: "0002-example.md", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{op}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 1, Operations: []adr.Operation{op}}}}
-	got := projectADRArtifact("docs/decisions/0002-example.md", "docs/decisions", adr.NewCorpus([]adr.ADR{record}), topic.Corpus{}, ContextConcise)
-	if got == nil || len(got.Operations) != 0 {
-		t.Fatalf("invalid progress projection = %#v", got)
-	}
-}
-
-func TestADRArtifactProjectionDirectV2RemoveAndRelocatedDocsDir(t *testing.T) {
-	claim := "alpha/one:gone"
-	add := adr.ADR{Number: "0001", Title: "ADR-0001: Add", Filename: "0001-add.md", Status: "Implemented", Format: adr.CurrentStateV2, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claim}}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 1, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claim}}}}}
-	remove := adr.ADR{Number: "0002", Title: "ADR-0002: Remove", Filename: "0002-remove.md", Status: "Implemented", Format: adr.CurrentStateV2, Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claim}}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 2, Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claim}}}}}
-	corpus := adr.NewCorpus([]adr.ADR{add, remove})
-	cfg, err := config.ParseTree(".awf", []byte("prefix: x\ndomains: [alpha]\n"), configReaderAdapter{memoryProjectReader{}})
+	record, err := adr.ParseV1("0002-example.md", []byte(raw))
 	if err != nil {
 		t.Fatal(err)
 	}
-	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/domains/alpha.yaml", Mode: snapshot.Regular, Bytes: []byte("paths: [\"internal/**\"]\n")},
-		{Path: ".awf/topics/metadata/alpha/one.yaml", Mode: snapshot.Regular, Bytes: []byte("title: One\nsummary: One.\npaths: [\"internal/**\"]\n")},
-		{Path: ".awf/topics/parts/alpha/one/current-state.md", Mode: snapshot.Regular, Bytes: []byte("Intro.\n\n## Claims\n")},
-	})
-	if err != nil {
-		t.Fatal(err)
+	corpus := adr.NewCorpus(append(ws.Loaded.ADRs, record))
+	plain := projectADRArtifact("docs/decisions/0002-example.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil)
+	if plain == nil || plain.Status != "Proposed" || len(plain.Operations) != 0 {
+		t.Fatalf("plain=%#v", plain)
 	}
-	topics, err := topic.LoadCorpusFromTree(tree, cfg, corpus)
-	if err != nil {
-		t.Fatal(err)
+	full := projectADRArtifact("docs/decisions/0002-example.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
+	if len(full.Operations) != 1 || full.Operations[0].Progress != "proposed" || full.Operations[0].ClaimState != "not-yet-current" {
+		t.Fatalf("full=%#v", full)
 	}
-	got := projectADRArtifact("handbook/decisions/0002-remove.md", "handbook/decisions", corpus, topics, ContextFull)
-	if got == nil || got.Status != "Implemented" || len(got.Operations) != 1 || got.Operations[0].Progress != "applied" || got.Operations[0].StateSequence != 2 || got.Operations[0].ClaimState != "historically-removed" {
-		t.Fatalf("direct V2 relocated remove projection = %#v", got)
+	if projectADRArtifact("docs/decisions/not-an-adr.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil) != nil {
+		t.Fatal("lookalike attributed")
 	}
-	if got.Operations[0].Detail == nil || got.Operations[0].Detail.Current != nil || got.Operations[0].Detail.History == nil || got.Operations[0].Detail.History.RemovedBy == nil || got.Operations[0].Detail.History.RemovedBy.StateSequence != 2 || got.Operations[0].Detail.MarkerSites == nil {
-		t.Fatalf("removed detail = %#v", got.Operations[0].Detail)
+	if projectADRArtifact("docs/decisions/0002-wrong.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil) != nil {
+		t.Fatal("wrong filename attributed")
 	}
-	if outside := projectADRArtifact("docs/decisions/0002-remove.md", "handbook/decisions", corpus, topic.Corpus{}, ContextFull); outside != nil {
-		t.Fatalf("default docsDir lookalike projected in relocated layout: %#v", outside)
+	if projectADRArtifact("elsewhere/0002-example.md", p.layout().ADRDir, corpus, ws.Loaded.Topics, nil) != nil {
+		t.Fatal("outside directory attributed")
 	}
-}
-
-func TestADRArtifactProjectionRequiresExplicitParsedIdentity(t *testing.T) {
-	record := adr.ADR{Number: "0002", Title: "ADR-0002: Example", Filename: "0002-example.md", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{}}
-	corpus := adr.NewCorpus([]adr.ADR{record})
-	for _, path := range []string{"docs/decisions/README.md", "elsewhere/0002-example.md", "docs/decisions/0002-lookalike.md"} {
-		if got := projectADRArtifact(path, "docs/decisions", corpus, topic.Corpus{}, ContextConcise); got != nil {
-			t.Errorf("%s projected as %#v", path, got)
-		}
+	update := adr.Operation{Verb: adr.OpUpdate, ID: "alpha/one:order", Slug: "order"}
+	add := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:new-rule", Slug: "new-rule"}
+	broken := adr.ADR{Number: "0005", Title: "ADR-0005: Broken", Filename: "0005-broken.md", Status: "Implementing", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 9, Operations: []adr.Operation{update}}}}
+	brokenImpact := projectADRArtifact("docs/decisions/0005-broken.md", p.layout().ADRDir, adr.NewCorpus([]adr.ADR{broken}), ws.Loaded.Topics, []ContextFacet{FacetPending})
+	if brokenImpact == nil || len(brokenImpact.Operations) != 0 {
+		t.Fatal(brokenImpact)
+	}
+	implementing := adr.ADR{Number: "0003", Title: "ADR-0003: Implementing", Filename: "0003-implementing.md", Status: "Implementing", Format: adr.CurrentStateV2, Operations: []adr.Operation{update, add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 7, Operations: []adr.Operation{update}}}}
+	impl := projectADRArtifact("docs/decisions/0003-implementing.md", p.layout().ADRDir, adr.NewCorpus([]adr.ADR{implementing}), ws.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
+	if impl == nil || len(impl.Operations) != 2 || impl.Operations[0].Progress != "applied" || impl.Operations[1].Progress != "remaining" || impl.Operations[0].Detail == nil {
+		t.Fatalf("implementing=%#v", impl)
+	}
+	remove := adr.Operation{Verb: adr.OpRemove, ID: "alpha/one:tested", Slug: "tested"}
+	abandoned := adr.ADR{Number: "0004", Title: "ADR-0004: Abandoned", Filename: "0004-abandoned.md", Status: "Abandoned", Format: adr.CurrentStateV2, Operations: []adr.Operation{remove, add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 8, Operations: []adr.Operation{remove}}}}
+	add2 := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:another", Slug: "another"}
+	changes := pendingChanges([]adr.ADR{{Number: "0001", Status: "Implemented"}, {Number: "0003", Title: "ADR-0003: Later", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}}, {Number: "0002", Title: "ADR-0002: Pending", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add, add2}}}, map[string]bool{"alpha/one": true})
+	if len(changes) != 3 || changes[0].ADR != "0002" || changes[0].Claim != "alpha/one:another" {
+		t.Fatalf("pending=%#v", changes)
+	}
+	if got := pendingChanges([]adr.ADR{{Number: "0002", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}}}, map[string]bool{"other/topic": true}); len(got) != 0 {
+		t.Fatal(got)
+	}
+	malformed := adr.ADR{Number: "0006", Status: "Accepted", Format: adr.CurrentStateV2, Operations: []adr.Operation{add}, History: []adr.HistoryEvent{{Kind: adr.HistoryApplied, Sequence: 1, Operations: []adr.Operation{update}}}}
+	if got := pendingChanges([]adr.ADR{malformed}, map[string]bool{"alpha/one": true}); len(got) != 0 {
+		t.Fatal(got)
+	}
+	gone := projectADRArtifact("docs/decisions/0004-abandoned.md", p.layout().ADRDir, adr.NewCorpus([]adr.ADR{abandoned}), ws.Loaded.Topics, []ContextFacet{FacetPending, FacetEvidence})
+	if gone == nil || gone.Operations[1].Progress != "canceled" {
+		t.Fatalf("abandoned=%#v", gone)
 	}
 }

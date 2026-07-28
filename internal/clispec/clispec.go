@@ -299,36 +299,34 @@ sidecar.local, or a data key name).
 `,
 	},
 	{
-		Name: "context", Summary: "Orient by path with concise or full current-state authority",
-		BoolFlags: []string{"--json", "--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range"}, MaxPos: -1, Gating: GatedInHandler,
-		HelpBody: `Usage: awf context <path>... [--json] [--full] [--staged] [--range <a>..<b>] [--uncovered]
+		Name: "context", Summary: "Orient by request with compact current-state impact reports",
+		BoolFlags: []string{"--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range", "--show"}, Repeatable: []string{"--show"}, MaxPos: -1, Gating: GatedInHandler,
+		HelpBody: `Usage: awf context <path>... [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]
 
-Report current-state orientation grouped by topic: each applicable topic renders
-once per invocation with its selectors, matched-path count and coverage
-drilldown, uncapped claim-ID roster, and the full detail of the direct claims
-selected by exact-path state, touches, and proof markers; effective paths carry
-classification and attribution. Use --full for every applicable current claim,
-backing and direct reference IDs, once per topic, without truncation. Explicit
-ADR paths report lifecycle operation progress without treating ADR prose as
-current authority. The command is read-only. Outside a project, both projections
-print the same static pre-adoption reference.
+Report request-oriented current-state impact. Exact files and Git selections stay
+individual; directory descendants group by complete semantic context. Groups of
+at most three list every member and larger groups disclose no paths. Authority
+renders once globally with bounded one-line summaries.
 
-Provide paths explicitly, or resolve them from git with --staged (the staged
-changes) or --range <a>..<b> (the diff between two revisions). Explicit paths
-take precedence over the git selectors.
+Repeat --show with one of all-rules, evidence, selectors, references, pending,
+or artifacts. --full is exactly their normalized union. Neither changes grouping.
+--show and --full cannot be combined with --uncovered. JSON is not supported.
 
-With --uncovered, report eligible paths that are unowned or owned by a domain
-but covered by no scoped topic. Positional args become optional scan roots.
-Combine with --staged to read the index universe; --range is not accepted.
+The complete human rendering is written unchanged through 8,192 bytes. Larger
+results spill to an owner-only temporary file outside the repository and stdout
+receives AWF_CONTEXT_SPILL_V1, its decimal byte count and text format, followed
+by the absolute path. A caller that receives the notice owns deletion.
+
+Provide paths explicitly, or resolve sorted exact files from Git with --staged
+or --range <a>..<b>. With --uncovered, positional args are optional scan roots;
+--range is not accepted.
 
 Flags:
-  --json               emit the selected projection as JSON for machine
-                       consumption; agents reading output should prefer the
-                       text form
-  --full               emit the complete applicable authority packet
-  --staged             use the staged index universe
-  --range <a>..<b>     use the paths changed between revisions a and b
-  --uncovered          report unowned and uncovered paths (cannot use --full)
+  --show <facet>        add one bounded detail facet (repeatable)
+  --full                add all six facets
+  --staged              use the staged index universe
+  --range <a>..<b>      use paths changed between revisions a and b
+  --uncovered           report unowned and uncovered paths
 `,
 	},
 	{
