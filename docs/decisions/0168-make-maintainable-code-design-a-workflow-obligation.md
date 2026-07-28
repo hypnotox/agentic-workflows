@@ -29,8 +29,7 @@ surfacing larger choices to the user rather than silently expanding or silently 
 
 This guidance must be language-agnostic and useful to adopters with unset project data. It must apply
 where designs are formed, converted into plans, implemented through every supported path, delegated
-to scoped subagents, and reviewed. Reviewer agents must remain report-only. The separate usability
-of `awf context` output is not part of this decision.
+to scoped subagents, and reviewed. Reviewer agents must remain report-only.
 
 ## Decision
 
@@ -95,10 +94,7 @@ of `awf context` output is not part of this decision.
    handoff content, conditional ADR-review wording, reviewer report-only preservation, and generated
    multi-target semantic parity.
 
-9. Keep `awf context` projection, formatting, spill behavior, command usability, and related workflow
-   ergonomics unchanged. Any redesign of that surface requires a separate decision and effort.
-
-10. Every lifecycle status transition of this ADR runs `./x render` and commits the regenerated
+9. Every lifecycle status transition of this ADR runs `./x render` and commits the regenerated
     `docs/decisions/INDEX.md` and lock update in the same transaction.
 
 ## State changes
