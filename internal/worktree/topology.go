@@ -65,7 +65,10 @@ func registrations(ctx context.Context, run Runner, invoking string) ([]registra
 		fields := strings.Split(chunk, "\x00")
 		current := registration{}
 		head, branch, detached := false, false, false
-		for _, field := range fields {
+		for index, field := range fields {
+			if index == 0 && !strings.HasPrefix(field, "worktree ") {
+				return nil, errors.New("invalid worktree registration")
+			}
 			key, val, has := strings.Cut(field, " ")
 			switch key {
 			case "worktree":
@@ -92,7 +95,7 @@ func registrations(ctx context.Context, run Runner, invoking string) ([]registra
 				detached = true
 				current.detached = true
 			case "bare":
-				if has || current.bare || current.path != "" || head || branch || detached || current.prunable {
+				if has || current.bare || head || branch || detached || current.prunable {
 					return nil, errors.New("invalid worktree registration")
 				}
 				current.bare = true

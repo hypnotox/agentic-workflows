@@ -57,6 +57,7 @@ func TestControlRootPrimaryAndLinkedWorktreeShareAuthority(t *testing.T) {
 	}
 }
 
+// User-authorized parity: a default --separate-git-dir linked worktree has no authoritative reverse primary mapping, so it is non-forceable missing-primary; the direct primary remains resolvable.
 func TestControlRootSeparateGitDirRepository(t *testing.T) {
 	base := filepath.Join(t.TempDir(), "separate git dir fixture")
 	primary := filepath.Join(base, " checkout with spaces ")

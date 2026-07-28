@@ -4,7 +4,7 @@ import { execFile } from "node:child_process";
 import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
-import { appendSessionObservation, parseWorktrees, resolveControlRoot, setTelemetryWriterTestFault, telemetryWriterTestState } from "../../../.pi/extensions/awf-telemetry/index.ts";
+import { appendSessionObservation, parseWorktrees, resolveControlRoot, setTelemetryWriterTestFault, setTelemetryWriterTestLockCleanupRace, telemetryWriterTestState } from "../../../.pi/extensions/awf-telemetry/index.ts";
 const exec = promisify(execFile);
 
 const root = resolve(".");
@@ -25,7 +25,7 @@ async function bytes() { return readFile(stream, "utf8"); }
 const porcelain = [
   ["branch", "worktree /x\0HEAD abc\0branch refs/heads/x\0\0", true],
   ["detached", "worktree /x\0HEAD abc\0detached\0\0", true],
-  ["bare", "bare\0\0", true],
+  ["bare", "worktree /bare\0bare\0\0", true],
   ["prunable", "worktree /x\0HEAD abc\0branch refs/heads/x\0prunable gone\0\0", true],
   ["missing final delimiter", "worktree /x\0HEAD abc\0branch refs/heads/x\0", false],
   ["missing HEAD", "worktree /x\0branch refs/heads/x\0\0", false],
@@ -41,10 +41,16 @@ const porcelain = [
   ["duplicate HEAD", "worktree /x\0HEAD abc\0HEAD def\0branch refs/heads/x\0\0", false],
   ["duplicate branch", "worktree /x\0HEAD abc\0branch refs/heads/x\0branch refs/heads/y\0\0", false],
   ["duplicate prunable", "worktree /x\0HEAD abc\0branch refs/heads/x\0prunable x\0prunable y\0\0", false],
-  ["duplicate bare", "bare\0bare\0\0", false],
-  ["bare fields", "bare\0HEAD abc\0\0", false],
+  ["duplicate bare", "worktree /x\0bare\0bare\0\0", false],
+  ["bare fields", "worktree /x\0bare nope\0\0", false],
+  ["bare after HEAD", "worktree /x\0HEAD abc\0bare\0\0", false],
   ["bare separator", "bare \0\0", false],
   ["empty record", "worktree /x\0HEAD abc\0branch refs/heads/x\0\0\0\0", false],
+  ["duplicate worktree", "worktree /x\0worktree /y\0HEAD abc\0branch refs/heads/x\0\0", false],
+  ["HEAD before worktree", "HEAD abc\0worktree /x\0branch refs/heads/x\0\0", false],
+  ["branch before worktree", "branch refs/heads/x\0worktree /x\0HEAD abc\0\0", false],
+  ["detached before worktree", "detached\0worktree /x\0HEAD abc\0\0", false],
+  ["bare before worktree", "bare\0\0", false],
 ] as const;
 for (const [name, raw, accepted] of porcelain) test(`worktree porcelain parity ${name}`, () => { if (accepted) assert.doesNotThrow(() => parseWorktrees(raw)); else assert.throws(() => parseWorktrees(raw)); });
 
@@ -68,7 +74,7 @@ test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention refu
 for (const stage of ["open", "read", "link", "directory", "directory-fsync", "lock-open", "lock-write", "lock-fsync"] as const) test(`writer fault ${stage} refuses before unsafe mutation`, async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension, session, observation("123e4567-e89b-42d3-a456-426614174020"))); assert.equal(await rm(stream,{force:false}).then(()=>false,()=>true),true); setTelemetryWriterTestFault(); });
 for (const stage of ["lock-cleanup"] as const) test(`writer ${stage} fault leaves a visible published stream`, async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension,session,observation("123e4567-e89b-42d3-a456-426614174029"))); setTelemetryWriterTestFault(); assert.equal((await bytes()).split("\n").filter(Boolean).length,2); await clean(); });
 for (const stage of ["write", "fsync"] as const) test(`writer append ${stage} fault preserves prefix and reports corruption`, async () => { await clean(); await resetMetrics(); await append("123e4567-e89b-42d3-a456-426614174030"); const before=await bytes(), inode=(await stat(stream)).ino; setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension,session,observation("123e4567-e89b-42d3-a456-426614174031"))); setTelemetryWriterTestFault(); const after=await bytes(); assert.ok(after.startsWith(before)); assert.equal((await stat(stream)).ino,inode); assert.ok(await readFile(corrupt,"utf8")); await clean(); });
-test("lock acquisition failures retain an unproven lock and only remove a proven payload", async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault("lock-write"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174032"),/cleanup refused/); setTelemetryWriterTestFault(); assert.equal(await readFile(lock,"utf8"),""); await clean(); setTelemetryWriterTestFault("lock-fsync"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174033")); setTelemetryWriterTestFault(); assert.equal(await rm(lock,{force:false}).then(()=>false,()=>true),true); await clean(); });
+test("lock acquisition failures clean empty payloads but never remove a replacement", async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault("lock-write"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174032")); setTelemetryWriterTestFault(); assert.equal(await rm(lock,{force:false}).then(()=>false,()=>true),true); await clean(); setTelemetryWriterTestFault("lock-fsync"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174033")); setTelemetryWriterTestFault(); assert.equal(await rm(lock,{force:false}).then(()=>false,()=>true),true); await clean(); setTelemetryWriterTestFault("lock-write"); setTelemetryWriterTestLockCleanupRace(async()=>{await rm(lock,{force:true});await writeFile(lock,"replacement\\n")}); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174038")); setTelemetryWriterTestFault(); setTelemetryWriterTestLockCleanupRace(); assert.equal(await readFile(lock,"utf8"),"replacement\\n"); await clean(); });
 test("corruption markers refuse symlinks and directories and accept only the expected safe marker", async () => { await clean(); await resetMetrics(); await append("123e4567-e89b-42d3-a456-426614174034"); const outside=join(root,".outside-corrupt"); await rm(outside,{force:true}); await writeFile(outside,"sentinel"); await symlink(outside,corrupt); setTelemetryWriterTestFault("write"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174035"),/corruption marker/); setTelemetryWriterTestFault(); assert.equal(await readFile(outside,"utf8"),"sentinel"); await rm(corrupt,{force:true}); await mkdir(corrupt); setTelemetryWriterTestFault("write"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174036"),/corruption marker/); setTelemetryWriterTestFault(); await rm(corrupt,{recursive:true}); await writeFile(corrupt,JSON.stringify({stream:`${session}.jsonl`,reason:"append-failure"})+"\n"); setTelemetryWriterTestFault("write"); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174037")); setTelemetryWriterTestFault(); assert.ok(await readFile(corrupt,"utf8")); await rm(outside,{force:true}); await clean(); });
 
 test("live, malformed, unknown-PID, and symlink locks refuse without stream changes", async () => { await clean(); await resetMetrics(); await append("123e4567-e89b-42d3-a456-426614174040"); const before=await bytes(); for(const value of ["{bad", JSON.stringify({pid:"unknown",sessionId:session,createdAt:new Date().toISOString()})+"\n", JSON.stringify({pid:process.pid,sessionId:session,createdAt:new Date().toISOString()})+"\n"]) { await writeFile(lock,value); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174041")); assert.equal(await bytes(),before); await rm(lock,{force:true}); } await symlink(stream,lock); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174042")); assert.equal(await bytes(),before); await rm(lock,{force:true}); await clean(); });
