@@ -142,9 +142,9 @@
     },
     ".claude/skills/awf-subagent-driven-development/SKILL.md": {
       "templateId": "skills/subagent-driven-development/SKILL.md.tmpl",
-      "templateHash": "sha256:d0ea054fea75026ae0ca477368e5dea0174284c6d8901ef559b4e8846cad5953",
+      "templateHash": "sha256:adcfee3c4c21aeabc74961ce5808f6caefb35092282e6c7b590c0616729ef93a",
       "configHash": "sha256:93b960f9e0115f05cd935a0142f3ca8ddb5c89f7121eb0ea2dc9aad180b8e0c2",
-      "outputHash": "sha256:95b7aeef77b4b57f6b0884c27ba504ae9ed006a6c12ca2907200a7ae34c1b50d"
+      "outputHash": "sha256:cd61f90854429dd6ae36b4a5625e011632de1c6a3c7eb64f386656b175b851a6"
     },
     ".claude/skills/awf-tdd/SKILL.md": {
       "templateId": "skills/tdd/SKILL.md.tmpl",
@@ -280,9 +280,9 @@
     },
     ".pi/skills/awf-subagent-driven-development/SKILL.md": {
       "templateId": "skills/subagent-driven-development/SKILL.md.tmpl",
-      "templateHash": "sha256:d0ea054fea75026ae0ca477368e5dea0174284c6d8901ef559b4e8846cad5953",
+      "templateHash": "sha256:adcfee3c4c21aeabc74961ce5808f6caefb35092282e6c7b590c0616729ef93a",
       "configHash": "sha256:f301db37bd30e03ad33ca870a7a7502b9f39fb4e6d44ac9c01dff32079e60ebd",
-      "outputHash": "sha256:f668061139639bc0f1947b46159899bac07b0d35e3ea8a419f05b2b629826a2c"
+      "outputHash": "sha256:12197981921daa3881f9aed4f9299322ad2ff694a6e4de9fc69ddbe1e4ddf17c"
     },
     ".pi/skills/awf-tdd/SKILL.md": {
       "templateId": "skills/tdd/SKILL.md.tmpl",

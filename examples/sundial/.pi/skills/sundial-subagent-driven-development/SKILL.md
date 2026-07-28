@@ -33,7 +33,7 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
 2. **Read the plan, raise concerns before dispatching.** Critical gaps surface to the user before any subagent runs: missing file content, unclear commands, contradictory steps, placeholders ("TBD", "similar to task N"). Do not guess.
 
 <!-- awf:edit procedure-extract-context: default; create .awf/skills/parts/subagent-driven-development/procedure-extract-context.md to override -->
-3. **Extract each task's full text + scene-setting context.** Per `docs/maintainable-code-design.md`, preserve the plan's settled structural choices, including any bounded enabling refactor, reassess them if grounded source contradicts them, and stop and escalate rather than avoid a bolt-on workaround. The dispatched subagent does NOT see this conversation. Capture, in the subagent's prompt:
+3. **Extract each task's full text + scene-setting context.** Per `docs/maintainable-code-design.md`, preserve the plan's settled structural choices, including any bounded enabling refactor, reassess them if grounded source contradicts them, and stop and escalate rather than accept a bolt-on workaround. The dispatched subagent does NOT see this conversation. Capture, in the subagent's prompt:
    - The task's exact file paths, content, and commands from the plan.
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).

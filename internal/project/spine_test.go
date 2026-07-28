@@ -306,7 +306,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design",
 		}},
 		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than avoid a bolt-on workaround", "Sequential dispatch only, never parallel", "Status report", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "Status report", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED",
 		}, rejects: []string{
 			"external/internal representations", "translation point", "allowed dependency direction", "prohibited bolt-on shortcuts", "validation expectations",
 		}},
