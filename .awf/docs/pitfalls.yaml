@@ -1261,3 +1261,17 @@ data:
         that artifact's render path, and pin both branches in a test. A deterministic
         conditional-key consumption check (extending the ADR-0086 union) is recorded on the
         roadmap.
+    - title: "handoff_session memory paths are repository-relative"
+      domains: [rendering]
+      related: [145]
+      tags: [chain-handoffs, local-artifacts]
+      body: |
+        The `handoff_session` tool's `memoryPath` is not an arbitrary exact filesystem path. It
+        must be an exact repository-relative path beginning with `.awf/memory/`, such as
+        `.awf/memory/<effort-id>.md`. Passing the absolute path to that same valid regular file
+        fails with the shared diagnostic `memoryPath must be a canonical file below
+        .awf/memory/`, because the extension rejects absolute paths before checking the file.
+        The word "exact" in workflow guidance means exact repository-relative spelling, not an
+        absolute canonical path. Before invoking the tool, preserve the `.awf/memory/` prefix and
+        pass no repository-root prefix, backslashes, empty components, `.` or `..` components, or
+        symlink components. The file itself must exist and be a regular file (ADR-0145).
