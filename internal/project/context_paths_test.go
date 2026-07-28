@@ -27,6 +27,14 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 		impact.TargetInsideRepository = target
 		set.impacts[f.Path] = impact
 	}
+	for _, p := range []string{"link", "inside-link", "absolute-link"} {
+		impact := set.impacts[p]
+		impact.Relationships = ContextRelationships{State: []string{"d/t:excluded-symlink"}, Touches: []string{}, Proofs: []string{}}
+		set.impacts[p] = impact
+	}
+	nestedImpact := set.impacts["nested/.awf/config.yaml"]
+	nestedImpact.Relationships = ContextRelationships{State: []string{"d/t:excluded-nested"}, Touches: []string{}, Proofs: []string{}}
+	set.impacts["nested/.awf/config.yaml"] = nestedImpact
 	ignoredImpact := set.impacts["ignored/x"]
 	ignoredImpact.Relationships = ContextRelationships{State: []string{"d/t:excluded"}, Touches: []string{}, Proofs: []string{}}
 	set.impacts["ignored/x"] = ignoredImpact
@@ -38,6 +46,9 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	rootRequest := buildContextRequests([]string{"."}, set, ContextOptions{Selection: SelectionExplicit})[0]
 	if rootRequest.Directory == nil || len(rootRequest.Directory.Excluded) != 3 {
 		t.Fatalf("root census=%#v", rootRequest)
+	}
+	if !reflect.DeepEqual(rootRequest.Directory.Relationships, covered.Relationships) {
+		t.Fatalf("root relationships include a boundary=%#v", rootRequest.Directory.Relationships)
 	}
 	if dir == nil || dir.Included != 4 || len(dir.Groups) != 1 || dir.Groups[0].Count != 4 || dir.Groups[0].Members == nil || len(dir.Groups[0].Members) != 0 {
 		t.Fatalf("directory=%#v", dir)
@@ -65,21 +76,27 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 
 func TestContextRelationshipsCollectDeduplicateAndUnion(t *testing.T) {
 	sites := map[string][]topic.MarkerSite{"x.go": {
-		{Kind: topic.ProofMarker, ClaimID: "d/t:tested"},
-		{Kind: topic.StateMarker, ClaimID: "d/t:order"},
-		{Kind: topic.TouchesMarker, ClaimID: "d/t:stable"},
-		{Kind: topic.TouchesMarker, ClaimID: "d/t:stable"},
+		{Kind: topic.ProofMarker, ClaimID: "d/t:tested-z"},
+		{Kind: topic.StateMarker, ClaimID: "d/t:order-z"},
+		{Kind: topic.TouchesMarker, ClaimID: "d/t:stable-z"},
+		{Kind: topic.ProofMarker, ClaimID: "d/t:tested-a"},
+		{Kind: topic.StateMarker, ClaimID: "d/t:order-a"},
+		{Kind: topic.TouchesMarker, ClaimID: "d/t:stable-a"},
+		{Kind: topic.ProofMarker, ClaimID: "d/t:tested-z"},
+		{Kind: topic.StateMarker, ClaimID: "d/t:order-z"},
+		{Kind: topic.TouchesMarker, ClaimID: "d/t:stable-z"},
 	}}
 	got := contextRelationshipsForPath(sites, "x.go")
-	want := ContextRelationships{State: []string{"d/t:order"}, Touches: []string{"d/t:stable"}, Proofs: []string{"d/t:tested"}}
+	want := ContextRelationships{State: []string{"d/t:order-a", "d/t:order-z"}, Touches: []string{"d/t:stable-a", "d/t:stable-z"}, Proofs: []string{"d/t:tested-a", "d/t:tested-z"}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("relationships=%#v want=%#v", got, want)
 	}
-	other := ContextRelationships{State: []string{"d/t:another"}, Touches: []string{}, Proofs: []string{"d/t:tested"}}
-	before := slices.Clone(other.State)
+	other := ContextRelationships{State: []string{"d/t:another"}, Touches: []string{"d/t:stable-z"}, Proofs: []string{"d/t:tested-z"}}
+	gotBefore := ContextRelationships{State: slices.Clone(got.State), Touches: slices.Clone(got.Touches), Proofs: slices.Clone(got.Proofs)}
+	otherBefore := ContextRelationships{State: slices.Clone(other.State), Touches: slices.Clone(other.Touches), Proofs: slices.Clone(other.Proofs)}
 	union := unionContextRelationships(got, other)
-	if !reflect.DeepEqual(other.State, before) || !reflect.DeepEqual(union.State, []string{"d/t:another", "d/t:order"}) {
-		t.Fatalf("union=%#v input=%#v", union, other)
+	if !reflect.DeepEqual(got, gotBefore) || !reflect.DeepEqual(other, otherBefore) || !reflect.DeepEqual(union.State, []string{"d/t:another", "d/t:order-a", "d/t:order-z"}) {
+		t.Fatalf("union=%#v first=%#v second=%#v", union, got, other)
 	}
 	empty := contextRelationshipsForPath(sites, "absent.go")
 	if empty.State == nil || empty.Touches == nil || empty.Proofs == nil {
