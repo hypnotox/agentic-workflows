@@ -1,4 +1,8 @@
-The telemetry package owns the protocol-2 privacy-minimal event contract, confined append-only resident ledger, transactional phase lifecycle and trajectory model, deterministic terminal-effort retention, and canonical metrics and effort-owned diagnostic projections. Selectors, aggregation, exact workflow violations, versioned heuristic signals, and safe repair or waiver inputs share one deterministic Go interpretation for CLI and runtime consumers.
+The telemetry topic describes independent session-v1 streams and their read-only relationship to older residents. Pi writes a session stream at `.awf/metrics/sessions/<session-id>.jsonl`: a closed header is followed by closed, privacy-minimal observations. The writer uses a per-session lock, stable observation IDs for retry, complete-byte validation, fsync, and hard-link publication. It never writes effort identity, workflow state, paths, commands, conversation, or tool I/O.
+
+Current assignment joins are a reporting concern. A session observation does not embed an effort ID; metrics joins the current binary session assignment when it reports current streams. An explicitly selected unassigned session remains reportable. Legacy protocol-1 and protocol-2 residents retain their embedded historical identity and are read-only.
+
+Integrity reporting is deterministic and bounded. Readers report malformed headers, malformed or unterminated records, unsupported versions, unsafe ownership, and duplicate observation IDs without repairing the stream. Read failures preserve the bytes already present. No lifecycle, trajectory, retention, or heuristic behavior is active in this topic.
 
 ## Claims
 

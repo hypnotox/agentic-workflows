@@ -310,15 +310,15 @@
     },
     ".pi/extensions/awf-telemetry/index.ts": {
       "templateId": "pi/awf-telemetry/index.ts.tmpl",
-      "templateHash": "sha256:527cce832ed70458cc453d3e218fd29757b7f976dd29726285353b90ea9a1eff",
+      "templateHash": "sha256:d3c72af4c58810158b0edbc8175583ef6df914bca43c35942d7d2fa18e3faefc",
       "configHash": "sha256:49bbb7f6b0c973d4e12cb78d6ced95c8505bfaf62e9621bb8ef1a668e0cfab87",
-      "outputHash": "sha256:87fd0c8ad96888543f595f9e6119b7d33d003c2ab3306336bf5420d7a97c5965"
+      "outputHash": "sha256:e1d27bddee7ff68a408dde4e6573586ccda2bc97146222bd55be7ce72c2cb245"
     },
     ".pi/extensions/awf-telemetry/protocol.ts": {
       "templateId": "pi/awf-telemetry/protocol.ts.tmpl",
       "templateHash": "sha256:42e4d7752157e50032c6aff0cfd15687b40a91354c5aa57b9548a8dbdd9f7a3a",
       "configHash": "sha256:49bbb7f6b0c973d4e12cb78d6ced95c8505bfaf62e9621bb8ef1a668e0cfab87",
-      "outputHash": "sha256:4a7b762c5e54de5caf67e70c602445e31135648ff20c9fa39cd8b3604e9522fb"
+      "outputHash": "sha256:83d7999dfc2be674ce565d8af90aa1eb4e2790024568477b093f3bcb4eab51ae"
     },
     ".pi/skills/awf-workflow/SKILL.md": {
       "templateId": "pi/awf-workflow/SKILL.md.tmpl",
@@ -714,8 +714,8 @@
     "docs/topics/tooling/workflow-telemetry.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:59249069b21881053d1f99a0feb9693b9f4c977f0f721b041555e5e38b2fbb5b",
-      "outputHash": "sha256:60553c9761708f25f2e25d8bbb28eb5330a3cae67a8d2f51ec1e73864543d8d4"
+      "configHash": "sha256:ee8d140ac460b5be41734a809bf58945430c42ec69ca5b320c8a242d56050358",
+      "outputHash": "sha256:84470f19340b14c41dbfc59ed676dfeb320931f935916b1a22bdcea7bdcd94ab"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
