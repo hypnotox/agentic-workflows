@@ -5,10 +5,12 @@
 package git
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -156,6 +158,49 @@ func HeadHash(repoRoot string) (string, error) {
 		return "", fmt.Errorf("resolve HEAD: %w", err)
 	}
 	return ref.Hash().String(), nil
+}
+
+// WorktreeChangeCounts returns native Git's tracked-change and nonignored
+// untracked-file counts for the worktree containing repoRoot. Native porcelain
+// is the cleanliness oracle because go-git's status traversal can re-include a
+// nested .gitignore below an ignored parent directory.
+func WorktreeChangeCounts(repoRoot string) (tracked, untracked int, err error) {
+	cmd := exec.Command("git", "--no-optional-locks", "-C", repoRoot, "status", "--porcelain=v2", "-z", "--untracked-files=all")
+	out, err := cmd.Output()
+	if err != nil {
+		return 0, 0, fmt.Errorf("read native Git worktree status: %w", err)
+	}
+	return parseWorktreeStatus(out)
+}
+
+func parseWorktreeStatus(out []byte) (tracked, untracked int, err error) {
+	for len(out) > 0 {
+		end := bytes.IndexByte(out, 0)
+		if end < 0 {
+			return 0, 0, errors.New("parse native Git worktree status: unterminated record")
+		}
+		record := out[:end]
+		out = out[end+1:]
+		if len(record) == 0 {
+			continue
+		}
+		switch record[0] {
+		case '?':
+			untracked++
+		case '1', 'u':
+			tracked++
+		case '2':
+			tracked++
+			end = bytes.IndexByte(out, 0)
+			if end < 0 {
+				return 0, 0, errors.New("parse native Git worktree status: rename missing original path")
+			}
+			out = out[end+1:]
+		default:
+			return 0, 0, fmt.Errorf("parse native Git worktree status: unknown record type %q", record[0])
+		}
+	}
+	return tracked, untracked, nil
 }
 
 // GlobalExcludePatterns returns the ignore patterns git applies from outside

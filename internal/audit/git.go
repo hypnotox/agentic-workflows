@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 
@@ -12,40 +11,21 @@ import (
 )
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
-// (ADR-0025). It reads live working-tree state via go-git's Worktree().Status(),
-// injecting the user's global and system gitignore patterns
-// (awfgit.GlobalExcludePatterns) - which Status() does not consult on its own -
-// so the rule mirrors `git status` and does not false-positive on
-// globally-ignored files. Run evaluates it (it holds the repo root); it is
-// range-independent, unlike the commit-history rules in evaluate.
+// (ADR-0025). It reads live worktree state from native Git porcelain so the
+// audit uses Git's own repository, global, and system ignore semantics. Run
+// evaluates it (it holds the repo root); it is range-independent, unlike the
+// commit-history rules in evaluate.
 // touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
 func ruleUncommittedChanges(repoRoot string, in Inputs) []Finding {
 	if !in.UncommittedChanges {
 		return nil
 	}
-	repo, err := awfgit.OpenRepo(repoRoot)
-	if err != nil { // coverage-ignore: Run calls Collect first, which opens the same repo and errors earlier on a non-repo
+	tracked, untracked, err := awfgit.WorktreeChangeCounts(repoRoot)
+	if err != nil { // coverage-ignore: Run calls Collect first, which validates the same repository before this live-state rule
 		return nil
 	}
-	wt, err := repo.Worktree()
-	if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf audit's intended use
+	if tracked == 0 && untracked == 0 {
 		return nil
-	}
-	wt.Excludes = awfgit.GlobalExcludePatterns()
-	status, err := wt.Status()
-	if err != nil { // coverage-ignore: Status on the healthy worktree we just opened does not fail
-		return nil
-	}
-	if status.IsClean() {
-		return nil
-	}
-	tracked, untracked := 0, 0
-	for _, st := range status {
-		if st.Staging == git.Untracked && st.Worktree == git.Untracked {
-			untracked++
-		} else {
-			tracked++
-		}
 	}
 	return []Finding{{
 		Severity: Error,

@@ -333,6 +333,26 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
+func TestRuleUncommittedChangesIgnoresManagedWorktreeResidents(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{
+		".gitignore": ".awf/worktrees/\n",
+		"a.txt":      "a",
+	})
+	resident := filepath.Join(dir, ".awf", "worktrees", "other", ".awf", "memory", ".gitignore")
+	if err := os.MkdirAll(filepath.Dir(resident), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(resident, []byte("*\n!.gitignore\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if f := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: true}}); len(f) != 0 {
+		t.Fatalf("ignored managed-worktree residents should yield no finding, got %#v", f)
+	}
+}
+
 func TestRunIncludesUncommittedChanges(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
