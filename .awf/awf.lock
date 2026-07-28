@@ -178,9 +178,9 @@
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:69d636462848a61f7fd384464bb995755b568ef2f83f4b54992968ea6542a017",
+      "templateHash": "sha256:cb43ec945d220c78e0fd197a18ad8638718e913aed907d8e03ca0f5d1321c1c3",
       "configHash": "sha256:dc890dd9698d4c15f477a84792c0641705b3bb5ac78c753a2de5ec1e21061be2",
-      "outputHash": "sha256:ece7b37f7c569d1e9c179082496e6d50bffbf795c4ccfbe80651ab1f9dbf2663"
+      "outputHash": "sha256:f78b5fc8ffff2206a1f8d809764df0b679722cbe63bf7ec2872368ce46caad9b"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
@@ -696,8 +696,8 @@
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
       "templateHash": "sha256:c9daa097d5291016a0ae7146881da0e427d8980f55a2f907bb84ab842078faa7",
-      "configHash": "sha256:7af7d9a7b3e8b41847522c55fafc65936e1633c05d25626d6ca40922d27e6aff",
-      "outputHash": "sha256:fa2c2b3de5d940c854e6583e0c2c6dbe8de24de221ff36dd87878fe64c06a5e4"
+      "configHash": "sha256:a582ac54431def399e61d9b6722211be6040bc2f5c7d7eea26314bddbfec0d22",
+      "outputHash": "sha256:2c226beb48d923f70b8ebb8155fd9307892650bf9861e2f629b497c559f131d8"
     }
   },
   "adrFormatV1From": 137,
