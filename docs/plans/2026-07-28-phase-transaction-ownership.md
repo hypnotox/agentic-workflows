@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 adrs: [166]
-status: Proposed
+status: Implemented
 ---
 # Plan: Phase transaction ownership
 
@@ -96,7 +96,7 @@ commit-capable implementer for this complete phase. The implementer owns Tasks 1
 complete staged transaction, both required gates, and the phase-closing commit. Do not dispatch an
 individual task or a commit-disabled successor.
 
-- [ ] **Task 1.1: Add the failing cross-surface phase-ownership proof.** Create
+- [x] **Task 1.1: Add the failing cross-surface phase-ownership proof.** Create
   `internal/project/phase_transaction_ownership_test.go` with
   `TestPhaseTransactionOwnershipAcrossWorkflowSurfaces`. Put
   `// invariant: rendering/workflow-skill-templates:phase-transaction-ownership` immediately above
@@ -135,7 +135,7 @@ individual task or a commit-disabled successor.
   `go test ./internal/project -run TestPhaseTransactionOwnershipAcrossWorkflowSurfaces`; expected
   terminal state before implementation is test failure naming missing phase-level clauses.
 
-- [ ] **Task 1.2: Replace the plan-authoring and plan-review contract.** Modify
+- [x] **Task 1.2: Replace the plan-authoring and plan-review contract.** Modify
   `templates/skills/writing-plans/SKILL.md.tmpl`,
   `.awf/skills/parts/writing-plans/conventions-tasks.md`,
   `templates/agents/plan-reviewer.md.tmpl`, `templates/skills/reviewing-plan/SKILL.md.tmpl`,
@@ -178,7 +178,7 @@ individual task or a commit-disabled successor.
   for exact content, implementation-ready pseudocode, batch representative/edge/sites/post-check,
   context grounding, and report-only review.
 
-- [ ] **Task 1.3: Replace inline and subagent-driven task ownership with phase ownership.** Modify
+- [x] **Task 1.3: Replace inline and subagent-driven task ownership with phase ownership.** Modify
   `templates/skills/executing-plans/SKILL.md.tmpl` and
   `templates/skills/subagent-driven-development/SKILL.md.tmpl` and update their golden assertions in
   `internal/project/spine_test.go`. In `internal/catalog/standard.go`, replace the
@@ -220,7 +220,7 @@ individual task or a commit-disabled successor.
   mixed modes, `allowCommits: true`, baseline verification, full-phase brief, parent settlement,
   dirty recovery, and phase checkpoint.
 
-- [ ] **Task 1.4: Update workflow documentation, glossary, and deferred-roadmap source.** Modify
+- [x] **Task 1.4: Update workflow documentation, glossary, and deferred-roadmap source.** Modify
   `templates/docs/workflow.md.tmpl` and `templates/docs/working-with-awf.md.tmpl` so their plan and
   implementation sections describe phases as green transactions, mode per phase, phase owner versus
   helper, review settlement, and dirty recovery. Replace the workflow doc's statement that long
@@ -240,7 +240,7 @@ individual task or a commit-disabled successor.
   batching are unchanged. It must not imply concurrency, a worktree solution, patch-producing
   workers, or a task-level checkpoint.
 
-- [ ] **Task 1.5: Apply ADR-0166 operations 1 and 2 atomically with the authored behavior.** In
+- [x] **Task 1.5: Apply ADR-0166 operations 1 and 2 atomically with the authored behavior.** In
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, insert these claims in the
   topic's stable claim order. Preserve all unrelated claim text and provenance.
 
@@ -290,7 +290,7 @@ individual task or a commit-disabled successor.
   `internal/project/target_test.go` only where its existing Pi handoff workflow assertions need the
   generated settled-phase wording; do not alter TypeScript serialization or tool-policy tests.
 
-- [ ] **Task 1.6: Verify, stage explicitly, and create the phase implementation commit.** Run:
+- [x] **Task 1.6: Verify, stage explicitly, and create the phase implementation commit.** Run:
 
   ```sh
   gofmt -w internal/catalog/standard.go internal/catalog/batch_test.go internal/project/phase_transaction_ownership_test.go internal/project/spine_test.go internal/project/plan_detail_modes_test.go internal/project/guide_scopes_test.go internal/project/target_test.go internal/evals/chain_test.go
@@ -327,7 +327,7 @@ individual task or a commit-disabled successor.
 implementation helper is used because the remaining work is append-only status history, exact claim
 text, rendering, gating, and one closing commit.
 
-- [ ] **Task 2.1: Apply the remaining claim updates in declaration order.** In
+- [x] **Task 2.1: Apply the remaining claim updates in declaration order.** In
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, replace only the complete
   `memory-checkpoint-chain-coverage` claim body with:
 
@@ -361,7 +361,7 @@ text, rendering, gating, and one closing commit.
   `internal/project/target_test.go`; Phase 1's assertions must already prove the new text. Do not add
   a proof marker for an unbacked claim or move these markers to generated files.
 
-- [ ] **Task 2.2: Append the final Applied batch and freeze ADR-0166.** In
+- [x] **Task 2.2: Append the final Applied batch and freeze ADR-0166.** In
   `docs/decisions/0166-phase-transaction-ownership.md`, append one Applied event with the next global
   state sequence and exactly these declaration-order operations:
 
@@ -380,7 +380,7 @@ text, rendering, gating, and one closing commit.
   `docs/domains/rendering.md`, and any lock-linked adopter outputs. Do not hand-edit a generated
   output.
 
-- [ ] **Task 2.3: Verify, stage explicitly, and create the final implementation commit.** Run:
+- [x] **Task 2.3: Verify, stage explicitly, and create the final implementation commit.** Run:
 
   ```sh
   go test ./internal/project ./internal/evals
@@ -408,7 +408,7 @@ text, rendering, gating, and one closing commit.
   the Phase 2 commit. The later whole-implementation review does not substitute for this phase
   review because the phase contract requires settlement before its checkpoint.
 
-- [ ] **Task 2.4: Settle review findings and freeze this plan.** Resolve every Phase 2 review finding
+- [x] **Task 2.4: Settle review findings and freeze this plan.** Resolve every Phase 2 review finding
   through focused parent-owned commits that each stage the complete settlement, run
   `./awf check --staged`, pass `./x gate`, and never amend the phase-closing commit. In the final
   settlement commit, update this plan's Notes with the settled Phase 1 and Phase 2 implementation
@@ -436,8 +436,16 @@ text, rendering, gating, and one closing commit.
 
 ## Notes
 
-Concurrent same-checkout helpers remain a roadmap idea. Implementation must preserve the settled
-choice against worktree isolation and patch-producing workers and must not reinterpret Pi's existing
+Concurrent same-checkout helpers remain a roadmap idea. Implementation preserved the settled
+choice against worktree isolation and patch-producing workers and did not reinterpret Pi's existing
 serialization as transaction ownership. The final implementation review and retrospective follow
 the two settled phase commits; they are outside the phase-closing implementation transactions and
 remain parent-owned settlement work.
+
+Phase 1's report-only review found contract, documentation, and proof gaps around mixed per-phase
+routing, helper partitions, dirty recovery, empty rendering, and the representative multi-task
+phase. Commits `71c40bd3` and `c2a768c9` settled those findings; both verification passes converged
+with no findings. Phase 2's report-only review found two blocker-level invariant-backing gaps in the
+memory-checkpoint and Pi-handoff proofs. Commits `37202b1e`, `60d53734`, and `40e58606` made the
+proofs cover the complete effort recommendation, lifecycle gates, task/helper checkpoint triggers,
+and the sole post-review handoff occurrence. The final Phase 2 verification reported no findings.
