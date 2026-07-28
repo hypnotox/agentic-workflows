@@ -36,9 +36,12 @@ Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Pi checkpoint guidance permits effort-independent handoff after normal persistence, with optional confined memory, and never requires selection, telemetry lifecycle state, adoption, or structured resume.
+Pi checkpoint guidance permits effort-independent handoff after normal persistence at a settled
+phase boundary, with optional confined memory, and never requires selection, telemetry lifecycle
+state, adoption, or structured resume. Checkbox tasks and batch-helper returns do not trigger
+routine handoff.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0166
 Backing: test
 
 ### `invariant: pi-native-workflow-skills`

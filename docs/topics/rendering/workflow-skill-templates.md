@@ -37,9 +37,14 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance treats memory as optional local effort state and recommends outcome-specific `awf effort` creation when durable coordination, memory, or worktrees warrant it. It contains no selection, assignment, adoption, detour, or telemetry-lifecycle gate.
+Checkpoint guidance treats memory as optional local effort state and recommends outcome-specific
+`awf effort` creation when durable coordination, memory, or worktrees warrant it. Routine
+implementation checkpoints occur only after a phase's closing implementation commit has been
+reviewed and all findings are settled; checkbox tasks and batch-helper returns are not checkpoint
+boundaries. The guidance contains no selection, assignment, adoption, detour, or telemetry-
+lifecycle gate.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
