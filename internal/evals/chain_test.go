@@ -316,8 +316,8 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		}
 		section := body[start : start+end]
 		assertOrderedBody(t, name+" settled-phase section", section, ordered)
-		if strings.Count(body, "**Routine checkpoint.**") != 1 {
-			t.Errorf("%s renders %d routine checkpoints, want one", name, strings.Count(body, "**Routine checkpoint.**"))
+		if strings.Count(strings.ToLower(body), "routine checkpoint") != 1 {
+			t.Errorf("%s renders %d routine checkpoint instructions, want one", name, strings.Count(strings.ToLower(body), "routine checkpoint"))
 		}
 		for _, forbidden := range []string{
 			"after each implemented and reviewed task", "per-task checkpoint", "after each helper",
@@ -339,9 +339,22 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 			t.Errorf("workflow checkpoint guidance missing %q", want)
 		}
 	}
-	for _, forbidden := range []string{"selection gate", "assignment gate", "adoption gate", "detour gate", "telemetry-lifecycle gate"} {
-		if strings.Contains(strings.ToLower(workflow), forbidden) {
-			t.Errorf("workflow checkpoint guidance retains %q", forbidden)
+	projectWorkflow := read(t, filepath.Join("..", "..", "docs", "workflow.md"))
+	const effortRecommendation = "Create an outcome-specific effort with `awf effort` when durable coordination, working memory, or a managed worktree is warranted."
+	if !strings.Contains(projectWorkflow, effortRecommendation) {
+		t.Errorf("authoritative workflow checkpoint guidance missing %q", effortRecommendation)
+	}
+	for label, body := range map[string]string{"catalog workflow": workflow, "project workflow": projectWorkflow} {
+		for _, line := range strings.Split(strings.ToLower(body), "\n") {
+			mentionsTaskOrHelper := strings.Contains(line, "checkbox task") || strings.Contains(line, "batch-helper return") || strings.Contains(line, "helper return")
+			if mentionsTaskOrHelper && strings.Contains(line, "checkpoint") && !strings.Contains(line, "not checkpoint boundaries") {
+				t.Errorf("%s adds a task/helper checkpoint trigger: %q", label, line)
+			}
+			mentionsLifecycle := strings.Contains(line, "selection") || strings.Contains(line, "assignment") || strings.Contains(line, "adoption") || strings.Contains(line, "detour") || strings.Contains(line, "telemetry-lifecycle")
+			requiresCheckpointGate := strings.Contains(line, "required before a routine checkpoint") || strings.Contains(line, "requires a routine checkpoint") || strings.Contains(line, "checkpoint gate")
+			if mentionsLifecycle && requiresCheckpointGate {
+				t.Errorf("%s adds a lifecycle checkpoint gate: %q", label, line)
+			}
 		}
 	}
 	perChange := map[string]string{

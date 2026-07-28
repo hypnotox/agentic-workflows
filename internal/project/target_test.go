@@ -244,9 +244,12 @@ func TestHandoffWorkflowWithoutEffort(t *testing.T) {
 		body := renderSkillGolden(t, name, data)
 		settledAt := strings.Index(body, settledPhrase)
 		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
-		handoffAt := strings.Index(body, "invoke `handoff_session` alone")
+		handoffAt := strings.Index(body, "handoff_session")
+		if got := strings.Count(body, "handoff_session"); got != 1 {
+			t.Errorf("%s renders %d handoff_session invocations, want one settled-phase invocation", name, got)
+		}
 		if settledAt < 0 || checkpointAt < settledAt || handoffAt < checkpointAt {
-			t.Errorf("%s does not place Pi handoff after settled phase persistence", name)
+			t.Errorf("%s does not place its sole Pi handoff after settled phase persistence", name)
 		}
 		for _, banned := range []string{
 			"after every checkbox task", "after each checkbox task", "after any checkbox task",
