@@ -67,6 +67,37 @@ func TestSessionEffortAssignmentAuthority(t *testing.T) {
 	if err != nil || !reflect.DeepEqual(assignments, []Assignment{{SessionID: "a-session", EffortID: second.ID}, {SessionID: "z-session", EffortID: second.ID}}) {
 		t.Fatalf("sorted assignments = %#v, %v", assignments, err)
 	}
+	if _, err := service.Abandon(first.ID); err != nil {
+		t.Fatal(err)
+	}
+	abandonedBefore, err := service.Show(first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	abandonedBytesBefore, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", first.ID+".json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Assign(first.ID, "y-session"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.Assign(first.ID, "b-session"); err != nil {
+		t.Fatal(err)
+	}
+	abandonedAfter, err := service.Show(first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if abandonedAfter.State != StateAbandoned || abandonedAfter.CreatedAt != abandonedBefore.CreatedAt || abandonedAfter.UpdatedAt != abandonedBefore.UpdatedAt || !reflect.DeepEqual(abandonedAfter.AssignedSessionIDs, []string{"b-session", "y-session"}) {
+		t.Fatalf("abandoned retrospective assignment = %#v", abandonedAfter)
+	}
+	if after, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", first.ID+".json")); err != nil || string(after) != string(abandonedBytesBefore) {
+		t.Fatalf("abandoned assignment mutated effort = %q, %v", after, err)
+	}
+	assignments, err = service.Assignments("")
+	if err != nil {
+		t.Fatal(err)
+	}
 	linkedService, err := Open(t.Context(), linked, Options{})
 	if err != nil {
 		t.Fatal(err)
@@ -133,5 +164,48 @@ func TestSessionEffortAssignmentAuthority(t *testing.T) {
 	}
 	if raw, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", second.ID+".json")); err != nil || strings.Contains(string(raw), "assignedSessionIds") {
 		t.Fatalf("effort record duplicates assignments = %q, %v", raw, err)
+	}
+}
+
+func TestAssignmentTargetValidationPreservesAuthority(t *testing.T) {
+	cases := []struct {
+		name       string
+		targetFile string
+		assignment string
+	}{
+		{name: "missing target", assignment: `{"schemaVersion":1,"sessions":{"missing-session":"` + idB + `"}}`},
+		{name: "corrupt target", targetFile: `{`, assignment: `{"schemaVersion":1,"sessions":{"corrupt-session":"` + idB + `"}}`},
+		{name: "schema-invalid target", targetFile: `{"schemaVersion":2}`, assignment: `{"schemaVersion":1,"sessions":{"schema-session":"` + idB + `"}}`},
+		{name: "mixed map", targetFile: `{"schemaVersion":2}`, assignment: `{"schemaVersion":1,"sessions":{"valid-session":"` + idA + `","invalid-session":"` + idB + `"}}`},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			service := openEffortService(t, root, time.Date(2026, 7, 28, 0, 0, 0, 0, time.UTC))
+			if _, err := service.New("Valid target", false); err != nil {
+				t.Fatal(err)
+			}
+			if tc.targetFile != "" {
+				writeEffortFile(t, service.paths.record(idB), tc.targetFile)
+			}
+			path := service.paths.assignments()
+			writeEffortFile(t, path, tc.assignment)
+			before, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.Assignments(""); err == nil {
+				t.Fatal("invalid assignment target accepted")
+			} else {
+				var corrupt *CorruptError
+				if !errors.As(err, &corrupt) {
+					t.Fatalf("target validation error = %T %v", err, err)
+				}
+			}
+			after, err := os.ReadFile(path)
+			if err != nil || string(after) != string(before) {
+				t.Fatalf("assignment authority changed = %q, %v; want %q", after, err, before)
+			}
+		})
 	}
 }

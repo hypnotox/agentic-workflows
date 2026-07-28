@@ -57,6 +57,21 @@ func (s *Service) readAssignments() (map[string]string, error) {
 			return nil, &CorruptError{Path: path, Err: errors.New("invalid assignment entry")}
 		}
 	}
+	ids := make([]string, 0, len(file.Sessions))
+	seen := make(map[string]struct{}, len(file.Sessions))
+	for _, id := range file.Sessions {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		if _, err := s.store.load(id); err != nil {
+			return nil, &CorruptError{Path: path, Err: fmt.Errorf("invalid assignment target %s: %w", id, err)}
+		}
+	}
 	return file.Sessions, nil
 }
 
