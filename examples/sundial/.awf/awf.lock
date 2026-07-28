@@ -838,9 +838,9 @@
     },
     ".pi/extensions/awf-telemetry/index.ts": {
       "templateId": "pi/awf-telemetry/index.ts.tmpl",
-      "templateHash": "sha256:ef86b778644b8fafd06af170ff91534f4b170bc0f27556fc6fb4f72c492a1f25",
+      "templateHash": "sha256:ea40cae43e86637f3b01654599742513faa3e4b03d58befa0c8305bcd93eb86d",
       "configHash": "sha256:d8a8e92792530a4b31f4be54d072e3b03e5659533cf84777401fc0c78103bbd3",
-      "outputHash": "sha256:29850faebcc2f086221988c2ca70e8fceed41ea516e5231f53bb9b29694639cc"
+      "outputHash": "sha256:562f0086c83f8d8c33ddc98e9fa0b6d40c9e14d7a3f937aa8c1c8c063a5eaa4a"
     },
     ".pi/extensions/awf-telemetry/protocol.ts": {
       "templateId": "pi/awf-telemetry/protocol.ts.tmpl",

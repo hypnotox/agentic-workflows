@@ -11,6 +11,8 @@ Current assignment joins are a reporting concern. A session observation does not
 
 Integrity reporting is deterministic and bounded. Readers report malformed headers, malformed or unterminated records, unsupported versions, unsafe ownership, and duplicate observation IDs without repairing the stream. Read failures preserve the bytes already present. No lifecycle, trajectory, retention, or heuristic behavior is active in this topic.
 
+Lock release assumes owner-only resident directories and conforming writers that use each lock's unique quarantine name; such writers never address another writer's quarantine. Release keeps atomic quarantine rename, no-follow/current-owner/stable-identity/content validation, directory fsync, and a final validation that refuses and preserves an injectable replacement observed before unlink. Portable Node/POSIX cannot unlink by handle, so deliberate same-user replacement after that final validation is outside the supported threat boundary.
+
 ## Claims
 
 ### `invariant: event-protocol-and-ledger`

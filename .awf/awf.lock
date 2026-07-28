@@ -310,9 +310,9 @@
     },
     ".pi/extensions/awf-telemetry/index.ts": {
       "templateId": "pi/awf-telemetry/index.ts.tmpl",
-      "templateHash": "sha256:ef86b778644b8fafd06af170ff91534f4b170bc0f27556fc6fb4f72c492a1f25",
+      "templateHash": "sha256:ea40cae43e86637f3b01654599742513faa3e4b03d58befa0c8305bcd93eb86d",
       "configHash": "sha256:a46cd1b1430ebab6ecd153b92cc4f69f440be7a7fe3076c2bbdc92f51ee925a8",
-      "outputHash": "sha256:40c948ddde6933a8756ae5d958b04f6b6cff66fa9cc19dd70e8dc225fc2d2553"
+      "outputHash": "sha256:ce4ed2d773b3a88a05aa118265c669be6ecf859282650fa7423e0d0974f80f89"
     },
     ".pi/extensions/awf-telemetry/protocol.ts": {
       "templateId": "pi/awf-telemetry/protocol.ts.tmpl",
@@ -714,8 +714,8 @@
     "docs/topics/tooling/workflow-telemetry.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:ee8d140ac460b5be41734a809bf58945430c42ec69ca5b320c8a242d56050358",
-      "outputHash": "sha256:84470f19340b14c41dbfc59ed676dfeb320931f935916b1a22bdcea7bdcd94ab"
+      "configHash": "sha256:363e40a77c7d5a3e2156f6808319c79acaae81e3a80bbd8dea261e123275cd9b",
+      "outputHash": "sha256:b0e40d5ac0909d0bbe4e14e69eb1969287ded5dacca6d8a6fe454bccd0de2db9"
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
