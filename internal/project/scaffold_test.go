@@ -41,6 +41,7 @@ func writeScaffold(t *testing.T, b []byte) string {
 // TestScaffoldEnablesCoreTargets asserts that the scaffolded config enables
 // exactly the catalog's core skills and core docs (ADR-0022), with a concrete
 // negative check that a known opt-in skill is omitted.
+// invariant: tooling/init-and-enablement:init-hooks-default-on
 func TestScaffoldEnablesCoreTargets(t *testing.T) {
 	b, _, err := ScaffoldConfig("myproj", nil, nil, nil)
 	if err != nil {
@@ -60,24 +61,10 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 		}
 	}
 	// invariant: rendering/project-output-plan:scaffold-core-only
-	// invariant: rendering/catalog-and-targets:exploration-skill-closure
 	if got := sliceSet(cfg.Skills); !maps.Equal(got, wantSkills) {
 		t.Errorf("scaffold skills = %v, want core set %v",
 			slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantSkills)))
 	}
-	exploring := cat.Skills["exploring"]
-	if !exploring.Core || !slices.Contains(cfg.Skills, "exploring") {
-		t.Errorf("exploring core = %t, scaffolded = %t, want both true", exploring.Core, slices.Contains(cfg.Skills, "exploring"))
-	}
-	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-		if !slices.Contains(cat.Skills[consumer].RequiresSkills, "exploring") {
-			t.Errorf("%s does not require exploring", consumer)
-		}
-		if slices.Contains(exploring.RequiresSkills, consumer) {
-			t.Errorf("exploring has reciprocal requirement on %s", consumer)
-		}
-	}
-
 	// No doc remains core (ADR-0043 promoted the only three core docs - workflow,
 	// doc-standard, agents-md-standard - to mandatory singletons outside cat.Docs).
 	if len(cfg.Docs) != 0 {
@@ -96,9 +83,7 @@ func TestScaffoldEnablesCoreTargets(t *testing.T) {
 func TestScaffoldCatalogTrim(t *testing.T) {
 	cat := catalog.Standard
 
-	// A selected chain skill pulls its closure (ADR-0081 Decision 9): the trim
-	// is closure-completed, its agents derived from the selection, and every
-	// addition beyond the selection returned kind-prefixed.
+	// Advisory profile neighbors do not expand a trim.
 	pickSkills := []string{"tdd", "brainstorming"}
 	b, added, err := ScaffoldConfig("myproj", nil, &config.CatalogTrim{Skills: &pickSkills}, nil)
 	if err != nil {
@@ -108,10 +93,7 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	wantNodes := catalog.Closure(cat, []catalog.Node{
-		{Kind: "skill", Name: "tdd"},
-		{Kind: "skill", Name: "brainstorming"},
-	})
+	wantNodes := []catalog.Node{{Kind: "skill", Name: "tdd"}, {Kind: "skill", Name: "brainstorming"}}
 	wantSkills, wantAdded := map[string]bool{}, map[string]bool{}
 	selected := map[string]bool{"tdd": true, "brainstorming": true}
 	for _, node := range wantNodes {
@@ -131,11 +113,8 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if got := sliceSet(added); !maps.Equal(got, wantAdded) {
 		t.Errorf("closure additions = %v, want %v", slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantAdded)))
 	}
-	if len(cfg.Agents) != 3 {
-		t.Errorf("derived agents = %v, want the three reviewers", cfg.Agents)
-	}
-	if !slices.Contains(added, "skill reviewing-plan-resync") || !slices.Contains(added, "agent plan-reviewer") {
-		t.Errorf("added missing expected kind-prefixed entries: %v", added)
+	if len(cfg.Agents) != 0 || len(added) != 0 {
+		t.Errorf("advisory trim added structural artifacts: agents=%v additions=%v", cfg.Agents, added)
 	}
 	if len(cfg.Docs) != 0 {
 		t.Errorf("nil docs trim should yield no docs (no core docs remain), got %v", cfg.Docs)
@@ -190,6 +169,14 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	}
 	if got := sliceSet(cfg2.Skills); !maps.Equal(got, coreSkills) {
 		t.Errorf("nil skills trim should keep core skills, got %v", slices.Sorted(maps.Keys(got)))
+	}
+
+	// A selected reviewing skill pulls its required reviewing agent into the
+	// closure-derived agent selection.
+	reviewing := []string{"reviewing-plan"}
+	_, agentNames, _, added := scaffoldSelection(cat, &config.CatalogTrim{Skills: &reviewing})
+	if !slices.Contains(agentNames, "plan-reviewer") || !slices.Contains(added, "agent plan-reviewer") {
+		t.Errorf("reviewing skill closure = agents %v, added %v", agentNames, added)
 	}
 }
 

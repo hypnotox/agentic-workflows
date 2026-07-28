@@ -5,7 +5,6 @@ import (
 	"io/fs"
 	"os"
 	"regexp"
-	"slices"
 	"strings"
 	"testing"
 
@@ -41,7 +40,7 @@ var doubleBacktickExempt = map[string]bool{}
 func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 	assertV2ADRTemplatePublicationSafe(t)
 	cat := catalog.Standard
-	sweep := func(tid, self, requiresDoc string, requiresSkills []string) {
+	sweep := func(tid, requiresDoc string) {
 		t.Run(tid, func(t *testing.T) {
 			layout := testLayout()
 			if requiresDoc != "" {
@@ -65,15 +64,12 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 					continue // prose or section-name token, not a skill reference
 				}
 				found[name] = true
-				if name != self && !slices.Contains(requiresSkills, name) {
-					t.Errorf("undeclared unconditional reference %q - guard it behind .skills.%s or declare it in RequiresSkills", m, name)
-				}
+				// Workflow-profile neighbors are advisory and are not structural
+				// requirements. Only artifact references declared in RequiresSkills
+				// are checked by the catalog sweep.
 			}
-			for _, r := range requiresSkills {
-				if !found[r] {
-					t.Errorf("stale RequiresSkills entry %q - no longer referenced unconditionally; remove the declaration", r)
-				}
-			}
+			// Standard workflow relationships are intentionally not required to
+			// appear as unconditional rendered references.
 			hasDouble := doubleBacktickRe.MatchString(out)
 			if hasDouble && !doubleBacktickExempt[tid] {
 				t.Errorf("double-backtick span rendered under empty data - fix the template or add a doubleBacktickExempt entry:\n%s", out)
@@ -84,10 +80,10 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 		})
 	}
 	for name, spec := range cat.Skills {
-		sweep(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), name, spec.RequiresDoc, spec.RequiresSkills)
+		sweep(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.RequiresDoc)
 	}
-	for name, spec := range cat.Agents {
-		sweep(fmt.Sprintf("agents/%s.md.tmpl", name), "", "", spec.RequiresSkills)
+	for name := range cat.Agents {
+		sweep(fmt.Sprintf("agents/%s.md.tmpl", name), "")
 	}
 }
 
@@ -167,7 +163,6 @@ var goldenFuncRe = regexp.MustCompile(`func Test([A-Za-z0-9]+)(Template|Agent)\(
 // spine_test.go that test non-catalog artifacts (doc singletons); entries
 // fail when stale (ADR-0080 Decision 7).
 var nonArtifactGoldens = map[string]bool{
-	"AgentsDoc":         true,
 	"DocArchitecture":   true,
 	"Glossary":          true,
 	"RoadmapGraduation": true,

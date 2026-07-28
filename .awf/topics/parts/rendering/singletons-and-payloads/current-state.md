@@ -1,4 +1,4 @@
-Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, the memory gitignore, telemetry outputs, and executable-mode rules.
+Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules.
 
 ## Claims
 
@@ -28,9 +28,9 @@ Backing: test
 
 ### `invariant: memory-gitignore-always-on`
 
-Every render declares a self-ignoring `.gitignore` for the five repository-wide resident roots: efforts, assignments, memory, worktrees, and metrics. Only the root ignore file is governed; dynamic descendants are preserved.
+Every render declares a self-ignoring `.gitignore` for exactly the three repository-wide resident roots: efforts, memory, and worktrees. Only each root ignore file is governed; dynamic descendants are preserved.
 Origin: ADR-0148
-Revised-by: ADR-0159, ADR-0164
+Revised-by: ADR-0159, ADR-0164, ADR-0167
 Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`
@@ -51,9 +51,8 @@ The runner is a dedicated config-tree render block rather than a catalog docs en
 Origin: ADR-0148
 Backing: test
 
-### `invariant: workflow-telemetry-governed-outputs-and-resident-data`
+### `invariant: resident-output-preservation`
 
-The output plan governs the five resident-root `.gitignore` files while never claiming dynamic descendants. Tracked render authority is read from the invoking checkout while resident outputs and preservation use the primary control root. Sweep, discovery, target disable, and uninstall preserve residents and report each nonempty root deterministically; no ordinary operation recursively removes a managed worktree.
-Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0164
+The output plan preserves exactly the effort, memory, and managed-worktree resident roots and their dynamic descendants at the primary control root. Generation 21 destructively removes only the obsolete metrics and assignments roots.
+Origin: ADR-0167
 Backing: test

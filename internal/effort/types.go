@@ -29,19 +29,17 @@ type Worktree struct {
 	AttachedAt time.Time `json:"attachedAt"`
 }
 
-// Record is the logical effort view. AssignedSessionIDs are joined from the
-// repository assignment authority and are never persisted in the effort file.
+// Record is the logical effort view.
 type Record struct {
-	SchemaVersion      int         `json:"schemaVersion"`
-	ID                 string      `json:"id"`
-	Title              string      `json:"title"`
-	State              State       `json:"state"`
-	CreatedAt          time.Time   `json:"createdAt"`
-	UpdatedAt          time.Time   `json:"updatedAt"`
-	MemoryPresent      bool        `json:"memoryPresent"`
-	Worktree           *Worktree   `json:"worktree"`
-	Integration        Integration `json:"integration"`
-	AssignedSessionIDs []string    `json:"assignedSessionIds"`
+	SchemaVersion int         `json:"schemaVersion"`
+	ID            string      `json:"id"`
+	Title         string      `json:"title"`
+	State         State       `json:"state"`
+	CreatedAt     time.Time   `json:"createdAt"`
+	UpdatedAt     time.Time   `json:"updatedAt"`
+	MemoryPresent bool        `json:"memoryPresent"`
+	Worktree      *Worktree   `json:"worktree"`
+	Integration   Integration `json:"integration"`
 }
 
 // RepairChange is one deterministic correction made from confined filesystem truth.

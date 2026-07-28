@@ -103,7 +103,7 @@ type UninstallReport struct {
 	MetricsPreserved bool // compatibility summary for callers; roots are authoritative.
 }
 
-var residentRootNames = []string{"efforts", "assignments", "memory", "worktrees", "metrics"}
+var residentRootNames = []string{"efforts", "memory", "worktrees"}
 
 // inspectResidentRoots examines direct children only. It never traverses a
 // dynamic resident tree; a descendant other than the managed .gitignore keeps
@@ -148,7 +148,7 @@ func preserveResidentRemoval(path string, preserved []string) bool {
 }
 
 // Uninstall removes awf's generated footprint while preserving dynamic resident
-// workflow metrics. It is a free function so a broken config does not block it.
+// state. It is a free function so a broken config does not block it.
 // touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
 func Uninstall(root string) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
@@ -169,7 +169,7 @@ func Uninstall(root string) (UninstallReport, error) {
 	if err != nil {
 		return UninstallReport{}, err
 	}
-	report := UninstallReport{PreservedRoots: preserved, MetricsPreserved: slices.Contains(preserved, "metrics")}
+	report := UninstallReport{PreservedRoots: preserved}
 	dirs := map[string]bool{}
 	for path := range lock.Files {
 		// A non-local entry (corrupted or malicious lock) would delete outside

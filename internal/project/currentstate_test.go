@@ -61,8 +61,8 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	}
 }
 
-func TestMetricsResidentPathsAreNeverEligibleOrNested(t *testing.T) {
-	const adversarial = ".awf/metrics/efforts/e/.awf/config.yaml"
+func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
+	const adversarial = ".awf/efforts/e/.awf/config.yaml"
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: adversarial, Mode: snapshot.Regular, Bytes: []byte("prefix: nested\n")},
 		{Path: "internal/owned.go", Mode: snapshot.Regular, Bytes: []byte("package internal\n")},
@@ -77,8 +77,8 @@ func TestMetricsResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	if !slices.Contains(got, "internal/owned.go") {
 		t.Fatalf("ordinary source was filtered: %v", got)
 	}
-	if !isMetricsResidentPath(adversarial) || isMetricsResidentPath(".awf/metric/other") {
-		t.Fatal("metrics resident path predicate is not closed to .awf/metrics")
+	if !isMetricsResidentPath(adversarial) || isMetricsResidentPath(".awf/effort/other") {
+		t.Fatal("resident path predicate is not closed to resident roots")
 	}
 }
 

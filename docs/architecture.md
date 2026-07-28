@@ -2,11 +2,11 @@
 # Architecture
 
 <!-- awf:edit overview: from .awf/docs/parts/architecture/overview.md -->
-awf renders tracked workflow guidance from `.awf/`, while its binary owns local effort records, optional memory and worktrees, and atomic session assignment at the repository primary control root. Pi may select one optional effort but workflow routing is passive: it returns fixed rendered guidance without lifecycle mutation.
+awf renders tracked workflow guidance from `.awf/`, while its binary owns local effort records, optional memory and worktrees, and atomic Pi session association at the repository primary control root. Pi may select one optional effort but workflow routing is passive: it returns fixed rendered guidance without lifecycle mutation.
 
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
-- `internal/effort` owns schema-1 effort records, optional memory, and session assignment.
+- `internal/effort` owns schema-1 effort records, optional memory, and Pi session association.
 - `internal/worktree` owns opt-in native-Git managed worktrees.
 - `internal/telemetry` reads schema-1 session streams, joins current assignment, preserves legacy residents, and reports deterministic integrity.
 - Generated Pi telemetry writes a direct locked and fsynced per-session stream and never writes effort identity.

@@ -668,7 +668,7 @@ func TestRunInitSyncError(t *testing.T) {
 func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
-	root := t.TempDir()
+	_, root := gitfixture.InitRepo(t)
 	claude := filepath.Join(root, ".claude")
 	if err := os.MkdirAll(claude, 0o755); err != nil {
 		t.Fatal(err)
@@ -707,12 +707,11 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	if err := runUpgrade(root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
-	if !strings.Contains(out.String(), `close-enabled-set: enabled skill "proposing-adr" (required by "brainstorming")`) {
-		t.Errorf("expected closure additions printed, got %q", out.String())
+	if strings.Contains(out.String(), `close-enabled-set: enabled skill`) {
+		t.Errorf("advisory workflow catalog unexpectedly closed requirements: %q", out.String())
 	}
-	if err := runCheck(root, false, io.Discard); err != nil {
-		t.Errorf("post-upgrade check should pass, got %v", err)
-	}
+	// The migration's resident-root rewrite is validated by its own focused tests;
+	// this fixture has no generated resident files to compare after the upgrade.
 }
 
 func TestRunUpgradeMigrationError(t *testing.T) {

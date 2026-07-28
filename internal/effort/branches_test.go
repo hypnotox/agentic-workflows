@@ -22,7 +22,7 @@ func TestEffortFocusedFailureBranches(t *testing.T) {
 	})
 
 	t.Run("later resident roots", func(t *testing.T) {
-		for _, leaf := range []string{"memory", "worktrees", "assignments"} {
+		for _, leaf := range []string{"memory", "worktrees"} {
 			t.Run(leaf, func(t *testing.T) {
 				primary := filepath.Join(t.TempDir(), "primary")
 				if err := os.MkdirAll(filepath.Join(primary, ".awf", "efforts"), 0o700); err != nil {
@@ -211,21 +211,14 @@ func TestEffortFocusedFailureBranches(t *testing.T) {
 		if _, err := service.Repair(idA); !errors.Is(err, os.ErrPermission) || !strings.Contains(err.Error(), service.paths.managedWorktree(idA)) {
 			t.Fatalf("repair registration error = %v", err)
 		}
-		if err := os.MkdirAll(service.paths.assign, 0o700); err != nil {
-			t.Fatal(err)
-		}
 		writeEffortFile(t, service.paths.record(idA), schemaRecordJSON(time.Now().UTC(), "null", "none")+" x")
 		if _, err := service.Show(idA); err == nil {
 			t.Fatal("trailing malformed JSON accepted")
 		}
 		writeEffortFile(t, service.paths.record(idA), schemaRecordJSON(time.Now().UTC(), "null", "none"))
-		writeEffortFile(t, service.paths.assignments(), "{")
-		if _, err := service.Show(idA); err == nil {
-			t.Fatal("show accepted corrupt assignments")
-		}
 		service.worktrees = func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil }
-		if _, err := service.Repair(idA); err == nil || !strings.Contains(err.Error(), "join assignments") {
-			t.Fatalf("repair assignment join error = %v", err)
+		if _, err := service.Repair(idA); err != nil {
+			t.Fatalf("repair worktree inspection error = %v", err)
 		}
 	})
 }

@@ -47,15 +47,17 @@ Hard rules every change must respect:
 <!-- awf:section workflow -->
 ## Workflow
 
-{{ if .skills.brainstorming }}Non-trivial work starts with `{{ .prefix }}-brainstorming`: it settles intent and design, then hands off through the chain (ADR and plan when warranted, implementation, review, retrospective), each skill's terminal step naming its successor.
+{{ if .skills.brainstorming }}For non-trivial work, brainstorming is often useful; select any enabled skill whose purpose fits, and treat catalog relationships as advice.
 
-{{ with .taskSkillRows }}Task skills for specific situations:
+{{ with .taskSkillRows }}Enabled skills:
 
 {{ . }}
 
-{{ end }}{{if .targetSessionHandoff}}In Pi, enter every governed skill through the `awf_workflow` router with the semantic skill name; never load a governed body directly.
+{{ end }}{{if .targetSessionHandoff}}In Pi, use any enabled native skill when its purpose fits the current work.
 
-{{end}}{{ end }}Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
+{{end}}{{ end }}Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
+
+Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full rules: [{{ . }}]({{ . }}).{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section working-memory -->

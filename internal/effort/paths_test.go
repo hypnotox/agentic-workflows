@@ -9,13 +9,14 @@ import (
 )
 
 // invariant: tooling/effort-management:effort-record-authority
+// invariant: rendering/singletons-and-payloads:resident-output-preservation
 func TestEffortPathsClosedResidentRoots(t *testing.T) {
 	primary := filepath.Join(t.TempDir(), "primary")
 	p, err := resolvePaths(awfgit.ControlRoots{PrimaryRoot: primary})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, root := range []string{p.efforts, p.memory, p.worktrees, p.assign} {
+	for _, root := range []string{p.efforts, p.memory, p.worktrees} {
 		if err := p.ensure(root); err != nil {
 			t.Fatal(err)
 		}
@@ -26,7 +27,7 @@ func TestEffortPathsClosedResidentRoots(t *testing.T) {
 	if err := p.ensure(filepath.Join(primary, "other")); err == nil {
 		t.Fatal("unknown resident root accepted")
 	}
-	if p.record(idA) != filepath.Join(p.efforts, idA+".json") || p.memoryFile(idA) != filepath.Join(p.memory, idA+".md") || p.managedWorktree(idA) != filepath.Join(p.worktrees, idA) || p.assignments() != filepath.Join(p.assign, "sessions.json") {
+	if p.record(idA) != filepath.Join(p.efforts, idA+".json") || p.memoryFile(idA) != filepath.Join(p.memory, idA+".md") || p.managedWorktree(idA) != filepath.Join(p.worktrees, idA) {
 		t.Fatal("stable ID-derived paths changed")
 	}
 }

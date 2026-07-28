@@ -5,48 +5,37 @@ import (
 	"fmt"
 )
 
-// ValidateWorkflowMappings verifies that every governed standard skill has a
-// closed body kind. The router uses this metadata only to describe the fixed
-// body it returns; it has no workflow-state authority.
-func ValidateWorkflowMappings(cat *Catalog) error {
+// ValidateWorkflowProfiles verifies complete skill selection metadata. Profile
+// neighbors are advisory: they must exist, be distinct, and cannot self-reference.
+func ValidateWorkflowProfiles(cat *Catalog) error {
 	if cat == nil {
 		return errors.New("workflow catalog is nil")
 	}
 	for name, spec := range cat.Skills {
-		if spec.Workflow == nil {
-			return fmt.Errorf("skill %q has no workflow mapping", name)
+		p := spec.Profile
+		if !validWorkflowKind(p.Kind) {
+			return fmt.Errorf("skill %q has unknown workflow kind %q", name, p.Kind)
 		}
-		if !validWorkflowKind(spec.Workflow.Kind) {
-			return fmt.Errorf("skill %q has unknown workflow kind %q", name, spec.Workflow.Kind)
+		if p.Purpose == "" || p.Trigger == "" {
+			return fmt.Errorf("skill %q has incomplete workflow profile", name)
+		}
+		for _, neighbors := range [][]string{p.UsuallyFollows, p.CommonFollowUps} {
+			seen := map[string]bool{}
+			for _, neighbor := range neighbors {
+				if neighbor == name {
+					return fmt.Errorf("skill %q names itself as a workflow neighbor", name)
+				}
+				if _, ok := cat.Skills[neighbor]; !ok {
+					return fmt.Errorf("skill %q names unknown workflow neighbor %q", name, neighbor)
+				}
+				if seen[neighbor] {
+					return fmt.Errorf("skill %q duplicates workflow neighbor %q", name, neighbor)
+				}
+				seen[neighbor] = true
+			}
 		}
 	}
 	return nil
-}
-
-// WorkflowMappingsForSkills returns enabled fixed-body kinds and rejects stale,
-// duplicate, and unmapped names before a router can advertise them.
-func WorkflowMappingsForSkills(cat *Catalog, enabled []string) (map[string]WorkflowMapping, error) {
-	if cat == nil {
-		return nil, errors.New("workflow catalog is nil")
-	}
-	result := make(map[string]WorkflowMapping, len(enabled))
-	for _, name := range enabled {
-		if _, duplicate := result[name]; duplicate {
-			return nil, fmt.Errorf("enabled workflow skill %q is duplicated", name)
-		}
-		spec, ok := cat.Skills[name]
-		if !ok {
-			return nil, fmt.Errorf("enabled workflow skill %q is stale", name)
-		}
-		if spec.Workflow == nil {
-			return nil, fmt.Errorf("enabled skill %q has no workflow mapping", name)
-		}
-		if !validWorkflowKind(spec.Workflow.Kind) {
-			return nil, fmt.Errorf("skill %q has unknown workflow kind %q", name, spec.Workflow.Kind)
-		}
-		result[name] = *spec.Workflow
-	}
-	return result, nil
 }
 
 func validWorkflowKind(value WorkflowKind) bool {

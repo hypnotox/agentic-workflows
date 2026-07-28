@@ -274,11 +274,9 @@ func TestControlRootResidentNameClosedSet(t *testing.T) {
 	primary := filepath.Join(t.TempDir(), "primary with spaces")
 	roots := awfgit.ControlRoots{PrimaryRoot: primary}
 	for name, leaf := range map[awfgit.ResidentName]string{
-		awfgit.ResidentEfforts:     "efforts",
-		awfgit.ResidentAssignments: "assignments",
-		awfgit.ResidentMemory:      "memory",
-		awfgit.ResidentWorktrees:   "worktrees",
-		awfgit.ResidentMetrics:     "metrics",
+		awfgit.ResidentEfforts:   "efforts",
+		awfgit.ResidentMemory:    "memory",
+		awfgit.ResidentWorktrees: "worktrees",
 	} {
 		t.Run("accepts-"+leaf, func(t *testing.T) {
 			got, err := roots.ResidentRoot(name)
@@ -311,7 +309,7 @@ func TestControlRootRejectsSymlinkedOrUnconfinedResidentRoots(t *testing.T) {
 		if err := os.Symlink(outside, filepath.Join(roots.PrimaryRoot, ".awf")); err != nil {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
-		_, err := roots.ResidentRoot(awfgit.ResidentMetrics)
+		_, err := roots.ResidentRoot(awfgit.ResidentWorktrees)
 		requireNonForceableHardSafety(t, err, "symlink", filepath.Join(roots.PrimaryRoot, ".awf"))
 	})
 
@@ -321,11 +319,11 @@ func TestControlRootRejectsSymlinkedOrUnconfinedResidentRoots(t *testing.T) {
 			t.Fatal(err)
 		}
 		outside := t.TempDir()
-		if err := os.Symlink(outside, filepath.Join(roots.PrimaryRoot, ".awf", "metrics")); err != nil {
+		if err := os.Symlink(outside, filepath.Join(roots.PrimaryRoot, ".awf", "worktrees")); err != nil {
 			t.Skipf("symlinks unavailable: %v", err)
 		}
-		_, err := roots.ResidentRoot(awfgit.ResidentMetrics)
-		requireNonForceableHardSafety(t, err, "symlink", filepath.Join(roots.PrimaryRoot, ".awf", "metrics"))
+		_, err := roots.ResidentRoot(awfgit.ResidentWorktrees)
+		requireNonForceableHardSafety(t, err, "symlink", filepath.Join(roots.PrimaryRoot, ".awf", "worktrees"))
 	})
 
 	t.Run("symlinked-invoking-ancestor", func(t *testing.T) {

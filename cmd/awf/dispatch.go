@@ -97,13 +97,12 @@ var handlers = map[string]handler{
 	"init": func(c *cmdCtx) error {
 		return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
 	},
-	"render":  func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
-	"check":   runCheckGroup,
-	"audit":   func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
-	"effort":  runEffort,
-	"metrics": runMetrics,
-	"list":    func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
-	"config":  func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"render": func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
+	"check":  runCheckGroup,
+	"audit":  func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"effort": runEffort,
+	"list":   func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"config": func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
 	"context": func(c *cmdCtx) error {
 		return runContext(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout)
 	},

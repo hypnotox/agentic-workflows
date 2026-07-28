@@ -45,9 +45,9 @@ func TestResolveDisableCascadeSizes(t *testing.T) {
 		want []string
 	}{
 		{"brainstorming", []string{"skill brainstorming"}},
-		{"reviewing-plan", []string{"agent plan-reviewer", "skill brainstorming", "skill proposing-adr", "skill reviewing-adr", "skill reviewing-plan", "skill reviewing-plan-resync", "skill writing-plans"}},
-		{"executing-plans", []string{"agent plan-reviewer", "skill brainstorming", "skill executing-direct", "skill executing-plans", "skill proposing-adr", "skill reviewing-adr", "skill reviewing-impl", "skill reviewing-plan", "skill reviewing-plan-resync", "skill subagent-driven-development", "skill writing-plans"}},
-		{"retrospective", []string{"agent plan-reviewer", "skill brainstorming", "skill executing-direct", "skill executing-plans", "skill proposing-adr", "skill retrospective", "skill reviewing-adr", "skill reviewing-impl", "skill reviewing-plan", "skill reviewing-plan-resync", "skill subagent-driven-development", "skill writing-plans"}},
+		{"reviewing-plan", []string{"skill reviewing-plan"}},
+		{"executing-plans", []string{"skill executing-plans"}},
+		{"retrospective", []string{"skill retrospective"}},
 	}
 	for _, tc := range cases {
 		plan := p.ResolveDisable("skill", tc.seed)

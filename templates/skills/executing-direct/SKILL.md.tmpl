@@ -21,7 +21,7 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 <!-- awf:include checkpoint-routine -->
 
-6. {{ if .targetWorkflowRouter }}Call `awf_workflow` alone with `skill: "reviewing-impl"` as the terminal step.{{ else }}Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.{{ end }}
+6. {{ if .targetWorkflowRouter }}Call `the native skill` alone with `skill: "reviewing-impl"` as the terminal step.{{ else }}Invoke `{{ .prefix }}-reviewing-impl` as the terminal step.{{ end }}
 
 ## Boundaries
 

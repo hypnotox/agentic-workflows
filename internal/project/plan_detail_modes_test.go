@@ -46,7 +46,7 @@ func TestPlanTaskDetailModesStayAligned(t *testing.T) {
 
 	root := testsupport.RepoRoot(t)
 	for _, surface := range []planPolicySurface{
-		{name: ".pi/awf-workflows/writing-plans.md", start: "- **Tasks:**", end: "- **Commit subjects"},
+		{name: ".pi/skills/awf-writing-plans/SKILL.md", start: "- **Tasks:**", end: "- **Commit subjects"},
 		{name: ".pi/agents/plan-reviewer.md", start: "1. **executability**", end: "1. **doc-currency"},
 		{name: "docs/plans/README.md", start: "- Phases of tasks", end: "- A commit step"},
 		{name: "docs/plans/template.md", start: "- [ ] **Task 1.1", end: "- [ ] **Task 1.2"},

@@ -1,4 +1,0 @@
-title: Workflow telemetry
-summary: Durable effort telemetry, projections, retention, and workflow diagnosis.
-paths:
-  - internal/telemetry/**

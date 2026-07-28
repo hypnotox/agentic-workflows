@@ -24,9 +24,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling Pi renders exactly five governed extension files with provenance: two subagent files, handoff, telemetry index, and descriptor-derived protocol. The telemetry descriptor is attributed input, resident configuration has no widget projection, and all files follow normal render and cleanup semantics.
+Enabling Pi renders exactly the two subagent extension files and handoff extension with provenance. No telemetry extension or protocol output renders, and all remaining files follow normal render and cleanup semantics.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164
+Revised-by: ADR-0162, ADR-0164, ADR-0167
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -37,15 +37,15 @@ Backing: test
 
 ### `invariant: pi-minimum-runtime`
 
-All three generated Pi extension factory entrypoints require Pi 0.81.1 or newer with the event, queued-command, persisted custom-entry, widget, and shutdown APIs their contracts use. They share one actionable compatibility notification on an older or core-API-incompatible runtime and fail before registering commands, tools, or other functional hooks; context-only APIs are checked before use and degrade visibly rather than being guessed.
+Generated Pi extension entrypoints require the minimum Pi runtime APIs used by the retained subagent and handoff contracts, report one actionable incompatibility notice, and fail before registering functional hooks when required APIs are absent.
 Origin: ADR-0148
-Revised-by: ADR-0162
+Revised-by: ADR-0162, ADR-0167
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-Pinned Pi runtime smoke covers generated TypeScript loading, optional effort selection, passive workflow routing, optional-selection handoff, and direct schema-1 session writer behavior. It verifies the old lifecycle and projector surface is absent.
+Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, and effort-independent handoff, and verifies telemetry, router, and selection surfaces are absent.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167
 Backing: unbacked
-Verify: Run `./x pi-test run` before release and exercise `/awf-effort`, `awf_workflow`, a no-selection handoff, and one locked direct session write.
+Verify: Run `./x pi-test run` to exercise native Pi skill discovery and effort-independent handoff, with no telemetry, router, or selection.

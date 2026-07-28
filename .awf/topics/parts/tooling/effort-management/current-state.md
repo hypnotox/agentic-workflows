@@ -4,14 +4,9 @@ The awf binary owns lightweight repository-local effort records and their option
 
 ### `invariant: effort-record-authority`
 
-The awf binary is the only allocator of lowercase UUIDv4 effort IDs and owns schema-1 current-state records at stable ID-derived paths, replacing each record atomically under a repository-local lock. A valid record has a trimmed nonblank UTF-8 title of at most 160 bytes; active, completed, or abandoned state; immutable UTC creation time and monotonic UTC update time; filesystem-truth memory presence; an exact legal worktree/integration pair; and sorted assigned session IDs joined logically from the separate assignment authority rather than duplicated in the persisted record. Creation defaults to normalized effort-owned memory, rename changes display metadata only, lifecycle changes retain memory and worktree metadata, reopen accepts either terminal state, and repair preserves corrupt input while changing and reporting only facts derivable from confined resident state. This binary-owned state is repository-local orchestration authority only; Git-tracked code, ADRs, plans, and documentation remain durable project truth and are never governed by an effort record.
+The awf binary alone allocates lowercase UUIDv4 effort IDs and owns schema-1 repository-local effort records and optional memory and managed-worktree state. Records contain no Pi-session assignment; creation, rename, lifecycle, and repair retain their existing resident-state authority without replacing Git-tracked project truth.
 Origin: ADR-0164
-Backing: test
-
-### `invariant: session-effort-assignment`
-
-The schema-1 `.awf/assignments/sessions.json` authority is exactly `{"schemaVersion":1,"sessions":{"<pi-session-id>":"<effort-id>"}}`: each bounded safe Pi session ID maps to zero or one existing effort ID, and no effort record persists that relationship. Assignment, explicit reassignment including to completed or abandoned efforts, and unassignment validate resident state under the repository lock and atomically replace this one map with no-follow, owner, and durability checks; malformed authority is refused without rewriting it, and an unknown effort or session is refused. Assignment never creates adoption or history and never changes effort status. List and show derive each effort's sorted assigned session IDs from this authority, while `assignments` emits deterministic session order from primary and linked worktree invocations.
-Origin: ADR-0164
+Revised-by: ADR-0167
 Backing: test
 
 ### `invariant: managed-worktree-lifecycle`

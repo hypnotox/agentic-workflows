@@ -58,7 +58,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const obsolete = ".awf/metrics/obsolete"
+	const obsolete = ".awf/efforts/obsolete"
 	lock.Files[obsolete] = manifest.Entry{}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
@@ -77,13 +77,13 @@ func TestUninstallPreservesResidentWorkflowMetrics(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	resident := filepath.Join(root, ".awf", "metrics", "efforts", "e", "sessions", "s.jsonl")
+	resident := filepath.Join(root, ".awf", "efforts", "efforts", "e", "sessions", "s.jsonl")
 	testsupport.WriteFile(t, resident, "resident\n")
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock.Files[".awf/metrics/efforts/e/sessions/s.jsonl"] = manifest.Entry{}
+	lock.Files[".awf/efforts/efforts/e/sessions/s.jsonl"] = manifest.Entry{}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -91,10 +91,10 @@ func TestUninstallPreservesResidentWorkflowMetrics(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !report.MetricsPreserved {
-		t.Fatal("resident metrics were not reported preserved")
+	if !slices.Contains(report.PreservedRoots, "efforts") {
+		t.Fatal("resident efforts were not reported preserved")
 	}
-	for _, path := range []string{resident, filepath.Join(root, ".awf", "metrics", ".gitignore")} {
+	for _, path := range []string{resident, filepath.Join(root, ".awf", "efforts", ".gitignore")} {
 		if _, err := os.Lstat(path); err != nil {
 			t.Errorf("preserved path %s: %v", path, err)
 		}
@@ -117,11 +117,11 @@ func TestUninstallRemovesEmptyMetricsRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if report.MetricsPreserved {
-		t.Fatal("empty metrics root reported preserved")
+	if slices.Contains(report.PreservedRoots, "efforts") {
+		t.Fatal("empty efforts root reported preserved")
 	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "metrics")); !os.IsNotExist(err) {
-		t.Fatalf("empty metrics root survived: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "efforts")); !os.IsNotExist(err) {
+		t.Fatalf("empty efforts root survived: %v", err)
 	}
 }
 
@@ -136,29 +136,29 @@ func TestUninstallRejectsUnsafeMetricsRoot(t *testing.T) {
 			if err := p.Sync(); err != nil {
 				t.Fatal(err)
 			}
-			metrics := filepath.Join(root, ".awf", "metrics")
-			if err := os.RemoveAll(metrics); err != nil {
+			efforts := filepath.Join(root, ".awf", "efforts")
+			if err := os.RemoveAll(efforts); err != nil {
 				t.Fatal(err)
 			}
 			switch kind {
 			case "file":
-				testsupport.WriteFile(t, metrics, "unsafe\n")
+				testsupport.WriteFile(t, efforts, "unsafe\n")
 			case "symlink":
 				outside := t.TempDir()
-				if err := os.Symlink(outside, metrics); err != nil {
+				if err := os.Symlink(outside, efforts); err != nil {
 					t.Skipf("symlink unavailable: %v", err)
 				}
 			case "unreadable":
-				if err := os.Mkdir(metrics, 0o700); err != nil {
+				if err := os.Mkdir(efforts, 0o700); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.Chmod(metrics, 0); err != nil {
+				if err := os.Chmod(efforts, 0); err != nil {
 					t.Fatal(err)
 				}
-				t.Cleanup(func() { _ = os.Chmod(metrics, 0o700) })
+				t.Cleanup(func() { _ = os.Chmod(efforts, 0o700) })
 			}
 			if _, err := Uninstall(root); err == nil {
-				t.Fatalf("unsafe %s metrics root accepted", kind)
+				t.Fatalf("unsafe %s efforts root accepted", kind)
 			}
 			if _, err := os.Stat(lockFile(root)); err != nil {
 				t.Fatalf("lock mutated after refusal: %v", err)
@@ -169,16 +169,16 @@ func TestUninstallRejectsUnsafeMetricsRoot(t *testing.T) {
 
 func TestInspectResidentRootsTreatsAnyDirectChildAsData(t *testing.T) {
 	root := t.TempDir()
-	metrics := filepath.Join(root, ".awf", "metrics")
-	if err := os.MkdirAll(metrics, 0o700); err != nil {
+	efforts := filepath.Join(root, ".awf", "efforts")
+	if err := os.MkdirAll(efforts, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	outside := t.TempDir()
-	if err := os.Symlink(outside, filepath.Join(metrics, "unreadable-entry")); err != nil {
+	if err := os.Symlink(outside, filepath.Join(efforts, "unreadable-entry")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	preserved, err := inspectResidentRoots(root)
-	if err != nil || !slices.Contains(preserved, "metrics") {
+	if err != nil || !slices.Contains(preserved, "efforts") {
 		t.Fatalf("preserved=%v err=%v", preserved, err)
 	}
 }

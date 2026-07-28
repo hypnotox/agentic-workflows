@@ -20,5 +20,4 @@ The tooling domain owns the command-line binary, local effort and worktree autho
 - [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
 - [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The current-state migration, attestation, and journaled cutover runtime.
-- [Workflow telemetry](../topics/tooling/workflow-telemetry.md): Durable effort telemetry, projections, retention, and workflow diagnosis.
 

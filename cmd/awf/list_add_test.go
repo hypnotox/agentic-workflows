@@ -564,8 +564,7 @@ func TestRunAddAppliesClosurePlan(t *testing.T) {
 	// invariant: tooling/init-and-enablement:add-skill-pairs-agent
 	for _, line := range []string{
 		"plan: + skill reviewing-impl\n",
-		"plan: + skill executing-plans (required by reviewing-impl)\n",
-		"plan: + skill retrospective (required by reviewing-impl)\n",
+
 		"plan: + agent code-reviewer (required by reviewing-impl)\n",
 	} {
 		if !strings.Contains(out.String(), line) {
@@ -573,7 +572,7 @@ func TestRunAddAppliesClosurePlan(t *testing.T) {
 		}
 	}
 	cfg := readConfig(t, root)
-	for _, want := range []string{"- reviewing-impl", "- executing-plans", "- subagent-driven-development", "- retrospective", "- code-reviewer"} {
+	for _, want := range []string{"- reviewing-impl", "- code-reviewer"} {
 		if !strings.Contains(cfg, want) {
 			t.Errorf("closure member %q missing from config:\n%s", want, cfg)
 		}
@@ -653,22 +652,18 @@ func TestRunRemoveCascade(t *testing.T) {
 	got := out.String()
 	for _, want := range []string{
 		"plan: - skill executing-plans\n",
-		"plan: - agent plan-reviewer (required by reviewing-plan-resync)",
-		`note: skill "writing-plans" still has a sidecar`,
-		`note: agent "adr-reviewer" is no longer required by any enabled skill`,
-		`note: agent "code-reviewer" is no longer required by any enabled skill`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("cascade output missing %q:\n%s", want, got)
 		}
 	}
 	cfg := readConfig(t, root)
-	for _, gone := range []string{"- executing-plans", "- reviewing-impl", "- brainstorming", "- plan-reviewer"} {
+	for _, gone := range []string{"- executing-plans"} {
 		if strings.Contains(cfg, gone) {
 			t.Errorf("cascade should have removed %q:\n%s", gone, cfg)
 		}
 	}
-	for _, kept := range []string{"- retrospective", "- adr-lifecycle", "- adr-reviewer", "- code-reviewer"} {
+	for _, kept := range []string{"- retrospective", "- adr-lifecycle", "- adr-reviewer", "- code-reviewer", "- reviewing-impl", "- brainstorming", "- plan-reviewer"} {
 		if !strings.Contains(cfg, kept) {
 			t.Errorf("cascade should have kept %q:\n%s", kept, cfg)
 		}
@@ -955,5 +950,22 @@ func TestNoteUnrequiredAgentsEdgeCases(t *testing.T) {
 	// reviewing-plan-resync still requires it - no note.
 	if out.String() != "" {
 		t.Errorf("expected no notes, got %q", out.String())
+	}
+
+	// A remaining local skill is skipped rather than treated as a requirer.
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "skills", "local.yaml"), []byte("local: true\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p.Cfg.Agents = []string{"plan-reviewer"}
+	p.Cfg.Skills = []string{"removed", "local"}
+	p.Cat.Skills["removed"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
+	p.Cat.Skills["local"] = catalog.SkillSpec{RequiresAgent: "plan-reviewer"}
+	out.Reset()
+	noteUnrequiredAgents(p, []project.PlanOp{{Node: catalog.Node{Kind: "skill", Name: "removed"}}, {Node: catalog.Node{Kind: "skill", Name: "other"}}}, &out)
+	if !strings.Contains(out.String(), "plan-reviewer") {
+		t.Fatalf("local skill should be skipped, allowing note: %q", out.String())
 	}
 }

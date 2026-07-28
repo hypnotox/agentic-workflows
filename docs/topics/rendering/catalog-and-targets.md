@@ -35,14 +35,9 @@ Backing: test
 
 ### `invariant: enabled-set-closed`
 
-Every enabled, non-local artifact's direct catalog requirements (required skills, required agent, required doc) must themselves be enabled; an unmet requirement fails project open with a repair hint.
+Every enabled non-local artifact's direct structural catalog requirements (required skills, agents, and docs) must themselves be enabled; advisory workflow-profile neighbors do not create enablement edges, and an unmet structural requirement fails project open with a repair hint.
 Origin: ADR-0081
-Backing: test
-
-### `invariant: exploration-skill-closure`
-
-Every standard skill that names exploring declares a one-way requirement on it, the default core scaffold includes exploring, and the skill dependency graph introduces no reciprocal edge back from exploring to a consumer.
-Origin: ADR-0132
+Revised-by: ADR-0167
 Backing: test
 
 ### `invariant: mandatory-doc-pool-exclusion`
@@ -60,8 +55,9 @@ Backing: test
 
 ### `invariant: requires-skills-exact`
 
-An artifact's declared unconditional skill references must match its rendered output exactly: an unconditional prefix-and-skill reference in the output that is not declared, and a declared reference that no longer appears in the output, both fail the template sweep.
+Every standard skill has an empty `RequiresSkills`; workflow-profile neighbors are advisory only. Artifact requirements, including reviewing agents' structural `RequiresSkills`, remain exact declared dependencies rather than workflow edges.
 Origin: ADR-0080
+Revised-by: ADR-0167
 Backing: test
 
 ### `invariant: reviewing-skill-specs-paired`

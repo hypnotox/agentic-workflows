@@ -507,7 +507,7 @@ func (p *Project) eligibleCoveragePaths(tree *snapshot.Tree, lock *manifest.Lock
 // universe by the index config rather than the working config.
 func isResidentPath(path string) bool {
 	path = filepath.ToSlash(filepath.Clean(path))
-	for _, name := range []string{"efforts", "assignments", "memory", "worktrees", "metrics"} {
+	for _, name := range []string{"efforts", "memory", "worktrees"} {
 		root := config.DirName + "/" + name
 		if path == root || strings.HasPrefix(path, root+"/") {
 			return true

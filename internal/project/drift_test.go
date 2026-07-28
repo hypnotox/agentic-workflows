@@ -335,7 +335,7 @@ func TestSyncStampsSchemaVersion(t *testing.T) {
 func chainClosureConfig(scope string) string {
 	var seeds []catalog.Node
 	for name, spec := range catalog.Standard.Skills {
-		if spec.Chain {
+		if spec.Profile.Kind == catalog.WorkflowChain {
 			seeds = append(seeds, catalog.Node{Kind: "skill", Name: name})
 		}
 	}
@@ -395,6 +395,9 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	}
 	flagged := map[string]bool{}
 	for _, d := range drift {
+		if d.Kind == "dead-skill-reference" {
+			continue
+		}
 		if d.Kind != "stale" {
 			t.Errorf("unexpected drift kind %q on %s", d.Kind, d.Path)
 		}

@@ -7,34 +7,32 @@ package catalog
 // produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresSkills: []string{"exploring", "executing-direct", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
+		"brainstorming": {Core: true, RequiresSkills: []string{"exploring", "executing-direct", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
 			"design-sections", "no-spec-rule", "grounding-check-output-format",
 			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
 		}},
-		"writing-plans": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresSkills: []string{"adr-lifecycle", "proposing-adr", "reviewing-plan", "reviewing-plan-resync"}, Sections: []string{
+		"writing-plans": {Core: true, RequiresSkills: []string{"adr-lifecycle", "proposing-adr", "reviewing-plan", "reviewing-plan-resync"}, Sections: []string{
 			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
 			"conventions-tasks", "conventions-no-placeholders", "gate-tier-note",
 			"conventions-test-first", "procedure-confirm-scope", "plan-template-ref",
 			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
-		"executing-direct": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresSkills: []string{"reviewing-impl"}},
-		"executing-plans": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
+		"executing-direct": {Core: true, RequiresSkills: []string{"reviewing-impl"}},
+		"executing-plans": {Core: true, RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
 			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
 			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
 		}},
-		"subagent-driven-development": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
+		"subagent-driven-development": {Core: true, RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
 			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
 			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
 			"notes", "red-flags",
 		}},
 		"tdd": {
-			Workflow: &WorkflowMapping{Kind: WorkflowSupport},
-			Trigger:  "writing the failing test before the implementation change",
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
 				"testSurfaces": []any{
@@ -44,16 +42,15 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"debugging": {Workflow: &WorkflowMapping{Kind: WorkflowTask}, Trigger: "investigating a bug or unexpected behaviour before any fix", RequiresSkills: []string{"exploring"}, Sections: []string{
+		"debugging": {RequiresSkills: []string{"exploring"}, Sections: []string{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
 			"devdb-note", "red-flags", "memory-checkpoint",
 		}},
-		"exploring": {Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport}, Trigger: "fresh-context repository exploration when inline search would pollute the parent context", Sections: []string{
+		"exploring": {Core: true, Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
 		"proposing-adr": {
-			Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain},
-			RequiresSkills: []string{"adr-lifecycle", "reviewing-adr"},
+			Core: true, RequiresSkills: []string{"adr-lifecycle", "reviewing-adr"},
 			Sections: []string{
 				"positioning", "when-to-invoke", "conventions", "procedure-number", "procedure-write",
 				"state-doc-update", "procedure-state-changes", "procedure-regen",
@@ -71,9 +68,7 @@ var Standard = &Catalog{
 			},
 		},
 		"adr-lifecycle": {
-			Core: true, Workflow: &WorkflowMapping{Kind: WorkflowSupport},
-			Trigger: "transitioning an ADR between lifecycle states",
-			Sections: []string{
+			Core: true, Sections: []string{
 				"states", "transitions", "state-changes",
 				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
 				"procedure-regen", "procedure-gate", "commit-templates", "amendment-while-proposed", "notes",
@@ -88,34 +83,34 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"bugfix": {Workflow: &WorkflowMapping{Kind: WorkflowTask}, Trigger: "applying a fix whose root cause is already known", Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
-		"reviewing-plan": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"reviewing-plan-resync", "writing-plans"}, Sections: []string{
+		"bugfix": {Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
+		"reviewing-plan": {Core: true, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"reviewing-plan-resync", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
 		}},
-		"reviewing-plan-resync": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"executing-plans", "reviewing-adr", "reviewing-plan", "subagent-driven-development"}, Sections: []string{
+		"reviewing-plan-resync": {Core: true, RequiresAgent: "plan-reviewer", RequiresSkills: []string{"executing-plans", "reviewing-adr", "reviewing-plan", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "dispatch-subagent-narrowed", "classify-route-findings",
 			"apply-fixes-commit", "re-review-loop", "hand-off-to-impl", "notes",
 		}},
-		"reviewing-adr": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresAgent: "adr-reviewer", RequiresSkills: []string{"adr-lifecycle", "executing-plans", "proposing-adr", "reviewing-plan-resync", "subagent-driven-development", "writing-plans"}, Sections: []string{
+		"reviewing-adr": {Core: true, RequiresAgent: "adr-reviewer", RequiresSkills: []string{"adr-lifecycle", "executing-plans", "proposing-adr", "reviewing-plan-resync", "subagent-driven-development", "writing-plans"}, Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, RequiresAgent: "code-reviewer", RequiresSkills: []string{"executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
+		"reviewing-impl": {Core: true, RequiresAgent: "code-reviewer", RequiresSkills: []string{"executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
-		"retrospective": {Core: true, Chain: true, Workflow: &WorkflowMapping{Kind: WorkflowChain}, Sections: []string{
+		"retrospective": {Core: true, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
-		"refactor-coupling-audit": {Workflow: &WorkflowMapping{Kind: WorkflowSupport}, Trigger: "scoping a refactor that moves files between packages or inverts dependencies", RequiresSkills: []string{"exploring"}, Sections: []string{
+		"refactor-coupling-audit": {RequiresSkills: []string{"exploring"}, Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",
 			"output-format", "scope-shrink-rule", "notes",
 		}},
-		"roadmap-graduation": {Workflow: &WorkflowMapping{Kind: WorkflowSupport}, Trigger: "graduating a shipped roadmap item out of the roadmap doc", RequiresDoc: "roadmap", Sections: []string{
+		"roadmap-graduation": {RequiresDoc: "roadmap", Sections: []string{
 			"when-fires", "failure-modes", "identify-entry", "reverify-measurements",
 			"graduate-single-commit", "explicit-drop", "same-commit", "doc-currency", "notes",
 		}},
@@ -232,4 +227,33 @@ var Standard = &Catalog{
 		{Key: "skills", Kind: "multiselect", Target: "catalog-skills", Description: "Workflow skills to enable (core pre-selected; deselect to trim or add opt-in skills). Options/default computed from the catalog."},
 		{Key: "docs", Kind: "multiselect", Target: "catalog-docs", Description: "Docs to enable (core pre-selected; deselect to trim or add opt-in docs). Options/default computed from the catalog."},
 	},
+}
+
+func init() {
+	profiles := map[string]WorkflowProfile{
+		"brainstorming":               {Kind: WorkflowChain, Purpose: "Clarify an outcome and settle a grounded design.", Trigger: "Use for non-trivial work before deciding its design.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}},
+		"writing-plans":               {Kind: WorkflowChain, Purpose: "Turn an approved design into an executable plan.", Trigger: "Use when implementation needs a durable, reviewable plan.", UsuallyFollows: []string{"brainstorming", "proposing-adr"}, CommonFollowUps: []string{"reviewing-plan"}},
+		"executing-direct":            {Kind: WorkflowChain, Purpose: "Implement a small approved change directly.", Trigger: "Use when the change is understood and does not need a plan.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-impl"}},
+		"executing-plans":             {Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "retrospective"}},
+		"subagent-driven-development": {Kind: WorkflowChain, Purpose: "Implement a plan through reviewed subagent tasks.", Trigger: "Use when plan execution benefits from delegated implementation tasks.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "retrospective"}},
+		"tdd":                         {Kind: WorkflowSupport, Purpose: "Drive a change from a failing test.", Trigger: "Use when writing the failing test before the implementation change.", CommonFollowUps: []string{"executing-direct", "executing-plans"}},
+		"debugging":                   {Kind: WorkflowTask, Purpose: "Investigate a defect before changing it.", Trigger: "Use when investigating a bug or unexpected behaviour before any fix.", CommonFollowUps: []string{"bugfix", "executing-direct"}},
+		"exploring":                   {Kind: WorkflowSupport, Purpose: "Explore repository facts without polluting the main context.", Trigger: "Use for fresh-context repository exploration when inline search would pollute the parent context.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}},
+		"proposing-adr":               {Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "writing-plans"}},
+		"adr-lifecycle":               {Kind: WorkflowSupport, Purpose: "Apply an ADR lifecycle transition correctly.", Trigger: "Use when transitioning an ADR between lifecycle states.", UsuallyFollows: []string{"proposing-adr", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans", "writing-plans"}},
+		"bugfix":                      {Kind: WorkflowTask, Purpose: "Apply a fix with a known root cause.", Trigger: "Use when applying a fix whose root cause is already known.", UsuallyFollows: []string{"debugging"}, CommonFollowUps: []string{"reviewing-impl"}},
+		"reviewing-plan":              {Kind: WorkflowChain, Purpose: "Independently review an implementation plan.", Trigger: "Use when a written plan needs review before execution.", UsuallyFollows: []string{"writing-plans"}, CommonFollowUps: []string{"reviewing-plan-resync", "executing-plans"}},
+		"reviewing-plan-resync":       {Kind: WorkflowChain, Purpose: "Reconcile a plan after review findings.", Trigger: "Use when review findings require a plan revision and re-review.", UsuallyFollows: []string{"reviewing-plan", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans", "subagent-driven-development"}},
+		"reviewing-adr":               {Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"reviewing-plan-resync", "writing-plans"}},
+		"reviewing-impl":              {Kind: WorkflowChain, Purpose: "Independently review an implementation.", Trigger: "Use when an implementation commit or series needs review.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"retrospective"}},
+		"retrospective":               {Kind: WorkflowChain, Purpose: "Capture and promote lessons from completed work.", Trigger: "Use after implementation review when a recurrence or improvement is worth recording.", UsuallyFollows: []string{"reviewing-impl"}},
+		"refactor-coupling-audit":     {Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", UsuallyFollows: []string{"exploring"}, CommonFollowUps: []string{"brainstorming", "writing-plans"}},
+		"roadmap-graduation":          {Kind: WorkflowSupport, Purpose: "Move a shipped roadmap item out of the roadmap.", Trigger: "Use when graduating a shipped roadmap item out of the roadmap doc.", UsuallyFollows: []string{"reviewing-impl"}},
+	}
+	for n, p := range profiles {
+		x := Standard.Skills[n]
+		x.Profile = p
+		x.RequiresSkills = []string{}
+		Standard.Skills[n] = x
+	}
 }

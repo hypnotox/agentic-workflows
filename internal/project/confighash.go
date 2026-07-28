@@ -5,10 +5,8 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -55,17 +53,6 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		vs[r] = p.Cfg.Vars[r]
 	}
 	proj["vars"] = vs
-	if strings.Contains(assembled, ".workflowSkills") {
-		names, err := p.routedWorkflowNames()
-		if err != nil { // coverage-ignore: config hashing follows Project.Open's sidecar validation
-			return "", err
-		}
-		mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
-		if err != nil { // coverage-ignore: project open validates every catalog mapping before config hashing
-			return "", err
-		}
-		proj["workflowSkills"] = mappings
-	}
 	if render.ReferencesSkills(assembled) {
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).

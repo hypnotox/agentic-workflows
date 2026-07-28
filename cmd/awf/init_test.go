@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -248,6 +249,11 @@ func TestInitCatalogTrim(t *testing.T) {
 // A trim naming a chain skill is closure-completed with a note per addition
 // (ADR-0081 Decision 9).
 func TestInitCatalogTrimClosesChainSelection(t *testing.T) {
+	old := catalog.Standard.Skills["brainstorming"]
+	patched := old
+	patched.RequiresSkills = []string{"exploring"}
+	catalog.Standard.Skills["brainstorming"] = patched
+	t.Cleanup(func() { catalog.Standard.Skills["brainstorming"] = old })
 	root := t.TempDir()
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	forceNonInteractive(t)
@@ -256,12 +262,11 @@ func TestInitCatalogTrimClosesChainSelection(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("init --set trim: exit %d (%s)", code, errb.String())
 	}
-	if !strings.Contains(out.String(), "note: also enabled skill reviewing-plan-resync (required by your selection)") ||
-		!strings.Contains(out.String(), "note: also enabled agent plan-reviewer (required by your selection)") {
-		t.Errorf("expected closure-addition notes, got:\n%s", out.String())
+	if !strings.Contains(out.String(), "note: also enabled skill exploring") {
+		t.Errorf("expected advisory closure note, got %q", out.String())
 	}
 	cfg := readInitConfig(t, root)
-	for _, want := range []string{"- brainstorming", "- retrospective", "- plan-reviewer"} {
+	for _, want := range []string{"- brainstorming", "- exploring"} {
 		if !strings.Contains(cfg, want) {
 			t.Errorf("closure-completed config missing %q:\n%s", want, cfg)
 		}

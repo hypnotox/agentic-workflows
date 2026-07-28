@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0166: Phase transaction ownership](0166-phase-transaction-ownership.md) (Proposed)
-- [ADR-0167: Remove workflow telemetry and mandatory Pi routing](0167-remove-workflow-telemetry-and-mandatory-pi-routing.md) (Accepted)
 
 ## History
 
@@ -171,3 +170,4 @@
 - [ADR-0163: Retire temporary metrics doctor bridge provenance](0163-retire-temporary-metrics-doctor-bridge-provenance.md) (Implemented)
 - [ADR-0164: Lightweight effort records and independent Pi telemetry](0164-lightweight-effort-records-and-independent-pi-telemetry.md) (Implemented)
 - [ADR-0165: Request-Oriented Compact Context Projection](0165-request-oriented-compact-context-projection.md) (Implemented)
+- [ADR-0167: Remove workflow telemetry and mandatory Pi routing](0167-remove-workflow-telemetry-and-mandatory-pi-routing.md) (Implemented)

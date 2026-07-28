@@ -590,7 +590,7 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 	}
 }
 
-func TestSyncNeverPrunesResidentMetricsDescendants(t *testing.T) {
+func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
 	if err != nil {
@@ -599,7 +599,7 @@ func TestSyncNeverPrunesResidentMetricsDescendants(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	const rel = ".awf/metrics/efforts/e/sessions/s.jsonl"
+	const rel = ".awf/efforts/efforts/e/sessions/s.jsonl"
 	path := filepath.Join(root, filepath.FromSlash(rel))
 	testsupport.WriteFile(t, path, "resident\n")
 	lock, err := manifest.Load(lockFile(root))
@@ -626,7 +626,7 @@ func TestSyncNeverPrunesResidentMetricsDescendants(t *testing.T) {
 	}
 }
 
-func TestSyncRejectsUnsafeResidentMetricsRoot(t *testing.T) {
+func TestSyncRejectsUnsafeResidentEffortsRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
 	if err != nil {
@@ -635,15 +635,15 @@ func TestSyncRejectsUnsafeResidentMetricsRoot(t *testing.T) {
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	metrics := filepath.Join(root, ".awf", "metrics")
-	if err := os.RemoveAll(metrics); err != nil {
+	efforts := filepath.Join(root, ".awf", "efforts")
+	if err := os.RemoveAll(efforts); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Symlink(t.TempDir(), metrics); err != nil {
+	if err := os.Symlink(t.TempDir(), efforts); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	if _, _, _, err := p.SyncReport(); err == nil {
-		t.Fatal("sync accepted an unsafe resident metrics root")
+		t.Fatal("sync accepted an unsafe resident efforts root")
 	}
 }
 
@@ -1345,15 +1345,9 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	cases := []struct {
 		name, cfg, wantSub string
 	}{
-		{"missing skill requirement",
-			"prefix: example\nskills: [brainstorming]\nagents: []\n",
-			`skill "brainstorming" requires skill "exploring"`},
 		{"missing doc requirement",
 			"prefix: example\nskills: [roadmap-graduation]\nagents: []\n",
 			`skill "roadmap-graduation" requires doc "roadmap"`},
-		{"agent's skill requirement",
-			"prefix: example\nskills: []\nagents: [plan-reviewer]\n",
-			`agent "plan-reviewer" requires skill "reviewing-plan-resync"`},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

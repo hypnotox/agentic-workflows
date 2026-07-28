@@ -55,21 +55,6 @@ func TestResolvedGating(t *testing.T) {
 			t.Errorf("top-level %q leaves Gating at Inherit; it has no parent to inherit from", c.Name)
 		}
 	}
-	// A child that declares nothing takes the parent's gating.
-	metrics, ok := Lookup("metrics")
-	if !ok {
-		t.Fatal("Lookup(metrics) missing")
-	}
-	export, ok := metrics.Child("export")
-	if !ok {
-		t.Fatal("metrics.Child(export) missing")
-	}
-	if export.Gating != Inherit {
-		t.Errorf("metrics export declares Gating=%d; it should inherit", export.Gating)
-	}
-	if got := ResolvedGating(metrics, export); got != metrics.Gating {
-		t.Errorf("ResolvedGating(metrics, export) = %d, want the parent's %d", got, metrics.Gating)
-	}
 	// A child that declares Ungated under a Gated parent lowers it deliberately.
 	check, ok := Lookup("check")
 	if !ok {
@@ -149,55 +134,23 @@ func TestLookup(t *testing.T) {
 		t.Errorf("topic flags = %q", got)
 	}
 	effort, ok := Lookup("effort")
-	if !ok || len(effort.Children) != 15 {
+	if !ok || len(effort.Children) != 12 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
 	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--no-memory,--worktree" {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
-	for _, name := range []string{"new", "list", "show", "rename", "memory", "worktree", "integrate", "integrated", "complete", "abandon", "reopen", "assign", "unassign", "assignments", "repair"} {
+	for _, name := range []string{"new", "list", "show", "rename", "memory", "worktree", "integrate", "integrated", "complete", "abandon", "reopen", "repair"} {
 		if _, found := effort.Child(name); !found {
 			t.Errorf("effort child %q missing", name)
 		}
-	}
-	for _, tc := range []struct {
-		name, usage, flags string
-	}{
-		{"assign", "assign <id> --session <pi-session-id>", "--session"},
-		{"unassign", "unassign --session <pi-session-id>", "--session"},
-		{"assignments", "assignments [--effort <id>] [--json]", "--json,--effort"},
-	} {
-		child, found := effort.Child(tc.name)
-		if !found || !strings.Contains(child.HelpBody, tc.usage) || strings.Join(append(child.BoolFlags, child.ValueFlags...), ",") != tc.flags {
-			t.Errorf("effort %s help/flags = %#v", tc.name, child)
-		}
-	}
-	metrics, ok := Lookup("metrics")
-	if !ok || strings.Join(metrics.ValueFlags, ",") != "--effort,--session,--since,--until" {
-		t.Fatalf("metrics query spec = %#v, found %v", metrics, ok)
-	}
-	export, ok := metrics.Child("export")
-	if !ok || strings.Join(export.ValueFlags, ",") != "--effort,--session,--since,--until,--format" {
-		t.Fatalf("metrics export spec = %#v, found %v", export, ok)
-	}
-	for _, name := range []string{"protocol", "lifecycle", "retain", "purge"} {
-		if _, found := metrics.Child(name); found {
-			t.Errorf("retired metrics child %q remains", name)
-		}
-	}
-	if _, ok := Lookup("doctor"); ok {
-		t.Fatal("top-level doctor must be retired")
-	}
-	doctor, ok := metrics.Child("doctor")
-	if !ok || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--since,--until" {
-		t.Fatalf("metrics doctor spec = %#v, found %v", doctor, ok)
 	}
 }
 
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "audit", "effort", "metrics", "list", "config", "context", "topic", "new", "enable", "disable"}
+	want := []string{"render", "check", "audit", "effort", "list", "config", "context", "topic", "new", "enable", "disable"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

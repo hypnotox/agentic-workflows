@@ -118,7 +118,7 @@ func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 27, 0, 0, 0, 123, time.UTC)
 	service := openEffortService(t, root, now)
-	record, err := service.New("Schema contract", false)
+	_, err := service.New("Schema contract", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,9 +129,6 @@ func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 	want := `{"schemaVersion":1,"id":"11111111-1111-4111-8111-111111111111","title":"Schema contract","state":"active","createdAt":"2026-07-27T00:00:00.000000123Z","updatedAt":"2026-07-27T00:00:00.000000123Z","memoryPresent":false,"worktree":null,"integration":"none"}`
 	if string(raw) != want {
 		t.Fatalf("persisted JSON = %s\nwant = %s", raw, want)
-	}
-	if record.AssignedSessionIDs != nil {
-		t.Fatalf("new assignments = %#v, want nil", record.AssignedSessionIDs)
 	}
 	var persistedKeys map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &persistedKeys); err != nil {
@@ -146,19 +143,6 @@ func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
 	if !reflect.DeepEqual(gotKeys, wantKeys) {
 		t.Fatalf("persisted authority fields = %v, want exactly %v", gotKeys, wantKeys)
 	}
-	assignmentDir := filepath.Join(root, ".awf", "assignments")
-	if err := os.MkdirAll(assignmentDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	writeEffortFile(t, filepath.Join(assignmentDir, "sessions.json"), `{"schemaVersion":1,"sessions":{"z-session":"`+idA+`","a-session":"`+idA+`"}}`)
-	shown, err := service.Show(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(shown.AssignedSessionIDs, []string{"a-session", "z-session"}) {
-		t.Fatalf("logical assignments = %v", shown.AssignedSessionIDs)
-	}
-
 	for name, title := range map[string]string{"blank": "   ", "too-long": strings.Repeat("a", 161), "too-many-multibyte-bytes": strings.Repeat("é", 81), "invalid-utf8": string([]byte{0xff})} {
 		t.Run(name, func(t *testing.T) {
 			if _, err := normalizeTitle(title); err == nil {

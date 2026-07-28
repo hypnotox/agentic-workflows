@@ -52,6 +52,7 @@ var registry = []Migration{
 	{To: 18, Name: "enable-runner", Apply: applyEnableRunner},
 	{To: 19, Name: "rename-retired-commands", Apply: applyRenameRetiredCommands},
 	{To: 20, Name: "drop-workflow-telemetry", Apply: applyDropWorkflowTelemetry},
+	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state

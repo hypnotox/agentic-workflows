@@ -99,10 +99,10 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 
 func TestSweepExemptsMemory(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
-		"memory/anything.md":                 "scratch\n",
-		"memory/deep/file.awf-bak":           "scratch\n",
-		"metrics/efforts/e/sessions/s":       "resident\n",
-		"metrics/efforts/e/.awf/config.yaml": "adversarial\n",
+		"memory/anything.md":         "scratch\n",
+		"memory/deep/file.awf-bak":   "scratch\n",
+		"efforts/e/sessions/s":       "resident\n",
+		"efforts/e/.awf/config.yaml": "adversarial\n",
 	})
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("dynamic resident trees must be exempt, got %#v", got)

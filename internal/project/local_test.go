@@ -61,6 +61,24 @@ func TestLocalSkillRendersFromBasePerTarget(t *testing.T) {
 	}
 }
 
+func TestLocalSkillFallbackProfileForMissingBlankAndNonStringDescriptions(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - missing\n  - blank\n  - number\n", map[string]string{
+		"skills/missing.yaml": "data: {}\n",
+		"skills/blank.yaml":   "data:\n  description: '   '\n",
+		"skills/number.yaml":  "data:\n  description: 42\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"missing", "blank", "number"} {
+		profile := p.Cat.Skills[name].Profile
+		if profile.Purpose != "A project-local skill." || profile.Trigger != "Use when the project-local skill's rendered description fits the current work." {
+			t.Errorf("%s fallback profile = %#v", name, profile)
+		}
+	}
+}
+
 func TestLocalAgentRendersFromBase(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nagents:\n  - my-agent\n", map[string]string{
 		"agents/my-agent.yaml":             "data:\n  description: Reviews the frobnicator.\n",

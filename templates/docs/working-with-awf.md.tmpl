@@ -227,7 +227,7 @@ Pi also renders the separate `handoff_session` extension for persisted interacti
 
 Pi telemetry is a schema-1 append-only session stream under the primary control root's `.awf/metrics/sessions/`. It records closed usage, tool, gate, subagent, compaction, and handoff observations without an effort ID, workflow state, path, command, conversation, or tool input/output. The extension writes directly under a per-session lock, validates complete bytes, reuses an observation ID on retry, and fsyncs before acknowledging. `awf metrics` joins streams to the current binary assignment; protocol-1 and protocol-2 residents stay read-only historical data.
 
-`/awf-effort new <title>`, `use <id>`, `clear`, `show`, and `rename <title>` manage one optional selected effort. `awf_workflow` only loads a fixed rendered workflow body and never changes lifecycle state. Handoff works without selection or memory; when both are present their effort identity must match, and child assignment occurs through the binary before kickoff.
+`direct `awf effort` commands new <title>`, `use <id>`, `clear`, `show`, and `rename <title>` manage one optional selected effort. `native skill discovery` only loads a fixed rendered workflow body and never changes lifecycle state. Handoff works without selection or memory; when both are present their effort identity must match, and child assignment occurs through the binary before kickoff.
 
 ### Path globs and domain territories
 

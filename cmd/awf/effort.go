@@ -125,35 +125,6 @@ func runEffort(c *cmdCtx) error {
 		}
 		record, err := manager.RecordManualIntegration(id, c.inv.values["--commit"], c.inv.bools["--force"], c.inv.values["--reason"])
 		return runEffortMutation(c.stdout, record, err)
-	case "assign":
-		assignment, err := service.Assign(id, c.inv.values["--session"])
-		if err != nil {
-			return err
-		}
-		return writeAssignmentText(c.stdout, assignment)
-	case "unassign":
-		assignment, err := service.Unassign(c.inv.values["--session"])
-		if err != nil {
-			return err
-		}
-		return writeAssignmentText(c.stdout, assignment)
-	case "assignments":
-		assignments, err := service.Assignments(c.inv.values["--effort"])
-		if err != nil {
-			return err
-		}
-		if c.inv.bools["--json"] {
-			return writeEffortJSON(c.stdout, struct {
-				SchemaVersion int                 `json:"schemaVersion"`
-				Assignments   []effort.Assignment `json:"assignments"`
-			}{effort.SchemaVersion, assignments})
-		}
-		for _, assignment := range assignments {
-			if err := writeAssignmentText(c.stdout, assignment); err != nil {
-				return err
-			}
-		}
-		return nil
 	case "repair":
 		result, err := service.Repair(id)
 		if err != nil {
@@ -172,7 +143,7 @@ func runEffort(c *cmdCtx) error {
 		}
 		return nil
 	default:
-		return &usageErr{"usage: awf effort <new|list|show|rename|memory|worktree|integrate|integrated|complete|abandon|reopen|assign|unassign|assignments|repair>"}
+		return &usageErr{"usage: awf effort <new|list|show|rename|memory|worktree|integrate|integrated|complete|abandon|reopen|repair>"}
 	}
 }
 
@@ -217,14 +188,6 @@ func validateEffortGrammar(c *cmdCtx) error {
 		if c.inv.values["--base"] != "" {
 			return &usageErr{"awf effort integrate: --base is not allowed"}
 		}
-	case "assign":
-		if c.inv.values["--session"] == "" {
-			return &usageErr{"awf effort assign: --session is required"}
-		}
-	case "unassign":
-		if c.inv.values["--session"] == "" {
-			return &usageErr{"awf effort unassign: --session is required"}
-		}
 	case "integrated":
 		if c.inv.values["--base"] != "" {
 			return &usageErr{"awf effort integrated: --base is not allowed"}
@@ -244,13 +207,7 @@ func runEffortMutation(out io.Writer, record effort.Record, err error) error {
 }
 
 func writeEffortText(out io.Writer, record effort.Record) error {
-	sessions := strings.Join(record.AssignedSessionIDs, ",")
-	_, err := fmt.Fprintf(out, "effort %s state=%s title=%s memory=%t integration=%s sessions=%s\n", record.ID, record.State, strconv.Quote(record.Title), record.MemoryPresent, record.Integration, sessions)
-	return err
-}
-
-func writeAssignmentText(out io.Writer, assignment effort.Assignment) error {
-	_, err := fmt.Fprintf(out, "session %s effort=%s\n", assignment.SessionID, assignment.EffortID)
+	_, err := fmt.Fprintf(out, "effort %s state=%s title=%s memory=%t integration=%s\n", record.ID, record.State, strconv.Quote(record.Title), record.MemoryPresent, record.Integration)
 	return err
 }
 

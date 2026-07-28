@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 adrs: [167]
-status: Proposed
+status: Implemented
 ---
 # Plan: Remove workflow telemetry and mandatory Pi routing
 
@@ -356,4 +356,6 @@ At the final commit, after the cutover binary upgrades root and Sundial and expl
 
 ## Notes
 
-Implementation findings discovered during the atomic cutover must be recorded here before plan status freezes. The one-commit shape is forced by schema gating and declaration order, not convenience.
+The one-commit shape was forced by schema gating and declaration order, not convenience. The cutover binary safely found root and Sundial at schema 21, then render regenerated their native Pi skills and removed retired Pi outputs. Go and Pi tests, drift checks, and the full gate passed.
+
+- The frozen Accepted digest is `14d573f1968759d08f99a1deb6fdfd94fefeb10b8130b6c3dc1b26a64bb96a4d`. Immediately before implementation edits, the committed ADR corpus state-sequence maximum was 67, so the direct Implemented event uses sequence 68.

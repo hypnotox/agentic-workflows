@@ -15,7 +15,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
-	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -160,16 +159,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				declarer = "skills:" + name
 				tid, input = "", nil
 			}
-			path := t.SkillPath(cfg.Prefix, name)
-			if t.routesWorkflows() && !sc.Local {
-				if spec, ok := cat.Skills[name]; ok && spec.Workflow != nil {
-					path = t.HiddenWorkflowPath(name)
-				}
-			}
-			add(path, tid, declarer, input, sc.Local)
-		}
-		if t.routesWorkflows() {
-			add(t.WorkflowRouterPath(), "pi/awf-workflow/SKILL.md.tmpl", t.Name, inputs("pi/awf-workflow/SKILL.md.tmpl"), false)
+			add(t.SkillPath(cfg.Prefix, name), tid, declarer, input, sc.Local)
 		}
 		for _, name := range cfg.Agents {
 			sc, err := cfg.Sidecar("agents", name)
@@ -301,7 +291,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
 		}
 	}
-	for _, resident := range []struct{ name, tid string }{{"efforts", "efforts/gitignore.tmpl"}, {"assignments", "assignments/gitignore.tmpl"}, {"memory", "memory/gitignore.tmpl"}, {"worktrees", "worktrees/gitignore.tmpl"}, {"metrics", "metrics/gitignore.tmpl"}} {
+	for _, resident := range []struct{ name, tid string }{{"efforts", "efforts/gitignore.tmpl"}, {"memory", "memory/gitignore.tmpl"}, {"worktrees", "worktrees/gitignore.tmpl"}} {
 		add(".awf/"+resident.name+"/.gitignore", resident.tid, resident.tid, inputs(resident.tid), false)
 	}
 	for i := range decls {
@@ -439,13 +429,6 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 				return nil, err
 			}
 			templateInput := []byte(expanded)
-			switch o.Producer {
-			case TargetOutputTemplate:
-			case TargetOutputTelemetryProtocol:
-				templateInput = append(templateInput, telemetry.DescriptorBytes()...)
-			default: // coverage-ignore: target validation rejects unknown producers above
-				return nil, fmt.Errorf("unknown target output producer %q", o.Producer)
-			}
 			recipe := OutputRecipe{TemplateID: o.TemplateID, TemplateHash: manifest.Hash(templateInput), ConfigHash: configHash, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
 			decl := out[o.Path]
 			if decl.canonical != "" && decl.recipe != recipe {

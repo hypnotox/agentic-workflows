@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Accepted
+status: Implemented
 date: 2026-07-28
 ---
 # ADR-0167: Remove workflow telemetry and mandatory Pi routing
@@ -173,3 +173,4 @@ complete gate coverage are required.
 
 - 2026-07-28: Proposed
 - 2026-07-28: Accepted; content-sha256: 14d573f1968759d08f99a1deb6fdfd94fefeb10b8130b6c3dc1b26a64bb96a4d
+- 2026-07-28: Implemented; content-sha256: 14d573f1968759d08f99a1deb6fdfd94fefeb10b8130b6c3dc1b26a64bb96a4d; state-sequence: 68

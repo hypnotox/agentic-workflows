@@ -187,7 +187,7 @@ List every lightweight effort in stable ID order.
 			{Name: "show", Summary: "Show one effort", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
 				HelpBody: `Usage: awf effort show <id> [--json]
 
-Show one logical effort record, including current session assignments.
+Show one logical effort record.
 `},
 			{Name: "rename", Summary: "Rename one effort", MinPos: 2, MaxPos: 2,
 				HelpBody: `Usage: awf effort rename <id> <title>
@@ -214,21 +214,6 @@ Mark an active effort abandoned while retaining its resources.
 
 Return a completed or abandoned effort to active state.
 `},
-			{Name: "assign", Summary: "Assign one Pi session to an effort", ValueFlags: []string{"--session"}, MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort assign <id> --session <pi-session-id>
-
-Explicitly assign or reassign one Pi session without changing effort lifecycle state.
-`},
-			{Name: "unassign", Summary: "Remove one Pi session assignment", ValueFlags: []string{"--session"}, MaxPos: 0,
-				HelpBody: `Usage: awf effort unassign --session <pi-session-id>
-
-Remove the current assignment for one Pi session.
-`},
-			{Name: "assignments", Summary: "List current Pi session assignments", BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort"}, MaxPos: 0,
-				HelpBody: `Usage: awf effort assignments [--effort <id>] [--json]
-
-List current session assignments in deterministic session-ID order.
-`},
 			{Name: "repair", Summary: "Repair derivable effort metadata", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
 				HelpBody: `Usage: awf effort repair <id> [--json]
 
@@ -242,28 +227,6 @@ Manage the fixed-path, fixed-branch worktree for one effort.
 `},
 			{Name: "integrate", Summary: "Integrate a managed worktree", BoolFlags: []string{"--force"}, ValueFlags: []string{"--reason"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort integrate <id> [--force --reason <text>]\n"},
 			{Name: "integrated", Summary: "Record manual integration", BoolFlags: []string{"--force"}, ValueFlags: []string{"--commit", "--reason"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort integrated <id> --commit <revision> [--force --reason <text>]\n"},
-		},
-	},
-	{
-		Name: "metrics", Summary: "Query independent session telemetry",
-		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--since", "--until"}, MinPos: 0, MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf metrics [--effort ID] [--session ID] [--since RFC3339] [--until RFC3339] [--json]
-
-Report current assigned session telemetry and read-only legacy telemetry. Selectors combine with logical AND; since is inclusive and until is exclusive.
-`,
-		Children: []Command{
-			{Name: "doctor", Summary: "Report deterministic stream integrity", BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--since", "--until"}, MinPos: 0, MaxPos: 0, HelpBody: `Usage: awf metrics doctor [--effort ID] [--session ID] [--since RFC3339] [--until RFC3339] [--json]
-
-Report stream, path, header, version, and duplicate integrity findings.
-`},
-			{Name: "list", Summary: "List effort records with assigned sessions", BoolFlags: []string{"--json"}, MinPos: 0, MaxPos: 0, HelpBody: `Usage: awf metrics list [--json]
-
-List current effort records without changing resident telemetry.
-`},
-			{Name: "export", Summary: "Export session and legacy telemetry", ValueFlags: []string{"--effort", "--session", "--since", "--until", "--format"}, MinPos: 0, MaxPos: 0, HelpBody: `Usage: awf metrics export [selectors] --format <json|jsonl>
-
-Export an aggregate JSON report or normalized read-only records.
-`},
 		},
 	},
 	{

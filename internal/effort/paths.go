@@ -13,7 +13,6 @@ type paths struct {
 	efforts   string
 	memory    string
 	worktrees string
-	assign    string
 	fs        fileSystem
 }
 
@@ -30,11 +29,7 @@ func resolvePaths(roots awfgit.ControlRoots) (paths, error) {
 	if err != nil {
 		return paths{}, fmt.Errorf("resolve worktrees resident root: %w", err)
 	}
-	assign, err := roots.ResidentRoot(awfgit.ResidentAssignments)
-	if err != nil {
-		return paths{}, fmt.Errorf("resolve assignments resident root: %w", err)
-	}
-	return paths{roots: roots, efforts: efforts, memory: memory, worktrees: worktrees, assign: assign}, nil
+	return paths{roots: roots, efforts: efforts, memory: memory, worktrees: worktrees}, nil
 }
 
 func (p paths) ensure(root string) error {
@@ -68,8 +63,6 @@ func (p paths) validate(root string) error {
 		name = awfgit.ResidentMemory
 	case p.worktrees:
 		name = awfgit.ResidentWorktrees
-	case p.assign:
-		name = awfgit.ResidentAssignments
 	default:
 		return fmt.Errorf("unknown resident root %s", root)
 	}
@@ -93,4 +86,3 @@ func (p paths) filesystem() fileSystem {
 func (p paths) record(id string) string          { return filepath.Join(p.efforts, id+".json") }
 func (p paths) memoryFile(id string) string      { return filepath.Join(p.memory, id+".md") }
 func (p paths) managedWorktree(id string) string { return filepath.Join(p.worktrees, id) }
-func (p paths) assignments() string              { return filepath.Join(p.assign, "sessions.json") }

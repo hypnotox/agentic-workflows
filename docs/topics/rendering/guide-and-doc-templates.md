@@ -65,13 +65,14 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide's workflow section is a catalog-derived entry-skill trigger table: every catalog entry and task skill appears iff enabled, and none of the evicted prose classes renders (chain diagram, warrant definitions, plan-form contract, V2 batch semantics, exploration/subagent policy, duplicated gate sentence).
+The rendered guide lists every enabled standard and local skill in declaration order with kind, purpose, a distinct trigger sentence, and optional advisory neighbors. Missing values render coherent generic prose, and the guide says that any enabled skill may be used when its purpose fits rather than routing or requiring transitions.
 Origin: ADR-0157
+Revised-by: ADR-0167
 Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working memory guidance has one canonical workflow-doc home. Efforts and memory are optional, created for durable coordination, memory, or managed worktrees using `awf effort`; titles name outcomes, selection and resumption are available at any time, and durable records never cite a particular memory file. There is no adoption gate, fabricated lifecycle, or detour protocol.
+Working-memory guidance has one canonical workflow-doc home. Efforts and memory are optional for durable coordination, memory, or managed worktrees; direct effort commands remain available without Pi selection or session assignment, and durable records never cite a particular memory file. There is no adoption gate, fabricated lifecycle, or detour protocol.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167
 Backing: test

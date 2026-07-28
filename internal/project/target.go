@@ -32,8 +32,7 @@ const (
 type TargetOutputProducer string
 
 const (
-	TargetOutputTemplate          TargetOutputProducer = "template"
-	TargetOutputTelemetryProtocol TargetOutputProducer = "telemetry-protocol"
+	TargetOutputTemplate TargetOutputProducer = "template"
 )
 
 type TargetOutputInput struct {
@@ -109,17 +108,11 @@ func (t Target) validate() error {
 		if out.Path == "" || out.TemplateID == "" || !filepath.IsLocal(filepath.FromSlash(out.Path)) {
 			return fmt.Errorf("target %q has unsafe output %q", t.Name, out.Path)
 		}
-		if out.Producer != TargetOutputTemplate && out.Producer != TargetOutputTelemetryProtocol {
+		if out.Producer != TargetOutputTemplate {
 			return fmt.Errorf("target %q output %q has unknown producer %q", t.Name, out.Path, out.Producer)
 		}
-		if out.Producer == TargetOutputTemplate && len(out.Inputs) != 0 {
+		if len(out.Inputs) != 0 {
 			return fmt.Errorf("target %q template output %q declares producer inputs", t.Name, out.Path)
-		}
-		if out.Producer == TargetOutputTelemetryProtocol {
-			want := []TargetOutputInput{{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}}
-			if !slices.Equal(out.Inputs, want) {
-				return fmt.Errorf("target %q protocol output %q has invalid inputs", t.Name, out.Path)
-			}
 		}
 		if out.Encoder != MarkdownAgentDialect && out.Encoder != TOMLAgentDialect && out.Encoder != PlainAgentDialect {
 			return fmt.Errorf("target %q output %q has unknown encoder %q", t.Name, out.Path, out.Encoder)
@@ -170,18 +163,6 @@ type Target struct {
 func (t Target) SkillPath(prefix, name string) string {
 	return fmt.Sprintf("%s/%s-%s/SKILL.md", t.SkillDir, prefix, name)
 }
-
-// HiddenWorkflowPath is the fixed, non-discovered Pi workflow body path.
-func (t Target) HiddenWorkflowPath(name string) string {
-	return fmt.Sprintf(".pi/awf-workflows/%s.md", name)
-}
-
-// WorkflowRouterPath is the sole discoverable Pi workflow skill path.
-func (t Target) WorkflowRouterPath() string {
-	return ".pi/skills/awf-workflow/SKILL.md"
-}
-
-func (t Target) routesWorkflows() bool { return t.Name == "pi" }
 
 // AgentPath is the output path for a rendered agent under this target.
 func (t Target) AgentPath(name string) string {
@@ -242,8 +223,6 @@ var piTarget = Target{
 		{Path: ".pi/extensions/awf-handoff/index.ts", TemplateID: "pi/awf-handoff/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/runner.ts", TemplateID: "pi/awf-subagents/runner.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-telemetry/index.ts", TemplateID: "pi/awf-telemetry/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-telemetry/protocol.ts", TemplateID: "pi/awf-telemetry/protocol.ts.tmpl", Producer: TargetOutputTelemetryProtocol, Inputs: []TargetOutputInput{{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}}, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true},
 	},
 }
 

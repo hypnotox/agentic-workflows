@@ -53,23 +53,6 @@ func assertHandoff(t *testing.T, root, from, to string) {
 	}
 }
 
-// nonHandoffRequires pins the catalog requiresSkills pairs that are
-// deliberately not handoffs - the reference is real (ADR-0080's sweep demands
-// the declaration) but sits in companion mentions, lifecycle citations, or
-// arrival-context prose rather than on an invocation-verb line. Entries fail
-// when stale: a pair that starts holding as a handoff must be removed so the
-// derivation covers it.
-var nonHandoffRequires = map[string]bool{
-	"executing-plans->subagent-driven-development": true,
-	"proposing-adr->adr-lifecycle":                 true,
-	"reviewing-adr->adr-lifecycle":                 true,
-	"reviewing-adr->executing-plans":               true,
-	"reviewing-adr->subagent-driven-development":   true,
-	"reviewing-impl->executing-plans":              true,
-	"reviewing-impl->subagent-driven-development":  true,
-	"reviewing-plan-resync->reviewing-plan":        true,
-}
-
 // conditionalHandoffs are handoffs present in the full-catalog render whose
 // template reference is conditional, so requiresSkills cannot declare it
 // (ADR-0080 declares unconditional references only) and the derivation below
@@ -86,26 +69,6 @@ var conditionalHandoffs = []struct{ from, to string }{
 func TestWorkflowChainHandoffs(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalog(t, cat)
-	declared := map[string]bool{}
-	for name, sp := range catalog.Standard.Skills {
-		body := read(t, skillPath(root, name))
-		for _, req := range sp.RequiresSkills {
-			pair := name + "->" + req
-			declared[pair] = true
-			holds := namesOnInvocationLine(body, evalPrefix+"-"+req)
-			switch {
-			case nonHandoffRequires[pair] && holds:
-				t.Errorf("stale nonHandoffRequires entry %q: the reference now sits on an invocation line - remove the entry", pair)
-			case !nonHandoffRequires[pair] && !holds:
-				t.Errorf("skill %q does not hand off to %q on an invocation line", name, evalPrefix+"-"+req)
-			}
-		}
-	}
-	for pair := range nonHandoffRequires {
-		if !declared[pair] {
-			t.Errorf("stale nonHandoffRequires entry %q: no such requiresSkills declaration", pair)
-		}
-	}
 	for _, tc := range conditionalHandoffs {
 		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
 			assertHandoff(t, root, tc.from, tc.to)
@@ -132,12 +95,12 @@ func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
 	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-		body := read(t, filepath.Join(root, ".pi", "awf-workflows", consumer+".md"))
-		if !strings.Contains(body, "awf_workflow") || !strings.Contains(body, `skill: "exploring"`) {
+		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
+		if !strings.Contains(body, "exploring") {
 			t.Errorf("Pi consumer %q does not route through exploring", consumer)
 		}
 	}
-	exploring := read(t, filepath.Join(root, ".pi", "awf-workflows", "exploring.md"))
+	exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
 	if !namesOnInvocationLine(exploring, "subagent_explore") {
 		t.Error("Pi exploring skill does not invoke subagent_explore")
 	}
@@ -156,7 +119,7 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 		{"reviewing-adr", "adr-reviewer"},
 		{"reviewing-plan", "plan-reviewer"},
 	} {
-		body := read(t, filepath.Join(root, ".pi", "awf-workflows", tc.skill+".md"))
+		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+tc.skill, "SKILL.md"))
 		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
 			t.Errorf("Pi skill %q does not connect subagent_review to %q", tc.skill, tc.agent)
 		}
@@ -201,7 +164,7 @@ const (
 func TestChainFlagsMatchPinnedNodes(t *testing.T) {
 	var flagged []string
 	for name, sp := range catalog.Standard.Skills {
-		if sp.Chain {
+		if sp.Profile.Kind == catalog.WorkflowChain {
 			flagged = append(flagged, name)
 		}
 	}
@@ -358,7 +321,7 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		"A failed handoff leaves the checkpoint valid and becomes a check-in",
 	}
 	piSkillPath := func(name string) string {
-		return filepath.Join(root, ".pi", "awf-workflows", name+".md")
+		return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
 	}
 	for _, name := range routineCheckpointSkills {
 		body := read(t, piSkillPath(name))
@@ -431,17 +394,14 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		{"claude/docs/workflow.md", filepath.Join(nonPiRoot, "docs", "workflow.md")},
 		{"claude/AGENTS.md", filepath.Join(nonPiRoot, "AGENTS.md")},
 	}
-	bodies, err := os.ReadDir(filepath.Join(root, ".pi", "awf-workflows"))
+	bodies, err := os.ReadDir(filepath.Join(root, ".pi", "skills"))
 	if err != nil {
 		t.Fatalf("list rendered pi workflow bodies: %v", err)
 	}
 	for _, entry := range bodies {
-		name := strings.TrimSuffix(entry.Name(), ".md")
-		if name == entry.Name() {
-			continue
-		}
+		name := strings.TrimPrefix(entry.Name(), evalPrefix+"-")
 		sites = append(sites,
-			renderedSite{"pi/" + name, filepath.Join(root, ".pi", "awf-workflows", entry.Name())},
+			renderedSite{"pi/" + name, filepath.Join(root, ".pi", "skills", entry.Name(), "SKILL.md")},
 			renderedSite{"claude/" + name, skillPath(nonPiRoot, name)},
 		)
 	}
@@ -477,7 +437,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"After explicit approval, persist the approval and next action before continuing",
 	}
 	for _, name := range approvalCheckpointSkills {
-		piBody := read(t, filepath.Join(root, ".pi", "awf-workflows", name+".md"))
+		piBody := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md"))
 		assertOrderedBody(t, "pi/"+name, piBody, append(append([]string{}, ordered...),
 			"invoke `handoff_session` alone",
 			"unless the user cancels during the five-second window",
@@ -495,16 +455,16 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		}
 	}
 
-	rendered, err := os.ReadDir(filepath.Join(root, ".pi", "awf-workflows"))
+	rendered, err := os.ReadDir(filepath.Join(root, ".pi", "skills"))
 	if err != nil {
 		t.Fatalf("list rendered pi workflow bodies: %v", err)
 	}
 	for _, entry := range rendered {
-		name := strings.TrimSuffix(entry.Name(), ".md")
-		if name == entry.Name() || slices.Contains(approvalCheckpointSkills, name) {
+		name := strings.TrimPrefix(entry.Name(), evalPrefix+"-")
+		if slices.Contains(approvalCheckpointSkills, name) {
 			continue
 		}
-		if strings.Contains(read(t, filepath.Join(root, ".pi", "awf-workflows", entry.Name())), "explicitly request approval") {
+		if strings.Contains(read(t, filepath.Join(root, ".pi", "skills", entry.Name(), "SKILL.md")), "explicitly request approval") {
 			t.Errorf("skill %q renders an approval stop outside the two mandatory boundaries", name)
 		}
 	}

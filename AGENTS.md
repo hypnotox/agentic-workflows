@@ -43,30 +43,43 @@ Hard rules every change must respect:
 - **No working-memory citation in a durable record.** An ADR, a plan, and a commit-message body may name the `.awf/memory/` directory or an angle-bracket placeholder segment, never an actual file in it: the file is ephemeral, gitignored, and eventually deleted, so a citation leaks it as false authority into a record that outlives it. The opt-in `awf check memory` (on in this repo, wired into `./x gate` and the pre-commit payload) scans the staged decisions and plans directories, and `awf check commit` runs the same detector over the git-cleaned message body, where no exemption applies. To write about one file anyway, name the segment separately from the prefix, or write the segment as a placeholder in angle brackets. (ADR-0158)
 - **100% coverage gate.** `./x gate` fails below 100% statement coverage; exclude a genuinely-unreachable branch only with `// coverage-ignore: <reason>`. (ADR-0012)
 - **Dead-code gate.** `./x gate` runs `deadcode` (no `-test`) over `./...` and fails on any production function unreachable from a `main` outside `internal/testsupport/`; `cmd/deadcodecheck` enforces this with no `//deadcode:ignore` escape hatch. (ADR-0063)
-- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `metrics`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
+- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
-Non-trivial work starts with `awf-brainstorming`: it settles intent and design, then hands off through the chain (ADR and plan when warranted, implementation, review, retrospective), each skill's terminal step naming its successor.
+For non-trivial work, brainstorming is often useful; select any enabled skill whose purpose fits, and treat catalog relationships as advice.
 
-Task skills for specific situations:
+Enabled skills:
 
-- `awf-adr-lifecycle`: transitioning an ADR between lifecycle states.
-- `awf-bugfix`: applying a fix whose root cause is already known.
-- `awf-debugging`: investigating a bug or unexpected behaviour before any fix.
-- `awf-exploring`: fresh-context repository exploration when inline search would pollute the parent context.
-- `awf-refactor-coupling-audit`: scoping a refactor that moves files between packages or inverts dependencies.
-- `awf-tdd`: writing the failing test before the implementation change.
+- `awf-adr-lifecycle` (support): Apply an ADR lifecycle transition correctly. Trigger: Use when transitioning an ADR between lifecycle states. Usually follows: proposing-adr, reviewing-adr. Common follow-ups: executing-plans, writing-plans.
+- `awf-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design. Common follow-ups: proposing-adr, writing-plans, executing-direct.
+- `awf-bugfix` (task): Apply a fix with a known root cause. Trigger: Use when applying a fix whose root cause is already known. Usually follows: debugging. Common follow-ups: reviewing-impl.
+- `awf-debugging` (task): Investigate a defect before changing it. Trigger: Use when investigating a bug or unexpected behaviour before any fix. Common follow-ups: bugfix, executing-direct.
+- `awf-executing-direct` (chain): Implement a small approved change directly. Trigger: Use when the change is understood and does not need a plan. Usually follows: brainstorming. Common follow-ups: reviewing-impl.
+- `awf-executing-plans` (chain): Implement an accepted plan. Trigger: Use when a plan is ready for implementation. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, retrospective.
+- `awf-proposing-adr` (chain): Author a decision record for a material design choice. Trigger: Use when a durable architectural or workflow decision is needed. Usually follows: brainstorming. Common follow-ups: reviewing-adr, writing-plans.
+- `awf-refactor-coupling-audit` (support): Scope dependency and test coupling before a refactor. Trigger: Use when scoping a refactor that moves files between packages or inverts dependencies. Usually follows: exploring. Common follow-ups: brainstorming, writing-plans.
+- `awf-retrospective` (chain): Capture and promote lessons from completed work. Trigger: Use after implementation review when a recurrence or improvement is worth recording. Usually follows: reviewing-impl.
+- `awf-reviewing-adr` (chain): Independently review an ADR. Trigger: Use when a proposed ADR needs decision-quality review. Usually follows: proposing-adr. Common follow-ups: reviewing-plan-resync, writing-plans.
+- `awf-reviewing-impl` (chain): Independently review an implementation. Trigger: Use when an implementation commit or series needs review. Usually follows: executing-direct, executing-plans, subagent-driven-development. Common follow-ups: retrospective.
+- `awf-reviewing-plan` (chain): Independently review an implementation plan. Trigger: Use when a written plan needs review before execution. Usually follows: writing-plans. Common follow-ups: reviewing-plan-resync, executing-plans.
+- `awf-reviewing-plan-resync` (chain): Reconcile a plan after review findings. Trigger: Use when review findings require a plan revision and re-review. Usually follows: reviewing-plan, reviewing-adr. Common follow-ups: executing-plans, subagent-driven-development.
+- `awf-subagent-driven-development` (chain): Implement a plan through reviewed subagent tasks. Trigger: Use when plan execution benefits from delegated implementation tasks. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, retrospective.
+- `awf-tdd` (support): Drive a change from a failing test. Trigger: Use when writing the failing test before the implementation change. Common follow-ups: executing-direct, executing-plans.
+- `awf-writing-plans` (chain): Turn an approved design into an executable plan. Trigger: Use when implementation needs a durable, reviewable plan. Usually follows: brainstorming, proposing-adr. Common follow-ups: reviewing-plan.
+- `awf-exploring` (support): Explore repository facts without polluting the main context. Trigger: Use for fresh-context repository exploration when inline search would pollute the parent context. Common follow-ups: brainstorming, debugging, refactor-coupling-audit.
 
-In Pi, enter every governed skill through the `awf_workflow` router with the semantic skill name; never load a governed body directly.
+In Pi, use any enabled native skill when its purpose fits the current work.
+
+Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
 
 Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory
 
-Efforts are optional local coordination state. Create an outcome-specific effort with `awf effort new "<outcome>"` when durable coordination, a memory file, or a managed worktree is useful. `awf effort` owns optional memory, worktrees, and one session assignment; selection and resumption may occur at any time and never fabricate history. Memory files remain gitignored and ephemeral: never commit one or cite a particular file in an ADR, plan, or commit message.
+Efforts are optional local coordination state. Create an outcome-specific effort with `awf effort new "<outcome>"` when durable coordination, a memory file, or a managed worktree is useful. `awf effort` owns optional memory, worktrees, and optional memory and managed worktrees; selection and resumption may occur at any time and never fabricate history. Memory files remain gitignored and ephemeral: never commit one or cite a particular file in an ADR, plan, or commit message.
 
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->

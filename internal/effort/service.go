@@ -111,20 +111,13 @@ func (s *Service) New(title string, withMemory bool) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	return s.joinAssignments(created)
+	return created, nil
 }
 
 func (s *Service) List() ([]Record, error) {
 	records, err := s.store.list()
 	if err != nil {
 		return nil, err
-	}
-	assignments, err := s.readAssignments()
-	if err != nil {
-		return nil, err
-	}
-	for i := range records {
-		records[i].AssignedSessionIDs = sessionsFor(assignments, records[i].ID)
 	}
 	return records, nil
 }
@@ -134,7 +127,7 @@ func (s *Service) Show(id string) (Record, error) {
 	if err != nil {
 		return Record{}, err
 	}
-	return s.joinAssignments(record)
+	return record, nil
 }
 
 func (s *Service) Rename(id, title string) (Record, error) {
@@ -235,7 +228,7 @@ func (s *Service) mutate(id string, change func(*Record) error) (Record, error) 
 	if err != nil {
 		return Record{}, err
 	}
-	return s.joinAssignments(result)
+	return result, nil
 }
 
 // Memory creates or confirms the owned normalized memory file.
@@ -267,8 +260,7 @@ func (s *Service) Memory(id string) (string, Record, error) {
 	if err != nil {
 		return "", Record{}, err
 	}
-	result, err = s.joinAssignments(result)
-	return path, result, err
+	return path, result, nil
 }
 
 func (s *Service) Repair(id string) (RepairResult, error) {
@@ -308,11 +300,6 @@ func (s *Service) Repair(id string) (RepairResult, error) {
 	if err != nil {
 		return RepairResult{}, err
 	}
-	record, err := s.joinAssignments(result.Record)
-	if err != nil {
-		return RepairResult{}, fmt.Errorf("join assignments after repairing effort %s: %w", id, err)
-	}
-	result.Record = record
 	return result, nil
 }
 

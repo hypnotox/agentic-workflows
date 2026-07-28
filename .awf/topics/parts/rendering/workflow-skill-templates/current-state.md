@@ -23,16 +23,22 @@ Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
-The rendered brainstorming and ADR-review skills close with the mandatory approval protocol: persist memory, present the completed summary, explicitly request approval, and stop; continuation and any session handoff begin only after explicit approval is persisted. The memory-persistence step names this effort's identity on its `Effort: <effort-id>` line, taking a runtime's active ID exactly when one is assigned and otherwise a short kebab-case slug the agent establishes, and refuses adopting another effort's identity. No other chain skill renders an approval stop.
+The rendered brainstorming and ADR-review skills close with the mandatory approval protocol: persist memory, present the completed summary, explicitly request approval, and stop. Continuation and handoff begin only after explicit approval is persisted; no other chain skill renders an approval stop.
 Origin: ADR-0152
-Revised-by: ADR-0160
+Revised-by: ADR-0160, ADR-0167
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance treats memory as optional local effort state. It recommends outcome-specific `awf effort` creation when durable coordination, memory, or worktrees warrant it, permits selection or resumption at any time, and contains no adoption, detour, or telemetry-lifecycle gate.
+Checkpoint guidance treats memory as optional local effort state and recommends outcome-specific `awf effort` creation when durable coordination, memory, or worktrees warrant it. It contains no selection, assignment, adoption, detour, or telemetry-lifecycle gate.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167
+Backing: test
+
+### `invariant: workflow-transitions-advisory`
+
+Rendered workflow skills describe catalog relationships only as recommendations. Any enabled skill may be used when its purpose fits, while controls within a selected skill remain mandatory.
+Origin: ADR-0167
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

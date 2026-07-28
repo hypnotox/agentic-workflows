@@ -12,10 +12,14 @@ const (
 	WorkflowSupport WorkflowKind = "support"
 )
 
-// WorkflowMapping classifies a fixed governed workflow body. It is render
-// metadata only: loading the body never mutates any workflow state.
-type WorkflowMapping struct {
-	Kind WorkflowKind
+// WorkflowProfile describes how an enabled skill can be selected. Its
+// relationships are advisory metadata and never enablement edges.
+type WorkflowProfile struct {
+	Kind            WorkflowKind
+	Purpose         string
+	Trigger         string
+	UsuallyFollows  []string
+	CommonFollowUps []string
 }
 
 // TargetSpec declares the render sections of a target that has no further
@@ -62,23 +66,14 @@ type SkillSpec struct {
 	RequiresDoc   string   `yaml:"requiresDoc"`
 	RequiresAgent string   `yaml:"requiresAgent"`
 	Core          bool     `yaml:"core"`
-	// Chain marks a workflow-chain progression node (ADR-0054). A standard skill
-	// that is not Chain is a task skill; Core covers default scaffolding, not
-	// chain membership - adr-lifecycle is core yet a task skill.
-	Chain bool `yaml:"chain"`
 	// Base marks a synthesized project-local entry (ADR-0068): render resolves its
 	// template id to the shared base template, not the name-derived catalog path.
 	// Standard skills never set it.
 	Base bool `yaml:"base"`
-	// Trigger is the one-line guide trigger for non-chain (task) skills: the
-	// situation that warrants invoking the skill, rendered as its row in the
-	// agent guide's entry-skill trigger table (ADR-0157). Empty for chain
-	// skills, which route through the chain rather than the table.
-	Trigger string `yaml:"trigger"`
 	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
-	RequiresSkills []string         `yaml:"requiresSkills"`
-	Data           map[string]any   `yaml:"data"`
-	Workflow       *WorkflowMapping `yaml:"workflow,omitempty"`
+	RequiresSkills []string        `yaml:"requiresSkills"`
+	Data           map[string]any  `yaml:"data"`
+	Profile        WorkflowProfile `yaml:"profile"`
 }
 
 // DocEntry is one entry in the unified doc collection (ADR-0061): a toggleable

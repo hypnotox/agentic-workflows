@@ -151,24 +151,16 @@ func TestRequiresSkillsDeclarationsValid(t *testing.T) {
 	}
 }
 
-// TestTaskSkillTriggers: the guide's trigger table derives each row's text from
-// SkillSpec.Trigger (ADR-0157), so every task (non-Chain) skill must carry a
-// nonempty trigger without a trailing period (the template appends it), and
-// chain skills - which route through the chain, not the table - carry none.
-func TestTaskSkillTriggers(t *testing.T) {
+// invariant: rendering/catalog-and-targets:requires-skills-exact
+func TestStandardSkillRequirementsAreEmpty(t *testing.T) {
 	for name, spec := range Standard.Skills {
-		if spec.Chain {
-			if spec.Trigger != "" {
-				t.Errorf("chain skill %q must not carry a guide trigger, got %q", name, spec.Trigger)
-			}
-			continue
+		if len(spec.RequiresSkills) != 0 {
+			t.Errorf("standard skill %q has structural workflow requirements %v", name, spec.RequiresSkills)
 		}
-		if spec.Trigger == "" {
-			t.Errorf("task skill %q carries no guide trigger", name)
-			continue
-		}
-		if strings.HasSuffix(spec.Trigger, ".") {
-			t.Errorf("task skill %q trigger ends in a period (the guide row appends it): %q", name, spec.Trigger)
+	}
+	for _, name := range []string{"adr-reviewer", "code-reviewer", "plan-reviewer"} {
+		if name == "plan-reviewer" && len(Standard.Agents[name].RequiresSkills) == 0 {
+			t.Errorf("reviewing agent %q lost its structural requirement", name)
 		}
 	}
 }

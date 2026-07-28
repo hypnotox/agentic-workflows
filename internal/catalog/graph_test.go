@@ -2,8 +2,6 @@ package catalog
 
 import (
 	"reflect"
-	"slices"
-	"sort"
 	"testing"
 )
 
@@ -15,11 +13,7 @@ func TestRequiresOfEdgeEnumeration(t *testing.T) {
 		node Node
 		want []Node
 	}{
-		{Node{Kind: "skill", Name: "reviewing-plan"}, []Node{
-			{Kind: "skill", Name: "reviewing-plan-resync"},
-			{Kind: "skill", Name: "writing-plans"},
-			{Kind: "agent", Name: "plan-reviewer"},
-		}},
+		{Node{Kind: "skill", Name: "reviewing-plan"}, []Node{{Kind: "agent", Name: "plan-reviewer"}}},
 		{Node{Kind: "skill", Name: "roadmap-graduation"}, []Node{
 			{Kind: "doc", Name: "roadmap"},
 		}},
@@ -51,47 +45,10 @@ func TestClosureIsCycleSafe(t *testing.T) {
 	}
 }
 
-func TestExploringRequirementsAreOneWay(t *testing.T) {
-	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-		if !slices.Contains(Standard.Skills[consumer].RequiresSkills, "exploring") {
-			t.Errorf("%s does not require exploring", consumer)
-		}
-	}
-	for _, forbidden := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-		if slices.Contains(Standard.Skills["exploring"].RequiresSkills, forbidden) {
-			t.Errorf("exploring has reciprocal requirement on %s", forbidden)
-		}
-	}
-}
-
-// The Chain seeds' closure is exactly the lifecycle-mapped chain unit plus its
-// three agents (ADR-0081).
-func TestClosureChainUnit(t *testing.T) {
-	var seeds []Node
-	for name, spec := range Standard.Skills {
-		if spec.Chain {
-			seeds = append(seeds, Node{Kind: "skill", Name: name})
-		}
-	}
-	var skills, agents []string
-	for _, n := range Closure(Standard, seeds) {
-		switch n.Kind {
-		case "skill":
-			skills = append(skills, n.Name)
-		case "agent":
-			agents = append(agents, n.Name)
-		}
-	}
-	sort.Strings(skills)
-	sort.Strings(agents)
-	wantSkills := []string{"adr-lifecycle", "brainstorming", "executing-direct", "executing-plans", "exploring", "proposing-adr",
-		"retrospective", "reviewing-adr", "reviewing-impl", "reviewing-plan",
-		"reviewing-plan-resync", "subagent-driven-development", "writing-plans"}
-	wantAgents := []string{"adr-reviewer", "code-reviewer", "plan-reviewer"}
-	if !reflect.DeepEqual(skills, wantSkills) {
-		t.Errorf("chain closure skills = %v, want %v", skills, wantSkills)
-	}
-	if !reflect.DeepEqual(agents, wantAgents) {
-		t.Errorf("chain closure agents = %v, want %v", agents, wantAgents)
+// Advisory profile neighbors are deliberately absent from structural closure.
+func TestWorkflowProfileNeighborsDoNotCloseRequirements(t *testing.T) {
+	got := Closure(Standard, []Node{{Kind: "skill", Name: "brainstorming"}})
+	if !reflect.DeepEqual(got, []Node{{Kind: "skill", Name: "brainstorming"}}) {
+		t.Errorf("brainstorming closure = %v, want no advisory neighbors", got)
 	}
 }

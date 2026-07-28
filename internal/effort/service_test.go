@@ -85,24 +85,4 @@ func TestEffortAllocationAndAssignmentRefusals(t *testing.T) {
 	if _, err := collisionService.New("Exhaust", false); err == nil || !strings.Contains(err.Error(), "128 collisions") {
 		t.Fatalf("collision exhaustion = %v", err)
 	}
-
-	assignmentDir := filepath.Join(root, ".awf", "assignments")
-	if err := os.MkdirAll(assignmentDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	for name, raw := range map[string]string{
-		"malformed":   `{`,
-		"trailing":    `{"schemaVersion":1,"sessions":{}} {}`,
-		"schema":      `{"schemaVersion":2,"sessions":{}}`,
-		"nil-map":     `{"schemaVersion":1,"sessions":null}`,
-		"bad-session": `{"schemaVersion":1,"sessions":{" ":"` + idA + `"}}`,
-		"bad-id":      `{"schemaVersion":1,"sessions":{"session":"bad"}}`,
-	} {
-		t.Run(name, func(t *testing.T) {
-			writeEffortFile(t, filepath.Join(assignmentDir, "sessions.json"), raw)
-			if _, err := service.List(); err == nil {
-				t.Fatal("corrupt assignments accepted")
-			}
-		})
-	}
 }

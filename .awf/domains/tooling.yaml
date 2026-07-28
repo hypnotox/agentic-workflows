@@ -13,7 +13,6 @@ paths:
   - internal/worktree/**
   - internal/testsupport/**
   - internal/snapshot/**
-  - internal/telemetry/**
   - internal/upgrade/**
   - internal/prosegate/**
   - internal/memorycite/**

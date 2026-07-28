@@ -39,24 +39,37 @@ Hard rules every change must respect:
 - **Clamped latitude.** `almanac.Sun` clamps latitude to [-90, 90] before the day-length model; out-of-range input degrades to the pole, never to a domain error. (ADR-0001)
 - **Decimal degrees only.** The CLI accepts coordinates exclusively as decimal degrees; no DMS parsing exists. (ADR-0002)
 - **Conventional Commits, scopes `almanac`, `schedule`, `cli`, `docs`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
-- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `metrics`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
+- **Binary-version gate.** Every gated command (`render`, `check`, `audit`, `effort`, `list`, `config`, `context`, `topic`, `new`, `enable`, `disable`, except `check prose`, `check memory`, and `check commit`) refuses to run when the binary is behind the project on schema generation or lock `awfVersion`; `config`, `context`, and `topic` degrade to a static reference outside an adopted tree instead of refusing. (ADR-0039)
 
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->
 ## Workflow
 
-Non-trivial work starts with `sundial-brainstorming`: it settles intent and design, then hands off through the chain (ADR and plan when warranted, implementation, review, retrospective), each skill's terminal step naming its successor.
+For non-trivial work, brainstorming is often useful; select any enabled skill whose purpose fits, and treat catalog relationships as advice.
 
-Task skills for specific situations:
+Enabled skills:
 
-- `sundial-adr-lifecycle`: transitioning an ADR between lifecycle states.
-- `sundial-bugfix`: applying a fix whose root cause is already known.
-- `sundial-debugging`: investigating a bug or unexpected behaviour before any fix.
-- `sundial-exploring`: fresh-context repository exploration when inline search would pollute the parent context.
-- `sundial-refactor-coupling-audit`: scoping a refactor that moves files between packages or inverts dependencies.
-- `sundial-roadmap-graduation`: graduating a shipped roadmap item out of the roadmap doc.
-- `sundial-tdd`: writing the failing test before the implementation change.
+- `sundial-adr-lifecycle` (support): Apply an ADR lifecycle transition correctly. Trigger: Use when transitioning an ADR between lifecycle states. Usually follows: proposing-adr, reviewing-adr. Common follow-ups: executing-plans, writing-plans.
+- `sundial-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design. Common follow-ups: proposing-adr, writing-plans, executing-direct.
+- `sundial-bugfix` (task): Apply a fix with a known root cause. Trigger: Use when applying a fix whose root cause is already known. Usually follows: debugging. Common follow-ups: reviewing-impl.
+- `sundial-debugging` (task): Investigate a defect before changing it. Trigger: Use when investigating a bug or unexpected behaviour before any fix. Common follow-ups: bugfix, executing-direct.
+- `sundial-executing-direct` (chain): Implement a small approved change directly. Trigger: Use when the change is understood and does not need a plan. Usually follows: brainstorming. Common follow-ups: reviewing-impl.
+- `sundial-executing-plans` (chain): Implement an accepted plan. Trigger: Use when a plan is ready for implementation. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, retrospective.
+- `sundial-proposing-adr` (chain): Author a decision record for a material design choice. Trigger: Use when a durable architectural or workflow decision is needed. Usually follows: brainstorming. Common follow-ups: reviewing-adr, writing-plans.
+- `sundial-refactor-coupling-audit` (support): Scope dependency and test coupling before a refactor. Trigger: Use when scoping a refactor that moves files between packages or inverts dependencies. Usually follows: exploring. Common follow-ups: brainstorming, writing-plans.
+- `sundial-retrospective` (chain): Capture and promote lessons from completed work. Trigger: Use after implementation review when a recurrence or improvement is worth recording. Usually follows: reviewing-impl.
+- `sundial-reviewing-adr` (chain): Independently review an ADR. Trigger: Use when a proposed ADR needs decision-quality review. Usually follows: proposing-adr. Common follow-ups: reviewing-plan-resync, writing-plans.
+- `sundial-reviewing-impl` (chain): Independently review an implementation. Trigger: Use when an implementation commit or series needs review. Usually follows: executing-direct, executing-plans, subagent-driven-development. Common follow-ups: retrospective.
+- `sundial-reviewing-plan` (chain): Independently review an implementation plan. Trigger: Use when a written plan needs review before execution. Usually follows: writing-plans. Common follow-ups: reviewing-plan-resync, executing-plans.
+- `sundial-reviewing-plan-resync` (chain): Reconcile a plan after review findings. Trigger: Use when review findings require a plan revision and re-review. Usually follows: reviewing-plan, reviewing-adr. Common follow-ups: executing-plans, subagent-driven-development.
+- `sundial-roadmap-graduation` (support): Move a shipped roadmap item out of the roadmap. Trigger: Use when graduating a shipped roadmap item out of the roadmap doc. Usually follows: reviewing-impl.
+- `sundial-subagent-driven-development` (chain): Implement a plan through reviewed subagent tasks. Trigger: Use when plan execution benefits from delegated implementation tasks. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, retrospective.
+- `sundial-tdd` (support): Drive a change from a failing test. Trigger: Use when writing the failing test before the implementation change. Common follow-ups: executing-direct, executing-plans.
+- `sundial-writing-plans` (chain): Turn an approved design into an executable plan. Trigger: Use when implementation needs a durable, reviewable plan. Usually follows: brainstorming, proposing-adr. Common follow-ups: reviewing-plan.
+- `sundial-exploring` (support): Explore repository facts without polluting the main context. Trigger: Use for fresh-context repository exploration when inline search would pollute the parent context. Common follow-ups: brainstorming, debugging, refactor-coupling-audit.
 
-In Pi, enter every governed skill through the `awf_workflow` router with the semantic skill name; never load a governed body directly.
+In Pi, use any enabled native skill when its purpose fits the current work.
+
+Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
 
 Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
 

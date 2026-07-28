@@ -47,9 +47,9 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and the five resident-root self-ignoring outputs. Resident dynamic descendants are not plan nodes and are resolved at the primary root while tracked authority remains invoking-checkout authority.
+The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and exactly three resident-root self-ignoring outputs: efforts, memory, and worktrees. Resident dynamic descendants are not plan nodes and resolve at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
-Revised-by: ADR-0164
+Revised-by: ADR-0164, ADR-0167
 Backing: test
 
 ### `invariant: output-policy-explicit`

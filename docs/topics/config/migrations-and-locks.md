@@ -111,7 +111,7 @@ Backing: test
 
 ### `invariant: workflow-telemetry-config-migration`
 
-Schema generation 17 materializes the historical workflowTelemetry defaults, generations 18 and 19 remain historical upgrades, and generation 20 removes exactly the root workflowTelemetry block through a YAML-node edit while preserving unrelated configuration and advancing the ordinary lock and binary-version authority.
+Schema generation 21 removes only `.awf/metrics` and `.awf/assignments` from the primary control root. It reports each root in that order as removed or already absent, refuses symlinks and non-directories without removal, and permits retry after partial failure while ordinary schema, lock, render, drift, discovery, sweep, and uninstall ownership excludes both roots.
 Origin: ADR-0146
-Revised-by: ADR-0164
+Revised-by: ADR-0164, ADR-0167
 Backing: test

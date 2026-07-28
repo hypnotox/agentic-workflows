@@ -37,21 +37,20 @@ func closeFixture(t *testing.T, cfg string, files map[string]string) string {
 func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
 		t.Run(consumer, func(t *testing.T) {
-			root := closeFixture(t, "prefix: ex\nskills: ["+consumer+"]\nagents: []\n", nil)
+			root := closeFixture(t, "prefix: ex\nskills: ["+consumer+"]\nagents: []\ndocs: [roadmap]\n", nil)
 			var out bytes.Buffer
 			if err := applyCloseEnabledSet(root, &out); err != nil {
 				t.Fatalf("applyCloseEnabledSet: %v", err)
 			}
-			want := `close-enabled-set: enabled skill "exploring" (required by "` + consumer + `")`
-			if !strings.Contains(out.String(), want) {
-				t.Errorf("diagnostic missing %q:\n%s", want, out.String())
+			if out.Len() != 0 {
+				t.Errorf("advisory catalog must not close workflow requirements: %q", out.String())
 			}
 			before, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(before), "- exploring") {
-				t.Errorf("upgraded config missing exploring:\n%s", before)
+			if !strings.Contains(string(before), "skills: ["+consumer+"]") {
+				t.Errorf("config changed unexpectedly:\n%s", before)
 			}
 			var second bytes.Buffer
 			if err := applyCloseEnabledSet(root, &second); err != nil {
@@ -68,6 +67,13 @@ func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 	}
 }
 
+func TestCloseEnabledSetScansEnabledAgents(t *testing.T) {
+	root := closeFixture(t, "prefix: ex\nskills: []\nagents: [plan-reviewer]\n", nil)
+	if err := applyCloseEnabledSet(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+}
+
 // Dormant doc-gated skills are dropped (printed), missing requirements are
 // added to a fixed point, and a re-run is a byte-identical no-op (ADR-0081
 // Decision 8).
@@ -81,8 +87,6 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	got := out.String()
 	for _, want := range []string{
 		`close-enabled-set: dropped dormant skill "roadmap-graduation" (its "roadmap" doc is disabled)`,
-		`close-enabled-set: enabled skill "proposing-adr" (required by "brainstorming")`,
-		`close-enabled-set: enabled agent "plan-reviewer" (required by "reviewing-plan")`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("output missing %q:\n%s", want, got)
@@ -92,7 +96,7 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"- reviewing-plan-resync", "- retrospective", "- adr-lifecycle", "- code-reviewer", "- adr-reviewer"} {
+	for _, want := range []string{} {
 		if !strings.Contains(string(cfg), want) {
 			t.Errorf("closed config missing %q:\n%s", want, cfg)
 		}

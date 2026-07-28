@@ -42,11 +42,11 @@ type persistedRecord struct {
 }
 
 func persisted(r Record) persistedRecord {
-	return persistedRecord{r.SchemaVersion, r.ID, r.Title, r.State, r.CreatedAt, r.UpdatedAt, r.MemoryPresent, r.Worktree, r.Integration}
+	return persistedRecord(r)
 }
 
 func logical(r persistedRecord) Record {
-	return Record{SchemaVersion: r.SchemaVersion, ID: r.ID, Title: r.Title, State: r.State, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt, MemoryPresent: r.MemoryPresent, Worktree: r.Worktree, Integration: r.Integration}
+	return Record(r)
 }
 
 type durableFile interface {

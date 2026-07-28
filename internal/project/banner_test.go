@@ -67,7 +67,7 @@ func TestInjectBannerMemoryGitignore(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		tid  string
-	}{{"memory", memoryTID}, {"metrics", metricsTID}} {
+	}{{"memory", memoryTID}, {"metrics", worktreesTID}} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := injectBanner("*\n!.gitignore\n", tc.tid)
 			if got != want {

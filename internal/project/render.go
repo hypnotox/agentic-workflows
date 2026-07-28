@@ -17,21 +17,18 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
-	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 const (
-	bridgeTID      = "claude/CLAUDE.md.tmpl"
-	bootstrapTID   = "bootstrap/awf-bootstrap.sh.tmpl"
-	upgradeTID     = "bootstrap/awf-upgrade.sh.tmpl"
-	memoryTID      = "memory/gitignore.tmpl"
-	metricsTID     = "metrics/gitignore.tmpl"
-	effortsTID     = "efforts/gitignore.tmpl"
-	assignmentsTID = "assignments/gitignore.tmpl"
-	worktreesTID   = "worktrees/gitignore.tmpl"
-	runnerTID      = "runner/awf.tmpl"
+	bridgeTID    = "claude/CLAUDE.md.tmpl"
+	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
+	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
+	memoryTID    = "memory/gitignore.tmpl"
+	effortsTID   = "efforts/gitignore.tmpl"
+	worktreesTID = "worktrees/gitignore.tmpl"
+	runnerTID    = "runner/awf.tmpl"
 )
 
 // runnerSections is the pure awf wrapper's single declared section: the body
@@ -113,55 +110,37 @@ func (p *Project) data(sc config.Sidecar) map[string]any {
 	}
 }
 
-type workflowRouterEntry struct {
-	Name, Kind, Effect string
-}
-
-func (p *Project) workflowRouterData(names []string) ([]workflowRouterEntry, error) {
-	mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
-	if err != nil { // coverage-ignore: Project.Open validates catalog workflow mappings before rendering
-		return nil, err
-	}
-	entries := make([]workflowRouterEntry, 0, len(mappings))
-	for _, name := range slices.Sorted(maps.Keys(mappings)) {
-		entries = append(entries, workflowRouterEntry{Name: name, Kind: string(mappings[name].Kind)})
-	}
-	return entries, nil
-}
-
-func (p *Project) routedWorkflowNames() ([]string, error) {
-	var names []string
-	for _, name := range p.Cfg.Skills {
-		spec, ok := p.Cat.Skills[name]
-		if !ok || spec.Workflow == nil {
-			continue
-		}
-		sc, err := p.Cfg.Sidecar("skills", name)
-		if err != nil { // coverage-ignore: Project.Open validates enabled skill sidecars before routing
-			return nil, err
-		}
-		if !sc.Local {
-			names = append(names, name)
-		}
-	}
-	slices.Sort(names)
-	return names, nil
-}
-
-// taskSkillRows returns the guide's trigger-table rows for the enabled catalog
-// task skills - standard, non-Chain entries of the effective set - one
-// "- `<prefix>-<name>`: <trigger>." line per skill, sorted by name and joined
-// by newlines, or "" when none are enabled. Derived from the catalog so a new
-// task skill cannot be dropped from the guide's table by a forgotten template
-// edit (ADR-0157).
+// taskSkillRows returns one complete advisory row for every enabled skill.
 func (p *Project) taskSkillRows() string {
 	var rows []string
-	for _, name := range slices.Sorted(maps.Keys(p.effSkills)) {
-		sp, ok := catalog.Standard.Skills[name]
-		if !ok || sp.Chain {
+	for _, name := range p.Cfg.Skills {
+		sp, ok := p.Cat.Skills[name]
+		if !ok {
 			continue
 		}
-		rows = append(rows, "- `"+p.Cfg.Prefix+"-"+name+"`: "+sp.Trigger+".")
+		profile := sp.Profile
+		prefix, purpose, trigger := p.Cfg.Prefix, profile.Purpose, profile.Trigger
+		if prefix == "" {
+			prefix = "project"
+		}
+		if purpose == "" {
+			purpose = "A project-local skill."
+		}
+		if trigger == "" {
+			trigger = "Use when this skill fits the current work."
+		}
+		kind := string(profile.Kind)
+		if kind == "" {
+			kind = string(catalog.WorkflowTask)
+		}
+		row := "- `" + prefix + "-" + name + "` (" + kind + "): " + purpose + " Trigger: " + strings.TrimRight(trigger, ".") + "."
+		if len(profile.UsuallyFollows) > 0 {
+			row += " Usually follows: " + strings.Join(profile.UsuallyFollows, ", ") + "."
+		}
+		if len(profile.CommonFollowUps) > 0 {
+			row += " Common follow-ups: " + strings.Join(profile.CommonFollowUps, ", ") + "."
+		}
+		rows = append(rows, row)
 	}
 	return strings.Join(rows, "\n")
 }
@@ -404,9 +383,6 @@ type renderKindSpec struct {
 	// merge, upstream of BOTH renderTarget and artifactConfigHash so the
 	// computation participates in the drift signal (ADR-0089; nil = none).
 	transform func(name string, sc config.Sidecar) (config.Sidecar, error)
-	// workflowRouter selects the Pi-only governed successor instructions for
-	// hidden workflow bodies without changing other target projections.
-	workflowRouter bool
 	// encode projects the rendered instruction body into an output dialect before
 	// provenance injection (nil leaves ordinary skill/doc rendering unchanged).
 	encode func(name, body string, data map[string]any) (string, error)
@@ -458,9 +434,6 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 			}
 		}
 		data := p.data(sc)
-		if spec.workflowRouter {
-			data["targetWorkflowRouter"] = true
-		}
 		var options *renderOutputOptions
 		if spec.target.Name != "" {
 			for key, value := range spec.target.targetTemplateData() {
@@ -521,42 +494,6 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	for _, t := range p.Targets {
 		skillNames := p.Cfg.Skills
 		skillPath := func(t Target, n string) string { return t.SkillPath(p.Cfg.Prefix, n) }
-		if t.routesWorkflows() {
-			routed, routeErr := p.routedWorkflowNames()
-			if routeErr != nil { // coverage-ignore: effectiveSkills parsed the same enabled sidecars above
-				return nil, routeErr
-			}
-			routedSet := map[string]bool{}
-			for _, name := range routed {
-				routedSet[name] = true
-			}
-			skillNames = slices.DeleteFunc(slices.Clone(p.Cfg.Skills), func(name string) bool { return routedSet[name] })
-			hidden, routeErr := p.renderKind(renderKindSpec{
-				kind: "skills", names: routed, target: t, workflowRouter: true,
-				tid:      p.skillTID,
-				sections: func(n string) []string { return p.Cat.Skills[n].Sections },
-				outPath:  func(t Target, n string) string { return t.HiddenWorkflowPath(n) },
-				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
-			})
-			if routeErr != nil { // coverage-ignore: renderKind receives catalog-validated routed workflow names
-				return nil, routeErr
-			}
-			out = append(out, hidden...)
-			entries, routeErr := p.workflowRouterData(routed)
-			if routeErr != nil { // coverage-ignore: project open validates every catalog mapping before routed names can reach this helper
-				return nil, routeErr
-			}
-			data := p.data(config.Sidecar{})
-			data["workflowSkills"] = entries
-			target := t
-			router, routeErr := p.renderTarget("skills", "awf-workflow", "pi/awf-workflow/SKILL.md.tmpl", nil, config.Sidecar{}, data, t.WorkflowRouterPath(), &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target})
-			if routeErr != nil { // coverage-ignore: the embedded fixed router template and closed string-only data cannot fail after project validation
-				return nil, routeErr
-			}
-			router.Declarer, router.DeclarerProjection = t.Name, targetDescriptorProjection(t)
-			router.Encoder, router.Provenance = MarkdownAgentDialect, render.HTMLComment
-			out = append(out, router)
-		}
 		for _, spec := range []renderKindSpec{
 			{
 				kind: "skills", names: skillNames, target: t,
@@ -592,24 +529,6 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}
-			if t.routesWorkflows() {
-				routed, routeErr := p.routedWorkflowNames()
-				if routeErr != nil { // coverage-ignore: target rendering follows validated routed workflow names
-					return nil, routeErr
-				}
-				entries, routeErr := p.workflowRouterData(routed)
-				if routeErr != nil { // coverage-ignore: validated catalog mappings cannot fail router data construction
-					return nil, routeErr
-				}
-				data["workflowSkills"] = entries
-			}
-			switch targetOutput.Producer {
-			case TargetOutputTemplate:
-			case TargetOutputTelemetryProtocol:
-				data["telemetryProtocolBody"] = telemetry.ProjectTypeScript()
-			default: // coverage-ignore: target validation rejects unknown producers
-				return nil, fmt.Errorf("unknown target output producer %q", targetOutput.Producer)
-			}
 			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
 				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{
 					bannerStyle: targetOutput.Provenance,
@@ -623,7 +542,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			rf.DeclarerProjection = targetDescriptorProjection(t)
 			rf.Encoder = targetOutput.Encoder
 			rf.Provenance = targetOutput.Provenance
-			for _, input := range targetOutput.Inputs {
+			for _, input := range targetOutput.Inputs { // coverage-ignore: validated target outputs cannot carry producer inputs
 				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput(input))
 			}
 			rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
@@ -736,7 +655,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, resident := range []struct{ name, tid string }{
-		{"efforts", effortsTID}, {"assignments", assignmentsTID}, {"memory", memoryTID}, {"worktrees", worktreesTID}, {"metrics", metricsTID},
+		{"efforts", effortsTID}, {"memory", memoryTID}, {"worktrees", worktreesTID},
 	} {
 		rf, err := p.renderTarget(resident.name, "", resident.tid, nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/"+resident.name+"/.gitignore")
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
@@ -841,7 +760,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "memory" && kind != "metrics" && kind != "efforts" && kind != "assignments" && kind != "worktrees" && kind != "runner" {
+	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "memory" && kind != "efforts" && kind != "worktrees" && kind != "runner" {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err

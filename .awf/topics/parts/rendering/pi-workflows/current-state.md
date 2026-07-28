@@ -1,12 +1,12 @@
-Pi workflow contracts: governed subagent tools, session handoff, local workflow telemetry, and structured exploration dispatch.
+Pi workflow contracts: governed subagent tools, session handoff, native skills, and structured exploration dispatch.
 
 ## Claims
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-Pi handoff keeps its single-use queue, countdown, cancellation, parent link, confined memory validation, and editor fallback. Selection is optional; if both selection and memory exist their Effort IDs must match. Child setup assigns a selected effort through `awf effort assign` before kickoff and failure leaves the parent unchanged.
+Pi handoff retains its single-use queue, countdown, cancellation, parent link, confined optional regular-file memory validation, kickoff, child cleanup, and editor fallback. It neither selects nor assigns an effort, invokes awf, parses an `Effort:` header, nor appends selection state.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -29,23 +29,22 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff accepts optional memoryPath and bounded kickoff. No selection and no memory are valid, a selected effort and memory must match, and the extension never adopts checkpoints or fabricates history.
+Pi handoff accepts an optional confined regular-file memoryPath and bounded kickoff; absent memory is valid. It never selects or assigns an effort, invokes awf, adopts checkpoints, or fabricates history.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Pi checkpoint guidance permits optional-selection handoff after normal persistence and never requires telemetry lifecycle state, adoption, or structured resume.
+Pi checkpoint guidance permits effort-independent handoff after normal persistence, with optional confined memory, and never requires selection, telemetry lifecycle state, adoption, or structured resume.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167
 Backing: test
 
-### `invariant: pi-lifecycle-enforcing-workflow-router`
+### `invariant: pi-native-workflow-skills`
 
-Pi publishes one discoverable `awf-workflow` router and fixed hidden workflow bodies. `awf_workflow` selects a closed semantic name and returns the fixed body plus optional selected-effort context without workflow-state validation or mutation.
-Origin: ADR-0149
-Revised-by: ADR-0161, ADR-0164
+Pi renders every enabled standard and local skill at `.pi/skills/<prefix>-<name>/SKILL.md`; disabled skills or Pi disablement prune those paths, and no router or hidden workflow-body output remains.
+Origin: ADR-0167
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
@@ -95,11 +94,4 @@ Backing: test
 
 In the generated Pi extension, every public subagent tool's collapsed view renders status, recent bounded activity, omission state, and available usage, and its expanded view additionally renders the task, retained activity, the final report, present diagnostics, and available usage from the same structured details without changing execution.
 Origin: ADR-0148
-Backing: test
-
-### `invariant: pi-workflow-telemetry-public-contract`
-
-Pi publishes a descriptor-derived schema-1 direct session writer and a five-file extension surface. It has optional binary-backed effort selection, no lifecycle, adoption, detour, resume, projector, retention, query, or widget authority, and observations contain no effort identity.
-Origin: ADR-0162
-Revised-by: ADR-0164
 Backing: test

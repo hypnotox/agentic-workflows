@@ -3,7 +3,7 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current matched paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. The command table now includes canonical workflow metrics querying and export plus read-only, non-blocking workflow diagnosis over shared structured selectors.
 
@@ -116,13 +116,7 @@ Backing: test
 
 ### `invariant: effort-command-contract`
 
-`awf effort` is the binary-owned lightweight-effort surface: creation, memory, rename, terminal state, repair, managed worktree attachment/integration/removal, and one atomic Pi-session assignment map. Effort creation defaults to memory, worktrees are opt-in, recoverable worktree risks require paired force and reason, and JSON replies carry schema version 1.
+`awf effort` owns creation, memory, rename, terminal state, repair, and managed-worktree attachment, integration, and removal. It has no assignment command or Pi-session concept; creation defaults to memory, worktrees are opt-in, recoverable worktree risks require paired force and reason, and JSON replies carry schema version 1.
 Origin: ADR-0164
-Backing: test
-
-### `invariant: metrics-command-contract`
-
-The gated metrics grammar is exactly `awf metrics [--effort ID] [--session ID] [--since TIME] [--until TIME] [--json]`, `doctor` with the same selectors, `list [--json]`, and `export` with those selectors plus `--format <json|jsonl>`. It has no protocol, lifecycle, retain, purge, phase, or heuristic surface.
-Origin: ADR-0153
-Revised-by: ADR-0156, ADR-0162, ADR-0164
+Revised-by: ADR-0167
 Backing: test

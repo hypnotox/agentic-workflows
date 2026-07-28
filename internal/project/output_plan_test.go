@@ -13,6 +13,7 @@ import (
 )
 
 // invariant: rendering/project-output-plan:output-plan-complete
+// invariant: rendering/pi-workflows:pi-native-workflow-skills
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [mine]\nagents: []\ndomains: [rendering]\ntargets: [pi]\n", map[string]string{"skills/mine.yaml": "local: true\n"})
 	p, err := Open(root)
@@ -47,7 +48,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", ".awf/metrics/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
@@ -68,9 +69,13 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 }
 
-// invariant: rendering/singletons-and-payloads:workflow-telemetry-governed-outputs-and-resident-data
-
 // invariant: rendering/project-output-plan:target-capabilities-closed
+// invariant: rendering/pi-workflows:pi-subagent-progress-rendering
+// invariant: rendering/project-output-plan:cursor-no-bridge
+// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries
+// invariant: rendering/pi-workflows:pi-subagent-progress-bounds
+// invariant: config/migrations-and-locks:close-enabled-set-migration
+// invariant: rendering/workflow-skill-templates:plan-task-detail-modes
 func TestTargetDescriptorValidation(t *testing.T) {
 	for _, target := range []Target{
 		{Name: "bad", BridgeFile: "X"},
@@ -79,7 +84,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "../bad", TemplateID: "x"}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: "unknown"}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: "unexpected", Role: ArtifactTemplate}}}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTelemetryProtocol}}},
+		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: "unknown", Provenance: render.HTMLComment, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: 99, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment}}},
@@ -171,6 +176,17 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 }
 
 // invariant: rendering/adapter-outputs:generated-adapter-runtime-ownership
+// invariant: rendering/pi-runtime:pi-child-tool-boundaries
+// invariant: rendering/project-output-plan:multi-target-render
+// invariant: rendering/pi-workflows:pi-subagent-failure-details
+// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch
+// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch
+// invariant: rendering/pi-workflows:pi-subagent-model-wizard
+// invariant: tooling/init-and-enablement:add-skill-pairs-agent
+// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
+// invariant: rendering/pi-runtime:pi-minimum-runtime
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract
 func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.T) {
 	p, err := Open(filepath.Clean(filepath.Join("..", "..")))
 	if err != nil {
@@ -197,6 +213,20 @@ func TestGeneratedAdapterRuntimeOwnershipContextAndCoverageExclusion(t *testing.
 	}
 }
 
+// invariant: rendering/pi-runtime:pi-child-process-safety
+// invariant: rendering/catalog-and-targets:claude-md-bridge
+// invariant: rendering/sync-and-drift:uninstall-removes-lock-entries
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow
+// invariant: rendering/pi-workflows:pi-subagent-progress-context-isolation
+// invariant: rendering/pi-workflows:pi-subagent-model-routing
+// invariant: rendering/pi-workflows:pi-subagent-model-preferences
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract
+// invariant: rendering/catalog-and-targets:target-dialect-render
+// invariant: rendering/pi-runtime:pi-implementation-state-boundary
+// invariant: rendering/pi-runtime:pi-extension-target-render
+// invariant: rendering/pi-runtime:pi-minimum-runtime
+// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
 	p, err := Open(root)

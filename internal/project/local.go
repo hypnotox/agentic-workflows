@@ -58,7 +58,14 @@ func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	clone.Docs = maps.Clone(catalog.Standard.Docs)
 	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
-		return catalog.SkillSpec{Base: true, Sections: []string{"content"}, Data: localData(n)}
+		sc, _ := p.Cfg.Sidecar("skills", n)
+		description := docStringData(sc, "description")
+		purpose, trigger := description, description
+		if description == "" {
+			purpose = "A project-local skill."
+			trigger = "Use when the project-local skill's rendered description fits the current work."
+		}
+		return catalog.SkillSpec{Base: true, Sections: []string{"content"}, Data: localData(n), Profile: catalog.WorkflowProfile{Kind: catalog.WorkflowTask, Purpose: purpose, Trigger: trigger, UsuallyFollows: []string{}, CommonFollowUps: []string{}}, RequiresSkills: []string{}}
 	}); err != nil {
 		return nil, err
 	}
