@@ -61,6 +61,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 		}
 		assertAll("writer",
 			"Execution mode", "inline", "subagent-driven", "independently", "ordered steps",
+			"clean and green starting baseline", "exact commands and expected terminal states",
 			"one independently green coherent implementation transaction", "exhaustively assign every site to the parent or exactly one helper",
 			"path-disjoint", "shared files remain parent-owned", "command-confined", "dead-code escape")
 		assertAll("reviewer",
@@ -84,10 +85,12 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"recovery verification", "blind successor instruction")
 		assertAll("readme",
 			"Execution mode", "one independently green coherent implementation transaction", "ordered steps",
+			"clean and green starting baseline", "exact commands and expected terminal states",
 			"parent or exactly one helper", "path-disjoint", "shared files remain parent-owned",
 			"focused mutating commands stay confined")
 		assertAll("template",
-			"**Execution mode: inline.**", "parent or exactly one", "path-disjoint",
+			"**Execution mode: inline.**", "clean and green starting baseline",
+			"exact commands and expected terminal states", "parent or exactly one", "path-disjoint",
 			"shared files remain parent-owned", "mutating commands stay confined", "Phase-close",
 			"awf check --staged", "phase-closing commit")
 

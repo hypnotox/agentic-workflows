@@ -28,7 +28,9 @@ linked ADR).
 ## Phase 1: <name>
 
 **Execution mode: inline.** This phase is one independently green coherent implementation transaction.
-Checkbox tasks are ordered steps, not transaction boundaries.
+Checkbox tasks are ordered steps, not transaction boundaries. If this mode is changed to
+`subagent-driven`, declare the exact commands and expected terminal states that establish the clean
+and green starting baseline.
 - [ ] **Task 1.1: <what>.** Name exact file paths, relevant symbols, exact commands with expected
   terminal states, and exact content/diffs or implementation-ready pseudocode covering behavior,
   branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and

@@ -26,8 +26,9 @@ where the date is the day the plan is written (ISO-8601). Example:
 - A `# Plan: <Title>` H1 (the title is the H1, not a frontmatter field), then the three canonical
   header sections: Goal, Architecture summary, and File structure (created / modified /
   deleted).
-- Phases each declare **Execution mode: `inline`** or **`subagent-driven`** independently. A phase is
-  one independently green coherent implementation transaction; its `- [ ]` checkbox tasks are ordered
+- Phases each declare **Execution mode: `inline`** or **`subagent-driven`** independently. A
+  subagent-driven phase also declares the exact commands and expected terminal states that establish
+  its clean and green starting baseline. A phase is one independently green coherent implementation transaction; its `- [ ]` checkbox tasks are ordered
   steps, not default dispatch, review, checkpoint, or commit boundaries. Each task names exact file
   paths, relevant symbols, exact commands with expected terminal states, and exact content/diffs or
   implementation-ready pseudocode specifying behavior, branches, ordering, failures, constraints,
