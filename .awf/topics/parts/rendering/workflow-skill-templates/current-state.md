@@ -72,3 +72,9 @@ Backing: test
 The rendered workflow chain names the plan-to-ADR resync step explicitly rather than hiding it from the high-level chain.
 Origin: ADR-0148
 Backing: test
+
+### `invariant: maintainable-code-stage-coverage`
+
+Brainstorming, ADR proposal, coupling audit, plan writing, test-driven development, inline plan execution, direct execution, subagent-driven development, and bug fixing each render a concise stage-specific obligation pointing to the mandatory maintainable-code guide: designs settle models and boundaries, plans make them executable, and implementation preserves or explicitly reassesses them instead of bolting correctness onto an unsuitable abstraction.
+Origin: ADR-0168
+Backing: test

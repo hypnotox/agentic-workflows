@@ -31,7 +31,7 @@ When the effort warrants working memory, checkpoint the evolving design brief to
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 
 <!-- awf:section design-sections -->
-4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling ({{ with .data.errorBoundaries }}boundaries:{{ range . }} {{ .name }},{{ end }} and others as relevant{{ else }}boundaries as relevant{{ end }}), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
+4. **Present the design in sections**, getting approval after each section. Per `{{ .layout.maintainableCodeDesign }}`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision before approving an approach. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling ({{ with .data.errorBoundaries }}boundaries:{{ range . }} {{ .name }},{{ end }} and others as relevant{{ else }}boundaries as relevant{{ end }}), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
 <!-- awf:end -->
 
 <!-- awf:section no-spec-rule -->

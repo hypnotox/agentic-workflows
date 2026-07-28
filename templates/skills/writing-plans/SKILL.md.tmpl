@@ -55,7 +55,7 @@ Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} n
 <!-- awf:end -->
 
 <!-- awf:section procedure-write-plan -->
-2. **Write the plan file in one go.** The plan must be self-contained: every step executable by an agent with no prior conversation context. While drafting the file-structure header and tasks, run `awf context <the plan's created and modified paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a task touches a claimed surface) so task content is grounded in current authority rather than reconstructed from memory.
+2. **Write the plan file in one go.** Per `{{ .layout.maintainableCodeDesign }}`, convert the settled model, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation into ordered executable tasks. The plan must be self-contained: every step executable by an agent with no prior conversation context. While drafting the file-structure header and tasks, run `awf context <the plan's created and modified paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a task touches a claimed surface) so task content is grounded in current authority rather than reconstructed from memory.
 <!-- awf:include context-spill -->
 <!-- awf:end -->
 

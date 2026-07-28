@@ -28,7 +28,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 3. **Propose 2-3 approaches** with trade-offs and your recommended choice. Each approach gets a name, a one-line summary of how it works, the main strength, the main weakness. The recommendation goes first with "I'd lean X" framing.
 
 <!-- awf:edit design-sections: default; create .awf/skills/parts/brainstorming/design-sections.md to override -->
-4. **Present the design in sections**, getting approval after each section. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries as relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
+4. **Present the design in sections**, getting approval after each section. Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision before approving an approach. Sections cover: architecture (what changes structurally), components (what new files / what existing files change), data flow (if non-obvious), error handling (boundaries as relevant), testing (unit test, integration/e2e, regression test placement). Scale each section to the change's complexity.
 
 <!-- awf:edit no-spec-rule: default; create .awf/skills/parts/brainstorming/no-spec-rule.md to override -->
 5. **Do NOT write a spec document.** The design is captured in either the ADR (if load-bearing) or directly in the plan (if not). See `docs/decisions/README.md` for when an ADR is warranted.

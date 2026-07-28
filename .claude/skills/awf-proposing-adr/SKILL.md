@@ -42,7 +42,7 @@ Load-bearing triggers include:
 
 <!-- awf:edit procedure-write: default; create .awf/skills/parts/proposing-adr/procedure-write.md to override -->
 2. **Fill in every section** of the scaffolded file:
-   - **Context:** the problem, couplings, prior discoveries. Mutable while `Proposed`.
+   - **Context:** the problem, couplings, prior discoveries. For a structural decision, preserve the settled model, boundaries, dependency direction, constraints, and enabling work from `docs/maintainable-code-design.md` here and in Decision; do not replace them with a pattern name. Mutable while `Proposed`.
    - **Decision:** numbered items, each a discrete commitment. Numbers order the decision for the reader; no machine treats them as anchors.
    - **State changes:** see the next step.
    - **Consequences:** honest about trade-offs accepted, operational implications, downstream work created or unblocked.

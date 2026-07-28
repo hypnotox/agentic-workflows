@@ -19,8 +19,9 @@ The test-first discipline as a project-owned task skill.
 1. Run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the change touches a claimed surface), then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
 <!-- awf:include context-spill -->
 2. Run it and confirm it fails for the right reason{{ with .vars.testCmd }}: `{{ . }}`{{ end }}.
-3. Implement the minimal change to pass.
-4. Run the gate{{ with .vars.gateCmd }}: `{{ . }}`{{ end }}.
+3. Before implementing, per `{{ .layout.maintainableCodeDesign }}`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. Escalate materially larger work by asking the user whether to perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated. Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
+4. Implement the minimal change to pass.
+5. Run the gate{{ with .vars.gateCmd }}: `{{ . }}`{{ end }}.
 
 <!-- awf:section notes -->
 ## Notes

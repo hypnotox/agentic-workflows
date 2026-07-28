@@ -61,6 +61,9 @@ func withLayoutDefaults(data map[string]any) {
 	if _, ok := l["domainsDir"]; !ok {
 		l["domainsDir"] = "docs/domains"
 	}
+	if _, ok := l["maintainableCodeDesign"]; !ok {
+		l["maintainableCodeDesign"] = "docs/maintainable-code-design.md"
+	}
 }
 
 func assertNoLeaks(t *testing.T, out string) {
@@ -259,6 +262,38 @@ func TestExecutingDirectTemplate(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("executing-direct output missing %q:\n%s", want, out)
 		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage
+func TestMaintainableCodeStageCoverage(t *testing.T) {
+	allSkills := map[string]bool{
+		"debugging": true, "reviewing-impl": true, "tdd": true,
+	}
+	cases := map[string][]string{
+		"brainstorming":               {"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision"},
+		"proposing-adr":               {"docs/maintainable-code-design.md", "structural decision", "constraints", "enabling work", "pattern name"},
+		"refactor-coupling-audit":     {"docs/maintainable-code-design.md", "duplication", "coupling", "representation leakage", "workaround", "bounded enabling-refactor", "ADR scope"},
+		"writing-plans":               {"docs/maintainable-code-design.md", "ordered executable tasks", "representation translations", "prohibited shortcuts", "validation"},
+		"tdd":                         {"docs/maintainable-code-design.md", "bounded enabling refactor", "materially larger work", "model-supporting seam", "representation leakage", "needless indirection"},
+		"executing-plans":             {"docs/maintainable-code-design.md", "bounded enabling refactor", "reassess", "bolt correctness onto the wrong abstraction"},
+		"executing-direct":            {"docs/maintainable-code-design.md", "bounded enabling refactoring", "preserve settled boundaries", "silently expanding scope", "workaround"},
+		"subagent-driven-development": {"docs/maintainable-code-design.md", "bounded enabling refactor", "reassess", "bolt-on workaround"},
+		"bugfix":                      {"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work", "materially larger work", "workaround"},
+	}
+	for skill, wants := range cases {
+		t.Run(skill, func(t *testing.T) {
+			out := renderSkillGolden(t, skill, map[string]any{
+				"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+				"layout": testLayout(), "skills": allSkills, "targetSubagentTools": true,
+			})
+			assertNoLeaks(t, out)
+			for _, want := range wants {
+				if !strings.Contains(out, want) {
+					t.Errorf("%s output missing %q:\n%s", skill, want, out)
+				}
+			}
+		})
 	}
 }
 

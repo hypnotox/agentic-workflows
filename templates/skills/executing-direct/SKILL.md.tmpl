@@ -13,7 +13,7 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 ## Procedure
 
-1. Re-read the settled design brief and the applicable current-state authority. Do not introduce design choices that brainstorming did not settle.
+1. Re-read the settled design brief and the applicable current-state authority. Per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries. Do not introduce design choices that brainstorming did not settle.
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
 4. Follow the project's commit discipline unless the caller explicitly requires a larger authority batch or forbids commits.
@@ -25,6 +25,6 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 ## Boundaries
 
-- Stop and return to brainstorming if implementation exposes a new load-bearing decision.
+- Stop and return to brainstorming if implementation exposes a new load-bearing or materially larger choice, rather than silently expanding scope or accepting a workaround.
 - Stop and write a plan if the work becomes multi-step or interdependent.
 - Preserve unrelated work in the checkout.
