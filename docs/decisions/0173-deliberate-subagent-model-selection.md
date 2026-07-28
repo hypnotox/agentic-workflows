@@ -75,12 +75,16 @@ for configured or inherited routing.
    and explicit references. This preserves next-run preference updates and current availability
    rather than relying on session-start or pre-queue state.
 
-8. When any awf subagent tool is active, `before_agent_start` appends exactly one short,
-   deterministic routing card to the system prompt for that agent run. It lists the exact effective
-   role defaults, exact tier mappings, missing or invalid state, and one line instructing the agent
-   to use the role default by omission or override deliberately by tier. It includes no prices,
-   limits, or full registry catalog and is not appended as a user, assistant, custom, or other
-   persisted session message.
+8. When any awf subagent tool is active, `before_agent_start` appends exactly one deterministic
+   routing card of at most 4096 UTF-8 bytes to the system prompt for that agent run. Its normal form
+   lists the exact effective role defaults, exact tier mappings, missing or invalid state, and one
+   line instructing the agent to use the role default by omission or override deliberately by tier.
+   It never includes raw registry errors: invalid state uses deterministic field names, bounded
+   reason codes, and one repair line, and no model reference is truncated. The maximum-length normal
+   form must fit the budget. As a defensive guard, an unexpected over-budget construction injects a
+   bounded failure card instead of partial mappings and emits an actionable TUI warning to the user;
+   it does not weaken strict routing semantics. The card includes no prices, limits, or full registry
+   catalog and is not appended as a user, assistant, custom, or other persisted session message.
 
 9. Active awf subagent tools are determined from `selectedTools` when present and from the effective
    active-tool set as a deterministic fallback when it is absent. No routing card is injected when
@@ -128,17 +132,23 @@ for configured or inherited routing.
     provider and Pi-tool isolation, coherent missing-value rendering, and complete proof coverage
     for the new cross-runtime invariant.
 
-18. Implementation updates the existing Pi model preference, routing, wizard, and real-runtime
-    smoke claims and adds a backed cross-runtime deliberate-selection claim. The operations apply in
-    declaration order in three batches: first the workflow-skill-template add; second the three
-    Pi-workflows updates together; and third the Pi-runtime smoke update. Each Applied event pairs
-    atomically with exactly its batch's current claim truth, authored sources, generated outputs,
-    provenance, proof markers, tests, and next global state sequence. Unapplied operations remain
-    Remaining; abandonment cancels only unapplied operations and preserves every Applied effect.
-    The first matching batch updates the authored AGENTS source and regenerates `AGENTS.md` with the
-    dispatch convention. Every status transition runs `./x render` and commits the regenerated
-    `docs/decisions/INDEX.md`. Documentation travels with each matching implementation batch, and no
-    generated output is hand-edited.
+18. The generated Pi extension extracts preference parsing and merging, validation-state
+    representation, and routing-card construction into a bounded model-routing module with pure,
+    directly testable seams. The entrypoint retains tool registration, queueing, process lifecycle,
+    and runtime integration. This enabling refactor is part of the Pi implementation batch rather
+    than a separate architectural layer.
+
+19. Implementation updates the existing Pi model preference, routing, wizard, extension-target, and
+    real-runtime smoke claims and adds a backed cross-runtime deliberate-selection claim. The
+    operations apply in declaration order in three batches: first the workflow-skill-template add;
+    second the three Pi-workflows updates together; and third the two Pi-runtime updates together.
+    Each Applied event pairs atomically with exactly its batch's current claim truth, authored
+    sources, generated outputs, provenance, proof markers, tests, and next global state sequence.
+    Unapplied operations remain Remaining; abandonment cancels only unapplied operations and
+    preserves every Applied effect. The first matching batch updates the authored AGENTS source and
+    regenerates `AGENTS.md` with the dispatch convention. Every status transition runs `./x render`
+    and commits the regenerated `docs/decisions/INDEX.md`. Documentation travels with each matching
+    implementation batch, and no generated output is hand-edited.
 
 ## State changes
 
@@ -146,6 +156,7 @@ for configured or inherited routing.
 - update `rendering/pi-workflows:pi-subagent-model-preferences`
 - update `rendering/pi-workflows:pi-subagent-model-routing`
 - update `rendering/pi-workflows:pi-subagent-model-wizard`
+- update `rendering/pi-runtime:pi-extension-target-render`
 - update `rendering/pi-runtime:pi-real-runtime-smoke`
 
 ## Consequences
