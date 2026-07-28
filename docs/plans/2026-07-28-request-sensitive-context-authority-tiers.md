@@ -403,10 +403,70 @@ group inputs.
   ./awf context --show relationships --uncovered internal/project
   ./x render
   git diff --check
-  git diff --name-only --diff-filter=ACMRTUXB
-  # Compare this list with the File structure inventory and the renderer-explained fan-out.
-  # Stop on any undeclared path, then stage only the verified paths with explicit pathspecs.
-  git add -- <verified-affected-paths>
+  allowed=(
+    internal/project/context.go
+    internal/project/context_paths.go
+    internal/project/context_projection.go
+    internal/project/context_paths_test.go
+    internal/project/context_projection_test.go
+    internal/project/context_artifacts_test.go
+    internal/project/context_test.go
+    internal/project/spine_test.go
+    cmd/awf/context.go
+    cmd/awf/context_test.go
+    internal/clispec/clispec.go
+    internal/clispec/clispec_test.go
+    templates/skills/reviewing-impl/SKILL.md.tmpl
+    templates/skills/reviewing-plan/SKILL.md.tmpl
+    templates/skills/reviewing-plan-resync/SKILL.md.tmpl
+    templates/docs/working-with-awf.md.tmpl
+    templates/docs/agents-md-standard.md.tmpl
+    .awf/parts/working-with-awf/commands.md
+    .awf/parts/agents-doc/commands.md
+    .awf/docs/glossary.yaml
+    .awf/docs/parts/testing/gate.md
+    .awf/docs/parts/architecture/components.md
+    .awf/docs/parts/architecture/data-flow.md
+    .awf/topics/parts/tooling/context-and-topic/current-state.md
+    .awf/topics/parts/rendering/workflow-skill-templates/current-state.md
+    README.md
+    changelog/CHANGELOG.md
+    docs/decisions/0173-request-sensitive-context-authority-tiers.md
+    docs/plans/2026-07-28-request-sensitive-context-authority-tiers.md
+    docs/decisions/INDEX.md
+    docs/working-with-awf.md
+    docs/agents-md-standard.md
+    docs/glossary.md
+    docs/testing.md
+    docs/architecture.md
+    docs/topics/tooling/context-and-topic.md
+    docs/topics/rendering/workflow-skill-templates.md
+    AGENTS.md
+    .awf/awf.lock
+    examples/sundial/docs/working-with-awf.md
+    examples/sundial/docs/agents-md-standard.md
+    examples/sundial/docs/architecture.md
+    examples/sundial/.awf/awf.lock
+  )
+  for runtime in .claude .pi; do
+    for skill in reviewing-impl reviewing-plan reviewing-plan-resync; do
+      allowed+=("$runtime/skills/awf-$skill/SKILL.md")
+    done
+  done
+  for runtime in .agents .claude .cursor .gemini .github .pi; do
+    for skill in reviewing-impl reviewing-plan reviewing-plan-resync; do
+      allowed+=("examples/sundial/$runtime/skills/sundial-$skill/SKILL.md")
+    done
+  done
+  mapfile -t observed < <(git diff HEAD --name-only --diff-filter=ACMRTUXB)
+  unexpected=$(comm -23 \
+    <(printf '%s\n' "${observed[@]}" | sort -u) \
+    <(printf '%s\n' "${allowed[@]}" | sort -u))
+  test -z "$unexpected" || {
+    printf 'undeclared transaction path:\n%s\n' "$unexpected" >&2
+    exit 1
+  }
+  git add -- "${allowed[@]}"
   ./awf check --staged
   ./x gate
   ```
