@@ -70,48 +70,72 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 
 // invariant: rendering/pi-runtime:pi-extension-target-render
 
-/* func TestTelemetryProtocolDescriptorAttribution(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
+// invariant: rendering/pi-workflows:pi-native-workflow-skills
+func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: [brainstorming, tdd]\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	op, err := p.OutputPlan()
+	files, err := p.RenderAll()
 	if err != nil {
 		t.Fatal(err)
 	}
-	const output = ".pi/extensions/awf-telemetry/protocol.ts"
-	want := OutputInput{Path: "internal/telemetry/protocol.json", Role: ArtifactProtocolDescriptor}
-	found := false
-	for _, node := range op.Nodes {
-		if node.Path == output {
-			found = slices.Contains(node.ConsumedInputs, want)
+	paths := map[string]bool{}
+	for _, file := range files {
+		paths[file.Path] = true
+	}
+	for _, want := range []string{".pi/skills/example-brainstorming/SKILL.md", ".pi/skills/example-tdd/SKILL.md"} {
+		if !paths[want] {
+			t.Errorf("missing native Pi skill %q", want)
 		}
 	}
-	if !found {
-		t.Fatal("protocol output does not consume the descriptor")
-	}
-	corpus, err := p.Corpus()
-	if err != nil {
-		t.Fatal(err)
-	}
-	decls, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: root}, corpus)
-	if err != nil {
-		t.Fatal(err)
-	}
-	records := artifactRecords(output, decls, artifactAuthorities{Layout: p.layout(), ADRs: corpus})
-	var labeled bool
-	for _, record := range records {
-		for _, source := range record.Sources {
-			if source.Path == want.Path && source.Label == "protocol descriptor" {
-				labeled = true
-			}
+	for path := range paths {
+		if strings.Contains(path, "awf-workflow") || strings.Contains(path, "awf-workflows") || strings.Contains(path, "awf-telemetry") {
+			t.Errorf("retired Pi output planned: %q", path)
 		}
 	}
-	if !labeled {
-		t.Fatalf("protocol descriptor attribution missing: %#v", records)
+	p.Cfg.Skills = []string{"tdd"}
+	files, err = p.RenderAll()
+	if err != nil {
+		t.Fatal(err)
 	}
-} */
+	for _, file := range files {
+		if file.Path == ".pi/skills/example-brainstorming/SKILL.md" {
+			t.Fatal("disabled skill still rendered")
+		}
+	}
+}
+
+func assertPiRuntimeAndHandoffOutput(t *testing.T) {
+	t.Helper()
+	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{"memoryPath", "lstat", "isFile", "queueCommand", "getLeafEntry"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff output missing %q", want)
+		}
+	}
+	for _, banned := range []string{"Effort:", "runAwf", "assignment", "selected-effort", "telemetry"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("handoff output retains %q", banned)
+		}
+	}
+}
+
+// invariant: rendering/pi-runtime:pi-extension-target-render
+func TestPiRuntimeTargetRender(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+
+// invariant: rendering/pi-runtime:pi-minimum-runtime
+func TestPiMinimumRuntime(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+
+// invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
+func TestHandoffLifecycleWithoutEffort(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+
+// invariant: rendering/pi-workflows:pi-session-handoff-public-contract
+func TestHandoffPublicContractWithoutEffort(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+
+// invariant: rendering/pi-workflows:pi-session-handoff-workflow
+func TestHandoffWorkflowWithoutEffort(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
 
 func TestTargetOutputRenderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")

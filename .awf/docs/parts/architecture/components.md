@@ -1,5 +1,5 @@
-- `internal/effort` owns schema-1 effort records, optional memory, and Pi session association.
+- `internal/effort` owns schema-1 effort records and optional memory.
 - `internal/worktree` owns opt-in native-Git managed worktrees.
-- `internal/telemetry` reads schema-1 session streams, joins current assignment, preserves legacy residents, and reports deterministic integrity.
-- Generated Pi telemetry writes a direct locked and fsynced per-session stream and never writes effort identity.
+- `internal/migrate` applies schema upgrades, including removal of obsolete disposable residents.
+- Generated Pi extensions provide subagent dispatch and effort-independent session handoff.
 - `cmd/awf` is the command binary; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide its bounded project checks.

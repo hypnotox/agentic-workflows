@@ -2,7 +2,7 @@
 # config
 
 <!-- awf:edit current-state: from .awf/domains/parts/config/current-state.md -->
-Configuration is strict tracked authority under `.awf/`. Schema generation 20 removed the obsolete telemetry configuration block after preserving generations 17 through 19 as historical migration input. Rendering configuration remains separate from repository-local effort and session resident state.
+Configuration is strict tracked authority under `.awf/`. Schema generation 21 removes obsolete local metrics and assignment residents from the primary control root during upgrade. Rendering configuration remains separate from repository-local effort, memory, and worktree resident state.
 
 
 ## Topics

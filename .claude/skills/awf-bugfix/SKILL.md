@@ -32,7 +32,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
-5. **Invoke `awf-reviewing-impl` as the terminal step.**
+5. **Run the project's review step as the terminal step.**
 
 <!-- awf:edit test-tiers: default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
 ## Test tiers

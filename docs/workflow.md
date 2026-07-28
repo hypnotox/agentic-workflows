@@ -21,7 +21,7 @@ On Pi, `direct `awf effort` commands` optionally selects a binary-owned effort. 
 
 For the detailed criteria of when a decision is load-bearing enough to warrant an ADR (and the ADR format itself), see [`docs/decisions/README.md`](decisions/README.md).
 
-On Pi, enter governed work through `awf_workflow` alone. It returns the fixed rendered workflow body without mutating lifecycle state. An optional `/awf-effort` selection is context only; create an outcome-specific effort with `awf effort` when durable coordination, working memory, or a managed worktree is warranted. There is no adoption gate, fabricated history, detour lifecycle, or structured resume dependency. Reviewer agents remain separately discoverable and non-Pi targets retain ordinary target-native skills.
+On Pi, use any enabled native skill when its purpose fits the current work. Create an outcome-specific effort with `awf effort` when durable coordination, working memory, or a managed worktree is warranted. Reviewer agents remain separately discoverable and non-Pi targets retain ordinary target-native skills.
 
 
 <!-- awf:edit working-memory: default; create .awf/parts/workflow/working-memory.md to override -->

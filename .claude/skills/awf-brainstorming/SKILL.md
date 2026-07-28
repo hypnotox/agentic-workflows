@@ -54,12 +54,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/brainstorming/terminal-step.md to override -->
-7. **Stop for approval, then decide the terminal step.** The end of brainstorming, after the single-pass grounding check, is a mandatory approval check-in: complete the approval protocol below and invoke a successor only after explicit user approval. If the user requests changes, revise the design and re-present it for approval without repeating the grounding check. Once approved, route by the brainstorm result:
-   - **Load-bearing + complex** → invoke `awf-proposing-adr` first (which chains through `awf-reviewing-adr`); once the ADR(s) are settled, invoke `awf-writing-plans`.
-   - **Load-bearing + simple** → invoke `awf-proposing-adr` only; implement directly after the ADR is committed, then invoke `awf-reviewing-impl`.
-   - **Complex but not load-bearing** → invoke `awf-writing-plans` only.
-   - **Neither** → invoke `awf-executing-direct`.
-
+7. **Stop for approval, then suggest a next step.** The end of brainstorming, after the single-pass grounding check, is a mandatory approval check-in: complete the approval protocol below and do not continue until explicit user approval. If the user requests changes, revise the design and re-present it for approval without repeating the grounding check. Once approved, proposing an ADR is useful for a load-bearing decision, writing a plan is useful for complex implementation, and direct execution is useful for a small understood change.
 
 **Mandatory approval check-in.** This boundary requires explicit user approval:
 1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md`, confirm its `Effort: <effort-id>` line names this effort, rewriting it when a runtime has since assigned an active ID, set `Phase:` to the completed phase, set `Next:` to the immediate next action pending approval, append one line to `## Handoff log`, and refresh `Updated:`. If this non-trivial effort has no memory file yet, create it before `Phase:` with this effort's identity on the `Effort: <effort-id>` line: a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface; never adopt another effort's identity.

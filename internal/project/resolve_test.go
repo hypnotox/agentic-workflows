@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 func planNodes(plan []PlanOp) map[catalog.Node]bool {
@@ -38,6 +39,15 @@ func openChainProject(t *testing.T) *Project {
 // Cascade members are seed-dependent (ADR-0081 Decision 5). Pin names, not
 // corpus sizes, so an unrelated closure addition cannot silently shift scope.
 // invariant: tooling/init-and-enablement:remove-refuses-dependents
+func TestResolveEnableSkipsEnabledRequirements(t *testing.T) {
+	p := &Project{Cfg: &config.Config{Skills: []string{"local", "dep"}}, Cat: &catalog.Catalog{Skills: map[string]catalog.SkillSpec{
+		"local": {RequiresSkills: []string{"dep"}}, "dep": {},
+	}}}
+	if got := p.ResolveEnable("skill", "local"); len(got) != 1 || got[0].Node.Name != "local" {
+		t.Fatalf("ResolveEnable = %#v", got)
+	}
+}
+
 func TestResolveDisableCascadeSizes(t *testing.T) {
 	p := openChainProject(t)
 	cases := []struct {

@@ -23,7 +23,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 ## Identity
 
-`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks multi-runtime skills, review agents, docs, and this agent guide from a committed `.awf/` config tree, and mechanically guards drift, frontmatter, current-state provenance, and invariant backing. The project-owned workflow chain is rendered in each target's native form, and Pi receives generated subagent, handoff, and local workflow-telemetry extensions. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
+`awf` is a generic agentic-development-workflow application: it scaffolds, renders, and drift-checks multi-runtime skills, review agents, docs, and this agent guide from a committed `.awf/` config tree, and mechanically guards drift, frontmatter, current-state provenance, and invariant backing. The project-owned workflow chain is rendered in each target's native form, and Pi receives generated subagent and handoff extensions. The awf tool is a Go binary (module `github.com/hypnotox/agentic-workflows`, Go 1.26); the standard it renders is language-agnostic. Public, pre-1.0, no external API stability.
 
 
 <!-- awf:edit invariants: default; create .awf/parts/agents-doc/invariants.md to override -->
@@ -96,7 +96,7 @@ awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered
 
 For managed `awf context` calls, start bare, request only the named facets required by the active lens, and never prescribe `--full`. When the command returns a valid spill notice, consume the complete packet, verify its declared byte length, and best-effort delete its temporary file after successful or failed use.
 
-Command specifics, metrics and lifecycle contracts, and upgrade behaviour: see docs/working-with-awf.md.
+Command specifics, effort and lifecycle contracts, and upgrade behaviour: see docs/working-with-awf.md.
 
 
 <!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->

@@ -118,18 +118,7 @@ broken release config fails CI before any tag is pushed.
 
 ## Real Pi extension smoke
 
-Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later compatible build. From a clean reviewed commit, run `./x check`, `./x gate`, and the independent implementation review. Start a new Pi session and exercise exploration, router transitions, structured resume, handoff association, nested detours, lifecycle durability, shutdown drain, and the muted local telemetry bar. Verify the bar updates after successful explicit actions, uses public usage and context APIs, and does not register query tools, invoke canonical reports, open an overlay, or resolve a launcher. Use `awf metrics list` to discover efforts and `awf metrics --effort <id>` or `awf metrics doctor --effort <id>` for explicit reports.
-
-Before inspecting persisted data, interrupt one unresolved provisional session before its creation commit and confirm the documented loss is confined to its process-local 256-observation/1-MiB window; then exercise overflow and graceful settlement and confirm deterministic recovery or a visible bounded failure. Re-resolve a selected finding and verify cross-effort, stale-evidence, ineligible-reason, and empty-frontier repair or waiver attempts append nothing.
-
-Inspect `.awf/metrics/` after the smoke. Persisted events may contain bounded opaque identifiers,
-models and tool names, timestamps, phases and activities, duration, token/cache/cost totals, counters,
-and categorized outcomes. They must not contain prompts, assistant text, tasks, tool arguments,
-command strings or output, stderr, free-form waiver prose, or any repository path. Before accepting a
-protocol-major replacement, run the repository-resident preflight and stop for explicit confirmed
-purge if it reports protocol-1 effort data; never rewrite or automatically delete that evidence. This
-verifies accidental-corruption, compatibility, confinement, and symlink posture only; it is not a
-defense against a hostile same-user process and provides no cryptographic tamper evidence.
+Use the exact `hypnotox/pi` `fork-v0.81.1-awf.3` build for Pi 0.81.1, or a later compatible build. From a clean reviewed commit, run `./x check`, `./x gate`, and the independent implementation review. Start a new Pi session and exercise native skill discovery, exploration, and effort-independent handoff with optional confined memory. Confirm the retained extensions load and the handoff cancellation and editor fallback paths remain usable.
 
 ## Notes
 

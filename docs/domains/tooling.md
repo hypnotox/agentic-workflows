@@ -2,7 +2,7 @@
 # tooling
 
 <!-- awf:edit current-state: from .awf/domains/parts/tooling/current-state.md -->
-The tooling domain owns the command-line binary, local effort and worktree authority, and independent telemetry reporting. Effort records, assignments, memory, worktrees, and session streams are repository-local resident state at the primary control root. Schema-1 stream observations are privacy-minimal and join current binary assignment only when reported; old resident protocol data is read-only.
+The tooling domain owns the command-line binary and local effort and worktree authority. Effort records, memory, and worktrees are repository-local resident state at the primary control root. The binary alone manages optional durable coordination without Pi-session assignment.
 
 
 ## Topics

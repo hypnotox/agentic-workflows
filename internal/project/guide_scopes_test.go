@@ -9,6 +9,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -22,6 +24,43 @@ import (
 // The invariants are read from awf's OWN .awf/agents-doc.yaml, not a synthetic
 // fixture: a re-introduced hand-written scope entry surfaces as a second
 // Conventional-Commits invariant bullet and fails this test.
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
+// invariant: rendering/workflow-skill-templates:workflow-transitions-advisory
+func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
+	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: []string{"brainstorming", "writing-plans", "local", "empty"}}, Cat: &catalog.Catalog{Skills: map[string]catalog.SkillSpec{
+		"brainstorming": catalog.Standard.Skills["brainstorming"],
+		"writing-plans": catalog.Standard.Skills["writing-plans"],
+		"local":         {Profile: catalog.WorkflowProfile{Kind: catalog.WorkflowTask, Purpose: "Local purpose.", Trigger: "Use local."}},
+		"empty":         {Profile: catalog.WorkflowProfile{}},
+	}}}
+	rows := p.taskSkillRows()
+	for _, want := range []string{
+		"`example-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design.",
+		"`example-local` (task): Local purpose. Trigger: Use local.",
+		"`example-empty` (task): A project-local skill. Trigger: Use when this skill fits the current work.",
+	} {
+		if !strings.Contains(rows, want) {
+			t.Errorf("rows missing %q:\n%s", want, rows)
+		}
+	}
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{"brainstorming": true}, "taskSkillRows": rows}
+	out := renderGuide(t, data)
+	for _, want := range []string{"Any enabled skill may be used whenever its purpose fits", "Usually follows:", "Common follow-ups:"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("guide missing %q", want)
+		}
+	}
+	p.Cfg.Prefix = ""
+	if !strings.Contains(p.taskSkillRows(), "`project-empty`") {
+		t.Fatal("missing-prefix fallback is not coherent")
+	}
+	for _, banned := range []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("guide retains banned routing phrase %q", banned)
+		}
+	}
+}
+
 func TestGuideScopesDerived(t *testing.T) {
 	invs := awfAgentsDocInvariants(t)
 

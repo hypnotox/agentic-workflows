@@ -1,4 +1,4 @@
-The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. The command table now includes canonical workflow metrics querying and export plus read-only, non-blocking workflow diagnosis over shared structured selectors.
+The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. Effort commands manage optional durable coordination, memory, and managed worktrees.
 
 ## Claims
 

@@ -12,7 +12,7 @@ query a single version or a range.
 
 - Remove `awf context --json` from normal and uncovered modes. Context now has one human-text contract; a future structured form will require a demonstrated consumer.
 
-- Remove the Pi dashboard, Pi query tools, top-level `awf doctor`, and dashboard runtime commands. Use `awf metrics --effort`, `awf metrics doctor --effort`, and `awf metrics list` for scoped reports and discovery.
+- Schema generation 21 destructively removes obsolete `.awf/metrics` and `.awf/assignments` residents during upgrade. Remove metrics and assignment commands, `/awf-effort`, `awf_workflow`, the Pi telemetry extension, and hidden workflow bodies. Enabled workflows now render as native Pi skills.
 
 - The verification commands are regrouped under `awf check` and `awf sync` is renamed to
   `awf render` (ADR-0159). There are no aliases, on the ADR-0093 precedent: `awf sync` becomes

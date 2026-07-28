@@ -119,6 +119,9 @@ func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) 
 	if len(duplicateRoles) != 2 || duplicateRoles[0].Identity != "a" || duplicateRoles[1].Identity != "z" {
 		t.Fatalf("same-role identity ordering = %#v", duplicateRoles)
 	}
+	if got := artifactSourceLabel(ArtifactProtocolDescriptor); got != "protocol descriptor" {
+		t.Fatalf("protocol source label = %q", got)
+	}
 	if got := artifactSourceLabel(ArtifactRole("future")); got != "future" {
 		t.Fatalf("unknown source label = %q", got)
 	}

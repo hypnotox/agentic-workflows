@@ -9,7 +9,7 @@ awf into a new repo is documented in the awf project itself.
 
 First adoption seals `initializedWithVersion`, both ADR format cutoffs, and gaps in the lock: both cutoffs are 1 for an empty corpus, or highest-plus-one with explicit lower gaps for brownfield history. Schema-15 upgrade preserves an existing V1 cutoff and atomically seals V2 at highest-plus-one without rewriting ADRs. Older migrated adopters may omit initialization provenance; sync and forced re-init preserve authority rather than backfilling history. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
 
-awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/assignments/`, `.awf/memory/`, `.awf/worktrees/`, and `.awf/metrics/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve nonempty resident roots and report them rather than recursively deleting worktrees or telemetry.
+awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/memory/`, and `.awf/worktrees/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve these roots without recursively deleting worktrees.
 
 A complete worked example lives at
 [`examples/sundial/`](../examples/sundial/README.md): a fictional adopter with the
@@ -18,11 +18,11 @@ by this repository's own checks (ADR-0090).
 
 
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
-Use `awf effort new "<outcome>"` for optional durable coordination. `awf effort` creates memory by default, manages opt-in worktrees, and owns explicit Pi session association. `awf metrics [--effort ID] [--session ID] [--since TIME] [--until TIME] [--json]` reports independent schema-1 session telemetry plus read-only legacy data; `metrics doctor` reports stream integrity only, `metrics list` lists effort records, and `metrics export --format <json|jsonl>` exports reports or normalized read-only records. There are no telemetry lifecycle, retention, purge, route, phase, adoption, or detour commands.
+Use `awf effort new "<outcome>"` for optional durable coordination. `awf effort` creates memory by default and manages opt-in worktrees. Efforts do not carry Pi-session state.
 
 
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
-The five repository-wide resident roots are `.awf/efforts`, `.awf/assignments`, `.awf/memory`, `.awf/worktrees`, and `.awf/metrics`. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state preserved by render, drift checks, and uninstall. The obsolete `workflowTelemetry` configuration was removed in schema generation 20.
+The three repository-wide resident roots are `.awf/efforts`, `.awf/memory`, and `.awf/worktrees`. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state preserved by render, drift checks, and uninstall. Schema generation 21 removes obsolete metrics and assignment residents during upgrade.
 
 
 <!-- awf:edit placeholders: default; create .awf/parts/working-with-awf/placeholders.md to override -->

@@ -42,40 +42,6 @@ func namesOnInvocationLine(body, token string) bool {
 	return false
 }
 
-// assertHandoff asserts the rendered `from` skill names the prefixed `to` skill
-// on an invocation-verb line - the successor sits in a real handoff instruction.
-func assertHandoff(t *testing.T, root, from, to string) {
-	t.Helper()
-	body := read(t, skillPath(root, from))
-	want := evalPrefix + "-" + to
-	if !namesOnInvocationLine(body, want) {
-		t.Errorf("skill %q does not hand off to %q on an invocation line", from, want)
-	}
-}
-
-// conditionalHandoffs are handoffs present in the full-catalog render whose
-// template reference is conditional, so requiresSkills cannot declare it
-// (ADR-0080 declares unconditional references only) and the derivation below
-// cannot see it.
-var conditionalHandoffs = []struct{ from, to string }{
-	{"bugfix", "reviewing-impl"},
-}
-
-// TestWorkflowChainHandoffs asserts each load-bearing chain handoff names its
-// successor in an actual invocation instruction in the same full-catalog
-// render. The pair set derives from the catalog's requiresSkills declarations
-// (minus the pinned non-handoff references), never a hand list, so a new
-// skill's declared couplings are handoff-checked automatically.
-func TestWorkflowChainHandoffs(t *testing.T) {
-	cat := loadCatalog(t)
-	root := syncFullCatalog(t, cat)
-	for _, tc := range conditionalHandoffs {
-		t.Run(tc.from+"_to_"+tc.to, func(t *testing.T) {
-			assertHandoff(t, root, tc.from, tc.to)
-		})
-	}
-}
-
 // assertDispatch asserts a skill->agent->partial seam: the rendered reviewing
 // `skill` names the reviewer `agent` on an invocation-verb line, and that agent
 // carries the shared review-spine partial (ADR-0052) identified by spineToken.
