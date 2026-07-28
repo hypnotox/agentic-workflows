@@ -18,9 +18,13 @@ func TestWorktreePorcelainParityFixtures(t *testing.T) {
 		{"prunable", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable gone\x00\x00", true},
 		{"missing final delimiter", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00", false},
 		{"missing HEAD", "worktree /x\x00branch refs/heads/x\x00\x00", false},
+		{"valueless HEAD", "worktree /x\x00HEAD \x00branch refs/heads/x\x00\x00", false},
+		{"valueless branch", "worktree /x\x00HEAD abc\x00branch \x00\x00", false},
+		{"valueless prunable", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable \x00\x00", false},
 		{"missing state", "worktree /x\x00HEAD abc\x00\x00", false},
 		{"branch detached", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00detached\x00\x00", false},
 		{"detached value", "worktree /x\x00HEAD abc\x00detached nope\x00\x00", false},
+		{"detached separator", "worktree /x\x00HEAD abc\x00detached \x00\x00", false},
 		{"locked", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00locked reason\x00\x00", false},
 		{"unknown", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00future x\x00\x00", false},
 		{"duplicate HEAD", "worktree /x\x00HEAD abc\x00HEAD def\x00branch refs/heads/x\x00\x00", false},
@@ -28,6 +32,7 @@ func TestWorktreePorcelainParityFixtures(t *testing.T) {
 		{"duplicate prunable", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable x\x00prunable y\x00\x00", false},
 		{"duplicate bare", "bare\x00bare\x00\x00", false},
 		{"bare fields", "bare\x00HEAD abc\x00\x00", false},
+		{"bare separator", "bare \x00\x00", false},
 		{"empty record", "worktree /x\x00HEAD abc\x00branch refs/heads/x\x00\x00\x00\x00", false},
 	}
 	for _, tc := range cases {

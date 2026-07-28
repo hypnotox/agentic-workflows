@@ -26,9 +26,13 @@ const porcelain = [
   ["prunable", "worktree /x\0HEAD abc\0branch refs/heads/x\0prunable gone\0\0", true],
   ["missing final delimiter", "worktree /x\0HEAD abc\0branch refs/heads/x\0", false],
   ["missing HEAD", "worktree /x\0branch refs/heads/x\0\0", false],
+  ["valueless HEAD", "worktree /x\0HEAD \0branch refs/heads/x\0\0", false],
+  ["valueless branch", "worktree /x\0HEAD abc\0branch \0\0", false],
+  ["valueless prunable", "worktree /x\0HEAD abc\0branch refs/heads/x\0prunable \0\0", false],
   ["missing state", "worktree /x\0HEAD abc\0\0", false],
   ["branch detached", "worktree /x\0HEAD abc\0branch refs/heads/x\0detached\0\0", false],
   ["detached value", "worktree /x\0HEAD abc\0detached nope\0\0", false],
+  ["detached separator", "worktree /x\0HEAD abc\0detached \0\0", false],
   ["locked", "worktree /x\0HEAD abc\0branch refs/heads/x\0locked reason\0\0", false],
   ["unknown", "worktree /x\0HEAD abc\0branch refs/heads/x\0future x\0\0", false],
   ["duplicate HEAD", "worktree /x\0HEAD abc\0HEAD def\0branch refs/heads/x\0\0", false],
@@ -36,6 +40,7 @@ const porcelain = [
   ["duplicate prunable", "worktree /x\0HEAD abc\0branch refs/heads/x\0prunable x\0prunable y\0\0", false],
   ["duplicate bare", "bare\0bare\0\0", false],
   ["bare fields", "bare\0HEAD abc\0\0", false],
+  ["bare separator", "bare \0\0", false],
   ["empty record", "worktree /x\0HEAD abc\0branch refs/heads/x\0\0\0\0", false],
 ] as const;
 for (const [name, raw, accepted] of porcelain) test(`worktree porcelain parity ${name}`, () => { if (accepted) assert.doesNotThrow(() => parseWorktrees(raw)); else assert.throws(() => parseWorktrees(raw)); });
@@ -53,8 +58,8 @@ test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention reje
 test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention refuses malformed and unterminated streams without changing bytes", async () => { await clean(); await mkdir(join(root, ".awf", "metrics", "sessions"), { recursive: true }); await writeFile(stream, '{"record":"header"}\n{"broken":true}'); const before = await bytes(); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174004")); assert.equal(await bytes(), before); await clean(); });
 test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention refuses a symlinked resident ancestor without touching outside bytes", async () => { await resetMetrics(); await ensureGit(); const outside = join(root, ".outside-metrics"); await rm(outside, { recursive: true, force: true }); await mkdir(outside, { recursive: true }); await writeFile(join(outside, "sentinel"), "outside bytes"); await mkdir(join(root, ".awf"), { recursive: true }); await symlink(outside, join(root, ".awf", "metrics")); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174005"), /unsafe telemetry directory/); assert.equal(await readFile(join(outside, "sentinel"), "utf8"), "outside bytes"); await rm(join(root, ".awf", "metrics"), { force: true }); await rm(outside, { recursive: true, force: true }); });
 
-for (const stage of ["open", "read", "link", "directory", "lock-open", "lock-write", "lock-fsync"] as const) test(`writer fault ${stage} refuses before unsafe mutation`, async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension, session, observation("123e4567-e89b-42d3-a456-426614174020"))); assert.equal(await rm(stream,{force:false}).then(()=>false,()=>true),true); setTelemetryWriterTestFault(); });
-for (const stage of ["directory-fsync", "lock-cleanup"] as const) test(`writer ${stage} fault leaves a visible published stream`, async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension,session,observation("123e4567-e89b-42d3-a456-426614174029"))); setTelemetryWriterTestFault(); assert.equal((await bytes()).split("\n").filter(Boolean).length,2); await clean(); });
+for (const stage of ["open", "read", "link", "directory", "directory-fsync", "lock-open", "lock-write", "lock-fsync"] as const) test(`writer fault ${stage} refuses before unsafe mutation`, async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension, session, observation("123e4567-e89b-42d3-a456-426614174020"))); assert.equal(await rm(stream,{force:false}).then(()=>false,()=>true),true); setTelemetryWriterTestFault(); });
+for (const stage of ["lock-cleanup"] as const) test(`writer ${stage} fault leaves a visible published stream`, async () => { await clean(); await resetMetrics(); await ensureGit(); setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension,session,observation("123e4567-e89b-42d3-a456-426614174029"))); setTelemetryWriterTestFault(); assert.equal((await bytes()).split("\n").filter(Boolean).length,2); await clean(); });
 for (const stage of ["write", "fsync"] as const) test(`writer append ${stage} fault preserves prefix and reports corruption`, async () => { await clean(); await resetMetrics(); await append("123e4567-e89b-42d3-a456-426614174030"); const before=await bytes(), inode=(await stat(stream)).ino; setTelemetryWriterTestFault(stage); await assert.rejects(appendSessionObservation(extension,session,observation("123e4567-e89b-42d3-a456-426614174031"))); setTelemetryWriterTestFault(); const after=await bytes(); assert.ok(after.startsWith(before)); assert.equal((await stat(stream)).ino,inode); assert.ok(await readFile(corrupt,"utf8")); await clean(); });
 
 test("live, malformed, unknown-PID, and symlink locks refuse without stream changes", async () => { await clean(); await resetMetrics(); await append("123e4567-e89b-42d3-a456-426614174040"); const before=await bytes(); for(const value of ["{bad", JSON.stringify({pid:"unknown",sessionId:session,createdAt:new Date().toISOString()})+"\n", JSON.stringify({pid:process.pid,sessionId:session,createdAt:new Date().toISOString()})+"\n"]) { await writeFile(lock,value); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174041")); assert.equal(await bytes(),before); await rm(lock,{force:true}); } await symlink(stream,lock); await assert.rejects(append("123e4567-e89b-42d3-a456-426614174042")); assert.equal(await bytes(),before); await rm(lock,{force:true}); await clean(); });
