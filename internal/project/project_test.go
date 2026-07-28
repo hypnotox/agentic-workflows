@@ -1186,15 +1186,10 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]bool{
-		"docs/decisions/README.md":         false,
-		"docs/decisions/template.md":       false,
-		"docs/plans/README.md":             false,
-		"docs/workflow.md":                 false,
-		"docs/doc-standard.md":             false,
-		"docs/agents-md-standard.md":       false,
-		"docs/working-with-awf.md":         false,
-		"docs/maintainable-code-design.md": false,
+	want := make(map[string]bool, len(plainSingletons))
+	layout := p.layout()
+	for _, singleton := range plainSingletons {
+		want[singleton.outPath(layout)] = false
 	}
 	for _, f := range files {
 		if _, ok := want[f.Path]; ok {

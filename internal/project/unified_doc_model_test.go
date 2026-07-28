@@ -12,6 +12,7 @@ import (
 // projection is a function of the Mandatory/AgentsDoc/TemplateKey/Path metadata,
 // with no independent hand-maintained list (ADR-0061).
 // invariant: rendering/catalog-and-targets:unified-doc-model
+// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind
 func TestUnifiedDocModelProjections(t *testing.T) {
 	// (a) SingletonKinds == exactly the Mandatory entries.
 	var wantSK []string
