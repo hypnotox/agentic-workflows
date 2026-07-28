@@ -59,6 +59,10 @@ query a single version or a range.
   before `awf render` or `awf check` will pass, the same requirement the other three hook-referenced
   awf-verb vars already carry.
 
+### Bug fixes
+
+- Managed effort worktrees now support current-user-owned checkouts beneath system-owned filesystem ancestors while retaining ancestor symlink, resident ownership, and repository-identity protections.
+
 ## [0.22.0] - 2026-07-24
 
 ### Features
