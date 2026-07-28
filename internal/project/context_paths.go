@@ -82,9 +82,10 @@ type ContextExactEntry struct {
 }
 
 type ContextDirectory struct {
-	Included int
-	Excluded []ContextClassificationCount
-	Groups   []ContextGroup
+	Included      int
+	Excluded      []ContextClassificationCount
+	Groups        []ContextGroup
+	Relationships ContextRelationships
 }
 
 type ContextClassificationCount struct {
@@ -98,6 +99,12 @@ type ContextGroup struct {
 	Context ContextPathImpact
 }
 
+type ContextRelationships struct {
+	State   []string
+	Touches []string
+	Proofs  []string
+}
+
 type ContextPathImpact struct {
 	Classification         PathClassification
 	NestedRoot             string
@@ -105,11 +112,13 @@ type ContextPathImpact struct {
 	Provenance             []ContextProvenance
 	Domains                []DomainRef
 	Topics                 []ContextPathTopic
-	DirectRuleIDs          []string
-	InvariantIDs           []string
-	ProofIDs               []string
-	Warnings               []ContextWarning
-	ADR                    *ADRArtifactContext
+	Relationships          ContextRelationships
+	// Phase-2 legacy projection inputs.
+	DirectRuleIDs []string
+	InvariantIDs  []string
+	ProofIDs      []string
+	Warnings      []ContextWarning
+	ADR           *ADRArtifactContext
 }
 
 type ContextProvenance struct {
@@ -118,7 +127,8 @@ type ContextProvenance struct {
 }
 
 type ContextPathTopic struct {
-	ID             string
+	ID string
+	// Phase-2 legacy projection input.
 	DirectClaimIDs []string
 }
 
@@ -231,7 +241,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 		}
 		if directory {
 			report.Kind = RequestDirectoryExpanded
-			dir := ContextDirectory{Excluded: []ContextClassificationCount{}, Groups: []ContextGroup{}}
+			dir := ContextDirectory{Excluded: []ContextClassificationCount{}, Groups: []ContextGroup{}, Relationships: emptyContextRelationships()}
 			counts := map[PathClassification]int{}
 			groups := map[string]*ContextGroup{}
 			for _, f := range files {
@@ -262,6 +272,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 					continue
 				}
 				dir.Included++
+				dir.Relationships = unionContextRelationships(dir.Relationships, impact.Relationships)
 				key := contextGroupKey(impact)
 				g := groups[key]
 				if g == nil {
@@ -303,6 +314,45 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 		requests = append(requests, report)
 	}
 	return requests
+}
+
+func emptyContextRelationships() ContextRelationships {
+	return ContextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}
+}
+
+func contextRelationshipsForPath(sitesByPath map[string][]topic.MarkerSite, filePath string) ContextRelationships {
+	relationships := emptyContextRelationships()
+	for _, site := range sitesByPath[filePath] {
+		switch site.Kind {
+		case topic.StateMarker:
+			relationships.State = append(relationships.State, site.ClaimID)
+		case topic.TouchesMarker:
+			relationships.Touches = append(relationships.Touches, site.ClaimID)
+		case topic.ProofMarker:
+			relationships.Proofs = append(relationships.Proofs, site.ClaimID)
+		}
+	}
+	return compactContextRelationships(relationships)
+}
+
+func unionContextRelationships(inputs ...ContextRelationships) ContextRelationships {
+	out := emptyContextRelationships()
+	for _, relationships := range inputs {
+		out.State = append(out.State, relationships.State...)
+		out.Touches = append(out.Touches, relationships.Touches...)
+		out.Proofs = append(out.Proofs, relationships.Proofs...)
+	}
+	return compactContextRelationships(out)
+}
+
+func compactContextRelationships(relationships ContextRelationships) ContextRelationships {
+	slices.Sort(relationships.State)
+	relationships.State = slices.Compact(relationships.State)
+	slices.Sort(relationships.Touches)
+	relationships.Touches = slices.Compact(relationships.Touches)
+	slices.Sort(relationships.Proofs)
+	relationships.Proofs = slices.Compact(relationships.Proofs)
+	return relationships
 }
 
 func contextGroupKey(impact ContextPathImpact) string {

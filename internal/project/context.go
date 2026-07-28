@@ -125,17 +125,22 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	set := contextPathSet{tree: state.Tree, eligible: eligiblePaths(state.Tree, state.Lock, state.Config.ContextIgnore), nested: nested, outputs: outputs, ignores: state.Config.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]ContextPathImpact{}}
 	selectedADRs := adr.NewCorpus(state.Loaded.ADRs)
 	lay := p.layout()
+	markerSitesByPath := map[string][]topic.MarkerSite{}
+	for _, site := range state.Loaded.Topics.Markers.All() {
+		markerSitesByPath[site.Path] = append(markerSitesByPath[site.Path], site)
+	}
 	makeImpact := func(filePath string, explicit bool) ContextPathImpact {
 		class, nestedRoot, targetInside := classifyContextPath(filePath, set)
 		records := artifactRecords(filePath, state.Declarations, artifactAuthorities{Layout: lay, ADRs: selectedADRs})
 		applyArtifactSnapshots(records, filePath, state.Tree, state.Lock)
-		impact := ContextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []ContextWarning{}}
+		impact := ContextPathImpact{Classification: class, NestedRoot: nestedRoot, TargetInsideRepository: targetInside, Provenance: []ContextProvenance{}, Domains: []DomainRef{}, Topics: []ContextPathTopic{}, Relationships: emptyContextRelationships(), DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []ContextWarning{}}
 		for _, record := range records {
 			impact.Provenance = append(impact.Provenance, ContextProvenance{Role: string(record.Role), Identity: record.Identity, Sources: cloneArtifactLinks(record.Sources), Outputs: cloneArtifactLinks(record.Outputs), Navigation: cloneArtifactLinks(record.Navigation)})
 		}
 		literalGlob := explicit && (class == PathNotFound || class == PathContextIgnored) && globLiteralQuery(filePath)
 		safe := class != PathOutsideRepository && class != PathNestedAdopter && class != PathSymlink
 		if safe && !literalGlob {
+			impact.Relationships = contextRelationshipsForPath(markerSitesByPath, filePath)
 			for _, d := range slices.Sorted(maps.Keys(state.Loaded.Topics.DomainPaths)) {
 				if pathMatchesAny(state.Loaded.Topics.DomainPaths[d], filePath) {
 					impact.Domains = append(impact.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})

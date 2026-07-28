@@ -112,6 +112,22 @@ func TestRunContextHumanAndFacets(t *testing.T) {
 	}
 }
 
+func TestRunContextPreservesLegacyMarkerProjection(t *testing.T) {
+	root := ctxCmdFixture(t)
+	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runContext(root, []string{"internal/foo/x_test.go"}, false, "", false, false, nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	want := "  Direct rules: alpha/one:order\n  Invariants: alpha/one:stable, alpha/one:tested\n  Proofs: alpha/one:tested\n"
+	if !strings.Contains(out.String(), want) {
+		t.Fatalf("legacy marker projection missing:\n%s", out.String())
+	}
+}
+
 // invariant: tooling/context-and-topic:context-terminal-output-cap
 func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	oldDeliver := deliverContext

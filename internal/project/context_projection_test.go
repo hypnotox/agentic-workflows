@@ -1,6 +1,8 @@
 package project
 
 import (
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -65,6 +67,56 @@ func TestProjectionHelpers(t *testing.T) {
 	}
 	if got := claimStateForOperation("add", "d/t:x", "remaining", corpus, nil); got != "not-yet-current" {
 		t.Fatal(got)
+	}
+}
+
+func TestContextLegacyDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
+	files := ctxFiles()
+	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	p := csRepo(t, ctxConfig, files)
+	res, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/x_test.go"}, ContextOptions{Selection: SelectionExplicit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Requests) != 2 || res.Requests[0].Index != 1 || res.Requests[1].Index != 2 || res.Requests[0].Directory == nil || res.Requests[1].Exact == nil {
+		t.Fatalf("requests=%#v", res.Requests)
+	}
+	impact := res.Requests[1].Exact.Context
+	wantRelationships := ContextRelationships{State: []string{"alpha/one:order"}, Touches: []string{"alpha/one:stable"}, Proofs: []string{"alpha/one:tested"}}
+	if !reflect.DeepEqual(impact.Relationships, wantRelationships) {
+		t.Fatalf("relationships=%#v want=%#v", impact.Relationships, wantRelationships)
+	}
+	if !reflect.DeepEqual(res.Requests[0].Directory.Relationships, wantRelationships) {
+		t.Fatalf("directory relationships=%#v want=%#v", res.Requests[0].Directory.Relationships, wantRelationships)
+	}
+	if got, want := impact.DirectRuleIDs, []string{"alpha/one:order"}; !slices.Equal(got, want) {
+		t.Fatalf("direct rules=%v want=%v", got, want)
+	}
+	if got, want := impact.InvariantIDs, []string{"alpha/one:stable", "alpha/one:tested"}; !slices.Equal(got, want) {
+		t.Fatalf("invariants=%v want=%v", got, want)
+	}
+	if got, want := impact.ProofIDs, []string{"alpha/one:tested"}; !slices.Equal(got, want) {
+		t.Fatalf("proofs=%v want=%v", got, want)
+	}
+	var alpha TopicImpact
+	for _, topicImpact := range res.Topics {
+		if topicImpact.ID == "alpha/one" {
+			alpha = topicImpact
+		}
+	}
+	if len(alpha.Direct) != 3 {
+		t.Fatalf("direct claims=%#v", alpha.Direct)
+	}
+	if got := []string{alpha.Direct[0].ID, alpha.Direct[1].ID, alpha.Direct[2].ID}; !slices.Equal(got, []string{"alpha/one:order", "alpha/one:stable", "alpha/one:tested"}) {
+		t.Fatalf("globally deduplicated direct claims=%v", got)
+	}
+	xResult, err := p.ContextForOptions([]string{"internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	xImpact := xResult.Requests[0].Exact.Context
+	if len(xImpact.Relationships.Proofs) != 0 || !slices.Equal(xImpact.ProofIDs, []string{"alpha/one:tested"}) {
+		t.Fatalf("actual proof filtering=%#v legacy proofs=%v", xImpact.Relationships, xImpact.ProofIDs)
 	}
 }
 
