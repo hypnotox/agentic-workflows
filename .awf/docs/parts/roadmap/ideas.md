@@ -29,9 +29,11 @@
   behavior and the plan lifecycle contract). The ADR-0158 effort is the third occurrence and
   splits the target in two: the remediation half of the pitfall worked (terminal review directed
   a post-freeze Notes append and the executing session declined it, citing the pitfall), while
-  the prevention half failed again (three deviations reached the freeze commit unrecorded). A
-  refusal to edit a frozen plan would not have prevented that miss. The complementary and
-  cheaper lever is a pre-flip deviation sweep in the execution skills' final-commit step, which
+  the prevention half failed again (three deviations reached the freeze commit unrecorded). The
+  phase-transaction-ownership effort is the fourth occurrence: terminal review found two touched
+  paths missing from the frozen inventory and one listed path that was not touched. A refusal to
+  edit a frozen plan would not have prevented either miss. The complementary and cheaper lever is
+  a pre-flip deviation sweep in the execution skills' final-commit step, which
   is where the omission actually happens; that is a shipped-template change, so it needs its own
   ADR rather than a local override, on pain of awf diverging from the standard it publishes.
 - A conditional-key consumption check: extend the ADR-0086 consumption union so a template
