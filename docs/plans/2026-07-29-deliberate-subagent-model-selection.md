@@ -51,8 +51,7 @@ commit-capable phase implementer.
 - **Modified Pi implementation and test plumbing:** `templates/pi/awf-subagents/index.ts.tmpl`,
   `internal/project/target.go`, `internal/project/target_test.go`,
   `internal/project/output_plan_test.go`, `internal/project/project_test.go`,
-  `internal/evals/chain_test.go`, `tools/pi-extension-test/container.sh`, and
-  `tools/pi-extension-test/tsconfig.json`.
+  `internal/evals/chain_test.go` and `tools/pi-extension-test/container.sh`.
 - **Modified current state and lifecycle records:**
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`,
   `.awf/topics/parts/rendering/pi-workflows/current-state.md`,
@@ -90,7 +89,8 @@ including the operation, generated outputs, staged check, gate, and closing comm
   - grounding: `brainstorming`;
   - exploration: `exploring`;
   - inline optional batch helper: `executing-plans`;
-  - complete implementation phase: `subagent-driven-development`;
+  - complete implementation phase and its report-only phase review:
+    `subagent-driven-development`;
   - primary and verify review: `reviewing-adr`, `reviewing-plan`,
     `reviewing-plan-resync`, and `reviewing-impl`.
 
@@ -130,14 +130,15 @@ including the operation, generated outputs, staged check, gate, and closing comm
   auto, or inherit parent as a model value.` For a non-Pi branch, state `Select the smallest reliable
   target-native model explicitly; if this harness cannot select a model, use its default and note in
   the dispatch brief that explicit selection is unavailable.` Place this rule on each actual call or
-  dispatch sentence, including the four verify-pass sentences and the optional commit-disabled
-  helper sentence in `executing-plans`; a rule elsewhere in the file does not satisfy an occurrence.
+  dispatch sentence, including the four verify-pass sentences, the optional commit-disabled helper
+  sentence in `executing-plans`, and the report-only phase-review dispatch in
+  `subagent-driven-development`; a rule elsewhere in the file does not satisfy an occurrence.
 
   Preserve the exact role-specific arguments and ownership: grounding is one no-mutation call;
   exploration retains task/breadth/detail; the phase owner retains `allowCommits: true` and solo
   tool batching; batch helpers retain sequential `allowCommits: false`, path confinement, and no
-  phase commit; review retains `kind: adr|plan|code`, report-only behavior, and exactly one verify
-  pass. Generic branches must not acquire Pi syntax.
+  phase commit; the phase review and dedicated review skills retain `kind: adr|plan|code`,
+  report-only behavior, and exactly one verify pass. Generic branches must not acquire Pi syntax.
 
 - [ ] **Task 1.4: Update existing render and eval assertions.** In
   `internal/project/target_test.go`, replace the old `provider/model-id` plus `inherits the parent`
@@ -170,9 +171,16 @@ including the operation, generated outputs, staged check, gate, and closing comm
 - [ ] **Phase-close: verify, stage, gate, and commit.** Run `gofmt -w
   internal/project/subagent_model_selection_test.go internal/project/target_test.go
   internal/evals/chain_test.go`, `go test ./internal/project ./internal/evals`, `./x render`,
-  `./x check`, and `git diff --check`; all must pass and the final command prints no output. Stage
-  every Phase 1 path explicitly, run `./awf check --staged` and require its clean terminal state,
-  then run `./x gate` and require success. Commit:
+  `./x check`, and `git diff --check`; all must pass and the final command prints no output. From
+  the verified Phase 1 status inventory, run this exact staging command (brace expansion names only
+  individual files, never a directory):
+
+  ```sh
+  git add -- templates/agents-doc/AGENTS.md.tmpl templates/docs/working-with-awf.md.tmpl templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl internal/project/subagent_model_selection_test.go internal/project/target_test.go internal/evals/chain_test.go .awf/topics/parts/rendering/workflow-skill-templates/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock AGENTS.md docs/working-with-awf.md docs/topics/rendering/workflow-skill-templates.md docs/domains/rendering.md docs/decisions/INDEX.md .{claude,pi}/skills/awf-{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md examples/sundial/AGENTS.md examples/sundial/docs/working-with-awf.md examples/sundial/.awf/awf.lock examples/sundial/.{agents,claude,cursor,gemini,github,pi}/skills/sundial-{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md
+  ```
+
+  Require `git diff --cached --name-only` to equal the Phase 1 status inventory. Run `./awf check
+  --staged` and require its clean terminal state, then run `./x gate` and require success. Commit:
 
 ```commit
 feat(rendering): govern subagent model selection (applies 0173)
@@ -207,17 +215,32 @@ the three Pi-workflow operations may not split.
   "large"] as const`, add those optional fields to `SubagentModelPreferences`, and make the legal key
   order exactly `default`, grounding, exploration, review, implementation, small, standard, large.
   Keep project-over-global precedence per field. Build an effective-state projection that records
-  for every field its merged reference and source, `missing` in the same fixed order, and invalid
-  entries as `{field, scope, reason}` where reason is only `malformed`, `overlong`, `unregistered`,
-  `unauthenticated`, `unavailable`, or `read-error`. A role falling back to shared default remains
-  routable but its role field remains missing for completeness.
+  for every field its merged reference and source, `missing` in the same fixed order, and this exact
+  bounded invalid union:
+
+  ```ts
+  type SourceScope = "global" | "project";
+  type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key";
+  type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable";
+  type InvalidState =
+    | { kind: "source"; scope: SourceScope; reason: SourceReason }
+    | { kind: "field"; scope: SourceScope; field: PreferenceField; reason: FieldReason };
+  ```
+
+  A source with any parse-shape failure contributes no values. Record at most one entry for each
+  source reason, without the raw JSON error or unknown key. Sort invalid state by global then project
+  scope; within a scope, source reasons use the declaration order above, followed by field failures
+  in preference-field order. A role falling back to shared default remains routable but its role
+  field remains missing for completeness.
 
   Replace `exactModelReference` with one parser used by preference files and explicit calls. It
   rejects non-strings, strings longer than 256 characters, a slash at either end, and the literal
   case-sensitive sentinels `default`, `auto`, and `inherit parent`; registry lookup remains the
-  authority for the exact provider and remainder. Never truncate a reference. Missing entries are
-  valid and non-blocking; any configured invalid field blocks all implicit routing, including when
-  only a tier is invalid, while valid explicit calls remain usable.
+  authority for the exact provider and remainder. Validation precedence is parse shape, overlong,
+  registry `find` (unregistered), `hasConfiguredAuth` (unauthenticated), then membership in
+  `getAvailable()` by provider and id (unavailable). Never truncate a reference. Missing entries are
+  valid and non-blocking; any configured invalid field or source blocks all implicit routing,
+  including when only a tier is invalid, while valid explicit calls remain usable.
 
 - [ ] **Task 2.3: Make queue-time resolution a preflight and revalidate immediately before child
   startup.** Preserve the existing precedence for an omitted role request and the existing execution
@@ -235,14 +258,22 @@ the three Pi-workflow operations may not split.
   invalid state emits the existing strict error per key. Explicit valid calls remain usable. Do not
   suppress a notice in a later session within the same process.
 
-- [ ] **Task 2.4: Enforce the same public contract in all four tool schemas and guidance.** Define one
-  reusable TypeBox model field with `maxLength: 256`, an exact-reference pattern requiring a
-  non-empty provider and model remainder, and a description that says omission is configured/default
-  routing and sentinel strings are invalid. Use that field in grounding, exploration, review, and
-  implementation. Update each description and `promptGuidelines` to say omission is the only default
-  form, the exact tier mapping is used for deliberate override, and the repair is `Omit the model
-  field to use configured or inherited routing.` The runtime parser must repeat the check because a
-  `tool_call` handler may mutate already-validated input.
+- [ ] **Task 2.4: Enforce the same public contract in all four tool schemas and guidance.** Export
+  and reuse this exact TypeBox field in grounding, exploration, review, and implementation:
+
+  ```ts
+  export const MODEL_REFERENCE_SCHEMA = Type.String({
+    minLength: 3,
+    maxLength: 256,
+    pattern: "^[^/\\s]+/[^\\s]+$",
+    description: "Exact provider/model-id. Omit the model field to use configured or inherited routing; default, auto, and inherit parent are invalid.",
+  });
+  ```
+
+  Update each description and `promptGuidelines` to say omission is the only default form, the exact
+  tier mapping is used for deliberate override, and the repair is `Omit the model field to use
+  configured or inherited routing.` The runtime parser must repeat the check because a `tool_call`
+  handler may mutate already-validated input.
 
 - [ ] **Task 2.5: Extend `/awf-subagent-models` to one eight-field atomic transaction.** Keep the
   existing scope choice, current/error display, cancellation behavior, gitignore enforcement,
@@ -261,13 +292,17 @@ the three Pi-workflow operations may not split.
 - [ ] **Task 2.6: Complete TypeScript and render coverage.** In `index.test.ts`, cover every branch
   from Tasks 2.1-2.5, including wizard preset eligibility, eight-slot manual flow, leave-unset,
   cancellation, project ignore decline/append/outside-worktree behavior, stale writer, mkdir/read/
-  write/rename failures, temp cleanup, live post-save refresh, and the Luna/Terra/Sol mapping. In
-  `internal/project/target_test.go`, update the substantive Pi model preference, routing, and wizard
-  render assertions to pin the tier fields, 256-character boundary, omission repair, post-queue
-  reload, session-scoped notice key, and exact preset mappings. Place each existing invariant marker
-  immediately above a substantive test rather than leaving marker-only placeholders. Update
-  `tools/pi-extension-test/tsconfig.json` only if a new test import requires it; do not yet add a new
-  rendered extension output or change `internal/project/target.go`.
+  write/rename failures, temp cleanup, live post-save refresh, and the Luna/Terra/Sol mapping. Add
+  named regression cases for malformed JSON, non-object JSON, unknown keys, read errors, and a source
+  containing valid fields plus an invalid field. Each case asserts the bounded source/field reason,
+  deterministic ordering, no raw error/key leakage, implicit-routing block, continued valid explicit
+  call, and one notice per session identity. In `internal/project/target_test.go`, update the
+  substantive Pi model preference, routing, and wizard render assertions to pin the tier fields,
+  256-character boundary, omission repair, post-queue reload, session-scoped notice key, and exact
+  preset mappings. Place each existing invariant marker immediately above a substantive test rather
+  than leaving marker-only placeholders. The pinned SDK imports compile under the existing
+  `tools/pi-extension-test/tsconfig.json`; do not modify that file, add a new rendered extension
+  output, or change `internal/project/target.go` in this phase.
 
 - [ ] **Task 2.7: Apply the three Pi-workflow operations together.** Replace the three claims in
   `.awf/topics/parts/rendering/pi-workflows/current-state.md` with these contract bodies, preserving
@@ -305,8 +340,14 @@ the three Pi-workflow operations may not split.
 - [ ] **Phase-close: verify, stage, gate, and commit.** Run
   `go test ./internal/project ./internal/evals`, `./x pi-test run`, `./x render`, `./x check`, and
   `git diff --check`; require passing tests, 100% configured Pi-extension coverage, clean drift, and
-  no diff-check output. Stage only the complete Phase 2 transaction, run `./awf check --staged`, then
-  `./x gate`; both must pass. Commit:
+  no diff-check output. Run this exact staging command:
+
+  ```sh
+  git add -- templates/pi/awf-subagents/index.ts.tmpl tools/pi-extension-test/tests/index.test.ts internal/project/target_test.go .awf/topics/parts/rendering/pi-workflows/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock .pi/extensions/awf-subagents/index.ts docs/topics/rendering/pi-workflows.md docs/domains/rendering.md docs/decisions/INDEX.md examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-subagents/index.ts
+  ```
+
+  Require `git diff --cached --name-only` to equal the Phase 2 status inventory, then run `./awf
+  check --staged` and `./x gate`; both must pass. Commit:
 
 ```commit
 feat(rendering): add Pi subagent complexity tiers (applies 0173 batch)
@@ -323,10 +364,10 @@ ADR implementation transition, and closing commit.
   `templates/pi/awf-subagents/model-routing.ts.tmpl` with the provenance-compatible ts-nocheck line
   and move, without duplicating policy, the preference constants/types, exact-reference parser,
   source parser, project-over-global merge, completeness projection, bounded reason-code validation,
-  preferred-role resolution, preset data, and routing-card builder from `index.ts.tmpl`. Export only
-  the types and functions consumed by `index.ts` or direct tests. Keep filesystem access behind the
-  entrypoint's injected dependencies and registry access behind a narrow `{find,
-  hasConfiguredAuth}` interface. `index.ts` imports the module and retains registration, wizard UI,
+  preferred-role resolution, and preset data from `index.ts.tmpl`. Task 3.2 adds the new card builder
+  directly to this consumed module. Export only the types and functions consumed by `index.ts` or
+  direct tests. Keep filesystem access behind the entrypoint's injected dependencies and registry
+  access behind a narrow `{find, hasConfiguredAuth, getAvailable}` interface. `index.ts` imports the module and retains registration, wizard UI,
   queueing, process lifecycle, and renderers. No dead copy of a moved function remains.
 
   In `internal/project/target.go`, add the target output descriptor
@@ -339,18 +380,42 @@ ADR implementation transition, and closing commit.
   `model-routing.ts`, and `runner.ts`; handoff remains the other Pi extension entrypoint.
 
 - [ ] **Task 3.2: Build the deterministic bounded routing card.** In `model-routing.ts.tmpl`, export
-  `buildRoutingCard(state)` with fixed line order: heading; role defaults in grounding, exploration,
-  review, implementation order; tiers in small, standard, large order; one missing or invalid-state
-  line; and one guidance line saying omit `model` for the role default or override deliberately with
-  the selected exact tier. The normal form includes exact untruncated references and uses only the
-  bounded reason codes and field names from Phase 2, never raw parser, filesystem, registry, or auth
-  errors. It includes no prices, limits, or full catalog.
+  `buildRoutingCard(state)` using this exact complete representative fixture and separators:
+
+  ```text
+  [awf subagent routing]
+  default: example/default
+  roles: grounding=example/grounding; exploration=example/exploration; review=example/review; implementation=example/implementation
+  tiers: small=example/small; standard=example/standard; large=example/large
+  missing: none
+  invalid: none
+  selection: omit model for the role default; otherwise override deliberately with the selected tier's exact provider/model-id.
+  ```
+
+  Substitute the state's exact reference for each representative reference and the literal `missing`
+  when that mapping is absent. A missing state replaces the `missing: none` line with, for example,
+  exactly `missing: grounding, small`; fields are comma-space-separated in preference-field order.
+  An invalid state replaces `invalid: none` with semicolon-space-separated entries; exact
+  representatives are `global:source:malformed-json`, `project:source:unknown-key`, and
+  `project:small:unavailable`, ordered by Task 2.2. A mixed state carries both non-`none` lines. After a non-`none` invalid line, insert exactly
+  `repair: Run /awf-subagent-models; omit model only after invalid preferences are repaired.` before
+  `selection`. Never include raw parser, filesystem, registry, or auth errors, prices, limits, or a
+  catalog; never truncate a reference.
 
   Measure `Buffer.byteLength(card, "utf8")`. The maximum-length complete normal form must remain at
-  or below 4096 bytes. If any unexpected construction exceeds the budget, return one deterministic
-  failure card within the same budget, containing no partial mapping and one repair sentence; the
-  caller emits one actionable warning. Tests construct every field at the 256-character boundary to
-  prove the normal form fits rather than relying only on the defensive branch.
+  or below 4096 bytes. If an unexpected construction exceeds the budget, discard all mappings and
+  return exactly:
+
+  ```text
+  [awf subagent routing]
+  state: unavailable (routing card exceeded 4096 UTF-8 bytes)
+  repair: Run /awf-subagent-models and retry; implicit routing remains strict.
+  ```
+
+  The caller warning is exactly `awf subagent routing card exceeded 4096 UTF-8 bytes; injected a
+  failure card. Run /awf-subagent-models and retry.` Tests cover complete, missing, invalid, mixed,
+  maximum-length, and defensive fixtures; they construct every field at the 256-character boundary
+  to prove the normal form fits rather than relying only on the defensive branch.
 
 - [ ] **Task 3.3: Wire one per-run `before_agent_start` injection with current state.** Add
   `getActiveTools` to the minimum-runtime requirement. Register one async `before_agent_start`
@@ -424,8 +489,14 @@ ADR implementation transition, and closing commit.
   internal/project/project_test.go`, `go test ./...`, `./x pi-test run`, `./x render`, `./x check`,
   and `git diff --check`. Require all tests and coverage to pass, drift to be clean, and diff-check to
   print no output. Inspect `git status --short`, reject paths outside File structure, stage the
-  complete transaction explicitly, run `./awf check --staged`, then `./x gate`; both must pass.
-  Commit:
+  complete transaction with this exact command:
+
+  ```sh
+  git add -- templates/pi/awf-subagents/{index.ts.tmpl,model-routing.ts.tmpl} tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts} tools/pi-extension-test/container.sh internal/project/{target.go,target_test.go,output_plan_test.go,project_test.go} .awf/topics/parts/rendering/pi-runtime/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock .pi/extensions/awf-subagents/{index.ts,model-routing.ts} docs/topics/rendering/pi-runtime.md docs/domains/rendering.md docs/decisions/INDEX.md examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-subagents/{index.ts,model-routing.ts}
+  ```
+
+  Require `git diff --cached --name-only` to equal the Phase 3 status inventory, run `./awf check
+  --staged`, then `./x gate`; both must pass. Commit:
 
 ```commit
 feat(rendering): inject Pi subagent routing cards (implements 0173)
