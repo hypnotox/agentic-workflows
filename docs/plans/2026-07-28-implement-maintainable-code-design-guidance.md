@@ -496,7 +496,11 @@ values, not executor path notation.
 
 ## Notes
 
-- Task 4.1 rendering also regenerated the Sundial adopter's reviewer agents and lock, plus the active rendering topic document at `docs/topics/rendering/workflow-skill-templates.md`; these generated outputs were staged with the terminal transaction.
+- Task 1.1 rendering also regenerated Sundial's guide, agent guide, and lock. Follow-up commit `563df49e` added the omitted changelog and rendering-domain records and restored the displaced singleton-section-parity proof marker.
+- Task 2.1 rendering also regenerated Sundial's affected skills and lock. Follow-up commit `efa3f724` strengthened stage proofs and corrected four workflow templates and their outputs despite its test-scoped subject; `9d945076` then clarified larger-refactor escalation.
+- Task 3.1 rendering also regenerated Sundial's executing-plans and subagent-driven-development skills and lock. Follow-up commit `ef5ffd24` tightened the handoff proofs.
+- Task 4.1 rendering also regenerated Sundial's reviewer agents and lock, plus the active rendering topic document at `docs/topics/rendering/workflow-skill-templates.md`. Follow-up commit `62650eeb` strengthened review-lens proofs.
+- Terminal implementation review found that the pre-existing exhaustive plain-singleton claim and backing test omitted the new guide. ADR-0169 corrects that authority forward because implemented ADR-0168 is frozen.
 - The exact section identifiers are the public convention-part API. Do not rename them during
   implementation without returning the Proposed plan to review.
 - Let `S` be the next repository-global state sequence at execution start. The four ADR application

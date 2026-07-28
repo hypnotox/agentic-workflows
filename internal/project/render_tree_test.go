@@ -80,6 +80,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 	}
 }
 
+// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide
 func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	const uniqueBody = "The local decision posture owns this change."
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n", map[string]string{

@@ -337,7 +337,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:e3e5c07523c34f5065f4ba80605985fabddfe2279aca71ab13b3dfccab352520",
+      "outputHash": "sha256:46baff94dcea4e5020b217513dc5d00986fa78ae8a9349ba58cdf1402ad832bb",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -594,8 +594,8 @@
     "docs/topics/rendering/singletons-and-payloads.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:667cd4789a91fa14237e80c50117e94ed9afd182235dc35eac4a48697ca9666d",
-      "outputHash": "sha256:80b8dfa61b8961565f347cd122a9148b2d84e41fbcdf061e4202b4c9bc82da3c"
+      "configHash": "sha256:55a7bf9064a64fc599ca718e391705407dc54af4c4c5f75d376ffa52c6abe880",
+      "outputHash": "sha256:8a97be85afdd0a2a48ec2d85bcc32ce2c1a89892bef29b03817fca0be795030f"
     },
     "docs/topics/rendering/sync-and-drift.md": {
       "templateId": "topics/topic.md.tmpl",

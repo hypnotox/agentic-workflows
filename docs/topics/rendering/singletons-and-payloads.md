@@ -42,8 +42,9 @@ Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`
 
-The always-on plain singletons (adr-readme, adr-template, plans-readme, workflow, doc-standard, agents-md-standard, and working-with-awf) each render to their fixed output path and content through the shared plainSingletons table and the common renderKind path rather than a hand-rolled per-kind loop.
+The always-on plain singletons (adr-readme, adr-template, plans-readme, workflow, doc-standard, agents-md-standard, working-with-awf, and maintainable-code-design) each render to their fixed output path and content through the shared plainSingletons table and the common renderKind path rather than a hand-rolled per-kind loop.
 Origin: ADR-0148
+Revised-by: ADR-0169
 Backing: test
 
 ### `invariant: shebang-rendered-executable`

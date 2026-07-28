@@ -172,3 +172,4 @@
 - [ADR-0165: Request-Oriented Compact Context Projection](0165-request-oriented-compact-context-projection.md) (Implemented)
 - [ADR-0167: Remove workflow telemetry and mandatory Pi routing](0167-remove-workflow-telemetry-and-mandatory-pi-routing.md) (Implemented)
 - [ADR-0168: Make maintainable code design a workflow obligation](0168-make-maintainable-code-design-a-workflow-obligation.md) (Implemented)
+- [ADR-0169: Include maintainable design in plain singleton authority](0169-include-maintainable-design-in-plain-singleton-authority.md) (Implemented)
