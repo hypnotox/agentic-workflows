@@ -19,7 +19,14 @@ func Export(reads ReadSet, s Selector) ([][]byte, error) {
 		if s.EffortID != nil && reads.Assignments[session.SessionID] != *s.EffortID {
 			continue
 		}
-		for _, raw := range session.Records {
+		for index, raw := range session.Records {
+			// Headers have no observation time and remain part of a selected stream.
+			if index > 0 {
+				var observation Observation
+				if json.Unmarshal(raw, &observation) != nil || !selectObservation(observation, s) {
+					continue
+				}
+			}
 			out = append(out, wrap("session-v1", raw))
 		}
 	}
@@ -29,8 +36,24 @@ func Export(reads ReadSet, s Selector) ([][]byte, error) {
 		if s.EffortID != nil && *s.EffortID != read.EffortID {
 			continue
 		}
-		for _, raw := range read.Records {
-			out = append(out, wrap("legacy-protocol-2", raw))
+		entries, identified := read.Entries, len(read.Entries) != 0
+		if !identified {
+			for _, raw := range read.Records {
+				entries = append(entries, LegacyRecord{Source: "legacy-protocol-2", Raw: raw})
+			}
+		}
+		for _, entry := range entries {
+			if identified && s.SessionID != nil && entry.SessionID != *s.SessionID {
+				continue
+			}
+			if !selectLegacy(entry.Raw, s) {
+				continue
+			}
+			source := entry.Source
+			if source == "" {
+				source = legacySource(entry.Raw)
+			}
+			out = append(out, wrap(source, entry.Raw))
 		}
 	}
 	return out, nil

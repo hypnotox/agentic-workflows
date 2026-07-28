@@ -204,7 +204,10 @@ func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error
 			return nil
 		}
 		if de.IsDir() {
-			if isResidentPath(rel) {
+			// Dynamic residents exist only at the primary control root. A linked
+			// checkout's same-named tree is not resident authority and must not be
+			// silently exempted from its tracked config sweep.
+			if isResidentPath(rel) && p.Root == p.residentRoot {
 				return filepath.SkipDir
 			}
 			if m.claimedDir(rel) {

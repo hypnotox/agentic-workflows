@@ -45,6 +45,29 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	}
 }
 
+func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const obsolete = ".awf/metrics/obsolete"
+	lock.Files[obsolete] = manifest.Entry{}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.SyncReport(); err != nil {
+		t.Fatalf("resident-root prune path failed: %v", err)
+	}
+}
+
 func TestUninstallPreservesResidentWorkflowMetrics(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)

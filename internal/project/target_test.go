@@ -117,6 +117,7 @@ func TestTelemetryProtocolDescriptorAttribution(t *testing.T) {
 // invariant: rendering/adapter-outputs:pi-workflow-telemetry-runtime
 
 // invariant: rendering/pi-workflows:pi-workflow-telemetry-public-contract
+// invariant: rendering/pi-workflows:pi-lifecycle-enforcing-workflow-router
 
 func TestTargetOutputRenderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")

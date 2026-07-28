@@ -67,8 +67,27 @@ func TestExportSortsFiltersAndWrapsReadOnlyRecords(t *testing.T) {
 	if err := json.Unmarshal(wrap("source", json.RawMessage(`broken`)), &invalid); err != nil || invalid.Source != "source" || invalid.Record != nil {
 		t.Fatalf("invalid wrapped record = %#v, %v", invalid, err)
 	}
+	identified := ReadSet{Legacy: []LegacyEffortRead{{EffortID: "effort-a", Entries: []LegacyRecord{
+		{Source: "legacy-protocol-1", SessionID: "session-a", Raw: json.RawMessage(`{"version":{"major":1},"timestamp":"2026-07-27T00:00:00Z"}`)},
+		{SessionID: "session-b", Raw: json.RawMessage(`{"version":{"major":2},"timestamp":"bad"}`)},
+	}}}}
+	filtered, err := Export(identified, Selector{SessionID: selectorString("session-a"), Since: selectorTime("2026-07-27T00:00:00Z"), Until: selectorTime("2026-07-27T00:00:01Z")})
+	if err != nil || len(filtered) != 1 || !bytes.Contains(filtered[0], []byte(`legacy-protocol-1`)) {
+		t.Fatalf("identified legacy export=%q err=%v", filtered, err)
+	}
 	if string(mustJSON(map[string]string{"a": "b"})) != `{"a":"b"}` {
 		t.Fatal("mustJSON changed a serializable value")
+	}
+}
+
+func TestExportSelectorRejectsMalformedAndUnselectedEntries(t *testing.T) {
+	session, other := "session-a", "session-b"
+	reads := ReadSet{Sessions: []SessionRead{{SessionID: session, Records: []json.RawMessage{json.RawMessage(`{"record":"header"}`), json.RawMessage(`not-json`)}}}, Legacy: []LegacyEffortRead{{EffortID: "effort-a", Entries: []LegacyRecord{{SessionID: session, Raw: json.RawMessage(`{"timestamp":"bad"}`)}, {SessionID: other, Raw: json.RawMessage(`{"timestamp":"2026-07-27T00:00:00Z"}`)}, {SessionID: session, Raw: json.RawMessage(`{"version":{"major":2},"timestamp":"2026-07-27T00:00:00Z"}`)}}}}}
+	if values, err := Export(reads, Selector{SessionID: &session, Since: selectorTime("2026-07-27T00:00:00Z")}); err != nil || len(values) != 2 {
+		t.Fatalf("filtered export=%q err=%v", values, err)
+	}
+	if legacySource(json.RawMessage(`{"version":{"major":1}}`)) != "legacy-protocol-1" || legacySource(json.RawMessage(`{}`)) != "legacy-protocol-2" {
+		t.Fatal("legacy source classification")
 	}
 }
 

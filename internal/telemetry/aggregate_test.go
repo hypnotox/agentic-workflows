@@ -100,6 +100,22 @@ func TestAggregateAssignedUnassignedSelectorsAndLegacy(t *testing.T) {
 	}
 }
 
+func TestAggregateLegacySelectorsUseProtocolEntriesAndTime(t *testing.T) {
+	id, session := "effort-a", "session-a"
+	reads := ReadSet{Records: map[string]effort.Record{id: {ID: id}}, Assignments: map[string]string{session: id}, Legacy: []LegacyEffortRead{{EffortID: id, Entries: []LegacyRecord{
+		{Source: "legacy-protocol-1", SessionID: session, Raw: json.RawMessage(`{"kind":"usage_observed","timestamp":"2026-07-27T00:00:00Z","payload":{"inputTokens":2}}`)},
+		{Source: "legacy-protocol-2", SessionID: "other", Raw: json.RawMessage(`{"kind":"usage_observed","timestamp":"not-a-time","payload":{"inputTokens":9}}`)},
+	}}}}
+	report, err := Aggregate(reads, Selector{SessionID: &session, Since: selectorTime("2026-07-27T00:00:00Z"), Until: selectorTime("2026-07-27T00:00:01Z")})
+	if err != nil || len(report.Efforts) != 1 || report.Efforts[0].Legacy.InputTokens != 2 {
+		t.Fatalf("legacy selector report=%#v err=%v", report, err)
+	}
+	other := "other-effort"
+	if report, err := Aggregate(reads, Selector{EffortID: &other}); err != nil || len(report.Efforts) != 0 {
+		t.Fatalf("mismatched effort selector=%#v err=%v", report, err)
+	}
+}
+
 func TestCountersSaturateAndObservationKinds(t *testing.T) {
 	all := Counters{
 		InputTokens: math.MaxUint64, OutputTokens: math.MaxUint64, CacheReadTokens: math.MaxUint64, CacheWriteTokens: math.MaxUint64,

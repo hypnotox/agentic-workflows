@@ -692,7 +692,7 @@ func (p *Project) localReservations(op *OutputPlan, fail func(string, error)) {
 		if !n.Reservation || !n.Policy.LocalValidation {
 			continue
 		}
-		b, err := os.ReadFile(filepath.Join(p.Root, n.Path))
+		b, err := os.ReadFile(p.outputPath(n.Path))
 		if err != nil {
 			fail(n.Path, errors.New("local artifact file absent"))
 			continue

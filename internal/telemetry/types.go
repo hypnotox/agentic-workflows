@@ -49,9 +49,15 @@ type SessionRead struct {
 	Findings     []IntegrityFinding
 }
 
+type LegacyRecord struct {
+	Source, SessionID string
+	Raw               json.RawMessage
+}
+
 type LegacyEffortRead struct {
 	EffortID string
-	Records  []json.RawMessage
+	Records  []json.RawMessage // compatibility projection in original stream order
+	Entries  []LegacyRecord    // protocol/session identity for selection and export
 	Findings []IntegrityFinding
 }
 

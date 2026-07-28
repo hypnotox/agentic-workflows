@@ -153,10 +153,12 @@ func readLegacy(root string) ([]LegacyEffortRead, []IntegrityFinding, error) {
 			findings = append(findings, finding("legacy", id, "unsafe-legacy-path"))
 			continue
 		}
-		read := LegacyEffortRead{EffortID: id, Records: []json.RawMessage{}, Findings: []IntegrityFinding{}}
+		read := LegacyEffortRead{EffortID: id, Records: []json.RawMessage{}, Entries: []LegacyRecord{}, Findings: []IntegrityFinding{}}
 		metadata := filepath.Join(dir, "effort.json")
 		if b, e := os.ReadFile(metadata); e == nil {
-			read.Records = append(read.Records, append(json.RawMessage(nil), bytes.TrimSuffix(b, []byte{'\n'})...))
+			raw := append(json.RawMessage(nil), bytes.TrimSuffix(b, []byte{'\n'})...)
+			read.Records = append(read.Records, raw)
+			read.Entries = append(read.Entries, LegacyRecord{Source: "legacy-protocol-2", Raw: raw})
 		}
 		sessions := filepath.Join(dir, "sessions")
 		if sessionEntries, e := os.ReadDir(sessions); e == nil {
@@ -174,7 +176,9 @@ func readLegacy(root string) ([]LegacyEffortRead, []IntegrityFinding, error) {
 				}
 				for _, line := range bytes.Split(bytes.TrimSuffix(b, []byte{'\n'}), []byte{'\n'}) {
 					if len(line) > 0 {
-						read.Records = append(read.Records, append(json.RawMessage(nil), line...))
+						raw := append(json.RawMessage(nil), line...)
+						read.Records = append(read.Records, raw)
+						read.Entries = append(read.Entries, LegacyRecord{Source: legacySource(raw), SessionID: sid, Raw: raw})
 					}
 				}
 			}
@@ -184,6 +188,18 @@ func readLegacy(root string) ([]LegacyEffortRead, []IntegrityFinding, error) {
 	}
 	return out, findings, nil
 }
+func legacySource(raw json.RawMessage) string {
+	var record struct {
+		Version struct {
+			Major int `json:"major"`
+		} `json:"version"`
+	}
+	if json.Unmarshal(raw, &record) == nil && record.Version.Major == 1 {
+		return "legacy-protocol-1"
+	}
+	return "legacy-protocol-2"
+}
+
 func sortFindings(values []IntegrityFinding) {
 	sort.Slice(values, func(i, j int) bool {
 		a, b := values[i], values[j]

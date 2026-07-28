@@ -2,6 +2,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -15,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -70,10 +72,14 @@ func ValidateSchemaMinimumVersion(schema int, version string) error {
 }
 
 type Project struct {
-	Root    string
-	Cfg     *config.Config
-	Cat     *catalog.Catalog
-	Targets []Target
+	// Root is the invoking checkout and remains the sole tracked-config authority.
+	Root string
+	// residentRoot is the primary checkout selected by Git's common control root.
+	// Non-Git fixture projects retain Root so ordinary config-only tests remain useful.
+	residentRoot string
+	Cfg          *config.Config
+	Cat          *catalog.Catalog
+	Targets      []Target
 	// effSkills is the effective rendered skill set (enabled minus doc-gate-
 	// suppressed, local kept), populated by RenderAll; templates read it as
 	// .skills and artifactConfigHash folds it in for .skills-referencing
@@ -101,7 +107,13 @@ func Open(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &Project{Root: root, Cfg: cfg, Targets: targets}
+	p := &Project{Root: root, residentRoot: root, Cfg: cfg, Targets: targets}
+	if roots, rootErr := awfgit.ResolveControlRoots(context.Background(), root); rootErr == nil {
+		if primary, residentErr := roots.ResidentRoot(awfgit.ResidentEfforts); residentErr == nil {
+			// All five resident names share the primary worktree parent.
+			p.residentRoot = filepath.Dir(filepath.Dir(primary))
+		}
+	}
 	cat, err := p.effectiveCatalog()
 	if err != nil {
 		return nil, err
@@ -194,7 +206,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
 		}
 	}
-	preservedResidents, err := inspectResidentRoots(p.Root)
+	preservedResidents, err := inspectResidentRoots(p.residentRoot)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -244,7 +256,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	}
 	want := map[string]bool{}
 	for _, f := range files {
-		abs := filepath.Join(p.Root, f.Path)
+		abs := p.outputPath(f.Path)
 		dir := filepath.Dir(abs)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, nil, nil, err
@@ -310,7 +322,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			if !filepath.IsLocal(filepath.FromSlash(path)) {
 				continue
 			}
-			file := filepath.Join(p.Root, path)
+			file := p.outputPath(path)
 			// The outgoing co-owned runner is the one pruned output an adopter
 			// hand-authored inside (its in-place verb bodies), so it is backed
 			// up before removal for the one-time hand-port instead of vanishing
@@ -328,7 +340,11 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			if os.Remove(file) == nil {
 				pruned = append(pruned, path)
 			}
-			for d := filepath.Dir(file); d != p.Root; d = filepath.Dir(d) {
+			base := p.Root
+			if isResidentPath(path) {
+				base = p.residentRoot
+			}
+			for d := filepath.Dir(file); d != base; d = filepath.Dir(d) {
 				dirs[d] = true
 			}
 		}
@@ -382,6 +398,15 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 
 func (p *Project) lockPath() string {
 	return config.LockPath(p.Root)
+}
+
+// outputPath resolves resident root artifacts at the primary control root while
+// leaving every tracked output anchored at the invoking checkout.
+func (p *Project) outputPath(path string) string {
+	if isResidentPath(path) {
+		return filepath.Join(p.residentRoot, filepath.FromSlash(path))
+	}
+	return filepath.Join(p.Root, filepath.FromSlash(path))
 }
 
 // beginInvocation drops any per-invocation cached state, so the operation that

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
@@ -150,6 +152,12 @@ func preserveResidentRemoval(path string, preserved []string) bool {
 // touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
 func Uninstall(root string) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
+	residentRoot := root
+	if roots, resolveErr := awfgit.ResolveControlRoots(context.Background(), root); resolveErr == nil {
+		if effortRoot, residentErr := roots.ResidentRoot(awfgit.ResidentEfforts); residentErr == nil {
+			residentRoot = filepath.Dir(filepath.Dir(effortRoot))
+		}
+	}
 	lock, found, err := manifest.LoadOptional(lockPath)
 	if err != nil {
 		return UninstallReport{}, err
@@ -157,7 +165,7 @@ func Uninstall(root string) (UninstallReport, error) {
 	if !found {
 		return UninstallReport{}, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
-	preserved, err := inspectResidentRoots(root)
+	preserved, err := inspectResidentRoots(residentRoot)
 	if err != nil {
 		return UninstallReport{}, err
 	}
@@ -170,10 +178,17 @@ func Uninstall(root string) (UninstallReport, error) {
 			continue
 		}
 		abs := filepath.Join(root, path)
+		if isResidentPath(path) {
+			abs = filepath.Join(residentRoot, filepath.FromSlash(path))
+		}
 		if err := os.Remove(abs); err == nil {
 			report.Removed++
 		}
-		for d := filepath.Dir(abs); d != root; d = filepath.Dir(d) {
+		base := root
+		if isResidentPath(path) {
+			base = residentRoot
+		}
+		for d := filepath.Dir(abs); d != base; d = filepath.Dir(d) {
 			dirs[d] = true
 		}
 	}

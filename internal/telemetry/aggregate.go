@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"sort"
+	"time"
 )
 
 func Aggregate(reads ReadSet, selector Selector) (Report, error) {
@@ -14,6 +15,12 @@ func Aggregate(reads ReadSet, selector Selector) (Report, error) {
 	legacy := map[string]Counters{}
 	sessionCounters := map[string]Counters{}
 	for _, s := range reads.Sessions {
+		if selector.SessionID != nil && *selector.SessionID != s.SessionID {
+			continue
+		}
+		if selector.EffortID != nil && reads.Assignments[s.SessionID] != *selector.EffortID {
+			continue
+		}
 		var total Counters
 		for _, o := range s.Observations {
 			if !selectObservation(o, selector) {
@@ -27,9 +34,24 @@ func Aggregate(reads ReadSet, selector Selector) (Report, error) {
 		}
 	}
 	for _, l := range reads.Legacy {
+		if selector.EffortID != nil && *selector.EffortID != l.EffortID {
+			continue
+		}
 		var c Counters
-		for _, raw := range l.Records {
-			addLegacy(&c, raw)
+		entries := l.Entries
+		if len(entries) == 0 { // old callers construct the compatibility projection directly.
+			for _, raw := range l.Records {
+				entries = append(entries, LegacyRecord{Source: "legacy-protocol-2", Raw: raw})
+			}
+		}
+		for _, entry := range entries {
+			if selector.SessionID != nil && entry.SessionID != *selector.SessionID {
+				continue
+			}
+			if !selectLegacy(entry.Raw, selector) {
+				continue
+			}
+			addLegacy(&c, entry.Raw)
 		}
 		legacy[l.EffortID] = addCounters(legacy[l.EffortID], c)
 	}
@@ -57,6 +79,19 @@ func Aggregate(reads ReadSet, selector Selector) (Report, error) {
 	}
 	return result, nil
 }
+func selectLegacy(raw json.RawMessage, s Selector) bool {
+	if s.Since == nil && s.Until == nil {
+		return true
+	}
+	var record struct {
+		Timestamp time.Time `json:"timestamp"`
+	}
+	if json.Unmarshal(raw, &record) != nil || record.Timestamp.IsZero() {
+		return false
+	}
+	return selectObservation(Observation{Timestamp: record.Timestamp}, s)
+}
+
 func addCounters(a, b Counters) Counters {
 	a.InputTokens = sat(a.InputTokens, b.InputTokens)
 	a.OutputTokens = sat(a.OutputTokens, b.OutputTokens)
