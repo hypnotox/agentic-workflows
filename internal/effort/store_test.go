@@ -114,7 +114,7 @@ func TestEffortRecordAuthorityLifecycleListingCollisionAndMemory(t *testing.T) {
 }
 
 // invariant: tooling/effort-management:effort-record-authority
-func TestEffortExactSchemaLogicalAssignmentsAndValidation(t *testing.T) {
+func TestEffortExactSchemaAndValidation(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 27, 0, 0, 0, 123, time.UTC)
 	service := openEffortService(t, root, now)

@@ -56,32 +56,6 @@ func TestEffortLeafSafetyRefusesSymlinksWithoutTouchingTargets(t *testing.T) {
 	}
 }
 
-/*
-func TestEffortReadsRevalidateResidentAncestorsBeforeLeafAccess(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openEffortService(t, root, time.Now().UTC())
-	if _, err := service.New("Ancestors", false); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(service.paths.assign, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(service.paths.assign); err != nil {
-		t.Fatal(err)
-	}
-	outside := t.TempDir()
-	writeEffortFile(t, filepath.Join(outside, "sessions.json"), `{"schemaVersion":1,"sessions":{}}`)
-	if err := os.Symlink(outside, service.paths.assign); err != nil {
-		t.Skip(err)
-	}
-	if _, err := service.Show(idA); err == nil || !strings.Contains(err.Error(), "symlink") {
-		t.Fatalf("replaced assignment root error = %v", err)
-	}
-}
-
-}
-*/
-
 func TestEffortOperationsRejectReplacedResidentRoots(t *testing.T) {
 	for _, operation := range []string{"effort-load", "effort-list", "memory", "worktrees"} {
 		t.Run(operation, func(t *testing.T) {

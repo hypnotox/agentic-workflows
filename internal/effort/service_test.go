@@ -57,7 +57,7 @@ func TestEffortServiceRefusalsAndRepairWorktreeTruth(t *testing.T) {
 	}
 }
 
-func TestEffortAllocationAndAssignmentRefusals(t *testing.T) {
+func TestEffortUUIDAllocationRefusals(t *testing.T) {
 	root := initEffortRepo(t)
 	empty := openEffortService(t, root, time.Now().UTC())
 	if records, err := empty.List(); err != nil || len(records) != 0 {

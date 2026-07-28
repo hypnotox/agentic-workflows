@@ -2,6 +2,7 @@ package project
 
 import (
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -187,6 +189,63 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoffs=%d/%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.ADRFormatV2From, got.LegacyADRGaps)
 			}
 		})
+	}
+}
+
+// invariant: rendering/singletons-and-payloads:resident-output-preservation
+func TestGeneration21MigrationPreservesResidentsThroughProjectSync(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: example\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	lock := &manifest.Lock{AWFVersion: "0.24.0", SchemaVersion: 20, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}, InitializedWithVersion: "0.24.0"}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"metrics", "assignments"} {
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "obsolete", "resident"), name)
+	}
+	for _, name := range []string{"efforts", "memory", "worktrees"} {
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "resident"), name)
+	}
+
+	if _, err := migrate.Upgrade(root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"metrics", "assignments"} {
+		if _, err := os.Lstat(filepath.Join(root, ".awf", name)); !os.IsNotExist(err) {
+			t.Fatalf("obsolete %s root remains after migration: %v", name, err)
+		}
+	}
+	for _, name := range []string{"efforts", "memory", "worktrees"} {
+		path := filepath.Join(root, ".awf", name, "retained", "resident")
+		if got, err := os.ReadFile(path); err != nil || string(got) != name {
+			t.Fatalf("retained %s resident changed: %q, %v", name, got, err)
+		}
+	}
+
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := p.RenderAll(); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"metrics", "assignments"} {
+		if _, err := os.Lstat(filepath.Join(root, ".awf", name)); !os.IsNotExist(err) {
+			t.Fatalf("obsolete %s root was recreated by sync/render: %v", name, err)
+		}
+	}
+	for _, name := range []string{"efforts", "memory", "worktrees"} {
+		if _, err := os.Stat(filepath.Join(root, ".awf", name, "retained", "resident")); err != nil {
+			t.Fatalf("retained %s resident missing after sync/render: %v", name, err)
+		}
 	}
 }
 
