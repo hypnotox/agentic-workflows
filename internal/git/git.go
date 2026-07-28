@@ -211,10 +211,10 @@ func parseWorktreeStatus(out []byte) (tracked, untracked int, err error) {
 // `git status`. Global patterns follow system patterns so the user's rules win
 // where they conflict, matching git's precedence; the ordering is exercised
 // only against the real root filesystem because LoadSystemPatterns hardcodes
-// /etc/gitconfig. One narrow divergence from git remains, shared with the
-// audit rule this helper was extracted from: go-git composes Excludes after
-// the repo's .gitignore chain, so a repo-level negation cannot re-include a
-// globally-ignored file. Absent or unreadable sources contribute no patterns:
+// /etc/gitconfig. One narrow divergence from git remains in go-git consumers
+// such as WorkingPaths: go-git composes Excludes after the repo's .gitignore
+// chain, so a repo-level negation cannot re-include a globally-ignored file.
+// Absent or unreadable sources contribute no patterns:
 // the callers read repository state, and a missing optional ignore source must
 // not fail them.
 func GlobalExcludePatterns() []gitignore.Pattern {

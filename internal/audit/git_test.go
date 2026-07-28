@@ -394,6 +394,20 @@ func TestRunPropagatesNativeStatusError(t *testing.T) {
 	}
 }
 
+func TestRunDisabledUncommittedRuleNeedsNoNativeGit(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	t.Setenv("PATH", t.TempDir())
+
+	findings, _, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: false}})
+	if err != nil {
+		t.Fatalf("Run with disabled uncommitted rule: %v", err)
+	}
+	if len(findings) != 0 {
+		t.Fatalf("disabled uncommitted rule findings = %#v", findings)
+	}
+}
+
 func TestCollectWorktreeConfigExtension(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	base := gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
