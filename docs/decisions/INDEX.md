@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0166: Phase transaction ownership](0166-phase-transaction-ownership.md) (Proposed)
+- [ADR-0167: Remove workflow telemetry and mandatory Pi routing](0167-remove-workflow-telemetry-and-mandatory-pi-routing.md) (Proposed)
 
 ## History
 
