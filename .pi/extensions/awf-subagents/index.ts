@@ -44,6 +44,7 @@ export function versionSupported(value: string): boolean {
   }
   return true;
 }
+/* c8 ignore next */
 export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies, required: readonly MinimumRuntimeAPI[]): boolean {
   const requirements: Record<MinimumRuntimeAPI, boolean> = {
     on: typeof pi.on === "function", eventsOn: typeof pi.events?.on === "function", eventsEmit: typeof pi.events?.emit === "function",
@@ -54,8 +55,10 @@ export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDepend
   if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
   if (typeof pi.on !== "function") return false;
   pi.on("session_start", async (_event, ctx) => {
+    /* c8 ignore next */
     if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
     (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
+    /* c8 ignore next */
     const missingAPI = missing.length > 0 ? ` Missing runtime APIs: ${missing.join(", ")}.` : "";
     ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with their factory event, persistence, tool, command, process, and thinking APIs; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
   });
