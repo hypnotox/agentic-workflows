@@ -165,6 +165,7 @@ func TestReadDiscoversResidentDataAndReadErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	telemetryWrite(t, filepath.Join(metrics, "sessions", ".jsonl"), "bad\n")
+	telemetryWrite(t, filepath.Join(metrics, "sessions", "session-a.jsonl.corrupt"), "{\"reason\":\"append-failure\"}\n")
 	if err := os.Symlink(filepath.Join(metrics, "sessions", "session-a.jsonl"), filepath.Join(metrics, "sessions", "unsafe.jsonl")); err != nil {
 		t.Fatal(err)
 	}
@@ -186,6 +187,7 @@ func TestReadDiscoversResidentDataAndReadErrors(t *testing.T) {
 	wantFindings := []string{
 		"session-v1//unsafe-stream-entry",
 		"session-v1/directory/unsafe-stream-entry",
+		"session-v1/session-a/stream-corrupt",
 		"session-v1/unsafe/unsafe-stream-path",
 	}
 	if got := findingCodes(reads.Findings); !reflect.DeepEqual(got, wantFindings) {

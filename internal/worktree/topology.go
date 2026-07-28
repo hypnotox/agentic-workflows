@@ -45,8 +45,8 @@ func (e *PartialMutationError) Unwrap() error {
 }
 
 type registration struct {
-	path, head, branch string
-	detached, bare     bool
+	path, head, branch       string
+	detached, bare, prunable bool
 }
 
 func registrations(ctx context.Context, run Runner, invoking string) ([]registration, error) {
@@ -54,47 +54,61 @@ func registrations(ctx context.Context, run Runner, invoking string) ([]registra
 	if err != nil {
 		return nil, err
 	}
-	if len(out) == 0 || out[len(out)-1] != 0 {
-		return nil, errors.New("invalid worktree registration porcelain")
+	if len(out) < 2 || !strings.HasSuffix(string(out), "\x00\x00") {
+		return nil, errors.New("unterminated worktree registration porcelain")
 	}
 	var result []registration
-	var current *registration
-	for _, field := range strings.Split(strings.TrimSuffix(string(out), "\x00"), "\x00") {
-		if field == "" {
-			if current == nil || current.path == "" {
-				return nil, errors.New("invalid worktree registration")
-			}
-			result = append(result, *current)
-			current = nil
-			continue
-		}
-		key, val, has := strings.Cut(field, " ")
-		if key == "worktree" {
-			if current != nil || !has || val == "" {
-				return nil, errors.New("invalid worktree registration")
-			}
-			current = &registration{path: filepath.Clean(val)}
-			continue
-		}
-		if current == nil {
+	for _, chunk := range strings.Split(string(out[:len(out)-2]), "\x00\x00") {
+		if chunk == "" {
 			return nil, errors.New("invalid worktree registration")
 		}
-		switch key {
-		case "HEAD":
-			current.head = val
-		case "branch":
-			current.branch = val
-		case "detached":
-			current.detached = true
-		case "bare":
-			current.bare = true
-		case "prunable":
-		default:
-			return nil, fmt.Errorf("unknown worktree field %q", key)
+		fields := strings.Split(chunk, "\x00")
+		current := registration{}
+		head, branch, detached := false, false, false
+		for _, field := range fields {
+			key, val, has := strings.Cut(field, " ")
+			switch key {
+			case "worktree":
+				if !has || val == "" || current.path != "" || current.bare {
+					return nil, errors.New("invalid worktree registration")
+				}
+				current.path = filepath.Clean(val)
+			case "HEAD":
+				if !has || val == "" || head || current.bare {
+					return nil, errors.New("invalid worktree registration")
+				}
+				head = true
+				current.head = val
+			case "branch":
+				if !has || val == "" || branch || current.bare {
+					return nil, errors.New("invalid worktree registration")
+				}
+				branch = true
+				current.branch = val
+			case "detached":
+				if has || detached || current.bare {
+					return nil, errors.New("invalid worktree registration")
+				}
+				detached = true
+				current.detached = true
+			case "bare":
+				if has || current.bare || current.path != "" || head || branch || detached || current.prunable {
+					return nil, errors.New("invalid worktree registration")
+				}
+				current.bare = true
+			case "prunable":
+				if !has || val == "" || current.prunable || current.bare {
+					return nil, errors.New("invalid worktree registration")
+				}
+				current.prunable = true
+			default:
+				return nil, fmt.Errorf("unknown worktree field %q", key)
+			}
 		}
-	}
-	if current != nil {
-		return nil, errors.New("unterminated worktree registration")
+		if !current.bare && (current.path == "" || !head || branch == detached) {
+			return nil, errors.New("invalid worktree registration")
+		}
+		result = append(result, current)
 	}
 	return result, nil
 }

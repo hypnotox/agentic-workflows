@@ -50,9 +50,9 @@ func TestWorktreeErrorsAndTopologyMatrix(t *testing.T) {
 	if (&RefusalError{Category: "x", Risk: "risk"}).Error() == "" || (&PartialMutationError{EffortID: "id", Repair: "repair"}).Error() == "" {
 		t.Fatal("error formatting")
 	}
-	valid := []byte("worktree /x\x00HEAD abc\x00branch refs/heads/x\x00detached\x00bare\x00prunable reason\x00\x00")
+	valid := []byte("worktree /x\x00HEAD abc\x00branch refs/heads/x\x00prunable reason\x00\x00")
 	regs, err := registrations(t.Context(), func(context.Context, string, ...string) ([]byte, error) { return valid, nil }, ".")
-	if err != nil || len(regs) != 1 || !regs[0].detached || !regs[0].bare {
+	if err != nil || len(regs) != 1 || !regs[0].prunable || regs[0].detached || regs[0].bare {
 		t.Fatalf("valid registration: %#v %v", regs, err)
 	}
 	for _, out := range []string{"", "worktree /x\x00", "HEAD abc\x00\x00", "worktree\x00\x00", "worktree /x\x00unknown x\x00\x00"} {

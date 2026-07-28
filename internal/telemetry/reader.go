@@ -47,6 +47,13 @@ func Read(ctx context.Context, invokingRoot string) (ReadSet, error) {
 	if entries, err := os.ReadDir(p.sessions); err == nil {
 		sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
 		for _, entry := range entries {
+			if strings.HasSuffix(entry.Name(), ".jsonl.corrupt") {
+				id := strings.TrimSuffix(entry.Name(), ".jsonl.corrupt")
+				if !entry.IsDir() && Identifier(id) {
+					out.Findings = append(out.Findings, finding("session-v1", id, "stream-corrupt"))
+					continue
+				}
+			}
 			id := strings.TrimSuffix(entry.Name(), ".jsonl")
 			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") || !Identifier(id) {
 				out.Findings = append(out.Findings, finding("session-v1", id, "unsafe-stream-entry"))
