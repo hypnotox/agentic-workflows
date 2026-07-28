@@ -231,6 +231,33 @@ func TestHandoffWorkflowWithoutEffort(t *testing.T) {
 			t.Errorf("handoff workflow contract retains %q", banned)
 		}
 	}
+
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{}, "targetSessionHandoff": true,
+	}
+	settled := map[string]string{
+		"executing-plans":             "Review settles before checkpointing.",
+		"subagent-driven-development": "checkpoints only after findings resolve.",
+	}
+	for name, settledPhrase := range settled {
+		body := renderSkillGolden(t, name, data)
+		settledAt := strings.Index(body, settledPhrase)
+		checkpointAt := strings.Index(body, "**Routine checkpoint.**")
+		handoffAt := strings.Index(body, "invoke `handoff_session` alone")
+		if settledAt < 0 || checkpointAt < settledAt || handoffAt < checkpointAt {
+			t.Errorf("%s does not place Pi handoff after settled phase persistence", name)
+		}
+		for _, banned := range []string{
+			"after every checkbox task", "after each checkbox task", "after any checkbox task",
+			"checkbox task triggers", "after every batch-helper return", "after each batch-helper return",
+			"batch-helper return triggers", "handoff after a helper return",
+		} {
+			if strings.Contains(strings.ToLower(body), banned) {
+				t.Errorf("%s retains task/helper handoff trigger %q", name, banned)
+			}
+		}
+	}
 }
 
 func TestTargetOutputRenderError(t *testing.T) {

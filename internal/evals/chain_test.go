@@ -319,10 +319,29 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		if strings.Count(body, "**Routine checkpoint.**") != 1 {
 			t.Errorf("%s renders %d routine checkpoints, want one", name, strings.Count(body, "**Routine checkpoint.**"))
 		}
-		for _, forbidden := range []string{"after each implemented and reviewed task", "per-task checkpoint", "after each helper"} {
+		for _, forbidden := range []string{
+			"after each implemented and reviewed task", "per-task checkpoint", "after each helper",
+			"after every checkbox task", "after each checkbox task", "after any checkbox task",
+			"checkbox task triggers", "after every batch-helper return", "after each batch-helper return",
+			"batch-helper return triggers", "checkpoint after a helper return",
+		} {
 			if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
 				t.Errorf("%s retains task/helper checkpoint boundary %q", name, forbidden)
 			}
+		}
+	}
+	workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
+	for _, want := range []string{
+		"memory created by `awf effort new`", "Use an outcome-specific title", "Memory is optional",
+		"A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; checkbox tasks and batch-helper returns are not checkpoint boundaries.",
+	} {
+		if !strings.Contains(workflow, want) {
+			t.Errorf("workflow checkpoint guidance missing %q", want)
+		}
+	}
+	for _, forbidden := range []string{"selection gate", "assignment gate", "adoption gate", "detour gate", "telemetry-lifecycle gate"} {
+		if strings.Contains(strings.ToLower(workflow), forbidden) {
+			t.Errorf("workflow checkpoint guidance retains %q", forbidden)
 		}
 	}
 	perChange := map[string]string{
