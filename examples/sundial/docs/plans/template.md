@@ -28,12 +28,21 @@ linked ADR).
 ## Phase 1: <name>
 
 **Execution mode: inline.** This phase is one independently green coherent implementation transaction.
-- [ ] **Task 1.1: <what>.** Name exact paths, relevant symbols, commands with terminal states, and exact
-  content/diffs or implementation-ready pseudocode covering behavior, branches, ordering, failures,
-  constraints, forbidden behavior, tests, acceptance assertions, and deterministic verification.
+Checkbox tasks are ordered steps, not transaction boundaries.
+- [ ] **Task 1.1: <what>.** Name exact file paths, relevant symbols, exact commands with expected
+  terminal states, and exact content/diffs or implementation-ready pseudocode covering behavior,
+  branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and
+  deterministic verification. Exact form remains mandatory for machine-consumed configuration and
+  manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical
+  replacements, required literal prose, and batch-task representative and edge transformations.
+  Non-contractual prose may use qualifying instructions; a mixed task may combine both forms. `TBD`,
+  `implement later`, outcome-only summaries, and hidden design choices are placeholders, never
+  pseudocode. The task remains executable with no prior conversation context.
 - [ ] **Task 1.2: <what>.** Continue the ordered implementation steps. A batch retains an exact
-  representative, exact edge unless identical everywhere, exhaustive sites, and a deterministic post-check;
-  optional sequential commit-disabled helpers have path-disjoint assigned subsets and never own shared files.
+  representative and edge, exhaustive affected-site set, and a deterministic post-check. An optional
+  exhaustive partition assigns every affected site to the parent or exactly one helper; helpers are
+  sequential and commit-disabled, helper subsets are path-disjoint, shared files remain parent-owned, and
+  each helper's focused mutating commands stay confined to its assigned subset.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run `awf check --staged`
   then `./x gate`; create the one phase-closing commit:
 

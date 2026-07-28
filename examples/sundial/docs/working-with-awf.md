@@ -192,7 +192,16 @@ errors, offers an embedded recommended preset only when every referenced model i
 registered and authenticated, presents per-model pricing with request-wide tiers distinguished
 from base rates alongside context and output limits and capability markers, enforces the
 project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
-cancellation. Long implementations may select delegated ownership per phase so the orchestrating parent stays lean: a subagent-driven phase has one commit-capable owner from a clean green baseline through its closing commit, while inline phases remain parent-owned. This guidance does not promise runtime phase enforcement; Pi serialization and exclusive implementation-tool batching are unchanged.
+cancellation. Long implementations select ownership independently per phase so one plan may mix modes. A
+subagent-driven phase has one commit-capable owner from a clean green baseline through staged check,
+gate, and its closing commit, while inline phases remain parent-owned. Checkbox tasks are ordered
+steps, not transaction or checkpoint boundaries. Explicit batch helpers stay sequential and
+commit-disabled, receive path-disjoint subsets, never own shared files, and return to the parent for
+integration. The parent owns report-only review settlement and checkpoints only after findings
+resolve. A dirty stop is inventoried before the parent completes inline, restores and restarts the
+complete phase, or transfers the complete revised phase with recovery context; blind task-level
+succession is forbidden. This guidance does not promise runtime phase enforcement; Pi serialization
+and exclusive implementation-tool batching are unchanged.
 
 Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
 names the project search universe and searched surfaces. After not-found, inconclusive, unverified,

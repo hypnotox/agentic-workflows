@@ -9,19 +9,42 @@ import (
 
 // invariant: rendering/workflow-skill-templates:phase-transaction-ownership
 func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
-	data := map[string]any{"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(), "data": catalog.Standard.Agents["plan-reviewer"].Data}
-	surfaces := map[string]string{
-		"writer":   renderSkillGolden(t, "writing-plans", data),
-		"reviewer": renderAgentGolden(t, "plan-reviewer", data),
-		"inline":   renderSkillGolden(t, "executing-plans", data),
-		"subagent": renderSkillGolden(t, "subagent-driven-development", data),
-		"readme":   renderGolden(t, "plans-readme/README.md.tmpl", data),
-		"template": renderGolden(t, "plans-template/template.md.tmpl", data),
+	renderSurfaces := func(data map[string]any) map[string]string {
+		t.Helper()
+		normalize := func(body string) string { return strings.Join(strings.Fields(body), " ") }
+		return map[string]string{
+			"writer":   normalize(renderSkillGolden(t, "writing-plans", data)),
+			"reviewer": normalize(renderAgentGolden(t, "plan-reviewer", data)),
+			"inline":   normalize(renderSkillGolden(t, "executing-plans", data)),
+			"subagent": normalize(renderSkillGolden(t, "subagent-driven-development", data)),
+			"readme":   normalize(renderGolden(t, "plans-readme/README.md.tmpl", data)),
+			"template": normalize(renderGolden(t, "plans-template/template.md.tmpl", data)),
+		}
 	}
-	for name, output := range surfaces {
-		for _, forbidden := range []string{"<no value>", "{{", "coupled-phase", "coupled phase", "one commit per task"} {
-			if strings.Contains(output, forbidden) {
-				t.Errorf("%s retains forbidden %q", name, forbidden)
+	configured := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": catalog.Standard.Agents["plan-reviewer"].Data,
+	}
+	empty := map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(),
+		"data": map[string]any{}, "skills": map[string]bool{},
+	}
+	surfaces := renderSurfaces(configured)
+	for variant, rendered := range map[string]map[string]string{
+		"configured": surfaces,
+		"empty":      renderSurfaces(empty),
+	} {
+		for name, output := range rendered {
+			if strings.TrimSpace(output) == "" {
+				t.Errorf("%s/%s rendered empty", variant, name)
+			}
+			for _, forbidden := range []string{
+				"<no value>", "{{", "one commit per task",
+				"one subagent per task", "fresh context per task", "continue Task X",
+			} {
+				if strings.Contains(output, forbidden) {
+					t.Errorf("%s/%s retains forbidden %q", variant, name, forbidden)
+				}
 			}
 		}
 	}
@@ -33,15 +56,59 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			}
 		}
 	}
-	assertAll("writer", "Execution mode", "inline", "subagent-driven", "ordered steps", "one independently green coherent implementation transaction", "exhaustive", "path-disjoint", "shared files", "command-confined", "dead-code escape")
-	assertAll("reviewer", "ownership", "task-level transaction boundaries", "incomplete/overlapping partitions", "helper-owned shared files", "unconfined commands")
-	assertAll("inline", "Iterate phases", "parent owns", "commit-disabled helpers", "report-only phase review", "Review settles before checkpointing", "completed and remaining work", "restore the known green baseline")
-	assertAll("subagent", "allowCommits: true", "known clean and green baseline", "complete phase", "one implementation child alone", "report-only phase review", "blind successor")
-	assertAll("readme", "Execution mode", "one independently green coherent implementation transaction", "exactly one helper", "shared files")
-	assertAll("template", "**Execution mode: inline.**", "phase-closing", "awf check --staged", "closing commit")
+	for _, name := range []string{"writer", "readme", "template"} {
+		for _, forbidden := range []string{"coupled-phase", "coupled phase"} {
+			if strings.Contains(surfaces[name], forbidden) {
+				t.Errorf("%s retains removed exception %q", name, forbidden)
+			}
+		}
+	}
+	assertAll("writer",
+		"Execution mode", "inline", "subagent-driven", "independently", "ordered steps",
+		"one independently green coherent implementation transaction", "exhaustively assign every site to the parent or exactly one helper",
+		"path-disjoint", "shared files remain parent-owned", "command-confined", "dead-code escape")
+	assertAll("reviewer",
+		"independent `inline` or `subagent-driven` ownership", "task-level transaction boundaries",
+		"incomplete/overlapping partitions", "helper-owned shared files", "unconfined commands",
+		"clean green baseline", "one coherent green transaction", "shared files parent-owned")
+	assertAll("inline",
+		"Iterate phases, not tasks", "parent owns every ordered task", "sequential commit-disabled helpers",
+		"reject out-of-subset writes", "retain shared-file ownership", "report-only phase review",
+		"Review settles before checkpointing", "**Routine checkpoint.**", "completed and remaining work",
+		"complete inline", "restore the known green baseline", "stop for required user input",
+		"complete revised phase", "recovery verification", "blind successor instruction")
+	assertAll("subagent",
+		"known clean and green baseline", "one implementation child alone", "allowCommits: true",
+		"complete phase", "Stage the complete transaction", "awf check --staged", "./x gate",
+		"declared phase-closing commit", "report-only phase review", "focused settlement commits",
+		"checkpoints only after findings resolve", "**Routine checkpoint.**", "parent completion",
+		"redispatch the complete revised phase", "stop for user input", "dirty-state inventory",
+		"recovery verification", "blind successor instruction")
+	assertAll("readme",
+		"Execution mode", "one independently green coherent implementation transaction", "ordered steps",
+		"parent or exactly one helper", "path-disjoint", "shared files remain parent-owned",
+		"focused mutating commands stay confined")
+	assertAll("template",
+		"**Execution mode: inline.**", "parent or exactly one", "path-disjoint", "shared files remain parent-owned",
+		"mutating commands stay confined", "Phase-close", "awf check --staged", "phase-closing commit")
+
+	for _, name := range []string{"inline", "subagent"} {
+		body := surfaces[name]
+		review := strings.Index(body, "report-only phase review")
+		checkpoint := strings.Index(body, "**Routine checkpoint.**")
+		if review < 0 || checkpoint < review {
+			t.Errorf("%s checkpoint is not after phase review settlement", name)
+		}
+		if strings.Count(body, "**Routine checkpoint.**") != 1 {
+			t.Errorf("%s has %d routine checkpoints, want one settled-phase checkpoint", name, strings.Count(body, "**Routine checkpoint.**"))
+		}
+	}
 	phase := surfaces["template"]
-	assertOrderedPhrases(t, phase, "Task 1.1", "Task 1.2", "awf check --staged", "closing commit")
-	if strings.Count(phase, "awf check --staged") != 1 {
-		t.Errorf("representative phase has %d staged-check boundaries, want one", strings.Count(phase, "awf check --staged"))
+	assertOrderedPhrases(t, phase, "Task 1.1", "Task 1.2", "Phase-close", "awf check --staged", "./x gate", "phase-closing commit")
+	if got := strings.Count(phase, "awf check --staged"); got != 1 {
+		t.Errorf("representative multi-task phase has %d staged-check boundaries, want one", got)
+	}
+	if got := strings.Count(phase, "```commit"); got != 1 {
+		t.Errorf("representative multi-task phase has %d closing commit blocks, want one", got)
 	}
 }

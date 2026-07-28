@@ -73,7 +73,46 @@ func assertPlanTaskDetailContract(t *testing.T, surface planPolicySurface) {
 	policy := surface.output[start : start+len(surface.start)+endOffset]
 	policy = strings.Join(strings.Fields(policy), " ")
 
-	for _, clause := range []string{"batch"} {
+	for _, clause := range []string{
+		"exact content/diffs",
+		"implementation-ready pseudocode",
+		"exact file paths",
+		"relevant symbols",
+		"expected terminal states",
+		"behavior, branches, ordering, failures",
+		"constraints",
+		"forbidden behavior",
+		"tests",
+		"acceptance assertions",
+		"deterministic verification",
+		"machine-consumed",
+		"configuration",
+		"manifests",
+		"contract-bearing",
+		"fixtures",
+		"golden output",
+		"commands",
+		"mechanical replacements",
+		"required literal prose",
+		"representative and edge",
+		"affected-site set",
+		"post-check",
+		"Non-contractual prose",
+		"mixed task",
+		"`TBD`",
+		"`implement later`",
+		"outcome-only summaries",
+		"hidden design choices",
+		"placeholders, never pseudocode",
+		"no prior conversation context",
+		"Execution mode",
+		"ordered steps",
+		"one independently green coherent implementation transaction",
+		"parent or exactly one helper",
+		"path-disjoint",
+		"shared files",
+		"confined",
+	} {
 		if !strings.Contains(policy, clause) {
 			t.Errorf("%s plan-policy section missing clause %q:\n%s", surface.name, clause, policy)
 		}

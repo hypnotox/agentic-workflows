@@ -29,18 +29,20 @@ where the date is the day the plan is written (ISO-8601). Example:
   deleted).
 - Phases each declare **Execution mode: `inline`** or **`subagent-driven`** independently. A phase is
   one independently green coherent implementation transaction; its `- [ ]` checkbox tasks are ordered
-  steps, not default dispatch, review, checkpoint, or commit boundaries. Each names exact paths,
-  relevant symbols, commands with expected terminal states, and exact content/diffs or
+  steps, not default dispatch, review, checkpoint, or commit boundaries. Each task names exact file
+  paths, relevant symbols, exact commands with expected terminal states, and exact content/diffs or
   implementation-ready pseudocode specifying behavior, branches, ordering, failures, constraints,
   forbidden behavior, tests, acceptance assertions, and deterministic verification.
 - Exact form remains mandatory for machine-consumed configuration and manifests, contract-bearing
   declarations, fixtures, golden output, commands, mechanical replacements, required literal prose,
-  and batch-task representative and edge transformations. `TBD`, `implement later`, outcome-only
-  summaries, and hidden design choices are placeholders, never pseudocode.
-- A batch task retains an exact representative, exact edge unless identical everywhere, exhaustive
-  affected-site set, and deterministic post-check. Optional helpers are sequential and commit-disabled:
-  each site belongs to the parent or exactly one helper, helper subsets are path-disjoint, shared files
-  remain parent-owned, and focused mutating commands stay confined to the assigned subset.
+  and batch-task representative and edge transformations. Non-contractual prose may use qualifying
+  instructions; a mixed task may combine both forms. `TBD`, `implement later`, outcome-only summaries,
+  and hidden design choices are placeholders, never pseudocode. Every task remains executable with no
+  prior conversation context.
+- A batch task retains an exact representative and edge, exhaustive affected-site set, and
+  deterministic post-check. Optional helpers are sequential and commit-disabled: an exhaustive
+  partition assigns each site to the parent or exactly one helper, helper subsets are path-disjoint,
+  shared files remain parent-owned, and focused mutating commands stay confined to the assigned subset.
 - Each phase declares one phase-closing commit, stages the complete transaction, runs `awf check --staged`
   and the gate, then commits. Definitions land with first production use; no dead-code exception exists.
 - Optionally, two trailing sections after the phases: **Verification** (whole-effort acceptance

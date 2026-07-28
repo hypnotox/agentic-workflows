@@ -30,6 +30,8 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 <!-- awf:include context-spill -->
 For an `inline` phase, the parent owns every ordered task, integration, staged check, gate, phase-closing commit, report-only phase review, focused settlement commits, and checkpoint. A batch may use explicitly partitioned sequential commit-disabled helpers only: inventory each return, reject out-of-subset writes, retain shared-file ownership, run the deterministic post-check, and never delegate the phase commit. Stage the complete transaction, run `awf check --staged`, then {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass; the hook repeats the staged check as defense in depth. Review settles before checkpointing.
 
+<!-- awf:include checkpoint-routine -->
+
 If an implementer stops dirty, first inventory `git status --short`, diff, completed and remaining work, prior concerns, and failed checks. Choose exactly one: complete inline; restore the known green baseline and restart the complete revised phase; or stop for required user input. An explicit ownership transfer includes the complete revised phase, inventory, completed and remaining work, prior concerns, and recovery verification. Never issue a blind successor instruction for one task or dispatch over a dirty checkout.
 <!-- awf:end -->
 

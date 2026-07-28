@@ -33,7 +33,11 @@ The owner preserves the settled design or reports invalidating source facts; doe
 4. For a `subagent-driven` phase, verify a known clean and green baseline. Call one implementation child alone in its parent tool batch with `allowCommits: true`{{ if .targetSubagentTools }}, optionally set exact `model` as `provider/model-id`; omission inherits the parent{{ end }}, and the complete phase. The commit-capable owner performs all ordered work. Stage the complete transaction, run `awf check --staged`, then {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass; the hook repeats the staged check as defense in depth, then creates the declared phase-closing commit. Never dispatch concurrent implementers or helpers as phase owners.
 <!-- awf:end -->
 <!-- awf:section procedure-status-handling -->
-5. Validate the reported commit and clean checkout, then dispatch one report-only phase review. The parent owns focused settlement commits and checkpoints only after findings resolve. If an owner stops dirty, inventory `git status --short`, diff, completed and remaining work, prior concerns, and failed checks. Choose parent completion, restore the known green baseline and redispatch the complete revised phase, or stop for user input. An explicit transfer carries the complete revised phase, dirty-state inventory, completed and remaining work, prior concerns, and recovery verification; a blind successor instruction for one task is forbidden.
+5. Validate the reported commit and clean checkout, then dispatch one report-only phase review. The parent owns focused settlement commits and checkpoints only after findings resolve.
+
+<!-- awf:include checkpoint-routine -->
+
+If an owner stops dirty, inventory `git status --short`, diff, completed and remaining work, prior concerns, and failed checks. Choose parent completion, restore the known green baseline and redispatch the complete revised phase, or stop for user input. An explicit transfer carries the complete revised phase, dirty-state inventory, completed and remaining work, prior concerns, and recovery verification; a blind successor instruction for one task is forbidden.
 <!-- awf:end -->
 <!-- awf:section per-task-review -->
 6. Review is report-only and phase-level; review fixes remain parent-owned and do not recreate the original transaction.

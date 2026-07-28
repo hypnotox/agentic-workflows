@@ -229,7 +229,8 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 // retrospective instead carries the deletion step.
 var routineCheckpointSkills = []string{
 	"proposing-adr", "writing-plans", "reviewing-plan", "reviewing-plan-resync",
-	"executing-direct", "reviewing-impl", "bugfix", "debugging",
+	"executing-plans", "subagent-driven-development", "executing-direct",
+	"reviewing-impl", "bugfix", "debugging",
 }
 
 // approvalCheckpointSkills are the two mandatory approval boundaries: the end
@@ -257,8 +258,8 @@ func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 
 // TestMemoryCheckpointCoverage asserts every routine-boundary skill renders the
 // complete routine protocol (persist, classify, then check-in or continue), the
-// implementation skills embed it at their per-task sections, and the chain
-// terminal instructs the deletion (ADR-0152).
+// implementation skills embed it only after settled phase review, and the
+// chain terminal instructs the deletion (ADR-0152, corrected forward by ADR-0166).
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
 func TestMemoryCheckpointCoverage(t *testing.T) {
 	cat := loadCatalog(t)
@@ -298,10 +299,36 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 			t.Errorf("non-terminal skill %q claims the retrospective's memory deletion", name)
 		}
 	}
-	perTask := map[string]string{
+	perPhase := map[string]string{
+		"executing-plans":             "Review settles before checkpointing.",
+		"subagent-driven-development": "checkpoints only after findings resolve.",
+	}
+	for name, sentence := range perPhase {
+		body := read(t, piSkillPath(name))
+		start := strings.Index(body, sentence)
+		if start < 0 {
+			t.Errorf("%s lost its settled-phase checkpoint sentence", name)
+			continue
+		}
+		end := strings.Index(body[start:], "Terminal step")
+		if end < 0 {
+			end = len(body) - start
+		}
+		section := body[start : start+end]
+		assertOrderedBody(t, name+" settled-phase section", section, ordered)
+		if strings.Count(body, "**Routine checkpoint.**") != 1 {
+			t.Errorf("%s renders %d routine checkpoints, want one", name, strings.Count(body, "**Routine checkpoint.**"))
+		}
+		for _, forbidden := range []string{"after each implemented and reviewed task", "per-task checkpoint", "after each helper"} {
+			if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
+				t.Errorf("%s retains task/helper checkpoint boundary %q", name, forbidden)
+			}
+		}
+	}
+	perChange := map[string]string{
 		"executing-direct": "after each independently resumable committed and reviewed change",
 	}
-	for name, sentence := range perTask {
+	for name, sentence := range perChange {
 		body := read(t, piSkillPath(name))
 		start := strings.Index(body, sentence)
 		if start < 0 {
@@ -312,7 +339,7 @@ func TestMemoryCheckpointCoverage(t *testing.T) {
 		if end < 0 {
 			end = len(body) - start
 		}
-		assertOrderedBody(t, name+" per-task section", body[start:start+end], ordered)
+		assertOrderedBody(t, name+" per-change section", body[start:start+end], ordered)
 	}
 	if body := read(t, piSkillPath("retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
 		t.Errorf("retrospective missing the working-memory deletion step")

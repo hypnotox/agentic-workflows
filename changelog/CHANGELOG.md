@@ -37,6 +37,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Make each plan phase an independently green implementation transaction with per-phase inline or subagent-driven ownership. A complete subagent-driven phase has one commit-capable owner; the parent retains review settlement and dirty recovery, while optional batch helpers remain sequential, commit-disabled, explicitly partitioned, and excluded from shared files and phase checkpoints.
 - Add the mandatory Maintainable Code Design guide and its document-map link to rendered adopter documentation. Brainstorming, ADR proposal, coupling audit, plan writing, TDD, inline plan execution, direct execution, subagent-driven development, and bugfix workflows now carry stage-specific model, boundary, dependency, validation, and scope obligations, including bounded enabling-refactor assessment and materially larger-work escalation.
 - Add first-class local efforts, managed resident roots, binary session assignment, and independent schema-1 Pi session telemetry.
 - Add atomic repository-wide Pi session assignment for lightweight efforts. `awf effort assign`, `unassign`, and `assignments` maintain one current session-to-effort authority from primary or linked worktrees; explicit reassignment, including to terminal efforts, never changes lifecycle state.
