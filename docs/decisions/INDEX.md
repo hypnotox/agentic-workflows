@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0164: Lightweight effort records and independent Pi telemetry](0164-lightweight-effort-records-and-independent-pi-telemetry.md) (Implementing)
+- [ADR-0166: Phase transaction ownership](0166-phase-transaction-ownership.md) (Proposed)
 
 ## History
 
