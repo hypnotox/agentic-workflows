@@ -289,9 +289,21 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 		}),
 	}
 	contracts := map[string][]string{
-		"plan": {"explicit", "ordered before dependent behavior", "bounded to the failure they prevent", "deterministically verifiable", "approved, deferred, or declined disposition"},
-		"code": {"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability", "needless indirection", "conformance to the settled design"},
-		"adr":  {"semantic model", "representation", "module/package boundary", "dependency direction", "ownership boundary", "comparable structural contract", "only when a Decision changes", "skip this lens"},
+		"plan": {
+			"model", "ownership", "representations", "translation boundaries", "dependency direction", "test seams",
+			"ordered before dependent behavior", "bounded to the failure they prevent", "deterministically verifiable",
+			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates",
+		},
+		"code": {
+			"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability",
+			"needless indirection", "conformance to the settled design", "behavior bolted onto an unsuitable abstraction",
+			"refactoring scope silently broadened",
+		},
+		"adr": {
+			"semantic model", "representation", "module/package boundary", "dependency direction", "ownership boundary",
+			"comparable structural contract", "only when a Decision changes", "cohesion", "representation isolation",
+			"enabling-refactor disposition", "testable seams", "justification for indirection", "skip this lens",
+		},
 	}
 	for name, out := range outputs {
 		for _, want := range append([]string{"docs/maintainable-code-design.md", "Report-only"}, contracts[name]...) {
@@ -299,9 +311,13 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 				t.Errorf("%s reviewer missing %q:\n%s", name, want, out)
 			}
 		}
-		for _, banned := range []string{"Edit the", "Apply a fix", "Commit the change", "Loop a re-review"} {
-			if strings.Contains(out, banned) {
-				t.Errorf("%s reviewer must remain report-only, found directive %q:\n%s", name, banned, out)
+		for _, line := range strings.Split(out, "\n") {
+			directive := strings.TrimLeft(strings.TrimSpace(line), "-*#0123456789. )")
+			lower := strings.ToLower(directive)
+			for _, banned := range []string{"edit ", "fix ", "apply a fix", "commit ", "loop a re-review", "re-review "} {
+				if strings.HasPrefix(lower, banned) {
+					t.Errorf("%s reviewer must remain report-only, found directive %q:\n%s", name, directive, out)
+				}
 			}
 		}
 	}
