@@ -1,7 +1,7 @@
 ---
 date: 2026-07-28
 adrs: [173]
-status: Proposed
+status: Implemented
 ---
 # Plan: Request-Sensitive Context Authority Tiers
 
@@ -538,3 +538,20 @@ finds a behavior-preserving refactor beyond Phase 1 that can pass the gate witho
 active claim, it may be added to Phase 1 after plan review. Any change to tier visibility, source
 attribution, facet composition, grouping refinement, or managed caller policy is load-bearing and
 requires amending Proposed ADR-0173 plus fresh review before execution continues.
+
+Implementation base was `c5cf9a83`. Phase 1 landed in `4c5a52c3`, with boundary and
+sorted-deduplication review coverage settled in `d748c35d`. The atomic Phase 2 contract landed in
+`13e96c12`. Independent review then found global referenced-category priority, referenced-target
+enrichment, Sundial architecture parity, proof-marker placement, and coverage-specific test gaps;
+`4936c59d` corrected production behavior and documentation parity, and `6b465a98` completed the
+evidence-bearing, global-deduplication, summary, union, and delivery-cap proofs. Every corrective
+commit passed the staged check and full gate.
+
+The governed implementation review covered `c5cf9a83..6b465a98`. `awf audit` reported three
+advisory warnings and zero errors: the plan predates the implementation range, and the rendering
+and tooling domain overviews were not refreshed because the authoritative topic claims changed
+instead. The repository-local audit was clean. Two review findings requested rewriting the
+already-landed Sundial correction into the atomic feature commit and broadening the correction's
+subject; they were rejected because implementation-review fixes must land as new commits rather
+than rewriting history, while the range and these Notes preserve the actual settlement. The single
+verify pass reported zero residual technical, authority, documentation, or structural findings.
