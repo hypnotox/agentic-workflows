@@ -38,6 +38,12 @@ catalog reviewer data, current-state parts, and documentation data; tests render
 through existing project helpers. Generated root and Sundial artifacts remain outputs of
 `./x render`, never hand-edited inputs.
 
+Every repository path in this plan resolves from the exact absolute root
+`/home/hypno/Projects/agentic-workflows/`. A task-bearing path written below with a shorter
+repository-relative suffix means the absolute root joined to that exact suffix; shell commands run
+with that absolute root as their working directory. This closed path notation supplies absolute,
+unambiguous paths without repeating the same root in every list item.
+
 ## File structure
 
 - **Created:** `internal/project/phase_transaction_ownership_test.go`.
@@ -49,15 +55,17 @@ through existing project helpers. Generated root and Sundial artifacts remain ou
   `templates/plans-readme/README.md.tmpl`, `templates/plans-template/template.md.tmpl`,
   `templates/docs/workflow.md.tmpl`, and `templates/docs/working-with-awf.md.tmpl`.
 - **Modified authored project policy/data:** `.awf/skills/parts/writing-plans/conventions-tasks.md`,
-  `.awf/docs/glossary.yaml`, `.awf/docs/parts/roadmap/ideas.md`,
+  `.awf/agents/plan-reviewer.yaml`, `.awf/docs/glossary.yaml`,
+  `.awf/docs/parts/roadmap/ideas.md`,
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, and
   `.awf/topics/parts/rendering/pi-workflows/current-state.md`.
 - **Modified catalog and tests:** `internal/catalog/standard.go`, `internal/catalog/batch_test.go`,
   `internal/project/spine_test.go`, `internal/project/plan_detail_modes_test.go`,
-  `internal/project/target_test.go`, and `internal/evals/chain_test.go`.
+  `internal/project/guide_scopes_test.go`, `internal/project/target_test.go`, and
+  `internal/evals/chain_test.go`.
 - **Modified lifecycle records:** `docs/decisions/0166-phase-transaction-ownership.md`, this plan,
   `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
-- **Generated root outputs:** `.claude/agents/plan-reviewer.md`,
+- **Generated root outputs:** `AGENTS.md`, `.claude/agents/plan-reviewer.md`,
   `.pi/agents/plan-reviewer.md`,
   `.claude/skills/awf-{writing-plans,executing-plans,subagent-driven-development,reviewing-plan,reviewing-plan-resync}/SKILL.md`,
   `.pi/skills/awf-{writing-plans,executing-plans,subagent-driven-development,reviewing-plan,reviewing-plan-resync}/SKILL.md`,
@@ -69,8 +77,8 @@ through existing project helpers. Generated root and Sundial artifacts remain ou
   `examples/sundial/.{claude,cursor,gemini,pi}/agents/plan-reviewer.md`,
   `examples/sundial/.{agents,claude,cursor,gemini,github,pi}/skills/sundial-{writing-plans,executing-plans,subagent-driven-development,reviewing-plan,reviewing-plan-resync}/SKILL.md`,
   `examples/sundial/docs/plans/README.md`, `examples/sundial/docs/plans/template.md`,
-  `examples/sundial/docs/workflow.md`, `examples/sundial/docs/working-with-awf.md`,
-  `examples/sundial/docs/glossary.md`, and `examples/sundial/docs/roadmap.md`.
+  `examples/sundial/docs/workflow.md`, `examples/sundial/docs/working-with-awf.md`, and
+  `examples/sundial/AGENTS.md`.
 - **Deleted:** the `coupled-phase escape` entry from `.awf/docs/glossary.yaml` and its generated
   row from `docs/glossary.md`; no file is deleted.
 
@@ -80,10 +88,12 @@ and re-run the phase checks. Do not broaden the inventory with a catch-all path.
 
 ## Phase 1: implement and prove the phase transaction contract
 
-**Execution mode: subagent-driven.** From a clean baseline, dispatch one commit-capable implementer
-for this complete phase. The implementer owns Tasks 1.1 through 1.6, the complete staged
-transaction, both required gates, and the phase-closing commit. Do not dispatch an individual task
-or a commit-disabled successor.
+**Execution mode: subagent-driven.** Before dispatch, the parent runs `git status --short` from the
+absolute repository root and requires no output, then runs `./x gate` and requires success; these
+commands establish the known clean and green baseline. The parent then dispatches one
+commit-capable implementer for this complete phase. The implementer owns Tasks 1.1 through 1.6, the
+complete staged transaction, both required gates, and the phase-closing commit. Do not dispatch an
+individual task or a commit-disabled successor.
 
 - [ ] **Task 1.1: Add the failing cross-surface phase-ownership proof.** Create
   `internal/project/phase_transaction_ownership_test.go` with
@@ -114,7 +124,10 @@ or a commit-disabled successor.
   7. phase review settles before the routine checkpoint, and a stopped dirty implementer leads to
      inventory plus exactly one explicit choice: parent completion, restore-and-full-phase restart,
      or full-context ownership transfer; a blind `continue Task X` successor is forbidden; and
-  8. empty vars/data render coherent generic prose with no `<no value>`, unresolved-value token,
+  8. a representative rendered phase contains several ordered checkbox tasks followed by exactly
+     one phase-closing staged-check/gate/commit boundary, in that order, with no task-level gate or
+     commit boundary; and
+  9. empty vars/data render coherent generic prose with no `<no value>`, unresolved-value token,
      empty inline code span, or dangling command sentence.
 
   The test must initially fail against the old per-task/coupled-phase templates. Run
@@ -128,7 +141,10 @@ or a commit-disabled successor.
   `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`,
   `templates/plans-readme/README.md.tmpl`, and `templates/plans-template/template.md.tmpl`.
   Modify the plan reviewer's `step-exactness` focus item in `internal/catalog/standard.go` and its
-  focused proof in `internal/catalog/batch_test.go`.
+  focused proof in `internal/catalog/batch_test.go`. In `.awf/agents/plan-reviewer.yaml`, delete the
+  complete `coupled-phase-escape` focus item and align the overridden `step-exactness` item with the
+  new phase ownership and helper-partition contract; otherwise the project override would retain the
+  removed exception in root rendered reviewers.
 
   Preserve the existing exact-diff/pseudocode contract and add the following closed behavior:
 
@@ -164,7 +180,13 @@ or a commit-disabled successor.
 - [ ] **Task 1.3: Replace inline and subagent-driven task ownership with phase ownership.** Modify
   `templates/skills/executing-plans/SKILL.md.tmpl` and
   `templates/skills/subagent-driven-development/SKILL.md.tmpl` and update their golden assertions in
-  `internal/project/spine_test.go`.
+  `internal/project/spine_test.go`. In `internal/catalog/standard.go`, replace the
+  `subagent-driven-development` workflow profile purpose and trigger with phase-level wording:
+  `Implement a plan through reviewed phase owners.` and
+  `Use when a plan phase benefits from delegated implementation ownership.` Update
+  `internal/project/guide_scopes_test.go` to assert that exact rendered profile row and reject the
+  old `reviewed subagent tasks` and `delegated implementation tasks` wording; `./x render` must then
+  update root and Sundial `AGENTS.md` in the same transaction.
 
   Inline execution must iterate phases, not individual tasks. Before each phase it reads the
   declared mode; for `inline`, the parent owns every ordered task, integration, staged check, gate,
@@ -270,7 +292,7 @@ or a commit-disabled successor.
 - [ ] **Task 1.6: Verify, stage explicitly, and create the phase implementation commit.** Run:
 
   ```sh
-  gofmt -w internal/catalog/standard.go internal/catalog/batch_test.go internal/project/phase_transaction_ownership_test.go internal/project/spine_test.go internal/project/plan_detail_modes_test.go internal/project/target_test.go internal/evals/chain_test.go
+  gofmt -w internal/catalog/standard.go internal/catalog/batch_test.go internal/project/phase_transaction_ownership_test.go internal/project/spine_test.go internal/project/plan_detail_modes_test.go internal/project/guide_scopes_test.go internal/project/target_test.go internal/evals/chain_test.go
   go test ./internal/catalog ./internal/project ./internal/evals
   ./x render
   ./x check
@@ -348,9 +370,11 @@ text, rendering, gating, and one closing commit.
 
   Then change ADR-0166 frontmatter from `Implementing` to `Implemented` and append its Implemented
   event with the unchanged frozen content SHA-256. Change this plan's `status:` from `Proposed` to
-  `Implemented`; do not alter its body or checkbox history after the flip. If execution stops before
-  this transaction, append `Abandoned` with a rationale instead: Phase 1's Applied operations remain
-  active and these two unapplied operations become Canceled.
+  `Implemented`. Before that flip, update this plan's Notes with the settled Phase 1 and Phase 2
+  implementation findings, or state explicitly that no implementation finding occurred; only then
+  freeze the body and checkbox history. If execution stops before this transaction, append
+  `Abandoned` with a rationale instead: Phase 1's Applied operations remain active and these two
+  unapplied operations become Canceled.
 
   Run `./x render` to regenerate `docs/decisions/INDEX.md`, `.awf/awf.lock`, the two topic docs,
   `docs/domains/rendering.md`, and any lock-linked adopter outputs. Do not hand-edit a generated
@@ -380,7 +404,11 @@ text, rendering, gating, and one closing commit.
   feat(rendering): settle phase checkpoints (implements 0166)
   ```
 
-  Require a clean worktree after commit.
+  Require a clean worktree after commit. The parent then performs one report-only phase review over
+  the Phase 2 commit, resolves every finding through focused parent-owned commits that each repeat
+  the staged check and full gate, and records the settled phase checkpoint only after findings
+  resolve. The later whole-implementation review does not substitute for this phase review because
+  the phase contract requires settlement before its checkpoint.
 
 ## Verification
 
