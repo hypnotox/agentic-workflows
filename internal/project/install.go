@@ -98,9 +98,9 @@ func copyFile(src, dst string) error {
 }
 
 type UninstallReport struct {
-	Removed          int
-	PreservedRoots   []string
-	MetricsPreserved bool // compatibility summary for callers; roots are authoritative.
+	Removed           int
+	PreservedRoots    []string
+	ResidentPreserved bool // compatibility summary for callers; roots are authoritative.
 }
 
 var residentRootNames = []string{"efforts", "memory", "worktrees"}
@@ -173,7 +173,7 @@ func Uninstall(root string) (UninstallReport, error) {
 	dirs := map[string]bool{}
 	for path := range lock.Files {
 		// A non-local entry (corrupted or malicious lock) would delete outside
-		// the root. Runtime-shaped metrics entries are corrupt and never removed.
+		// the root. Runtime-shaped resident entries are corrupt and never removed.
 		if !filepath.IsLocal(filepath.FromSlash(path)) || preserveResidentRemoval(path, preserved) {
 			continue
 		}

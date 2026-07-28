@@ -84,7 +84,7 @@ func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	skillBanned := []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must be followed by", "mandatory transition", "router"}
+	skillBanned := []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition", "router"}
 	for _, file := range files {
 		if file.Path == "AGENTS.md" {
 			if !strings.Contains(file.Content, "Any enabled skill may be used whenever its purpose fits") {
@@ -105,6 +105,26 @@ func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
 			}
 		}
 	}
+	t.Run("skill advisory mutation is rejected", func(t *testing.T) {
+		for _, file := range files {
+			if !strings.HasSuffix(file.Path, "/SKILL.md") {
+				continue
+			}
+			mutated := file.Content + "\nmust follow\n"
+			rejected := false
+			for _, phrase := range skillBanned {
+				if strings.Contains(mutated, phrase) {
+					rejected = true
+					break
+				}
+			}
+			if !rejected {
+				t.Fatal("skill advisory mutation was not rejected")
+			}
+			return
+		}
+		t.Fatal("scaffold rendered no skill")
+	})
 }
 
 func TestGuideScopesDerived(t *testing.T) {

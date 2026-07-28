@@ -41,7 +41,7 @@ If no plan exists, implement directly, then invoke `{{ .prefix }}-reviewing-impl
    - The task's exact file paths, content, and commands from the plan.
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
-   - The project conventions the subagent must follow (see next step).
+   - The project conventions for the next step.
    - The resolved bare grounding command for the task, `awf context <the task's exact paths>`, with the instruction that the subagent runs it first (orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where an edit touches a claimed surface) before editing.
 <!-- awf:include context-spill -->
 <!-- awf:end -->

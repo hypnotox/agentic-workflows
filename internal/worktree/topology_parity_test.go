@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// These closed porcelain bytes are mirrored in telemetry-writer.test.ts.
+// These closed porcelain bytes are the parity fixture for worktree parsing.
 func TestWorktreePorcelainParityFixtures(t *testing.T) {
 	cases := []struct {
 		name, raw string

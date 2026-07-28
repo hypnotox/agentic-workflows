@@ -77,7 +77,7 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 	if !slices.Contains(got, "internal/owned.go") {
 		t.Fatalf("ordinary source was filtered: %v", got)
 	}
-	if !isMetricsResidentPath(adversarial) || isMetricsResidentPath(".awf/effort/other") {
+	if !isResidentPath(adversarial) || isResidentPath(".awf/effort/other") {
 		t.Fatal("resident path predicate is not closed to resident roots")
 	}
 }

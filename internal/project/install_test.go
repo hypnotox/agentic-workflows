@@ -68,7 +68,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	}
 }
 
-func TestUninstallPreservesResidentWorkflowMetrics(t *testing.T) {
+func TestUninstallPreservesResidentState(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
 	if err != nil {
@@ -104,7 +104,7 @@ func TestUninstallPreservesResidentWorkflowMetrics(t *testing.T) {
 	}
 }
 
-func TestUninstallRemovesEmptyMetricsRoot(t *testing.T) {
+func TestUninstallRemovesEmptyResidentRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := Open(root)
 	if err != nil {
@@ -125,7 +125,7 @@ func TestUninstallRemovesEmptyMetricsRoot(t *testing.T) {
 	}
 }
 
-func TestUninstallRejectsUnsafeMetricsRoot(t *testing.T) {
+func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 	for _, kind := range []string{"file", "symlink", "unreadable"} {
 		t.Run(kind, func(t *testing.T) {
 			root := scaffold(t, sampleYAML)

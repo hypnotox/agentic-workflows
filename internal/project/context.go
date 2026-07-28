@@ -117,7 +117,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	}
 	nested := []string{}
 	for _, f := range state.Tree.List() {
-		if !isMetricsResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
+		if !isResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
 			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
 	}
@@ -276,7 +276,7 @@ type UncoveredResult struct {
 
 // UnownedEntry is one collapsed unowned node: UnownedCount is the in-scope
 // eligible unowned paths it covers, ExcludedCount the in-scope scannable paths
-// beneath it that coverage excludes (generated, context-ignored, metrics-resident,
+// beneath it that coverage excludes (generated, context-ignored, resident,
 // or nested-adopter). Plain file entries keep ExcludedCount zero.
 type UnownedEntry struct {
 	Path          string

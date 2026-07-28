@@ -515,8 +515,6 @@ func isResidentPath(path string) bool {
 	}
 	return false
 }
-func isMetricsResidentPath(path string) bool { return isResidentPath(path) }
-
 func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
 	generated := map[string]bool{}
 	if lock != nil {
@@ -527,7 +525,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	files := tree.List()
 	var nested []string
 	for _, f := range files {
-		if !f.Scannable() || isMetricsResidentPath(f.Path) {
+		if !f.Scannable() || isResidentPath(f.Path) {
 			continue
 		}
 		const suffix = "/" + config.DirName + "/config.yaml"
@@ -537,7 +535,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 	}
 	var out []string
 	for _, f := range files {
-		if !f.Scannable() || isMetricsResidentPath(f.Path) {
+		if !f.Scannable() || isResidentPath(f.Path) {
 			continue
 		}
 		insideNested := false

@@ -96,17 +96,17 @@ func TestWorkingTree(t *testing.T) {
 	}
 }
 
-func TestWorkingTreeExcludesIgnoredMetricsDescendants(t *testing.T) {
+func TestWorkingTreeExcludesIgnoredResidentDescendants(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	wt, err := repo.Worktree()
 	if err != nil {
 		t.Fatal(err)
 	}
-	writeStage(t, wt, dir, ".awf/metrics/.gitignore", "*\n!.gitignore\n", 0o644)
-	if _, err := wt.Commit("metrics ignore", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
+	writeStage(t, wt, dir, ".awf/worktrees/.gitignore", "*\n!.gitignore\n", 0o644)
+	if _, err := wt.Commit("resident ignore", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(dir, ".awf", "metrics", "efforts", "e", "sessions", "s.jsonl")
+	path := filepath.Join(dir, ".awf", "worktrees", "efforts", "e", "sessions", "s.jsonl")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
@@ -117,11 +117,11 @@ func TestWorkingTreeExcludesIgnoredMetricsDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := tree.Lookup(".awf/metrics/.gitignore"); !ok {
-		t.Fatal("governed metrics ignore missing from snapshot")
+	if _, ok := tree.Lookup(".awf/worktrees/.gitignore"); !ok {
+		t.Fatal("governed resident ignore missing from snapshot")
 	}
-	if _, ok := tree.Lookup(".awf/metrics/efforts/e/sessions/s.jsonl"); ok {
-		t.Fatal("ignored resident metrics descendant entered snapshot")
+	if _, ok := tree.Lookup(".awf/worktrees/efforts/e/sessions/s.jsonl"); ok {
+		t.Fatal("ignored resident descendant entered snapshot")
 	}
 }
 
