@@ -129,8 +129,9 @@ for configured or inherited routing.
 
 17. Cross-target tests enumerate every final governed dispatch occurrence and prove Pi
     default-or-override behavior, non-Pi explicit selection and unsupported-selection fallback,
-    provider and Pi-tool isolation, coherent missing-value rendering, and complete proof coverage
-    for the new cross-runtime invariant.
+    provider and Pi-tool isolation, and complete proof coverage for the new cross-runtime invariant.
+    Affected templates are also rendered with empty variables under `missingkey=zero` and must produce
+    coherent generic prose without unresolved-value or no-value tokens.
 
 18. The generated Pi extension extracts preference parsing and merging, validation-state
     representation, and routing-card construction into a bounded model-routing module with pure,
