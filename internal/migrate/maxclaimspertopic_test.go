@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"reflect"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -51,33 +49,6 @@ func TestApplyTopicClaimBudget(t *testing.T) {
 				t.Fatalf("second run changed config or output: %q", out.String())
 			}
 		})
-	}
-}
-
-func TestUpgradeSchemaFifteenToCurrentPreservesCutoff(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\ncurrentState:\n  topicCoverage: off\n")
-	lock := &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 15, Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 9, LegacyADRGaps: []int{1}}
-	if err := lock.Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
-	}
-	applied, err := Upgrade(root, io.Discard)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(applied, []string{"topic-claim-budget", "workflow-telemetry", "enable-runner", "rename-retired-commands"}) {
-		t.Fatalf("applied = %#v", applied)
-	}
-	upgraded, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if upgraded.SchemaVersion != 19 || upgraded.ADRFormatV1From != 2 || upgraded.ADRFormatV2From != 9 || !reflect.DeepEqual(upgraded.LegacyADRGaps, []int{1}) {
-		t.Fatalf("upgraded lock = %#v", upgraded)
-	}
-	applied, err = Upgrade(root, io.Discard)
-	if err != nil || len(applied) != 0 {
-		t.Fatalf("second upgrade = %#v, %v", applied, err)
 	}
 }
 

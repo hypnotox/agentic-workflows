@@ -4,53 +4,21 @@ The telemetry package owns the protocol-2 privacy-minimal event contract, confin
 
 ### `invariant: event-protocol-and-ledger`
 
-One embedded machine-readable descriptor defines protocol version 2.1, closed event, payload, activity, route-action, and lifecycle-request vocabularies, bounded identifiers and categories, recursive privacy exclusions, compatible-minor preservation, and the append-only per-session JSONL ledger. Protocol 2.1 preserves protocol-2.0 history without migration and adds `effort_adopted`/`adopt`, `phase_continued`/`continue-phase`, `detour_started`/`start-detour`, and `detour_returned`/`mark-detour-returned`; the creation-kind set is exactly `effort_created`, `effort_adopted`, and `detour_started`, with one immutable matching first-stream creation record. Creation validates immutable metadata agreement, while creation and append validate confinement, ownership, leases, durability, idempotency, and corrupt-stream evidence without protocol-1 compatibility or inferred missing state. Closed lifecycle mutation and causal-append paths, not passive append, require the exact current causal frontier. Any unsupported required kind or protocol interpretation suppresses the entire effort from lifecycle, metrics, diagnostics, cohorts, and retention and yields one bounded compatibility result.
+Telemetry is an independent schema-1 session stream at the primary control root's `.awf/metrics/sessions/<session-id>.jsonl`. A closed header precedes closed, privacy-minimal usage, tool, gate, subagent, compaction, or handoff observations. The direct Pi writer holds a per-session lock, validates complete prior bytes, preserves a stable observation UUID across retry, fsyncs acknowledged writes, and never writes effort IDs, workflow state, paths, commands, conversation, or tool I/O. New observations join current binary session assignment at report time; protocol-1 and protocol-2 residents remain byte-preserved and read-only.
 Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161, ADR-0162
-Backing: test
-
-### `invariant: effort-lifecycle-and-routes`
-
-Effort identity, route selection, transactional phase transitions, phase continuation, terminal epochs, repairs, and waivers change only through the closed explicit lifecycle request union. Catalog mappings separately declare an entry target, legal entry predecessors, legal continuation phases, route effect, activity, and implementation mode. The router plans exactly one of three effects: start a legal entry target when no phase is open, transactionally transition an allowed predecessor to that target, or append `phase_continued` for an allowed already-open phase. Continuation names the causally visible unmatched start, preserves its phase interval, and explicitly replaces or clears workflow, activity, and implementation-mode attribution; it never emits a same-phase `phase_transitioned` event. A normal chain edge names the unmatched start, closing and successor phases, optional route effect, and current causal predecessor frontier; identical retries are idempotent, conflicts remain evidence, and structurally valid illegal events have no state effect.
-Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161
-Backing: test
-
-### `invariant: trajectory-and-derived-effort-model`
-
-Trajectories preserve parent and fork ancestry so current-path projection follows the active ancestry while all-work projection retains discarded branches. Independent, adopted, derived, and reopened efforts use explicit immutable lineage, truthful adoption boundaries, or terminal-epoch operations without reconstructing or double-counting origin work. Lightweight support work remains explicit attribution inside the current phase; work with its own decision, plan, implementation, or terminal outcome is a separate derived effort rather than an arbitrary phase jump in its parent. Derived detours retain immutable parent effort, trajectory, anchor, return-session, phase, and phase-start lineage while leaving the parent phase and trajectory open for deterministic return settlement.
-Origin: ADR-0146
-Revised-by: ADR-0161
-Backing: test
-
-### `invariant: external-adoption-boundary`
-
-External continuation with no resident effort is agent-driven through the exclusive `awf_adopt_effort` Pi tool and never inferred from a filename or freeform prose. Adoption re-reads one confined nonsymlink regular UTF-8 file below `.awf/memory/`, bounded to 1 MiB, and requires its first 16 KiB before the first H2 to contain exactly ordered, unique, at-most-512-byte `Effort:`, `Route:`, `Phase:`, `Workflow:`, and nonempty `Next:` lines using LF or CRLF. It scans at most 256 confined regular Markdown siblings for duplicate effort IDs, rejects unsafe entries plus resident-effort or tombstone collisions, and requires the submitted closed fields to match the normalized header and an enabled catalog-compatible workflow, route, and phase. Successful adoption first snapshots the enabled governed body as a strict UTF-8 regular nonsymlink file bounded to 1 MiB through a no-follow handle with identity, size, and complete-read revalidation, then atomically creates one adopted effort with deterministic request identity, a truthful current phase and workflow, optional selected route, new trajectory and anchor, and current-session manual association. It persists the active-branch association and returns only that precommit body snapshot, so a later symlink, identity, or size swap cannot change acknowledged output. Precommit failure creates no effort; postcommit failure recovers by explicit effort ID and the identical durable event, allowing only the same provisional manager's exact deterministic buffered observations to finish an interrupted flush and association persistence. Any other lifecycle, route, phase, trajectory, terminal, association, or observational progress still rejects re-adoption. Resident metadata and events never contain the ephemeral memory path, filename, `Next` text, file content, or another repository path, and existing efforts continue through structured resume rather than re-adoption.
-Origin: ADR-0161
-Backing: test
-
-### `invariant: derived-detour-return`
-
-Pi starts material deviations through the exclusive `awf_detour` tool with an explicit child effort ID and the enabled brainstorming workflow. It atomically creates one derived child whose immutable lineage names the active parent effort, trajectory, anchor, return session, open phase, and phase-start event, persists the child association only after durability, and leaves the parent phase and trajectory untouched; identical retries reconstruct the same event, and nested detours form the same durable lineage recursively. Completion or abandonment makes the terminal child the return commit boundary. Settlement revalidates the recorded parent before deriving one parent association from the child ID and terminal epoch, retries a raced whole frontier until that identity is durable, appends the matching child return marker, persists the parent custom association, and only then changes the selected effort. A durable association is reused by idempotency regardless of later parent frontier movement. Failures leave the terminal child selected for startup or explicit retry, invalid parents are never guessed, no phase or trajectory resume is fabricated, and pending-return terminal children remain excluded from retention until their return marker is durable.
-Origin: ADR-0161
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164
 Backing: test
 
 ### `invariant: privacy-integrity-and-retention`
 
-Resident protocol-2 telemetry excludes conversational content and every repository path, rejects unsafe paths and unsupported protocol interpretations, and never rewrites protocol-1 resident data. Pi never invokes canonical metrics or doctor reads; reports remain explicit effort-scoped CLI commands. Retention prunes only terminal efforts through deterministic age/count selection, leased tombstones, private trash, and explicit confirmed purge; repository preflight refuses automatic cleanup when any protocol-1 effort exists.
+Session-v1 telemetry contains only its closed descriptor fields and is append-only, locked, and fsynced by Pi without an awf append command. `awf metrics doctor` reports deterministic path, header, record, version, and duplicate findings only. Legacy protocol-1 and protocol-2 data is never migrated, retained, purged, repaired, or rewritten.
 Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161, ADR-0162
-Backing: test
-
-### `invariant: anchor-claims-and-location-metadata`
-
-An anchor claim, the ability to be the target of a payload anchor reference, is made only by an event kind in the descriptor's required `anchorClaimKinds` vocabulary (exactly `trajectory_closed`), keyed on that event's payload anchor. The envelope `piAnchorId` is observation-location metadata that never participates in resolution or ambiguity. References resolve causally forward only against unambiguous claims, ambiguity within the claiming set remains an `ambiguous-anchor` violation, and association carry-over on trajectory resume is validated by trajectory-family membership alone, never by anchor causal position.
-Origin: ADR-0154
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164
 Backing: test
 
 ### `invariant: canonical-projections-and-diagnostics`
 
-Canonical metrics and doctor results use one validated selector and deterministic projection over every resident effort. They distinguish current-path from all-trajectory work, preserve integrity evidence, and expose stable exact and heuristic findings with an owning `effortId`, thresholds, baselines, confidence, and typed remediation. The CLI renders concise deterministic selected-effort reports, while `--json` preserves the selected canonical projection. Pi does not receive canonical results, aggregate them locally, or expose query tools. Repair and waiver inputs re-resolve that effort-owned finding and require eligible reason, matching evidence and scope, and the current nonempty causal frontier; no projection derives an opaque health score.
+Metrics reads new session streams and read-only legacy ledgers deterministically. Optional effort, session, since-inclusive, and until-exclusive selectors combine with AND; session selection reports an unassigned session successfully. Current counters join current assignment records, legacy counters retain embedded historical identity, and doctor emits only sorted bounded integrity findings.
 Origin: ADR-0146
-Revised-by: ADR-0149, ADR-0161, ADR-0162
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164
 Backing: test

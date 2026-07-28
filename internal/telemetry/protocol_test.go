@@ -3,1467 +3,220 @@ package telemetry
 import (
 	"bytes"
 	"encoding/json"
-	"go/ast"
-	"go/format"
-	"go/parser"
-	"go/token"
-	"reflect"
-	"strconv"
+	"fmt"
 	"strings"
 	"testing"
 )
 
-func TestDescriptorIsNormativeAndMatchesGoTypes(t *testing.T) {
-	t.Parallel()
-	first := DescriptorBytes()
-	second := DescriptorBytes()
-	if !bytes.Equal(first, second) || len(DescriptorSHA256()) != 64 {
-		t.Fatal("descriptor bytes or digest are unstable")
-	}
-	first[0] ^= 1
-	if bytes.Equal(first, DescriptorBytes()) {
-		t.Fatal("DescriptorBytes returned mutable embedded storage")
-	}
+const testObservationID = "123e4567-e89b-42d3-a456-426614174000"
 
-	types := protocolGoTypes()
-	assertFields := func(name string, fields map[string]fieldDescriptor) {
-		t.Helper()
-		typeOf, ok := types[name]
-		if !ok {
-			t.Fatalf("descriptor names unknown Go type %q", name)
-		}
-		assertGoDescriptorFields(t, name, typeOf, fields)
-	}
-	assertFields(descriptor.Envelope.GoType, descriptor.Envelope.Fields)
-	for _, schema := range descriptor.Payloads {
-		assertFields(schema.GoType, schema.Fields)
-	}
-	for _, schema := range descriptor.Objects {
-		assertFields(schema.GoType, schema.Fields)
-	}
-	for _, schema := range descriptor.LifecycleRequests {
-		assertFields(schema.GoType, schema.Fields)
-	}
-
-	if descriptor.Version != (ProtocolVersion{Major: 2, Minor: 1}) || descriptor.Envelope.AdditionalProperties {
-		t.Fatal("descriptor version or closed envelope differs")
-	}
-	if descriptor.Limits.IdentifierBytes != 128 || descriptor.Limits.EventIDBytes != 128 || descriptor.Limits.IdempotencyKeyBytes != 128 || descriptor.Limits.ObservationIDBytes != 128 || descriptor.Limits.ModelBytes != 128 || descriptor.Limits.ToolBytes != 128 || descriptor.Limits.CategoryBytes != 128 {
-		t.Fatal("descriptor bounds differ")
-	}
-	assertProtocol2Descriptor(t)
-	for vocabulary, values := range descriptor.Vocabularies {
-		seen := map[string]bool{}
-		for _, value := range values {
-			if value == "" || seen[value] {
-				t.Fatalf("vocabulary %s has empty or duplicate value %q", vocabulary, value)
-			}
-			seen[value] = true
-			raw, _ := json.Marshal(value)
-			if err := validateField("vocabulary", raw, fieldDescriptor{Type: "string", Vocabulary: vocabulary}); err != nil {
-				t.Fatalf("descriptor vocabulary %s value %q rejected: %v", vocabulary, value, err)
-			}
-		}
-		if err := validateField("vocabulary", json.RawMessage(`"not-declared"`), fieldDescriptor{Type: "string", Vocabulary: vocabulary}); err == nil {
-			t.Fatalf("vocabulary %s accepted an undeclared value", vocabulary)
-		}
-	}
-	lifecycleKinds := map[string]bool{}
-	mappedKinds := map[string]bool{}
-	for kind, payload := range descriptor.Payloads {
-		if payload.AdditionalProperties || payload.PrivacyPolicy != descriptor.Privacy.Policy {
-			t.Fatalf("payload %s is not closed under the declared privacy policy", kind)
-		}
-		if payload.Class == "lifecycle" {
-			lifecycleKinds[kind] = true
-			if payload.Repairable != (kind != "repair_applied" && kind != "detour_returned") {
-				t.Fatalf("payload %s repairability differs from its lifecycle class", kind)
-			}
-		}
-	}
-	for action, request := range descriptor.LifecycleRequests {
-		if descriptor.Payloads[request.EventKind].Class != "lifecycle" || mappedKinds[request.EventKind] {
-			t.Fatalf("action %s has invalid lifecycle mapping %q", action, request.EventKind)
-		}
-		mappedKinds[request.EventKind] = true
-	}
-	if !reflect.DeepEqual(lifecycleKinds, mappedKinds) {
-		t.Fatalf("lifecycle mappings differ: payloads=%v requests=%v", lifecycleKinds, mappedKinds)
-	}
-	if !reflect.DeepEqual(descriptor.Vocabularies["eventKinds"], orderedPayloadKinds()) {
-		t.Fatal("eventKinds is not the descriptor payload order")
-	}
+func testHeaderRaw(id string) []byte {
+	return []byte(fmt.Sprintf(`{"record":"header","schemaVersion":1,"sessionId":%q,"createdAt":"2026-07-27T00:00:00Z"}`, id))
 }
 
-func assertProtocol2Descriptor(t *testing.T) {
+func testObservationRaw(id, timestamp, kind, payload string) []byte {
+	return []byte(fmt.Sprintf(`{"record":"observation","schemaVersion":1,"observationId":%q,"timestamp":%q,"kind":%q,"payload":%s}`, id, timestamp, kind, payload))
+}
+
+func mustObservation(t *testing.T, id, timestamp, kind, payload string) Observation {
 	t.Helper()
-	if descriptor.Privacy.AllowedRepositoryPathField != "" {
-		t.Fatalf("protocol 2 retains repository-path privacy exception %q", descriptor.Privacy.AllowedRepositoryPathField)
+	o, err := ValidateObservation(testObservationRaw(id, timestamp, kind, payload))
+	if err != nil {
+		t.Fatalf("ValidateObservation(%s): %v", kind, err)
 	}
-	if !reflect.DeepEqual(descriptor.Vocabularies["anchorClaimKinds"], []string{"trajectory_closed"}) {
-		t.Fatalf("anchor claims are owned by exactly trajectory_closed, got %v", descriptor.Vocabularies["anchorClaimKinds"])
-	}
-	oldField := "checkpoint" + "Id"
-	if _, ok := descriptor.LimitsJSONFieldForTest(oldField + "Bytes"); ok {
-		t.Fatal("protocol 2 retains protocol-1 path limit")
-	}
-	for _, activity := range []string{"adr-lifecycle", "refactor-coupling-audit", "roadmap-graduation"} {
-		if !containsString(descriptor.Vocabularies["activities"], activity) {
-			t.Errorf("protocol 2 activity %q is absent", activity)
-		}
-	}
-	if !reflect.DeepEqual(descriptor.Vocabularies["routeActions"], []string{"select", "change"}) {
-		t.Fatalf("routeActions = %v", descriptor.Vocabularies["routeActions"])
-	}
-	payload, ok := descriptor.Payloads["phase_transitioned"]
-	if !ok || payload.GoType != "PhaseTransitionedPayload" || payload.Class != "lifecycle" || !payload.Repairable || payload.AdditionalProperties {
-		t.Fatalf("phase_transitioned payload authority = %#v", payload)
-	}
-	request, ok := descriptor.LifecycleRequests["transition-phase"]
-	if !ok || request.GoType != "TransitionPhaseLifecycleRequest" || request.EventKind != "phase_transitioned" || request.AdditionalProperties {
-		t.Fatalf("transition-phase request authority = %#v", request)
-	}
-	for _, field := range []string{"phase", "startEventId", "nextPhase"} {
-		if !payload.Fields[field].Required {
-			t.Errorf("phase_transitioned.%s is not required", field)
-		}
-	}
-	for _, field := range []string{"routeAction", "route"} {
-		if payload.Fields[field].Required {
-			t.Errorf("phase_transitioned.%s is not optional", field)
-		}
-	}
-	if len(payload.Constraints) != 1 || payload.Constraints[0].Kind != "paired-presence" || !reflect.DeepEqual(payload.Constraints[0].Fields, []string{"routeAction", "route"}) {
-		t.Fatalf("phase_transitioned route constraint = %#v", payload.Constraints)
-	}
-	if len(request.Constraints) != 1 || request.Constraints[0].Kind != "paired-presence" || !reflect.DeepEqual(request.Constraints[0].Fields, []string{"routeAction", "route"}) {
-		t.Fatalf("transition-phase route constraint = %#v", request.Constraints)
-	}
-	for _, location := range []struct {
-		name   string
-		fields map[string]fieldDescriptor
-	}{
-		{"effort_created", descriptor.Payloads["effort_created"].Fields},
-		{"create request", descriptor.LifecycleRequests["create"].Fields},
-		{"effort metadata", descriptor.Objects["EffortMetadata"].Fields},
-	} {
-		if _, ok := location.fields[oldField]; ok {
-			t.Errorf("%s retains protocol-1 path field", location.name)
-		}
-	}
+	return o
 }
 
 // invariant: tooling/workflow-telemetry:event-protocol-and-ledger
-func TestProtocol21ClosedAdditionsHaveExactShapeAndConstraints(t *testing.T) {
-	var raw map[string]any
-	if err := json.Unmarshal(DescriptorBytes(), &raw); err != nil {
-		t.Fatal(err)
-	}
-	version := raw["version"].(map[string]any)
-	if version["major"] != float64(2) || version["minor"] != float64(1) {
-		t.Errorf("protocol version = %#v, want 2.1", version)
-	}
-	vocabularies := raw["vocabularies"].(map[string]any)
-	assertJSONStringsContain(t, vocabularies, "creationModes", "adopted")
-	assertJSONStringsContain(t, vocabularies, "associationOrigins", "detour")
-
-	payloadFields := map[string]map[string]map[string]any{
-		"effort_adopted": {
-			"creationMode":      {"type": "string", "required": true, "vocabulary": "creationModes"},
-			"route":             {"type": "string", "required": false, "vocabulary": "routes"},
-			"phase":             {"type": "string", "required": true, "vocabulary": "phases"},
-			"workflow":          {"type": "string", "required": true, "format": "category"},
-			"trajectoryId":      {"type": "string", "required": true, "format": "identifier"},
-			"anchorId":          {"type": "string", "required": true, "format": "identifier"},
-			"associationOrigin": {"type": "string", "required": true, "vocabulary": "associationOrigins"},
-		},
-		"phase_continued": {
-			"phase":              {"type": "string", "required": true, "vocabulary": "phases"},
-			"startEventId":       {"type": "string", "required": true, "format": "identifier"},
-			"workflow":           {"type": "string", "required": true, "format": "category"},
-			"activity":           {"type": "string", "required": false, "vocabulary": "activities"},
-			"implementationMode": {"type": "string", "required": false, "format": "category"},
-		},
-		"detour_started": {
-			"creationMode":            {"type": "string", "required": true, "vocabulary": "creationModes"},
-			"origin":                  {"type": "origin", "required": true},
-			"returnPhase":             {"type": "string", "required": true, "vocabulary": "phases"},
-			"returnPhaseStartEventId": {"type": "string", "required": true, "format": "identifier"},
-			"trajectoryId":            {"type": "string", "required": true, "format": "identifier"},
-			"anchorId":                {"type": "string", "required": true, "format": "identifier"},
-			"workflow":                {"type": "string", "required": true, "format": "category"},
-			"associationOrigin":       {"type": "string", "required": true, "vocabulary": "associationOrigins"},
-		},
-		"detour_returned": {
-			"terminalOutcome":          {"type": "string", "required": true, "vocabulary": "terminalOutcomes"},
-			"parentAssociationEventId": {"type": "string", "required": true, "format": "identifier"},
-		},
-	}
-	payloads := raw["payloads"].(map[string]any)
-	payloadOrder := map[string][]string{
-		"effort_adopted":  {"creationMode", "route", "phase", "workflow", "trajectoryId", "anchorId", "associationOrigin"},
-		"phase_continued": {"phase", "startEventId", "workflow", "activity", "implementationMode"},
-		"detour_started":  {"creationMode", "origin", "returnPhase", "returnPhaseStartEventId", "trajectoryId", "anchorId", "workflow", "associationOrigin"},
-		"detour_returned": {"terminalOutcome", "parentAssociationEventId"},
-	}
-	for kind, fields := range payloadFields {
-		shape, ok := payloads[kind].(map[string]any)
-		if !ok {
-			t.Errorf("missing protocol 2.1 payload %s", kind)
-			continue
-		}
-		if shape["class"] != "lifecycle" || shape["additionalProperties"] != false || shape["privacyPolicy"] != "long-lived-minimal" {
-			t.Errorf("payload %s authority = %#v", kind, shape)
-		}
-		wantRepairable := kind != "detour_returned"
-		if shape["repairable"] != wantRepairable {
-			t.Errorf("payload %s repairable = %#v, want %v", kind, shape["repairable"], wantRepairable)
-		}
-		assertJSONFieldShape(t, "payload "+kind, shape["fields"], fields)
-		if got := descriptorFieldOrder(t, "payloads", kind, "fields"); !reflect.DeepEqual(got, payloadOrder[kind]) {
-			t.Errorf("payload %s field order = %v, want %v", kind, got, payloadOrder[kind])
-		}
-	}
-
-	requestTails := map[string]struct {
-		kind   string
-		goType string
-		fields map[string]map[string]any
-	}{
-		"adopt": {"effort_adopted", "AdoptLifecycleRequest", map[string]map[string]any{
-			"route": {"type": "string", "required": false, "vocabulary": "routes"}, "phase": {"type": "string", "required": true, "vocabulary": "phases"},
-			"workflow": {"type": "string", "required": true, "format": "category"}, "trajectoryId": {"type": "string", "required": true, "format": "identifier"}, "anchorId": {"type": "string", "required": true, "format": "identifier"},
-		}},
-		"continue-phase": {"phase_continued", "ContinuePhaseLifecycleRequest", map[string]map[string]any{
-			"phase": {"type": "string", "required": true, "vocabulary": "phases"}, "startEventId": {"type": "string", "required": true, "format": "identifier"},
-			"workflow": {"type": "string", "required": true, "format": "category"}, "activity": {"type": "string", "required": false, "vocabulary": "activities"}, "implementationMode": {"type": "string", "required": false, "format": "category"},
-		}},
-		"start-detour": {"detour_started", "StartDetourLifecycleRequest", map[string]map[string]any{
-			"creationMode": {"type": "string", "required": true, "vocabulary": "creationModes"}, "origin": {"type": "origin", "required": true},
-			"returnPhase": {"type": "string", "required": true, "vocabulary": "phases"}, "returnPhaseStartEventId": {"type": "string", "required": true, "format": "identifier"},
-			"trajectoryId": {"type": "string", "required": true, "format": "identifier"}, "anchorId": {"type": "string", "required": true, "format": "identifier"}, "workflow": {"type": "string", "required": true, "format": "category"},
-		}},
-		"mark-detour-returned": {"detour_returned", "MarkDetourReturnedLifecycleRequest", map[string]map[string]any{
-			"terminalOutcome": {"type": "string", "required": true, "vocabulary": "terminalOutcomes"}, "parentAssociationEventId": {"type": "string", "required": true, "format": "identifier"},
-		}},
-	}
-	base := map[string]map[string]any{
-		"action": {"type": "string", "required": true}, "idempotencyKey": {"type": "string", "required": true, "format": "identifier"},
-		"eventId": {"type": "string", "required": true, "format": "identifier"}, "effortId": {"type": "string", "required": true, "format": "identifier"},
-		"sessionId": {"type": "string", "required": true, "format": "identifier"}, "timestamp": {"type": "string", "required": true, "format": "timestamp"},
-		"predecessors": {"type": "array", "required": true, "minItems": float64(0), "uniqueItems": true, "items": map[string]any{"type": "string", "format": "identifier"}},
-	}
-	requests := raw["lifecycleRequests"].(map[string]any)
-	for action, expected := range requestTails {
-		shape, ok := requests[action].(map[string]any)
-		if !ok {
-			t.Errorf("missing protocol 2.1 request %s", action)
-			continue
-		}
-		if shape["eventKind"] != expected.kind || shape["goType"] != expected.goType || shape["additionalProperties"] != false {
-			t.Errorf("request %s authority = %#v", action, shape)
-		}
-		fields := make(map[string]map[string]any, len(base)+len(expected.fields))
-		for name, field := range base {
-			fields[name] = field
-		}
-		for name, field := range expected.fields {
-			fields[name] = field
-		}
-		assertJSONFieldShape(t, "request "+action, shape["fields"], fields)
-		baseOrder := []string{"action", "idempotencyKey", "eventId", "effortId", "sessionId", "timestamp", "predecessors"}
-		tailOrder := map[string][]string{
-			"adopt":                {"route", "phase", "workflow", "trajectoryId", "anchorId"},
-			"continue-phase":       {"phase", "startEventId", "workflow", "activity", "implementationMode"},
-			"start-detour":         {"creationMode", "origin", "returnPhase", "returnPhaseStartEventId", "trajectoryId", "anchorId", "workflow"},
-			"mark-detour-returned": {"terminalOutcome", "parentAssociationEventId"},
-		}
-		wantOrder := append(append([]string{}, baseOrder...), tailOrder[action]...)
-		if got := descriptorFieldOrder(t, "lifecycleRequests", action, "fields"); !reflect.DeepEqual(got, wantOrder) {
-			t.Errorf("request %s field order = %v, want %v", action, got, wantOrder)
-		}
-	}
-
-	objects := raw["objects"].(map[string]any)
-	returnMetadata, ok := objects["DetourReturnMetadata"].(map[string]any)
-	if !ok {
-		t.Error("missing closed DetourReturnMetadata object")
-	} else {
-		assertJSONFieldShape(t, "DetourReturnMetadata", returnMetadata["fields"], map[string]map[string]any{
-			"sessionId":         {"type": "string", "required": true, "format": "identifier"},
-			"phase":             {"type": "string", "required": true, "vocabulary": "phases"},
-			"phaseStartEventId": {"type": "string", "required": true, "format": "identifier"},
-		})
-		if got, want := descriptorFieldOrder(t, "objects", "DetourReturnMetadata", "fields"), []string{"sessionId", "phase", "phaseStartEventId"}; !reflect.DeepEqual(got, want) {
-			t.Errorf("DetourReturnMetadata field order = %v, want %v", got, want)
-		}
-	}
-	metadata := objects["EffortMetadata"].(map[string]any)
-	metadataFields := metadata["fields"].(map[string]any)
-	if got, want := descriptorFieldOrder(t, "objects", "EffortMetadata", "fields"), []string{"effortId", "createdAt", "creationMode", "origin", "detourReturn"}; !reflect.DeepEqual(got, want) {
-		t.Errorf("EffortMetadata field order = %v, want %v", got, want)
-	}
-	if !reflect.DeepEqual(metadataFields["detourReturn"], map[string]any{"type": "detourReturn", "required": false}) {
-		t.Errorf("EffortMetadata.detourReturn = %#v", metadataFields["detourReturn"])
-	}
-	wantMetadataConstraints := []any{
-		map[string]any{"kind": "fields-forbidden-when", "discriminator": "creationMode", "value": "independent", "fields": []any{"origin", "detourReturn"}},
-		map[string]any{"kind": "fields-forbidden-when", "discriminator": "creationMode", "value": "adopted", "fields": []any{"origin", "detourReturn"}},
-		map[string]any{"kind": "fields-required-when", "discriminator": "creationMode", "value": "derived", "fields": []any{"origin"}},
-	}
-	if !reflect.DeepEqual(metadata["constraints"], wantMetadataConstraints) {
-		t.Errorf("EffortMetadata constraints = %#v, want %#v", metadata["constraints"], wantMetadataConstraints)
-	}
-
-	for _, requiredKind := range []string{"alternative-creation", "metadata-match", "omission-clears-attribution", "fixed-brainstorming", "matching-terminal-outcome", "post-terminal"} {
-		if !rawConstraintKindPresent(payloads, requiredKind) {
-			t.Errorf("protocol 2.1 payload constraints omit %q", requiredKind)
-		}
-	}
-	assertFieldConst(t, payloads, "effort_adopted", "creationMode", "adopted")
-	assertFieldConst(t, payloads, "effort_adopted", "associationOrigin", "manual")
-	assertFieldConst(t, payloads, "detour_started", "creationMode", "derived")
-	assertFieldConst(t, payloads, "detour_started", "workflow", "brainstorming")
-	assertFieldConst(t, payloads, "detour_started", "associationOrigin", "detour")
-	assertRequestFieldConsts(t, requests)
-	assertProtocol21GoSourceShapes(t)
-}
-
-func (p protocolDescriptor) LimitsJSONFieldForTest(name string) (json.RawMessage, bool) {
-	raw, _ := json.Marshal(p.Limits)
-	var fields map[string]json.RawMessage
-	_ = json.Unmarshal(raw, &fields)
-	value, ok := fields[name]
-	return value, ok
-}
-
-func TestValidateProtocol2PhaseTransitionShape(t *testing.T) {
-	t.Parallel()
-	event := protocol2TransitionEvent("transition", "brainstorm-start", []string{"brainstorm-start"}, "brainstorming", "implementation", "select", "direct")
-	if _, err := ValidateEvent(mustJSON(t, event)); err != nil {
-		t.Fatalf("protocol 2 transition rejected: %v", err)
-	}
-	delete(event["payload"].(map[string]any), "route")
-	if _, err := ValidateEvent(mustJSON(t, event)); err == nil {
-		t.Fatal("transition accepted routeAction without route")
-	}
-	request := protocol2TransitionRequest("transition", "brainstorm-start", []string{"brainstorm-start"}, "brainstorming", "implementation", "change", "plan")
-	if _, err := DecodeLifecycleRequest(mustJSON(t, request)); err != nil {
-		t.Fatalf("protocol 2 transition request rejected: %v", err)
-	}
-}
-
-func protocol2TransitionEvent(eventID, startEventID string, predecessors []string, phase, nextPhase, routeAction, route string) map[string]any {
-	payload := map[string]any{"phase": phase, "startEventId": startEventID, "nextPhase": nextPhase}
-	if routeAction != "" {
-		payload["routeAction"], payload["route"] = routeAction, route
-	}
-	return map[string]any{
-		"version": map[string]any{"major": 2, "minor": 0}, "eventId": eventID, "idempotencyKey": "key-" + eventID,
-		"effortId": "effort-id", "sessionId": "session-id", "timestamp": "2026-07-22T00:00:01Z",
-		"kind": "phase_transitioned", "predecessors": predecessors, "payload": payload,
-	}
-}
-
-func protocol2TransitionRequest(eventID, startEventID string, predecessors []string, phase, nextPhase, routeAction, route string) map[string]any {
-	request := protocol2TransitionEvent(eventID, startEventID, predecessors, phase, nextPhase, routeAction, route)
-	payload := request["payload"].(map[string]any)
-	delete(request, "version")
-	delete(request, "kind")
-	delete(request, "payload")
-	request["action"] = "transition-phase"
-	for key, value := range payload {
-		request[key] = value
-	}
-	return request
-}
-
-func TestValidateEventExhaustiveDescriptorContract(t *testing.T) {
-	t.Parallel()
-	for _, kind := range descriptor.Vocabularies["eventKinds"] {
-		kind := kind
-		t.Run(kind, func(t *testing.T) {
-			event := validEvent(kind, 0)
-			if _, err := ValidateEvent(mustJSON(t, event)); err != nil {
-				t.Fatalf("valid event rejected: %v", err)
-			}
-			payload := event["payload"].(map[string]any)
-			for field, metadata := range descriptor.Payloads[kind].Fields {
-				changed := cloneMap(t, event)
-				changed["payload"].(map[string]any)[field] = map[string]any{"wrong": true}
-				if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-					t.Errorf("wrong type accepted for payload field %s", field)
-				}
-				if metadata.Required {
-					changed = cloneMap(t, event)
-					delete(changed["payload"].(map[string]any), field)
-					if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-						t.Errorf("missing required payload field %s accepted", field)
-					}
-				}
-			}
-			payload["forbiddenUnknown"] = true
-			if _, err := ValidateEvent(mustJSON(t, event)); err == nil {
-				t.Error("minor-0 unknown payload field accepted")
-			}
-		})
-	}
-}
-
-func TestValidateEventCompatibilityExtensionsAndIdentity(t *testing.T) {
-	t.Parallel()
-	minorZero := validEvent("usage_observed", 0)
-	for field, metadata := range descriptor.Envelope.Fields {
-		changed := cloneMap(t, minorZero)
-		changed[field] = map[string]any{"wrong": true}
-		if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-			t.Errorf("wrong type accepted for envelope field %s", field)
-		}
-		if metadata.Required {
-			changed = cloneMap(t, minorZero)
-			delete(changed, field)
-			if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-				t.Errorf("missing required envelope field %s accepted", field)
-			}
-		}
-	}
-	minorZero["futureEnvelope"] = true
-	if _, err := ValidateEvent(mustJSON(t, minorZero)); err == nil {
-		t.Error("minor-0 unknown envelope field accepted")
-	}
-
-	event := validEvent("usage_observed", 2)
-	raw := mustJSON(t, event)
-	raw = bytes.Replace(raw, []byte(`"payload":{`), []byte(`"payload":{"futurePayload": {"n": 1},`), 1)
-	raw = bytes.Replace(raw, []byte(`"version":{`), []byte(`"futureEnvelope": [1, 2],"version":{`), 1)
-	decoded, err := ValidateEvent(raw)
-	if err != nil {
-		t.Fatalf("compatible-minor extensions rejected: %v", err)
-	}
-	if string(decoded.EnvelopeExtensions["futureEnvelope"]) != `[1, 2]` {
-		t.Fatalf("envelope extension not preserved: %s", decoded.EnvelopeExtensions["futureEnvelope"])
-	}
-	if string(decoded.PayloadExtensions["futurePayload"]) != `{"n": 1}` {
-		t.Fatalf("payload extension not preserved: %s", decoded.PayloadExtensions["futurePayload"])
-	}
-
-	cases := []map[string]any{
-		validEvent("usage_observed", 0),
-		validEvent("effort_created", 0),
-	}
-	delete(cases[0], "observationId")
-	cases[1]["observationId"] = "observation"
-	for _, invalid := range cases {
-		if _, err := ValidateEvent(mustJSON(t, invalid)); err == nil {
-			t.Error("invalid lifecycle/passive identity accepted")
-		}
-	}
-
-	unsupported := validEvent("usage_observed", 0)
-	unsupported["version"] = map[string]any{"major": 3, "minor": 0}
-	if _, err := ValidateEvent(mustJSON(t, unsupported)); err == nil {
-		t.Error("unsupported major accepted")
-	}
-	unknownKind := validEvent("usage_observed", 2)
-	unknownKind["kind"] = "future_required_kind"
-	if _, err := ValidateEvent(mustJSON(t, unknownKind)); err == nil {
-		t.Error("unknown required kind accepted")
-	}
-	missing := validEvent("usage_observed", 2)
-	delete(missing, "effortId")
-	if _, err := ValidateEvent(mustJSON(t, missing)); err == nil {
-		t.Error("missing known required field accepted")
-	}
-	collision := validEvent("usage_observed", 2)
-	collision["effortId"] = 42
-	if _, err := ValidateEvent(mustJSON(t, collision)); err == nil {
-		t.Error("known-field type collision accepted")
-	}
-}
-
-func TestProtocol2PairedPresenceConstraintAuthority(t *testing.T) {
-	cloneRaw, err := json.Marshal(descriptor)
+func TestSessionProtocolAcceptsClosedObservation(t *testing.T) {
+	raw := testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "usage", `{"inputTokens":0,"outputTokens":0,"cacheReadTokens":0,"cacheWriteTokens":0,"costUsd":0}`)
+	o, err := ValidateObservation(raw)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var clone protocolDescriptor
-	if err := json.Unmarshal(cloneRaw, &clone); err != nil {
+	if !bytes.Equal(o.Raw, raw) {
+		t.Fatalf("raw = %s, want %s", o.Raw, raw)
+	}
+	raw[0] = 'x'
+	if o.Raw[0] != '{' {
+		t.Fatal("observation retained caller-owned raw bytes")
+	}
+}
+
+func TestDescriptorIdentifiersAndTypeScriptProjection(t *testing.T) {
+	var got descriptor
+	if err := json.Unmarshal(DescriptorBytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	transition := clone.Payloads["phase_transitioned"]
-	invalidMetadata := transition.Constraints[0]
-	invalidMetadata.Field = "route"
-	if err := validateConstraintAuthority(clone, "payload phase_transitioned", transition.Fields, []constraintDescriptor{invalidMetadata}); err == nil {
-		t.Fatal("invalid paired-presence metadata accepted")
+	if got.SchemaVersion != SchemaVersion || got.Limits.IdentifierBytes != 160 || got.Limits.CategoryBytes != 64 || got.Limits.IntegerMaximum != maxSafeInteger {
+		t.Fatalf("descriptor = %#v", got)
 	}
-	unknownField := transition.Constraints[0]
-	unknownField.Fields = []string{"routeAction", "missing"}
-	if err := validateConstraintAuthority(clone, "payload phase_transitioned", transition.Fields, []constraintDescriptor{unknownField}); err == nil {
-		t.Fatal("unknown paired-presence field accepted")
+	copy := DescriptorBytes()
+	copy[0] = 'x'
+	if DescriptorBytes()[0] != '{' {
+		t.Fatal("DescriptorBytes returned its backing storage")
 	}
-}
-
-func TestValidateEventBoundsPrivacyAndConditions(t *testing.T) {
-	t.Parallel()
-	base := validEvent("usage_observed", 0)
-	for name, value := range map[string]any{
-		"empty identifier":  "",
-		"slash identifier":  "unsafe/id",
-		"dot identifier":    ".",
-		"dotdot identifier": "..",
-		"oversize UTF-8":    strings.Repeat("é", 65),
-	} {
-		changed := cloneMap(t, base)
-		changed["effortId"] = value
-		if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-			t.Errorf("%s accepted", name)
+	for _, value := range []string{"session", strings.Repeat("a", 160)} {
+		if !Identifier(value) {
+			t.Errorf("Identifier(%q) = false", value)
 		}
 	}
-	for _, mutation := range []func(map[string]any){
-		func(e map[string]any) { e["payload"].(map[string]any)["inputTokens"] = -1 },
-		func(e map[string]any) { e["payload"].(map[string]any)["durationMs"] = 1.5 },
-		func(e map[string]any) { e["timestamp"] = "not-a-time" },
-		func(e map[string]any) { e["predecessors"] = []any{"same", "same"} },
-		func(e map[string]any) { e["payload"].(map[string]any)["phase"] = "unknown-phase" },
-	} {
-		changed := cloneMap(t, base)
-		mutation(changed)
-		if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-			t.Error("invalid bounded value accepted")
+	for _, value := range []string{"", ".", "..", "a/b", `a\\b`, "a\x00b", "a\rb", "a\nb", string([]byte{0xff}), strings.Repeat("a", 161)} {
+		if Identifier(value) {
+			t.Errorf("Identifier(%q) = true", value)
 		}
 	}
-	nonFinite := bytes.Replace(mustJSON(t, base), []byte(`"costUsd":0`), []byte(`"costUsd":1e999`), 1)
-	if _, err := ValidateEvent(nonFinite); err == nil {
-		t.Error("non-finite usage accepted")
-	}
-
-	for _, forbidden := range descriptor.Privacy.ForbiddenFields {
-		envelope := cloneMap(t, base)
-		envelope[forbidden] = "private"
-		if _, err := ValidateEvent(mustJSON(t, envelope)); err == nil {
-			t.Errorf("privacy field %q accepted in envelope", forbidden)
-		}
-		payload := cloneMap(t, base)
-		payload["payload"].(map[string]any)[forbidden] = "private"
-		if _, err := ValidateEvent(mustJSON(t, payload)); err == nil {
-			t.Errorf("privacy field %q accepted in payload", forbidden)
+	for _, value := range []string{"tool", strings.Repeat("x", 64)} {
+		if !category(value) {
+			t.Errorf("category(%q) = false", value)
 		}
 	}
-
-	independent := validEvent("effort_created", 0)
-	independentPayload := independent["payload"].(map[string]any)
-	independentPayload["creationMode"] = "independent"
-	if _, err := ValidateEvent(mustJSON(t, independent)); err == nil {
-		t.Error("independent creation with origin accepted")
+	for _, value := range []string{"", string([]byte{0xff}), strings.Repeat("x", 65)} {
+		if category(value) {
+			t.Errorf("category(%q) = true", value)
+		}
 	}
-	delete(independentPayload, "originEffortId")
-	delete(independentPayload, "originTrajectoryId")
-	delete(independentPayload, "originAnchorId")
-	if _, err := ValidateEvent(mustJSON(t, independent)); err != nil {
-		t.Fatalf("independent creation rejected: %v", err)
+	if validText("", 1) || validText("ab", 1) || validText(string([]byte{0xff}), 2) {
+		t.Fatal("validText accepted an invalid boundary")
 	}
-
-	shell := validEvent("shell_observed", 0)
-	shellPayload := shell["payload"].(map[string]any)
-	shellPayload["classification"] = "unclassified"
-	if _, err := ValidateEvent(mustJSON(t, shell)); err == nil {
-		t.Error("gateMode accepted for unclassified shell event")
-	}
-	delete(shellPayload, "gateMode")
-	if _, err := ValidateEvent(mustJSON(t, shell)); err != nil {
-		t.Fatalf("unclassified shell event without gateMode rejected: %v", err)
-	}
-
-	waiver := validEvent("finding_waived", 0)
-	waiver["payload"].(map[string]any)["reasonCode"] = "approved-clock-skew"
-	if _, err := ValidateEvent(mustJSON(t, waiver)); err == nil {
-		t.Error("waiver reason accepted for an ineligible rule")
-	}
-}
-
-func TestDecodeLifecycleRequestUnion(t *testing.T) {
-	t.Parallel()
-	for action, schema := range descriptor.LifecycleRequests {
-		action, schema := action, schema
-		t.Run(action, func(t *testing.T) {
-			request := validRequest(action)
-			decoded, err := DecodeLifecycleRequest(mustJSON(t, request))
-			if err != nil {
-				t.Fatalf("valid request rejected: %v", err)
-			}
-			if reflect.TypeOf(decoded).Elem().Name() != schema.GoType || decoded.lifecycleAction() != action {
-				t.Fatalf("decoded wrong union member: %T", decoded)
-			}
-			for field, metadata := range schema.Fields {
-				changed := cloneMap(t, request)
-				changed[field] = map[string]any{"wrong": true}
-				if _, err := DecodeLifecycleRequest(mustJSON(t, changed)); err == nil {
-					t.Errorf("wrong type accepted for request field %s", field)
-				}
-				if metadata.Required {
-					delete(changed, field)
-					if _, err := DecodeLifecycleRequest(mustJSON(t, changed)); err == nil {
-						t.Errorf("missing required request field %s accepted", field)
-					}
-				}
-			}
-			request["unknown"] = true
-			if _, err := DecodeLifecycleRequest(mustJSON(t, request)); err == nil {
-				t.Error("unknown request field accepted")
-			}
-		})
-	}
-
-	derived := validRequest("create")
-	delete(derived, "origin")
-	if _, err := DecodeLifecycleRequest(mustJSON(t, derived)); err == nil {
-		t.Error("derived create without origin accepted")
-	}
-	independent := validRequest("create")
-	independent["creationMode"] = "independent"
-	if _, err := DecodeLifecycleRequest(mustJSON(t, independent)); err == nil {
-		t.Error("independent create with origin accepted")
-	}
-	waive := validRequest("waive")
-	waive["reasonCode"] = "approved-clock-skew"
-	if _, err := DecodeLifecycleRequest(mustJSON(t, waive)); err == nil {
-		t.Error("ineligible lifecycle waiver accepted")
-	}
-	for _, raw := range []json.RawMessage{nil, json.RawMessage(`[]`), json.RawMessage(`{"action":"unknown"}`), {0xff}} {
-		if _, err := DecodeLifecycleRequest(raw); err == nil {
-			t.Errorf("invalid request accepted: %q", raw)
+	ts := ProjectTypeScript()
+	for _, want := range []string{"protocolDescriptor", "validateSessionHeader", "validateObservation", `"schemaVersion":1`, "TextEncoder"} {
+		if !strings.Contains(ts, want) {
+			t.Errorf("TypeScript projection lacks %q", want)
 		}
 	}
 }
 
-func TestRepairReplacementIsClosedAndLifecycleOnly(t *testing.T) {
-	t.Parallel()
-	repair := validEvent("repair_applied", 0)
-	for kind, payload := range descriptor.Payloads {
-		changed := cloneMap(t, repair)
-		replacement := changed["payload"].(map[string]any)["replacement"].(map[string]any)
-		replacement["eventKind"] = kind
-		replacement["payload"] = validFields(payload.Fields)
-		applyValidConditions(kind, replacement["payload"].(map[string]any))
-		applyFieldConstants(payload.Constraints, replacement["payload"].(map[string]any))
-		_, err := ValidateEvent(mustJSON(t, changed))
-		wantValid := payload.Class == "lifecycle" && payload.Repairable
-		if (err == nil) != wantValid {
-			t.Errorf("replacement %q validity=%v, want %v: %v", kind, err == nil, wantValid, err)
-		}
-	}
-	for _, kind := range []string{"repair_applied", "usage_observed", "unknown"} {
-		changed := cloneMap(t, repair)
-		changed["payload"].(map[string]any)["replacement"].(map[string]any)["eventKind"] = kind
-		if _, err := ValidateEvent(mustJSON(t, changed)); err == nil {
-			t.Errorf("non-repairable replacement %q accepted", kind)
-		}
-	}
-	repair["payload"].(map[string]any)["replacement"].(map[string]any)["extra"] = true
-	if _, err := ValidateEvent(mustJSON(t, repair)); err == nil {
-		t.Error("unknown replacement field accepted")
-	}
-}
-
-func TestDuplicateJSONKeysAreRejectedRecursively(t *testing.T) {
-	t.Parallel()
-	base := mustJSON(t, validEvent("repair_applied", 0))
-	for name, raw := range map[string]json.RawMessage{
-		"envelope":    bytes.Replace(base, []byte(`"eventId":"event-id"`), []byte(`"eventId":"shadow","eventId":"event-id"`), 1),
-		"version":     bytes.Replace(base, []byte(`"major":2`), []byte(`"major":2,"major":2`), 1),
-		"payload":     bytes.Replace(base, []byte(`"proposalKind":`), []byte(`"proposalKind":"supersede-event","proposalKind":`), 1),
-		"replacement": bytes.Replace(base, []byte(`"eventKind":`), []byte(`"eventKind":"phase_started","eventKind":`), 1),
-	} {
-		if _, err := ValidateEvent(raw); err == nil {
-			t.Errorf("duplicate %s key accepted", name)
-		}
-	}
-	request := mustJSON(t, validRequest("create"))
-	request = bytes.Replace(request, []byte(`"anchorId":`), []byte(`"anchorId":"shadow","anchorId":`), 1)
-	if _, err := DecodeLifecycleRequest(request); err == nil {
-		t.Error("duplicate nested lifecycle key accepted")
-	}
-}
-
-func TestCompatibleMinorPrivacyIsRecursive(t *testing.T) {
-	t.Parallel()
-	for _, location := range []string{"envelope", "payload"} {
-		event := validEvent("usage_observed", 2)
-		if location == "envelope" {
-			event["future"] = map[string]any{"nested": []any{map[string]any{"prompt": "private"}}}
-		} else {
-			event["payload"].(map[string]any)["future"] = map[string]any{"nested": map[string]any{"stderr": "private"}}
-		}
-		if _, err := ValidateEvent(mustJSON(t, event)); err == nil {
-			t.Errorf("nested privacy field in %s extension accepted", location)
-		}
-	}
-}
-
-func TestFinishPhaseOutcomeMatchesEventVocabulary(t *testing.T) {
-	t.Parallel()
-	for _, value := range descriptor.Vocabularies["outcomes"] {
-		event := validEvent("phase_finished", 0)
-		event["payload"].(map[string]any)["outcome"] = value
-		if _, err := ValidateEvent(mustJSON(t, event)); err != nil {
-			t.Errorf("event outcome %q rejected: %v", value, err)
-		}
-		request := validRequest("finish-phase")
-		request["outcome"] = value
-		if _, err := DecodeLifecycleRequest(mustJSON(t, request)); err != nil {
-			t.Errorf("request outcome %q rejected: %v", value, err)
-		}
-	}
-	request := validRequest("finish-phase")
-	request["outcome"] = "completed"
-	if _, err := DecodeLifecycleRequest(mustJSON(t, request)); err == nil {
-		t.Error("terminal effort outcome accepted as phase outcome")
-	}
-}
-
-func TestUniqueArraysCompareDecodedValues(t *testing.T) {
-	t.Parallel()
-	event := mustJSON(t, validEvent("usage_observed", 0))
-	event = bytes.Replace(event, []byte(`"predecessors":[]`), []byte(`"predecessors":["same","\\u0073ame"]`), 1)
-	if _, err := ValidateEvent(event); err == nil {
-		t.Error("escaped duplicate predecessor accepted")
-	}
-}
-
-func TestDescriptorParsingRejectsInvalidAuthority(t *testing.T) {
-	t.Parallel()
-	valid := DescriptorBytes()
-	mutate := func(fn func(map[string]any)) []byte {
-		t.Helper()
-		var value map[string]any
-		if err := json.Unmarshal(valid, &value); err != nil {
-			t.Fatal(err)
-		}
-		fn(value)
-		return mustJSON(t, value)
-	}
-	cases := map[string][]byte{
-		"duplicate key": bytes.Replace(valid, []byte(`"major": 2`), []byte(`"major": 2, "major": 2`), 1),
-		"unknown key": mutate(func(value map[string]any) {
-			value["unknown"] = true
-		}),
-		"unknown vocabulary reference": mutate(func(value map[string]any) {
-			value["payloads"].(map[string]any)["route_selected"].(map[string]any)["fields"].(map[string]any)["route"].(map[string]any)["vocabulary"] = "missing"
-		}),
-		"payload vocabulary parity": mutate(func(value map[string]any) {
-			kinds := value["vocabularies"].(map[string]any)["eventKinds"].([]any)
-			value["vocabularies"].(map[string]any)["eventKinds"] = kinds[1:]
-		}),
-		"missing anchor claim vocabulary": mutate(func(value map[string]any) {
-			delete(value["vocabularies"].(map[string]any), "anchorClaimKinds")
-		}),
-		"anchor claim outside event kinds": mutate(func(value map[string]any) {
-			value["vocabularies"].(map[string]any)["anchorClaimKinds"] = []any{"not-an-event-kind"}
-		}),
-		"lifecycle reference": mutate(func(value map[string]any) {
-			value["lifecycleRequests"].(map[string]any)["create"].(map[string]any)["eventKind"] = "usage_observed"
-		}),
-		"constraint field reference": mutate(func(value map[string]any) {
-			constraints := value["payloads"].(map[string]any)["effort_created"].(map[string]any)["constraints"].([]any)
-			constraints[0].(map[string]any)["fields"] = []any{"missing"}
-		}),
-	}
-	for name, raw := range cases {
-		name, raw := name, raw
-		t.Run(name, func(t *testing.T) {
-			defer func() {
-				if recover() == nil {
-					t.Error("invalid descriptor did not panic")
-				}
-			}()
-			mustParseDescriptor(raw)
-		})
-	}
-}
-
-type orderedJSONNode struct {
-	object map[string]*orderedJSONNode
-	order  []string
-}
-
-func descriptorFieldOrder(t *testing.T, path ...string) []string {
-	t.Helper()
-	decoder := json.NewDecoder(bytes.NewReader(DescriptorBytes()))
-	node := decodeOrderedJSON(t, decoder)
-	for _, segment := range path {
-		if node == nil || node.object == nil || node.object[segment] == nil {
-			return nil
-		}
-		node = node.object[segment]
-	}
-	return append([]string(nil), node.order...)
-}
-
-func decodeOrderedJSON(t *testing.T, decoder *json.Decoder) *orderedJSONNode {
-	t.Helper()
-	tokenValue, err := decoder.Token()
-	if err != nil {
-		t.Fatal(err)
-	}
-	delimiter, isDelimiter := tokenValue.(json.Delim)
-	if !isDelimiter {
-		return &orderedJSONNode{}
-	}
-	switch delimiter {
-	case '{':
-		node := &orderedJSONNode{object: map[string]*orderedJSONNode{}, order: []string{}}
-		for decoder.More() {
-			keyToken, err := decoder.Token()
-			if err != nil {
-				t.Fatal(err)
-			}
-			key := keyToken.(string)
-			node.order = append(node.order, key)
-			node.object[key] = decodeOrderedJSON(t, decoder)
-		}
-		if _, err := decoder.Token(); err != nil {
-			t.Fatal(err)
-		}
-		return node
-	case '[':
-		for decoder.More() {
-			decodeOrderedJSON(t, decoder)
-		}
-		if _, err := decoder.Token(); err != nil {
-			t.Fatal(err)
-		}
-		return &orderedJSONNode{}
-	default:
-		t.Fatalf("unexpected JSON delimiter %q", delimiter)
-		return nil
-	}
-}
-
-func assertJSONStringsContain(t *testing.T, vocabularies map[string]any, name string, wanted ...string) {
-	t.Helper()
-	values, ok := vocabularies[name].([]any)
-	if !ok {
-		t.Errorf("missing vocabulary %s", name)
-		return
-	}
-	for _, value := range wanted {
-		found := false
-		for _, candidate := range values {
-			found = found || candidate == value
-		}
-		if !found {
-			t.Errorf("vocabulary %s omits %q: %#v", name, value, values)
-		}
-	}
-}
-
-func assertJSONFieldShape(t *testing.T, location string, raw any, expected map[string]map[string]any) {
-	t.Helper()
-	fields, ok := raw.(map[string]any)
-	if !ok {
-		t.Errorf("%s fields are absent: %#v", location, raw)
-		return
-	}
-	if len(fields) != len(expected) {
-		t.Errorf("%s field count = %d, want %d: %#v", location, len(fields), len(expected), fields)
-	}
-	for name, want := range expected {
-		if !reflect.DeepEqual(fields[name], want) {
-			t.Errorf("%s.%s = %#v, want %#v", location, name, fields[name], want)
-		}
-	}
-}
-
-func rawConstraintKindPresent(payloads map[string]any, wanted string) bool {
-	for _, rawPayload := range payloads {
-		payload, _ := rawPayload.(map[string]any)
-		constraints, _ := payload["constraints"].([]any)
-		for _, rawConstraint := range constraints {
-			constraint, _ := rawConstraint.(map[string]any)
-			if constraint["kind"] == wanted {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func assertFieldConst(t *testing.T, payloads map[string]any, kind, field, value string) {
-	t.Helper()
-	payload, _ := payloads[kind].(map[string]any)
-	constraints, _ := payload["constraints"].([]any)
-	for _, raw := range constraints {
-		constraint, _ := raw.(map[string]any)
-		if reflect.DeepEqual(constraint, map[string]any{"kind": "field-const", "field": field, "value": value}) {
-			return
-		}
-	}
-	t.Errorf("payload %s omits field-const %s=%s: %#v", kind, field, value, constraints)
-}
-
-func assertRequestFieldConsts(t *testing.T, requests map[string]any) {
-	t.Helper()
-	for _, action := range []string{"adopt", "continue-phase", "mark-detour-returned"} {
-		request, _ := requests[action].(map[string]any)
-		constraints, _ := request["constraints"].([]any)
-		for _, raw := range constraints {
-			constraint, _ := raw.(map[string]any)
-			if constraint["kind"] == "field-const" {
-				t.Errorf("request %s unexpectedly fixes a payload-supplied field: %#v", action, constraint)
-			}
-		}
-	}
-	request, _ := requests["start-detour"].(map[string]any)
-	constraints, _ := request["constraints"].([]any)
-	want := []map[string]any{
-		{"kind": "field-const", "field": "creationMode", "value": "derived"},
-		{"kind": "field-const", "field": "workflow", "value": "brainstorming"},
-	}
-	if len(constraints) != len(want) {
-		t.Errorf("start-detour request constraints = %#v, want %#v", constraints, want)
-		return
-	}
-	for index := range want {
-		if !reflect.DeepEqual(constraints[index], want[index]) {
-			t.Errorf("start-detour constraint %d = %#v, want %#v", index, constraints[index], want[index])
-		}
-	}
-}
-
-type goSourceField struct {
-	name     string
-	typeName string
-	tag      string
-}
-
-func assertProtocol21GoSourceShapes(t *testing.T) {
-	t.Helper()
-	expected := map[string][]goSourceField{
-		"EffortAdoptedPayload": {
-			{"CreationMode", "CreationMode", `json:"creationMode"`}, {"Route", "Route", `json:"route,omitempty"`},
-			{"Phase", "Phase", `json:"phase"`}, {"Workflow", "BoundedCategory", `json:"workflow"`},
-			{"TrajectoryID", "string", `json:"trajectoryId"`}, {"AnchorID", "string", `json:"anchorId"`},
-			{"AssociationOrigin", "AssociationOrigin", `json:"associationOrigin"`},
-		},
-		"PhaseContinuedPayload": {
-			{"Phase", "Phase", `json:"phase"`}, {"StartEventID", "string", `json:"startEventId"`},
-			{"Workflow", "BoundedCategory", `json:"workflow"`}, {"Activity", "Activity", `json:"activity,omitempty"`},
-			{"ImplementationMode", "BoundedCategory", `json:"implementationMode,omitempty"`},
-		},
-		"DetourStartedPayload": {
-			{"CreationMode", "CreationMode", `json:"creationMode"`}, {"Origin", "OriginMetadata", `json:"origin"`},
-			{"ReturnPhase", "Phase", `json:"returnPhase"`}, {"ReturnPhaseStartEventID", "string", `json:"returnPhaseStartEventId"`},
-			{"TrajectoryID", "string", `json:"trajectoryId"`}, {"AnchorID", "string", `json:"anchorId"`},
-			{"Workflow", "BoundedCategory", `json:"workflow"`}, {"AssociationOrigin", "AssociationOrigin", `json:"associationOrigin"`},
-		},
-		"DetourReturnedPayload": {
-			{"TerminalOutcome", "TerminalOutcome", `json:"terminalOutcome"`}, {"ParentAssociationEventID", "string", `json:"parentAssociationEventId"`},
-		},
-		"DetourReturnMetadata": {
-			{"SessionID", "string", `json:"sessionId"`}, {"Phase", "Phase", `json:"phase"`}, {"PhaseStartEventID", "string", `json:"phaseStartEventId"`},
-		},
-		"AdoptLifecycleRequest": {
-			{"", "LifecycleRequestBase", ""}, {"Route", "Route", `json:"route,omitempty"`}, {"Phase", "Phase", `json:"phase"`},
-			{"Workflow", "BoundedCategory", `json:"workflow"`}, {"TrajectoryID", "string", `json:"trajectoryId"`}, {"AnchorID", "string", `json:"anchorId"`},
-		},
-		"ContinuePhaseLifecycleRequest": {
-			{"", "LifecycleRequestBase", ""}, {"Phase", "Phase", `json:"phase"`}, {"StartEventID", "string", `json:"startEventId"`},
-			{"Workflow", "BoundedCategory", `json:"workflow"`}, {"Activity", "Activity", `json:"activity,omitempty"`}, {"ImplementationMode", "BoundedCategory", `json:"implementationMode,omitempty"`},
-		},
-		"StartDetourLifecycleRequest": {
-			{"", "LifecycleRequestBase", ""}, {"CreationMode", "CreationMode", `json:"creationMode"`}, {"Origin", "OriginMetadata", `json:"origin"`},
-			{"ReturnPhase", "Phase", `json:"returnPhase"`}, {"ReturnPhaseStartEventID", "string", `json:"returnPhaseStartEventId"`},
-			{"TrajectoryID", "string", `json:"trajectoryId"`}, {"AnchorID", "string", `json:"anchorId"`}, {"Workflow", "BoundedCategory", `json:"workflow"`},
-		},
-		"MarkDetourReturnedLifecycleRequest": {
-			{"", "LifecycleRequestBase", ""}, {"TerminalOutcome", "TerminalOutcome", `json:"terminalOutcome"`}, {"ParentAssociationEventID", "string", `json:"parentAssociationEventId"`},
-		},
-	}
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, "types.go", nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := map[string][]goSourceField{}
-	for _, declaration := range file.Decls {
-		generic, ok := declaration.(*ast.GenDecl)
-		if !ok || generic.Tok != token.TYPE {
-			continue
-		}
-		for _, specification := range generic.Specs {
-			typeSpec, ok := specification.(*ast.TypeSpec)
-			if !ok || expected[typeSpec.Name.Name] == nil {
-				continue
-			}
-			structure, ok := typeSpec.Type.(*ast.StructType)
-			if !ok {
-				t.Errorf("%s is not a struct", typeSpec.Name.Name)
-				continue
-			}
-			for _, field := range structure.Fields.List {
-				name := ""
-				if len(field.Names) == 1 {
-					name = field.Names[0].Name
-				}
-				var typeBuffer bytes.Buffer
-				if err := format.Node(&typeBuffer, fset, field.Type); err != nil {
-					t.Fatal(err)
-				}
-				tag := ""
-				if field.Tag != nil {
-					tag, err = strconv.Unquote(field.Tag.Value)
-					if err != nil {
-						t.Fatal(err)
-					}
-				}
-				found[typeSpec.Name.Name] = append(found[typeSpec.Name.Name], goSourceField{name, typeBuffer.String(), tag})
-			}
-		}
-	}
-	for name, fields := range expected {
-		if !reflect.DeepEqual(found[name], fields) {
-			t.Errorf("Go declaration %s = %#v, want %#v", name, found[name], fields)
-		}
-	}
-
-	var metadataFields []goSourceField
-	for _, declaration := range file.Decls {
-		generic, ok := declaration.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		for _, specification := range generic.Specs {
-			typeSpec, ok := specification.(*ast.TypeSpec)
-			if !ok || typeSpec.Name.Name != "EffortMetadata" {
-				continue
-			}
-			structure := typeSpec.Type.(*ast.StructType)
-			for _, field := range structure.Fields.List {
-				name := field.Names[0].Name
-				var typeBuffer bytes.Buffer
-				_ = format.Node(&typeBuffer, fset, field.Type)
-				tag, _ := strconv.Unquote(field.Tag.Value)
-				metadataFields = append(metadataFields, goSourceField{name, typeBuffer.String(), tag})
-			}
-		}
-	}
-	wantMetadata := []goSourceField{
-		{"EffortID", "string", `json:"effortId"`}, {"CreatedAt", "string", `json:"createdAt"`},
-		{"CreationMode", "CreationMode", `json:"creationMode"`}, {"Origin", "*OriginMetadata", `json:"origin,omitempty"`},
-		{"DetourReturn", "*DetourReturnMetadata", `json:"detourReturn,omitempty"`},
-	}
-	if !reflect.DeepEqual(metadataFields, wantMetadata) {
-		t.Errorf("Go declaration EffortMetadata = %#v, want %#v", metadataFields, wantMetadata)
-	}
-}
-
-func protocolGoTypes() map[string]reflect.Type {
-	values := []any{
-		EventEnvelope{}, EffortCreatedPayload{}, EffortAdoptedPayload{}, SessionAssociatedPayload{}, SessionDetachedPayload{}, RoutePayload{},
-		PhaseStartedPayload{}, PhaseTransitionedPayload{}, PhaseContinuedPayload{}, PhaseFinishedPayload{}, TrajectoryPayload{}, TrajectoryForkedPayload{}, DetourStartedPayload{}, EffortTerminalPayload{}, EffortAbandonedPayload{},
-		EffortReopenedPayload{}, DetourReturnedPayload{}, FindingWaivedPayload{}, RepairAppliedPayload{}, UsageObservedPayload{}, ToolObservedPayload{},
-		ShellObservedPayload{}, CompactionObservedPayload{}, HandoffObservedPayload{}, SubagentObservedPayload{}, SessionObservedPayload{},
-		OriginMetadata{}, DetourReturnMetadata{}, RepairReplacement{}, RepairProposal{}, EffortMetadata{}, Association{}, CreateLifecycleRequest{}, AdoptLifecycleRequest{}, TransitionPhaseLifecycleRequest{}, ContinuePhaseLifecycleRequest{},
-		AssociateLifecycleRequest{}, DetachLifecycleRequest{}, RouteLifecycleRequest{}, StartPhaseLifecycleRequest{},
-		FinishPhaseLifecycleRequest{}, TrajectoryLifecycleRequest{}, ForkTrajectoryLifecycleRequest{}, StartDetourLifecycleRequest{}, TerminalLifecycleRequest{}, AbandonLifecycleRequest{},
-		ReopenLifecycleRequest{}, MarkDetourReturnedLifecycleRequest{}, WaiveLifecycleRequest{}, RepairLifecycleRequest{},
-	}
-	result := make(map[string]reflect.Type, len(values))
-	for _, value := range values {
-		typeOf := reflect.TypeOf(value)
-		result[typeOf.Name()] = typeOf
-	}
-	return result
-}
-
-func assertGoDescriptorFields(t *testing.T, location string, typeOf reflect.Type, fields map[string]fieldDescriptor) {
-	t.Helper()
-	goFields := map[string]reflect.StructField{}
-	var collect func(reflect.Type)
-	collect = func(current reflect.Type) {
-		for index := range current.NumField() {
-			field := current.Field(index)
-			if field.Anonymous {
-				collect(field.Type)
-				continue
-			}
-			name := strings.Split(field.Tag.Get("json"), ",")[0]
-			if name != "" && name != "-" {
-				goFields[name] = field
-			}
-		}
-	}
-	collect(typeOf)
-	if !reflect.DeepEqual(keySet(goFields), keySet(fields)) {
-		t.Fatalf("%s fields differ: Go=%v descriptor=%v", location, keySet(goFields), keySet(fields))
-	}
-	for name, goField := range goFields {
-		metadata := fields[name]
-		tagParts := strings.Split(goField.Tag.Get("json"), ",")
-		optional := len(tagParts) > 1 && slicesContains(tagParts[1:], "omitempty")
-		if metadata.Required == optional {
-			t.Errorf("%s.%s required differs: Go optional=%v descriptor required=%v", location, name, optional, metadata.Required)
-		}
-		expectedType, expectedFormat, expectedVocabulary := goFieldMetadata(name, goField.Type)
-		if metadata.Type != expectedType || metadata.Format != expectedFormat || metadata.Vocabulary != expectedVocabulary {
-			t.Errorf("%s.%s metadata differs: got type=%q format=%q vocabulary=%q; want type=%q format=%q vocabulary=%q", location, name, metadata.Type, metadata.Format, metadata.Vocabulary, expectedType, expectedFormat, expectedVocabulary)
-		}
-		switch expectedType {
-		case "uint16", "uint64", "number":
-			if metadata.Minimum == nil || *metadata.Minimum != 0 {
-				t.Errorf("%s.%s must explicitly declare minimum 0", location, name)
-			}
-		case "array":
-			if metadata.Items == nil {
-				t.Errorf("%s.%s has no item metadata", location, name)
-				continue
-			}
-			itemType, itemFormat, itemVocabulary := goFieldMetadata(name, goField.Type.Elem())
-			if metadata.Items.Type != itemType || metadata.Items.Format != itemFormat || metadata.Items.Vocabulary != itemVocabulary {
-				t.Errorf("%s.%s item metadata differs", location, name)
-			}
-			wantMin := 0
-			if name == "evidenceIds" || name == "sourceEventIds" {
-				wantMin = 1
-			}
-			if !metadata.UniqueItems || metadata.MinItems != wantMin {
-				t.Errorf("%s.%s uniqueness/cardinality differs: unique=%v minItems=%d want minItems=%d", location, name, metadata.UniqueItems, metadata.MinItems, wantMin)
-			}
-		case "object":
-			assertGoDescriptorFields(t, location+"."+name, goField.Type, metadata.Fields)
-		}
-	}
-}
-
-func goFieldMetadata(name string, typeOf reflect.Type) (fieldType, format, vocabulary string) {
-	if typeOf.Kind() == reflect.Pointer {
-		typeOf = typeOf.Elem()
-	}
-	switch typeOf.Name() {
-	case "EventKind":
-		return "string", "", "eventKinds"
-	case "Route":
-		return "string", "", "routes"
-	case "RouteAction":
-		return "string", "", "routeActions"
-	case "Phase":
-		return "string", "", "phases"
-	case "Activity":
-		return "string", "", "activities"
-	case "AssociationOrigin":
-		return "string", "", "associationOrigins"
-	case "CreationMode":
-		return "string", "", "creationModes"
-	case "DetachReason":
-		return "string", "", "detachReasons"
-	case "ProposalKind":
-		return "string", "", "proposalKinds"
-	case "Outcome":
-		return "string", "", "outcomes"
-	case "TerminalOutcome":
-		return "string", "", "terminalOutcomes"
-	case "StopReason":
-		return "string", "", "stopReasons"
-	case "ErrorCategory":
-		return "string", "", "errorCategories"
-	case "ShellClassification":
-		return "string", "", "shellClassifications"
-	case "GateMode":
-		return "string", "", "gateModes"
-	case "WaiverReasonCode":
-		return "string", "", "waiverReasonCodes"
-	case "DiagnosticRuleCode":
-		return "string", "", "diagnosticRuleCodes"
-	case "BoundedCategory":
-		return "string", "category", ""
-	case "ModelName":
-		return "string", "model", ""
-	case "ToolName":
-		return "string", "tool", ""
-	case "ProtocolVersion":
-		return "object", "", ""
-	case "OriginMetadata":
-		return "origin", "", ""
-	case "DetourReturnMetadata":
-		return "detourReturn", "", ""
-	case "RepairReplacement":
-		return "replacement", "", ""
-	case "RepairProposal":
-		return "proposal", "", ""
-	case "RawMessage":
-		return "payload", "", ""
-	}
-	switch typeOf.Kind() {
-	case reflect.String:
-		switch name {
-		case "action":
-			return "string", "", ""
-		case "timestamp", "createdAt":
-			return "string", "timestamp", ""
-		default:
-			return "string", "identifier", ""
-		}
-	case reflect.Uint16:
-		return "uint16", "", ""
-	case reflect.Uint64:
-		return "uint64", "", ""
-	case reflect.Float64:
-		return "number", "", ""
-	case reflect.Slice:
-		return "array", "", ""
-	case reflect.Struct:
-		return "object", "", ""
-	default:
-		panic("unsupported Go descriptor field " + typeOf.String())
-	}
-}
-
-func slicesContains(values []string, wanted string) bool {
-	for _, value := range values {
-		if value == wanted {
-			return true
-		}
-	}
-	return false
-}
-
-func keySet[V any](values map[string]V) map[string]bool {
-	result := make(map[string]bool, len(values))
-	for value := range values {
-		result[value] = true
-	}
-	return result
-}
-
-func orderedPayloadKinds() []string {
-	var raw struct {
-		Payloads map[string]json.RawMessage `json:"payloads"`
-	}
-	if err := json.Unmarshal(DescriptorBytes(), &raw); err != nil {
-		panic(err)
-	}
-	// JSON object order is not represented by a Go map, so eventKinds remains the
-	// descriptor's explicit ordering authority. This helper checks set parity.
-	result := descriptor.Vocabularies["eventKinds"]
-	if len(raw.Payloads) != len(result) {
-		return nil
-	}
-	for _, kind := range result {
-		if _, ok := raw.Payloads[kind]; !ok {
-			return nil
-		}
-	}
-	return result
-}
-
-func validEvent(kind string, minor uint16) map[string]any {
-	schema := descriptor.Payloads[kind]
-	event := map[string]any{
-		"version":      map[string]any{"major": descriptor.Version.Major, "minor": minor},
-		"eventId":      "event-id",
-		"effortId":     "effort-id",
-		"sessionId":    "session-id",
-		"timestamp":    "2026-07-22T12:34:56.123456789Z",
-		"kind":         kind,
-		"predecessors": []any{},
-		"payload":      validFields(schema.Fields),
-	}
-	if schema.Class == "lifecycle" {
-		event["idempotencyKey"] = "idempotency-key"
-	} else {
-		event["observationId"] = "observation-id"
-	}
-	applyValidConditions(kind, event["payload"].(map[string]any))
-	applyFieldConstants(schema.Constraints, event["payload"].(map[string]any))
-	return event
-}
-
-func validRequest(action string) map[string]any {
-	schema := descriptor.LifecycleRequests[action]
-	request := validFields(schema.Fields)
-	request["action"] = action
-	applyFieldConstants(schema.Constraints, request)
-	if action == "create" {
-		request["creationMode"] = "derived"
-	}
-	if action == "waive" {
-		request["ruleCode"] = "WFV1-PHASE-ORDER"
-		request["reasonCode"] = "approved-route-deviation"
-	}
-	return request
-}
-
-func validFields(fields map[string]fieldDescriptor) map[string]any {
-	result := make(map[string]any, len(fields))
-	for name, field := range fields {
-		result[name] = validField(name, field)
-	}
-	return result
-}
-
-func validField(name string, field fieldDescriptor) any {
-	switch field.Type {
-	case "string":
-		if field.Vocabulary != "" {
-			return descriptor.Vocabularies[field.Vocabulary][0]
-		}
-		switch field.Format {
-		case "timestamp":
-			return "2026-07-22T12:34:56Z"
-		case "checkpoint":
-			return "docs/checkpoint.md"
-		default:
-			return name + "-id"
-		}
-	case "uint16", "uint64", "number":
-		return 0
-	case "array":
-		if field.MinItems > 0 {
-			return []any{"evidence-id"}
-		}
-		return []any{}
-	case "object":
-		return validFields(field.Fields)
-	case "origin":
-		return validFields(descriptor.Objects["OriginMetadata"].Fields)
-	case "detourReturn":
-		return validFields(descriptor.Objects["DetourReturnMetadata"].Fields)
-	case "replacement":
-		return map[string]any{"eventKind": "phase_started", "payload": validFields(descriptor.Payloads["phase_started"].Fields)}
-	case "proposal":
-		return validFields(descriptor.Objects["RepairProposal"].Fields)
-	case "payload":
-		return map[string]any{}
-	default:
-		panic("unsupported test descriptor field type " + field.Type)
-	}
-}
-
-func applyFieldConstants(constraints []constraintDescriptor, value map[string]any) {
-	for _, constraint := range constraints {
-		if constraint.Kind == "field-const" {
-			value[constraint.Field] = constraint.Value
-		}
-	}
-}
-
-func applyValidConditions(kind string, payload map[string]any) {
-	switch kind {
-	case "effort_created":
-		payload["creationMode"] = "derived"
-	case "finding_waived":
-		payload["ruleCode"] = "WFV1-PHASE-ORDER"
-		payload["reasonCode"] = "approved-route-deviation"
-	case "shell_observed":
-		payload["classification"] = "gate"
-	}
-}
-
-func mustJSON(t *testing.T, value any) json.RawMessage {
-	t.Helper()
-	raw, err := json.Marshal(value)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return raw
-}
-
-func cloneMap(t *testing.T, source map[string]any) map[string]any {
-	t.Helper()
-	var clone map[string]any
-	if err := json.Unmarshal(mustJSON(t, source), &clone); err != nil {
-		t.Fatal(err)
-	}
-	return clone
-}
-
-func TestValidationHelperErrorBranches(t *testing.T) {
-	assertError := func(err error) {
-		t.Helper()
-		if err == nil {
-			t.Fatal("expected error")
-		}
-	}
+func TestDescriptorRejectsInvalidEmbeddedData(t *testing.T) {
+	original := descriptorJSON
+	t.Cleanup(func() { descriptorJSON = original })
+	descriptorJSON = []byte(`{"schemaVersion":0,"limits":{}}`)
 	func() {
 		defer func() {
 			if recover() == nil {
-				t.Fatal("malformed descriptor did not panic")
+				t.Fatal("invalid semantic descriptor did not panic")
 			}
 		}()
-		mustParseDescriptor([]byte(`{`))
+		_ = parseDescriptor()
 	}()
-
-	for _, raw := range []json.RawMessage{nil, json.RawMessage(`[]`), json.RawMessage(`{}`), {0xff}} {
-		_, err := ValidateEvent(raw)
-		assertError(err)
-	}
-	badVersion := validEvent("usage_observed", 0)
-	badVersion["version"] = map[string]any{"major": 65536, "minor": 0}
-	_, err := ValidateEvent(mustJSON(t, badVersion))
-	assertError(err)
-
-	_, err = DecodeLifecycleRequest(json.RawMessage(`{}`))
-	assertError(err)
-	_, err = DecodeLifecycleRequest(json.RawMessage(`{"action":1}`))
-	assertError(err)
-
-	assertError(validateField("x", json.RawMessage(`1`), fieldDescriptor{Type: "string"}))
-	assertError(validateField("x", json.RawMessage(`-1`), fieldDescriptor{Type: "uint16"}))
-	assertError(validateField("x", json.RawMessage(`65536`), fieldDescriptor{Type: "uint16"}))
-	minimum := float64(1)
-	assertError(validateField("x", json.RawMessage(`"bad"`), fieldDescriptor{Type: "number"}))
-	assertError(validateField("x", json.RawMessage(`0`), fieldDescriptor{Type: "number", Minimum: &minimum}))
-	assertError(validateField("x", json.RawMessage(`null`), fieldDescriptor{Type: "array"}))
-	assertError(validateField("x", json.RawMessage(`[]`), fieldDescriptor{Type: "array", MinItems: 1}))
-	assertError(validateField("x", json.RawMessage(`["x"]`), fieldDescriptor{Type: "array"}))
-	badItem := fieldDescriptor{Type: "uint64"}
-	assertError(validateField("x", json.RawMessage(`["x"]`), fieldDescriptor{Type: "array", Items: &badItem}))
-	assertError(validateField("x", json.RawMessage(`[]`), fieldDescriptor{Type: "object"}))
-	assertError(validateField("x", json.RawMessage(`[]`), fieldDescriptor{Type: "payload"}))
-	assertError(validateField("x", json.RawMessage(`null`), fieldDescriptor{Type: "origin"}))
-	assertError(validateField("x", json.RawMessage(`null`), fieldDescriptor{Type: "proposal"}))
-	assertError(validateField("x", json.RawMessage(`null`), fieldDescriptor{Type: "replacement"}))
-	assertError(validateField("x", json.RawMessage(`null`), fieldDescriptor{Type: "unknown"}))
-
-	assertError(validateStringFormat("model", strings.Repeat("m", 129), "model"))
-	assertError(validateStringFormat("tool", strings.Repeat("t", 129), "tool"))
-	assertError(validateStringFormat("category", strings.Repeat("c", 129), "category"))
-	assertError(validateStringFormat("checkpoint", strings.Repeat("c", 257), "checkpoint"))
-	assertError(validateStringFormat("checkpoint", "/absolute", "checkpoint"))
-	assertError(validateStringFormat("checkpoint", "../outside", "checkpoint"))
-	assertError(validateStringFormat("x", "value", "unknown"))
-	assertError(func() error { _, err := rawUint(json.RawMessage(`18446744073709551616`), "x"); return err }())
-
-	assertError(validateConstraints("x", map[string]json.RawMessage{}, []constraintDescriptor{{Kind: "unknown"}}))
-	if err := validateConstraints("x", map[string]json.RawMessage{"mode": json.RawMessage(`"other"`)}, []constraintDescriptor{{Kind: "fields-required-when", Discriminator: "mode", Value: "wanted", Fields: []string{"field"}}}); err != nil {
-		t.Fatalf("nonmatching constraint rejected: %v", err)
-	}
-
-	originalOrigin := descriptor.Objects["OriginMetadata"]
-	delete(descriptor.Objects, "OriginMetadata")
-	assertError(validateDescriptorObject("x", json.RawMessage(`{}`), "OriginMetadata"))
-	descriptor.Objects["OriginMetadata"] = originalOrigin
-	originalReplacement := descriptor.Objects["RepairReplacement"]
-	delete(descriptor.Objects, "RepairReplacement")
-	assertError(validateReplacement("x", json.RawMessage(`{}`)))
-	descriptor.Objects["RepairReplacement"] = originalReplacement
-
-	replacement := validField("replacement", fieldDescriptor{Type: "replacement"})
-	replacementMap := replacement.(map[string]any)
-	replacementMap["eventKind"] = 1
-	assertError(validateReplacement("x", mustJSON(t, replacementMap)))
-	replacementMap = validField("replacement", fieldDescriptor{Type: "replacement"}).(map[string]any)
-	replacementMap["payload"] = []any{}
-	assertError(validateReplacement("x", mustJSON(t, replacementMap)))
-	replacementMap = validField("replacement", fieldDescriptor{Type: "replacement"}).(map[string]any)
-	delete(replacementMap["payload"].(map[string]any), "phase")
-	assertError(validateReplacement("x", mustJSON(t, replacementMap)))
-
-	originalRequest := descriptor.LifecycleRequests["complete"]
-	changedRequest := originalRequest
-	changedRequest.GoType = "UnknownLifecycleRequest"
-	descriptor.LifecycleRequests["complete"] = changedRequest
-	_, err = DecodeLifecycleRequest(mustJSON(t, validRequest("complete")))
-	assertError(err)
-	descriptor.LifecycleRequests["complete"] = originalRequest
+	descriptorJSON = []byte(`{`)
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Fatal("invalid JSON descriptor did not panic")
+			}
+		}()
+		_ = ProjectTypeScript()
+	}()
 }
+
+func TestHeaderAndClosedObjectBoundaries(t *testing.T) {
+	h, err := ValidateHeader(testHeaderRaw("session"))
+	if err != nil || h.SessionID != "session" || h.Record != "header" {
+		t.Fatalf("valid header = %#v, %v", h, err)
+	}
+	badHeaders := [][]byte{
+		[]byte("not json"),
+		[]byte(`[]`),
+		[]byte(`{"record":"header","schemaVersion":1,"sessionId":"s","createdAt":"2026-07-27T00:00:00Z","extra":true}`),
+		[]byte(`{"record":"header","schemaVersion":1,"sessionId":"s"}`),
+		[]byte(`{"record":"header","schemaVersion":1,"createdAt":"2026-07-27T00:00:00Z","unknown":true}`),
+		[]byte(`{"record":"header","record":"header","schemaVersion":1,"sessionId":"s","createdAt":"2026-07-27T00:00:00Z"}`),
+		[]byte(`{"record":"header","schemaVersion":"1","sessionId":"s","createdAt":"2026-07-27T00:00:00Z"}`),
+		[]byte(`{"record":"other","schemaVersion":1,"sessionId":"s","createdAt":"2026-07-27T00:00:00Z"}`),
+		[]byte(`{"record":"header","schemaVersion":2,"sessionId":"s","createdAt":"2026-07-27T00:00:00Z"}`),
+		[]byte(`{"record":"header","schemaVersion":1,"sessionId":"../s","createdAt":"2026-07-27T00:00:00Z"}`),
+		[]byte(`{"record":"header","schemaVersion":1,"sessionId":"s","createdAt":"0001-01-01T00:00:00Z"}`),
+	}
+	for _, raw := range badHeaders {
+		if _, err := ValidateHeader(raw); err == nil {
+			t.Errorf("ValidateHeader accepted %q", raw)
+		}
+	}
+	for _, raw := range [][]byte{
+		{0xff},
+		[]byte(`[]`),
+		[]byte(`{"a":1,"a":2}`),
+		[]byte(`{"a":1,"b":2}`),
+		[]byte(`{"a":1} {"a":2}`),
+	} {
+		if _, err := closedObject(raw, []string{"a"}); err == nil {
+			t.Errorf("closedObject accepted %q", raw)
+		}
+	}
+	if got, err := closedObject([]byte(`{"a":1}`), []string{"a"}); err != nil || string(got["a"]) != "1" {
+		t.Fatalf("closedObject valid = %v, %v", got, err)
+	}
+	for _, raw := range [][]byte{
+		[]byte(`{"a":{"b":1,"b":2}}`),
+		[]byte(`{"a":1} {"b":2}`),
+		[]byte(`{"a":`),
+		[]byte(`{"a" 1}`),
+		[]byte(`{"a":1,`),
+		[]byte(`{`),
+		[]byte(`[`),
+		[]byte(`[1`),
+		[]byte(`[{"a":1,"a":2}]`),
+	} {
+		if err := noDuplicateJSON(raw); err == nil {
+			t.Errorf("noDuplicateJSON accepted %q", raw)
+		}
+	}
+	if err := noDuplicateJSON([]byte(`[1,{"a":[2]}]`)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestObservationPayloadKindsAndValidationBoundaries(t *testing.T) {
+	payloads := map[string]string{
+		"usage":      `{"inputTokens":1,"outputTokens":2,"cacheReadTokens":3,"cacheWriteTokens":4,"costUsd":1.5}`,
+		"tool":       `{"tool":"go test","outcome":"success","durationMs":5}`,
+		"gate":       `{"gate":"gate","outcome":"failure","durationMs":6}`,
+		"subagent":   `{"role":"implementation","outcome":"cancelled","queueWaitMs":7,"durationMs":8}`,
+		"compaction": `{"inputTokensBefore":9,"inputTokensAfter":10}`,
+		"handoff":    `{"outcome":"success","durationMs":11}`,
+	}
+	for kind, payload := range payloads {
+		t.Run(kind, func(t *testing.T) {
+			o, err := ValidateObservation(testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", kind, payload))
+			if err != nil || o.Kind != kind {
+				t.Fatalf("%s = %#v, %v", kind, o, err)
+			}
+		})
+	}
+	bad := []struct {
+		name string
+		raw  []byte
+	}{
+		{"non-object", []byte(`[]`)},
+		{"unknown-envelope-field", []byte(`{"record":"observation","schemaVersion":1,"observationId":"123e4567-e89b-42d3-a456-426614174000","timestamp":"2026-07-27T00:00:00Z","kind":"usage","payload":{},"extra":true}`)},
+		{"bad-envelope-types", []byte(`{"record":"observation","schemaVersion":"1","observationId":"123e4567-e89b-42d3-a456-426614174000","timestamp":"2026-07-27T00:00:00Z","kind":"usage","payload":{}}`)},
+		{"bad-record", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "unknown", `{}`)},
+		{"bad-observation-id", testObservationRaw("123E4567-e89b-42d3-a456-426614174000", "2026-07-27T00:00:00Z", "usage", payloads["usage"])},
+		{"bad-timestamp", testObservationRaw(testObservationID, "not-a-time", "usage", payloads["usage"])},
+		{"unknown-kind", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "other", `{}`)},
+		{"usage-closed", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "usage", `{"inputTokens":1}`)},
+		{"usage-integer", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "usage", `{"inputTokens":-1,"outputTokens":2,"cacheReadTokens":3,"cacheWriteTokens":4,"costUsd":0}`)},
+		{"usage-non-integer", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "usage", `{"inputTokens":"one","outputTokens":2,"cacheReadTokens":3,"cacheWriteTokens":4,"costUsd":0}`)},
+		{"usage-cost", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "usage", `{"inputTokens":1,"outputTokens":2,"cacheReadTokens":3,"cacheWriteTokens":4,"costUsd":"free"}`)},
+		{"tool-category", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "tool", `{"tool":"","outcome":"success","durationMs":1}`)},
+		{"tool-outcome", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "tool", `{"tool":"go","outcome":"other","durationMs":1}`)},
+		{"tool-duration", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "tool", `{"tool":"go","outcome":"success","durationMs":1.5}`)},
+		{"gate-category", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "gate", `{"gate":"","outcome":"success","durationMs":1}`)},
+		{"subagent-role", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "subagent", `{"role":"other","outcome":"success","queueWaitMs":1,"durationMs":1}`)},
+		{"subagent-outcome", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "subagent", `{"role":"grounding","outcome":"other","queueWaitMs":1,"durationMs":1}`)},
+		{"subagent-integer", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "subagent", `{"role":"grounding","outcome":"success","queueWaitMs":9007199254740992,"durationMs":1}`)},
+		{"compaction-integer", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "compaction", `{"inputTokensBefore":1,"inputTokensAfter":-1}`)},
+		{"handoff-outcome", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "handoff", `{"outcome":"other","durationMs":1}`)},
+		{"handoff-duration", testObservationRaw(testObservationID, "2026-07-27T00:00:00Z", "handoff", `{"outcome":"success","durationMs":-1}`)},
+	}
+	for _, tc := range bad {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := ValidateObservation(tc.raw); err == nil {
+				t.Fatalf("ValidateObservation accepted %s", tc.raw)
+			}
+		})
+	}
+}
+
+// invariant: tooling/init-and-enablement:init-hooks-default-on

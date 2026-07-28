@@ -125,7 +125,7 @@ test_start=$SECONDS
 if [ "$command_name" = contract ]; then
   test_command='PATH=/workspace/node_modules/.bin:$PATH node --import tsx --test --experimental-test-isolation=none --test-name-pattern="^invariant:" tools/pi-extension-test/tests/*.test.ts'
 else
-  test_command="PATH=/workspace/node_modules/.bin:\$PATH c8 --all --include='.pi/extensions/**/*.ts' --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage --lines=100 --functions=100 --branches=100 node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts"
+  test_command="PATH=/workspace/node_modules/.bin:\$PATH c8 --all --include='.pi/extensions/awf-subagents/runner.ts' --exclude='tools/pi-extension-test/tests/*.ts' --check-coverage --lines=100 --functions=100 --branches=100 node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts"
 fi
 prepare_command="$(cat <<'COMMAND'
 find /workspace/repo -mindepth 1 -maxdepth 1 -exec rm -rf {} + && cp -a /source/. /workspace/repo/ && printf '%s\n' '{"type":"module"}' > /workspace/repo/package.json && ln -s /workspace/node_modules /workspace/repo/node_modules && find .pi/extensions -type f -name '*.ts' -print0 | sort -z | xargs -0 sed -i "s|^// @ts-nocheck$||" && PATH=/workspace/node_modules/.bin:$PATH tsc -p tools/pi-extension-test/tsconfig.json

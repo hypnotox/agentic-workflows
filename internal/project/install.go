@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -96,48 +97,52 @@ func copyFile(src, dst string) error {
 
 type UninstallReport struct {
 	Removed          int
-	MetricsPreserved bool
+	PreservedRoots   []string
+	MetricsPreserved bool // compatibility summary for callers; roots are authoritative.
 }
 
-// inspectResidentMetrics inspects only the direct children of the dynamic
-// telemetry root. It never follows a metrics-root symlink, and any child other
-// than the governed ignore file counts as resident data regardless of its type.
-var lstatResidentMetrics = os.Lstat
+var residentRootNames = []string{"efforts", "assignments", "memory", "worktrees", "metrics"}
 
-func inspectResidentMetrics(root string) (bool, error) {
-	metricsRoot := filepath.Join(root, config.DirName, "metrics")
-	info, err := lstatResidentMetrics(metricsRoot)
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("inspect resident workflow metrics: %w", err)
-	}
-	if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() {
-		return false, fmt.Errorf("unsafe resident workflow metrics root %s", filepath.Join(config.DirName, "metrics"))
-	}
-	entries, err := os.ReadDir(metricsRoot)
-	if err != nil {
-		return false, fmt.Errorf("inspect resident workflow metrics: %w", err)
-	}
-	for _, entry := range entries {
-		if entry.Name() != ".gitignore" {
-			return true, nil
+// inspectResidentRoots examines direct children only. It never traverses a
+// dynamic resident tree; a descendant other than the managed .gitignore keeps
+// its root intact.
+func inspectResidentRoots(root string) ([]string, error) {
+	preserved := []string{}
+	for _, name := range residentRootNames {
+		path := filepath.Join(root, config.DirName, name)
+		info, err := os.Lstat(path)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
 		}
-		info, err := entry.Info()
-		if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
-			return false, errors.New("unsafe resident workflow metrics ignore file")
+		if err != nil { // coverage-ignore: root discovery's lstat error needs an external filesystem fault; unsafe and non-empty roots are covered
+			return nil, fmt.Errorf("inspect resident root %s: %w", name, err)
+		}
+		if info.Mode()&os.ModeSymlink != 0 || !info.IsDir() { // coverage-ignore: resident-root tests exercise unsafe filesystem entries through the public uninstall path
+			return nil, fmt.Errorf("unsafe resident root %s", name)
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return nil, err
+		}
+		for _, entry := range entries {
+			if entry.Name() != ".gitignore" {
+				preserved = append(preserved, name)
+				break
+			}
 		}
 	}
-	return false, nil
+	slices.Sort(preserved)
+	return preserved, nil
 }
-
-func preserveMetricsRemoval(path string, resident bool) bool {
+func preserveResidentRemoval(path string, preserved []string) bool {
 	path = filepath.ToSlash(filepath.Clean(path))
-	if !isMetricsResidentPath(path) {
-		return false
+	for _, name := range preserved {
+		root := config.DirName + "/" + name
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
 	}
-	return path != config.DirName+"/metrics/.gitignore" || resident
+	return false
 }
 
 // Uninstall removes awf's generated footprint while preserving dynamic resident
@@ -152,16 +157,16 @@ func Uninstall(root string) (UninstallReport, error) {
 	if !found {
 		return UninstallReport{}, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
-	resident, err := inspectResidentMetrics(root)
+	preserved, err := inspectResidentRoots(root)
 	if err != nil {
 		return UninstallReport{}, err
 	}
-	report := UninstallReport{MetricsPreserved: resident}
+	report := UninstallReport{PreservedRoots: preserved, MetricsPreserved: slices.Contains(preserved, "metrics")}
 	dirs := map[string]bool{}
 	for path := range lock.Files {
 		// A non-local entry (corrupted or malicious lock) would delete outside
 		// the root. Runtime-shaped metrics entries are corrupt and never removed.
-		if !filepath.IsLocal(filepath.FromSlash(path)) || preserveMetricsRemoval(path, resident) {
+		if !filepath.IsLocal(filepath.FromSlash(path)) || preserveResidentRemoval(path, preserved) {
 			continue
 		}
 		abs := filepath.Join(root, path)
@@ -169,9 +174,6 @@ func Uninstall(root string) (UninstallReport, error) {
 			report.Removed++
 		}
 		for d := filepath.Dir(abs); d != root; d = filepath.Dir(d) {
-			if resident && d == filepath.Join(root, config.DirName, "metrics") { // coverage-ignore: resident metrics paths are rejected by preserveMetricsRemoval before this ancestor walk
-				break
-			}
 			dirs[d] = true
 		}
 	}

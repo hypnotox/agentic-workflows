@@ -30,7 +30,7 @@ func TestSnapshotAuthorityRejectsSymlinkConfigAndLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := loadTreeCurrentState(".", configTree, adr.FormatBoundaries{}, nil); err == nil {
+	if _, _, err := loadTreeCurrentState(".", configTree, nil, adr.FormatBoundaries{}, nil); err == nil {
 		t.Fatal("symlink config accepted")
 	}
 	if _, err := nextADRIdentityFromTree(configTree); err == nil {

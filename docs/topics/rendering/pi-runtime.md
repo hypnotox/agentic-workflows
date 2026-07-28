@@ -24,9 +24,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling the Pi target renders exactly five governed extension files with valid TypeScript provenance comments and target-sensitive config hashes: two under awf-subagents, the separate awf-handoff entrypoint, and the awf-telemetry index plus its descriptor-derived protocol projection. The protocol output declares and hashes the Go-owned descriptor as an attributed input, only the telemetry index consumes widget configuration, a target set without Pi renders none, and every output participates in ordinary check, sync, and manifest-cleanup semantics.
+Enabling Pi renders exactly five governed extension files with provenance: two subagent files, handoff, telemetry index, and descriptor-derived protocol. The telemetry descriptor is attributed input, resident configuration has no widget projection, and all files follow normal render and cleanup semantics.
 Origin: ADR-0148
-Revised-by: ADR-0162
+Revised-by: ADR-0162, ADR-0164
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -44,8 +44,8 @@ Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-The containerized pinned Pi 0.81.1 fixtures are the deterministic gate for every Pi extension, including protocol TypeScript parity, generated ownership, adoption into every legal mapping, start, transition, continuation, nested detour completion and abandonment return at every fault boundary, pending-return retention exclusion, local badge updates after successful explicit actions, public usage accounting, and the absence of canonical reads, query tools, overlays, and dashboard maintenance. Release readiness additionally requires subagent, router, structured replacement, handoff, and telemetry smoke runs on the exact compatible fork for Pi 0.81.1 or a later build verified to expose the required queued-command, persisted-session, custom-entry, widget, and shutdown APIs. The manual smoke covers router-enforced phase transitions and recovery, explicit effort resume through session replacement, memory-identity association across a parent handoff, local telemetry widget behavior, durable lifecycle writes, and shutdown drain.
+Pinned Pi runtime smoke covers generated TypeScript loading, optional effort selection, passive workflow routing, optional-selection handoff, and direct schema-1 session writer behavior. It verifies the old lifecycle and projector surface is absent.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164
 Backing: unbacked
-Verify: Before a release, follow the documented real-Pi smoke on `hypnotox/pi` `fork-v0.81.1-awf.3` for Pi 0.81.1, or on a later compatible build: load `brainstorming` through `awf_workflow`, load its routed successor and verify one transactional phase transition, cancel then retry `/awf-resume-effort <effort-id>` and verify association in the replacement, create a memory file with the same `Effort: <id>`, cross one parent handoff and verify association before kickoff, interrupt and retry one provisional or transition settlement to verify idempotent recovery, fork and resume a trajectory, verify the local widget updates after a successful explicit action using public usage and context data, durably complete the lifecycle, and verify shutdown drain and retained history; record every command, observed state, and compatibility finding in the release work.
+Verify: Run `./x pi-test run` before release and exercise `/awf-effort`, `awf_workflow`, a no-selection handoff, and one locked direct session write.

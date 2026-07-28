@@ -344,52 +344,6 @@ func testInitFirstADRChecksClean(t *testing.T) {
 	}
 }
 
-func TestRunUpgradeAddsExploringAtSchemaThirteen(t *testing.T) {
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [debugging]\nagents: []\n")
-	lock := &manifest.Lock{AWFVersion: "0.17.0", SchemaVersion: 12, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
-	if err := lock.Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
-	}
-
-	var out bytes.Buffer
-	if err := runUpgrade(root, &out); err != nil {
-		t.Fatalf("runUpgrade: %v", err)
-	}
-	for _, want := range []string{
-		`close-enabled-set: enabled skill "exploring" (required by "debugging")`,
-		"awf upgrade: applied exploring-skill-closure",
-	} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("upgrade output missing %q:\n%s", want, out.String())
-		}
-	}
-	upgradedLock, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if upgradedLock.SchemaVersion != 19 {
-		t.Errorf("lock schema = %d, want 19", upgradedLock.SchemaVersion)
-	}
-	cfg, err := config.Load(config.RootDir(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, skill := range cfg.Skills {
-		if skill == "exploring" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("upgraded skills missing exploring: %v", cfg.Skills)
-	}
-	if err := runCheck(root, false, io.Discard); err != nil {
-		t.Errorf("post-upgrade check: %v", err)
-	}
-}
-
 func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	root := scaffoldProject(t)
 	// Disable the only skill; the re-sync prunes its rendered file and says so.

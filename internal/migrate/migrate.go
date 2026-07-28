@@ -51,6 +51,7 @@ var registry = []Migration{
 	{To: 17, Name: "workflow-telemetry", Apply: applyWorkflowTelemetry},
 	{To: 18, Name: "enable-runner", Apply: applyEnableRunner},
 	{To: 19, Name: "rename-retired-commands", Apply: applyRenameRetiredCommands},
+	{To: 20, Name: "drop-workflow-telemetry", Apply: applyDropWorkflowTelemetry},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -77,6 +78,31 @@ func applyCurrentStateTopicSubstrate(root string, w io.Writer) error {
 
 // Current is the current schema generation (the highest registered To).
 func Current() int { return registry[len(registry)-1].To }
+
+// ConfigForCurrentSchema applies the config-byte portions of registered
+// migrations after from through the current generation. Snapshot consumers use
+// it to compare a historical committed config with a current staged config
+// without relaxing the current strict parser. Migrations that do not mutate
+// config.yaml have no byte-level action here.
+func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
+	if from > Current() {
+		return nil, fmt.Errorf("config schema generation %d is ahead of current %d", from, Current())
+	}
+	out := src
+	for _, migration := range registry {
+		if migration.To <= from {
+			continue
+		}
+		if migration.To == 20 {
+			var err error
+			out, err = config.RemoveKey(out, "workflowTelemetry")
+			if err != nil {
+				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+			}
+		}
+	}
+	return out, nil
+}
 
 // Generation reports the project's schema generation. Detection is by layout:
 // a .awf/ tree reports its lock's SchemaVersion (or Current() when no lock yet -

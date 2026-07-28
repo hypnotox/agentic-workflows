@@ -245,49 +245,24 @@ Manage the fixed-path, fixed-branch worktree for one effort.
 		},
 	},
 	{
-		Name: "metrics", Summary: "Query, export, and maintain workflow telemetry",
-		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"},
-		MinPos: 0, MaxPos: 0, Gating: Gated,
-		HelpBody: `Usage: awf metrics --effort ID [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
+		Name: "metrics", Summary: "Query independent session telemetry",
+		BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--since", "--until"}, MinPos: 0, MaxPos: 0, Gating: Gated,
+		HelpBody: `Usage: awf metrics [--effort ID] [--session ID] [--since RFC3339] [--until RFC3339] [--json]
 
-Print canonical metrics for exactly one resident compatible effort. Selectors
-combine with logical AND; since is inclusive and until is exclusive.
+Report current assigned session telemetry and read-only legacy telemetry. Selectors combine with logical AND; since is inclusive and until is exclusive.
 `,
 		Children: []Command{
-			{Name: "doctor", Summary: "Diagnose one workflow effort without blocking", BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until"}, MinPos: 0, MaxPos: 0,
-				HelpBody: `Usage: awf metrics doctor --effort ID [--session ID] [--phase PHASE] [--since RFC3339] [--until RFC3339] [--json]
+			{Name: "doctor", Summary: "Report deterministic stream integrity", BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort", "--session", "--since", "--until"}, MinPos: 0, MaxPos: 0, HelpBody: `Usage: awf metrics doctor [--effort ID] [--session ID] [--since RFC3339] [--until RFC3339] [--json]
 
-Report exact and configured heuristic findings for exactly one resident compatible effort.
+Report stream, path, header, version, and duplicate integrity findings.
 `},
-			{Name: "list", Summary: "List resident workflow efforts", BoolFlags: []string{"--json"}, ValueFlags: []string{"--limit", "--cursor"}, MinPos: 0, MaxPos: 0,
-				HelpBody: `Usage: awf metrics list [--limit N] [--cursor TOKEN] [--json]
+			{Name: "list", Summary: "List effort records with assigned sessions", BoolFlags: []string{"--json"}, MinPos: 0, MaxPos: 0, HelpBody: `Usage: awf metrics list [--json]
 
-List resident efforts newest first. Limit defaults to 10 and is at most 100.
+List current effort records without changing resident telemetry.
 `},
-			{Name: "export", Summary: "Export canonical metrics or normalized events", ValueFlags: []string{"--effort", "--session", "--phase", "--since", "--until", "--format"}, MinPos: 0, MaxPos: 0,
-				HelpBody: `Usage: awf metrics export [selectors] --format <json|jsonl>
+			{Name: "export", Summary: "Export session and legacy telemetry", ValueFlags: []string{"--effort", "--session", "--since", "--until", "--format"}, MinPos: 0, MaxPos: 0, HelpBody: `Usage: awf metrics export [selectors] --format <json|jsonl>
 
-Export the canonical metrics result as JSON or validated normalized events as JSONL.
-`},
-			{Name: "protocol", Summary: "Print the telemetry protocol handshake", BoolFlags: []string{"--json"}, MaxPos: 0,
-				HelpBody: `Usage: awf metrics protocol --json
-
-Print the machine-readable telemetry protocol handshake. --json is required.
-`},
-			{Name: "lifecycle", Summary: "Durably record one lifecycle request", BoolFlags: []string{"--json"}, ValueFlags: []string{"--request"}, MaxPos: 0,
-				HelpBody: `Usage: awf metrics lifecycle --request <FILE|-> [--json]
-
-Validate and durably record exactly one lifecycle request from a file or stdin.
-`},
-			{Name: "retain", Summary: "Apply configured telemetry retention", BoolFlags: []string{"--dry-run", "--json"}, MaxPos: 0,
-				HelpBody: `Usage: awf metrics retain [--dry-run] [--json]
-
-Recover interrupted maintenance and apply configured deterministic retention.
-`},
-			{Name: "purge", Summary: "Explicitly purge one terminal effort", BoolFlags: []string{"--confirm", "--json"}, ValueFlags: []string{"--effort"}, MaxPos: 0,
-				HelpBody: `Usage: awf metrics purge --effort <ID> --confirm [--json]
-
-Recursively purge one named terminal effort only after explicit confirmation.
+Export an aggregate JSON report or normalized read-only records.
 `},
 		},
 	},

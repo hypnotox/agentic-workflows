@@ -173,29 +173,23 @@ func TestLookup(t *testing.T) {
 		}
 	}
 	metrics, ok := Lookup("metrics")
-	if !ok || strings.Join(metrics.BoolFlags, ",") != "--json" || strings.Join(metrics.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
+	if !ok || strings.Join(metrics.ValueFlags, ",") != "--effort,--session,--since,--until" {
 		t.Fatalf("metrics query spec = %#v, found %v", metrics, ok)
 	}
 	export, ok := metrics.Child("export")
-	if !ok || strings.Join(export.ValueFlags, ",") != "--effort,--session,--phase,--since,--until,--format" {
+	if !ok || strings.Join(export.ValueFlags, ",") != "--effort,--session,--since,--until,--format" {
 		t.Fatalf("metrics export spec = %#v, found %v", export, ok)
 	}
 	for _, name := range []string{"protocol", "lifecycle", "retain", "purge"} {
-		child, found := metrics.Child(name)
-		if !found {
-			t.Fatalf("metrics maintenance child %q missing", name)
-		}
-		for _, flag := range []string{"--session", "--phase", "--since", "--until"} {
-			if strings.Contains(strings.Join(append(child.BoolFlags, child.ValueFlags...), ","), flag) {
-				t.Errorf("metrics %s admits selector %s", name, flag)
-			}
+		if _, found := metrics.Child(name); found {
+			t.Errorf("retired metrics child %q remains", name)
 		}
 	}
 	if _, ok := Lookup("doctor"); ok {
 		t.Fatal("top-level doctor must be retired")
 	}
 	doctor, ok := metrics.Child("doctor")
-	if !ok || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--phase,--since,--until" {
+	if !ok || strings.Join(doctor.ValueFlags, ",") != "--effort,--session,--since,--until" {
 		t.Fatalf("metrics doctor spec = %#v, found %v", doctor, ok)
 	}
 }

@@ -2,17 +2,8 @@
 # Glossary
 
 <!-- awf:edit prepend: from .awf/docs/parts/glossary/prepend.md -->
-Project jargon and what each term means; start here when a term is unfamiliar. Sorted by term.
-
-- **Anchor claim:** The ability of a ledger event to be the target of a payload anchor reference. Owned exclusively by `trajectory_closed` events keyed on `payload.anchorId`, declared in the protocol descriptor's required `anchorClaimKinds` vocabulary; references resolve causally forward only, and ambiguity within the claiming set is an `ambiguous-anchor` violation. The envelope `piAnchorId` is observation-location metadata, never a claim.
-- **Applicability evidence:** Separate owning-domain and topic selectors plus the rule that both must match. Context's selectors facet shows declarations without paths; concrete matched paths and marker sites live in `awf topic <id> --coverage`.
-- **Artifact role:** One closed attribution kind assigned from loaded project authorities. Context shows compact role and identity by default; the artifacts facet adds sorted source, output, and navigation edges.
-- **Context facet:** One bounded optional detail lens selected by repeatable `--show`: `all-rules`, `evidence`, `selectors`, `references`, `pending`, or `artifacts`. `--full` is their canonical union and never changes grouping.
-- **Context group:** The included descendants of one directory request that share the complete classification, provenance, domain, topic, direct-rule, invariant/proof, and warning identity. It always carries a count, lists all members through three, and discloses none above three.
-- **Context impact report:** The request-oriented human-only `awf context` result: exact files and Git selections remain individual, directories carry censuses and groups, and authority is globally deduplicated into closest relevance categories with bounded summaries.
-- **Primary classification:** Exactly one precedence-ordered context status for an observed path, such as covered, generated output, symlink, or not found.
-- **Request path:** One original nonblank positional token retained in input order and display spelling; normalized lookup is separate and does not deduplicate repeated requests.
-- **Spill notice:** The exact two-line `AWF_CONTEXT_SPILL_V1` delivery descriptor emitted when a complete context rendering exceeds 8,192 bytes. It carries decimal byte count, closed text format, and a canonical external temporary path whose successful caller owns and deletes.
+- **Effort:** Binary-owned local coordination record with optional memory and managed worktree.
+- **Session stream:** Privacy-minimal append-only schema-1 observations keyed by Pi session and joined to the current assignment only when reported.
 
 
 | Term | Meaning |

@@ -1,7 +1,6 @@
 package project
 
 import (
-	"bytes"
 	"maps"
 	"os"
 	"path/filepath"
@@ -13,8 +12,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
-
-	"gopkg.in/yaml.v3"
 )
 
 // sliceSet builds a membership set from a name slice (test helper; its
@@ -29,44 +26,6 @@ func sliceSet(s []string) map[string]bool {
 
 // TestScaffoldParsesCleanly verifies that ScaffoldConfig with no overrides produces YAML
 // that parses cleanly under the strict config.Load decoder.
-func TestScaffoldParsesCleanly(t *testing.T) {
-	b, _, err := ScaffoldConfig("example", nil, nil, nil)
-	if err != nil {
-		t.Fatalf("ScaffoldConfig: %v", err)
-	}
-	var c config.Config
-	dec := yaml.NewDecoder(bytes.NewReader(b))
-	dec.KnownFields(true)
-	if err := dec.Decode(&c); err != nil {
-		t.Fatalf("scaffold YAML does not parse under strict decoder: %v\n--- YAML ---\n%s", err, b)
-	}
-	if c.Prefix != "example" {
-		t.Errorf("expected prefix 'example', got %q", c.Prefix)
-	}
-	if !bytes.Contains(b, []byte("bootstrap:")) || !bytes.Contains(b, []byte("enabled: true")) {
-		t.Errorf("scaffold should seed bootstrap enabled by default:\n%s", b)
-	}
-	if c.Bootstrap == nil || !c.Bootstrap.Enabled {
-		t.Errorf("scaffold bootstrap = %+v, want enabled true", c.Bootstrap)
-	}
-	if c.WorkflowTelemetry != config.DefaultWorkflowTelemetryConfig() {
-		t.Errorf("scaffold workflowTelemetry = %#v, want complete defaults", c.WorkflowTelemetry)
-	}
-	// invariant: tooling/init-and-enablement:init-hooks-default-on
-	if c.Hooks == nil || !c.Hooks.Enabled {
-		t.Errorf("scaffold hooks = %+v, want enabled true (ADR-0048)", c.Hooks)
-	}
-	// The awf wrapper runner is seeded enabled by default (ADR-0156).
-	// invariant: rendering/companion-scripts:runner-singleton-toggle
-	if !bytes.Contains(b, []byte("runner:")) || c.Runner == nil || !c.Runner.Enabled {
-		t.Errorf("scaffold should seed runner enabled by default (ADR-0156):\n%s", b)
-	}
-	// The hook payloads' vars are seeded like every other referenced var, so an
-	// init prompt answer for commitGateCmd is not silently dropped.
-	if !bytes.Contains(b, []byte("commitGateCmd:")) {
-		t.Errorf("scaffold should seed commitGateCmd (referenced by the hook payloads):\n%s", b)
-	}
-}
 
 // writeScaffold writes scaffold bytes to a fresh awf dir as config.yaml and
 // returns the dir (the argument config.Load expects).

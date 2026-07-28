@@ -2,57 +2,42 @@ package telemetry
 
 import (
 	"encoding/json"
-	"fmt"
 	"sort"
 )
 
-// SelectNormalizedEvents returns selected, validated events in canonical
-// effort/session/stream-sequence order. Corrupt raw records are never returned.
-func SelectNormalizedEvents(reads []EffortRead, selector Selector) ([]json.RawMessage, error) {
-	if err := ValidateSelector(selector); err != nil {
+func Export(reads ReadSet, s Selector) ([][]byte, error) {
+	if err := ValidateSelector(s); err != nil {
 		return nil, err
 	}
-	ordered := append([]EffortRead(nil), reads...)
-	sort.Slice(ordered, func(i, j int) bool { return ordered[i].Metadata.EffortID < ordered[j].Metadata.EffortID })
-	result := []json.RawMessage{}
-	for _, read := range ordered {
-		if issue, fatal := fatalExportIntegrity(read.Integrity); fatal {
-			return nil, fmt.Errorf("cannot export effort %s: ledger integrity %s in %s", read.Metadata.EffortID, issue.Code, issue.Scope)
+	out := [][]byte{}
+	sessions := append([]SessionRead(nil), reads.Sessions...)
+	sort.Slice(sessions, func(i, j int) bool { return sessions[i].SessionID < sessions[j].SessionID })
+	for _, session := range sessions {
+		if s.SessionID != nil && *s.SessionID != session.SessionID {
+			continue
 		}
-		_, selected, err := selectEffortEvents(read, selector)
-		if err != nil { // coverage-ignore: the selector was validated above
-			return nil, err
+		if s.EffortID != nil && reads.Assignments[session.SessionID] != *s.EffortID {
+			continue
 		}
-		records := append([]LedgerRecord(nil), read.Records...)
-		sort.SliceStable(records, func(i, j int) bool {
-			if records[i].SessionID != records[j].SessionID {
-				return records[i].SessionID < records[j].SessionID
-			}
-			return records[i].Line < records[j].Line
-		})
-		seen := map[string]bool{}
-		for _, record := range records {
-			if record.Event == nil || !selected[record.Event.EventID] || seen[record.Event.EventID] {
-				continue
-			}
-			normalized := eventToRaw(*record.Event)
-			validated, validateErr := ValidateEvent(normalized)
-			if validateErr != nil { // coverage-ignore: reader records retain only descriptor-valid events
-				return nil, fmt.Errorf("normalize event %s: %w", record.Event.EventID, validateErr)
-			}
-			result = append(result, eventToRaw(validated))
-			seen[record.Event.EventID] = true
+		for _, raw := range session.Records {
+			out = append(out, wrap("session-v1", raw))
 		}
 	}
-	return result, nil
-}
-
-func fatalExportIntegrity(issues []IntegrityIssue) (IntegrityIssue, bool) {
-	for _, issue := range issues {
-		switch issue.Code {
-		case "malformed-complete-line", "unsupported-protocol", "conflicting-duplicate", "unsafe-stream-entry", "unsafe-stream-identifier", "unsafe-stream-path", "stream-identity-mismatch", "misplaced-creation-event", "creation-metadata-mismatch", "duplicate-creation-event", "missing-or-duplicate-creation-event":
-			return issue, true
+	legacy := append([]LegacyEffortRead(nil), reads.Legacy...)
+	sort.Slice(legacy, func(i, j int) bool { return legacy[i].EffortID < legacy[j].EffortID })
+	for _, read := range legacy {
+		if s.EffortID != nil && *s.EffortID != read.EffortID {
+			continue
+		}
+		for _, raw := range read.Records {
+			out = append(out, wrap("legacy-protocol-2", raw))
 		}
 	}
-	return IntegrityIssue{}, false
+	return out, nil
 }
+func wrap(source string, raw json.RawMessage) []byte {
+	var v any
+	_ = json.Unmarshal(raw, &v)
+	return mustJSON(map[string]any{"source": source, "record": v})
+}
+func mustJSON(v any) []byte { b, _ := json.Marshal(v); return b }

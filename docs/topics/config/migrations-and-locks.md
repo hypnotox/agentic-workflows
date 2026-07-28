@@ -111,6 +111,7 @@ Backing: test
 
 ### `invariant: workflow-telemetry-config-migration`
 
-Schema generation 17 materializes every missing workflowTelemetry default through an idempotent YAML-node edit, preserves explicit leaves and unrelated configuration, and pairs the generation with minimum awf version 0.22.0.
+Schema generation 17 materializes the historical workflowTelemetry defaults, generations 18 and 19 remain historical upgrades, and generation 20 removes exactly the root workflowTelemetry block through a YAML-node edit while preserving unrelated configuration and advancing the ordinary lock and binary-version authority.
 Origin: ADR-0146
+Revised-by: ADR-0164
 Backing: test

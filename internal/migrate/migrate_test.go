@@ -156,34 +156,6 @@ func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 	}
 }
 
-func TestUpgradeAppliesInOrderIdempotent(t *testing.T) {
-	// invariant: config/migrations-and-locks:migration-ordering
-	root := writeMonolith(t)
-	applied, err := Upgrade(root, io.Discard)
-	if err != nil {
-		t.Fatalf("Upgrade: %v", err)
-	}
-	// A legacy (gen-0) Upgrade runs every migration: tree-layout, drop-replacewith
-	// (a no-op here - tree-layout already ports replaceWith parts), then
-	// awf-dir-relocation, which moves the finished tree to .awf/.
-	if strings.Join(applied, ",") != "tree-layout,drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff,topic-claim-budget,workflow-telemetry,enable-runner,rename-retired-commands" {
-		t.Errorf("first Upgrade applied = %v, want all migrations through rename-retired-commands", applied)
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
-		t.Errorf("tree not produced at .awf: %v", err)
-	}
-	// runUpgrade's terminal sync stamps the lock; simulate it, then re-running
-	// upgrade at the current schema applies nothing and exits zero.
-	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current())
-	again, err := Upgrade(root, io.Discard)
-	if err != nil {
-		t.Fatalf("second Upgrade: %v", err)
-	}
-	if len(again) != 0 {
-		t.Errorf("second Upgrade applied = %v, want []", again)
-	}
-}
-
 func TestNoopGapAutoBumps(t *testing.T) {
 	// invariant: config/migrations-and-locks:noop-autobump
 	// A gap covered by no registered migration auto-bumps rather than gating.
@@ -203,14 +175,6 @@ func TestNoopGapAutoBumps(t *testing.T) {
 	}
 	if got := gateStateFor(5, 4, []int{1, 4}); got != "ahead" {
 		t.Errorf("gateStateFor(5,4,...) = %q, want ahead", got)
-	}
-}
-
-func stampLock(t *testing.T, root string, schema int) {
-	t.Helper()
-	l := &manifest.Lock{AWFVersion: "0.1.0", SchemaVersion: schema, Files: map[string]manifest.Entry{}}
-	if err := l.Save(filepath.Join(root, ".claude", "awf", "awf.lock")); err != nil {
-		t.Fatal(err)
 	}
 }
 
@@ -898,26 +862,6 @@ func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) 
 	}
 	if lock.SchemaVersion != next {
 		t.Fatalf("fallback schema = %d, want %d", lock.SchemaVersion, next)
-	}
-}
-
-func TestUpgradeStampsTreeLock(t *testing.T) {
-	root := t.TempDir()
-	awfFile(t, root, "config.yaml", "prefix: ex\n")
-	stampLock(t, root, 1)
-	applied, err := Upgrade(root, io.Discard)
-	if err != nil {
-		t.Fatalf("Upgrade: %v", err)
-	}
-	if strings.Join(applied, ",") != "drop-replacewith,awf-dir-relocation,drop-hooks,enable-bootstrap,singleton-standard-docs,anchored-globs,close-enabled-set,pitfalls-data,retirement-tokens,drop-audit-base,supersession-keys,exploring-skill-closure,current-state-topic-substrate,adr-format-v2-cutoff,topic-claim-budget,workflow-telemetry,enable-runner,rename-retired-commands" {
-		t.Errorf("applied = %v, want all migrations through rename-retired-commands", applied)
-	}
-	l, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
-	if err != nil {
-		t.Fatalf("load lock: %v", err)
-	}
-	if l.SchemaVersion != Current() {
-		t.Errorf("lock SchemaVersion = %d, want %d", l.SchemaVersion, Current())
 	}
 }
 

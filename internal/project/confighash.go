@@ -55,12 +55,9 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		vs[r] = p.Cfg.Vars[r]
 	}
 	proj["vars"] = vs
-	if strings.Contains(assembled, ".telemetryWidgetEnabled") || strings.Contains(assembled, ".telemetryWidgetShowCost") {
-		proj["workflowTelemetry.widget"] = p.Cfg.WorkflowTelemetry.Widget
-	}
 	if strings.Contains(assembled, ".workflowSkills") {
 		names, err := p.routedWorkflowNames()
-		if err != nil {
+		if err != nil { // coverage-ignore: config hashing follows Project.Open's sidecar validation
 			return "", err
 		}
 		mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)

@@ -1,193 +1,24 @@
 package telemetry
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 )
 
-// ParseSelectorTime accepts the canonical CLI timestamp forms.
-func ParseSelectorTime(value string) (time.Time, error) {
-	parsed, err := time.Parse(time.RFC3339Nano, value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("timestamp must be RFC3339: %w", err)
+func ParseSelectorTime(value string) (time.Time, error) { return time.Parse(time.RFC3339Nano, value) }
+func ValidateSelector(s Selector) error {
+	if s.EffortID != nil && !Identifier(*s.EffortID) {
+		return fmt.Errorf("invalid effort id %q", *s.EffortID)
 	}
-	return parsed, nil
-}
-
-// ValidateSelector validates closed values and the inclusive/exclusive window.
-func ValidateSelector(selector Selector) error {
-	if selector.EffortID != nil {
-		if err := validatePathIdentifier("effortId", *selector.EffortID); err != nil {
-			return err
-		}
+	if s.SessionID != nil && !Identifier(*s.SessionID) {
+		return fmt.Errorf("invalid session id %q", *s.SessionID)
 	}
-	if selector.SessionID != nil {
-		if err := validatePathIdentifier("sessionId", *selector.SessionID); err != nil {
-			return err
-		}
-	}
-	if selector.Phase != nil {
-		if *selector.Phase == "" || !descriptorContains(descriptor.Vocabularies["phases"], *selector.Phase) {
-			return fmt.Errorf("unknown telemetry phase %q", *selector.Phase)
-		}
-	}
-	if selector.Since != nil && selector.Until != nil && !selector.Since.Before(*selector.Until) {
+	if s.Since != nil && s.Until != nil && !s.Since.Before(*s.Until) {
 		return errors.New("selector since must be before until")
 	}
 	return nil
 }
-
-func descriptorContains(values []string, value string) bool {
-	for _, candidate := range values {
-		if candidate == value {
-			return true
-		}
-	}
-	return false
-}
-
-func selectEffortEvents(read EffortRead, selector Selector) ([]EventEnvelope, map[string]bool, error) {
-	if err := ValidateSelector(selector); err != nil {
-		return nil, nil, err
-	}
-	if selector.EffortID != nil && read.Metadata.EffortID != *selector.EffortID {
-		return []EventEnvelope{}, map[string]bool{}, nil
-	}
-	phases := projectEventPhases(read.Events)
-	selected := make([]EventEnvelope, 0, len(read.Events))
-	selectedIDs := make(map[string]bool)
-	for _, event := range read.Events {
-		if selector.SessionID != nil && event.SessionID != *selector.SessionID {
-			continue
-		}
-		timestamp, err := time.Parse(time.RFC3339Nano, event.Timestamp)
-		if err != nil { // coverage-ignore: validated protocol events always carry RFC3339Nano timestamps
-			continue
-		}
-		if selector.Since != nil && timestamp.Before(*selector.Since) {
-			continue
-		}
-		if selector.Until != nil && !timestamp.Before(*selector.Until) {
-			continue
-		}
-		if selector.Phase != nil && !phases[event.EventID][*selector.Phase] {
-			continue
-		}
-		selected = append(selected, event)
-		selectedIDs[event.EventID] = true
-	}
-	return selected, selectedIDs, nil
-}
-
-func projectEventPhases(events []EventEnvelope) map[string]map[string]bool {
-	result := make(map[string]map[string]bool, len(events))
-	byID := make(map[string]EventEnvelope, len(events))
-	for _, event := range events {
-		result[event.EventID] = map[string]bool{}
-		byID[event.EventID] = event
-		switch event.Kind {
-		case "phase_started":
-			var payload PhaseStartedPayload
-			if json.Unmarshal(event.Payload, &payload) == nil {
-				result[event.EventID][string(payload.Phase)] = true
-			}
-		case "effort_adopted":
-			var payload EffortAdoptedPayload
-			if json.Unmarshal(event.Payload, &payload) == nil {
-				result[event.EventID][string(payload.Phase)] = true
-			}
-		case "detour_started":
-			result[event.EventID]["brainstorming"] = true
-		case "phase_continued":
-			var payload PhaseContinuedPayload
-			if json.Unmarshal(event.Payload, &payload) == nil {
-				result[event.EventID][string(payload.Phase)] = true
-			}
-		case "phase_finished":
-			var payload PhaseFinishedPayload
-			if json.Unmarshal(event.Payload, &payload) == nil {
-				result[event.EventID][string(payload.Phase)] = true
-			}
-		case "phase_transitioned":
-			var payload PhaseTransitionedPayload
-			if json.Unmarshal(event.Payload, &payload) == nil {
-				result[event.EventID][string(payload.Phase)] = true
-				result[event.EventID][string(payload.NextPhase)] = true
-			}
-		case "usage_observed":
-			var payload UsageObservedPayload
-			if json.Unmarshal(event.Payload, &payload) == nil && payload.Phase != "" {
-				result[event.EventID][string(payload.Phase)] = true
-			}
-		}
-	}
-	order, _ := BuildCausalOrder(events)
-	finishedStarts := map[string]bool{}
-	for _, finish := range events {
-		var phase Phase
-		var startEventID string
-		switch finish.Kind {
-		case "phase_finished":
-			var payload PhaseFinishedPayload
-			if json.Unmarshal(finish.Payload, &payload) != nil {
-				continue
-			}
-			phase, startEventID = payload.Phase, payload.StartEventID
-		case "phase_transitioned":
-			var payload PhaseTransitionedPayload
-			if json.Unmarshal(finish.Payload, &payload) != nil {
-				continue
-			}
-			phase, startEventID = payload.Phase, payload.StartEventID
-		default:
-			continue
-		}
-		if _, exists := byID[startEventID]; !exists {
-			continue
-		}
-		finishedStarts[startEventID] = true
-		for _, event := range events {
-			if (event.EventID == startEventID || order.HappensBefore(startEventID, event.EventID)) && (event.EventID == finish.EventID || order.HappensBefore(event.EventID, finish.EventID)) {
-				result[event.EventID][string(phase)] = true
-			}
-		}
-	}
-	for _, start := range events {
-		if finishedStarts[start.EventID] {
-			continue
-		}
-		var phase Phase
-		switch start.Kind {
-		case "phase_started":
-			var payload PhaseStartedPayload
-			if json.Unmarshal(start.Payload, &payload) != nil {
-				continue
-			}
-			phase = payload.Phase
-		case "phase_transitioned":
-			var payload PhaseTransitionedPayload
-			if json.Unmarshal(start.Payload, &payload) != nil {
-				continue
-			}
-			phase = payload.NextPhase
-		case "effort_adopted":
-			var payload EffortAdoptedPayload
-			if json.Unmarshal(start.Payload, &payload) != nil {
-				continue
-			}
-			phase = payload.Phase
-		case "detour_started":
-			phase = "brainstorming"
-		default:
-			continue
-		}
-		for _, event := range events {
-			if event.EventID == start.EventID || order.HappensBefore(start.EventID, event.EventID) {
-				result[event.EventID][string(phase)] = true
-			}
-		}
-	}
-	return result
+func selectObservation(o Observation, s Selector) bool {
+	return (s.Since == nil || !o.Timestamp.Before(*s.Since)) && (s.Until == nil || o.Timestamp.Before(*s.Until))
 }

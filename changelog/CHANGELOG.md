@@ -6,6 +6,10 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
+## Unreleased
+
+- Add first-class local efforts, managed resident roots, binary session assignment, and independent schema-1 Pi session telemetry.
+
 ## [Unreleased]
 
 ### Breaking changes

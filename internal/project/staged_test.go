@@ -246,7 +246,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 		t.Fatal(err)
 	}
 	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	before, _, err := loadTreeCurrentState(dir, beforeTree, beforeBoundaries, beforeGaps)
+	before, _, err := loadTreeCurrentState(dir, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
 	if err != nil {
 		t.Fatalf("load staged before snapshot with its lock: %v", err)
 	}
@@ -259,7 +259,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 		t.Fatal(err)
 	}
 	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	after, _, err := loadTreeCurrentState(dir, afterTree, afterBoundaries, afterGaps)
+	after, _, err := loadTreeCurrentState(dir, afterTree, afterLock, afterBoundaries, afterGaps)
 	if err != nil {
 		t.Fatalf("load staged after snapshot with its lock: %v", err)
 	}
@@ -481,6 +481,53 @@ func TestCheckStagedOutsideRepo(t *testing.T) {
 	}
 	if _, err := p.CheckStaged(); err == nil {
 		t.Fatal("expected an error outside a git repository")
+	}
+}
+
+// TestCheckStagedMigratesHistoricalWorkflowTelemetry compares a generation-19
+// HEAD against the generation-20 index. The historical block is removed only
+// from the immutable before-side bytes before the current strict parser runs.
+func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/config.yaml": "prefix: example\nworkflowTelemetry:\n  retention: {}\nrunner:\n  enabled: true\n",
+		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":19,"files":{}}`,
+	})
+	gitfixture.Commit(t, repo, dir, "generation 19", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		".awf/config.yaml": "prefix: example\nrunner:\n  enabled: true\n",
+		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
+	})
+	p := openStaged(t, dir)
+	if _, err := p.CheckStaged(); err != nil {
+		t.Fatalf("CheckStaged historical migration: %v", err)
+	}
+}
+
+func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentObsoleteBlock(t *testing.T) {
+	for _, tc := range []struct {
+		name, headConfig, headLock, stagedConfig string
+	}{
+		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\n"},
+		{"historical duplicate", "prefix: example\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\n"},
+		{"current obsolete", "prefix: example\n", `{"schemaVersion":20,"files":{}}`, "prefix: example\nworkflowTelemetry: {}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo, dir := gitfixture.InitRepo(t)
+			gitfixture.Stage(t, repo, dir, map[string]string{
+				".awf/config.yaml": tc.headConfig,
+				".awf/awf.lock":    tc.headLock,
+			})
+			gitfixture.Commit(t, repo, dir, "head", nil)
+			gitfixture.Stage(t, repo, dir, map[string]string{
+				".awf/config.yaml": tc.stagedConfig,
+				".awf/awf.lock":    `{"schemaVersion":20,"files":{}}`,
+			})
+			p := &Project{Root: dir}
+			if _, err := p.CheckStaged(); err == nil {
+				t.Fatal("CheckStaged accepted invalid config")
+			}
+		})
 	}
 }
 

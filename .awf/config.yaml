@@ -221,25 +221,3 @@ proseGate:
       count: 1
 memoryCite:
   enabled: true
-workflowTelemetry:
-  retention:
-    maxCompletedEffortAgeDays: 90
-    maxCompletedEffortCount: 100
-  widget:
-    enabled: true
-    showCost: true
-  diagnostics:
-    heuristicsEnabled: true
-    minimumBaselineSamples: 10
-    baselinePercentile: 95
-    thresholds:
-      phaseReentryCount: 2
-      phaseDurationSeconds: 14400
-      phaseTokens: 200000
-      compactionCount: 3
-      handoffCount: 3
-      toolFailureCount: 3
-      gateFailureCount: 2
-      cacheReadPercentBelow: 10
-      subagentQueueWaitSeconds: 60
-      implementationReworkCount: 2

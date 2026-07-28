@@ -20,12 +20,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
+	"golang.org/x/mod/semver"
 )
 
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.23.0"
+const Version = "0.24.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -51,6 +52,21 @@ var minVersionBySchema = map[int]string{
 	17: "0.22.0",
 	18: "0.22.0",
 	19: "0.23.0",
+	20: "0.24.0",
+}
+
+// ValidateSchemaMinimumVersion confirms that version is new enough to render a
+// schema generation. The command gate calls it for the current generation, so
+// registering a migration without its release mapping fails before rendering.
+func ValidateSchemaMinimumVersion(schema int, version string) error {
+	minimum, found := minVersionBySchema[schema]
+	if !found {
+		return fmt.Errorf("schema generation %d has no minimum awf version", schema)
+	}
+	if semver.Compare("v"+version, "v"+minimum) < 0 {
+		return fmt.Errorf("awf %s cannot render schema generation %d; requires awf %s or newer", version, schema, minimum)
+	}
+	return nil
 }
 
 type Project struct {
@@ -178,7 +194,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a permanent lock; use the bridge release to attest")
 		}
 	}
-	metricsResident, err := inspectResidentMetrics(p.Root)
+	preservedResidents, err := inspectResidentRoots(p.Root)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -233,7 +249,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, nil, nil, err
 		}
-		if f.Path == config.DirName+"/metrics/.gitignore" {
+		if strings.HasPrefix(f.Path, config.DirName+"/") && strings.HasSuffix(f.Path, "/.gitignore") && isResidentPath(strings.TrimSuffix(f.Path, "/.gitignore")) {
 			if err := os.Chmod(dir, 0o700); err != nil { // coverage-ignore: MkdirAll just established the confined directory; a permission race is not deterministic under the root gate
 				return nil, nil, nil, err
 			}
@@ -286,7 +302,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	if old != nil {
 		dirs := map[string]bool{}
 		for path, entry := range old.Files {
-			if want[path] || preserveMetricsRemoval(path, metricsResident) {
+			if want[path] || preserveResidentRemoval(path, preservedResidents) {
 				continue
 			}
 			// A non-local entry (corrupted or malicious lock) would delete outside

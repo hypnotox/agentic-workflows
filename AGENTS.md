@@ -66,7 +66,7 @@ Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](doc
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory
 
-`.awf/memory/<effort-slug>.md` (gitignored) holds one working-memory file per in-flight effort. Check `.awf/memory/` when a request implies earlier work to continue, or when a fresh session finds it non-empty and unaccounted for; resume from the file's `Phase:`/`Next:` lines rather than restarting, and ask before resuming anything you cannot verify. Never commit the file or cite it in an ADR, plan, or commit message; delete it when the effort's chain terminates. The checkpoint protocol, file skeleton, and ground rules live in the workflow doc's working-memory section.
+Efforts are optional local coordination state. Create an outcome-specific effort with `awf effort new "<outcome>"` when durable coordination, a memory file, or a managed worktree is useful. `awf effort` owns optional memory, worktrees, and one session assignment; selection and resumption may occur at any time and never fabricate history. Memory files remain gitignored and ephemeral: never commit one or cite a particular file in an ADR, plan, or commit message.
 
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->

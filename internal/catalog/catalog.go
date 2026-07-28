@@ -12,43 +12,10 @@ const (
 	WorkflowSupport WorkflowKind = "support"
 )
 
-// RouteEffect describes the deterministic route operation performed at load.
-type RouteEffect string
-
-const (
-	RouteNone         RouteEffect = ""
-	RouteSelectDirect RouteEffect = "select-direct"
-	RouteSelectADR    RouteEffect = "select-adr"
-	RouteSelectPlan   RouteEffect = "select-plan"
-	RouteSelectBugfix RouteEffect = "select-bugfix"
-	// RouteSelectInvestigationIfUnrouted selects investigation-only only from
-	// investigation with no implementation history; otherwise it preserves the route.
-	RouteSelectInvestigationIfUnrouted RouteEffect = "select-investigation-if-unrouted"
-	// RoutePromoteADRPlan selects plan when unrouted after brainstorming, changes
-	// adr to adr-plan after ADR review, and otherwise requires plan or adr-plan.
-	RoutePromoteADRPlan RouteEffect = "promote-adr-plan"
-)
-
-// TerminalEffect describes deferred terminal behavior armed at load.
-type TerminalEffect string
-
-const (
-	TerminalNone          TerminalEffect = ""
-	TerminalArmCompletion TerminalEffect = "arm-completion"
-)
-
-// WorkflowMapping is the complete lifecycle operation associated with one
-// governed semantic skill.
+// WorkflowMapping classifies a fixed governed workflow body. It is render
+// metadata only: loading the body never mutates any workflow state.
 type WorkflowMapping struct {
-	Kind                   WorkflowKind
-	EntryPhase             string
-	AllowEntryWithoutPhase bool
-	EntryPredecessors      []string
-	ContinuationPhases     []string
-	Activity               string
-	ImplementationMode     string
-	RouteEffect            RouteEffect
-	TerminalEffect         TerminalEffect
+	Kind WorkflowKind
 }
 
 // TargetSpec declares the render sections of a target that has no further

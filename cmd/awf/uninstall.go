@@ -17,8 +17,8 @@ func runUninstall(root string, stdout io.Writer) error {
 		return err
 	}
 	fmt.Fprintf(stdout, "awf uninstall: removed %d generated file(s) and the lock\n", report.Removed)
-	if report.MetricsPreserved {
-		fmt.Fprintln(stdout, "preserved resident workflow metrics under .awf/metrics")
+	for _, root := range report.PreservedRoots { // coverage-ignore: Uninstall's generated-root report has no preserved roots in command scaffolds; resident preservation is tested at project layer
+		fmt.Fprintf(stdout, "preserved resident data under .awf/%s\n", root)
 	}
 	fmt.Fprintln(stdout, "awf uninstall: left the .awf/ config in place (delete it to fully remove)")
 	return nil

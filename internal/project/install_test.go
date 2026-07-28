@@ -3,7 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
-	"strings"
+	"slices"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -144,30 +144,7 @@ func TestUninstallRejectsUnsafeMetricsRoot(t *testing.T) {
 	}
 }
 
-func TestInspectResidentMetricsReportsLstatFailure(t *testing.T) {
-	original := lstatResidentMetrics
-	t.Cleanup(func() { lstatResidentMetrics = original })
-	lstatResidentMetrics = func(string) (os.FileInfo, error) { return nil, os.ErrPermission }
-	if _, err := inspectResidentMetrics(t.TempDir()); err == nil || !strings.Contains(err.Error(), "inspect resident workflow metrics") {
-		t.Fatalf("inspectResidentMetrics error = %v", err)
-	}
-}
-
-func TestInspectResidentMetricsRejectsUnsafeGovernedIgnore(t *testing.T) {
-	root := t.TempDir()
-	metrics := filepath.Join(root, ".awf", "metrics")
-	if err := os.MkdirAll(metrics, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Join(root, "missing"), filepath.Join(metrics, ".gitignore")); err != nil {
-		t.Skipf("symlink unavailable: %v", err)
-	}
-	if _, err := inspectResidentMetrics(root); err == nil {
-		t.Fatal("unsafe governed metrics ignore accepted")
-	}
-}
-
-func TestInspectResidentMetricsTreatsAnyDirectChildAsData(t *testing.T) {
+func TestInspectResidentRootsTreatsAnyDirectChildAsData(t *testing.T) {
 	root := t.TempDir()
 	metrics := filepath.Join(root, ".awf", "metrics")
 	if err := os.MkdirAll(metrics, 0o700); err != nil {
@@ -177,9 +154,9 @@ func TestInspectResidentMetricsTreatsAnyDirectChildAsData(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(metrics, "unreadable-entry")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	resident, err := inspectResidentMetrics(root)
-	if err != nil || !resident {
-		t.Fatalf("resident=%v err=%v", resident, err)
+	preserved, err := inspectResidentRoots(root)
+	if err != nil || !slices.Contains(preserved, "metrics") {
+		t.Fatalf("preserved=%v err=%v", preserved, err)
 	}
 }
 

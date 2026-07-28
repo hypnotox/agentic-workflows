@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -99,7 +100,7 @@ func (p *Project) workingCurrentState() (workingState, error) {
 		return workingState{}, err
 	}
 	boundaries, gaps := attestationBoundaries(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, boundaries, gaps)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, boundaries, gaps)
 	if err != nil {
 		return workingState{}, err
 	}
@@ -178,12 +179,12 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 		return CurrentStateReport{}, err
 	}
 	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeBoundaries, beforeGaps)
+	before, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
 	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterBoundaries, afterGaps)
+	after, afterCfg, err := loadTreeCurrentState(p.Root, afterTree, afterLock, afterBoundaries, afterGaps)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -334,7 +335,7 @@ func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
 // from that same tree so the load is single-universe (ADR-0135). The returned
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
-func loadTreeCurrentState(root string, tree *snapshot.Tree, boundaries adr.FormatBoundaries, gaps []int) (currentstate.Loaded, *config.Config, error) {
+func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock, boundaries adr.FormatBoundaries, gaps []int) (currentstate.Loaded, *config.Config, error) {
 	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
 		return currentstate.Loaded{}, nil, nil
@@ -342,7 +343,15 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, boundaries adr.Forma
 	if !cfgFile.Scannable() {
 		return currentstate.Loaded{}, nil, fmt.Errorf("snapshot %s/config.yaml is not a scannable file", config.DirName)
 	}
-	cfg, err := config.ParseTree(config.RootDir(root), cfgFile.Bytes, configSnapshotReader{tree: tree})
+	schema := migrate.Current()
+	if lock != nil {
+		schema = lock.SchemaVersion
+	}
+	configBytes, err := migrate.ConfigForCurrentSchema(cfgFile.Bytes, schema)
+	if err != nil {
+		return currentstate.Loaded{}, nil, err
+	}
+	cfg, err := config.ParseTree(config.RootDir(root), configBytes, configSnapshotReader{tree: tree})
 	if err != nil {
 		return currentstate.Loaded{}, nil, err
 	}
@@ -417,7 +426,7 @@ func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Uni
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
 	beforeBoundaries, beforeGaps := attestationBoundaries(beforeLock)
-	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeBoundaries, beforeGaps)
+	beforeLoaded, _, err := loadTreeCurrentState(p.Root, beforeTree, beforeLock, beforeBoundaries, beforeGaps)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
@@ -426,7 +435,7 @@ func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Uni
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
 	afterBoundaries, afterGaps := attestationBoundaries(afterLock)
-	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterBoundaries, afterGaps)
+	afterLoaded, _, err := loadTreeCurrentState(p.Root, afterTree, afterLock, afterBoundaries, afterGaps)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
@@ -496,10 +505,17 @@ func (p *Project) eligibleCoveragePaths(tree *snapshot.Tree, lock *manifest.Lock
 // lock entry) nor matched by one of the contextIgnore globs. It takes the
 // contextIgnore list explicitly so the staged check can filter the index
 // universe by the index config rather than the working config.
-func isMetricsResidentPath(path string) bool {
+func isResidentPath(path string) bool {
 	path = filepath.ToSlash(filepath.Clean(path))
-	return path == config.DirName+"/metrics" || strings.HasPrefix(path, config.DirName+"/metrics/")
+	for _, name := range []string{"efforts", "assignments", "memory", "worktrees", "metrics"} {
+		root := config.DirName + "/" + name
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
 }
+func isMetricsResidentPath(path string) bool { return isResidentPath(path) }
 
 func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
 	generated := map[string]bool{}

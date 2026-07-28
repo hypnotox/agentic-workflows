@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"golang.org/x/mod/semver"
 )
@@ -34,6 +35,9 @@ func gate(root string) error {
 	if err := gateGeneration(state, gen); err != nil {
 		return err
 	}
+	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil { // coverage-ignore: compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake
+		return err
+	}
 	lockV, binV, ok, err := lockVsBinary(root)
 	if err != nil {
 		// Reachable without any race: a corrupt lock beside no config layout -
@@ -53,6 +57,9 @@ func gateStaged(root string) error {
 	}
 	gen := lock.SchemaVersion
 	if err := gateGeneration(migrate.GateStateForGeneration(gen), gen); err != nil {
+		return err
+	}
+	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil { // coverage-ignore: compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake
 		return err
 	}
 	lockV, binV, ok := lockVsBinaryLock(lock)

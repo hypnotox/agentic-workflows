@@ -6,35 +6,21 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-func TestTelemetryWidgetLeavesAreTheOnlyTelemetryConfigHashInputs(t *testing.T) {
+func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	telemetry := "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}"
-	before, err := p.artifactConfigHash(telemetry, config.Sidecar{}, nil)
+	before, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plainBefore, err := p.artifactConfigHash("plain", config.Sidecar{}, nil)
+	after, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	p.Cfg.WorkflowTelemetry.Widget.Enabled = !p.Cfg.WorkflowTelemetry.Widget.Enabled
-	p.Cfg.WorkflowTelemetry.Widget.ShowCost = !p.Cfg.WorkflowTelemetry.Widget.ShowCost
-	after, err := p.artifactConfigHash(telemetry, config.Sidecar{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	plainAfter, err := p.artifactConfigHash("plain", config.Sidecar{}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if before == after {
-		t.Fatal("widget leaves did not change telemetry config hash")
-	}
-	if plainBefore != plainAfter {
-		t.Fatal("widget leaves changed an unrelated config hash")
+	if before != after {
+		t.Fatalf("retired telemetry data changed config hash: %q != %q", before, after)
 	}
 }

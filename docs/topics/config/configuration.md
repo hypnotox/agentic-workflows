@@ -94,9 +94,3 @@ Backing: test
 A config with no targets key loads with targets defaulting to [claude]; Validate rejects an empty targets list and any path-separator name, while an unknown adapter name is rejected later by project open, keeping config free of the adapter registry.
 Origin: ADR-0037
 Backing: test
-
-### `invariant: workflow-telemetry-settings`
-
-The strict tracked workflowTelemetry block carries retention, widget, heuristic baseline, and threshold settings with complete scaffolded defaults; omission receives effective defaults, explicit valid leaves are preserved, retention zero disables its dimension, and all other numeric bounds follow the documented contract.
-Origin: ADR-0146
-Backing: test

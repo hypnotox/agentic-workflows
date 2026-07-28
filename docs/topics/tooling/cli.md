@@ -114,9 +114,15 @@ Origin: ADR-0039
 Revised-by: ADR-0150, ADR-0153, ADR-0162
 Backing: test
 
+### `invariant: effort-command-contract`
+
+`awf effort` is the binary-owned lightweight-effort surface: creation, memory, rename, terminal state, repair, managed worktree attachment/integration/removal, and one atomic Pi-session assignment map. Effort creation defaults to memory, worktrees are opt-in, recoverable worktree risks require paired force and reason, and JSON replies carry schema version 1.
+Origin: ADR-0164
+Backing: test
+
 ### `invariant: metrics-command-contract`
 
-The gated `awf metrics --effort <id>` and `awf metrics doctor --effort <id>` commands require exactly one resident compatible effort and apply shared session, phase, and time selectors with AND inside it; missing, unknown, incompatible, and empty selections fail without a repository-wide fallback. Selected metrics `--json` preserves the canonical projection, exports remain unchanged, and the closed `awf metrics list [--limit N] [--cursor TOKEN] [--json]` discovery child pages resident efforts newest-first by immutable creation time and byte-ascending ID ties. Its opaque versioned cursor validates its resident ordering tuple; limits default to 10 and range from 1 through 100. Incompatible efforts remain cursor-eligible metadata-only rows.
+The gated metrics grammar is exactly `awf metrics [--effort ID] [--session ID] [--since TIME] [--until TIME] [--json]`, `doctor` with the same selectors, `list [--json]`, and `export` with those selectors plus `--format <json|jsonl>`. It has no protocol, lifecycle, retain, purge, phase, or heuristic surface.
 Origin: ADR-0153
-Revised-by: ADR-0156, ADR-0162
+Revised-by: ADR-0156, ADR-0162, ADR-0164
 Backing: test

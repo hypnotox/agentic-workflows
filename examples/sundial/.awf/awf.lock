@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.23.0",
-  "schemaVersion": 19,
+  "awfVersion": "0.24.0",
+  "schemaVersion": 20,
   "files": {
     ".agents/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -110,11 +110,23 @@
       "configHash": "sha256:e72ecb94be25bc37a5c042f29db54c4fd4d1952c5944462724d8ed4f553bb4db",
       "outputHash": "sha256:f509f4500f52df764d1bffefda35e32ca36d9b804c5b1cebf6eefb319a26e1a1"
     },
+    ".awf/assignments/.gitignore": {
+      "templateId": "assignments/gitignore.tmpl",
+      "templateHash": "sha256:240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
+      "configHash": "sha256:646a9ec811b260fb294c18165d97203dcf42a0d43c51796e98a485f0bef7b4d2",
+      "outputHash": "sha256:3102585ee52ca1c7d507eea08f2c923bccc7a2f627c051d4b8d6ed6aa51a1eba"
+    },
     ".awf/bootstrap.sh": {
       "templateId": "bootstrap/awf-bootstrap.sh.tmpl",
       "templateHash": "sha256:a3518158b12fba6a3da725f28365e3ac329ddb4a9a100506f093b7b1228f70d2",
       "configHash": "sha256:646a9ec811b260fb294c18165d97203dcf42a0d43c51796e98a485f0bef7b4d2",
-      "outputHash": "sha256:d22ec85753326094a3844590517c428af6e07c7562d0c656cf071132738e87eb"
+      "outputHash": "sha256:8f8a77d9dadd194817f3391869fccb57e045606dffab8af8f13eac28c624ab30"
+    },
+    ".awf/efforts/.gitignore": {
+      "templateId": "efforts/gitignore.tmpl",
+      "templateHash": "sha256:240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
+      "configHash": "sha256:646a9ec811b260fb294c18165d97203dcf42a0d43c51796e98a485f0bef7b4d2",
+      "outputHash": "sha256:3102585ee52ca1c7d507eea08f2c923bccc7a2f627c051d4b8d6ed6aa51a1eba"
     },
     ".awf/hooks/commit-msg.sh": {
       "templateId": "hooks/commit-msg.sh.tmpl",
@@ -151,6 +163,12 @@
       "templateHash": "sha256:4210ad3063fd89f3283008ff22df60abf72693ccd76774102ad852fa4731ec32",
       "configHash": "sha256:646a9ec811b260fb294c18165d97203dcf42a0d43c51796e98a485f0bef7b4d2",
       "outputHash": "sha256:3f051434cf52cf17b835d9187a0dbfb55c0b7397c43af6344b83a4294c2218e1"
+    },
+    ".awf/worktrees/.gitignore": {
+      "templateId": "worktrees/gitignore.tmpl",
+      "templateHash": "sha256:240a3e0d37d2e86b614063f5347eb02d4f99ca6c254de6b82871ff8d95532a7d",
+      "configHash": "sha256:646a9ec811b260fb294c18165d97203dcf42a0d43c51796e98a485f0bef7b4d2",
+      "outputHash": "sha256:3102585ee52ca1c7d507eea08f2c923bccc7a2f627c051d4b8d6ed6aa51a1eba"
     },
     ".claude/agents/adr-reviewer.md": {
       "templateId": "agents/adr-reviewer.md.tmpl",
@@ -802,15 +820,15 @@
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:0995056a992c28e58855487c1e1a6a1b90dc701129d51091489ffa44392d0d5c",
+      "templateHash": "sha256:94e01668dd55b46511ac8452a1a516bb4e51744b99efeebe70096e84b1a4e1b8",
       "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
-      "outputHash": "sha256:9310d3fd67eea8a02aac5ae6f866fe2c580d4ea117d6fa767a175086609fb04b"
+      "outputHash": "sha256:8d7d51422368a74cc72484260539defbdc2e404507e0cfc6affdbae7a871857d"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:c7a3e8d3497fa34226afe69053bcf5a99469ca9af3f2b6f86b56e21b1b7c977c",
+      "templateHash": "sha256:8d980b77b38696ebe6c939a1c2c69473f944e4af14d9ff443605c23eba1ffd69",
       "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
-      "outputHash": "sha256:e4fffbd950836ba32832e054367c31a86ae18a163c22cb13a9563ca4549f27f2"
+      "outputHash": "sha256:f6f5c907222b6e40c86ea3f116eff09badf8b62d821744947e21114b04de8d3f"
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",
@@ -820,21 +838,21 @@
     },
     ".pi/extensions/awf-telemetry/index.ts": {
       "templateId": "pi/awf-telemetry/index.ts.tmpl",
-      "templateHash": "sha256:e78dd1010bdae0619ade50444d55b957dd565ba8350b1f7132c188e10c142693",
-      "configHash": "sha256:57a54fdf245d0c73ec6b4672222a9d28717da904c9b106b18de9e3fe447758ea",
-      "outputHash": "sha256:3ae6252a2f4a8b032d68c1e909a292a396e43a5fc873a0ee3387527df0c933c8"
+      "templateHash": "sha256:19357c41cc5109874af4eb568061e5b6568eac3875d82c30508badef38f5b96d",
+      "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
+      "outputHash": "sha256:d6809003d00ac81b0edbea59c6cd52a6313a94ea2999cc4118453da1db71351b"
     },
     ".pi/extensions/awf-telemetry/protocol.ts": {
       "templateId": "pi/awf-telemetry/protocol.ts.tmpl",
-      "templateHash": "sha256:d9b6a18b17fe190ab9267fab3f4892eb5d262de014072881a491b6a05cc619f8",
+      "templateHash": "sha256:42e4d7752157e50032c6aff0cfd15687b40a91354c5aa57b9548a8dbdd9f7a3a",
       "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
-      "outputHash": "sha256:310bc16fb9deeec155561962b43e1c3b9255e28661d3d32b293e173e7287c501"
+      "outputHash": "sha256:4a7b762c5e54de5caf67e70c602445e31135648ff20c9fa39cd8b3604e9522fb"
     },
     ".pi/skills/awf-workflow/SKILL.md": {
       "templateId": "pi/awf-workflow/SKILL.md.tmpl",
-      "templateHash": "sha256:b0b4da042881d106135cd5063f2a4402080495ab254607d86b85f5c23719e459",
-      "configHash": "sha256:d508201cbf324c55967ac5de4683c786b9c6b930578ab6a4bf82373bb4ee44c4",
-      "outputHash": "sha256:cd1c6ea4fd0def35c29722aa6e8d7ad820112f86973a7223fbf94e176be7570d"
+      "templateHash": "sha256:f3970b2a3f2849f94185fd3167cb79f3a9010a467d4b4c6863500fd312f01670",
+      "configHash": "sha256:d8a8e92792530a4b31f4be54d072e3b03e5659533cf84777401fc0c78103bbd3",
+      "outputHash": "sha256:c7087d7309bd3b0a7534b8f2afc3f3b7a823e734d3a7639be460632ef907e4af"
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
@@ -876,7 +894,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:5859632fbb629226b12b1d003488bb26fac5d0c2250cdd4f9d53a47675711d61",
+      "outputHash": "sha256:01551e4e8fb901575399a423622c76cb3a3d5bf1be68fb2957182335f84470d9",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -992,15 +1010,15 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:25829e9ef1957ff26654bc47ebe5edd7f50b93bc7cb6f691ac5bd4d4156762f4",
+      "templateHash": "sha256:0571a6125f4416e9de4eaea105dafae792313fd7c78f82b32fc123aee8020d2c",
       "configHash": "sha256:ce464081778601c8cc6b312f7bd736c417382727af835c90193ace37c13c2a21",
-      "outputHash": "sha256:175186c1098cc4b9a4e42589be27f6f79ad6302741ee7b3e0243a7cfc4420f80"
+      "outputHash": "sha256:072f4d856c908c6369a6ba2c2d93c7412deaeda3a0074851c806f7bf761bf58a"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
-      "templateHash": "sha256:f6a2c7c752e6837927a5f9d7f2dcdc6a60b26c7b676806f55031a6648eb81c67",
+      "templateHash": "sha256:577148ea61c93a2a8c7681c2ff267616a1cdd39365a670ef1a4a1c580036a06e",
       "configHash": "sha256:c35f2ef3cc76acf3dd202acfcddfac6410df8be6faf1beaa0e0e9f38c63126e4",
-      "outputHash": "sha256:3a09ac02cfe8df9b397f8eba5ffda53924847a3f42864d9df18f236c825816e6"
+      "outputHash": "sha256:6eab132f6c9728b10c8487b2699963318d61703784ef40e0d6861d660a2990c8"
     }
   },
   "adrFormatV1From": 4,

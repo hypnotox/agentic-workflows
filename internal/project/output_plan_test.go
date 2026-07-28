@@ -2,7 +2,6 @@ package project
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -70,93 +69,6 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 }
 
 // invariant: rendering/singletons-and-payloads:workflow-telemetry-governed-outputs-and-resident-data
-func TestWorkflowTelemetryResidentOutputPlan(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n", nil)
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	op, err := p.OutputPlan()
-	if err != nil {
-		t.Fatal(err)
-	}
-	var matches []OutputNode
-	for _, node := range op.Nodes {
-		if isMetricsResidentPath(node.Path) {
-			matches = append(matches, node)
-		}
-	}
-	if len(matches) != 1 || matches[0].Path != ".awf/metrics/.gitignore" || matches[0].Reservation {
-		t.Fatalf("metrics output nodes = %#v", matches)
-	}
-	if matches[0].Recipe.TemplateID != metricsTID || !slices.Contains(matches[0].ConsumedInputs, OutputInput{Path: "templates/metrics/gitignore.tmpl", Role: ArtifactTemplate}) {
-		t.Fatalf("metrics output declaration = %#v", matches[0])
-	}
-	governed := map[string]bool{
-		".pi/skills/awf-workflow/SKILL.md": false,
-		".pi/awf-workflows/exploring.md":   false,
-	}
-	for _, node := range op.Nodes {
-		if _, ok := governed[node.Path]; ok && !node.Reservation && node.Recipe.TemplateID != "" && len(node.ConsumedInputs) > 0 {
-			governed[node.Path] = true
-		}
-	}
-	for path, complete := range governed {
-		if !complete {
-			t.Errorf("governed Pi workflow output is incomplete: %s", path)
-		}
-	}
-	got := renderedByPath(t, op.writeFiles(), ".awf/metrics/.gitignore")
-	if got != "# "+bannerText+"\n*\n!.gitignore\n" {
-		t.Fatalf("metrics ignore bytes = %q", got)
-	}
-	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err != nil {
-		t.Fatal(err)
-	}
-	resident := filepath.Join(root, ".awf", "metrics", "efforts", "e", ".awf", "config.yaml")
-	testsupport.WriteFile(t, resident, "adversarial nested adopter\n")
-	if !isMetricsResidentPath(".awf/metrics/efforts/e/.awf/config.yaml") {
-		t.Fatal("adversarial resident descendant escaped the closed-tree predicate")
-	}
-	if err := p.Sync(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(resident); err != nil {
-		t.Fatalf("sync cleanup removed resident descendant: %v", err)
-	}
-	initRepo := exec.Command("git", "init")
-	initRepo.Dir = root
-	if output, err := initRepo.CombinedOutput(); err != nil {
-		t.Fatalf("git init: %v: %s", err, output)
-	}
-	context, err := p.ContextForOptions([]string{".awf/metrics/efforts/e/.awf/config.yaml"}, ContextOptions{Selection: SelectionExplicit})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(context.Requests) != 1 || context.Requests[0].Exact == nil || context.Requests[0].Exact.Context.Classification != PathNotFound || context.Requests[0].Exact.Context.NestedRoot != "" {
-		t.Fatalf("resident adversarial adopter entered discovery: %#v", context.Requests)
-	}
-	if drift, err := p.Check(); err != nil || len(drift) != 0 {
-		t.Fatalf("resident descendant entered sync/check: drift=%#v err=%v", drift, err)
-	}
-	files, err := p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if swept, err := p.sweepConfigTree(files); err != nil || len(swept) != 0 {
-		t.Fatalf("resident descendant entered sweep: drift=%#v err=%v", swept, err)
-	}
-	report, err := Uninstall(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !report.MetricsPreserved {
-		t.Fatal("uninstall did not report preserved resident telemetry")
-	}
-	if _, err := os.Stat(resident); err != nil {
-		t.Fatalf("ordinary uninstall acted as purge: %v", err)
-	}
-}
 
 // invariant: rendering/project-output-plan:target-capabilities-closed
 func TestTargetDescriptorValidation(t *testing.T) {

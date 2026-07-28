@@ -301,8 +301,9 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
 		}
 	}
-	add(".awf/memory/.gitignore", "memory/gitignore.tmpl", "memory/gitignore.tmpl", inputs("memory/gitignore.tmpl"), false)
-	add(".awf/metrics/.gitignore", "metrics/gitignore.tmpl", "metrics/gitignore.tmpl", inputs("metrics/gitignore.tmpl"), false)
+	for _, resident := range []struct{ name, tid string }{{"efforts", "efforts/gitignore.tmpl"}, {"assignments", "assignments/gitignore.tmpl"}, {"memory", "memory/gitignore.tmpl"}, {"worktrees", "worktrees/gitignore.tmpl"}, {"metrics", "metrics/gitignore.tmpl"}} {
+		add(".awf/"+resident.name+"/.gitignore", resident.tid, resident.tid, inputs(resident.tid), false)
+	}
 	for i := range decls {
 		switch decls[i].TemplateID {
 		case "topics/topic.md.tmpl", "topics/index.md.tmpl":

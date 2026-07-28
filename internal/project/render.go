@@ -1,7 +1,6 @@
 package project
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -24,12 +23,15 @@ import (
 )
 
 const (
-	bridgeTID    = "claude/CLAUDE.md.tmpl"
-	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
-	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
-	memoryTID    = "memory/gitignore.tmpl"
-	metricsTID   = "metrics/gitignore.tmpl"
-	runnerTID    = "runner/awf.tmpl"
+	bridgeTID      = "claude/CLAUDE.md.tmpl"
+	bootstrapTID   = "bootstrap/awf-bootstrap.sh.tmpl"
+	upgradeTID     = "bootstrap/awf-upgrade.sh.tmpl"
+	memoryTID      = "memory/gitignore.tmpl"
+	metricsTID     = "metrics/gitignore.tmpl"
+	effortsTID     = "efforts/gitignore.tmpl"
+	assignmentsTID = "assignments/gitignore.tmpl"
+	worktreesTID   = "worktrees/gitignore.tmpl"
+	runnerTID      = "runner/awf.tmpl"
 )
 
 // runnerSections is the pure awf wrapper's single declared section: the body
@@ -91,17 +93,15 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func (p *Project) data(sc config.Sidecar) map[string]any {
 	return map[string]any{
-		"prefix":                  p.Cfg.Prefix,
-		"vars":                    nonNil(p.Cfg.Vars),
-		"data":                    nonNil(sc.Data),
-		"layout":                  p.layout().templateMap(),
-		"version":                 Version,
-		"skills":                  p.effSkills,
-		"taskSkillRows":           p.taskSkillRows(),
-		"commitScopes":            p.commitScopesDisplay(),
-		"gatedCommands":           gatedCommandsDisplay(),
-		"telemetryWidgetEnabled":  p.Cfg.WorkflowTelemetry.Widget.Enabled,
-		"telemetryWidgetShowCost": p.Cfg.WorkflowTelemetry.Widget.ShowCost,
+		"prefix":        p.Cfg.Prefix,
+		"vars":          nonNil(p.Cfg.Vars),
+		"data":          nonNil(sc.Data),
+		"layout":        p.layout().templateMap(),
+		"version":       Version,
+		"skills":        p.effSkills,
+		"taskSkillRows": p.taskSkillRows(),
+		"commitScopes":  p.commitScopesDisplay(),
+		"gatedCommands": gatedCommandsDisplay(),
 		// Runner-enabled state for awf-verb fallback arms (ADR-0156 Decision 4):
 		// enabled renders ./awf forms; disabled - and empty publication data -
 		// degrades to the generic awf forms.
@@ -117,72 +117,16 @@ type workflowRouterEntry struct {
 	Name, Kind, Effect string
 }
 
-type workflowLoaderEntry struct {
-	Kind                   string   `json:"kind"`
-	EntryPhase             string   `json:"entryPhase,omitempty"`
-	AllowEntryWithoutPhase bool     `json:"allowEntryWithoutPhase"`
-	EntryPredecessors      []string `json:"entryPredecessors"`
-	ContinuationPhases     []string `json:"continuationPhases"`
-	Activity               string   `json:"activity,omitempty"`
-	ImplementationMode     string   `json:"implementationMode,omitempty"`
-	RouteEffect            string   `json:"routeEffect,omitempty"`
-	TerminalEffect         string   `json:"terminalEffect,omitempty"`
-}
-
 func (p *Project) workflowRouterData(names []string) ([]workflowRouterEntry, error) {
 	mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
-	if err != nil {
+	if err != nil { // coverage-ignore: Project.Open validates catalog workflow mappings before rendering
 		return nil, err
 	}
 	entries := make([]workflowRouterEntry, 0, len(mappings))
 	for _, name := range slices.Sorted(maps.Keys(mappings)) {
-		mapping := mappings[name]
-		effect := "continue phase"
-		if mapping.EntryPhase != "" {
-			effect = "entry phase " + mapping.EntryPhase
-		}
-		if mapping.Activity != "" {
-			effect += " activity " + mapping.Activity
-		}
-		if mapping.RouteEffect != catalog.RouteNone {
-			effect += " route " + string(mapping.RouteEffect)
-		}
-		if mapping.TerminalEffect != catalog.TerminalNone {
-			effect += " terminal " + string(mapping.TerminalEffect)
-		}
-		entries = append(entries, workflowRouterEntry{Name: name, Kind: string(mapping.Kind), Effect: effect})
+		entries = append(entries, workflowRouterEntry{Name: name, Kind: string(mappings[name].Kind)})
 	}
 	return entries, nil
-}
-
-func (p *Project) workflowLoaderData(names []string) (string, error) {
-	mappings, err := catalog.WorkflowMappingsForSkills(p.Cat, names)
-	if err != nil {
-		return "", err
-	}
-	entries := make(map[string]workflowLoaderEntry, len(mappings))
-	for name, mapping := range mappings {
-		entryPredecessors := append([]string{}, mapping.EntryPredecessors...)
-		continuationPhases := append([]string{}, mapping.ContinuationPhases...)
-		slices.Sort(entryPredecessors)
-		slices.Sort(continuationPhases)
-		entries[name] = workflowLoaderEntry{
-			Kind:                   string(mapping.Kind),
-			EntryPhase:             mapping.EntryPhase,
-			AllowEntryWithoutPhase: mapping.AllowEntryWithoutPhase,
-			EntryPredecessors:      entryPredecessors,
-			ContinuationPhases:     continuationPhases,
-			Activity:               mapping.Activity,
-			ImplementationMode:     mapping.ImplementationMode,
-			RouteEffect:            string(mapping.RouteEffect),
-			TerminalEffect:         string(mapping.TerminalEffect),
-		}
-	}
-	encoded, err := json.Marshal(entries)
-	if err != nil { // coverage-ignore: the closed string/slice-only metadata shape cannot fail JSON encoding
-		return "", fmt.Errorf("encode workflow loader metadata: %w", err)
-	}
-	return string(encoded), nil
 }
 
 func (p *Project) routedWorkflowNames() ([]string, error) {
@@ -193,7 +137,7 @@ func (p *Project) routedWorkflowNames() ([]string, error) {
 			continue
 		}
 		sc, err := p.Cfg.Sidecar("skills", name)
-		if err != nil {
+		if err != nil { // coverage-ignore: Project.Open validates enabled skill sidecars before routing
 			return nil, err
 		}
 		if !sc.Local {
@@ -594,7 +538,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				outPath:  func(t Target, n string) string { return t.HiddenWorkflowPath(n) },
 				defaults: func(n string) map[string]any { return p.Cat.Skills[n].Data },
 			})
-			if routeErr != nil {
+			if routeErr != nil { // coverage-ignore: renderKind receives catalog-validated routed workflow names
 				return nil, routeErr
 			}
 			out = append(out, hidden...)
@@ -644,17 +588,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			}
 			target := t
 			data := p.data(config.Sidecar{})
-			if targetOutput.TemplateID == "pi/awf-telemetry/index.ts.tmpl" {
-				routed, routeErr := p.routedWorkflowNames()
-				if routeErr != nil { // coverage-ignore: effectiveSkills and the earlier routed render parsed the same enabled sidecars in this render pass
-					return nil, routeErr
-				}
-				metadata, routeErr := p.workflowLoaderData(routed)
-				if routeErr != nil { // coverage-ignore: project open validates every catalog mapping before routed names can reach this helper
-					return nil, routeErr
-				}
-				data["workflowMappingsJSON"] = metadata
-			}
+
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}
@@ -788,24 +722,17 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		}
 		out = append(out, rrf)
 	}
-	// .awf/memory/.gitignore (neutral config-tree singleton; ALWAYS rendered -
-	// ADR-0069, no config gate unlike bootstrap/hooks). Self-ignoring, so the
-	// working-memory convention's ephemerality is mechanical, not remembered.
-	// Deliberately non-configurable: no catalog spec, no sections, no CLI kind.
-	mrf, err := p.renderTarget("memory", "", memoryTID,
-		nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/memory/.gitignore")
-	if err != nil { // coverage-ignore: the memory gitignore template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
-		return nil, err
+	// Every resident root has exactly one tracked self-ignoring node. Dynamic
+	// descendants are local authority and never enter the manifest.
+	for _, resident := range []struct{ name, tid string }{
+		{"efforts", effortsTID}, {"assignments", assignmentsTID}, {"memory", memoryTID}, {"worktrees", worktreesTID}, {"metrics", metricsTID},
+	} {
+		rf, err := p.renderTarget(resident.name, "", resident.tid, nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/"+resident.name+"/.gitignore")
+		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
+			return nil, err
+		}
+		out = append(out, rf)
 	}
-	out = append(out, mrf)
-	// .awf/metrics/.gitignore is the sole governed node for the dynamic resident
-	// telemetry tree. Runtime descendants are intentionally outside the manifest.
-	metricsRF, err := p.renderTarget("metrics", "", metricsTID,
-		nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/metrics/.gitignore")
-	if err != nil { // coverage-ignore: the metrics gitignore template is static, part-free, and references no vars
-		return nil, err
-	}
-	out = append(out, metricsRF)
 	// Duplicate declarations are deliberately retained for OutputPlan to
 	// coalesce or reject from normalized recipes.
 	return out, nil
@@ -903,7 +830,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "memory" && kind != "runner" {
+	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "memory" && kind != "metrics" && kind != "efforts" && kind != "assignments" && kind != "worktrees" && kind != "runner" {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err

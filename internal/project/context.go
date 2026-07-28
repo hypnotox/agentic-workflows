@@ -95,7 +95,7 @@ func (p *Project) indexCurrentState() (indexState, error) {
 		return indexState{}, err
 	}
 	boundaries, gaps := attestationBoundaries(lock)
-	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, boundaries, gaps)
+	loaded, cfg, err := loadTreeCurrentState(p.Root, tree, lock, boundaries, gaps)
 	if err != nil {
 		return indexState{}, err
 	}

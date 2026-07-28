@@ -2,6 +2,7 @@ package telemetry
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,329 +10,189 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/effort"
 )
 
-type IntegrityIssue struct {
-	Code     string
-	Scope    string
-	Line     int
-	EventIDs []string
-	Detail   string
-}
+var readEffortList = func(svc *effort.Service) ([]effort.Record, error) { return svc.List() }
+var readEffortAssignments = func(svc *effort.Service) ([]effort.Assignment, error) { return svc.Assignments("") }
+var inspectLegacyDirectory = inspectDirectory
 
-type LedgerRecord struct {
-	SessionID string
-	Line      int
-	Raw       json.RawMessage
-	Event     *EventEnvelope
-	Applied   bool
-}
-
-type EffortRead struct {
-	Metadata        EffortMetadata
-	Events          []EventEnvelope
-	EffectApplied   map[string]bool
-	RejectedEffects map[string]bool
-	Records         []LedgerRecord
-	Integrity       []IntegrityIssue
-}
-
-func (l *Ledger) ReadEffort(effortID string) (EffortRead, error) {
-	return l.readEffort(effortID, false)
-}
-
-// ReadAllEfforts reads every resident effort in stable effort-ID order. An
-// unexpected entry is an integrity failure rather than an object to skip.
-func (l *Ledger) ReadAllEfforts() ([]EffortRead, error) {
-	entries, err := l.ops.readDir(l.paths.efforts)
-	if errors.Is(err, os.ErrNotExist) {
-		return []EffortRead{}, nil
-	}
+// Read loads new streams and legacy ledgers without mutating either. New stream
+// attribution is intentionally joined from the current assignment map.
+func Read(ctx context.Context, invokingRoot string) (ReadSet, error) {
+	p, err := resolvePaths(ctx, invokingRoot)
 	if err != nil {
-		return nil, fmt.Errorf("read telemetry efforts: %w", err)
+		return ReadSet{}, err
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	reads := make([]EffortRead, 0, len(entries))
-	for _, entry := range entries {
-		if !entry.IsDir() || validatePathIdentifier("effortId", entry.Name()) != nil {
-			return nil, fmt.Errorf("unsafe effort entry %q", entry.Name())
-		}
-		read, readErr := l.ReadEffort(entry.Name())
-		if readErr != nil {
-			return nil, fmt.Errorf("read telemetry effort %s: %w", entry.Name(), readErr)
-		}
-		reads = append(reads, read)
-	}
-	return reads, nil
-}
-
-func (l *Ledger) readEffort(effortID string, allowPendingTombstone bool) (EffortRead, error) {
-	if err := validatePathIdentifier("effortId", effortID); err != nil {
-		return EffortRead{}, err
-	}
-	if l.pathExists(l.paths.tombstone(effortID)) && !allowPendingTombstone {
-		return EffortRead{}, errors.New("effort was pruned")
-	}
-	effortPath := l.paths.effort(effortID)
-	if err := l.ops.inspect(l.paths.root, effortPath, true); err != nil {
-		return EffortRead{}, fmt.Errorf("inspect effort: %w", err)
-	}
-	metadata, err := l.readMetadata(effortID)
+	svc, err := effort.Open(ctx, invokingRoot, effort.Options{})
 	if err != nil {
-		return EffortRead{}, err
+		return ReadSet{}, err
 	}
-	if metadata.EffortID != effortID {
-		return EffortRead{}, errors.New("immutable effort metadata identity mismatch")
-	}
-	sessionsPath := filepath.Join(effortPath, "sessions")
-	if err := l.ops.inspect(l.paths.root, sessionsPath, true); err != nil {
-		return EffortRead{}, fmt.Errorf("inspect sessions directory: %w", err)
-	}
-	entries, err := l.ops.readDir(sessionsPath)
+	records, err := readEffortList(svc)
 	if err != nil {
-		return EffortRead{}, fmt.Errorf("read sessions directory: %w", err)
+		return ReadSet{}, err
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
-	result := EffortRead{Metadata: metadata, Events: []EventEnvelope{}, EffectApplied: map[string]bool{}, RejectedEffects: map[string]bool{}, Records: []LedgerRecord{}, Integrity: []IntegrityIssue{}}
-	byEventID := make(map[string]EventEnvelope)
-	byLifecycleIdentity := make(map[string]EventEnvelope)
-	byPassiveIdentity := make(map[string]EventEnvelope)
-	for _, entry := range entries {
-		name := entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".jsonl") {
-			result.Integrity = append(result.Integrity, integrity("unsafe-stream-entry", effortID, 0, nil, "sessions contains a non-stream entry"))
-			continue
-		}
-		sessionID := strings.TrimSuffix(name, ".jsonl")
-		if err := validatePathIdentifier("sessionId", sessionID); err != nil {
-			result.Integrity = append(result.Integrity, integrity("unsafe-stream-identifier", effortID, 0, nil, err.Error()))
-			continue
-		}
-		stream := filepath.Join(sessionsPath, name)
-		if err := l.ops.inspect(l.paths.root, stream, false); err != nil {
-			result.Integrity = append(result.Integrity, integrity("unsafe-stream-path", sessionID, 0, nil, err.Error()))
-			continue
-		}
-		raw, err := l.ops.readFile(stream)
-		if err != nil {
-			return EffortRead{}, fmt.Errorf("read event stream: %w", err)
-		}
-		l.readStream(&result, effortID, sessionID, raw, byEventID, byLifecycleIdentity, byPassiveIdentity)
+	out := ReadSet{Records: map[string]effort.Record{}, Assignments: map[string]string{}, Sessions: []SessionRead{}, Legacy: []LegacyEffortRead{}, Findings: []IntegrityFinding{}}
+	for _, r := range records {
+		out.Records[r.ID] = r
 	}
-	if !effortProjectionCompatible(result) {
-		result.Events = []EventEnvelope{}
-		result.EffectApplied = map[string]bool{}
-		result.RejectedEffects = map[string]bool{}
-		result.Integrity = []IntegrityIssue{integrity("unsupported-protocol", effortID, 0, nil, "the effort requires an unsupported protocol interpretation")}
-		return result, nil
+	assignments, err := readEffortAssignments(svc)
+	if err != nil {
+		return ReadSet{}, err
 	}
-	for _, event := range result.Events {
-		for _, predecessor := range event.Predecessors {
-			if _, ok := byEventID[predecessor]; !ok {
-				result.Integrity = append(result.Integrity, integrity("broken-predecessor", event.SessionID, 0, []string{event.EventID, predecessor}, "predecessor does not exist"))
-			}
-		}
+	for _, a := range assignments {
+		out.Assignments[a.SessionID] = a.EffortID
 	}
-	creationCount := 0
-	invalidCreationIDs := make(map[string]bool)
-	for index := range result.Records {
-		record := &result.Records[index]
-		if record.Event == nil || !isCreationKind(record.Event.Kind) || !record.Applied {
-			continue
-		}
-		valid := true
-		if record.Line != 1 {
-			valid = false
-			result.Integrity = append(result.Integrity, integrity("misplaced-creation-event", record.SessionID, record.Line, []string{record.Event.EventID}, "creation event is not the first stream record"))
-		}
-		if _, creationErr := validateCreation(metadata, record.Raw); creationErr != nil {
-			valid = false
-			result.Integrity = append(result.Integrity, integrity("creation-metadata-mismatch", effortID, record.Line, []string{record.Event.EventID}, creationErr.Error()))
-		}
-		if valid && creationCount == 0 {
-			creationCount++
-			continue
-		}
-		if valid {
-			result.Integrity = append(result.Integrity, integrity("duplicate-creation-event", effortID, record.Line, []string{record.Event.EventID}, "duplicate creation event has no applied state effect"))
-		}
-		record.Applied = false
-		invalidCreationIDs[record.Event.EventID] = true
-	}
-	_ = invalidCreationIDs // creation evidence remains in the causal graph
-	if creationCount != 1 {
-		result.Integrity = append(result.Integrity, integrity("missing-or-duplicate-creation-event", effortID, 0, nil, "effort must have exactly one valid creation event"))
-	}
-	// Every structurally valid unique event remains in Events as causal evidence.
-	// EffectApplied is a separate mask: illegal and superseded lifecycle records
-	// stay referenceable by descendants and repairs without changing state.
-	excluded := make(map[string]bool)
-	canonicalApplied := make(map[string]bool)
-	for _, record := range result.Records {
-		if record.Event == nil {
-			continue
-		}
-		if record.Applied {
-			canonicalApplied[record.Event.EventID] = true
-		} else {
-			excluded[record.Event.EventID] = true
-		}
-	}
-	for eventID := range canonicalApplied {
-		delete(excluded, eventID)
-	}
-	for eventID := range excluded {
-		result.RejectedEffects[eventID] = true
-	}
-	projected := projectLifecycle(result.Events, excluded)
-	result.Integrity = append(result.Integrity, projected.Invalid...)
-	for _, event := range result.Events {
-		applied := !excluded[event.EventID] && (descriptor.Payloads[string(event.Kind)].Class == "passive" || projected.EffectApplied[event.EventID])
-		result.EffectApplied[event.EventID] = applied
-	}
-	for index := range result.Records {
-		record := &result.Records[index]
-		if record.Event != nil && descriptor.Payloads[string(record.Event.Kind)].Class == "lifecycle" {
-			record.Applied = projected.EffectApplied[record.Event.EventID]
-		}
-	}
-	return result, nil
-}
-
-func effortProjectionCompatible(read EffortRead) bool {
-	for _, issue := range read.Integrity {
-		if issue.Code == "unsupported-protocol" {
-			return false
-		}
-	}
-	return true
-}
-
-func unsupportedRequiredRecord(raw json.RawMessage, validationErr error) bool {
-	if strings.Contains(validationErr.Error(), "unsupported protocol major") || strings.Contains(validationErr.Error(), "unknown required kind") {
-		return true
-	}
-	var header struct {
-		Version ProtocolVersion `json:"version"`
-		Kind    EventKind       `json:"kind"`
-	}
-	return json.Unmarshal(raw, &header) == nil && header.Version.Major == descriptor.Version.Major && header.Version.Minor > descriptor.Version.Minor && descriptor.Payloads[string(header.Kind)].Class == ""
-}
-
-func (l *Ledger) readStream(result *EffortRead, effortID, sessionID string, raw []byte, byEventID, byLifecycleIdentity, byPassiveIdentity map[string]EventEnvelope) {
-	lines := splitJSONLines(raw)
-	for index, line := range lines.complete {
-		lineNumber := index + 1
-		record := LedgerRecord{SessionID: sessionID, Line: lineNumber, Raw: append(json.RawMessage(nil), line...)}
-		event, err := ValidateEvent(line)
-		if err != nil {
-			code := "malformed-complete-line"
-			if unsupportedRequiredRecord(line, err) {
-				code = "unsupported-protocol"
-			}
-			result.Integrity = append(result.Integrity, integrity(code, sessionID, lineNumber, nil, err.Error()))
-			result.Records = append(result.Records, record)
-			continue
-		}
-		record.Event = &event
-		if event.EffortID != effortID || event.SessionID != sessionID {
-			result.Integrity = append(result.Integrity, integrity("stream-identity-mismatch", sessionID, lineNumber, []string{event.EventID}, "event identity differs from its stream"))
-			result.Records = append(result.Records, record)
-			continue
-		}
-		identityClass, identity := eventIdentity(event)
-		identityMap := byPassiveIdentity
-		if identityClass == "lifecycle" {
-			identityMap = byLifecycleIdentity
-		}
-		prior, duplicateEvent := byEventID[event.EventID]
-		priorIdentity, duplicateIdentity := identityMap[identity]
-		if duplicateEvent || duplicateIdentity {
-			if !duplicateEvent {
-				prior = priorIdentity
-			}
-			equal, compareErr := eventsEqual(prior, line)
-			if compareErr != nil || !equal {
-				ids := []string{prior.EventID, event.EventID}
-				result.Integrity = append(result.Integrity, integrity("conflicting-duplicate", sessionID, lineNumber, ids, "duplicate identity has different content"))
-			}
-			// A distinct event ID remains causal evidence even when its contract
-			// identity conflicts. Same-ID records cannot form distinct graph nodes
-			// and remain available through Records.
-			if !duplicateEvent {
-				byEventID[event.EventID] = event
-				result.Events = append(result.Events, event)
-			}
-			result.Records = append(result.Records, record)
-			continue
-		}
-		byEventID[event.EventID] = event
-		identityMap[identity] = event
-		if l.validateTransition != nil {
-			if err := l.validateTransition(event, result.Events); err != nil {
-				result.Integrity = append(result.Integrity, integrity("invalid-transition", sessionID, lineNumber, []string{event.EventID}, err.Error()))
-				result.Events = append(result.Events, event)
-				result.Records = append(result.Records, record)
+	if entries, err := os.ReadDir(p.sessions); err == nil {
+		sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+		for _, entry := range entries {
+			id := strings.TrimSuffix(entry.Name(), ".jsonl")
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") || !Identifier(id) {
+				out.Findings = append(out.Findings, finding("session-v1", id, "unsafe-stream-entry"))
 				continue
 			}
+			stream := readSession(filepath.Join(p.sessions, entry.Name()), id)
+			out.Sessions = append(out.Sessions, stream)
+			out.Findings = append(out.Findings, stream.Findings...)
 		}
-		record.Applied = true
-		result.Events = append(result.Events, event)
-		result.Records = append(result.Records, record)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return ReadSet{}, fmt.Errorf("read sessions: %w", err)
 	}
-	if len(lines.partial) != 0 {
-		result.Integrity = append(result.Integrity, integrity("partial-final-line", sessionID, len(lines.complete)+1, nil, "ignored incomplete final JSONL line"))
-		result.Records = append(result.Records, LedgerRecord{SessionID: sessionID, Line: len(lines.complete) + 1, Raw: append(json.RawMessage(nil), lines.partial...)})
+	legacy, findings, err := readLegacy(p.efforts)
+	if err != nil {
+		return ReadSet{}, err
 	}
+	out.Legacy = legacy
+	out.Findings = append(out.Findings, findings...)
+	sort.Slice(out.Sessions, func(i, j int) bool { return out.Sessions[i].SessionID < out.Sessions[j].SessionID })
+	sortFindings(out.Findings)
+	return out, nil
 }
-
-type jsonLines struct {
-	complete [][]byte
-	partial  []byte
+func finding(source, session, code string) IntegrityFinding {
+	return IntegrityFinding{Source: source, SessionID: session, Code: code}
 }
-
-func splitJSONLines(raw []byte) jsonLines {
-	result := jsonLines{complete: [][]byte{}}
-	if len(raw) == 0 {
-		return result
+func readSession(path, id string) SessionRead {
+	out := SessionRead{SessionID: id, Observations: []Observation{}, Records: []json.RawMessage{}, Findings: []IntegrityFinding{}}
+	if _, err := inspectRegular(path); err != nil {
+		out.Findings = append(out.Findings, finding("session-v1", id, "unsafe-stream-path"))
+		return out
 	}
-	parts := bytes.Split(raw, []byte{'\n'})
-	completeCount := len(parts) - 1
-	if raw[len(raw)-1] != '\n' {
-		result.partial = append([]byte(nil), parts[len(parts)-1]...)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		out.Findings = append(out.Findings, finding("session-v1", id, "read-failure"))
+		return out
 	}
-	for _, part := range parts[:completeCount] {
-		result.complete = append(result.complete, append([]byte(nil), part...))
+	if len(raw) == 0 || raw[len(raw)-1] != '\n' {
+		out.Findings = append(out.Findings, finding("session-v1", id, "missing-final-lf"))
+		return out
 	}
-	return result
+	lines := bytes.Split(raw[:len(raw)-1], []byte{'\n'})
+	if len(lines) == 0 || len(lines[0]) == 0 {
+		out.Findings = append(out.Findings, finding("session-v1", id, "missing-header"))
+		return out
+	}
+	h, err := ValidateHeader(lines[0])
+	if err != nil {
+		out.Findings = append(out.Findings, finding("session-v1", id, "invalid-header"))
+		return out
+	}
+	out.Header = h
+	if h.SessionID != id {
+		out.Findings = append(out.Findings, finding("session-v1", id, "header-identity-mismatch"))
+		return out
+	}
+	out.Records = append(out.Records, append(json.RawMessage(nil), lines[0]...))
+	seen := map[string]bool{}
+	for _, line := range lines[1:] {
+		if len(line) == 0 {
+			out.Findings = append(out.Findings, finding("session-v1", id, "malformed-record"))
+			continue
+		}
+		o, e := ValidateObservation(line)
+		if e != nil {
+			out.Findings = append(out.Findings, finding("session-v1", id, "malformed-record"))
+			continue
+		}
+		if seen[o.ObservationID] {
+			out.Findings = append(out.Findings, finding("session-v1", id, "duplicate-observation-id"))
+			continue
+		}
+		seen[o.ObservationID] = true
+		out.Observations = append(out.Observations, o)
+		out.Records = append(out.Records, append(json.RawMessage(nil), line...))
+	}
+	sort.Slice(out.Observations, func(i, j int) bool {
+		if !out.Observations[i].Timestamp.Equal(out.Observations[j].Timestamp) {
+			return out.Observations[i].Timestamp.Before(out.Observations[j].Timestamp)
+		}
+		return out.Observations[i].ObservationID < out.Observations[j].ObservationID
+	})
+	sortFindings(out.Findings)
+	return out
 }
-
-func eventIdentity(event EventEnvelope) (string, string) {
-	if descriptor.Payloads[string(event.Kind)].Class == "lifecycle" {
-		return "lifecycle", event.IdempotencyKey
+func readLegacy(root string) ([]LegacyEffortRead, []IntegrityFinding, error) {
+	out := []LegacyEffortRead{}
+	findings := []IntegrityFinding{}
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, os.ErrNotExist) {
+		return out, findings, nil
 	}
-	return "passive", event.ObservationID
-}
-
-func sameContractIdentity(left, right EventEnvelope) bool {
-	leftClass, leftIdentity := eventIdentity(left)
-	rightClass, rightIdentity := eventIdentity(right)
-	return leftClass == rightClass && leftIdentity == rightIdentity
-}
-
-func integrity(code, scope string, line int, eventIDs []string, detail string) IntegrityIssue {
-	if eventIDs == nil {
-		eventIDs = []string{}
+	if err != nil {
+		return nil, nil, err
 	}
-	return IntegrityIssue{Code: code, Scope: scope, Line: line, EventIDs: eventIDs, Detail: detail}
-}
-
-func readTombstone(raw []byte) (tombstoneRecord, error) {
-	var record tombstoneRecord
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&record); err != nil || ensureJSONEOF(decoder) != nil || !validPruneNonce(record.Nonce) || (record.State != "pending" && record.State != "committed") {
-		return tombstoneRecord{}, errors.New("ambiguous tombstone record")
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() < entries[j].Name() })
+	for _, entry := range entries {
+		id := entry.Name()
+		if !entry.IsDir() || !Identifier(id) {
+			findings = append(findings, finding("legacy", id, "unsafe-legacy-entry"))
+			continue
+		}
+		dir := filepath.Join(root, id)
+		if _, err := inspectLegacyDirectory(dir); err != nil {
+			findings = append(findings, finding("legacy", id, "unsafe-legacy-path"))
+			continue
+		}
+		read := LegacyEffortRead{EffortID: id, Records: []json.RawMessage{}, Findings: []IntegrityFinding{}}
+		metadata := filepath.Join(dir, "effort.json")
+		if b, e := os.ReadFile(metadata); e == nil {
+			read.Records = append(read.Records, append(json.RawMessage(nil), bytes.TrimSuffix(b, []byte{'\n'})...))
+		}
+		sessions := filepath.Join(dir, "sessions")
+		if sessionEntries, e := os.ReadDir(sessions); e == nil {
+			sort.Slice(sessionEntries, func(i, j int) bool { return sessionEntries[i].Name() < sessionEntries[j].Name() })
+			for _, se := range sessionEntries {
+				sid := strings.TrimSuffix(se.Name(), ".jsonl")
+				if se.IsDir() || !strings.HasSuffix(se.Name(), ".jsonl") || !Identifier(sid) {
+					read.Findings = append(read.Findings, finding("legacy-protocol-1", sid, "unsafe-legacy-stream"))
+					continue
+				}
+				b, e := os.ReadFile(filepath.Join(sessions, se.Name()))
+				if e != nil {
+					read.Findings = append(read.Findings, finding("legacy-protocol-1", sid, "read-failure"))
+					continue
+				}
+				for _, line := range bytes.Split(bytes.TrimSuffix(b, []byte{'\n'}), []byte{'\n'}) {
+					if len(line) > 0 {
+						read.Records = append(read.Records, append(json.RawMessage(nil), line...))
+					}
+				}
+			}
+		}
+		out = append(out, read)
+		findings = append(findings, read.Findings...)
 	}
-	return record, nil
+	return out, findings, nil
+}
+func sortFindings(values []IntegrityFinding) {
+	sort.Slice(values, func(i, j int) bool {
+		a, b := values[i], values[j]
+		if a.Source != b.Source {
+			return a.Source < b.Source
+		}
+		if a.SessionID != b.SessionID {
+			return a.SessionID < b.SessionID
+		}
+		return a.Code < b.Code
+	})
 }

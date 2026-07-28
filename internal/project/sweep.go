@@ -53,9 +53,13 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 			config.DirName + "/current-state-upgrade.journal": true,
 		},
 		dirs: map[string]bool{
-			config.DirName:             true,
-			config.DirName + "/parts":  true,
-			config.DirName + "/memory": true,
+			config.DirName:                  true,
+			config.DirName + "/parts":       true,
+			config.DirName + "/efforts":     true,
+			config.DirName + "/assignments": true,
+			config.DirName + "/memory":      true,
+			config.DirName + "/worktrees":   true,
+			config.DirName + "/metrics":     true,
 		},
 		enabled:    map[string]map[string]bool{},
 		singletons: map[string]bool{},
@@ -200,7 +204,7 @@ func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error
 			return nil
 		}
 		if de.IsDir() {
-			if rel == config.DirName+"/memory" || rel == config.DirName+"/metrics" {
+			if isResidentPath(rel) {
 				return filepath.SkipDir
 			}
 			if m.claimedDir(rel) {

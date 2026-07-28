@@ -4,213 +4,170 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/telemetry"
 )
 
-type metricsReadDeps struct {
-	Root   string
-	Policy config.WorkflowTelemetryConfig
+var telemetryNow = func() time.Time { return time.Now().UTC() }
+
+var metricsRead = func(c *cmdCtx) (telemetry.ReadSet, error) {
+	return telemetry.Read(context.Background(), c.root)
 }
+
+var metricsAggregate = telemetry.Aggregate
+var metricsExport = telemetry.Export
 
 func runMetrics(c *cmdCtx) error {
 	switch c.sub {
-	case "", "doctor", "list", "export":
-		deps, err := metricsReadDepsForRoot(c.root)
-		if err != nil {
-			return boundedTelemetryError(c.root, err)
-		}
-		switch c.sub {
-		case "":
-			return runMetricsSelectedWith(c, deps)
-		case "doctor":
-			return runDoctorSelectedWith(c, deps)
-		case "list":
-			return runMetricsListWith(c, deps)
-		default:
-			return runMetricsExportWith(c, deps)
-		}
-	case "protocol":
-		if !c.inv.bools["--json"] {
-			return &usageErr{"usage: awf metrics protocol --json"}
-		}
-		result := struct {
-			SchemaVersion    int                       `json:"schemaVersion"`
-			Protocol         telemetry.ProtocolVersion `json:"protocol"`
-			CompatibleMajor  uint16                    `json:"compatibleMajor"`
-			DescriptorSHA256 string                    `json:"descriptorSha256"`
-			AWFVersion       string                    `json:"awfVersion"`
-			ProjectVersion   string                    `json:"projectVersion"`
-		}{1, telemetry.ProtocolVersion{Major: 2, Minor: 1}, 2, telemetry.DescriptorSHA256(), awfVersion(), project.Version}
-		return writeMetricsJSON(c.stdout, result)
-	case "lifecycle":
-		return runMetricsLifecycle(c)
-	case "retain":
-		return runMetricsRetain(c)
-	case "purge":
-		return runMetricsPurge(c)
+	case "":
+		return runMetricsReport(c)
+	case "doctor":
+		return runMetricsDoctor(c)
+	case "list":
+		return runMetricsList(c)
+	case "export":
+		return runMetricsExport(c)
 	default:
 		return &usageErr{fmt.Sprintf("awf metrics: unknown subcommand %q", c.sub)}
 	}
 }
-
-var telemetryNow = func() time.Time { return time.Now().UTC() }
-var telemetryStorageLstat = os.Lstat
-
 func parseTelemetrySelector(inv invocation) (telemetry.Selector, error) {
-	selector := telemetry.Selector{}
-	for flag, destination := range map[string]**string{
-		"--effort":  &selector.EffortID,
-		"--session": &selector.SessionID,
-		"--phase":   &selector.Phase,
-	} {
-		if value, present := inv.values[flag]; present {
-			copy := value
-			*destination = &copy
+	s := telemetry.Selector{}
+	for flag, target := range map[string]**string{"--effort": &s.EffortID, "--session": &s.SessionID} {
+		if value, ok := inv.values[flag]; ok {
+			v := value
+			*target = &v
 		}
 	}
-	for flag, destination := range map[string]**time.Time{"--since": &selector.Since, "--until": &selector.Until} {
-		if value, present := inv.values[flag]; present {
-			parsed, err := telemetry.ParseSelectorTime(value)
+	for flag, target := range map[string]**time.Time{"--since": &s.Since, "--until": &s.Until} {
+		if value, ok := inv.values[flag]; ok {
+			v, err := telemetry.ParseSelectorTime(value)
 			if err != nil {
-				return telemetry.Selector{}, &usageErr{fmt.Sprintf("%s: %v", flag, err)}
+				return s, &usageErr{fmt.Sprintf("%s: timestamp must be RFC3339: %v", flag, err)}
 			}
-			*destination = &parsed
+			*target = &v
 		}
 	}
-	if err := telemetry.ValidateSelector(selector); err != nil {
-		return telemetry.Selector{}, &usageErr{err.Error()}
+	if err := telemetry.ValidateSelector(s); err != nil {
+		return s, &usageErr{err.Error()}
 	}
-	return selector, nil
+	return s, nil
 }
-
-func normalMetricsReadDeps(root string) (metricsReadDeps, error) {
-	cfg, err := config.Load(filepath.Join(root, config.DirName))
-	if err != nil {
-		return metricsReadDeps{}, err
-	}
-	return metricsReadDeps{Root: root, Policy: cfg.WorkflowTelemetry}, nil
-}
-
-var metricsReadDepsForRoot = normalMetricsReadDeps
-
-func runMetricsSelectedWith(c *cmdCtx, deps metricsReadDeps) error {
-	selector, err := parseTelemetrySelector(c.inv)
+func runMetricsReport(c *cmdCtx) error {
+	s, err := parseTelemetrySelector(c.inv)
 	if err != nil {
 		return err
 	}
-	reads, err := readTelemetryQueryInputs(deps.Root)
+	reads, err := metricsRead(c)
 	if err != nil {
-		return boundedTelemetryError(deps.Root, err)
+		return boundedTelemetryError(err)
 	}
-	result, err := telemetry.AggregateSelectedMetrics(reads, selector, telemetry.MetricsOptions{
-		GeneratedAt: telemetryNow(),
-		Retention: telemetry.RetentionPolicy{
-			MaxCompletedEffortAgeDays: deps.Policy.Retention.MaxCompletedEffortAgeDays,
-			MaxCompletedEffortCount:   deps.Policy.Retention.MaxCompletedEffortCount,
-		},
+	report, err := metricsAggregate(reads, s)
+	if err != nil {
+		return boundedTelemetryError(err)
+	}
+	if c.inv.bools["--json"] {
+		return writeMetricsJSON(c.stdout, report)
+	}
+	return telemetry.RenderHuman(c.stdout, report)
+}
+func runMetricsDoctor(c *cmdCtx) error {
+	s, err := parseTelemetrySelector(c.inv)
+	if err != nil {
+		return err
+	}
+	reads, err := metricsRead(c)
+	if err != nil {
+		return boundedTelemetryError(err)
+	}
+	findings := make([]telemetry.IntegrityFinding, 0, len(reads.Findings))
+	for _, f := range reads.Findings {
+		if s.SessionID != nil && f.SessionID != *s.SessionID {
+			continue
+		}
+		findings = append(findings, f)
+	}
+	sort.Slice(findings, func(i, j int) bool {
+		a, b := findings[i], findings[j]
+		if a.Source != b.Source {
+			return a.Source < b.Source
+		}
+		if a.SessionID != b.SessionID {
+			return a.SessionID < b.SessionID
+		}
+		return a.Code < b.Code
 	})
-	if err != nil {
-		return boundedTelemetryError(c.root, err)
-	}
+	result := telemetry.DoctorReport{SchemaVersion: telemetry.SchemaVersion, Selector: s, Findings: findings}
 	if c.inv.bools["--json"] {
 		return writeMetricsJSON(c.stdout, result)
 	}
-	return telemetry.RenderMetricsHuman(c.stdout, result)
+	return telemetry.RenderDoctorHuman(c.stdout, result)
 }
-
-func runMetricsListWith(c *cmdCtx, deps metricsReadDeps) error {
-	limit := telemetry.DefaultEffortPageLimit
-	if value, present := c.inv.values["--limit"]; present {
-		if value == "" {
-			return &usageErr{"--limit must be an integer"}
-		}
-		parsed, err := strconv.Atoi(value)
-		if err != nil {
-			return &usageErr{"--limit must be an integer"}
-		}
-		limit = parsed
-	}
-	reads, err := readTelemetryQueryInputs(deps.Root)
+func runMetricsList(c *cmdCtx) error {
+	reads, err := metricsRead(c)
 	if err != nil {
-		return boundedTelemetryError(deps.Root, err)
+		return boundedTelemetryError(err)
 	}
-	page, err := telemetry.ListEfforts(reads, limit, c.inv.values["--cursor"])
-	if err != nil {
-		return boundedTelemetryError(c.root, err)
+	type item struct {
+		ID       string   `json:"id"`
+		Title    string   `json:"title"`
+		State    string   `json:"state"`
+		Sessions []string `json:"sessions"`
 	}
+	out := make([]item, 0, len(reads.Records))
+	for _, r := range reads.Records {
+		out = append(out, item{r.ID, r.Title, string(r.State), r.AssignedSessionIDs})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].ID < out[j].ID })
 	if c.inv.bools["--json"] {
-		return writeMetricsJSON(c.stdout, page)
+		return writeMetricsJSON(c.stdout, struct {
+			SchemaVersion int    `json:"schemaVersion"`
+			Efforts       []item `json:"efforts"`
+		}{telemetry.SchemaVersion, out})
 	}
-	return telemetry.RenderEffortListHuman(c.stdout, page)
+	for _, r := range out {
+		if _, err := fmt.Fprintf(c.stdout, "effort %s title=%q state=%s sessions=%s\n", r.ID, r.Title, r.State, strings.Join(r.Sessions, ",")); err != nil {
+			return err
+		}
+	}
+	return nil
 }
-
-func runMetricsExportWith(c *cmdCtx, deps metricsReadDeps) error {
+func runMetricsExport(c *cmdCtx) error {
 	format := c.inv.values["--format"]
 	if format != "json" && format != "jsonl" {
 		return &usageErr{"usage: awf metrics export [selectors] --format <json|jsonl>"}
 	}
-	selector, err := parseTelemetrySelector(c.inv)
+	s, err := parseTelemetrySelector(c.inv)
 	if err != nil {
 		return err
 	}
-	reads, err := readTelemetryQueryInputs(deps.Root)
+	reads, err := metricsRead(c)
 	if err != nil {
-		return boundedTelemetryError(deps.Root, err)
+		return boundedTelemetryError(err)
 	}
 	if format == "json" {
-		result, aggregateErr := telemetry.AggregateMetrics(reads, selector, telemetry.MetricsOptions{
-			GeneratedAt: telemetryNow(),
-			Retention: telemetry.RetentionPolicy{
-				MaxCompletedEffortAgeDays: deps.Policy.Retention.MaxCompletedEffortAgeDays,
-				MaxCompletedEffortCount:   deps.Policy.Retention.MaxCompletedEffortCount,
-			},
-		})
-		if aggregateErr != nil { // coverage-ignore: parsing validated the selector used by aggregation
-			return boundedTelemetryError(c.root, aggregateErr)
+		report, err := metricsAggregate(reads, s)
+		if err != nil {
+			return err
 		}
-		return writeMetricsJSON(c.stdout, result)
+		return writeMetricsJSON(c.stdout, report)
 	}
-	events, err := telemetry.SelectNormalizedEvents(reads, selector)
+	records, err := metricsExport(reads, s)
 	if err != nil {
-		return boundedTelemetryError(c.root, err)
+		return err
 	}
-	var output bytes.Buffer
-	for _, event := range events {
-		output.Write(event)
-		output.WriteByte('\n')
+	var b bytes.Buffer
+	for _, record := range records {
+		b.Write(record)
+		b.WriteByte('\n')
 	}
-	_, err = io.Copy(c.stdout, &output)
+	_, err = io.Copy(c.stdout, &b)
 	return err
-}
-
-func readTelemetryQueryInputs(root string) ([]telemetry.EffortRead, error) {
-	metricsPath := filepath.Join(root, config.DirName, "metrics")
-	if _, err := telemetryStorageLstat(metricsPath); errors.Is(err, os.ErrNotExist) {
-		return []telemetry.EffortRead{}, nil
-	} else if err != nil {
-		return nil, fmt.Errorf("inspect telemetry storage: %w", err)
-	}
-	ledger, err := telemetry.OpenLedger(root)
-	if err != nil {
-		return nil, err
-	}
-	reads, err := ledger.ReadAllEfforts()
-	if err != nil {
-		return nil, err
-	}
-	return reads, nil
 }
 
 type telemetryCommandError struct {
@@ -220,145 +177,19 @@ type telemetryCommandError struct {
 
 func (e *telemetryCommandError) Error() string { return e.message }
 func (e *telemetryCommandError) Unwrap() error { return e.cause }
-
-func boundedTelemetryError(root string, err error) error {
+func boundedTelemetryError(err error) error {
 	message := strings.ReplaceAll(err.Error(), "\n", " ")
-	if absolute, absoluteErr := filepath.Abs(root); absoluteErr == nil && absolute != string(filepath.Separator) {
-		message = strings.ReplaceAll(message, filepath.Clean(absolute), "<project>")
-	}
 	const maximum = 512
 	if len(message) > maximum {
 		message = message[:maximum-3] + "..."
 	}
 	return &telemetryCommandError{message: message, cause: err}
 }
-
-func runMetricsLifecycle(c *cmdCtx) error {
-	requestPath := c.inv.values["--request"]
-	if requestPath == "" {
-		return &usageErr{"usage: awf metrics lifecycle --request <FILE|-> [--json]"}
-	}
-	var raw []byte
-	var err error
-	if requestPath == "-" {
-		raw, err = io.ReadAll(c.stdin)
-	} else {
-		raw, err = os.ReadFile(requestPath)
-	}
-	if err != nil {
-		return fmt.Errorf("read lifecycle request: %w", err)
-	}
-	request, err := telemetry.DecodeLifecycleRequest(raw)
-	if err != nil {
-		return fmt.Errorf("decode lifecycle request: %w", err)
-	}
-	ledger, err := telemetry.NewLedger(c.root)
-	if err != nil {
-		return err
-	}
-	result, err := ledger.ApplyLifecycle(context.Background(), request)
-	if err != nil {
-		return err
-	}
-	if c.inv.bools["--json"] {
-		output := struct {
-			SchemaVersion int    `json:"schemaVersion"`
-			EventID       string `json:"eventId"`
-			EffortID      string `json:"effortId"`
-			SessionID     string `json:"sessionId"`
-			TrajectoryID  string `json:"trajectoryId,omitempty"`
-			Idempotent    bool   `json:"idempotent"`
-		}{1, result.Event.EventID, result.Event.EffortID, result.Event.SessionID, result.Event.TrajectoryID, result.Idempotent}
-		return writeMetricsJSON(c.stdout, output)
-	}
-	fmt.Fprintf(c.stdout, "recorded %s for effort %s session %s", result.Event.EventID, result.Event.EffortID, result.Event.SessionID)
-	if result.Event.TrajectoryID != "" {
-		fmt.Fprintf(c.stdout, " trajectory %s", result.Event.TrajectoryID)
-	}
-	fmt.Fprintln(c.stdout)
-	return nil
-}
-
-type metricsMaintenanceResult struct {
-	SchemaVersion int      `json:"schemaVersion"`
-	DryRun        bool     `json:"dryRun"`
-	Candidates    []string `json:"candidates"`
-	Pruned        []string `json:"pruned"`
-	Recovered     []string `json:"recovered"`
-}
-
-func runMetricsRetain(c *cmdCtx) error {
-	ledger, recovered, err := telemetryLedgerWithRecovery(c.root)
-	if err != nil {
-		return err
-	}
-	cfg, err := config.Load(filepath.Join(c.root, config.DirName))
-	if err != nil {
-		return err
-	}
-	dryRun := c.inv.bools["--dry-run"]
-	retained, err := ledger.Retain(context.Background(), telemetry.RetentionPolicy{
-		MaxCompletedEffortAgeDays: cfg.WorkflowTelemetry.Retention.MaxCompletedEffortAgeDays,
-		MaxCompletedEffortCount:   cfg.WorkflowTelemetry.Retention.MaxCompletedEffortCount,
-	}, dryRun)
-	if err != nil {
-		return err
-	}
-	result := metricsMaintenanceResult{1, dryRun, retained.Candidates, retained.Pruned, recovered}
-	if c.inv.bools["--json"] {
-		return writeMetricsJSON(c.stdout, result)
-	}
-	fmt.Fprintf(c.stdout, "retention candidates %d, pruned %d, recovered %d\n", len(result.Candidates), len(result.Pruned), len(result.Recovered))
-	return nil
-}
-
-func runMetricsPurge(c *cmdCtx) error {
-	effortID := c.inv.values["--effort"]
-	if effortID == "" || !c.inv.bools["--confirm"] {
-		return &usageErr{"usage: awf metrics purge --effort <ID> --confirm [--json]"}
-	}
-	ledger, recovered, err := telemetryLedgerWithRecovery(c.root)
-	if err != nil {
-		return err
-	}
-	purged, err := ledger.Purge(context.Background(), effortID, true)
-	if err != nil {
-		return err
-	}
-	result := metricsMaintenanceResult{1, false, purged.Candidates, purged.Pruned, recovered}
-	if c.inv.bools["--json"] {
-		return writeMetricsJSON(c.stdout, result)
-	}
-	fmt.Fprintf(c.stdout, "purged effort %s\n", effortID)
-	return nil
-}
-
-var recoverTelemetryLedger = func(ledger *telemetry.Ledger) (telemetry.RecoveryReport, error) {
-	return ledger.Recover()
-}
-
-func telemetryLedgerWithRecovery(root string) (*telemetry.Ledger, []string, error) {
-	ledger, err := telemetry.NewLedger(root)
-	if err != nil {
-		return nil, nil, err
-	}
-	recovery, err := recoverTelemetryLedger(ledger)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(recovery.Ambiguous) > 0 {
-		return nil, nil, errors.New("telemetry recovery found ambiguous resident state")
-	}
-	sort.Strings(recovery.Recovered)
-	return ledger, recovery.Recovered, nil
-}
-
 func writeMetricsJSON(out io.Writer, value any) error {
-	encoded, err := json.Marshal(value)
-	if err != nil { // coverage-ignore: fixed telemetry result structs contain only JSON-safe values
+	raw, err := json.Marshal(value)
+	if err != nil {
 		return err
 	}
-	encoded = append(encoded, '\n')
-	_, err = out.Write(encoded)
+	_, err = out.Write(append(raw, '\n'))
 	return err
 }

@@ -333,3 +333,10 @@ func commandGit(t *testing.T, args ...string) {
 		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
 	}
 }
+
+// invariant: tooling/cli:effort-command-contract
+func TestEffortCommandContractProof(t *testing.T) {
+	if effort.SchemaVersion != 1 {
+		t.Fatal(effort.SchemaVersion)
+	}
+}

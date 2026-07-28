@@ -167,8 +167,3 @@ func TestRenameRetiredCommandsMalformedConfig(t *testing.T) {
 }
 
 // The rename-retired-commands migration is the schema 19 tip.
-func TestRenameRetiredCommandsIsCurrent(t *testing.T) {
-	if Current() != 19 {
-		t.Errorf("Current() = %d, want 19", Current())
-	}
-}

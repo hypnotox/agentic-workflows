@@ -4,9 +4,9 @@ Pi workflow contracts: governed subagent tools, session handoff, local workflow 
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-The Pi handoff lifecycle queues a single-use continuation after model settlement, presents and cleans up a cancellable five-second countdown, revalidates the memory file's effort identity and copied active association before replacement, creates a persisted parent-linked session with that association installed during setup, restores it before kickoff through the replacement context, retains an editor fallback, and on a post-queue failure that leaves the old session active surfaces a visible failure notice with the prepared kickoff wrapper in the editor, never auto-retrying and never initiating a model turn, while stating the truthful nontransactional teardown boundary without deleting sessions or memory.
+Pi handoff keeps its single-use queue, countdown, cancellation, parent link, confined memory validation, and editor fallback. Selection is optional; if both selection and memory exist their Effort IDs must match. Child setup assigns a selected effort through `awf effort assign` before kickoff and failure leaves the parent unchanged.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152
+Revised-by: ADR-0149, ADR-0152, ADR-0164
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -29,23 +29,23 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-The generated Pi handoff extension exposes exactly the closed memoryPath and bounded kickoff schema, confines canonical no-symlink paths to regular files below .awf/memory, requires an `Effort: <id>` matching the independently validated active telemetry association, a persisted TUI, and an exclusive trustworthy tool batch, keeps one correlated pending request, queues its private command, and terminates the calling model turn; missing or mismatched identity refuses handoff before replacement.
+Pi handoff accepts optional memoryPath and bounded kickoff. No selection and no memory are valid, a selected effort and memory must match, and the extension never adopts checkpoints or fabricates history.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162
+Revised-by: ADR-0149, ADR-0162, ADR-0164
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Working memory remains optional and Pi-rendered checkpoint guidance invokes `handoff_session` alone only on the routine protocol's clear branch, after persistence and the continuity notice, and only when a validated memory file carrying the active `Effort: <id>` exists, at phase and per-task implementation boundaries. Approval boundaries hand off only after explicit approval, a failed handoff is portrayed as a check-in rather than a success, checkpoint-less Pi efforts continue in-session or through structured resume, and non-Pi targets render both protocols without naming the unsupported tool.
+Pi checkpoint guidance permits optional-selection handoff after normal persistence and never requires telemetry lifecycle state, adoption, or structured resume.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152
+Revised-by: ADR-0149, ADR-0152, ADR-0164
 Backing: test
 
 ### `invariant: pi-lifecycle-enforcing-workflow-router`
 
-Pi publishes one discoverable `awf-workflow` router and separately discoverable reviewer agents, while every enabled governed workflow body is pre-rendered with provenance under the managed non-discovered `.pi/awf-workflows/` tree and no stale individually discoverable copy remains. The closed-enum `awf_workflow` tool runs alone, accepts semantic names rather than paths, validates the current frontier and catalog mapping, settles or resumes explicit effort identity, and durably plans exactly one legal entry-phase start, predecessor transition, or current-phase continuation before returning the fixed body. Mappings separately declare entry target, allowed entry predecessors, continuation phases, route effect, activity, and implementation mode; continuation preserves the unmatched phase start while replacing or clearing attribution and never emits a same-phase transition. External checkpoints are adopted only through exclusive `awf_adopt_effort` after normalized-header, confinement, identity, and mapping validation, and material independent outcomes use exclusive `awf_detour` derived children rather than arbitrary parent jumps. Pi chain bodies name the router as their successor mechanism, retrospective completion and detour-child abandonment settle return mechanically after successful terminal durability, and non-Pi targets retain ordinary target-native skills.
+Pi publishes one discoverable `awf-workflow` router and fixed hidden workflow bodies. `awf_workflow` selects a closed semantic name and returns the fixed body plus optional selected-effort context without workflow-state validation or mutation.
 Origin: ADR-0149
-Revised-by: ADR-0161
+Revised-by: ADR-0161, ADR-0164
 Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
@@ -99,6 +99,7 @@ Backing: test
 
 ### `invariant: pi-workflow-telemetry-public-contract`
 
-The Pi templates publish one descriptor-derived protocol-2.1 vocabulary and a five-file extension surface whose three factories exchange only bounded versioned observations, top-level public Pi usage, and validated active-branch association. The telemetry extension exposes closed lifecycle, exclusive adoption and detour, structured resume, passive event handling, and shutdown draining. Its optional muted below-editor widget uses `[awf:init]`, `[awf:<phase>]`, `[awf:done]`, or `[awf:abandoned]` and updates only after a successful explicit lifecycle or association action. It derives input, output, cache-read, cache-write, and available cost only from unique active-branch assistant entries and derives current context only from Pi's public context API, without private-footer import, subscription labels, automatic-context inference, or a parity promise. Provisional observations remain in a 256-item and 1-MiB in-memory window until deterministic settlement. The surface has no dashboard command or overlay, canonical metrics or doctor process read, refresh loop, launcher or fallback resolution, Pi metrics or doctor query tool, repair, waiver, retention, or purge control, automatic score, blocking diagnosis, reconciliation, daemon, pagination, full-output flag, or local historical aggregation.
+Pi publishes a descriptor-derived schema-1 direct session writer and a five-file extension surface. It has optional binary-backed effort selection, no lifecycle, adoption, detour, resume, projector, retention, query, or widget authority, and observations contain no effort identity.
 Origin: ADR-0162
+Revised-by: ADR-0164
 Backing: test

@@ -9,12 +9,7 @@ awf into a new repo is documented in the awf project itself.
 
 First adoption seals `initializedWithVersion`, both ADR format cutoffs, and gaps in the lock: both cutoffs are 1 for an empty corpus, or highest-plus-one with explicit lower gaps for brownfield history. Schema-15 upgrade preserves an existing V1 cutoff and atomically seals V2 at highest-plus-one without rewriting ADRs. Older migrated adopters may omit initialization provenance; sync and forced re-init preserve authority rather than backfilling history. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
 
-awf also always renders `.awf/memory/.gitignore` and `.awf/metrics/.gitignore`. The first keeps
-per-effort checkpoint prose out of version control. The second governs only its own ignore rule;
-workflow ledgers, leases, tombstones, trash, and caches below `.awf/metrics/` are resident data, never
-rendered artifacts. Sync, drift checks, nested-adopter discovery, and ordinary uninstall do not claim
-or recursively remove those descendants. If resident metrics remain, uninstall preserves the ignore
-file and reports that fact; only an explicitly confirmed metrics purge removes effort data.
+awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/assignments/`, `.awf/memory/`, `.awf/worktrees/`, and `.awf/metrics/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve nonempty resident roots and report them rather than recursively deleting worktrees or telemetry.
 
 <!-- awf:edit commands: default; create .awf/parts/working-with-awf/commands.md to override -->
 ## Commands
@@ -33,11 +28,10 @@ file and reports that fact; only an explicitly confirmed metrics purge removes e
 - `awf upgrade`: migrate the config tree after upgrading the awf binary. When the lock carries a bridge attestation, plain upgrade instead performs the final current-state cutover, verifying the sealed HEAD and tree digest, journaling the migration approval-file deletion and permanent lock, and promoting the sealed format cutoff and gaps.
 - `awf upgrade --recover`: replay the current-state upgrade journal's recovery table (roll an interrupted cutover back or clean up a committed one). The only mode a present journal permits.
 - `awf audit <base>|<a>..<b>`: report Conventional-Commits / workflow-conformance findings over an explicit commit range (advisory), including each parent-to-commit claim-transition check. The range is required and has no default, so an audit never reports over commits nobody named.
-- `awf metrics --effort <ID> [selectors] [--json]`: print canonical workflow metrics for exactly one resident compatible effort. The `--session`, `--phase`, `--since`, and `--until` selectors combine with logical AND inside that effort; a missing, unknown, incompatible, or empty selection is an error. `--json` preserves the selected canonical projection. Use `awf metrics export --format json` for the existing export projection or `awf metrics export --format jsonl` for validated normalized events; maintenance children accept only their own flags.
-- `awf metrics doctor --effort <ID> [selectors] [--json]`: report effort-owned exact and config-driven heuristic findings for one selected effort. It is read-only and advisory, so findings do not change its exit status.
-- `awf metrics list [--limit N] [--cursor TOKEN] [--json]`: list resident efforts newest-first by immutable creation time, with ID tie breaks and explicit opaque pagination. The default limit is 10 and the maximum is 100; incompatible efforts remain discoverable but cannot be selected.
-- `awf metrics lifecycle --request <FILE|-> --json`: append one closed explicit effort, association, route, transactional phase transition, trajectory, terminal, waiver, or typed repair operation. Protocol 2 uses `transition-phase` for a normal chain edge so one event closes the named start and enters its successor, optionally with a route effect. Repair and waiver requests name the selected finding's owning effort and current nonempty causal frontier; stale, cross-effort, mismatched, or ineligible input is rejected without append. A failed validation or durable write is an error, never a claimed success.
-- `awf metrics retain --dry-run --json`: preview deterministic terminal-effort retention. Omit `--dry-run` to apply it. `awf metrics purge --effort <ID> --confirm --json` is the separately confirmed destructive cleanup surface and refuses active efforts.
+- `awf effort new <title>`: create optional local coordination state, with memory by default; use its worktree and assignment subcommands for explicit managed operations.
+- `awf metrics [--effort ID] [--session ID] [--since TIME] [--until TIME] [--json]`: report schema-1 session telemetry joined through current binary assignments and read-only legacy data.
+- `awf metrics doctor [selectors] [--json]`: report deterministic stream integrity findings without lifecycle diagnosis.
+- `awf metrics list [--json]` and `awf metrics export [selectors] --format <json|jsonl>`: list effort records or export reports and normalized read-only streams.
 - `awf check drift`: report only the stale or hand-edited rendered output, including the config-tree hygiene sweep, without the current-state evaluation bare `awf check` runs with it.
 - `awf check state`: report only the current-state authority findings over the working tree. The staged transition stays `awf check --staged`, which applies to the bare form alone.
 - `awf check invariants`: report the current-state topic invariant claims and their backing state.
@@ -228,46 +222,11 @@ extension files are `awf check` drift; run `awf render` to repair them.
 
 Pi also renders the separate `handoff_session` extension for persisted interactive TUI sessions; it rejects cleanly when the runtime does not expose the readonly persisted-session query. Workflow guidance calls it alone with exact `{memoryPath, kickoff}` arguments on the routine checkpoint's clear branch, after persistence and the continuity notice, or after explicit approval at a mandatory boundary; it rejects unsupported print, JSON, RPC, ephemeral, and in-memory sessions. A five-second Esc/Ctrl+C window precedes revalidation and parent-linked replacement. The old history and memory file are preserved, cleanup is manual, and automatic kickoff uses only the replacement context. If kickoff submission fails, the exact wrapper remains in the new editor for manual submission. A post-queue failure that leaves the old session active raises a visible failure notice and places the prepared kickoff wrapper in that session's editor as the recovery path; the extension never retries automatically and never starts a model turn itself, and the durable checkpoint remains valid. Validation and cancellation preserve the old active session, but teardown after replacement begins is not transactional and may terminate the runtime. During a successful handoff, the extension synchronously requests telemetry's validated active association and copies that plain custom entry through `newSession.setup`; absence or incompatibility never guesses from ancestry or working-memory prose.
 
-### Pi workflow telemetry
+### Pi session telemetry
 
-Pi renders a third extension factory under `.pi/extensions/awf-telemetry/`. Together the three Pi
-extensions comprise exactly five generated TypeScript files. `protocol.ts` is derived from awf's
-machine-readable Go descriptor; its vocabulary, bounds, validation, input attribution, rendered hash,
-and Go/TypeScript parity are not maintained by hand in the wrapper template.
+Pi telemetry is a schema-1 append-only session stream under the primary control root's `.awf/metrics/sessions/`. It records closed usage, tool, gate, subagent, compaction, and handoff observations without an effort ID, workflow state, path, command, conversation, or tool input/output. The extension writes directly under a per-session lock, validates complete bytes, reuses an observation ID on retry, and fsyncs before acknowledging. `awf metrics` joins streams to the current binary assignment; protocol-1 and protocol-2 residents stay read-only historical data.
 
-Telemetry uses protocol 2 and explicit lifecycle, not inference. Create an `independent` effort in
-discovery, or a `derived` effort with opaque origin effort, trajectory, and anchor IDs. Select one
-closed route only when the work supports it, start the first phase, then use one `transition-phase`
-request for each normal chain edge. Its single event names the unmatched start, closes that phase,
-enters its successor, and optionally applies a route effect from the current causal frontier.
-Investigation is a top-level phase, debugging is an investigation activity, bugfix is a route spanning
-implementation, review, and retrospective, and implementation execution style is a mode rather than
-a phase. A later scope change changes route explicitly. Completion checks the selected route and
-freshness requirements; abandonment remains available from discovery or active work.
-
-Association is a bounded custom session entry restored only from Pi's active branch. Tree, fork, and
-clone navigation close the current segment and resume a causally known trajectory or append a fork;
-selecting an anchor before association detaches. Current-path totals follow active ancestry, while
-all-work totals retain discarded branches. Work continuing from a terminal effort should normally
-create a new `derived` effort; `reopen` is an explicit same-effort choice and creates a new trajectory.
-
-The compact telemetry bar is display-only, uses local lifecycle state and public usage APIs, and never reads canonical reports or opens an overlay.
-
-Findings expose their owning `effortId`, stable rule, evidence, threshold or baseline, confidence, and
-next action through explicit effort-scoped CLI reports. They never create a composite score, block work,
-or apply a repair, waiver, retention purge, or association change automatically. Typed repair and waiver
-actions require confirmation, re-resolve the selected finding under its effort, and append only with
-matching evidence and scope, an eligible reason, and the current nonempty causal frontier. Maintenance
-uses fixed argument arrays, with a second confirmation for destructive purge.
-
-Resident events may contain bounded opaque identifiers, timestamps, route/phase/activity values,
-model and tool names, duration, token/cache/cost totals, workflow counters, and categorized outcomes.
-They exclude prompts, assistant text, tasks, tool arguments or previews, raw commands, stdout/stderr,
-free-form waiver prose, and every repository path. Protocol-1 resident data is never rewritten or
-automatically deleted; the repository preflight stops for explicit confirmed purge if any such effort
-exists. The storage threat model covers accidental truncation or alteration, incompatible writers,
-traversal, unsafe file types, and symlink or reparse redirection. It does not defend against a hostile process
-running as the same user and does not promise cryptographic tamper evidence.
+`/awf-effort new <title>`, `use <id>`, `clear`, `show`, and `rename <title>` manage one optional selected effort. `awf_workflow` only loads a fixed rendered workflow body and never changes lifecycle state. Handoff works without selection or memory; when both are present their effort identity must match, and child assignment occurs through the binary before kickoff.
 
 ### Path globs and domain territories
 

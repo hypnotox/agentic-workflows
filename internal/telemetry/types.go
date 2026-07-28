@@ -1,598 +1,109 @@
+// Package telemetry reads the independent, session-keyed telemetry streams.
 package telemetry
 
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/effort"
 )
 
-type ProtocolVersion struct {
-	Major uint16 `json:"major"`
-	Minor uint16 `json:"minor"`
-}
+const SchemaVersion = 1
+const maxSafeInteger uint64 = 9007199254740991
 
-type EventKind string
-type Route string
-type RouteAction string
-type Phase string
-type Activity string
-type TerminalOutcome string
-type AssociationOrigin string
-type CreationMode string
-type DetachReason string
-type ProposalKind string
-type Outcome string
-type StopReason string
-type ErrorCategory string
-type ShellClassification string
-type GateMode string
-type WaiverReasonCode string
-type DiagnosticRuleCode string
-type BoundedCategory string
-type ModelName string
-type ToolName string
-
-type EventEnvelope struct {
-	Version            ProtocolVersion            `json:"version"`
-	EventID            string                     `json:"eventId"`
-	IdempotencyKey     string                     `json:"idempotencyKey,omitempty"`
-	ObservationID      string                     `json:"observationId,omitempty"`
-	EffortID           string                     `json:"effortId"`
-	SessionID          string                     `json:"sessionId"`
-	TrajectoryID       string                     `json:"trajectoryId,omitempty"`
-	ParentTrajectoryID string                     `json:"parentTrajectoryId,omitempty"`
-	PiAnchorID         string                     `json:"piAnchorId,omitempty"`
-	ForkAnchorID       string                     `json:"forkAnchorId,omitempty"`
-	Timestamp          string                     `json:"timestamp"`
-	Kind               EventKind                  `json:"kind"`
-	Predecessors       []string                   `json:"predecessors"`
-	Payload            json.RawMessage            `json:"payload"`
-	EnvelopeExtensions map[string]json.RawMessage `json:"-"`
-	PayloadExtensions  map[string]json.RawMessage `json:"-"`
-}
-
-type EffortCreatedPayload struct {
-	CreationMode       CreationMode `json:"creationMode"`
-	OriginEffortID     string       `json:"originEffortId,omitempty"`
-	OriginTrajectoryID string       `json:"originTrajectoryId,omitempty"`
-	OriginAnchorID     string       `json:"originAnchorId,omitempty"`
-}
-
-type EffortAdoptedPayload struct {
-	CreationMode      CreationMode      `json:"creationMode"`
-	Route             Route             `json:"route,omitempty"`
-	Phase             Phase             `json:"phase"`
-	Workflow          BoundedCategory   `json:"workflow"`
-	TrajectoryID      string            `json:"trajectoryId"`
-	AnchorID          string            `json:"anchorId"`
-	AssociationOrigin AssociationOrigin `json:"associationOrigin"`
-}
-
-type SessionAssociatedPayload struct {
-	AssociationOrigin AssociationOrigin `json:"associationOrigin"`
-	TrajectoryID      string            `json:"trajectoryId"`
-	HandoffEventID    string            `json:"handoffEventId,omitempty"`
-}
-
-type SessionDetachedPayload struct {
-	Reason DetachReason `json:"reason"`
-}
-
-type RoutePayload struct {
-	Route Route `json:"route"`
-}
-
-type PhaseStartedPayload struct {
-	Phase              Phase           `json:"phase"`
-	Activity           Activity        `json:"activity,omitempty"`
-	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
-}
-
-type PhaseFinishedPayload struct {
-	Phase        Phase   `json:"phase"`
-	StartEventID string  `json:"startEventId"`
-	Outcome      Outcome `json:"outcome,omitempty"`
-}
-
-type PhaseTransitionedPayload struct {
-	Phase              Phase           `json:"phase"`
-	StartEventID       string          `json:"startEventId"`
-	NextPhase          Phase           `json:"nextPhase"`
-	Outcome            Outcome         `json:"outcome,omitempty"`
-	Activity           Activity        `json:"activity,omitempty"`
-	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
-	RouteAction        RouteAction     `json:"routeAction,omitempty"`
-	Route              Route           `json:"route,omitempty"`
-}
-
-type PhaseContinuedPayload struct {
-	Phase              Phase           `json:"phase"`
-	StartEventID       string          `json:"startEventId"`
-	Workflow           BoundedCategory `json:"workflow"`
-	Activity           Activity        `json:"activity,omitempty"`
-	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
-}
-
-type TrajectoryPayload struct {
-	TrajectoryID string          `json:"trajectoryId"`
-	AnchorID     string          `json:"anchorId"`
-	Reason       BoundedCategory `json:"reason,omitempty"`
-}
-
-type TrajectoryForkedPayload struct {
-	TrajectoryID       string `json:"trajectoryId"`
-	ParentTrajectoryID string `json:"parentTrajectoryId"`
-	ForkAnchorID       string `json:"forkAnchorId"`
-}
-
-type DetourStartedPayload struct {
-	CreationMode            CreationMode      `json:"creationMode"`
-	Origin                  OriginMetadata    `json:"origin"`
-	ReturnPhase             Phase             `json:"returnPhase"`
-	ReturnPhaseStartEventID string            `json:"returnPhaseStartEventId"`
-	TrajectoryID            string            `json:"trajectoryId"`
-	AnchorID                string            `json:"anchorId"`
-	Workflow                BoundedCategory   `json:"workflow"`
-	AssociationOrigin       AssociationOrigin `json:"associationOrigin"`
-}
-
-type EffortTerminalPayload struct {
-	TerminalEpoch uint64 `json:"terminalEpoch"`
-}
-
-type EffortAbandonedPayload struct {
-	TerminalEpoch uint64          `json:"terminalEpoch"`
-	Reason        BoundedCategory `json:"reason,omitempty"`
-}
-
-type EffortReopenedPayload struct {
-	TerminalEpoch uint64 `json:"terminalEpoch"`
-	TrajectoryID  string `json:"trajectoryId"`
-	AnchorID      string `json:"anchorId"`
-}
-
-type DetourReturnedPayload struct {
-	TerminalOutcome          TerminalOutcome `json:"terminalOutcome"`
-	ParentAssociationEventID string          `json:"parentAssociationEventId"`
-}
-
-type FindingWaivedPayload struct {
-	RuleCode    DiagnosticRuleCode `json:"ruleCode"`
-	Scope       BoundedCategory    `json:"scope"`
-	EvidenceIDs []string           `json:"evidenceIds"`
-	ReasonCode  WaiverReasonCode   `json:"reasonCode"`
-}
-
-type RepairReplacement struct {
-	EventKind EventKind       `json:"eventKind"`
-	Payload   json.RawMessage `json:"payload"`
-}
-
-type RepairAppliedPayload struct {
-	ProposalKind   ProposalKind      `json:"proposalKind"`
-	SourceEventIDs []string          `json:"sourceEventIds"`
-	Replacement    RepairReplacement `json:"replacement"`
-}
-
-type UsageObservedPayload struct {
-	Model            ModelName `json:"model"`
-	InputTokens      uint64    `json:"inputTokens"`
-	OutputTokens     uint64    `json:"outputTokens"`
-	CacheReadTokens  uint64    `json:"cacheReadTokens"`
-	CacheWriteTokens uint64    `json:"cacheWriteTokens"`
-	CostUSD          float64   `json:"costUsd"`
-	DurationMS       uint64    `json:"durationMs"`
-	Phase            Phase     `json:"phase,omitempty"`
-	Activity         Activity  `json:"activity,omitempty"`
-}
-
-type ToolObservedPayload struct {
-	Tool          ToolName      `json:"tool"`
-	Outcome       Outcome       `json:"outcome"`
-	DurationMS    uint64        `json:"durationMs"`
-	ErrorCategory ErrorCategory `json:"errorCategory,omitempty"`
-}
-
-type ShellObservedPayload struct {
-	Classification ShellClassification `json:"classification"`
-	Outcome        Outcome             `json:"outcome"`
-	GateMode       GateMode            `json:"gateMode,omitempty"`
-}
-
-type CompactionObservedPayload struct {
-	Count uint64 `json:"count"`
-}
-
-type HandoffObservedPayload struct {
-	Outcome         Outcome       `json:"outcome"`
-	TargetSessionID string        `json:"targetSessionId"`
-	DurationMS      uint64        `json:"durationMs,omitempty"`
-	ErrorCategory   ErrorCategory `json:"errorCategory,omitempty"`
-}
-
-type SubagentObservedPayload struct {
-	Role             BoundedCategory `json:"role"`
-	RequestedModel   ModelName       `json:"requestedModel"`
-	ResolvedModel    ModelName       `json:"resolvedModel"`
-	ThinkingLevel    BoundedCategory `json:"thinkingLevel"`
-	QueueDurationMS  uint64          `json:"queueDurationMs"`
-	RunDurationMS    uint64          `json:"runDurationMs"`
-	InputTokens      uint64          `json:"inputTokens"`
-	OutputTokens     uint64          `json:"outputTokens"`
-	CacheReadTokens  uint64          `json:"cacheReadTokens"`
-	CacheWriteTokens uint64          `json:"cacheWriteTokens"`
-	CostUSD          float64         `json:"costUsd"`
-	Outcome          Outcome         `json:"outcome"`
-	StopReason       StopReason      `json:"stopReason"`
-	ToolCount        uint64          `json:"toolCount"`
-	ToolFailureCount uint64          `json:"toolFailureCount"`
-	ErrorCategory    ErrorCategory   `json:"errorCategory,omitempty"`
-}
-
-type SessionObservedPayload struct {
-	Outcome       Outcome       `json:"outcome"`
-	DurationMS    uint64        `json:"durationMs,omitempty"`
-	ErrorCategory ErrorCategory `json:"errorCategory,omitempty"`
-}
-
-type OriginMetadata struct {
-	EffortID     string `json:"effortId"`
-	TrajectoryID string `json:"trajectoryId"`
-	AnchorID     string `json:"anchorId"`
-}
-
-type DetourReturnMetadata struct {
-	SessionID         string `json:"sessionId"`
-	Phase             Phase  `json:"phase"`
-	PhaseStartEventID string `json:"phaseStartEventId"`
-}
-
-type EffortMetadata struct {
-	EffortID     string                `json:"effortId"`
-	CreatedAt    string                `json:"createdAt"`
-	CreationMode CreationMode          `json:"creationMode"`
-	Origin       *OriginMetadata       `json:"origin,omitempty"`
-	DetourReturn *DetourReturnMetadata `json:"detourReturn,omitempty"`
-}
-
-type Association struct {
-	EffortID          string            `json:"effortId"`
-	SessionID         string            `json:"sessionId"`
-	TrajectoryID      string            `json:"trajectoryId"`
-	AssociationOrigin AssociationOrigin `json:"associationOrigin"`
-}
-
-type LifecycleRequest interface {
-	lifecycleAction() string
-}
-
-type LifecycleRequestBase struct {
-	Action         string   `json:"action"`
-	IdempotencyKey string   `json:"idempotencyKey"`
-	EventID        string   `json:"eventId"`
-	EffortID       string   `json:"effortId"`
-	SessionID      string   `json:"sessionId"`
-	Timestamp      string   `json:"timestamp"`
-	Predecessors   []string `json:"predecessors"`
-}
-
-type CreateLifecycleRequest struct {
-	LifecycleRequestBase
-	CreationMode CreationMode    `json:"creationMode"`
-	Origin       *OriginMetadata `json:"origin,omitempty"`
-}
-
-func (r CreateLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type AdoptLifecycleRequest struct {
-	LifecycleRequestBase
-	Route        Route           `json:"route,omitempty"`
-	Phase        Phase           `json:"phase"`
-	Workflow     BoundedCategory `json:"workflow"`
-	TrajectoryID string          `json:"trajectoryId"`
-	AnchorID     string          `json:"anchorId"`
-}
-
-func (r AdoptLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type AssociateLifecycleRequest struct {
-	LifecycleRequestBase
-	TrajectoryID      string            `json:"trajectoryId"`
-	AssociationOrigin AssociationOrigin `json:"associationOrigin"`
-	HandoffEventID    string            `json:"handoffEventId,omitempty"`
-}
-
-func (r AssociateLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type DetachLifecycleRequest struct {
-	LifecycleRequestBase
-	Reason DetachReason `json:"reason"`
-}
-
-func (r DetachLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type RouteLifecycleRequest struct {
-	LifecycleRequestBase
-	Route Route `json:"route"`
-}
-
-func (r RouteLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type StartPhaseLifecycleRequest struct {
-	LifecycleRequestBase
-	Phase              Phase           `json:"phase"`
-	Activity           Activity        `json:"activity,omitempty"`
-	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
-}
-
-func (r StartPhaseLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type FinishPhaseLifecycleRequest struct {
-	LifecycleRequestBase
-	Phase        Phase   `json:"phase"`
-	StartEventID string  `json:"startEventId"`
-	Outcome      Outcome `json:"outcome,omitempty"`
-}
-
-func (r FinishPhaseLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type TransitionPhaseLifecycleRequest struct {
-	LifecycleRequestBase
-	Phase              Phase           `json:"phase"`
-	StartEventID       string          `json:"startEventId"`
-	NextPhase          Phase           `json:"nextPhase"`
-	Outcome            Outcome         `json:"outcome,omitempty"`
-	Activity           Activity        `json:"activity,omitempty"`
-	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
-	RouteAction        RouteAction     `json:"routeAction,omitempty"`
-	Route              Route           `json:"route,omitempty"`
-}
-
-func (r TransitionPhaseLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type ContinuePhaseLifecycleRequest struct {
-	LifecycleRequestBase
-	Phase              Phase           `json:"phase"`
-	StartEventID       string          `json:"startEventId"`
-	Workflow           BoundedCategory `json:"workflow"`
-	Activity           Activity        `json:"activity,omitempty"`
-	ImplementationMode BoundedCategory `json:"implementationMode,omitempty"`
-}
-
-func (r ContinuePhaseLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type TrajectoryLifecycleRequest struct {
-	LifecycleRequestBase
-	TrajectoryID string          `json:"trajectoryId"`
-	AnchorID     string          `json:"anchorId"`
-	Reason       BoundedCategory `json:"reason,omitempty"`
-}
-
-func (r TrajectoryLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type ForkTrajectoryLifecycleRequest struct {
-	LifecycleRequestBase
-	TrajectoryID       string `json:"trajectoryId"`
-	ParentTrajectoryID string `json:"parentTrajectoryId"`
-	ForkAnchorID       string `json:"forkAnchorId"`
-}
-
-func (r ForkTrajectoryLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type StartDetourLifecycleRequest struct {
-	LifecycleRequestBase
-	CreationMode            CreationMode    `json:"creationMode"`
-	Origin                  OriginMetadata  `json:"origin"`
-	ReturnPhase             Phase           `json:"returnPhase"`
-	ReturnPhaseStartEventID string          `json:"returnPhaseStartEventId"`
-	TrajectoryID            string          `json:"trajectoryId"`
-	AnchorID                string          `json:"anchorId"`
-	Workflow                BoundedCategory `json:"workflow"`
-}
-
-func (r StartDetourLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type TerminalLifecycleRequest struct {
-	LifecycleRequestBase
-}
-
-func (r TerminalLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type AbandonLifecycleRequest struct {
-	LifecycleRequestBase
-	Reason BoundedCategory `json:"reason,omitempty"`
-}
-
-func (r AbandonLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type ReopenLifecycleRequest struct {
-	LifecycleRequestBase
-	TrajectoryID string `json:"trajectoryId"`
-	AnchorID     string `json:"anchorId"`
-}
-
-func (r ReopenLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type MarkDetourReturnedLifecycleRequest struct {
-	LifecycleRequestBase
-	TerminalOutcome          TerminalOutcome `json:"terminalOutcome"`
-	ParentAssociationEventID string          `json:"parentAssociationEventId"`
-}
-
-func (r MarkDetourReturnedLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type WaiveLifecycleRequest struct {
-	LifecycleRequestBase
-	RuleCode    DiagnosticRuleCode `json:"ruleCode"`
-	Scope       BoundedCategory    `json:"scope"`
-	EvidenceIDs []string           `json:"evidenceIds"`
-	ReasonCode  WaiverReasonCode   `json:"reasonCode"`
-}
-
-func (r WaiveLifecycleRequest) lifecycleAction() string { return r.Action }
-
-type RepairProposal struct {
-	Kind           ProposalKind      `json:"kind"`
-	SourceEventIDs []string          `json:"sourceEventIds"`
-	Replacement    RepairReplacement `json:"replacement"`
-}
-
-type RepairLifecycleRequest struct {
-	LifecycleRequestBase
-	Proposal RepairProposal `json:"proposal"`
-}
-
-func (r RepairLifecycleRequest) lifecycleAction() string { return r.Action }
-
-// Selector is the shared metrics and diagnosis event selector. Since is
-// inclusive and Until is exclusive.
 type Selector struct {
 	EffortID  *string    `json:"effortId,omitempty"`
 	SessionID *string    `json:"sessionId,omitempty"`
-	Phase     *string    `json:"phase,omitempty"`
 	Since     *time.Time `json:"since,omitempty"`
 	Until     *time.Time `json:"until,omitempty"`
 }
 
-type UsageTotals struct {
+type Header struct {
+	Record        string    `json:"record"`
+	SchemaVersion int       `json:"schemaVersion"`
+	SessionID     string    `json:"sessionId"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+type Observation struct {
+	Record        string          `json:"record"`
+	SchemaVersion int             `json:"schemaVersion"`
+	ObservationID string          `json:"observationId"`
+	Timestamp     time.Time       `json:"timestamp"`
+	Kind          string          `json:"kind"`
+	Payload       json.RawMessage `json:"payload"`
+	Raw           json.RawMessage `json:"-"`
+}
+
+type IntegrityFinding struct {
+	Source    string `json:"source"`
+	SessionID string `json:"sessionId"`
+	Code      string `json:"code"`
+}
+
+type SessionRead struct {
+	SessionID    string
+	Header       Header
+	Observations []Observation
+	Records      []json.RawMessage
+	Findings     []IntegrityFinding
+}
+
+type LegacyEffortRead struct {
+	EffortID string
+	Records  []json.RawMessage
+	Findings []IntegrityFinding
+}
+
+type ReadSet struct {
+	Sessions    []SessionRead
+	Legacy      []LegacyEffortRead
+	Records     map[string]effort.Record
+	Assignments map[string]string
+	Findings    []IntegrityFinding
+}
+
+type Counters struct {
 	InputTokens      uint64  `json:"inputTokens"`
 	OutputTokens     uint64  `json:"outputTokens"`
 	CacheReadTokens  uint64  `json:"cacheReadTokens"`
 	CacheWriteTokens uint64  `json:"cacheWriteTokens"`
 	CostUSD          float64 `json:"costUsd"`
+	ToolSuccesses    uint64  `json:"toolSuccesses"`
+	ToolFailures     uint64  `json:"toolFailures"`
+	ToolCancelled    uint64  `json:"toolCancelled"`
+	GatesPassed      uint64  `json:"gatesPassed"`
+	GatesFailed      uint64  `json:"gatesFailed"`
+	GatesCancelled   uint64  `json:"gatesCancelled"`
+	Subagents        uint64  `json:"subagents"`
+	Compactions      uint64  `json:"compactions"`
+	Handoffs         uint64  `json:"handoffs"`
 	DurationMS       uint64  `json:"durationMs"`
 }
 
-type Counters struct {
-	Compactions          uint64 `json:"compactions"`
-	Handoffs             uint64 `json:"handoffs"`
-	ToolFailures         uint64 `json:"toolFailures"`
-	GateFailures         uint64 `json:"gateFailures"`
-	SubagentInvocations  uint64 `json:"subagentInvocations"`
-	ImplementationRework uint64 `json:"implementationRework"`
+type EffortReport struct {
+	ID      string       `json:"id"`
+	Title   string       `json:"title"`
+	State   effort.State `json:"state"`
+	Current Counters     `json:"current"`
+	Legacy  Counters     `json:"legacy"`
 }
 
-type ScopeProjection struct {
-	ScopeID  string      `json:"scopeId"`
-	Usage    UsageTotals `json:"usage"`
-	Counters Counters    `json:"counters"`
-	EventIDs []string    `json:"eventIds"`
-	turns    uint64
+type SessionReport struct {
+	SessionID string   `json:"sessionId"`
+	EffortID  *string  `json:"effortId"`
+	Counters  Counters `json:"counters"`
 }
 
-type IntegrityNotice struct {
-	Code        string   `json:"code"`
-	Severity    string   `json:"severity"`
-	Scope       string   `json:"scope"`
-	EventIDs    []string `json:"eventIds"`
-	Explanation string   `json:"explanation"`
+type Report struct {
+	SchemaVersion int             `json:"schemaVersion"`
+	Selector      Selector        `json:"selector"`
+	Efforts       []EffortReport  `json:"efforts"`
+	Sessions      []SessionReport `json:"sessions,omitempty"`
 }
 
-type AdoptionBoundaryProjection struct {
-	EventID  string          `json:"eventId"`
-	Phase    Phase           `json:"phase"`
-	Workflow BoundedCategory `json:"workflow"`
-}
-
-type DetourReturnProjection struct {
-	SessionID                string          `json:"sessionId"`
-	Phase                    Phase           `json:"phase"`
-	PhaseStartEventID        string          `json:"phaseStartEventId"`
-	Pending                  bool            `json:"pending"`
-	Settled                  bool            `json:"settled"`
-	TerminalOutcome          TerminalOutcome `json:"terminalOutcome,omitempty"`
-	ParentAssociationEventID string          `json:"parentAssociationEventId,omitempty"`
-	ReturnEventID            string          `json:"returnEventId,omitempty"`
-}
-
-type RetentionState struct {
-	MaxAgeDays          int        `json:"maxAgeDays"`
-	MaxCount            int        `json:"maxCount"`
-	TerminalEffortCount int        `json:"terminalEffortCount"`
-	Candidates          []string   `json:"candidates"`
-	LastRunAt           *time.Time `json:"lastRunAt,omitempty"`
-}
-
-type EffortProjection struct {
-	EffortID                  string                      `json:"effortId"`
-	State                     string                      `json:"state"`
-	Route                     string                      `json:"route"`
-	ActiveTrajectoryID        string                      `json:"activeTrajectoryId"`
-	CurrentWorkflow           BoundedCategory             `json:"currentWorkflow,omitempty"`
-	CurrentActivity           Activity                    `json:"currentActivity,omitempty"`
-	CurrentImplementationMode BoundedCategory             `json:"currentImplementationMode,omitempty"`
-	AdoptionBoundary          *AdoptionBoundaryProjection `json:"adoptionBoundary,omitempty"`
-	DetourReturn              *DetourReturnProjection     `json:"detourReturn,omitempty"`
-	CurrentPath               ScopeProjection             `json:"currentPath"`
-	AllWork                   ScopeProjection             `json:"allWork"`
-	Sessions                  []ScopeProjection           `json:"sessions"`
-	Phases                    []ScopeProjection           `json:"phases"`
-	Trajectories              []ScopeProjection           `json:"trajectories"`
-	DerivedEffortIDs          []string                    `json:"derivedEffortIds"`
-	Origin                    *OriginMetadata             `json:"origin,omitempty"`
-	Integrity                 []IntegrityNotice           `json:"integrity"`
-	openPhase                 Phase
-}
-
-type MetricsResult struct {
+type DoctorReport struct {
 	SchemaVersion int                `json:"schemaVersion"`
-	ProtocolMajor int                `json:"protocolMajor"`
-	GeneratedAt   time.Time          `json:"generatedAt"`
 	Selector      Selector           `json:"selector"`
-	Efforts       []EffortProjection `json:"efforts"`
-	Retention     RetentionState     `json:"retention"`
-	Integrity     []IntegrityNotice  `json:"integrity"`
-}
-
-type FindingEvidence struct {
-	EventIDs      []string `json:"eventIds"`
-	CounterIDs    []string `json:"counterIds"`
-	ObservedValue *float64 `json:"observedValue,omitempty"`
-	Unit          string   `json:"unit,omitempty"`
-}
-
-type FindingThreshold struct {
-	Kind       string  `json:"kind"`
-	Comparator string  `json:"comparator"`
-	Value      float64 `json:"value"`
-	Unit       string  `json:"unit"`
-}
-
-type FindingBaseline struct {
-	Route       string  `json:"route"`
-	RuleVersion int     `json:"ruleVersion"`
-	SampleCount int     `json:"sampleCount"`
-	Percentile  int     `json:"percentile"`
-	Value       float64 `json:"value"`
-	Unit        string  `json:"unit"`
-}
-
-type ReconciliationProposal struct {
-	Kind           string            `json:"kind"`
-	SourceEventIDs []string          `json:"sourceEventIds"`
-	Replacement    RepairReplacement `json:"replacement"`
-}
-
-type Finding struct {
-	EffortID       string                  `json:"effortId"`
-	Code           string                  `json:"code"`
-	Type           string                  `json:"type"`
-	Severity       string                  `json:"severity"`
-	Scope          string                  `json:"scope"`
-	Evidence       FindingEvidence         `json:"evidence"`
-	Threshold      *FindingThreshold       `json:"threshold,omitempty"`
-	Baseline       *FindingBaseline        `json:"baseline,omitempty"`
-	Confidence     string                  `json:"confidence"`
-	Explanation    string                  `json:"explanation"`
-	NextAction     string                  `json:"nextAction"`
-	Reconciliation *ReconciliationProposal `json:"reconciliation,omitempty"`
-	Waived         bool                    `json:"waived"`
-}
-
-type DoctorResult struct {
-	SchemaVersion int               `json:"schemaVersion"`
-	ProtocolMajor int               `json:"protocolMajor"`
-	GeneratedAt   time.Time         `json:"generatedAt"`
-	Selector      Selector          `json:"selector"`
-	Findings      []Finding         `json:"findings"`
-	Integrity     []IntegrityNotice `json:"integrity"`
+	Findings      []IntegrityFinding `json:"findings"`
 }

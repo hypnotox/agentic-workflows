@@ -35,9 +35,9 @@ Backing: test
 
 ### `invariant: memory-gitignore-always-on`
 
-Every `awf render` unconditionally renders `.awf/memory/.gitignore` with no config gate, lock-tracked, whose content ignores everything in the directory except the gitignore itself and carries a hash-comment provenance banner.
+Every render declares a self-ignoring `.gitignore` for the five repository-wide resident roots: efforts, assignments, memory, worktrees, and metrics. Only the root ignore file is governed; dynamic descendants are preserved.
 Origin: ADR-0148
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0164
 Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`
@@ -60,7 +60,7 @@ Backing: test
 
 ### `invariant: workflow-telemetry-governed-outputs-and-resident-data`
 
-The output plan governs `.awf/metrics/.gitignore` as the only resident-tree output and never claims dynamic metrics descendants. It also governs Pi's single discoverable workflow router and every fixed hidden workflow body with provenance, exact inputs, lock hashes, drift and reference checks, stale-output pruning, target-disable cleanup, and ordinary uninstall ownership. Sync, check, current-state discovery, nested-adopter discovery, sweep, target disable, and ordinary uninstall preserve resident telemetry; uninstall reports preserved data, while deterministic retention and confirmed purge remain the only recursive cleanup surfaces.
+The output plan governs the five resident-root `.gitignore` files while never claiming dynamic descendants. Tracked render authority is read from the invoking checkout while resident outputs and preservation use the primary control root. Sweep, discovery, target disable, and uninstall preserve residents and report each nonempty root deterministically; no ordinary operation recursively removes a managed worktree.
 Origin: ADR-0148
-Revised-by: ADR-0149
+Revised-by: ADR-0149, ADR-0164
 Backing: test

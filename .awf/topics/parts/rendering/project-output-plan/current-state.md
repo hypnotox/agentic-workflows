@@ -40,8 +40,9 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The single deterministic output plan contains every producer class: catalog and local skills, target-owned bridge files, neutral singletons such as the memory-directory ignore file, generated index and domain docs, and the generated config-reference with its non-self dependencies, plus pre-render reservation nodes for skills. Reservation nodes are excluded from the files actually written.
+The deterministic output plan contains catalog and local artifacts, bridge files, generated documentation, reservations, and the five resident-root self-ignoring outputs. Resident dynamic descendants are not plan nodes and are resolved at the primary root while tracked authority remains invoking-checkout authority.
 Origin: ADR-0124
+Revised-by: ADR-0164
 Backing: test
 
 ### `invariant: output-policy-explicit`
