@@ -25,33 +25,58 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
 ## File structure
 
-- **Created:** `templates/docs/maintainable-code-design.md.tmpl`,
-  `docs/maintainable-code-design.md`.
-- **Modified:** `internal/catalog/standard.go`, `internal/project/project_test.go`,
-  `internal/project/docs_sections_test.go`, `internal/project/render_tree_test.go`,
-  `internal/project/spine_test.go`, `internal/project/target_test.go`,
-  `templates/skills/brainstorming/SKILL.md.tmpl`,
-  `templates/skills/proposing-adr/SKILL.md.tmpl`,
-  `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`,
-  `templates/skills/writing-plans/SKILL.md.tmpl`, `templates/skills/tdd/SKILL.md.tmpl`,
-  `templates/skills/executing-plans/SKILL.md.tmpl`,
-  `templates/skills/executing-direct/SKILL.md.tmpl`,
-  `templates/skills/subagent-driven-development/SKILL.md.tmpl`,
-  `templates/skills/bugfix/SKILL.md.tmpl`, `templates/agents/plan-reviewer.md.tmpl`,
-  `templates/agents/code-reviewer.md.tmpl`, `templates/agents/adr-reviewer.md.tmpl`,
-  `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`,
-  `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`,
-  `docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md`,
-  `docs/decisions/INDEX.md`, `docs/domains/rendering.md`, `docs/config-reference.md`, `AGENTS.md`,
-  `.claude/skills/awf-{brainstorming,proposing-adr,refactor-coupling-audit,writing-plans,tdd,executing-plans,executing-direct,subagent-driven-development,bugfix}/SKILL.md`,
-  `.pi/skills/awf-{brainstorming,proposing-adr,refactor-coupling-audit,writing-plans,tdd,executing-plans,executing-direct,subagent-driven-development,bugfix}/SKILL.md`,
-  `.claude/agents/{plan-reviewer,code-reviewer,adr-reviewer}.md`,
-  `.pi/agents/{plan-reviewer,code-reviewer,adr-reviewer}.md`, `.awf/awf.lock`, and this plan.
+Every filesystem path in this plan is exact and rooted at
+`/home/hypno/Projects/agentic-workflows`; shorter paths in required rendered prose and Go literals are
+output values, not executor path notation.
+
+- **Created:**
+  `/home/hypno/Projects/agentic-workflows/templates/docs/maintainable-code-design.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/docs/maintainable-code-design.md`.
+- **Modified source, tests, and authority:**
+  `/home/hypno/Projects/agentic-workflows/internal/catalog/standard.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/project_test.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/docs_sections_test.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/render_tree_test.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/target_test.go`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/brainstorming/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/proposing-adr/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/refactor-coupling-audit/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/writing-plans/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/tdd/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/executing-plans/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/executing-direct/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/subagent-driven-development/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/skills/bugfix/SKILL.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/agents/plan-reviewer.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/agents/code-reviewer.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/templates/agents/adr-reviewer.md.tmpl`,
+  `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`,
+  `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/plans/2026-07-28-implement-maintainable-code-design-guidance.md`.
+- **Modified generated shared outputs:**
+  `/home/hypno/Projects/agentic-workflows/AGENTS.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/config-reference.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/domains/rendering.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md`,
+  `/home/hypno/Projects/agentic-workflows/.awf/awf.lock`.
+- **Modified generated skills:** the nine exact paths under each target root:
+  `awf-brainstorming/SKILL.md`, `awf-proposing-adr/SKILL.md`,
+  `awf-refactor-coupling-audit/SKILL.md`, `awf-writing-plans/SKILL.md`, `awf-tdd/SKILL.md`,
+  `awf-executing-plans/SKILL.md`, `awf-executing-direct/SKILL.md`,
+  `awf-subagent-driven-development/SKILL.md`, and `awf-bugfix/SKILL.md`, rooted respectively at
+  `/home/hypno/Projects/agentic-workflows/.claude/skills/` and
+  `/home/hypno/Projects/agentic-workflows/.pi/skills/`.
+- **Modified generated agents:** `plan-reviewer.md`, `code-reviewer.md`, and `adr-reviewer.md`, rooted
+  respectively at `/home/hypno/Projects/agentic-workflows/.claude/agents/` and
+  `/home/hypno/Projects/agentic-workflows/.pi/agents/`.
 - **Deleted:** none.
 
 ## Phase 1: Publish the mandatory design guide
 
-- [ ] **Task 1.1: Add the guide template as one complete document.** Create
+- [ ] **Task 1.1: Publish, register, prove, apply, and commit the mandatory guide as one atomic change.**
+  Create
   `templates/docs/maintainable-code-design.md.tmpl` with H1 `# Maintainable Code Design` and these
   exact, ordered `awf:section` identifiers and H2 headings:
 
@@ -93,11 +118,10 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
   Do not reference this repository's commands, module names, packages, Go-specific constructs, or
   file layout. Use only ASCII punctuation. Verify with
-  `go test ./internal/project -run TestMaintainableCodeDesignGuide`; before the catalog/test task
-  exists, the expected terminal state is failure because the template is not yet cataloged and the
-  focused test is absent, not because the template is incomplete.
+  `go test ./internal/project -run TestMaintainableCodeDesignGuide` after adding the focused test and
+  catalog entry below; it must pass.
 
-- [ ] **Task 1.2: Register and prove the catalog-derived singleton.** In
+  **Register and prove the catalog-derived singleton.** In
   `internal/catalog/standard.go`, add this exact entry to `Catalog.Docs` beside the other mandatory
   document-map docs:
 
@@ -131,7 +155,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   `go test ./internal/catalog ./internal/project -run 'Test(MaintainableCodeDesign|AgentsDocDocumentMap|UnifiedDocModel|AdrSingletonSectionParity)'`;
   it must pass with no findings.
 
-- [ ] **Task 1.3: Apply the guide claim and render the first lifecycle batch.** Append this exact claim
+  **Apply the guide claim and render the first lifecycle batch.** Append this exact claim
   to `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`:
 
   ```markdown
@@ -142,23 +166,25 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   Backing: test
   ```
 
-  In ADR-0168 set frontmatter status to `Implementing` and append these exact history events, using the
-  already-frozen content digest and the next consecutive state sequence:
-
-  ```markdown
-  - 2026-07-28: Implementing; content-sha256: 5e6e3b2f3b3b066a5faec3ad1a7d81accd2599ce89546edb2d5f556a371eaa49
-  - 2026-07-28: Applied; state-sequence: 69; operations: add `rendering/guide-and-doc-templates:maintainable-code-design-guide`
-  ```
-
-  Before editing, confirm `git grep 'state-sequence: 69' -- docs/decisions` returns no output; if a
-  rebased authority has consumed that sequence, stop and amend this still-Proposed plan to the next
-  consecutive four-sequence range before applying any operation. Run `./x render`; it must complete
+  Immediately before editing ADR-0168, derive `S` as one greater than the highest repository-global
+  `state-sequence` currently present under `docs/decisions/`; do not reserve an authoring-time
+  literal. In ADR-0168 set frontmatter status to `Implementing`, append the Implementing event with
+  content digest `5e6e3b2f3b3b066a5faec3ad1a7d81accd2599ce89546edb2d5f556a371eaa49`, then append an Applied
+  event at sequence `S` whose operations field is the verb `add` followed by the qualified ID
+  `rendering/guide-and-doc-templates:maintainable-code-design-guide`. Run `./awf check` after
+  the edit; it must accept `S` as the next consecutive sequence and report only implementation drift
+  that `./x render` will resolve. Run `./x render`; it must complete
   successfully and update `docs/maintainable-code-design.md`, `AGENTS.md`,
   `docs/config-reference.md`, `docs/domains/rendering.md`, `docs/decisions/INDEX.md`, and
   `.awf/awf.lock` without manual generated-file edits. Run `./x check`; it must report clean drift.
 
-- [ ] **Task 1.4: Verify and commit.** Stage exactly the phase-1 source, test, claim, ADR, and generated
-  paths named above. Run `awf check --staged`, then `./x gate`; both must exit successfully with zero
+  **Verify and commit.** Run:
+
+  ```bash
+  git add -- /home/hypno/Projects/agentic-workflows/templates/docs/maintainable-code-design.md.tmpl /home/hypno/Projects/agentic-workflows/internal/catalog/standard.go /home/hypno/Projects/agentic-workflows/internal/project/project_test.go /home/hypno/Projects/agentic-workflows/internal/project/docs_sections_test.go /home/hypno/Projects/agentic-workflows/internal/project/render_tree_test.go /home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md /home/hypno/Projects/agentic-workflows/docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md /home/hypno/Projects/agentic-workflows/docs/maintainable-code-design.md /home/hypno/Projects/agentic-workflows/AGENTS.md /home/hypno/Projects/agentic-workflows/docs/config-reference.md /home/hypno/Projects/agentic-workflows/docs/domains/rendering.md /home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md /home/hypno/Projects/agentic-workflows/.awf/awf.lock
+  ```
+
+  Then run `awf check --staged`, followed by `./x gate`; both must exit successfully with zero
   findings. Commit with:
 
   ```commit
@@ -167,7 +193,8 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
 ## Phase 2: Integrate the design obligation across workflow stages
 
-- [ ] **Task 2.1: Add stage-appropriate guidance to every required skill template.** Modify only the
+- [ ] **Task 2.1: Integrate, prove, apply, render, and commit every stage obligation atomically.**
+  Modify only the
   existing sections/bodies below; do not add catalog section identifiers. Every stage points to
   `` `{{ .layout.maintainableCodeDesign }}` `` and summarizes only the action that stage owns:
   - `templates/skills/brainstorming/SKILL.md.tmpl`, existing `design-sections`: require the settled
@@ -182,9 +209,11 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   - `templates/skills/writing-plans/SKILL.md.tmpl`, existing `procedure-write-plan`: convert the
     settled model, boundaries, dependency direction, representation translations, refactor decision,
     prohibited shortcuts, and validation into ordered executable tasks.
-  - `templates/skills/tdd/SKILL.md.tmpl`, fixed procedure: select the smallest seam that proves the
-    behavior while supporting the intended model; reject tests that force production representation
-    leakage or needless indirection.
+  - `templates/skills/tdd/SKILL.md.tmpl`, fixed procedure: before implementing, assess whether a
+    bounded enabling refactor is needed to prevent duplication, coupling, representation leakage, or
+    a workaround; escalate materially larger work through the four guide dispositions. Select the
+    smallest seam that proves the behavior while supporting the intended model, and reject tests that
+    force production representation leakage or needless indirection.
   - `templates/skills/executing-plans/SKILL.md.tmpl`, existing `procedure-per-task`: preserve the
     plan's structural choices, reassess when grounded source contradicts them, and stop rather than
     bolt correctness onto the wrong abstraction.
@@ -202,7 +231,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   full heuristic explanations. Do not weaken TDD minimality, bugfix one-concern discipline, direct
   execution approval boundaries, or implementation plan-adherence.
 
-- [ ] **Task 2.2: Add focused stage-coverage tests.** In `internal/project/spine_test.go`, ensure both
+  **Add focused stage-coverage tests.** In `internal/project/spine_test.go`, ensure both
   `testLayout()` and `withLayoutDefaults()` make `maintainableCodeDesign` available to direct golden
   renders. Add `TestMaintainableCodeStageCoverage`, marked
   `// invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage`. Render all nine
@@ -212,7 +241,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   - brainstorming: model, ownership, representations, dependency direction, refactor decision;
   - proposing-adr and coupling audit: structural constraints and enabling work;
   - writing-plans: ordered tasks, prohibited shortcuts, validation;
-  - TDD: model-supporting seam and no test-induced distortion;
+  - TDD: bounded/larger refactor assessment, model-supporting seam, and no test-induced distortion;
   - executing-plans, executing-direct, subagent-driven development, and bugfix: preserve/reassess,
     bounded enabling refactor, no bolt-on workaround, and escalation when the larger choice applies.
 
@@ -220,7 +249,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   `go test ./internal/project -run 'Test(MaintainableCodeStageCoverage|BrainstormingTemplate|ProposingAdrTemplate|RefactorCouplingAuditTemplate|WritingPlansTemplate|TddTemplate|ExecutingPlansTemplate|ExecutingDirectTemplate|SubagentDrivenDevelopmentTemplate|BugfixTemplate|ManagedContextCallersChooseProjection)'`;
   it must pass.
 
-- [ ] **Task 2.3: Apply the stage claim and render all target outputs.** Append this exact claim to
+  **Apply the stage claim and render all target outputs.** Append this exact claim to
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
 
   ```markdown
@@ -231,20 +260,25 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   Backing: test
   ```
 
-  Append this exact ADR-0168 event:
+  Append the next ADR-0168 Applied event at sequence `S+1`; its operations field is the verb `add`
+  followed by the qualified ID
+  `rendering/workflow-skill-templates:maintainable-code-stage-coverage`. Run `./awf check`
+  after the edit; it must accept the event as the next consecutive sequence.
 
-  ```markdown
-  - 2026-07-28: Applied; state-sequence: 70; operations: add `rendering/workflow-skill-templates:maintainable-code-stage-coverage`
-  ```
-
-  Run `./x render`. It must update the nine affected skills under both `.claude/skills/awf-*` and
-  `.pi/skills/awf-*`, plus `docs/domains/rendering.md`, `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
+  Run `./x render`. It must update each of the nine generated skill paths enumerated in the phase-2
+  staging command under both absolute target roots, plus `docs/domains/rendering.md`,
+  `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
   Run `./x check`; it must report clean drift. Inspect `git diff --check` and
   `git diff -- .claude/skills .pi/skills`; neither may show whitespace errors, unresolved template
   actions, or semantic omissions between targets.
 
-- [ ] **Task 2.4: Verify and commit.** Stage exactly the phase-2 templates, test, claim, ADR, and
-  generated files. Run `awf check --staged`, then `./x gate`; both must exit successfully with zero
+  **Verify and commit.** Run:
+
+  ```bash
+  git add -- /home/hypno/Projects/agentic-workflows/templates/skills/brainstorming/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/proposing-adr/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/refactor-coupling-audit/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/writing-plans/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/tdd/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/executing-plans/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/executing-direct/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/subagent-driven-development/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/bugfix/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/internal/project/spine_test.go /home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md /home/hypno/Projects/agentic-workflows/docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-brainstorming/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-proposing-adr/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-refactor-coupling-audit/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-writing-plans/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-tdd/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-executing-plans/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-executing-direct/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-subagent-driven-development/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-bugfix/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-brainstorming/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-proposing-adr/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-refactor-coupling-audit/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-writing-plans/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-tdd/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-executing-plans/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-executing-direct/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-subagent-driven-development/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-bugfix/SKILL.md /home/hypno/Projects/agentic-workflows/docs/domains/rendering.md /home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md /home/hypno/Projects/agentic-workflows/.awf/awf.lock
+  ```
+
+  Then run `awf check --staged`, followed by `./x gate`; both must exit successfully with zero
   findings. Commit with:
 
   ```commit
@@ -253,7 +287,8 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
 ## Phase 3: Carry structural constraints into scoped implementer briefs
 
-- [ ] **Task 3.1: Close the subagent handoff contract.** In
+- [ ] **Task 3.1: Close, prove, apply, render, and commit the scoped handoff contract atomically.**
+  In
   `templates/skills/subagent-driven-development/SKILL.md.tmpl`, extend the existing
   `procedure-extract-context` list so each implementer prompt carries only task-relevant facts in
   these exact categories: semantic boundary and ownership, external/internal representations and
@@ -270,7 +305,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   task before editing. This preserves semantic parity for inline execution without pretending that
   inline work dispatches a subagent.
 
-- [ ] **Task 3.2: Prove scoped content and multi-target semantics.** Add
+  **Prove scoped content and multi-target semantics.** Add
   `TestMaintainableCodeSubagentContract` to `internal/project/spine_test.go`, marked
   `// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract`. Render
   `subagent-driven-development` once with `targetSubagentTools: true` and once without it, and render
@@ -278,9 +313,9 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   no-replanning/no-scope-broadening boundary appears, and the existing status values, sequential
   dispatch rule, `allowCommits` on Pi, and report-only per-task review remain present.
 
-  Add `TestMaintainableCodeMultiTargetParity` to `internal/project/target_test.go`. Scaffold targets
-  `claude` and `pi` with `subagent-driven-development`, its required neighboring skills, and the
-  reviewer agents enabled; render all outputs and assert:
+  Add `TestMaintainableCodeMultiTargetParity` to `internal/project/target_test.go`. Scaffold exact
+  targets `[claude, pi]`, exact skills `[subagent-driven-development]`, and `agents: []`; no catalog
+  neighbor is structurally required for this render-only semantic test. Render all outputs and assert:
   - each target's subagent-driven-development skill contains all six handoff semantics and the
     prohibited broadening language, even though dispatch syntax differs;
   - each target emits the affected skill once;
@@ -290,7 +325,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   `go test ./internal/project -run 'Test(MaintainableCodeSubagentContract|MaintainableCodeMultiTargetParity|SubagentDrivenDevelopmentTemplate|ExecutingPlansTemplate|MultiTargetRender)'`;
   it must pass.
 
-- [ ] **Task 3.3: Apply the handoff claim and render target outputs.** Append this exact claim to
+  **Apply the handoff claim and render target outputs.** Append this exact claim to
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
 
   ```markdown
@@ -301,18 +336,22 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   Backing: test
   ```
 
-  Append this exact ADR-0168 event:
-
-  ```markdown
-  - 2026-07-28: Applied; state-sequence: 71; operations: add `rendering/workflow-skill-templates:maintainable-code-subagent-contract`
-  ```
+  Append the next ADR-0168 Applied event at sequence `S+2`; its operations field is the verb `add`
+  followed by the qualified ID
+  `rendering/workflow-skill-templates:maintainable-code-subagent-contract`. Run `./awf check`
+  after the edit; it must accept the event as the next consecutive sequence.
 
   Run `./x render`; it must update executing-plans and subagent-driven-development under both target
   skill trees, plus `docs/domains/rendering.md`, `docs/decisions/INDEX.md`, and `.awf/awf.lock`. Run
   `./x check`; it must report clean drift.
 
-- [ ] **Task 3.4: Verify and commit.** Stage exactly the phase-3 templates, tests, claim, ADR, and
-  generated files. Run `awf check --staged`, then `./x gate`; both must exit successfully with zero
+  **Verify and commit.** Run:
+
+  ```bash
+  git add -- /home/hypno/Projects/agentic-workflows/templates/skills/subagent-driven-development/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/templates/skills/executing-plans/SKILL.md.tmpl /home/hypno/Projects/agentic-workflows/internal/project/spine_test.go /home/hypno/Projects/agentic-workflows/internal/project/target_test.go /home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md /home/hypno/Projects/agentic-workflows/docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-subagent-driven-development/SKILL.md /home/hypno/Projects/agentic-workflows/.claude/skills/awf-executing-plans/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-subagent-driven-development/SKILL.md /home/hypno/Projects/agentic-workflows/.pi/skills/awf-executing-plans/SKILL.md /home/hypno/Projects/agentic-workflows/docs/domains/rendering.md /home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md /home/hypno/Projects/agentic-workflows/.awf/awf.lock
+  ```
+
+  Then run `awf check --staged`, followed by `./x gate`; both must exit successfully with zero
   findings. Commit with:
 
   ```commit
@@ -321,7 +360,8 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
 ## Phase 4: Add structural review and complete ADR-0168
 
-- [ ] **Task 4.1: Add maintainability lenses without giving reviewers mutation authority.** Modify
+- [ ] **Task 4.1: Add, prove, apply, render, and commit the review lenses as the terminal atomic change.**
+  Modify
   only the `universal-lenses` sections of these templates; each lens points to
   `` `{{ .layout.maintainableCodeDesign }}` `` and retains the opening and shared-tail report-only
   instructions:
@@ -343,7 +383,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
   Do not add editing, fixing, committing, or re-review instructions to any reviewer.
 
-- [ ] **Task 4.2: Prove review coverage, conditionality, and report-only preservation.** Extend
+  **Prove review coverage, conditionality, and report-only preservation.** Extend
   `TestPlanReviewerAgent`, `TestCodeReviewerAgent`, and `TestAdrReviewerAgent` in
   `internal/project/spine_test.go` with the exact maintainability dimensions above and the rendered
   guide path. Add a focused `TestMaintainableCodeReviewLenses`, marked
@@ -362,25 +402,25 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   `go test ./internal/project -run 'Test(PlanReviewerAgent|CodeReviewerAgent|AdrReviewerAgent|MaintainableCodeReviewLenses|CatalogTemplateGoldenEmptyData)'`;
   it must pass.
 
-- [ ] **Task 4.3: Apply the final claim, freeze records, and render the terminal lifecycle
-  transaction.** Append this exact claim to
+  **Apply the final claim, freeze records, and render the terminal lifecycle transaction.** Append
+  this exact claim to
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
 
   ```markdown
   ### `invariant: maintainable-code-review-lenses`
 
-  Plan review checks that structural choices and necessary enabling refactors are explicit, ordered, bounded, approved or durably dispositioned when larger, and verifiable; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and settled-design conformance; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership or module boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only.
+  Plan review checks that structural choices and necessary enabling refactors are explicit, ordered, bounded, approved or durably dispositioned when larger, and verifiable; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and settled-design conformance; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only.
   Origin: ADR-0168
   Backing: test
   ```
 
-  Append these exact ADR-0168 history events in this order and set its frontmatter status to
-  `Implemented`:
-
-  ```markdown
-  - 2026-07-28: Applied; state-sequence: 72; operations: add `rendering/workflow-skill-templates:maintainable-code-review-lenses`
-  - 2026-07-28: Implemented; content-sha256: 5e6e3b2f3b3b066a5faec3ad1a7d81accd2599ce89546edb2d5f556a371eaa49
-  ```
+  Append the final ADR-0168 Applied event at sequence `S+3`; its operations field is the verb `add`
+  followed by the qualified ID
+  `rendering/workflow-skill-templates:maintainable-code-review-lenses`. Then append the
+  Implemented event with content digest
+  `5e6e3b2f3b3b066a5faec3ad1a7d81accd2599ce89546edb2d5f556a371eaa49` and set frontmatter status
+  to `Implemented`. Run `./awf check` after the edit; it must accept the final sequence, Applied
+  partition, digest, and terminal status.
 
   Flip this plan's frontmatter `status:` from `Proposed` to `Implemented`. In its Notes section,
   record only concrete execution findings, if any; do not restate the design. Run `./x render`; it
@@ -391,9 +431,14 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
   `git grep 'status: Proposed' -- docs/plans/2026-07-28-implement-maintainable-code-design-guidance.md`
   returns no output.
 
-- [ ] **Task 4.4: Verify and commit.** Stage exactly the phase-4 templates, tests, claim, ADR, plan,
-  and generated files. Run `awf check --staged`, then `./x gate`; both must exit successfully with
-  zero findings. Commit with:
+  **Verify and commit.** Run:
+
+  ```bash
+  git add -- /home/hypno/Projects/agentic-workflows/templates/agents/plan-reviewer.md.tmpl /home/hypno/Projects/agentic-workflows/templates/agents/code-reviewer.md.tmpl /home/hypno/Projects/agentic-workflows/templates/agents/adr-reviewer.md.tmpl /home/hypno/Projects/agentic-workflows/internal/project/spine_test.go /home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md /home/hypno/Projects/agentic-workflows/docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md /home/hypno/Projects/agentic-workflows/docs/plans/2026-07-28-implement-maintainable-code-design-guidance.md /home/hypno/Projects/agentic-workflows/.claude/agents/plan-reviewer.md /home/hypno/Projects/agentic-workflows/.claude/agents/code-reviewer.md /home/hypno/Projects/agentic-workflows/.claude/agents/adr-reviewer.md /home/hypno/Projects/agentic-workflows/.pi/agents/plan-reviewer.md /home/hypno/Projects/agentic-workflows/.pi/agents/code-reviewer.md /home/hypno/Projects/agentic-workflows/.pi/agents/adr-reviewer.md /home/hypno/Projects/agentic-workflows/docs/domains/rendering.md /home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md /home/hypno/Projects/agentic-workflows/.awf/awf.lock
+  ```
+
+  Then run `awf check --staged`, followed by `./x gate`; both must exit successfully with zero
+  findings. Commit with:
 
   ```commit
   feat(rendering): add maintainability review lenses (implements 0168)
@@ -415,7 +460,7 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 
 - The exact section identifiers are the public convention-part API. Do not rename them during
   implementation without returning the Proposed plan to review.
-- State sequences 69-72 are consecutive from repository authority at plan authoring time. A rebase
-  that consumes any value requires a reviewed plan amendment before the first ADR operation applies.
+- Let `S` be the next repository-global state sequence at execution start. The four ADR application
+  batches use `S`, `S+1`, `S+2`, and `S+3` without reserving stale authoring-time values.
 - The existing catalog-derived output and layout paths are sufficient; adding a production special
   case or a schema migration is out of scope and is a plan deviation.
