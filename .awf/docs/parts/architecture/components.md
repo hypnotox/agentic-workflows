@@ -15,8 +15,8 @@
   to it, while `internal/project` derives the gated-command guidance and managed-runner dispatch
   from the same metadata. Excluded runner commands carry their user-facing safety reason.
 - **`cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`,
-  `cmd/releasecheck`, `cmd/repoaudit`**: repo-only gate, release, triage, and audit
-  helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
+  `cmd/releasecheck`, `cmd/repoaudit`, `cmd/contextspilllog`**: repo-only gate, release, triage, audit,
+  and context-spill observability helpers: the 100% statement-coverage floor (ADR-0012), the dead-code gate
   (ADR-0063), the advisory mutation-survivor report (ADR-0066), the workflow-pin
   check (ADR-0079), the release-time changelog pin (ADR-0078), and the repo-local
   conformance audit (`./x audit-local`, ADR-0073: changelog-entry Errors plus
@@ -106,6 +106,12 @@
   through 8,192 bytes unchanged and otherwise securely creates a canonical mode-0600 temporary file
   outside the repository, writes exact bytes, and emits the versioned two-line notice; failed
   delivery best-effort removes the spill while successful direct callers own deletion.
+- **`internal/contextspill/`**: the repository-runner observability boundary. It strictly recognizes
+  the two-line notice and appends a path-free UTC byte-count and shell-quoted invocation record to
+  the ignored owner-only `.awf/local/context-spills.log` through no-follow ownership checks and a
+  serialized durable append. The private `cmd/contextspilllog` caller lets `./x context` preserve
+  stdout and child status while degrading recognition or logging failure to a stderr warning;
+  `./x check` advises on a safe nonempty log without failing.
 - **`internal/prosegate/`**: scans a project's tracked text files for the seven banned
   typographic punctuation substitutes; powers the opt-in blocking `awf check prose` (ADR-0119).
   The presence-level counterpart to `internal/audit`'s net-increase `plain-punctuation` rule:

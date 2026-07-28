@@ -84,7 +84,7 @@ facet-independent grouping, closest authority categories, bounded facets, artifa
 `internal/contextdelivery/delivery_test.go` injects filesystem and writer failures to prove the exact
 8,192/8,193-byte boundary, secure external mode-0600 spill, complete writes, and cleanup; and
 `cmd/awf/context_test.go` holds the sole human grammar, flag removal, static/uncovered reuse, and
-shared delivery path. JSON parity fixtures are intentionally absent because context is human-only.
+shared delivery path. `internal/contextspill/log_test.go` and fault cases pin exact notice recognition, POSIX quoting, owner-only no-follow paths, locked concurrent durable appends, and primary-error preservation; `cmd/contextspilllog/main_test.go` pins the private helper grammar; and `internal/project/context_wrapper_test.go` runs a copied `x` against a fake sibling `awf` to prove byte/status preservation, warning-only degradation, concurrency, and the non-failing check advisory. JSON parity fixtures are intentionally absent because context is human-only.
 
 Workflow-chain golden-task evals live in `internal/evals`, a test-only package (only `_test.go`
 files, no production source). Each scenario runs a full `Project.SyncReport` over a fixture config derived

@@ -177,7 +177,10 @@ authority renders once with bounded topic, invariant, direct-rule, and pending s
 `--show` for `all-rules`, `evidence`, `selectors`, `references`, `pending`, or `artifacts`; `--full`
 is their union, never a path census. Human text is the only contract. Results through 8,192 bytes
 write unchanged; larger direct-command results securely spill exact bytes outside the repository
-and return a two-line notice whose temporary file the successful caller owns and deletes.
+and return a two-line notice whose temporary file the successful caller owns and deletes. In this
+repository, `./x context` preserves that output while recording path-free spill observations in the
+ignored owner-only `.awf/local/context-spills.log`; logging failures only warn. `./x check` advises
+while the log is nonempty, and the operator resolves or promotes the recurring issue and removes it.
 
 **Invariants are enforced, not just documented.** An invariant claim declares its backing:
 `Backing: test` requires a matching proof marker (`... invariant: <domain>/<topic>:<slug>`) on a
