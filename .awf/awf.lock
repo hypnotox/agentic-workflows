@@ -335,8 +335,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:4c55387e0d9fe91050c49b60737a83ce720aa7a5e228fe967ef39eac583a8191",
-      "outputHash": "sha256:8f26b39c9ffef1f1eabb59c15d3b205a5746b7260b4760e5316e76773dc1e38f"
+      "configHash": "sha256:34382019ce6b68c5c62dbdbc15041f2b9632454b989c50f8bccc239520812832",
+      "outputHash": "sha256:968d5f0ca180ae3905e41f2ba68dee1d69b4c7718f0af8a56fd5143f8aef18d0"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -654,8 +654,8 @@
     "docs/topics/tooling/effort-management.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:372637c09f139e90a262f132e8228fa95a8e4dd950500ae3f606785bb5f1e0b7",
-      "outputHash": "sha256:802e01ad0e29020d153b57f28cd9cbf8a3fd5197e0306dc95222161bfb9e8a4d"
+      "configHash": "sha256:1b0d9105574f457c6ef3f30bf50e9d109403f0642378d4fcdb6ea1b86b992f45",
+      "outputHash": "sha256:709e0d3164619863a005b454248cd511a7a26bbfd36e2c434cd999035be7d5a9"
     },
     "docs/topics/tooling/evaluations.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -708,8 +708,8 @@
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
       "templateHash": "sha256:f6a2c7c752e6837927a5f9d7f2dcdc6a60b26c7b676806f55031a6648eb81c67",
-      "configHash": "sha256:d1b60a1bba390612777620f2a25cef6801f1642462721eeb3f8054c0d0d239eb",
-      "outputHash": "sha256:1c6a5841cda9a85360c6f83f3ed0d30729d3d20b7d7f9ef1a52b1de5e482f661"
+      "configHash": "sha256:51fa9c7ea50d2d1d2d3b95e8e71273615955cdff509002743626d27bf107c34f",
+      "outputHash": "sha256:e708b402a2415e5d8130ce5880b6acdfac6bd6b8eccddd8987d8cb1e3129e84c"
     }
   },
   "adrFormatV1From": 137,

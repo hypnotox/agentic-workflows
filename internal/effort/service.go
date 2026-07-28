@@ -1,16 +1,13 @@
 package effort
 
 import (
-	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
@@ -631,61 +628,4 @@ func managedDirectoryTruth(path string) (bool, error) {
 		return false, err
 	}
 	return true, nil
-}
-
-type assignmentFile struct {
-	SchemaVersion int               `json:"schemaVersion"`
-	Sessions      map[string]string `json:"sessions"`
-}
-
-func (s *Service) readAssignments() (map[string]string, error) {
-	if err := s.paths.validate(s.paths.assign); err != nil {
-		return nil, fmt.Errorf("validate assignment resident root before read: %w", err)
-	}
-	path := s.paths.assignments()
-	raw, _, err := readRegularNoFollow(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return map[string]string{}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("read assignment authority %s: %w", path, err)
-	}
-	var file assignmentFile
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&file); err != nil {
-		return nil, &CorruptError{Path: path, Err: err}
-	}
-	if err := requireJSONEOF(decoder); err != nil {
-		return nil, &CorruptError{Path: path, Err: err}
-	}
-	if file.SchemaVersion != SchemaVersion || file.Sessions == nil {
-		return nil, &CorruptError{Path: path, Err: errors.New("unsupported assignment schema")}
-	}
-	for session, id := range file.Sessions {
-		if strings.TrimSpace(session) != session || session == "" || len(session) > 160 || !uuidV4Pattern.MatchString(id) {
-			return nil, &CorruptError{Path: path, Err: errors.New("invalid assignment entry")}
-		}
-	}
-	return file.Sessions, nil
-}
-
-func sessionsFor(assignments map[string]string, id string) []string {
-	var sessions []string
-	for session, effortID := range assignments {
-		if effortID == id {
-			sessions = append(sessions, session)
-		}
-	}
-	sort.Strings(sessions)
-	return sessions
-}
-
-func (s *Service) joinAssignments(record Record) (Record, error) {
-	assignments, err := s.readAssignments()
-	if err != nil {
-		return Record{}, fmt.Errorf("join assignment authority for effort %s: %w", record.ID, err)
-	}
-	record.AssignedSessionIDs = sessionsFor(assignments, record.ID)
-	return record, nil
 }

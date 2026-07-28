@@ -214,6 +214,21 @@ Mark an active effort abandoned while retaining its resources.
 
 Return a completed or abandoned effort to active state.
 `},
+			{Name: "assign", Summary: "Assign one Pi session to an effort", ValueFlags: []string{"--session"}, MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort assign <id> --session <pi-session-id>
+
+Explicitly assign or reassign one Pi session without changing effort lifecycle state.
+`},
+			{Name: "unassign", Summary: "Remove one Pi session assignment", ValueFlags: []string{"--session"}, MaxPos: 0,
+				HelpBody: `Usage: awf effort unassign --session <pi-session-id>
+
+Remove the current assignment for one Pi session.
+`},
+			{Name: "assignments", Summary: "List current Pi session assignments", BoolFlags: []string{"--json"}, ValueFlags: []string{"--effort"}, MaxPos: 0,
+				HelpBody: `Usage: awf effort assignments [--effort <id>] [--json]
+
+List current session assignments in deterministic session-ID order.
+`},
 			{Name: "repair", Summary: "Repair derivable effort metadata", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
 				HelpBody: `Usage: awf effort repair <id> [--json]
 

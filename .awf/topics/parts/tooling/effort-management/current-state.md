@@ -8,6 +8,12 @@ The awf binary is the only allocator of lowercase UUIDv4 effort IDs and owns sch
 Origin: ADR-0164
 Backing: test
 
+### `invariant: session-effort-assignment`
+
+The schema-1 `.awf/assignments/sessions.json` authority is exactly `{"schemaVersion":1,"sessions":{"<pi-session-id>":"<effort-id>"}}`: each bounded safe Pi session ID maps to zero or one existing effort ID, and no effort record persists that relationship. Assignment, explicit reassignment including to completed or abandoned efforts, and unassignment validate resident state under the repository lock and atomically replace this one map with no-follow, owner, and durability checks; malformed authority is refused without rewriting it, and an unknown effort or session is refused. Assignment never creates adoption or history and never changes effort status. List and show derive each effort's sorted assigned session IDs from this authority, while `assignments` emits deterministic session order from primary and linked worktree invocations.
+Origin: ADR-0164
+Backing: test
+
 ### `invariant: managed-worktree-lifecycle`
 
 Managed effort worktrees use the fixed `.awf/worktrees/<effort-id>/` path and `awf/<effort-id>` branch, resolve an explicit base or caller HEAD through native Git, and retain the schema-1 integration state machine through integration and until explicit removal. Native-Git operations validate registration, repository identity, branch, operation state, cleanliness, and ancestry before mutation; confinement, symlink, ownership, repository-identity, merge-conflict, and destructive-topology safety refusals are never forceable, while only recoverable cleanliness or non-destructive topology risk accepts paired `--force --reason <nonblank>`. Integration is explicit as fast-forward, merge, or manually recorded only after its required ancestry proof, and completion never removes a managed worktree.

@@ -149,15 +149,27 @@ func TestLookup(t *testing.T) {
 		t.Errorf("topic flags = %q", got)
 	}
 	effort, ok := Lookup("effort")
-	if !ok || len(effort.Children) != 12 {
+	if !ok || len(effort.Children) != 15 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
 	if newEffort, found := effort.Child("new"); !found || strings.Join(newEffort.BoolFlags, ",") != "--no-memory,--worktree" {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
-	for _, name := range []string{"new", "list", "show", "rename", "memory", "worktree", "integrate", "integrated", "complete", "abandon", "reopen", "repair"} {
+	for _, name := range []string{"new", "list", "show", "rename", "memory", "worktree", "integrate", "integrated", "complete", "abandon", "reopen", "assign", "unassign", "assignments", "repair"} {
 		if _, found := effort.Child(name); !found {
 			t.Errorf("effort child %q missing", name)
+		}
+	}
+	for _, tc := range []struct {
+		name, usage, flags string
+	}{
+		{"assign", "assign <id> --session <pi-session-id>", "--session"},
+		{"unassign", "unassign --session <pi-session-id>", "--session"},
+		{"assignments", "assignments [--effort <id>] [--json]", "--json,--effort"},
+	} {
+		child, found := effort.Child(tc.name)
+		if !found || !strings.Contains(child.HelpBody, tc.usage) || strings.Join(append(child.BoolFlags, child.ValueFlags...), ",") != tc.flags {
+			t.Errorf("effort %s help/flags = %#v", tc.name, child)
 		}
 	}
 	metrics, ok := Lookup("metrics")

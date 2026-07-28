@@ -166,3 +166,4 @@ implementation.
 - 2026-07-27: Implementing; content-sha256: 13fe97f744f2a7c14fe59a7d8b2c117f5267d481885409d99c91525d461a70c2
 - 2026-07-27: Applied; state-sequence: 61; operations: add `tooling/effort-management:effort-record-authority`
 - 2026-07-27: Applied; state-sequence: 62; operations: add `tooling/effort-management:managed-worktree-lifecycle`
+- 2026-07-28: Applied; state-sequence: 66; operations: add `tooling/effort-management:session-effort-assignment`
