@@ -310,9 +310,9 @@
     },
     ".pi/extensions/awf-telemetry/index.ts": {
       "templateId": "pi/awf-telemetry/index.ts.tmpl",
-      "templateHash": "sha256:2c9650709d0f422e6b523c7a610560d201ce153a1554127cea3593c355d9b94f",
+      "templateHash": "sha256:f9f76c5c32edf143eb693bac9c3cb1184232cd45a8d293fda448c78f6d29cc5d",
       "configHash": "sha256:a46cd1b1430ebab6ecd153b92cc4f69f440be7a7fe3076c2bbdc92f51ee925a8",
-      "outputHash": "sha256:1119ee01a16608e2197e301823ae1d861458cea2a8cdf1bb5781caab9d5b653e"
+      "outputHash": "sha256:c44cdd4e5ae1612a78f3646f2294a327b76c65828af1f029e237f3d465ada3ea"
     },
     ".pi/extensions/awf-telemetry/protocol.ts": {
       "templateId": "pi/awf-telemetry/protocol.ts.tmpl",
@@ -419,7 +419,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:b1da0078853ade364af84ecddeaaafce7752b86a1345c3f057ed71494ad03fcb",
+      "outputHash": "sha256:27c7358bc356b4bd8fc08ec605d0ec8867da693abb3ae56c787467bcfaf82677",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {

@@ -83,6 +83,7 @@ query a single version or a range.
   the skill drift resolved by their next `awf sync`.
 
 ### Bug fixes
+- Pi session-v1 telemetry now validates native Git directory and gitdir-pointer control roots, refuses unsafe lock cleanup and corruption markers without following replacements, and supports separate-Git-dir primary checkouts.
 - Lightweight effort records now use safe native file access, repository locking, and conditional atomic publication on every supported Linux, Darwin, and Windows release target; raced creation and replacement preserve the existing destination.
 - Pi fresh-session handoffs now explicitly identify their restored active effort association and prohibit external-checkpoint adoption or structured resume, preventing a successor from re-adopting the already-associated effort.
 - `awf check` accepts the historical operations for a topic retired after another ADR removes its final claim, rather than reporting its already-removed topic metadata as missing.
