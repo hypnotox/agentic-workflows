@@ -48,12 +48,15 @@ are outside this decision.
 3. In subagent-driven mode, the parent dispatches one commit-capable implementer for the complete
    phase from a known green baseline. That implementer performs every ordered task, stages the full
    transaction, runs the required staged check and gate, and creates the phase's closing commit.
-   The parent then obtains report-only phase review, resolves findings through focused follow-up
-   commits, and checkpoints only after the phase is settled.
+   That commit ends the implementation transaction. The parent then owns report-only phase review
+   and any focused settlement commits needed to resolve findings; those commits do not transfer the
+   original transaction to another implementer. The phase checkpoints only after review settlement.
 
 4. In inline mode, the parent owns the complete phase transaction, integrates all work, runs the
-   checks, obtains review where applicable, and commits. An explicit batch task may be executed by
-   the parent, by one sequential commit-disabled helper, or by several sequential commit-disabled
+   checks, obtains review where applicable, and creates the phase-closing commit. That commit ends
+   the implementation transaction; any later review findings remain parent-owned settlement work,
+   and the phase checkpoints only after they resolve. An explicit batch task may be executed by the
+   parent, by one sequential commit-disabled helper, or by several sequential commit-disabled
    helpers over declared subsets. Helpers never become transaction owners and never commit.
 
 5. A batch task keeps its representative transformation, edge transformation, exhaustive affected
@@ -87,21 +90,44 @@ are outside this decision.
 
 11. Pi's sequential implementation dispatch and exclusive implementation-tool batch behavior remain
     unchanged. Concurrent same-checkout batch helpers and worktree-isolated or patch-producing
-    parallel implementation are not introduced. The unresolved concurrent-helper design is recorded
-    as a roadmap idea rather than implied by this workflow contract.
+    parallel implementation are not introduced. Implementation records the unresolved concurrent-
+    helper design in the authored roadmap source and its generated output rather than implying it in
+    this workflow contract.
 
 12. Tests prove phase-level ownership across plan authoring, plan review, inline execution, and
     subagent-driven execution. They cover mixed per-phase modes, a known green baseline, complete
     phase implementer briefs, commit-capable phase owners, helper-only batch workers, explicit dirty
     recovery, phase-level checkpoints, and a regression plan shape in which several checkbox tasks
     lead to one phase-closing gate and commit. Existing Pi serialization and commit-policy tests stay
-    unchanged.
+    unchanged. Every affected template also renders coherent generic prose with empty variables
+    under missingkey-zero behavior and emits no unresolved-value token.
 
-13. Implementation follows ADR-0164. This ADR's updates to
+13. The new `rendering/workflow-skill-templates:phase-transaction-ownership` claim is authored with
+    `Origin: ADR-0166` and `Backing: test`. A matching proof annotation on substantive tests under
+    `internal/**` exercises every clause of the invariant, including phase ownership, review
+    settlement, dirty recovery, batch helpers, and phase checkpoints.
+
+14. Implementation follows ADR-0164. This ADR's updates to
     `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage` and
     `rendering/pi-workflows:pi-session-handoff-workflow` are Applied only after ADR-0164 has Applied
     its pending updates to the same claims and the post-ADR-0164 workflow sources are on the base
     branch.
+
+15. State changes apply in declaration order through independently checked batches. The first batch
+    may add `phase-transaction-ownership` and update `plan-task-detail-modes`; the later batch updates
+    `memory-checkpoint-chain-coverage` and `pi-session-handoff-workflow` only after item 14's
+    prerequisite. Every Applied event uses the next global state sequence and lands atomically with
+    exactly its matching claim text, provenance, backing, proof markers, authored sources, and
+    generated outputs. No Remaining operation lands early, and Abandoned cancels only unapplied
+    operations while preserving Applied effects.
+
+16. Documentation travels with the matching implementation batch. Authored template and `.awf`
+    sources regenerate the plan README and template, workflow and working-with-awf docs, affected
+    topic/domain docs, the coupled-phase glossary entry, the roadmap idea, and AGENTS.md when its
+    rendered workflow summary changes; no generated output is hand-edited.
+
+17. Every ADR lifecycle status transition runs `./x render` and commits the regenerated
+    `docs/decisions/INDEX.md` and lock update in the same checked transaction.
 
 ## State changes
 
