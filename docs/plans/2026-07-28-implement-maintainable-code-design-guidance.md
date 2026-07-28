@@ -26,8 +26,8 @@ and adopter outputs. The final review-lens phase freezes this plan and completes
 ## File structure
 
 Every filesystem path in this plan is exact and rooted at
-`/home/hypno/Projects/agentic-workflows`; shorter paths in required rendered prose and Go literals are
-output values, not executor path notation.
+`/home/hypno/Projects/agentic-workflows`; shorter paths inside fenced required content or explicitly asserted rendered strings are output
+values, not executor path notation.
 
 - **Created:**
   `/home/hypno/Projects/agentic-workflows/templates/docs/maintainable-code-design.md.tmpl`,
@@ -77,7 +77,7 @@ output values, not executor path notation.
 
 - [ ] **Task 1.1: Publish, register, prove, apply, and commit the mandatory guide as one atomic change.**
   Create
-  `templates/docs/maintainable-code-design.md.tmpl` with H1 `# Maintainable Code Design` and these
+  `/home/hypno/Projects/agentic-workflows/templates/docs/maintainable-code-design.md.tmpl` with H1 `# Maintainable Code Design` and these
   exact, ordered `awf:section` identifiers and H2 headings:
 
   | Section identifier | Heading |
@@ -122,21 +122,26 @@ output values, not executor path notation.
   catalog entry below; it must pass.
 
   **Register and prove the catalog-derived singleton.** In
-  `internal/catalog/standard.go`, add this exact entry to `Catalog.Docs` beside the other mandatory
+  `/home/hypno/Projects/agentic-workflows/internal/catalog/standard.go`, add this exact entry to `Catalog.Docs` beside the other mandatory
   document-map docs:
 
   ```go
   "maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
   ```
 
-  Do not add a branch to `internal/project/output_plan.go`, `internal/project/layout.go`,
-  `internal/project/singleton.go`, or `internal/project/scaffold.go`; the new entry must flow through
-  their existing catalog projections. Extend `testLayout()` in `internal/project/project_test.go`
+  Do not add a branch to
+  `/home/hypno/Projects/agentic-workflows/internal/project/output_plan.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/layout.go`,
+  `/home/hypno/Projects/agentic-workflows/internal/project/singleton.go`, or
+  `/home/hypno/Projects/agentic-workflows/internal/project/scaffold.go`; the new entry must flow through
+  their existing catalog projections. Extend `testLayout()` in
+  `/home/hypno/Projects/agentic-workflows/internal/project/project_test.go`
   with `"maintainableCodeDesign": "docs/maintainable-code-design.md"`. Update
   `TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally` so its pinned expected membership
   includes the new entry.
 
-  Add `TestMaintainableCodeDesignGuide` to `internal/project/docs_sections_test.go`. Mark it with
+  Add `TestMaintainableCodeDesignGuide` to
+  `/home/hypno/Projects/agentic-workflows/internal/project/docs_sections_test.go`. Mark it with
   `// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide` and have it:
   1. assert the exact catalog metadata and ordered section list above;
   2. assert `render.ParseSections` returns those section markers exactly once and in that order;
@@ -148,15 +153,18 @@ output values, not executor path notation.
   5. scaffold with `skills: []`, `agents: []`, and `docs: []`, sync, and assert both
      `docs/maintainable-code-design.md` and its full title/link/description line in `AGENTS.md` exist.
 
-  Add `TestMaintainableCodeDesignPartOverride` to `internal/project/render_tree_test.go`. Scaffold a
-  project with `.awf/parts/maintainable-code-design/decision-posture.md` containing a unique body,
+  Add `TestMaintainableCodeDesignPartOverride` to
+  `/home/hypno/Projects/agentic-workflows/internal/project/render_tree_test.go`. Scaffold a
+  project with
+  `/home/hypno/Projects/agentic-workflows/.awf/parts/maintainable-code-design/decision-posture.md` containing a unique body,
   sync, and assert the unique body replaces only the default `decision-posture` body while the other
   six headings remain. Run
   `go test ./internal/catalog ./internal/project -run 'Test(MaintainableCodeDesign|AgentsDocDocumentMap|UnifiedDocModel|AdrSingletonSectionParity)'`;
   it must pass with no findings.
 
   **Apply the guide claim and render the first lifecycle batch.** Append this exact claim
-  to `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`:
+  to
+  `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`:
 
   ```markdown
   ### `invariant: maintainable-code-design-guide`
@@ -167,16 +175,21 @@ output values, not executor path notation.
   ```
 
   Immediately before editing ADR-0168, derive `S` as one greater than the highest repository-global
-  `state-sequence` currently present under `docs/decisions/`; do not reserve an authoring-time
+  `state-sequence` currently present under
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/`; do not reserve an authoring-time
   literal. In ADR-0168 set frontmatter status to `Implementing`, append the Implementing event with
   content digest `5e6e3b2f3b3b066a5faec3ad1a7d81accd2599ce89546edb2d5f556a371eaa49`, then append an Applied
   event at sequence `S` whose operations field is the verb `add` followed by the qualified ID
   `rendering/guide-and-doc-templates:maintainable-code-design-guide`. Run `./awf check` after
   the edit; it must accept `S` as the next consecutive sequence and report only implementation drift
   that `./x render` will resolve. Run `./x render`; it must complete
-  successfully and update `docs/maintainable-code-design.md`, `AGENTS.md`,
-  `docs/config-reference.md`, `docs/domains/rendering.md`, `docs/decisions/INDEX.md`, and
-  `.awf/awf.lock` without manual generated-file edits. Run `./x check`; it must report clean drift.
+  successfully and update
+  `/home/hypno/Projects/agentic-workflows/docs/maintainable-code-design.md`,
+  `/home/hypno/Projects/agentic-workflows/AGENTS.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/config-reference.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/domains/rendering.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md`, and
+  `/home/hypno/Projects/agentic-workflows/.awf/awf.lock` without manual generated-file edits. Run `./x check`; it must report clean drift.
 
   **Verify and commit.** Run:
 
@@ -197,33 +210,33 @@ output values, not executor path notation.
   Modify only the
   existing sections/bodies below; do not add catalog section identifiers. Every stage points to
   `` `{{ .layout.maintainableCodeDesign }}` `` and summarizes only the action that stage owns:
-  - `templates/skills/brainstorming/SKILL.md.tmpl`, existing `design-sections`: require the settled
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/brainstorming/SKILL.md.tmpl`, existing `design-sections`: require the settled
     design to identify the semantic model and ownership, representation boundaries, dependency
     direction, test seams, and preparatory-refactor decision before approach approval.
-  - `templates/skills/proposing-adr/SKILL.md.tmpl`, existing `procedure-write`: when the decision is
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/proposing-adr/SKILL.md.tmpl`, existing `procedure-write`: when the decision is
     structural, preserve those settled choices, constraints, and enabling work in Context/Decision;
     do not replace them with a pattern name.
-  - `templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, existing `audit-shape-selection`: assess
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/refactor-coupling-audit/SKILL.md.tmpl`, existing `audit-shape-selection`: assess
     whether the requested behavior would create duplication, coupling, representation leakage, or a
     workaround, and feed the bounded/larger refactor result into ADR scope.
-  - `templates/skills/writing-plans/SKILL.md.tmpl`, existing `procedure-write-plan`: convert the
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/writing-plans/SKILL.md.tmpl`, existing `procedure-write-plan`: convert the
     settled model, boundaries, dependency direction, representation translations, refactor decision,
     prohibited shortcuts, and validation into ordered executable tasks.
-  - `templates/skills/tdd/SKILL.md.tmpl`, fixed procedure: before implementing, assess whether a
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/tdd/SKILL.md.tmpl`, fixed procedure: before implementing, assess whether a
     bounded enabling refactor is needed to prevent duplication, coupling, representation leakage, or
     a workaround; escalate materially larger work through the four guide dispositions. Select the
     smallest seam that proves the behavior while supporting the intended model, and reject tests that
     force production representation leakage or needless indirection.
-  - `templates/skills/executing-plans/SKILL.md.tmpl`, existing `procedure-per-task`: preserve the
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/executing-plans/SKILL.md.tmpl`, existing `procedure-per-task`: preserve the
     plan's structural choices, reassess when grounded source contradicts them, and stop rather than
     bolt correctness onto the wrong abstraction.
-  - `templates/skills/executing-direct/SKILL.md.tmpl`, fixed procedure body: assess bounded enabling
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/executing-direct/SKILL.md.tmpl`, fixed procedure body: assess bounded enabling
     refactoring before editing, preserve settled boundaries, and return to brainstorming for a larger
     choice rather than silently expanding scope or accepting a workaround.
-  - `templates/skills/subagent-driven-development/SKILL.md.tmpl`, existing
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/subagent-driven-development/SKILL.md.tmpl`, existing
     `procedure-extract-context`: preserve and reassess the same structural choices at orchestration
     time; the detailed handoff payload remains Phase 3.
-  - `templates/skills/bugfix/SKILL.md.tmpl`, fixed procedure around the root-cause step: assess whether
+  - `/home/hypno/Projects/agentic-workflows/templates/skills/bugfix/SKILL.md.tmpl`, fixed procedure around the root-cause step: assess whether
     the root cause is an unsuitable model or boundary, include bounded enabling work that prevents a
     workaround, and escalate materially larger work through the four user choices.
 
@@ -231,7 +244,8 @@ output values, not executor path notation.
   full heuristic explanations. Do not weaken TDD minimality, bugfix one-concern discipline, direct
   execution approval boundaries, or implementation plan-adherence.
 
-  **Add focused stage-coverage tests.** In `internal/project/spine_test.go`, ensure both
+  **Add focused stage-coverage tests.** In
+  `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go`, ensure both
   `testLayout()` and `withLayoutDefaults()` make `maintainableCodeDesign` available to direct golden
   renders. Add `TestMaintainableCodeStageCoverage`, marked
   `// invariant: rendering/workflow-skill-templates:maintainable-code-stage-coverage`. Render all nine
@@ -250,7 +264,7 @@ output values, not executor path notation.
   it must pass.
 
   **Apply the stage claim and render all target outputs.** Append this exact claim to
-  `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
+  `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
 
   ```markdown
   ### `invariant: maintainable-code-stage-coverage`
@@ -266,8 +280,10 @@ output values, not executor path notation.
   after the edit; it must accept the event as the next consecutive sequence.
 
   Run `./x render`. It must update each of the nine generated skill paths enumerated in the phase-2
-  staging command under both absolute target roots, plus `docs/domains/rendering.md`,
-  `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
+  staging command under both absolute target roots, plus
+  `/home/hypno/Projects/agentic-workflows/docs/domains/rendering.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md`, and
+  `/home/hypno/Projects/agentic-workflows/.awf/awf.lock`.
   Run `./x check`; it must report clean drift. Inspect `git diff --check` and
   `git diff -- .claude/skills .pi/skills`; neither may show whitespace errors, unresolved template
   actions, or semantic omissions between targets.
@@ -289,7 +305,8 @@ output values, not executor path notation.
 
 - [ ] **Task 3.1: Close, prove, apply, render, and commit the scoped handoff contract atomically.**
   In
-  `templates/skills/subagent-driven-development/SKILL.md.tmpl`, extend the existing
+  `/home/hypno/Projects/agentic-workflows/templates/skills/subagent-driven-development/SKILL.md.tmpl`,
+  extend the existing
   `procedure-extract-context` list so each implementer prompt carries only task-relevant facts in
   these exact categories: semantic boundary and ownership, external/internal representations and
   their translation point, allowed dependency direction, preparatory-refactor decision, prohibited
@@ -300,22 +317,37 @@ output values, not executor path notation.
   prompt. Do not alter sequential dispatch, `allowCommits`, commit permission, the four completion
   statuses, or per-task review behavior.
 
-  In `templates/skills/executing-plans/SKILL.md.tmpl`'s existing `procedure-per-task` Ground bullet,
+  In `/home/hypno/Projects/agentic-workflows/templates/skills/executing-plans/SKILL.md.tmpl`'s existing `procedure-per-task` Ground bullet,
   require the inline orchestrator to extract the same six categories from the plan for the current
   task before editing. This preserves semantic parity for inline execution without pretending that
   inline work dispatches a subagent.
 
   **Prove scoped content and multi-target semantics.** Add
-  `TestMaintainableCodeSubagentContract` to `internal/project/spine_test.go`, marked
+  `TestMaintainableCodeSubagentContract` to
+  `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go`, marked
   `// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract`. Render
   `subagent-driven-development` once with `targetSubagentTools: true` and once without it, and render
   `executing-plans`. Assert all six context categories appear in both dispatch branches, the
   no-replanning/no-scope-broadening boundary appears, and the existing status values, sequential
   dispatch rule, `allowCommits` on Pi, and report-only per-task review remain present.
 
-  Add `TestMaintainableCodeMultiTargetParity` to `internal/project/target_test.go`. Scaffold exact
-  targets `[claude, pi]`, exact skills `[subagent-driven-development]`, and `agents: []`; no catalog
-  neighbor is structurally required for this render-only semantic test. Render all outputs and assert:
+  Add `TestMaintainableCodeMultiTargetParity` to
+  `/home/hypno/Projects/agentic-workflows/internal/project/target_test.go`. Pass this exact
+  machine-consumed YAML to `scaffold`; no catalog neighbor is structurally required for this
+  render-only semantic test:
+
+  ```yaml
+  prefix: example
+  skills:
+    - subagent-driven-development
+  agents: []
+  docs: []
+  targets:
+    - claude
+    - pi
+  ```
+
+  Render all outputs and assert:
   - each target's subagent-driven-development skill contains all six handoff semantics and the
     prohibited broadening language, even though dispatch syntax differs;
   - each target emits the affected skill once;
@@ -326,7 +358,7 @@ output values, not executor path notation.
   it must pass.
 
   **Apply the handoff claim and render target outputs.** Append this exact claim to
-  `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
+  `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
 
   ```markdown
   ### `invariant: maintainable-code-subagent-contract`
@@ -342,7 +374,9 @@ output values, not executor path notation.
   after the edit; it must accept the event as the next consecutive sequence.
 
   Run `./x render`; it must update executing-plans and subagent-driven-development under both target
-  skill trees, plus `docs/domains/rendering.md`, `docs/decisions/INDEX.md`, and `.awf/awf.lock`. Run
+  skill trees, plus `/home/hypno/Projects/agentic-workflows/docs/domains/rendering.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md`, and
+  `/home/hypno/Projects/agentic-workflows/.awf/awf.lock`. Run
   `./x check`; it must report clean drift.
 
   **Verify and commit.** Run:
@@ -365,16 +399,16 @@ output values, not executor path notation.
   only the `universal-lenses` sections of these templates; each lens points to
   `` `{{ .layout.maintainableCodeDesign }}` `` and retains the opening and shared-tail report-only
   instructions:
-  - `templates/agents/plan-reviewer.md.tmpl`: add `maintainable-design` to check that relevant model,
+  - `/home/hypno/Projects/agentic-workflows/templates/agents/plan-reviewer.md.tmpl`: add `maintainable-design` to check that relevant model,
     ownership, representations, translation boundaries, dependency direction, and test seams are
     explicit; necessary enabling refactors are ordered before dependent behavior, bounded to the
     failure they prevent, and deterministically verifiable; larger refactors carry an explicit
     approved/deferred/declined disposition; needless indirection and pattern mandates are findings.
-  - `templates/agents/code-reviewer.md.tmpl`: add `maintainable-design` to check cohesion, coupling,
+  - `/home/hypno/Projects/agentic-workflows/templates/agents/code-reviewer.md.tmpl`: add `maintainable-design` to check cohesion, coupling,
     dependency direction, representation leakage, duplicated policy, testability, needless
     indirection, conformance to the settled design, and whether the implementation bolted behavior
     onto an unsuitable abstraction or silently broadened refactoring scope.
-  - `templates/agents/adr-reviewer.md.tmpl`: add `structural-design` with an explicit condition. Run
+  - `/home/hypno/Projects/agentic-workflows/templates/agents/adr-reviewer.md.tmpl`: add `structural-design` with an explicit condition. Run
     it only when a Decision changes a semantic model, representation, module/package boundary,
     dependency direction, ownership boundary, or comparable structural contract. When active, check
     cohesion, representation isolation, dependency direction, enabling-refactor disposition,
@@ -385,7 +419,8 @@ output values, not executor path notation.
 
   **Prove review coverage, conditionality, and report-only preservation.** Extend
   `TestPlanReviewerAgent`, `TestCodeReviewerAgent`, and `TestAdrReviewerAgent` in
-  `internal/project/spine_test.go` with the exact maintainability dimensions above and the rendered
+  `/home/hypno/Projects/agentic-workflows/internal/project/spine_test.go` with the exact
+  maintainability dimensions above and the rendered
   guide path. Add a focused `TestMaintainableCodeReviewLenses`, marked
   `// invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses`, which renders
   all three agents with empty data and asserts:
@@ -404,7 +439,7 @@ output values, not executor path notation.
 
   **Apply the final claim, freeze records, and render the terminal lifecycle transaction.** Append
   this exact claim to
-  `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
+  `/home/hypno/Projects/agentic-workflows/.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
 
   ```markdown
   ### `invariant: maintainable-code-review-lenses`
@@ -425,7 +460,9 @@ output values, not executor path notation.
   Flip this plan's frontmatter `status:` from `Proposed` to `Implemented`. In its Notes section,
   record only concrete execution findings, if any; do not restate the design. Run `./x render`; it
   must update all three reviewer agents under `.claude/agents` and `.pi/agents`, plus
-  `docs/domains/rendering.md`, `docs/decisions/INDEX.md`, and `.awf/awf.lock`. Run `./x check`; it must
+  `/home/hypno/Projects/agentic-workflows/docs/domains/rendering.md`,
+  `/home/hypno/Projects/agentic-workflows/docs/decisions/INDEX.md`, and
+  `/home/hypno/Projects/agentic-workflows/.awf/awf.lock`. Run `./x check`; it must
   report clean drift. Confirm `git grep 'status: Implementing' --
   docs/decisions/0168-make-maintainable-code-design-a-workflow-obligation.md` returns no output and
   `git grep 'status: Proposed' -- docs/plans/2026-07-28-implement-maintainable-code-design-guidance.md`
@@ -452,7 +489,8 @@ output values, not executor path notation.
   successfully with zero findings before the final commit.
 - Run `git diff --check` and `git status --short`; the first must produce no output, and the second
   must show no uncommitted files after the final commit.
-- Inspect `docs/maintainable-code-design.md`, one Claude skill, the corresponding Pi skill, and all
+- Inspect `/home/hypno/Projects/agentic-workflows/docs/maintainable-code-design.md`, one Claude
+  skill, the corresponding Pi skill, and all
   six generated reviewer-agent files. The guide must be language-agnostic, target skills must carry
   the same semantic obligations, and reviewers must remain report-only.
 
