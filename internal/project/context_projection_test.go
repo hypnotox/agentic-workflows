@@ -9,20 +9,37 @@ import (
 
 // invariant: tooling/context-and-topic:context-summary-projection
 func TestClaimSummaryProjection(t *testing.T) {
+	parse := func(summary, prose string) topic.Claim {
+		t.Helper()
+		part := "Intro.\n\n## Claims\n\n### `rule: x`\n" + prose + "\n" + summary + "Origin: ADR-0001\n"
+		parsed, err := topic.ParsePart(topic.TopicID{Domain: "alpha", Slug: "one"}, "part", []byte(part))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return parsed.Claims[0]
+	}
+	declared := strings.Repeat("é", 160)
+	if got := claimSummary(parse("Summary: "+declared+"\n", "ignored fallback")); got != declared {
+		t.Fatalf("declared summary=%q", got)
+	}
 	cases := []struct {
-		claim topic.Claim
+		name  string
+		prose string
 		want  string
 	}{
-		{topic.Claim{Summary: "Declared", Prose: "ignored"}, "Declared"},
-		{topic.Claim{Prose: "First\nline.\n\nSecond."}, "First line."},
-		{topic.Claim{Prose: strings.Repeat("a", 160)}, strings.Repeat("a", 160)},
-		{topic.Claim{Prose: strings.Repeat("a", 161)}, strings.Repeat("a", 157) + "..."},
-		{topic.Claim{Prose: strings.Repeat("word ", 40)}, strings.TrimSpace(strings.Repeat("word ", 31)) + "..."},
+		{"fold first paragraph", "First\nline.\n\nSecond paragraph.", "First line."},
+		{"ASCII 160 unchanged", strings.Repeat("a", 160), strings.Repeat("a", 160)},
+		{"ASCII 161 hard cut", strings.Repeat("a", 161), strings.Repeat("a", 157) + "..."},
+		{"Unicode 161 hard cut by code point", strings.Repeat("é", 161), strings.Repeat("é", 157) + "..."},
+		{"truncate at word boundary", strings.Repeat("word ", 40), strings.TrimSpace(strings.Repeat("word ", 31)) + "..."},
 	}
 	for _, tc := range cases {
-		if got := claimSummary(tc.claim); got != tc.want {
-			t.Errorf("len=%d got=%q want=%q", len([]rune(got)), got, tc.want)
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			got := claimSummary(parse("", tc.prose))
+			if got != tc.want || len([]rune(got)) > 160 {
+				t.Errorf("runes=%d got=%q want=%q", len([]rune(got)), got, tc.want)
+			}
+		})
 	}
 }
 

@@ -12,7 +12,13 @@ import (
 )
 
 // invariant: tooling/context-and-topic:context-terminal-output-cap
-func TestDeliverBoundaryAndSpill(t *testing.T) {
+func TestTerminalOutputCapDeliveryContract(t *testing.T) {
+	t.Run("exact boundary and secure spill", testDeliverBoundaryAndSpill)
+	t.Run("unsafe temporary locations", testDeliverRejectsUnsafeLocations)
+	t.Run("cleanup and primary errors", testDeliverFailuresCleanUpAndPreservePrimary)
+}
+
+func testDeliverBoundaryAndSpill(t *testing.T) {
 	direct := bytes.Repeat([]byte("x"), 8192)
 	var out bytes.Buffer
 	if err := Deliver(direct, t.TempDir(), &out); err != nil || !bytes.Equal(out.Bytes(), direct) {
@@ -43,7 +49,7 @@ func TestDeliverBoundaryAndSpill(t *testing.T) {
 	os.Remove(lines[1])
 }
 
-func TestDeliverRejectsUnsafeLocations(t *testing.T) {
+func testDeliverRejectsUnsafeLocations(t *testing.T) {
 	oldTemp, oldCanon := tempDir, canonicalPath
 	t.Cleanup(func() { tempDir = oldTemp; canonicalPath = oldCanon })
 	root := t.TempDir()
@@ -88,11 +94,12 @@ type fakeFile struct {
 	writeErr, statErr, closeErr error
 	mode                        os.FileMode
 	short                       bool
+	closeCalls                  int
 }
 
 func (f *fakeFile) Name() string               { return f.name }
 func (f *fakeFile) Stat() (os.FileInfo, error) { return fakeInfo{f.mode}, f.statErr }
-func (f *fakeFile) Close() error               { return f.closeErr }
+func (f *fakeFile) Close() error               { f.closeCalls++; return f.closeErr }
 func (f *fakeFile) Write(p []byte) (int, error) {
 	if f.writeErr != nil {
 		return 0, f.writeErr
@@ -119,7 +126,7 @@ func (w *failWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func TestDeliverFailuresCleanUpAndPreservePrimary(t *testing.T) {
+func testDeliverFailuresCleanUpAndPreservePrimary(t *testing.T) {
 	oldTemp, oldCanon, oldCreate, oldRemove := tempDir, canonicalPath, createTemp, removeFile
 	t.Cleanup(func() { tempDir = oldTemp; canonicalPath = oldCanon; createTemp = oldCreate; removeFile = oldRemove })
 	root, tmp := t.TempDir(), t.TempDir()
@@ -157,8 +164,8 @@ func TestDeliverFailuresCleanUpAndPreservePrimary(t *testing.T) {
 			}
 			removeFile = func(string) error { removed = true; return errors.New("remove") }
 			err := Deliver(data, root, tc.stdout)
-			if err == nil || !strings.Contains(err.Error(), tc.want) || !removed {
-				t.Fatalf("err=%v removed=%t", err, removed)
+			if err == nil || !strings.Contains(err.Error(), tc.want) || !removed || tc.file.closeCalls != 1 {
+				t.Fatalf("err=%v removed=%t closeCalls=%d", err, removed, tc.file.closeCalls)
 			}
 		})
 	}
@@ -170,8 +177,8 @@ func TestDeliverFailuresCleanUpAndPreservePrimary(t *testing.T) {
 			removed := false
 			removeFile = func(string) error { removed = true; return nil }
 			err := Deliver(data, root, &failWriter{failAt: i + 1, partial: true})
-			if err == nil || !removed {
-				t.Fatalf("err=%v removed=%t", err, removed)
+			if err == nil || !removed || f.closeCalls != 1 {
+				t.Fatalf("err=%v removed=%t closeCalls=%d", err, removed, f.closeCalls)
 			}
 		})
 	}

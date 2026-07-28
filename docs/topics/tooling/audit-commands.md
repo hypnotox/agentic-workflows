@@ -3,7 +3,7 @@
 
 The advisory audit surfaces: audit, repoaudit, mutants.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-commands --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/snapshot/**`, `internal/telemetry/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-commands --coverage` for current matched paths and marker sites.
 
 The advisory audit surfaces: awf audit, repoaudit, and mutants reporting.
 

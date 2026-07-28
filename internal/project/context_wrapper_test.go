@@ -11,7 +11,15 @@ import (
 	"testing"
 )
 
-func TestContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
+// invariant: tooling/context-and-topic:context-spill-observability
+func TestContextSpillObservabilityContract(t *testing.T) {
+	t.Run("wrapper byte and status preservation", testContextRunnerPreservesOutputStatusAndObservesSpills)
+	t.Run("logging failure warning degradation", testContextRunnerLoggingFailureWarnsWithoutChangingSuccess)
+	t.Run("concurrent wrapper records", testContextRunnerConcurrentRecordsDoNotInterleave)
+	t.Run("safe check advisory", testCheckRunnerSpillAdvisoryTracksNonemptySafeLog)
+}
+
+func testContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 	root := contextRunnerFixture(t)
 	run := func(mode string) (string, string, int) {
 		t.Helper()
@@ -64,6 +72,15 @@ func TestContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 		t.Fatal("near miss was logged")
 	}
 
+	stdout, stderr, status = run("malformed")
+	if stdout != "AWF_CONTEXT_SPILL_V1 bytes=bad format=text\n/tmp/nope\n" || !strings.Contains(stderr, "local observability logging failed") || status != 0 {
+		t.Fatalf("malformed stdout=%q stderr=%q status=%d", stdout, stderr, status)
+	}
+	after, _ = os.ReadFile(filepath.Join(root, ".awf", "local", "context-spills.log"))
+	if string(after) != before {
+		t.Fatal("malformed notice was logged")
+	}
+
 	stdout, _, status = run("failure")
 	if stdout != "partial\n\n" || status != 7 {
 		t.Fatalf("failure stdout=%q status=%d", stdout, status)
@@ -74,7 +91,7 @@ func TestContextRunnerPreservesOutputStatusAndObservesSpills(t *testing.T) {
 	}
 }
 
-func TestContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
+func testContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
 	root := contextRunnerFixture(t)
 	local := filepath.Join(root, ".awf", "local")
 	if err := os.Mkdir(local, 0o755); err != nil {
@@ -93,7 +110,7 @@ func TestContextRunnerLoggingFailureWarnsWithoutChangingSuccess(t *testing.T) {
 	}
 }
 
-func TestContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
+func testContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
 	root := contextRunnerFixture(t)
 	const count = 8
 	var wg sync.WaitGroup
@@ -130,7 +147,7 @@ func TestContextRunnerConcurrentRecordsDoNotInterleave(t *testing.T) {
 	}
 }
 
-func TestCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
+func testCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
 	root := contextRunnerFixture(t)
 	fakeBin := filepath.Join(root, "fake-bin")
 	if err := os.Mkdir(fakeBin, 0o755); err != nil {
@@ -171,6 +188,12 @@ func TestCheckRunnerSpillAdvisoryTracksNonemptySafeLog(t *testing.T) {
 	if stderr := run(); strings.Contains(stderr, "resolve or promote the issue") {
 		t.Fatalf("empty log advisory: %q", stderr)
 	}
+	if err := os.Chmod(logPath, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if stderr := run(); !strings.Contains(stderr, "advisory inspection failed") || strings.Contains(stderr, "check: advisory:") {
+		t.Fatalf("unsafe log inspection was not warning-only: %q", stderr)
+	}
 }
 
 func contextRunnerFixture(t *testing.T) string {
@@ -201,6 +224,7 @@ case "${FAKE_MODE:-normal}" in
     printf 'AWF_CONTEXT_SPILL_V1 bytes=9000 format=text\n%s\n' "$PWD/spill.txt"
     ;;
   near) printf 'AWF_CONTEXT_SPILL bytes=9000 format=text\n/tmp/nope\n' ;;
+  malformed) printf 'AWF_CONTEXT_SPILL_V1 bytes=bad format=text\n/tmp/nope\n' ;;
   failure) printf 'partial\n\n'; exit 7 ;;
 esac
 `

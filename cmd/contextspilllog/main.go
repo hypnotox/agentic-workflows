@@ -16,8 +16,19 @@ func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr)) } // coverage-igno
 
 func run(args []string, stdout, stderr io.Writer) int {
 	_ = stdout
+	if len(args) == 3 && args[0] == "--check-log" && args[1] == "--root" && args[2] != "" {
+		nonempty, err := contextspill.HasSafeLog(args[2])
+		if err != nil {
+			fmt.Fprintln(stderr, "contextspilllog:", err)
+			return 1
+		}
+		if nonempty {
+			fmt.Fprintln(stderr, "check: advisory: context spills were observed; resolve or promote the issue, then remove .awf/local/context-spills.log")
+		}
+		return 0
+	}
 	if len(args) < 5 || args[0] != "--root" || args[1] == "" || args[2] != "--notice-file" || args[3] == "" || args[4] != "--" {
-		fmt.Fprintln(stderr, "usage: contextspilllog --root <root> --notice-file <capture> -- <invocation...>")
+		fmt.Fprintln(stderr, "usage: contextspilllog --check-log --root <root> | contextspilllog --root <root> --notice-file <capture> -- <invocation...>")
 		return 2
 	}
 	file, err := os.Open(args[3])

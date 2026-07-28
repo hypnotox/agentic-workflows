@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -108,6 +109,41 @@ func TestRunContextHumanAndFacets(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}
+	}
+}
+
+// invariant: tooling/context-and-topic:context-terminal-output-cap
+func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
+	oldDeliver := deliverContext
+	var sizes []int
+	deliverContext = func(rendered []byte, root string, stdout io.Writer) error {
+		sizes = append(sizes, len(rendered))
+		return nil
+	}
+	t.Cleanup(func() { deliverContext = oldDeliver })
+	root := ctxCmdFixture(t)
+	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, nil, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContext(root, []string{"internal"}, false, "", true, false, nil, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContext(t.TempDir(), []string{"x"}, false, "", false, false, nil, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	var part strings.Builder
+	part.WriteString("Intro.\n\n## Claims\n\n### `rule: order`\nOrder is deterministic.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n")
+	for i := range 180 {
+		fmt.Fprintf(&part, "\n### `rule: rule-%03d`\nRule %03d carries enough projection prose to exercise capped delivery routing.\nOrigin: ADR-0001\n", i, i)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md"), []byte(part.String()), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, []string{"all-rules"}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	if len(sizes) != 4 || sizes[0] == 0 || sizes[1] == 0 || sizes[2] == 0 || sizes[3] <= 8192 {
+		t.Fatalf("delivery sizes = %v", sizes)
 	}
 }
 

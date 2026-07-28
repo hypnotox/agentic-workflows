@@ -59,9 +59,8 @@ case "$cmd" in
     ;;
   check)
     ./awf check "$@"
-    spill_log=".awf/local/context-spills.log"
-    if [ -d .awf/local ] && [ ! -L .awf/local ] && [ -f "$spill_log" ] && [ ! -L "$spill_log" ] && [ -s "$spill_log" ]; then
-      echo "check: advisory: context spills were observed; resolve or promote the issue, then remove $spill_log" >&2
+    if ! go run ./cmd/contextspilllog --check-log --root "$PWD"; then
+      echo "check: warning: context spill advisory inspection failed; resolve or promote the issue before removing the log" >&2
     fi
     # ADR-0090: the example adopter must be drift-free, invariant-clean, free of
     # advisory notes (the model adopter has zero smells), and its scenery green.

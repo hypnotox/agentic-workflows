@@ -19,7 +19,8 @@ If the root cause is not yet known, call `awf_workflow` alone with `skill: "debu
 
 ## Procedure
 
-1. **Ensure a regression test exists that fails for the right reason.** Call `awf_workflow` alone with `skill: "tdd"` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>` (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix touches a claimed surface).
+1. **Ensure a regression test exists that fails for the right reason.** Call `awf_workflow` alone with `skill: "tdd"` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix touches a claimed surface).
+If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
 2. **Implement the root-cause fix, not the symptom.** No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 

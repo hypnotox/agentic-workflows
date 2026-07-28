@@ -38,7 +38,8 @@ If no plan exists, implement directly, then invoke `sundial-reviewing-impl` at t
    - The plan phase the task belongs to (one sentence locating the task in the larger work).
    - Any prior-task outputs the task depends on (commit SHAs, file paths created earlier).
    - The project conventions the subagent must follow (see next step).
-   - The resolved concise grounding command for the task, `awf context <the task's exact paths>`, with the instruction that the subagent runs it first (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where an edit touches a claimed surface) before editing.
+   - The resolved bare grounding command for the task, `awf context <the task's exact paths>`, with the instruction that the subagent runs it first (orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where an edit touches a claimed surface) before editing.
+If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
 <!-- awf:edit dispatch-conventions: default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->
 4. **Per task, dispatch one implementer subagent** in fresh context. Bake these conventions into the prompt verbatim:

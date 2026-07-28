@@ -2,80 +2,91 @@ package contextspill
 
 import (
 	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
-func TestLogOperationalFailures(t *testing.T) {
+func testLogOperationalFailures(t *testing.T) {
 	if err := Log("", Notice{}, nil); err == nil {
 		t.Fatal("empty root succeeded")
 	}
 	if err := Log(filepath.Join(t.TempDir(), "missing"), Notice{}, nil); err == nil {
 		t.Fatal("missing root succeeded")
 	}
-
 	for _, test := range []struct {
 		name string
 		set  func()
 		want string
 	}{
-		{name: "mkdir", set: func() { mkdirPath = func(string, os.FileMode) error { return errors.New("mkdir fault") } }, want: "mkdir fault"},
-		{name: "open", set: func() { openFile = func(string, int, uint32) (int, error) { return -1, errors.New("open fault") } }, want: "open fault"},
-		{name: "fstat", set: func() { fstatFile = func(int, *syscall.Stat_t) error { return errors.New("fstat fault") } }, want: "fstat fault"},
-		{name: "nonregular", set: func() {
-			fstatFile = func(fd int, stat *syscall.Stat_t) error {
-				if err := syscall.Fstat(fd, stat); err != nil {
+		{name: "open root", set: func() { openAt = func(int, string, int, uint32) (int, error) { return -1, errors.New("open fault") } }, want: "open fault"},
+		{name: "open awf", set: func() {
+			original := openAt
+			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+				if path == ".awf" {
+					return -1, errors.New("awf fault")
+				}
+				return original(fd, path, flags, mode)
+			}
+		}, want: "awf fault"},
+		{name: "directory kind", set: func() {
+			fstatFile = func(fd int, stat *unix.Stat_t) error {
+				if err := unix.Fstat(fd, stat); err != nil {
 					return err
 				}
-				stat.Mode = syscall.S_IFDIR | 0o600
+				stat.Mode = unix.S_IFREG | 0o755
 				return nil
 			}
-		}, want: "not a regular file"},
-		{name: "file mode", set: func() {
-			fstatFile = func(fd int, stat *syscall.Stat_t) error {
-				if err := syscall.Fstat(fd, stat); err != nil {
-					return err
+		}, want: "not a directory"},
+		{name: "mkdir", set: func() { mkdirAt = func(int, string, uint32) error { return errors.New("mkdir fault") } }, want: "mkdir fault"},
+		{name: "open log", set: func() {
+			original := openAt
+			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+				if path == "context-spills.log" {
+					return -1, errors.New("log fault")
 				}
-				stat.Mode = syscall.S_IFREG | 0o644
-				return nil
+				return original(fd, path, flags, mode)
 			}
-		}, want: "want 0600"},
-		{name: "file owner", set: func() {
-			fstatFile = func(fd int, stat *syscall.Stat_t) error {
-				if err := syscall.Fstat(fd, stat); err != nil {
-					return err
+		}, want: "log fault"},
+		{name: "fstat", set: func() {
+			calls := 0
+			fstatFile = func(fd int, stat *unix.Stat_t) error {
+				calls++
+				if calls == 3 {
+					return errors.New("fstat fault")
 				}
-				stat.Uid++
-				return nil
+				return unix.Fstat(fd, stat)
 			}
-		}, want: "another user"},
+		}, want: "fstat fault"},
+		{name: "nonregular", set: func() { alterLogStat(func(stat *unix.Stat_t) { stat.Mode = unix.S_IFDIR | 0o600 }) }, want: "not a regular file"},
+		{name: "file mode", set: func() { alterLogStat(func(stat *unix.Stat_t) { stat.Mode = unix.S_IFREG | 0o644 }) }, want: "want 0600"},
+		{name: "file owner", set: func() { alterLogStat(func(stat *unix.Stat_t) { stat.Uid++ }) }, want: "another user"},
 		{name: "lock", set: func() { flockFile = func(int, int) error { return errors.New("lock fault") } }, want: "lock fault"},
 		{name: "write", set: func() { writeFile = func(int, []byte) (int, error) { return 0, errors.New("write fault") } }, want: "write fault"},
 		{name: "short write", set: func() { writeFile = func(int, []byte) (int, error) { return 0, nil } }, want: "short write"},
 		{name: "sync", set: func() { fsyncFile = func(int) error { return errors.New("sync fault") } }, want: "sync fault"},
 		{name: "unlock", set: func() {
 			flockFile = func(fd int, operation int) error {
-				if operation == syscall.LOCK_UN {
+				if operation == unix.LOCK_UN {
 					return errors.New("unlock fault")
 				}
-				return syscall.Flock(fd, operation)
+				return unix.Flock(fd, operation)
 			}
 		}, want: "unlock fault"},
-		{name: "close", set: func() { closeFile = func(fd int) error { _ = syscall.Close(fd); return errors.New("close fault") } }, want: "close fault"},
+		{name: "close", set: func() { closeFile = func(fd int) error { _ = unix.Close(fd); return errors.New("close fault") } }, want: "close fault"},
 		{name: "first error preserved", set: func() {
 			writeFile = func(int, []byte) (int, error) { return 0, errors.New("primary write fault") }
 			flockFile = func(fd int, operation int) error {
-				if operation == syscall.LOCK_UN {
+				if operation == unix.LOCK_UN {
 					return errors.New("later unlock fault")
 				}
-				return syscall.Flock(fd, operation)
+				return unix.Flock(fd, operation)
 			}
-			closeFile = func(fd int) error { _ = syscall.Close(fd); return errors.New("later close fault") }
+			closeFile = func(fd int) error { _ = unix.Close(fd); return errors.New("later close fault") }
 		}, want: "primary write fault"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -93,7 +104,7 @@ func TestLogOperationalFailures(t *testing.T) {
 	}
 }
 
-func TestLogPathInspectionFailures(t *testing.T) {
+func testLogDirectoryValidationAndDescriptorAnchoring(t *testing.T) {
 	for name, prepare := range map[string]func(string) error{
 		"missing awf": func(string) error { return nil },
 		"awf file":    func(root string) error { return os.WriteFile(filepath.Join(root, ".awf"), nil, 0o600) },
@@ -103,6 +114,7 @@ func TestLogPathInspectionFailures(t *testing.T) {
 			}
 			return os.WriteFile(filepath.Join(root, ".awf", "local"), nil, 0o600)
 		},
+		"local mode": func(root string) error { return os.MkdirAll(filepath.Join(root, ".awf", "local"), 0o755) },
 	} {
 		t.Run(name, func(t *testing.T) {
 			restoreLogOps(t)
@@ -115,39 +127,148 @@ func TestLogPathInspectionFailures(t *testing.T) {
 			}
 		})
 	}
-
 	t.Run("directory owner", func(t *testing.T) {
 		restoreLogOps(t)
 		root := t.TempDir()
 		if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
 			t.Fatal(err)
 		}
-		original := lstatPath
-		lstatPath = func(path string) (os.FileInfo, error) {
-			info, err := original(path)
-			if err != nil {
-				return nil, err
+		fstatFile = func(fd int, stat *unix.Stat_t) error {
+			if err := unix.Fstat(fd, stat); err != nil {
+				return err
 			}
-			return fakeFileInfo{mode: info.Mode(), sys: syscall.Stat_t{Uid: uint32(os.Getuid() + 1)}}, nil
+			stat.Uid++
+			return nil
 		}
 		if err := Log(root, Notice{}, nil); err == nil || !strings.Contains(err.Error(), "another user") {
 			t.Fatalf("error = %v", err)
 		}
 	})
-	t.Run("ownership unavailable", func(t *testing.T) {
+	t.Run("substituted pathname cannot redirect log", func(t *testing.T) {
 		restoreLogOps(t)
 		root := t.TempDir()
-		if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
+		awf := filepath.Join(root, ".awf")
+		local := filepath.Join(awf, "local")
+		if err := os.MkdirAll(local, 0o700); err != nil {
 			t.Fatal(err)
 		}
-		lstatPath = func(string) (os.FileInfo, error) { return fakeFileInfo{mode: os.ModeDir | 0o755, sys: nil}, nil }
-		if err := Log(root, Notice{}, nil); err == nil || !strings.Contains(err.Error(), "ownership unavailable") {
-			t.Fatalf("error = %v", err)
+		original := openAt
+		swapped := false
+		openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+			if path == "context-spills.log" && !swapped {
+				swapped = true
+				if err := os.Rename(awf, awf+".anchored"); err != nil {
+					return -1, err
+				}
+				if err := os.MkdirAll(filepath.Join(awf, "local"), 0o700); err != nil {
+					return -1, err
+				}
+			}
+			return original(fd, path, flags, mode)
+		}
+		if err := Log(root, Notice{Bytes: 7}, []string{"x"}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := os.Stat(filepath.Join(awf, "local", "context-spills.log")); !os.IsNotExist(err) {
+			t.Fatalf("replacement received log: %v", err)
+		}
+		if _, err := os.Stat(filepath.Join(awf+".anchored", "local", "context-spills.log")); err != nil {
+			t.Fatalf("anchored log missing: %v", err)
 		}
 	})
 }
 
-func TestWriteAllFDHandlesPartialWrites(t *testing.T) {
+func testHasSafeLogRejectsForeignOwnerAndMissingPaths(t *testing.T) {
+	restoreLogOps(t)
+	root := t.TempDir()
+	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if nonempty, err := HasSafeLog(root); err != nil || nonempty {
+		t.Fatalf("missing local = %v, %v", nonempty, err)
+	}
+	local := filepath.Join(root, ".awf", "local")
+	if err := os.Mkdir(local, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if nonempty, err := HasSafeLog(root); err != nil || nonempty {
+		t.Fatalf("missing log = %v, %v", nonempty, err)
+	}
+	if err := os.WriteFile(filepath.Join(local, "context-spills.log"), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if nonempty, err := HasSafeLog(root); err != nil || !nonempty {
+		t.Fatalf("nonempty log = %v, %v", nonempty, err)
+	}
+	alterLogStat(func(stat *unix.Stat_t) { stat.Uid++ })
+	if _, err := HasSafeLog(root); err == nil || !strings.Contains(err.Error(), "another user") {
+		t.Fatalf("foreign owner error = %v", err)
+	}
+}
+
+func testHasSafeLogOperationalErrors(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		set  func()
+	}{
+		{name: "root", set: func() { openAt = func(int, string, int, uint32) (int, error) { return -1, errors.New("root") } }},
+		{name: "awf", set: func() {
+			original := openAt
+			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+				if path == ".awf" {
+					return -1, errors.New("awf")
+				}
+				return original(fd, path, flags, mode)
+			}
+		}},
+		{name: "local", set: func() {
+			original := openAt
+			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+				if path == "local" {
+					return -1, errors.New("local")
+				}
+				return original(fd, path, flags, mode)
+			}
+		}},
+		{name: "log open", set: func() {
+			original := openAt
+			openAt = func(fd int, path string, flags int, mode uint32) (int, error) {
+				if path == "context-spills.log" {
+					return -1, errors.New("log")
+				}
+				return original(fd, path, flags, mode)
+			}
+		}},
+		{name: "log fstat", set: func() {
+			calls := 0
+			fstatFile = func(fd int, stat *unix.Stat_t) error {
+				calls++
+				if calls == 3 {
+					return errors.New("fstat")
+				}
+				return unix.Fstat(fd, stat)
+			}
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			restoreLogOps(t)
+			root := t.TempDir()
+			local := filepath.Join(root, ".awf", "local")
+			if err := os.MkdirAll(local, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(local, "context-spills.log"), []byte("x"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			test.set()
+			if _, err := HasSafeLog(root); err == nil {
+				t.Fatal("expected inspection error")
+			}
+		})
+	}
+}
+
+func testWriteAllFDHandlesPartialWrites(t *testing.T) {
 	restoreLogOps(t)
 	root := t.TempDir()
 	if err := os.Mkdir(filepath.Join(root, ".awf"), 0o755); err != nil {
@@ -165,55 +286,36 @@ func TestWriteAllFDHandlesPartialWrites(t *testing.T) {
 	}
 }
 
-func TestFileUIDShapes(t *testing.T) {
-	cases := []fakeFileInfo{
-		{sys: nil},
-		{sys: (*syscall.Stat_t)(nil)},
-		{sys: 1},
-		{sys: struct{ Other uint32 }{}},
-		{sys: struct{ Uid string }{Uid: "x"}},
-	}
-	for _, info := range cases {
-		if _, ok := fileUID(info); ok {
-			t.Fatalf("fileUID(%T) unexpectedly succeeded", info.sys)
+func alterLogStat(alter func(*unix.Stat_t)) {
+	calls := 0
+	fstatFile = func(fd int, stat *unix.Stat_t) error {
+		calls++
+		if err := unix.Fstat(fd, stat); err != nil {
+			return err
 		}
-	}
-	if uid, ok := fileUID(fakeFileInfo{sys: syscall.Stat_t{Uid: 42}}); !ok || uid != 42 {
-		t.Fatalf("fileUID = %d, %v", uid, ok)
+		if calls == 3 {
+			alter(stat)
+		}
+		return nil
 	}
 }
 
 func restoreLogOps(t *testing.T) {
 	t.Helper()
-	oldNow, oldLstat, oldMkdir := now, lstatPath, mkdirPath
-	oldOpen, oldFstat, oldFlock := openFile, fstatFile, flockFile
-	oldWrite, oldFsync, oldClose := writeFile, fsyncFile, closeFile
+	oldNow, oldOpen, oldMkdir := now, openAt, mkdirAt
+	oldFstat, oldFlock, oldWrite := fstatFile, flockFile, writeFile
+	oldFsync, oldClose := fsyncFile, closeFile
 	t.Cleanup(func() {
-		now, lstatPath, mkdirPath = oldNow, oldLstat, oldMkdir
-		openFile, fstatFile, flockFile = oldOpen, oldFstat, oldFlock
-		writeFile, fsyncFile, closeFile = oldWrite, oldFsync, oldClose
+		now, openAt, mkdirAt = oldNow, oldOpen, oldMkdir
+		fstatFile, flockFile, writeFile = oldFstat, oldFlock, oldWrite
+		fsyncFile, closeFile = oldFsync, oldClose
 	})
 	now = time.Now
-	lstatPath = os.Lstat
-	mkdirPath = os.Mkdir
-	openFile = syscall.Open
-	fstatFile = syscall.Fstat
-	flockFile = syscall.Flock
-	writeFile = syscall.Write
-	fsyncFile = syscall.Fsync
-	closeFile = syscall.Close
+	openAt = unix.Openat
+	mkdirAt = unix.Mkdirat
+	fstatFile = unix.Fstat
+	flockFile = unix.Flock
+	writeFile = unix.Write
+	fsyncFile = unix.Fsync
+	closeFile = unix.Close
 }
-
-type fakeFileInfo struct {
-	mode os.FileMode
-	sys  any
-}
-
-func (f fakeFileInfo) Name() string       { return "fake" }
-func (f fakeFileInfo) Size() int64        { return 0 }
-func (f fakeFileInfo) Mode() os.FileMode  { return f.mode }
-func (f fakeFileInfo) ModTime() time.Time { return time.Time{} }
-func (f fakeFileInfo) IsDir() bool        { return f.mode.IsDir() }
-func (f fakeFileInfo) Sys() any           { return f.sys }
-
-var _ fs.FileInfo = fakeFileInfo{}

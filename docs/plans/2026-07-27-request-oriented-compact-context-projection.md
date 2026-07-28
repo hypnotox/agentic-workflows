@@ -1,7 +1,7 @@
 ---
 date: 2026-07-27
 adrs: [165]
-status: Proposed
+status: Implemented
 ---
 # Plan: Request-oriented compact context projection
 
@@ -19,8 +19,8 @@ The hand-written `x` runner captures `./awf context` output byte-for-byte, repla
 
 ## File structure
 
-- **Created:** `internal/contextdelivery/delivery.go`, `internal/contextdelivery/delivery_test.go`; `internal/contextspill/log.go`, `internal/contextspill/log_test.go`; `cmd/contextspilllog/main.go`, `cmd/contextspilllog/main_test.go`; `internal/project/context_wrapper_test.go`; `templates/partials/context-spill.md`; this plan.
-- **Modified:** `internal/topic/topic.go`, `internal/topic/topic_test.go`; `internal/project/context.go`, `context_paths.go`, `context_projection.go`, `context_artifacts.go`, `context_adr.go` and their same-basename `_test.go` files; `cmd/awf/context.go`, `context_test.go`, `dispatch.go`; `internal/clispec/clispec.go`, `clispec_test.go`; `internal/project/spine_test.go`, `example_wiring_test.go`; `x`, `.gitignore`; `README.md`, `changelog/CHANGELOG.md`; `.awf/parts/agents-doc/commands.md`, `.awf/parts/working-with-awf/commands.md`, `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/prepend.md`, `.awf/docs/parts/roadmap/ideas.md`, `.awf/docs/parts/testing/layout.md`, `.awf/domains/parts/tooling/current-state.md`; `.awf/topics/parts/tooling/context-and-topic/current-state.md`, `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`; `templates/docs/working-with-awf.md.tmpl`; the context-calling skill templates named in Phase 3; ADR-0165 and this plan; generated root and Sundial agent guides, docs, skills, workflows, decision index, and lock files selected by `./x render`.
+- **Created:** `internal/contextdelivery/delivery.go`, `internal/contextdelivery/delivery_test.go`; `internal/contextspill/log.go`, `internal/contextspill/log_test.go`, `internal/contextspill/log_fault_test.go`; `cmd/contextspilllog/main.go`, `cmd/contextspilllog/main_test.go`; `internal/project/context_wrapper_test.go`; `templates/partials/context-spill.md`; this plan.
+- **Modified:** `internal/topic/topic.go`, `internal/topic/topic_test.go`; `internal/project/context.go`, `context_paths.go`, `context_projection.go`, `context_artifacts.go`, `context_adr.go` and their same-basename `_test.go` files; `cmd/awf/context.go`, `context_test.go`, `dispatch.go`; `internal/clispec/clispec.go`, `clispec_test.go`; `internal/project/spine_test.go`, `output_plan_test.go`, `example_wiring_test.go`; `x`, `.gitignore`; `README.md`, `changelog/CHANGELOG.md`; `.awf/parts/agents-doc/commands.md`, `.awf/parts/working-with-awf/commands.md`, `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/prepend.md`, `.awf/docs/parts/roadmap/ideas.md`, `.awf/docs/parts/testing/layout.md`, `.awf/domains/parts/tooling/current-state.md`, `.awf/domains/parts/invariants/current-state.md`, `.awf/domains/parts/rendering/current-state.md`; `.awf/topics/parts/tooling/context-and-topic/current-state.md`, `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`; `templates/docs/working-with-awf.md.tmpl`; the context-calling skill templates named in Phase 3; ADR-0165 and this plan; generated root and Sundial agent guides, docs, skills, workflows, decision index, and lock files selected by `./x render`.
 - **Deleted:** none. Obsolete JSON structs, tags, render branches, and JSON-focused tests are removed from the modified Go files rather than deleting a whole file.
 
 ## Phase 1: Replace the context result and cap delivery
@@ -319,16 +319,20 @@ This phase is one coupled commit. The project model, text renderer, CLI grammar,
 
 ## Verification
 
-- [ ] Exact files and Git selections remain path-specific; directory output scales with distinct semantic groups, never includes a hidden member census, and discloses members only through the three-file boundary.
-- [ ] Default authority contains topic, invariant, and direct-rule summaries only; facets compose deterministically without changing grouping or relevance, and `--full` equals their union.
-- [ ] Normal, uncovered, and static output write exact bytes through 8,192 and securely spill above it with the exact notice; every failed delivery removes partial output best-effort and preserves the primary error.
-- [ ] `./x context` preserves stdout/status, logs only exact spill notices without paths under owner-only locking, and `./x check` reports a non-failing advisory for a nonempty log.
-- [ ] Managed callers use only the approved bare/facet forms, consume and remove spills, and generated root/Sundial copies match authored templates.
-- [ ] ADR-0165 operations apply in exact declaration order with matching claim transactions; removed JSON parity claims and proof markers are absent.
-- [ ] `go test ./...`, `./x render`, `./x check`, staged check, `./x gate`, both audits, and final code review finish cleanly.
+- [x] Exact files and Git selections remain path-specific; directory output scales with distinct semantic groups, never includes a hidden member census, and discloses members only through the three-file boundary.
+- [x] Default authority contains topic, invariant, and direct-rule summaries only; facets compose deterministically without changing grouping or relevance, and `--full` equals their union.
+- [x] Normal, uncovered, and static output write exact bytes through 8,192 and securely spill above it with the exact notice; every failed delivery removes partial output best-effort and preserves the primary error.
+- [x] `./x context` preserves stdout/status, logs only exact spill notices without paths under owner-only locking, and `./x check` reports a non-failing advisory for a nonempty log.
+- [x] Managed callers use only the approved bare/facet forms, consume and remove spills, and generated root/Sundial copies match authored templates.
+- [x] ADR-0165 operations apply in exact declaration order with matching claim transactions; removed JSON parity claims and proof markers are absent.
+- [x] `go test ./...`, `./x render`, `./x check`, staged check, `./x gate`, both audits, and final code review finish cleanly.
 
 ## Notes
 
 - ADR-0165 deliberately stays Proposed during plan authoring and review. Its first implementation transaction opens Implementing; the final operation transaction closes it as Implemented.
 - Empty-directory reporting is snapshot-observable: a directory prefix with only excluded descendants remains visible, while an untracked empty filesystem directory absent from the selected snapshot cannot enter the census.
 - The private `cmd/contextspilllog` helper exists to obtain no-follow, ownership, flock, and exact-byte guarantees that Bash redirection cannot provide without a symlink race. It is repository-runner infrastructure, not a public `awf` subcommand.
+- Implementation added `internal/contextspill/log_fault_test.go` for syscall failure and substitution seams and modified `internal/project/output_plan_test.go` while pinning the managed Pi workflow output plan; both belong to the implemented file transaction even though the initial file inventory omitted them.
+- The explicitly authorized exceptional verify correction after `a6019149` consolidated each new invariant's proof into checker-valid cross-layer umbrella suites and assigned `internal/contextdelivery/**` and `internal/contextspill/**` to both the tooling domain and tooling/context-and-topic topic selectors.
+- Implementation landed in `2b935246` (compact projection and delivery), `a118dd1e` (spill observability), and `535b39b7` (managed callers), followed by review corrections `a6019149` and `d3bf5aaa`.
+- Final review covered `3ca24b41..d3bf5aaa`: `awf audit` was clean over 12 commits, `audit-local` reported no errors and 10 advisory coverage-ignore warnings, and the explicitly authorized final verify pass reported zero findings.

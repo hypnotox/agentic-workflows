@@ -15,6 +15,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
+var deliverContext = contextdelivery.Deliver
+
 func runContext(cwd string, paths []string, staged bool, rng string, uncovered, full bool, shows []string, stdout io.Writer) error {
 	facets, err := project.ParseContextFacets(shows, full)
 	if err != nil {
@@ -75,7 +77,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, uncovered, 
 	}
 	var out bytes.Buffer
 	renderContext(&out, result, header, facets)
-	return contextdelivery.Deliver(out.Bytes(), cwd, stdout)
+	return deliverContext(out.Bytes(), cwd, stdout)
 }
 
 func runUncovered(cwd string, roots []string, staged bool, rng string, stdout io.Writer) error {
@@ -110,7 +112,7 @@ func runUncovered(cwd string, roots []string, staged bool, rng string, stdout io
 	}
 	var out bytes.Buffer
 	renderUncovered(&out, result, header)
-	return contextdelivery.Deliver(out.Bytes(), cwd, stdout)
+	return deliverContext(out.Bytes(), cwd, stdout)
 }
 
 func renderUncovered(out io.Writer, res project.UncoveredResult, header string) {

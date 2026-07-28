@@ -17,7 +17,8 @@ The test-first discipline as a project-owned task skill.
 
 ## Procedure
 
-1. Run `awf context <the implementation and test paths>` (concise first: orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the change touches a claimed surface), then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
+1. Run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the change touches a claimed surface), then write the failing test capturing the wrong (bug) or missing (feature) behaviour.
+If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 2. Run it and confirm it fails for the right reason: `./x test`.
 3. Implement the minimal change to pass.
 4. Run the gate: `./x gate`.
