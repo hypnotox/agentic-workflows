@@ -174,3 +174,4 @@
 - [ADR-0168: Make maintainable code design a workflow obligation](0168-make-maintainable-code-design-a-workflow-obligation.md) (Implemented)
 - [ADR-0169: Include maintainable design in plain singleton authority](0169-include-maintainable-design-in-plain-singleton-authority.md) (Implemented)
 - [ADR-0170: Derive plain singleton authority from catalog metadata](0170-derive-plain-singleton-authority-from-catalog-metadata.md) (Implemented)
+- [ADR-0171: Qualify and prove plain singleton rendering](0171-qualify-and-prove-plain-singleton-rendering.md) (Implemented)

@@ -1186,19 +1186,42 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := make(map[string]bool, len(plainSingletons))
+	rendered := make(map[string][]RenderedFile, len(plainSingletons))
 	layout := p.layout()
-	for _, singleton := range plainSingletons {
-		want[singleton.outPath(layout)] = false
-	}
 	for _, f := range files {
-		if _, ok := want[f.Path]; ok {
-			want[f.Path] = true
+		rendered[f.Path] = append(rendered[f.Path], f)
+	}
+	for _, singleton := range plainSingletons {
+		path := singleton.outPath(layout)
+		got := rendered[path]
+		if len(got) != 1 {
+			t.Errorf("%s rendered %d times, want once", path, len(got))
+			continue
+		}
+		if got[0].TemplateID != singleton.tid {
+			t.Errorf("%s TemplateID=%q, want catalog template %q", path, got[0].TemplateID, singleton.tid)
+		}
+		if got[0].Declarer != singleton.tid {
+			t.Errorf("%s Declarer=%q, want neutral template identity %q", path, got[0].Declarer, singleton.tid)
+		}
+		if got[0].Content == "" {
+			t.Errorf("%s rendered empty content from %q", path, singleton.tid)
 		}
 	}
-	for path, seen := range want {
-		if !seen {
-			t.Errorf("%s not rendered", path)
+
+	src, err := os.ReadFile("render.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	start := strings.Index(string(src), "for _, sg := range plainSingletons {")
+	end := strings.Index(string(src), "// .awf/bootstrap.sh")
+	if start < 0 || end <= start {
+		t.Fatalf("RenderAll plain-singleton block not found")
+	}
+	block := string(src)[start:end]
+	for _, phrase := range []string{"p.renderKind(renderKindSpec{", "return sg.tid", "return sg.outPath(lay)"} {
+		if !strings.Contains(block, phrase) {
+			t.Errorf("RenderAll plain-singleton block missing shared render contract %q:\n%s", phrase, block)
 		}
 	}
 	// local: true suppresses the README singleton.
