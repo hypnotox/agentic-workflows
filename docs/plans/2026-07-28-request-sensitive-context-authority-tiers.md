@@ -16,17 +16,19 @@ authority, output spill delivery, uncovered reporting, or adding a structured re
 
 ## Architecture summary
 
-Phase 1 introduces the final marker-kind relationship representation and request-source seam behind
-the existing projection, while retaining the old rendered behavior. This behavior-preserving commit
-makes the later contract transaction reviewable without leaving an active current-state claim false.
+Phase 1 introduces the final marker-kind relationship seam behind the existing projection, while
+retaining the old rendered behavior. This behavior-preserving commit makes the later contract
+transaction reviewable without leaving an active current-state claim false.
 
 Phase 2 is one intentionally coupled contract transaction. It removes the temporary legacy rosters,
 changes request assembly, grouping, authority projection, facets, CLI rendering, managed callers,
 documentation, and all six current-state claims together. Those surfaces cannot be split into
 separately shippable commits: changing bare file defaults before managed reviewers request
 `invariants` temporarily removes invariant authority, while changing facets or grouping alone makes
-the existing concise/full/path-attribution claims false. The transaction begins ADR-0173
-implementation, applies all six operations in declaration order, and freezes both ADR and plan.
+the existing concise/full/path-attribution claims false. The transaction applies all six ADR-0173
+operations in declaration order and closes the ADR through its direct implementation transition.
+The plan remains Proposed until Phase 3 records and settles implementation review. All three
+phases are inline main-thread work; no helper partitions are declared.
 
 The final model owns relationships at two levels. Each selected file carries sorted `State`,
 `Touches`, and `Proofs` claim-ID sets derived from marker sites on that file. Each directory request
@@ -49,19 +51,22 @@ group inputs.
   `templates/skills/reviewing-plan/SKILL.md.tmpl`,
   `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`,
   `templates/docs/working-with-awf.md.tmpl`, `templates/docs/agents-md-standard.md.tmpl`,
-  `.awf/parts/agents-doc/commands.md`, `.awf/docs/glossary.yaml`,
-  `.awf/docs/parts/testing/gate.md`,
+  `.awf/parts/working-with-awf/commands.md`, `.awf/parts/agents-doc/commands.md`,
+  `.awf/docs/glossary.yaml`, `.awf/docs/parts/testing/gate.md`,
+  `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/architecture/data-flow.md`,
   `.awf/topics/parts/tooling/context-and-topic/current-state.md`,
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, `README.md`, and
   `changelog/CHANGELOG.md`.
 - **Modified (lifecycle and generated outputs):**
   `docs/decisions/0173-request-sensitive-context-authority-tiers.md`, this plan,
   `docs/decisions/INDEX.md`, `docs/working-with-awf.md`, `docs/agents-md-standard.md`,
-  `docs/glossary.md`, `docs/testing.md`, `docs/topics/tooling/context-and-topic.md`,
+  `docs/glossary.md`, `docs/testing.md`, `docs/architecture.md`,
+  `docs/topics/tooling/context-and-topic.md`,
   `docs/topics/rendering/workflow-skill-templates.md`, `AGENTS.md`, `.awf/awf.lock`, the root
   `.claude/skills/awf-reviewing-{impl,plan,plan-resync}/SKILL.md` and
   `.pi/skills/awf-reviewing-{impl,plan,plan-resync}/SKILL.md`, plus the corresponding generated
-  Sundial docs, agent guide, locks, and `sundial-reviewing-{impl,plan,plan-resync}` skill copies
+  Sundial docs including `examples/sundial/docs/architecture.md`, agent guide, locks, and
+  `sundial-reviewing-{impl,plan,plan-resync}` skill copies
   under `.agents`, `.claude`, `.cursor`, `.gemini`, `.github`, and `.pi`.
 - **Deleted:** the temporary legacy path roster fields introduced or retained during Phase 1;
   no files.
@@ -96,16 +101,11 @@ group inputs.
       Proofs  []string
   }
 
-  type ContextRelationshipSource struct {
-      RequestIndex int
-      Kinds        []string
-  }
   ```
 
-  Add `Relationships ContextRelationships` to `ContextPathImpact` and `ContextDirectory`. Add
-  `Sources []ContextRelationshipSource` to `ContextClaimImpact`. Keep `DirectRuleIDs`,
-  `InvariantIDs`, `ProofIDs`, and `ContextPathTopic.DirectClaimIDs` temporarily and mark them in a
-  normal comment as Phase-2 legacy projection inputs; they must not survive Phase 2. Constructors
+  Add `Relationships ContextRelationships` to `ContextPathImpact` and `ContextDirectory`. Keep
+  `DirectRuleIDs`, `InvariantIDs`, `ProofIDs`, and `ContextPathTopic.DirectClaimIDs` temporarily and
+  mark them in a normal comment as Phase-2 legacy projection inputs; they must not survive Phase 2. Constructors
   must initialize every slice non-nil.
 
   Add private helpers in `internal/project/context.go` or `context_paths.go` with this behavior:
@@ -113,9 +113,7 @@ group inputs.
     `topic.TouchesMarker`, and `topic.ProofMarker`;
   - append the qualified claim ID only to the matching relationship-kind set;
   - sort and compact every set;
-  - union relationship values kind-by-kind without changing the inputs; and
-  - convert a claim's relationship membership into canonical kind labels ordered `State`,
-    `Touches`, `Proofs`.
+  - union relationship values kind-by-kind without changing the inputs.
 
   Unknown marker kinds are impossible after topic parsing and must not receive a fallback label.
   Do not derive `Proofs` from `claim.Backing`; only a `topic.ProofMarker` site on the selected path
@@ -217,6 +215,19 @@ group inputs.
     output, and navigation edges enter the key only when `FacetArtifacts` is selected. Relationship
     sets and authority-only facets never enter the key.
 
+  Also add these source-attribution declarations at their first production use:
+
+  ```go
+  type ContextRelationshipSource struct {
+      RequestIndex int
+      Kinds        []string
+  }
+  ```
+
+  Add `Sources []ContextRelationshipSource` to `ContextClaimImpact`, initialized non-nil by its
+  constructors. Add the private helper that converts a claim's relationship membership into
+  canonical kind labels ordered `State`, `Touches`, `Proofs`.
+
   In `internal/project/context.go`:
   - stop constructing applicability/backing rosters on each path;
   - retain all applicable topics for each request;
@@ -300,8 +311,10 @@ group inputs.
   - `README.md`: replace the current context overview and command-table row with the tier-0/tier-1
     distinction, marker-kind relationships, per-topic counts, eight facets, artifact-only group
     refinement, unchanged cap, and spill ownership.
-  - `templates/docs/working-with-awf.md.tmpl`: replace the context command bullet with the same
-    operational contract and retain the JSON-removal and spill instructions.
+  - `templates/docs/working-with-awf.md.tmpl`: replace the adopter-default context command bullet
+    with the same operational contract and retain the JSON-removal and spill instructions.
+  - `.awf/parts/working-with-awf/commands.md`: make the corresponding project override describe the
+    same contract so this repository's rendered working guide changes with the adopter default.
   - `templates/docs/agents-md-standard.md.tmpl`: remove the stale claim that concise context reports
     omitted topic-wide claims; direct readers to begin bare, request `relationships`, `invariants`,
     or `all-rules` for the needed authority tier, and reserve `--full` for explicit interactive
@@ -315,15 +328,19 @@ group inputs.
   - `.awf/docs/parts/testing/gate.md`: state that repository regression tests hold the two bare
     ADR-0173 request sets within direct delivery, while explicit detail remains spill-capable; do
     not reintroduce JSON parity or routine managed `--full` guidance.
+  - `.awf/docs/parts/architecture/components.md` and
+    `.awf/docs/parts/architecture/data-flow.md`: update the context component and request-to-output
+    flow to name request-sensitive tiers, marker-kind file/directory relationships, topic-level
+    authority expansion, projection-sensitive grouping, and unchanged spill delivery.
   - `changelog/CHANGELOG.md`: add one Unreleased bullet for request-sensitive tiers and revise the
     existing Unreleased six-facet bullet to say eight facets. Leave older released/history bullets
     unchanged.
 
   Run `./x render`. Inspect `git diff --name-only` and require every generated path to be explained
   by the authored templates, parts, topic claims, lifecycle files, or their root/Sundial fan-out.
-  Read the rendered root and Sundial skill commands, `docs/working-with-awf.md`,
-  `docs/agents-md-standard.md`, `docs/glossary.md`, `docs/testing.md`, and `AGENTS.md`; no generated
-  file may be edited directly.
+  Read the rendered root and Sundial skill commands, both rendered `docs/architecture.md` files,
+  `docs/working-with-awf.md`, `docs/agents-md-standard.md`, `docs/glossary.md`, `docs/testing.md`,
+  and `AGENTS.md`; no generated file may be edited directly.
 
 - [ ] **Task 2.7: Apply all State changes and freeze the artifacts in the same transaction.** In
   `.awf/topics/parts/tooling/context-and-topic/current-state.md`, replace the six affected claim
@@ -356,9 +373,10 @@ group inputs.
     requests `invariants`, `all-rules`, `pending`; every other existing caller and spill clause
     remains unchanged.
 
-  In ADR-0173, set frontmatter `status: Implemented`. Append an `Implementing` event with the
-  checker-required content digest, then one `Applied` event using the checker-reported next global
-  state sequence and exactly these operations in declaration order:
+  In ADR-0173, use the direct `Proposed` to `Implemented` transition: set frontmatter
+  `status: Implemented` and append exactly one `Implemented` event carrying the checker-required
+  content digest and checker-reported next global state sequence. The transition's implicit batch
+  applies exactly these operations in declaration order:
 
   ```text
   update tooling/context-and-topic:context-default-excludes-history
@@ -369,9 +387,9 @@ group inputs.
   update rendering/workflow-skill-templates:implementer-context-grounding
   ```
 
-  Append the digest-bearing `Implemented` event after the Applied event. Set this plan's
-  frontmatter `status: Implemented`; do not change its checked task text during the freeze
-  transaction. Run `./x render` after the final lifecycle and claim state, staging
+  Do not append `Implementing` or `Applied` events for this direct transition. Keep this plan's
+  frontmatter `status: Proposed` through implementation review. Run `./x render` after the final
+  ADR lifecycle and claim state, staging
   `docs/decisions/INDEX.md`, all rendered topic/docs/skills, both root and Sundial locks, and every
   generated output with its authored source.
 
@@ -386,7 +404,9 @@ group inputs.
   ./x render
   git diff --check
   git diff --name-only --diff-filter=ACMRTUXB
-  git add -- $(git diff --name-only --diff-filter=ACMRTUXB)
+  # Compare this list with the File structure inventory and the renderer-explained fan-out.
+  # Stop on any undeclared path, then stage only the verified paths with explicit pathspecs.
+  git add -- <verified-affected-paths>
   ./awf check --staged
   ./x gate
   ```
@@ -404,12 +424,37 @@ group inputs.
   Commit the complete coupled transaction:
 
   ```commit
-  feat(tooling): add request-sensitive context tiers
+  feat(tooling): add request-sensitive context tiers (implements 0173)
+  ```
+
+## Phase 3: Review and freeze the implementation record
+
+- [ ] **Task 3.1: Run governed implementation review over the concrete range.** From a clean tree,
+  resolve `<implementation-base>` as the parent of the Phase 1 commit and
+  `<implementation-head>` as the Phase 2 commit. Invoke `awf-reviewing-impl` with that concrete
+  range, ADR-0173, and this plan. In addition to its ordinary lenses, require review of request-kind
+  isolation, actual proof-marker filtering, facet composition and enrichment boundaries,
+  projection-sensitive grouping, source attribution, byte-budget regressions, spill preservation,
+  managed caller parity, generated documentation, and the direct ADR state transaction. The
+  governed workflow owns audits, context grounding, finding routing, corrective commits, and its
+  single verify pass. Any finding that changes ADR-0173's settled design requires user approval and
+  a successor correction because ADR-0173 is Implemented.
+
+- [ ] **Task 3.2: Record review settlement and freeze the plan.** Require the implementation review
+  verify pass to report zero residual findings. Under Notes, record the concrete implementation and
+  corrective commit IDs, audit results, review findings and their disposition, and verify result.
+  Then set this plan's frontmatter to `status: Implemented`; do not alter its checked task text.
+  Run `./x render && ./x check`, inspect any renderer-reported plan records, and stage only this plan
+  plus those explained generated paths with explicit pathspecs. Run `./awf check --staged` and
+  `./x gate`; both must pass. Commit:
+
+  ```commit
+  docs(plans): implement request-sensitive context tiers
   ```
 
 ## Verification
 
-After both phase commits, run:
+After all three phase commits, run:
 
 ```sh
 ./x render
