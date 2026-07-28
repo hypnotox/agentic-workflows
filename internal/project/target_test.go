@@ -1,6 +1,9 @@
 package project
 
 import (
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -72,7 +75,65 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-native-workflow-skills
 func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [brainstorming, tdd]\nagents: []\ntargets: [pi]\n")
+	root := scaffoldFiles(t, "prefix: example\nskills: [tdd, local]\nagents: []\ntargets: [pi]\n", map[string]string{
+		"skills/local.yaml":             "data:\n  description: Local Pi workflow guidance.\n",
+		"skills/parts/local/content.md": "Use this local skill when it fits.\n",
+	})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	standard := filepath.Join(root, ".pi/skills/example-tdd/SKILL.md")
+	local := filepath.Join(root, ".pi/skills/example-local/SKILL.md")
+	for _, path := range []string{standard, local} {
+		if _, err := os.Stat(path); err != nil {
+			t.Fatalf("missing native Pi skill %s: %v", path, err)
+		}
+	}
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: [local]\nagents: []\ntargets: [pi]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(standard); !os.IsNotExist(err) {
+		t.Fatalf("disabled standard skill was not pruned: %v", err)
+	}
+	if _, err := os.Stat(local); err != nil {
+		t.Fatalf("enabled local skill was pruned: %v", err)
+	}
+	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: [local]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err = Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{local, filepath.Join(root, ".pi/skills"), filepath.Join(root, ".pi")} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("Pi disable did not prune %s: %v", path, err)
+		}
+	}
+	for _, path := range []string{filepath.Join(root, ".pi/awf-workflow"), filepath.Join(root, ".pi/awf-workflows"), filepath.Join(root, ".pi/extensions/awf-telemetry")} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Errorf("retired Pi output exists at %s: %v", path, err)
+		}
+	}
+}
+
+// invariant: rendering/pi-runtime:pi-extension-target-render
+func TestPiRuntimeTargetRender(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
@@ -81,61 +142,96 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	paths := map[string]bool{}
+	extensions := map[string]string{}
 	for _, file := range files {
-		paths[file.Path] = true
-	}
-	for _, want := range []string{".pi/skills/example-brainstorming/SKILL.md", ".pi/skills/example-tdd/SKILL.md"} {
-		if !paths[want] {
-			t.Errorf("missing native Pi skill %q", want)
+		if strings.HasPrefix(file.Path, ".pi/extensions/") {
+			extensions[file.Path] = file.Content
 		}
 	}
-	for path := range paths {
-		if strings.Contains(path, "awf-workflow") || strings.Contains(path, "awf-workflows") || strings.Contains(path, "awf-telemetry") {
-			t.Errorf("retired Pi output planned: %q", path)
+	if len(extensions) != 3 {
+		t.Fatalf("Pi extension count = %d, want 3: %v", len(extensions), extensions)
+	}
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+		if content := extensions[path]; !strings.HasPrefix(content, "// "+bannerText+"\n") {
+			t.Errorf("%s lacks provenance banner", path)
 		}
 	}
-	p.Cfg.Skills = []string{"tdd"}
-	files, err = p.RenderAll()
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, file := range files {
-		if file.Path == ".pi/skills/example-brainstorming/SKILL.md" {
-			t.Fatal("disabled skill still rendered")
+	for _, banned := range []string{"awf-telemetry", "awf-workflow", "awf-workflows"} {
+		for path := range extensions {
+			if strings.Contains(path, banned) {
+				t.Errorf("retired extension rendered: %s", path)
+			}
 		}
+	}
+	if !strings.Contains(extensions[".pi/extensions/awf-handoff/index.ts"], "registerHandoff(pi") || !strings.Contains(extensions[".pi/extensions/awf-subagents/index.ts"], "registerSubagentTools(pi") {
+		t.Fatal("Pi extension entrypoints are not registered")
 	}
 }
-
-func assertPiRuntimeAndHandoffOutput(t *testing.T) {
-	t.Helper()
-	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"memoryPath", "lstat", "isFile", "queueCommand", "getLeafEntry"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("handoff output missing %q", want)
-		}
-	}
-	for _, banned := range []string{"Effort:", "runAwf", "assignment", "selected-effort", "telemetry"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("handoff output retains %q", banned)
-		}
-	}
-}
-
-// invariant: rendering/pi-runtime:pi-extension-target-render
-func TestPiRuntimeTargetRender(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
 
 // invariant: rendering/pi-runtime:pi-minimum-runtime
-func TestPiMinimumRuntime(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+func TestPiMinimumRuntime(t *testing.T) {
+	for _, name := range []string{"awf-handoff/index.ts", "awf-subagents/index.ts"} {
+		out := renderPiExtensionFile(t, name)
+		for _, want := range []string{"MIN_PI_VERSION", "guardMinimumRuntime", "awf.pi.minimum-runtime-notified", "Upgrade Pi and reload."} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing minimum-runtime guard %q", name, want)
+			}
+		}
+	}
+}
 
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
-func TestHandoffLifecycleWithoutEffort(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+func TestHandoffLifecycleWithoutEffort(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff lifecycle output missing %q", want)
+		}
+	}
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), "tools/pi-extension-test/tests/handoff.test.ts"))
+	if err != nil || !strings.Contains(string(body), "handoff counts down, cancels, cleans pending, and links parent before setup kickoff") {
+		t.Fatalf("TypeScript lifecycle behavior proof missing: %v", err)
+	}
+}
 
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract
-func TestHandoffPublicContractWithoutEffort(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+func TestHandoffPublicContractWithoutEffort(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff public contract missing %q", want)
+		}
+	}
+	for _, banned := range []string{"Effort:", "runAwf", "assignment", "selected-effort", "telemetry", "adopt"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("handoff public contract retains %q", banned)
+		}
+	}
+}
+
+func TestPiRealRuntimeSmoke(t *testing.T) {
+	root := repoRootDir(t)
+	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
+	cmd.Dir = root
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", err, output)
+	}
+}
 
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow
-func TestHandoffWorkflowWithoutEffort(t *testing.T) { assertPiRuntimeAndHandoffOutput(t) }
+func TestHandoffWorkflowWithoutEffort(t *testing.T) {
+	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
+	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional durable awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("handoff workflow contract missing %q", want)
+		}
+	}
+	for _, banned := range []string{"selected effort", "telemetry lifecycle", "structured resume", "adopt_effort"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("handoff workflow contract retains %q", banned)
+		}
+	}
+}
 
 func TestTargetOutputRenderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")

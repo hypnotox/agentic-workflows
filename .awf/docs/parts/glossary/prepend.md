@@ -1,2 +1,1 @@
 - **Effort:** Binary-owned local coordination record with optional memory and managed worktree.
-- **Session stream:** Privacy-minimal append-only schema-1 observations keyed by Pi session and joined to the current assignment only when reported.

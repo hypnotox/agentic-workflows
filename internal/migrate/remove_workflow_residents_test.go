@@ -2,11 +2,15 @@ package migrate
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	gogit "github.com/go-git/go-git/v5"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 // invariant: config/migrations-and-locks:workflow-telemetry-config-migration
@@ -44,6 +48,53 @@ func TestRemoveWorkflowResidentsMigration(t *testing.T) {
 	t.Run("inspection-error", func(t *testing.T) {
 		if err := removeWorkflowResidents(newRoot(t), &bytes.Buffer{}, func(string) (os.FileInfo, error) { return nil, os.ErrPermission }, os.RemoveAll); err == nil {
 			t.Fatal("inspection error accepted")
+		}
+	})
+	t.Run("non-Git fixture falls back to supplied root", func(t *testing.T) {
+		root := newRoot(t)
+		makeResidents(t, root)
+		if err := applyRemoveWorkflowResidents(root, &bytes.Buffer{}); err != nil {
+			t.Fatal(err)
+		}
+		for _, name := range []string{"metrics", "assignments"} {
+			if _, err := os.Lstat(filepath.Join(root, ".awf", name)); !os.IsNotExist(err) {
+				t.Fatalf("fixture %s still exists: %v", name, err)
+			}
+		}
+	})
+	t.Run("broken Git checkout propagates without deletion", func(t *testing.T) {
+		root := newRoot(t)
+		makeResidents(t, root)
+		if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := awfgit.OpenRepo(root); err == nil || errors.Is(err, gogit.ErrRepositoryNotExists) {
+			t.Fatalf("fixture did not produce a present broken Git error: %v", err)
+		}
+		if err := applyRemoveWorkflowResidents(root, &bytes.Buffer{}); err == nil {
+			t.Fatal("broken Git checkout fell back to fixture root")
+		}
+		for _, name := range []string{"metrics", "assignments"} {
+			if _, err := os.Stat(filepath.Join(root, ".awf", name, "nested", "resident")); err != nil {
+				t.Fatalf("broken checkout changed %s: %v", name, err)
+			}
+		}
+	})
+	t.Run("Git safety error propagates without deletion", func(t *testing.T) {
+		primary := filepath.Join(t.TempDir(), "primary")
+		git(t, "init", primary)
+		makeResidents(t, primary)
+		alias := filepath.Join(filepath.Dir(primary), "alias")
+		if err := os.Symlink(primary, alias); err != nil {
+			t.Skipf("symlink unavailable: %v", err)
+		}
+		if err := applyRemoveWorkflowResidents(alias, &bytes.Buffer{}); err == nil {
+			t.Fatal("unsafe Git checkout fell back to fixture root")
+		}
+		for _, name := range []string{"metrics", "assignments"} {
+			if _, err := os.Stat(filepath.Join(primary, ".awf", name, "nested", "resident")); err != nil {
+				t.Fatalf("safety error changed %s: %v", name, err)
+			}
 		}
 	})
 	t.Run("absent", func(t *testing.T) {

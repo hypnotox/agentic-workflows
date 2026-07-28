@@ -2,12 +2,14 @@ package migrate
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 
+	gogit "github.com/go-git/go-git/v5"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -15,11 +17,18 @@ import (
 // the primary checkout. It deliberately uses Lstat so a hostile resident link is
 // never followed.
 func applyRemoveWorkflowResidents(root string, out io.Writer) error {
+	// Only go-git's canonical not-a-repository error permits the fixture-tree
+	// fallback. A malformed .git, unsafe topology, or identity failure is a
+	// present checkout and must stop migration rather than redirect deletion.
+	if _, err := awfgit.OpenRepo(root); err != nil {
+		if errors.Is(err, gogit.ErrRepositoryNotExists) {
+			return removeWorkflowResidents(root, out, os.Lstat, os.RemoveAll)
+		}
+		return fmt.Errorf("inspect Git checkout at %s: %w", root, err)
+	}
 	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
 	if err != nil {
-		// Historical and freshly scaffolded non-Git trees have no control-root
-		// metadata; their resident roots are local to the supplied root.
-		return removeWorkflowResidents(root, out, os.Lstat, os.RemoveAll)
+		return fmt.Errorf("resolve Git control roots at %s: %w", root, err)
 	}
 	return removeWorkflowResidents(roots.PrimaryRoot, out, os.Lstat, os.RemoveAll)
 }

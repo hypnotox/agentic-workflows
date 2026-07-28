@@ -25,10 +25,10 @@ Pi extension entrypoints check their required runtime APIs before registering ho
 - [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
 - [Local artifacts](../topics/rendering/local-artifacts.md): Local skill, agent, and doc declarations and their catalog and render semantics.
 - [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime floor and its boundaries.
-- [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, local telemetry, exploration dispatch.
+- [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.
-- [Singletons and payloads](../topics/rendering/singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, telemetry, file modes.
+- [Singletons and payloads](../topics/rendering/singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file modes.
 - [Sync and drift](../topics/rendering/sync-and-drift.md): How sync and check detect and report drift: hash inputs, attribution, backups, residue, pruning, and cleanup.
 - [Templates](../topics/rendering/templates.md): The embedded template source and its rendered content contracts.
 - [Workflow skill templates](../topics/rendering/workflow-skill-templates.md): Workflow-chain and task-skill template contracts.

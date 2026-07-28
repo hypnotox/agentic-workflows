@@ -2,8 +2,10 @@ package project
 
 import (
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -27,36 +29,80 @@ import (
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing
 // invariant: rendering/workflow-skill-templates:workflow-transitions-advisory
 func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
-	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: []string{"brainstorming", "writing-plans", "local", "empty"}}, Cat: &catalog.Catalog{Skills: map[string]catalog.SkillSpec{
-		"brainstorming": catalog.Standard.Skills["brainstorming"],
-		"writing-plans": catalog.Standard.Skills["writing-plans"],
-		"local":         {Profile: catalog.WorkflowProfile{Kind: catalog.WorkflowTask, Purpose: "Local purpose.", Trigger: "Use local."}},
-		"empty":         {Profile: catalog.WorkflowProfile{}},
-	}}}
+	skills := maps.Clone(catalog.Standard.Skills)
+	names := slices.Sorted(maps.Keys(skills))
+	skills["local"] = catalog.SkillSpec{Profile: catalog.WorkflowProfile{}}
+	names = append(names, "local")
+	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: names}, Cat: &catalog.Catalog{Skills: skills}}
 	rows := p.taskSkillRows()
-	for _, want := range []string{
-		"`example-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design.",
-		"`example-local` (task): Local purpose. Trigger: Use local.",
-		"`example-empty` (task): A project-local skill. Trigger: Use when this skill fits the current work.",
-	} {
+	for _, name := range names {
+		profile := skills[name].Profile
+		kind, purpose, trigger := string(profile.Kind), profile.Purpose, profile.Trigger
+		if kind == "" {
+			kind = string(catalog.WorkflowTask)
+		}
+		if purpose == "" {
+			purpose = "A project-local skill."
+		}
+		if trigger == "" {
+			trigger = "Use when this skill fits the current work."
+		}
+		want := "`example-" + name + "` (" + kind + "): " + purpose + " Trigger: " + strings.TrimRight(trigger, ".") + "."
+		if len(profile.UsuallyFollows) > 0 {
+			want += " Usually follows: " + strings.Join(profile.UsuallyFollows, ", ") + "."
+		}
+		if len(profile.CommonFollowUps) > 0 {
+			want += " Common follow-ups: " + strings.Join(profile.CommonFollowUps, ", ") + "."
+		}
 		if !strings.Contains(rows, want) {
-			t.Errorf("rows missing %q:\n%s", want, rows)
+			t.Errorf("row for %s = missing %q:\n%s", name, want, rows)
 		}
 	}
-	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{"brainstorming": true}, "taskSkillRows": rows}
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{}, "taskSkillRows": rows}
 	out := renderGuide(t, data)
-	for _, want := range []string{"Any enabled skill may be used whenever its purpose fits", "Usually follows:", "Common follow-ups:"} {
-		if !strings.Contains(out, want) {
-			t.Errorf("guide missing %q", want)
-		}
+	if !strings.Contains(out, "Any enabled skill may be used whenever its purpose fits") {
+		t.Error("guide does not state advisory skill selection")
 	}
 	p.Cfg.Prefix = ""
-	if !strings.Contains(p.taskSkillRows(), "`project-empty`") {
+	if !strings.Contains(p.taskSkillRows(), "`project-local`") {
 		t.Fatal("missing-prefix fallback is not coherent")
 	}
-	for _, banned := range []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by"} {
-		if strings.Contains(out, banned) {
-			t.Errorf("guide retains banned routing phrase %q", banned)
+	banned := []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition", "router"}
+	for _, phrase := range banned {
+		if strings.Contains(out, phrase) {
+			t.Errorf("guide retains banned routing phrase %q", phrase)
+		}
+	}
+	enabled := slices.Sorted(maps.Keys(catalog.Standard.Skills))
+	agents := slices.Sorted(maps.Keys(catalog.Standard.Agents))
+	root := scaffold(t, "prefix: example\nskills: ["+strings.Join(enabled, ", ")+"]\nagents: ["+strings.Join(agents, ", ")+"]\ndocs: [roadmap]\ntargets: [pi]\n")
+	rendered, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := rendered.RenderAll()
+	if err != nil {
+		t.Fatal(err)
+	}
+	skillBanned := []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must be followed by", "mandatory transition", "router"}
+	for _, file := range files {
+		if file.Path == "AGENTS.md" {
+			if !strings.Contains(file.Content, "Any enabled skill may be used whenever its purpose fits") {
+				t.Error("rendered guide does not state advisory skill selection")
+			}
+			for _, phrase := range banned {
+				if strings.Contains(file.Content, phrase) {
+					t.Errorf("rendered guide retains banned routing phrase %q", phrase)
+				}
+			}
+		}
+		if !strings.HasSuffix(file.Path, "/SKILL.md") {
+			continue
+		}
+		for _, phrase := range skillBanned {
+			if strings.Contains(file.Content, phrase) {
+				t.Errorf("%s retains banned routing phrase %q", file.Path, phrase)
+			}
 		}
 	}
 }
