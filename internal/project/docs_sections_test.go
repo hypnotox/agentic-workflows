@@ -144,7 +144,6 @@ func TestWorkflowDocChainOrder(t *testing.T) {
 	}
 }
 
-// invariant: rendering/catalog-and-targets:adr-singleton-section-parity
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide
 func TestMaintainableCodeDesignGuide(t *testing.T) {
 	entry, ok := catalog.Standard.Docs["maintainable-code-design"]
@@ -204,6 +203,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	}
 }
 
+// invariant: rendering/catalog-and-targets:adr-singleton-section-parity
 func TestAdrSingletonSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	lay := testLayout()

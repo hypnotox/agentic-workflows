@@ -6,4 +6,6 @@ The topic producer renders each valid pair to `<docsDir>/topics/<domain>/<topic>
 
 The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Catalog workflow profiles provide kind, purpose, trigger, and optional advisory neighbors. Every enabled skill is independently discoverable; advisory neighbors do not create enablement edges or required transitions.
 
+The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
+
 Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff accepts optional confined regular-file memory and bounded kickoff input, but does not parse effort records, select effort state, or invoke the awf binary.

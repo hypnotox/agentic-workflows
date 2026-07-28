@@ -389,7 +389,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:a8996adcc3022d69ecdf4054e839c28d4307a5e56d87cbb0202bd82e0b84fb43",
+      "outputHash": "sha256:e2200ed958fbd71bc03814acbc15c17c9893418dc6c32e9490c9d779109338c5",
       "regenChecked": true
     },
     "docs/domains/tooling.md": {

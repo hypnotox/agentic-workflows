@@ -37,6 +37,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Add the mandatory Maintainable Code Design guide and its document-map link to rendered adopter documentation.
 - Add first-class local efforts, managed resident roots, binary session assignment, and independent schema-1 Pi session telemetry.
 - Add atomic repository-wide Pi session assignment for lightweight efforts. `awf effort assign`, `unassign`, and `assignments` maintain one current session-to-effort authority from primary or linked worktrees; explicit reassignment, including to terminal efforts, never changes lifecycle state.
 - Add safe managed effort worktrees. `awf effort new --worktree` and `awf effort worktree add` create fixed manager-owned paths and branches; `awf effort integrate` integrates them, `awf effort integrated` records manual integration, and `awf effort worktree remove` removes them. Native-Git topology checks, explicit integration dispositions, and paired force/reason recovery protect recoverable risks.
