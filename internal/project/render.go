@@ -592,6 +592,17 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}
+			if t.routesWorkflows() {
+				routed, routeErr := p.routedWorkflowNames()
+				if routeErr != nil { // coverage-ignore: target rendering follows validated routed workflow names
+					return nil, routeErr
+				}
+				entries, routeErr := p.workflowRouterData(routed)
+				if routeErr != nil { // coverage-ignore: validated catalog mappings cannot fail router data construction
+					return nil, routeErr
+				}
+				data["workflowSkills"] = entries
+			}
 			switch targetOutput.Producer {
 			case TargetOutputTemplate:
 			case TargetOutputTelemetryProtocol:

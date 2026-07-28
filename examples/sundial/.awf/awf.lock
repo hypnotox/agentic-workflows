@@ -820,9 +820,9 @@
     },
     ".pi/extensions/awf-handoff/index.ts": {
       "templateId": "pi/awf-handoff/index.ts.tmpl",
-      "templateHash": "sha256:2186f2bc5a0d0d177f837b8e33399d67c747ace53a38bf85e4fe06fa08893c1a",
+      "templateHash": "sha256:486aa544d293689cef1fb9d3d3fceb2af6fa84faf9cac2aa75a13d889d39857a",
       "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
-      "outputHash": "sha256:a4b160052c5d2e4d5c5f488fd655e71b6218b60825ea9016d6615b298e03affb"
+      "outputHash": "sha256:a26f95e1e806576d699c57652606b9b41c3164233a3024a54349ac3ff2a884c3"
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
@@ -838,15 +838,15 @@
     },
     ".pi/extensions/awf-telemetry/index.ts": {
       "templateId": "pi/awf-telemetry/index.ts.tmpl",
-      "templateHash": "sha256:d3c72af4c58810158b0edbc8175583ef6df914bca43c35942d7d2fa18e3faefc",
-      "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
-      "outputHash": "sha256:e1d27bddee7ff68a408dde4e6573586ccda2bc97146222bd55be7ce72c2cb245"
+      "templateHash": "sha256:814ae77967e7959bccbc1e3d39728a29821752d334163ec2982d368ede1df081",
+      "configHash": "sha256:d8a8e92792530a4b31f4be54d072e3b03e5659533cf84777401fc0c78103bbd3",
+      "outputHash": "sha256:52e0b0c335790fdcd75166601b0e20fad2ce9078ba3360bc145957fbc981e9c7"
     },
     ".pi/extensions/awf-telemetry/protocol.ts": {
       "templateId": "pi/awf-telemetry/protocol.ts.tmpl",
-      "templateHash": "sha256:42e4d7752157e50032c6aff0cfd15687b40a91354c5aa57b9548a8dbdd9f7a3a",
+      "templateHash": "sha256:b503b15cd18b3f9854a5be62fcab143839bc95247afe08993be8a08f20ad4cc6",
       "configHash": "sha256:d14c2d1770b16ae7f35de515d63a5054377ee9c92edfa64b5a40ae1bda7c9716",
-      "outputHash": "sha256:83d7999dfc2be674ce565d8af90aa1eb4e2790024568477b093f3bcb4eab51ae"
+      "outputHash": "sha256:f9a918a300b352358561acb9e7043a4248ff9d429aab52cd5ecc94ec3cb0b574"
     },
     ".pi/skills/awf-workflow/SKILL.md": {
       "templateId": "pi/awf-workflow/SKILL.md.tmpl",

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { chmod, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import test from "node:test";
 import { appendSessionObservation } from "../../../.pi/extensions/awf-telemetry/index.ts";
@@ -51,6 +51,21 @@ test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention reje
   await assert.rejects(appendSessionObservation(resolve(".pi/extensions/awf-telemetry/index.ts"), session, observation("123e4567-e89b-42d3-a456-426614174003")), /duplicate observation ID/);
   assert.equal(await readFile(stream, "utf8"), corrupted);
   await clean();
+});
+
+test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention refuses a symlinked resident ancestor without touching outside bytes", async () => {
+  await resetMetrics();
+  await ensureGit();
+  const outside = join(root, ".outside-metrics");
+  await rm(outside, { recursive: true, force: true });
+  await mkdir(outside, { recursive: true });
+  await writeFile(join(outside, "sentinel"), "outside bytes");
+  await mkdir(join(root, ".awf"), { recursive: true });
+  await symlink(outside, join(root, ".awf", "metrics"));
+  await assert.rejects(appendSessionObservation(resolve(".pi/extensions/awf-telemetry/index.ts"), session, observation("123e4567-e89b-42d3-a456-426614174005")), /unsafe telemetry directory/);
+  assert.equal(await readFile(join(outside, "sentinel"), "utf8"), "outside bytes");
+  await rm(join(root, ".awf", "metrics"), { force: true });
+  await rm(outside, { recursive: true, force: true });
 });
 
 test("invariant: tooling/workflow-telemetry:privacy-integrity-and-retention rejects malformed and unterminated streams without changing bytes", async () => {
