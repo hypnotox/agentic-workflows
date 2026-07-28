@@ -10,9 +10,9 @@ date: 2026-07-28
 ADR-0165 made `awf context` request-oriented, compacted directory censuses, introduced explicit
 facets, and safely spilled oversized results. Its implemented default nevertheless remains an
 authority projection whose size is dominated by path-level claim rosters rather than useful
-orientation. The representative bare query `./awf context internal/telemetry cmd/awf` renders
-125,556 bytes. `cmd/awf` alone renders 121,723 bytes, `internal/telemetry` alone renders 3,917
-bytes, and even the exact file `cmd/awf/context.go` renders 17,582 bytes despite having no direct
+orientation. The representative bare query `./awf context internal/project cmd/awf` renders
+495,396 bytes. `internal/project` alone renders 381,239 bytes, `cmd/awf` alone renders 114,241
+bytes, and even the exact file `cmd/awf/context.go` renders 17,324 bytes despite having no direct
 claim marker.
 
 The dominant `cmd/awf` costs are about 52 KiB of repeated `Invariants:` rosters and 51 KiB of
@@ -115,9 +115,9 @@ spill, and bounded pending contracts.
     spill under ADR-0165's existing contract.
 
 13. The repository fixtures establish regression budgets rather than a universal adopter limit.
-    Bare `awf context internal/telemetry cmd/awf` and bare `awf context cmd/awf/context.go` each
-    render no more than 8,192 bytes. Arbitrarily many requests, adopter topics, explicit facets,
-    and pending data remain data-dependent.
+    Bare `awf context internal/project cmd/awf` and bare `awf context cmd/awf/context.go` each render
+    no more than 8,192 bytes. Arbitrarily many requests, adopter topics, explicit facets, and
+    pending data remain data-dependent.
 
 14. Managed workflow callers keep lens-specific invocations: orientation and implementation begin
     bare; plan and implementation review request `invariants`, `all-rules`, `evidence`, and
