@@ -14,7 +14,7 @@ async function ensureGit() {
   const dir = "/tmp/awf-pi-test-bin";
   await mkdir(dir, { recursive: true });
   const script = `${dir}/git`;
-  await writeFile(script, "#!/bin/sh\ncase \"$*\" in\n  *'rev-parse --show-toplevel'*) echo /workspace/repo;;\n  *'rev-parse --path-format=absolute --git-common-dir'*) echo /workspace/repo/.git;;\n  *'worktree list --porcelain -z'*) printf 'worktree /workspace/repo\\0HEAD test\\0branch refs/heads/main\\0\\0';;\n  *'rev-parse --path-format=absolute --git-dir'*) echo /workspace/repo/.git;;\nesac\n");
+  await writeFile(script, "#!/bin/sh\ncase \"$*\" in\n  *'rev-parse --is-bare-repository'*) echo false;;\n  *'rev-parse --show-toplevel'*) echo /workspace/repo;;\n  *'rev-parse --path-format=absolute --git-common-dir'*) echo /workspace/repo/.git;;\n  *'worktree list --porcelain -z'*) printf 'worktree /workspace/repo\\0HEAD test\\0branch refs/heads/main\\0\\0';;\n  *'rev-parse --path-format=absolute --git-dir'*) echo /workspace/repo/.git;;\nesac\n");
   await chmod(script, 0o755);
   process.env.PATH = `${dir}:${process.env.PATH ?? ""}`;
   gitReady = true;

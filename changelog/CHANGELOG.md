@@ -6,10 +6,6 @@ adopter-facing effect (does it change rendered template output, CLI behavior, or
 schema), not by mirroring a commit's Conventional Commits type. Run `awf changelog --help` to
 query a single version or a range.
 
-## Unreleased
-
-- Add first-class local efforts, managed resident roots, binary session assignment, and independent schema-1 Pi session telemetry.
-
 ## [Unreleased]
 
 ### Breaking changes
@@ -41,6 +37,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Add first-class local efforts, managed resident roots, binary session assignment, and independent schema-1 Pi session telemetry.
 - Add atomic repository-wide Pi session assignment for lightweight efforts. `awf effort assign`, `unassign`, and `assignments` maintain one current session-to-effort authority from primary or linked worktrees; explicit reassignment, including to terminal efforts, never changes lifecycle state.
 - Add safe managed effort worktrees. `awf effort new --worktree`, `worktree add`, `integrate`, `integrated`, and `worktree remove` use fixed manager-owned paths and branches, native-Git topology checks, explicit integration dispositions, and paired force/reason recovery only for recoverable risks.
 - Add binary-owned lightweight effort records as repository-local resident state. `awf effort` now supports memory-by-default creation, deterministic list/show output, rename, explicit memory creation, complete, abandon, reopen, and confined repair from primary or linked worktrees; managed worktree creation remains reserved for the next implementation phase.
