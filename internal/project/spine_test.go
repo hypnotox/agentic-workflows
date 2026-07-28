@@ -270,27 +270,65 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 	allSkills := map[string]bool{
 		"debugging": true, "reviewing-impl": true, "tdd": true,
 	}
-	cases := map[string][]string{
-		"brainstorming":               {"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision"},
-		"proposing-adr":               {"docs/maintainable-code-design.md", "structural decision", "constraints", "enabling work", "pattern name"},
-		"refactor-coupling-audit":     {"docs/maintainable-code-design.md", "duplication", "coupling", "representation leakage", "workaround", "bounded enabling-refactor", "ADR scope"},
-		"writing-plans":               {"docs/maintainable-code-design.md", "ordered executable tasks", "representation translations", "prohibited shortcuts", "validation"},
-		"tdd":                         {"docs/maintainable-code-design.md", "bounded enabling refactor", "materially larger work", "model-supporting seam", "representation leakage", "needless indirection"},
-		"executing-plans":             {"docs/maintainable-code-design.md", "bounded enabling refactor", "reassess", "bolt correctness onto the wrong abstraction"},
-		"executing-direct":            {"docs/maintainable-code-design.md", "bounded enabling refactoring", "preserve settled boundaries", "silently expanding scope", "workaround"},
-		"subagent-driven-development": {"docs/maintainable-code-design.md", "bounded enabling refactor", "reassess", "bolt-on workaround"},
-		"bugfix":                      {"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work", "materially larger work", "workaround"},
+	type stageContract struct {
+		wants   []string
+		rejects []string
 	}
-	for skill, wants := range cases {
+	patternToolbox := []string{
+		"Patterns are a non-exhaustive vocabulary",
+		"Strategy can select among genuinely varying policies",
+		"Adapter can isolate an incompatible representation",
+		"Facade can present a focused entry point",
+		"Value objects can protect a value",
+		"Repositories can isolate storage concerns",
+		"Ports-and-adapters can keep policy independent",
+	}
+	cases := map[string]stageContract{
+		"brainstorming": {wants: []string{
+			"docs/maintainable-code-design.md", "semantic model and ownership", "representation boundaries", "dependency direction", "test seams", "preparatory-refactor decision", "before approving an approach",
+		}},
+		"proposing-adr": {wants: []string{
+			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, constraints, and enabling work", "here and in Decision", "do not replace them with a pattern name",
+		}},
+		"refactor-coupling-audit": {wants: []string{
+			"docs/maintainable-code-design.md", "duplication, coupling, representation leakage, or a workaround", "bounded enabling-refactor or larger-work result", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "ADR scope", "Context section before", "Decision is drafted", "Scope shrink rule", "defer X",
+		}},
+		"writing-plans": {wants: []string{
+			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context",
+		}},
+		"tdd": {wants: []string{
+			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass",
+		}},
+		"executing-plans": {wants: []string{
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "No drift from the plan",
+		}},
+		"executing-direct": {wants: []string{
+			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design",
+		}},
+		"subagent-driven-development": {wants: []string{
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than avoid a bolt-on workaround", "Sequential dispatch only, never parallel", "Status report", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED",
+		}, rejects: []string{
+			"external/internal representations", "translation point", "allowed dependency direction", "prohibited bolt-on shortcuts", "validation expectations",
+		}},
+		"bugfix": {wants: []string{
+			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit",
+		}},
+	}
+	for skill, contract := range cases {
 		t.Run(skill, func(t *testing.T) {
 			out := renderSkillGolden(t, skill, map[string]any{
 				"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
 				"layout": testLayout(), "skills": allSkills, "targetSubagentTools": true,
 			})
 			assertNoLeaks(t, out)
-			for _, want := range wants {
+			for _, want := range contract.wants {
 				if !strings.Contains(out, want) {
 					t.Errorf("%s output missing %q:\n%s", skill, want, out)
+				}
+			}
+			for _, reject := range append(patternToolbox, contract.rejects...) {
+				if strings.Contains(out, reject) {
+					t.Errorf("%s output must not duplicate guide pattern-toolbox or later-stage handoff prose %q:\n%s", skill, reject, out)
 				}
 			}
 		})
