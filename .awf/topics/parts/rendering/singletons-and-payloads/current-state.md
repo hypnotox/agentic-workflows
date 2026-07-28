@@ -35,9 +35,9 @@ Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`
 
-Unless its sidecar sets `local: true`, every catalog document marked Mandatory that is neither the agents document nor generated output renders once to its catalog-derived fixed path with catalog-template content through the shared plainSingletons table and the common renderKind path rather than a hand-rolled per-kind loop.
+Unless its sidecar sets `local: true`, every catalog document marked Mandatory that is neither the agents document nor generated output renders once to its catalog-derived fixed path with its catalog TemplateID and nonempty content through the shared plainSingletons table and the common renderKind path rather than a hand-rolled per-kind loop.
 Origin: ADR-0148
-Revised-by: ADR-0169, ADR-0170, ADR-0171
+Revised-by: ADR-0169, ADR-0170, ADR-0171, ADR-0172
 Backing: test
 
 ### `invariant: shebang-rendered-executable`

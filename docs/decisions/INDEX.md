@@ -175,3 +175,4 @@
 - [ADR-0169: Include maintainable design in plain singleton authority](0169-include-maintainable-design-in-plain-singleton-authority.md) (Implemented)
 - [ADR-0170: Derive plain singleton authority from catalog metadata](0170-derive-plain-singleton-authority-from-catalog-metadata.md) (Implemented)
 - [ADR-0171: Qualify and prove plain singleton rendering](0171-qualify-and-prove-plain-singleton-rendering.md) (Implemented)
+- [ADR-0172: Narrow plain singleton content authority to proven identity](0172-narrow-plain-singleton-content-authority-to-proven-identity.md) (Implemented)
