@@ -345,7 +345,7 @@ function callOptions(role: RunRequest["role"], args: any): Record<string, string
 
 function renderSubagentCall(role: RunRequest["role"], args: any, theme: any) {
   const task = utf8Bound(String(args.task ?? ""), MAX_TASK_PREVIEW_BYTES, TASK_TRUNCATION);
-  const model = args.model ? String(args.model) : "inherit parent";
+  const model = args.model ? String(args.model) : "(configured or inherited)";
   const options = optionText(callOptions(role, args));
   const metadata = [`model:${model}`, options].filter(Boolean).join(" ");
   return new Text(`${theme.fg("toolTitle", theme.bold(`${role} subagent`))}\n${theme.fg("muted", metadata)}\n${theme.fg("dim", task || "(no task)")}`, 0, 0);

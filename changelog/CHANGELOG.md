@@ -56,6 +56,17 @@ query a single version or a range.
   into the first line of every rendered file names the command to re-run, so the rename rewrites
   that line everywhere. The churn is content-free.
 
+- Narrow Pi subagent model references to printable ASCII, the range `0x21` through `0x7E`, so the
+  256 bound is the same count in code points, UTF-16 units, and UTF-8 bytes. The tool schemas and
+  preference parsing now derive that form from one shared pattern constant instead of maintaining
+  two independent checks, and an overlong reference still reports overlong before any form
+  rejection. A reference containing accented letters, emoji, or control bytes is now rejected as
+  malformed with the existing omit-the-field repair; every registry model id in use is already
+  ASCII, including the whole recommended preset. The TUI label for an omitted `model` argument
+  changes from `inherit parent`, which was itself a rejected sentinel value, to
+  `(configured or inherited)`, which the shared form check rejects, so a displayed value can no
+  longer be copied back as an argument that fails later as an unregistered model.
+
 ### Features
 - Unify every concrete non-minimal workflow around one immutable slugged effort with always-owned `.awf/efforts/<slug>/memory.md`, one user-managed writer, repository-authority precedence, conditional post-review worktree integration/removal, renewed review after divergent merge, retrospective, and restartable finish last. Minimal simple fixes remain effort-free. Pi handoff and durable-memory citation checks now enforce the owned path without selecting or mutating effort state.
 - Add a generated bounded Pi subagent model-routing module and inject a current per-run routing card only when an awf subagent tool is active. Preference and registry state refresh before injection, the card stays out of session history, and pinned in-process runtime coverage proves delivery without an external model call.

@@ -420,15 +420,36 @@ test("all schemas and runtime calls enforce omission or one bounded exact refere
   }
   assert.deepEqual(parseExactModelReference("a/b"), { provider: "a", id: "b" });
 
-  const astralAccepted = `p/${"😀".repeat(254)}`;
-  const astralRejected = `${astralAccepted}😀`;
-  assert.equal(Array.from(astralAccepted).length, 256);
-  assert.equal(Array.from(astralRejected).length, 257);
-  h.addModel(astralAccepted);
-  assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, astralAccepted), true);
-  assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, astralRejected), false);
-  assert.deepEqual(parseExactModelReference(astralAccepted), { provider: "p", id: "😀".repeat(254) });
-  assert.deepEqual(parseExactModelReference(astralRejected), { reason: "overlong" });
+  // ADR-0176: the charset is printable ASCII, so the 256 bound is measure-independent.
+  // A non-ASCII reference is rejected by both layers regardless of how long it is.
+  const astralShort = `p/${"😀".repeat(4)}`;
+  const astralAtBound = `p/${"😀".repeat(254)}`;
+  assert.equal(Array.from(astralAtBound).length, 256);
+  assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, astralShort), false);
+  assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, astralAtBound), false);
+  assert.deepEqual(parseExactModelReference(astralShort), { reason: "malformed" });
+  // Overlong is reported before form, so a reference that violates both stays overlong.
+  assert.deepEqual(parseExactModelReference(`p/${"😀".repeat(300)}`), { reason: "overlong" });
+  for (const accented of ["p/mödel", "prövider/model"]) {
+    assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, accented), false);
+    assert.deepEqual(parseExactModelReference(accented), { reason: "malformed" });
+  }
+
+  // Both ends of the permitted range are accepted; the neighbours just outside it are not.
+  for (const edge of ["\x21/\x21", "\x7E/\x7E", "p/a\x21\x7Eb"]) {
+    assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, edge), true, `schema rejected ${JSON.stringify(edge)}`);
+    assert.notEqual("reason" in (parseExactModelReference(edge) as any), true, `parse rejected ${JSON.stringify(edge)}`);
+  }
+  for (const outside of ["p/a b", "p/a\x7Fb", "p/a\tb", "\x20p/model"]) {
+    assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, outside), false, `schema accepted ${JSON.stringify(outside)}`);
+    assert.deepEqual(parseExactModelReference(outside), { reason: "malformed" });
+  }
+
+  // ADR-0176: the omitted-model display label must never be usable as an argument.
+  for (const label of ["(configured or inherited)", "inherit parent"]) {
+    assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, label), false, `schema accepted the label ${label}`);
+    assert.deepEqual(parseExactModelReference(label), { reason: "malformed" });
+  }
 });
 
 test("grounding and review reload preferences directly before runner startup", async () => {

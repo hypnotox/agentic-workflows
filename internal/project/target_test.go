@@ -305,7 +305,10 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 func TestPiSubagentModelRoutingRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
-		"maxLength: 256", "^[^/\\\\s]+/[^\\\\s]+$", "default, auto, and inherit parent are invalid",
+		"maxLength: 256", `MODEL_REFERENCE_PATTERN = "^[\\x21-\\x2E\\x30-\\x7E]+/[\\x21-\\x7E]+$"`,
+		"pattern: MODEL_REFERENCE_PATTERN", "MODEL_REFERENCE_FORM = new RegExp(MODEL_REFERENCE_PATTERN)",
+		"!MODEL_REFERENCE_FORM.test(value)",
+		"Exact provider/model-id in printable ASCII", "default, auto, and inherit parent are invalid",
 		"Omit the model field to use configured or inherited routing.", "const finalSelected = await refreshAndResolve",
 		"requestedModel", "resolvedModel", "thinkingLevel",
 	} {
@@ -315,6 +318,18 @@ func TestPiSubagentModelRoutingRender(t *testing.T) {
 	}
 	if got := strings.Count(body, "model: Type.Optional(MODEL_REFERENCE_SCHEMA)"); got != 4 {
 		t.Errorf("shared model-reference schema uses = %d, want 4", got)
+	}
+	// ADR-0176: both validating layers derive from one pattern constant, so neither can
+	// drift into a different measure or charset than the other.
+	if got := strings.Count(body, `pattern: "`); got != 0 {
+		t.Errorf("model-reference pattern inlined %d times, want the shared constant only", got)
+	}
+	// ADR-0176: the omitted-model display label must not be a usable argument.
+	if !strings.Contains(body, `: "(configured or inherited)";`) {
+		t.Error("omitted-model display label is not the non-parseable phrase")
+	}
+	if strings.Contains(body, `: "inherit parent";`) {
+		t.Error("omitted-model display label still renders a rejected sentinel value")
 	}
 }
 

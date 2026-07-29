@@ -64,11 +64,13 @@ export const RECOMMENDED_PRESET: Required<SubagentModelPreferences> = {
 export const PREFERENCES_BLOCKED = "Subagent model preferences are invalid; implicit routing is blocked.";
 export const PREFERENCES_REPAIR = "Run /awf-subagent-models to repair. Explicit per-call model arguments remain available.";
 export const MODEL_FIELD_REPAIR = "Omit the model field to use configured or inherited routing.";
+export const MODEL_REFERENCE_PATTERN = "^[\\x21-\\x2E\\x30-\\x7E]+/[\\x21-\\x7E]+$";
+const MODEL_REFERENCE_FORM = new RegExp(MODEL_REFERENCE_PATTERN);
 export const MODEL_REFERENCE_SCHEMA = Type.String({
   minLength: 3,
   maxLength: 256,
-  pattern: "^[^/\\s]+/[^\\s]+$",
-  description: "Exact provider/model-id. Omit the model field to use configured or inherited routing; default, auto, and inherit parent are invalid.",
+  pattern: MODEL_REFERENCE_PATTERN,
+  description: "Exact provider/model-id in printable ASCII. Omit the model field to use configured or inherited routing; default, auto, and inherit parent are invalid.",
 });
 export const ROUTING_CARD_OVERFLOW_WARNING = "awf subagent routing card exceeded 4096 UTF-8 bytes; injected a failure card. Run /awf-subagent-models and retry.";
 const FAILURE_CARD = "[awf subagent routing]\nstate: unavailable (routing card exceeded 4096 UTF-8 bytes)\nrepair: Run /awf-subagent-models and retry; implicit routing remains strict.";
@@ -82,10 +84,9 @@ export function parseExactModelReference(value: unknown): { provider: string; id
   if (typeof value !== "string") return { reason: "malformed" };
   if (Array.from(value).length > 256) return { reason: "overlong" };
   if (value === "default" || value === "auto" || value === "inherit parent") return { reason: "malformed" };
+  if (!MODEL_REFERENCE_FORM.test(value)) return { reason: "malformed" };
   const slash = value.indexOf("/");
-  return value.length < 3 || slash <= 0 || slash === value.length - 1 || /\s/.test(value)
-    ? { reason: "malformed" }
-    : { provider: value.slice(0, slash), id: value.slice(slash + 1) };
+  return { provider: value.slice(0, slash), id: value.slice(slash + 1) };
 }
 export function parsePreferenceSource(scope: SourceScope, path: string, raw: string): PreferenceSourceState {
   const source = emptyPreferenceSource(scope, path);

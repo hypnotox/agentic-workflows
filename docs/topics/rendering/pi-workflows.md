@@ -75,9 +75,9 @@ Backing: test
 
 ### `invariant: pi-subagent-model-routing`
 
-Every Pi subagent role accepts only omission or an exact registry-valid provider/model-id of at most 256 characters. Omission alone requests configured role routing and parent fallback; default, auto, inherit parent, and other sentinel values reject with an omit-the-field repair and are never normalized. Queue acquisition is followed by preference and registry revalidation immediately before child startup, failures never fall through, thinking remains inherited for child clamping, and diagnostics report requested, resolved, and actual models with routing source.
+Every Pi subagent role accepts only omission or an exact registry-valid provider/model-id of at most 256 printable-ASCII characters, excluding space and DEL. The tool schemas and preference parsing derive that form from one shared pattern constant, so the two layers cannot diverge, and within the permitted charset the bound is the same count whether measured in code points, UTF-16 units, or UTF-8 bytes. Omission alone requests configured role routing and parent fallback, and is displayed with a label the shared form check rejects, so a displayed value can never be copied back as a usable argument. Default, auto, inherit parent, and other sentinel values reject with an omit-the-field repair and are never normalized, and an overlong reference reports overlong before any form rejection. Queue acquisition is followed by preference and registry revalidation immediately before child startup, failures never fall through, thinking remains inherited for child clamping, and diagnostics report requested, resolved, and actual models with routing source.
 Origin: ADR-0148
-Revised-by: ADR-0151, ADR-0173
+Revised-by: ADR-0151, ADR-0173, ADR-0176
 Backing: test
 
 ### `invariant: pi-subagent-model-wizard`

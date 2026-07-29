@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-29
 ---
 # ADR-0176: Unambiguous Pi Subagent Model References
@@ -71,9 +71,9 @@ accepted or emitted as a tool argument. Those tests do not exist.
    Decision 1 narrows the charset further but is not what rejects this label, so a later relaxation
    of the charset would not reopen this ambiguity. Rejection by the form check is what the plan's
    stated intent of removing the ambiguity actually requires. This follows the existing precedent in
-   the same module, where the routing preview already displays the phrase `parent (inherited)`. This item rides along with decisions 1
-   through 4 because it changes the same claim and is proved by the same test surface, not because
-   it shares their motivation.
+   the same module, where the routing preview already displays the phrase `parent (inherited)`. This
+   item rides along with decisions 1 through 4 because it changes the same claim and is proved by
+   the same test surface, not because it shares their motivation.
 
 6. Add the test coverage the ADR-0173 plan required before that label could change: prove that
    neither `inherit parent` nor the replacement label is ever accepted as a `model` argument by any
@@ -82,8 +82,9 @@ accepted or emitted as a tool argument. Those tests do not exist.
    are accepted while space and DEL are not.
 
 7. Carry the change through the authored templates to every rendered output, including the Sundial
-   adopter, in the same transaction, and update the changelog entry that currently describes the
-   bound as a character limit.
+   adopter, in the same transaction, and record the new behaviour as an `[Unreleased]` changelog
+   entry. The released entry that describes the bound as a character limit is stable history and is
+   corrected forward rather than edited.
 
 ## State changes
 
@@ -108,7 +109,8 @@ supported case and a forbidden argument, and the new tests close the gap the ADR
 open. Choosing a label the existing form check rejects by construction, rather than one that merely
 differs from the three named sentinels, means a caller who copies the displayed string verbatim gets
 an immediate form rejection with the omit-the-field repair instead of a misleading
-unregistered-model error from a later registry lookup. The label is TUI-facing metadata, so no caller contract changes.
+unregistered-model error from a later registry lookup. The label is TUI-facing metadata, so no
+caller contract changes.
 
 The rejection vocabulary and repair message are unchanged, so no adopter-facing error handling
 changes shape. Preference files that already validate continue to validate.
@@ -126,3 +128,4 @@ changes shape. Preference files that already validate continue to validate.
 ## Status history
 
 - 2026-07-29: Proposed
+- 2026-07-29: Implemented; content-sha256: 2fecbb88d43629c82cdc38a1d709a2f39941c3afb0401cf6a0e4af5d8ed0a636; state-sequence: 85
