@@ -103,6 +103,12 @@ Every scoped implementation brief carries only the task-relevant semantic bounda
 Origin: ADR-0168
 Backing: test
 
+### `invariant: deliberate-subagent-model-selection`
+
+Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables.
+Origin: ADR-0173
+Backing: test
+
 ### `invariant: maintainable-code-review-lenses`
 
 Plan review checks that structural choices and necessary enabling refactors are explicit, ordered, bounded, approved or durably dispositioned when larger, and verifiable; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and settled-design conformance; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only.

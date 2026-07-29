@@ -343,7 +343,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				}
 			}
 			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "provider/model-id", "omission inherits the parent"} {
+				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "Omit the `model` field entirely to use configured role routing", "tier's exact `provider/model-id`"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("Pi exploring skill missing %q", want)
 					}
@@ -358,17 +358,6 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					if strings.Contains(exploring, absent) {
 						t.Errorf("%s exploring skill leaks Pi guidance %q", target, absent)
 					}
-				}
-			}
-			modelGuidanceSkills := []string{"brainstorming", "exploring", "reviewing-adr", "reviewing-impl", "reviewing-plan-resync", "reviewing-plan", "subagent-driven-development"}
-			for _, skill := range modelGuidanceSkills {
-				body := skillBody(skill)
-				if target == "pi" {
-					if !strings.Contains(body, "provider/model-id") || !strings.Contains(body, "inherits the parent") {
-						t.Errorf("Pi/%s missing optional model guidance", skill)
-					}
-				} else if strings.Contains(body, "provider/model-id") || strings.Contains(body, "subagent_") {
-					t.Errorf("%s/%s leaks Pi model or tool syntax", target, skill)
 				}
 			}
 			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {

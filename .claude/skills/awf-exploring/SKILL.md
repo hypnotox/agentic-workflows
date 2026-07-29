@@ -26,7 +26,7 @@ Report detail is ordered `paths < summary < analysis` independently of breadth. 
 <!-- awf:edit dispatch: default; create .awf/skills/parts/exploring/dispatch.md to override -->
 ## Dispatch
 
-Construct one self-contained task. Dispatch one target-native fresh-context exploration subagent with task, breadth, detail, boundary, outcome, and report contracts in its brief.
+Construct one self-contained task. Dispatch one target-native fresh-context exploration subagent with task, breadth, detail, boundary, outcome, and report contracts in its brief. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.
 
 <!-- awf:edit results: default; create .awf/skills/parts/exploring/results.md to override -->
 ## Results

@@ -28,7 +28,7 @@ Terminal step of awf-executing-plans or awf-subagent-driven-development, after a
 2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes:
+3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes the following. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable:
 
    - The SHA range (`baseSha..headSha`) and the `planPath` (or `null`).
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
@@ -66,7 +66,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
-7. **Verify pass.** After applying fixes and passing the gate, dispatch exactly one fresh `code-reviewer` verify pass to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+7. **Verify pass.** After applying fixes and passing the gate, dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable. to confirm the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Terminal retrospective.** After the review settles, invoke `awf-retrospective`. The main-thread retrospective reflects on the session and promotes any recurring, codifiable finding toward a deterministic check.

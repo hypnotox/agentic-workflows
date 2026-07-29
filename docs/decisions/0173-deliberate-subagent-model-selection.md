@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-29
 ---
 # ADR-0173: Deliberate subagent model selection
@@ -194,3 +194,5 @@ risk without embedding volatile prices or catalogs in durable guidance.
 ## Status history
 
 - 2026-07-29: Proposed
+- 2026-07-29: Implementing; content-sha256: 8de600f958f3833ee1cc5733d9dd5d34c46099b12aeddd9c33f3abfaa7baffec
+- 2026-07-29: Applied; state-sequence: 80; operations: add `rendering/workflow-skill-templates:deliberate-subagent-model-selection`

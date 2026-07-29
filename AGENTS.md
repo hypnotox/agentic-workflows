@@ -72,6 +72,8 @@ Enabled skills:
 
 In Pi, use any enabled native skill when its purpose fits the current work.
 
+Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
+
 Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
 
 Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](docs/workflow.md).
