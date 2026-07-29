@@ -26,11 +26,12 @@ import {
   type ThinkingLevel,
   type Usage,
 } from "./runner.ts";
+import { buildRoutingCard, ROUTING_CARD_OVERFLOW_WARNING } from "./model-routing.ts";
 
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }
-export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel";
+export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel" | "getActiveTools";
 function parseVersion(value: string): [number, number, number] | undefined {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
@@ -49,7 +50,7 @@ export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDepend
   const requirements: Record<MinimumRuntimeAPI, boolean> = {
     on: typeof pi.on === "function", eventsOn: typeof pi.events?.on === "function", eventsEmit: typeof pi.events?.emit === "function",
     appendEntry: typeof pi.appendEntry === "function", registerTool: typeof pi.registerTool === "function", registerCommand: typeof pi.registerCommand === "function",
-    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function",
+    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function", getActiveTools: typeof pi.getActiveTools === "function",
   };
   const missing = required.filter((name) => !requirements[name]);
   if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
@@ -680,7 +681,7 @@ const SLOT_GUIDANCE: Array<{ key: PreferenceField; guidance: string }> = [
 ];
 
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
-  if (!guardMinimumRuntime(pi, deps, ["on", "eventsEmit", "registerTool", "registerCommand", "exec", "getThinkingLevel"])) return;
+  if (!guardMinimumRuntime(pi, deps, ["on", "eventsEmit", "registerTool", "registerCommand", "exec", "getThinkingLevel", "getActiveTools"])) return;
 
   const root = projectRoot(deps.extensionFile);
   const now = deps.now ?? Date.now;
@@ -706,6 +707,15 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     return resolveChildModel(ctx, role, requested, preferences);
   };
   pi.on("session_start", async (_event, ctx) => notifyPreferenceState(ctx, await reloadState(ctx)));
+  pi.on("before_agent_start", async (event: any, ctx: any) => {
+    const selected = Array.isArray(event.systemPromptOptions?.selectedTools) ? event.systemPromptOptions.selectedTools : pi.getActiveTools();
+    if (!Array.isArray(selected) || !selected.some((tool: string) => SUBAGENT_TOOL_NAMES.has(tool))) return undefined;
+    const state = await reloadState(ctx);
+    notifyPreferenceState(ctx, state);
+    const card = buildRoutingCard(state);
+    if (card.startsWith("[awf subagent routing]\nstate: unavailable")) ctx.ui.notify(ROUTING_CARD_OVERFLOW_WARNING, "error");
+    return { systemPrompt: event.systemPrompt + "\n\n" + card };
+  });
   pi.registerCommand("awf-subagent-models", {
     description: "Configure per-role subagent model preferences.",
     handler: async (_args: string, ctx: any) => {

@@ -12,7 +12,7 @@ import { Type } from "typebox";
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
 export interface MinimumRuntimeDependencies { packageVersion: string; }
-export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel";
+export type MinimumRuntimeAPI = "on" | "eventsOn" | "eventsEmit" | "appendEntry" | "registerTool" | "registerCommand" | "queueCommand" | "exec" | "getThinkingLevel" | "getActiveTools";
 function parseVersion(value: string): [number, number, number] | undefined {
   const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(value);
   return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : undefined;
@@ -31,7 +31,7 @@ export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDepend
   const requirements: Record<MinimumRuntimeAPI, boolean> = {
     on: typeof pi.on === "function", eventsOn: typeof pi.events?.on === "function", eventsEmit: typeof pi.events?.emit === "function",
     appendEntry: typeof pi.appendEntry === "function", registerTool: typeof pi.registerTool === "function", registerCommand: typeof pi.registerCommand === "function",
-    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function",
+    queueCommand: typeof pi.queueCommand === "function", exec: typeof pi.exec === "function", getThinkingLevel: typeof pi.getThinkingLevel === "function", getActiveTools: typeof pi.getActiveTools === "function",
   };
   const missing = required.filter((name) => !requirements[name]);
   if (versionSupported(deps.packageVersion) && missing.length === 0) return true;

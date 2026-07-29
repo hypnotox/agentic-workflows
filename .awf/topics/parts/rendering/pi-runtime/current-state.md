@@ -17,9 +17,9 @@ Backing: test
 
 ### `invariant: pi-extension-target-render`
 
-Enabling Pi renders exactly the two subagent extension files and handoff extension with provenance. No telemetry extension or protocol output renders, and all remaining files follow normal render and cleanup semantics.
+Enabling Pi renders the handoff entrypoint and the subagent index, bounded model-routing module, and runner with provenance. The model-routing module owns pure preference parsing, merging, validation-state representation, and routing-card construction; the entrypoint retains tool registration, queueing, process lifecycle, and runtime integration. No telemetry or workflow-router output renders, and all files follow normal render and cleanup semantics.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -37,8 +37,8 @@ Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
 
-Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, and effort-independent handoff, and verifies telemetry, router, and selection surfaces are absent.
+Pinned Pi runtime smoke covers generated TypeScript loading, native Pi skill discovery, effort-independent handoff, and before-agent-start routing-card delivery into the model request without a persisted session message, and verifies telemetry, router, and selection surfaces are absent.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167
+Revised-by: ADR-0149, ADR-0161, ADR-0162, ADR-0164, ADR-0167, ADR-0173
 Backing: unbacked
-Verify: Run `./x pi-test run` to exercise native Pi skill discovery and effort-independent handoff, with no telemetry, router, or selection.
+Verify: Run `./x pi-test run` to exercise native Pi skill discovery, effort-independent handoff, and routing-card delivery into a real pinned Pi model request without session-message persistence, with no telemetry, router, or selection.

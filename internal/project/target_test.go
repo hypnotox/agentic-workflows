@@ -148,10 +148,10 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			extensions[file.Path] = file.Content
 		}
 	}
-	if len(extensions) != 3 {
-		t.Fatalf("Pi extension count = %d, want 3: %v", len(extensions), extensions)
+	if len(extensions) != 4 {
+		t.Fatalf("Pi extension count = %d, want 4: %v", len(extensions), extensions)
 	}
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
 		if content := extensions[path]; !strings.HasPrefix(content, "// "+bannerText+"\n") {
 			t.Errorf("%s lacks provenance banner", path)
 		}

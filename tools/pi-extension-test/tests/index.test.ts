@@ -13,6 +13,7 @@ import {
   type ExtensionDependencies,
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
+import { buildRoutingCard, parseExactModelReference as parseRoutingReference, PREFERENCE_FIELDS as ROUTING_FIELDS } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
 const GLOBAL = "/agent/awf-subagents.json";
 const PROJECT = "/repo/.pi/awf-subagents.local.json";
@@ -22,6 +23,25 @@ const PROJECT_LABEL = `Project-local (${PROJECT})`;
 const PRESET = "Apply recommended GPT-5.6 preset";
 const MANUAL = "Configure each slot";
 const UNSET = "leave unset (use fallback chain)";
+test("routing module builds bounded deterministic cards", () => {
+  const source = (scope: "global" | "project") => ({ scope, path: `/${scope}`, values: {}, invalid: [] });
+  const complete: any = { global: source("global"), project: source("project"), effective: {}, missing: [], invalid: [], blocked: false, errors: [] };
+  for (const field of ROUTING_FIELDS) complete.effective[field] = { reference: `example/${field}`, scope: "global" };
+  assert.match(buildRoutingCard(complete), /^\[awf subagent routing\]\ndefault: example\/default/);
+  const partial = { ...complete, missing: ["grounding", "small"], effective: { ...complete.effective, grounding: undefined, small: undefined } };
+  assert.match(buildRoutingCard(partial), /roles: grounding=missing/);
+  assert.match(buildRoutingCard(partial), /missing: grounding, small/);
+  const invalid = { ...complete, invalid: [{ kind: "source", scope: "global", reason: "malformed-json" }, { kind: "field", scope: "project", field: "small", reason: "unavailable" }], blocked: true };
+  assert.match(buildRoutingCard(invalid), /invalid: global:source:malformed-json; project:small:unavailable/);
+  assert.match(buildRoutingCard(invalid), /repair: Run \/awf-subagent-models/);
+  const huge: any = { ...complete, effective: {} };
+  for (const field of ROUTING_FIELDS) huge.effective[field] = { reference: `x/${"z".repeat(1000)}`, scope: "global" };
+  assert.match(buildRoutingCard(huge), /state: unavailable/);
+  assert.deepEqual(parseRoutingReference("p/model"), { provider: "p", id: "model" });
+  for (const value of [undefined, "default", "auto", "inherit parent", "ab", "/x", "ab/", "x/y z"]) assert.deepEqual(parseRoutingReference(value), { reason: "malformed" });
+  assert.deepEqual(parseRoutingReference(`p/${"x".repeat(256)}`), { reason: "overlong" });
+});
+
 const baseResult: RunResult = {
   output: "done", stderr: "", events: [], omittedEvents: 0, failed: false, modelChanged: false,
   usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, turns: 1 },
@@ -74,6 +94,7 @@ function harness(options: {
     registerTool: (tool: any) => tools.set(tool.name, tool),
     registerCommand: (name: string, command: any) => commands.set(name, command),
     getThinkingLevel: () => "high",
+    getActiveTools: () => [],
     events: { emit() {} },
     exec: async () => git.shift() ?? { code: 1, stdout: "", stderr: "" },
   };
