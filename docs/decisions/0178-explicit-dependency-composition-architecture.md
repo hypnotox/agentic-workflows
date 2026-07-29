@@ -82,19 +82,30 @@ concrete first consumer.
 
 6. Establish the first vertical slice with a composed `project.Loader`. The Loader receives the
    config-tree loader, the standard catalog value, and a semantic invoking-root-to-resident-root
-   resolver needed by project opening. It continues to own target resolution, effective-catalog
-   derivation, and catalog conformance because those are project policy, not adapter work. Its
-   production control-root adapter closes over `context.Background()` and preserves the current
-   best-effort fallback to the invoking root. Cancellation is absent from the Loader contract until a
+   resolver needed by project opening. After load it invokes `Config.Validate`, preserving the
+   current distinction between decoding and semantic validation. It continues to own target
+   resolution, effective-catalog derivation, standard-catalog defense-in-depth validation, and
+   effective catalog conformance because those are project policy, not adapter work. Its production
+   control-root adapter closes over `context.Background()` and preserves the current best-effort
+   fallback to the invoking root. Cancellation is absent from the Loader contract until a
    signal-aware or embedded caller actually owns it.
 
-7. Make `runSync` the Loader's single first consumer. Compose the production Loader once on that
-   wiring path and route `runSync`, initialized sync, and the shared printing helper through it, so
-   top-level render and every existing post-mutation render use the same assembly. No second command
-   is converted merely to demonstrate reuse. Focused tests inject Loader dependencies and exercise
-   reachable config-load, resident-root, effective-catalog, and conformance outcomes. Keep the
-   compile-time standard-catalog validator as production defense in depth; do not inject it solely to
-   make its unreachable failure testable.
+7. Make `runSync` the Loader's single first explicitly composed consumer. Compose the production
+   Loader once on that wiring path and route `runSync`, initialized sync, and the shared printing
+   helper through it, so top-level render and every existing post-mutation render use the same
+   assembly. Refactor the present `project.Open` body into one Loader-owned opening implementation;
+   keep `project.Open` as a documented transitional compatibility wrapper that constructs production
+   dependencies and delegates to that implementation for existing command and test callers. It is
+   the only grandfathered in-policy production constructor, gains no new caller, and must disappear
+   as concrete consumers later receive outer composition; new code uses an explicitly composed
+   Loader. This keeps one copy of loading and validation policy without expanding this foundation
+   into an all-command conversion.
+
+   No second command is converted merely to demonstrate reuse. Focused tests inject Loader
+   dependencies and exercise reachable config-load, config-validation, resident-root,
+   effective-catalog, and conformance outcomes. Keep the compile-time standard-catalog validator as
+   production defense in depth; do not make it an injectable dependency solely to test its
+   unreachable failure.
 
 8. Make the authority visible without copying its normative prose into prompts. Rely on the global
    topic for repository-wide current-state context, and add concise workflow and reviewer hints that
@@ -104,7 +115,9 @@ concrete first consumer.
    the ADR reviewer's omitted `decision-clarity` and `consequences-honesty` focus items and the generic
    documentation-currency checks that its wholesale overrides currently drop. Where a convention
    part should append a hint to an existing skill or agent section, use the `sectionDefault`
-   substitution channel rather than replacing the generic contract.
+   substitution channel rather than replacing the generic contract. Preserve missingkey-zero
+   publication safety, and render affected prompts with empty-string variables to verify that no
+   unresolved-value or no-value token appears.
 
 9. Add `code-design` to `audit.allowedScopes` with the meaning "dependency composition and
    cross-package code structure" and render every derived scope surface in the same implementation
@@ -118,7 +131,9 @@ concrete first consumer.
     worktree operations even though `go-git` remains the audit implementation. Describe the
     composition root and representative Loader boundary in architecture and development guidance,
     and update generated domain/topic, scope, workflow, agent, config-reference, and glossary
-    surfaces driven by their authored `.awf/` inputs.
+    surfaces driven by their authored `.awf/` inputs. Every Accepted, Implementing, and Implemented
+    status transition runs `./x render` and commits the regenerated `docs/decisions/INDEX.md` and lock
+    output with the transition.
 
 11. Defer wholesale seam conversion. Record the paused filesystem/global-seam work as a downstream
     implementation consumer of this authority, not a phase of this decision. Each future conversion
