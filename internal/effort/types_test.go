@@ -80,12 +80,36 @@ func TestSlugDerivationAndValidation(t *testing.T) {
 		})
 	}
 
+	// Both sides of the 63-byte bound, so narrowing the implementation by one
+	// byte fails rather than passing on the reject case alone.
+	if err := validateSlug(strings.Repeat("a", 63)); err != nil {
+		t.Fatalf("63-byte slug rejected: %v", err)
+	}
 	for _, slug := range []string{"", "A", "a_b", "a/b", ".", "..", "a-", "-a", strings.Repeat("a", 64)} {
 		t.Run("reject-slug-"+slug, func(t *testing.T) {
 			if err := validateSlug(slug); err == nil {
 				t.Fatalf("validateSlug(%q) succeeded", slug)
 			}
 		})
+	}
+}
+
+func TestOutcomeTitleByteBound(t *testing.T) {
+	// The title is persisted verbatim, so its bound is asserted on both sides.
+	// A 160-byte title whose slug stays short proves the slug bound does not
+	// stand in for the title bound.
+	atBound := strings.Repeat("a", 160)
+	if got, err := normalizeTitle(atBound); err != nil || got != atBound {
+		t.Fatalf("160-byte title rejected: %q, %v", got, err)
+	}
+	if _, err := normalizeTitle(strings.Repeat("a", 161)); err == nil || !strings.Contains(err.Error(), "160") {
+		t.Fatalf("161-byte title accepted or unclear: %v", err)
+	}
+	// Many multi-byte runes collapse to one hyphen, so the derived slug is tiny
+	// while the title is far past the bound.
+	overlong := strings.Repeat("界", 80) + " ok"
+	if _, err := normalizeTitle(overlong); err == nil {
+		t.Fatal("overlong multi-byte title accepted")
 	}
 }
 
@@ -103,11 +127,17 @@ func TestPersistedProtocol2Validation(t *testing.T) {
 	}
 
 	mutations := map[string]func(*persistedRecord){
-		"schema":    func(r *persistedRecord) { r.SchemaVersion = 1 },
-		"uuid":      func(r *persistedRecord) { r.ID = "not-a-uuid" },
-		"slug":      func(r *persistedRecord) { r.Slug = "other-slug" },
-		"title":     func(r *persistedRecord) { r.Title = " " },
-		"createdAt": func(r *persistedRecord) { r.CreatedAt = time.Time{} },
+		"schema":         func(r *persistedRecord) { r.SchemaVersion = 1 },
+		"uuid":           func(r *persistedRecord) { r.ID = "not-a-uuid" },
+		"slug":           func(r *persistedRecord) { r.Slug = "other-slug" },
+		"title":          func(r *persistedRecord) { r.Title = " " },
+		"overlong title": func(r *persistedRecord) { r.Title = strings.Repeat("a", 161) },
+		"createdAt":      func(r *persistedRecord) { r.CreatedAt = time.Time{} },
+		// The non-UTC clause is asserted separately from the zero-time clause so
+		// deleting it fails a test rather than being masked by IsZero.
+		"non-UTC createdAt": func(r *persistedRecord) {
+			r.CreatedAt = created.In(time.FixedZone("CEST", 2*60*60))
+		},
 	}
 	for name, mutate := range mutations {
 		t.Run(name, func(t *testing.T) {

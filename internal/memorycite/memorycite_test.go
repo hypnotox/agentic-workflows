@@ -32,6 +32,12 @@ func TestScanTextDiscriminatesConcreteOwnedMemoryPaths(t *testing.T) {
 		{"trailing hyphen", owned("effort-"), nil},
 		{"double hyphen", owned("effort--name"), nil},
 		{"basename prefix", owned("real-effort") + ".bak", nil},
+		{"longer basename", owned("real-effort") + "x", nil},
+		{"sentence ending period", "recorded in " + owned("real-effort") + ".", []string{"real-effort/memory.md"}},
+		{"period then prose", "see " + owned("real-effort") + ". It explains why.", []string{"real-effort/memory.md"}},
+		{"colon lead-in", owned("real-effort") + ": the checkpoint", []string{"real-effort/memory.md"}},
+		{"clickable line reference", owned("real-effort") + ":12", []string{"real-effort/memory.md"}},
+		{"ellipsis of periods", owned("real-effort") + "..", []string{"real-effort/memory.md"}},
 		{"two references", owned("first") + " and " + owned("second"), []string{"first/memory.md", "second/memory.md"}},
 	} {
 		t.Run(test.name, func(t *testing.T) {

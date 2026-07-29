@@ -24,8 +24,16 @@ const memoryBase = "memory.md"
 
 // terminators bound a path mention in prose, links, and code spans. Slash is
 // included so a reference to the owned file remains a citation even when prose
-// appends another path component.
-const terminators = "/ \t\v\f\r`\"'()[]{}<>;,!?"
+// appends another path component. Colon is included so a `path:line` citation,
+// the clickable form this project's prose uses, stays a citation: no filename
+// legitimately continues past a colon.
+const terminators = "/ \t\v\f\r`\"'()[]{}<>;,!?:"
+
+// extensionTerminator ends a mention only when nothing attaches after it. A
+// period both ends a sentence and opens a further extension, so `memory.md.`
+// closing a sentence is a citation while `memory.md.bak` names a different file
+// and is not.
+const extensionTerminator = '.'
 
 // Reference is one citation, with a 1-based line number.
 type Reference struct {
@@ -90,11 +98,26 @@ func concreteOwnedMemory(rest string) (string, bool) {
 	if !strings.HasPrefix(afterSlug, memoryBase) {
 		return "", false
 	}
-	remaining := afterSlug[len(memoryBase):]
-	if remaining != "" && !strings.ContainsRune(terminators, rune(remaining[0])) {
+	if !terminatesMention(afterSlug[len(memoryBase):]) {
 		return "", false
 	}
 	return slug + "/" + memoryBase, true
+}
+
+// terminatesMention reports whether what follows the memory basename leaves the
+// mention naming that exact file.
+func terminatesMention(remaining string) bool {
+	if remaining == "" {
+		return true
+	}
+	if strings.ContainsRune(terminators, rune(remaining[0])) {
+		return true
+	}
+	if rune(remaining[0]) != extensionTerminator {
+		return false
+	}
+	next := remaining[1:]
+	return next == "" || strings.ContainsRune(terminators, rune(next[0])) || rune(next[0]) == extensionTerminator
 }
 
 func validSlug(slug string) bool {

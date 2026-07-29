@@ -21,6 +21,12 @@ var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 const finishingPrefix = ".finishing-"
 
+// maxTitleBytes bounds the outcome title. The title is persisted verbatim and
+// returned in every public reply, and a slug derived from many non-ASCII runes
+// collapses to a short segment however long the title is, so the slug bound
+// cannot stand in for this one.
+const maxTitleBytes = 160
+
 // CorruptError identifies resident input that must be preserved byte-for-byte.
 type CorruptError struct {
 	Path string
@@ -56,6 +62,9 @@ func normalizeTitle(title string) (string, error) {
 	if !utf8.ValidString(title) {
 		return "", errors.New("outcome title must be valid UTF-8")
 	}
+	if len(title) > maxTitleBytes {
+		return "", fmt.Errorf("outcome title must be at most %d UTF-8 bytes", maxTitleBytes)
+	}
 	return title, nil
 }
 
@@ -87,6 +96,13 @@ func deriveSlug(title string) (string, error) {
 	if err := validateSlug(slug); err != nil {
 		return "", slugRepairError(err.Error())
 	}
+	// The ref probe runs here, at the one point a slug is minted, rather than in
+	// validateSlug: enumeration validates every resident name it reads, and a
+	// subprocess per resident would make listing cost a git fork each and make
+	// every effort command fail without git on PATH.
+	if err := exec.Command("git", "check-ref-format", "--branch", "awf/"+slug).Run(); err != nil { // coverage-ignore: the bounded lowercase ASCII grammar with a fixed awf/ prefix is always a valid branch ref; this remains defense in depth
+		return "", slugRepairError(fmt.Sprintf("refs/heads/awf/%s is not a valid Git ref", slug))
+	}
 	return slug, nil
 }
 
@@ -103,9 +119,6 @@ func validateSlug(slug string) error {
 	}
 	if filepath.Base(slug) != slug || filepath.Clean(slug) != slug { // coverage-ignore: the stricter ASCII slug regexp already excludes separators, dot segments, and platform volume syntax
 		return errors.New("slug must be one confined path segment")
-	}
-	if err := exec.Command("git", "check-ref-format", "--branch", "awf/"+slug).Run(); err != nil { // coverage-ignore: the bounded lowercase ASCII grammar with a fixed awf/ prefix is always a valid branch ref; this remains defense in depth
-		return fmt.Errorf("refs/heads/awf/%s is not a valid Git ref", slug)
 	}
 	return nil
 }
