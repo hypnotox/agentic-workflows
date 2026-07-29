@@ -7,7 +7,7 @@
 You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
 
 <!-- awf:edit chain: from .awf/parts/workflow/chain.md -->
-Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
+Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps. Agents changing dependency selection, ownership, or wiring consult `code-design/dependency-composition` before design or implementation.
 
 On Pi, use any enabled native skill when its purpose fits the current work. A minimal simple fix uses no effort. Once the outcome is concrete and non-minimal, create or resume exactly one immutable slugged effort with owned memory at `.awf/efforts/<slug>/memory.md`, carry both slug and path through the chain, and keep one user-managed writer. Repository and current-state authority outrank checkpoint prose; children remain report-only with respect to memory. If the effort has a managed worktree, integration and explicit removal occur after settled terminal implementation review and before retrospective; a divergent merge receives staged check, gate, commit, and renewed terminal review. Retrospective records warranted durable lessons and invokes `awf effort finish <slug>` last.
 
@@ -33,6 +33,7 @@ The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), 
 | `adr` | ADR markdown documents |
 | `adr-system` | the ADR machinery code (INDEX.md generation, lifecycle) |
 | `awf` | genuinely cross-cutting / repo-meta work, the umbrella of last resort |
+| `code-design` | dependency composition and cross-package code structure |
 | `config` | the .awf config tree, schema, migrations |
 | `invariants` | invariant backing and checks |
 | `plans` | plan markdown documents |

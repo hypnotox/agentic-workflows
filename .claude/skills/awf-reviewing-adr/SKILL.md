@@ -40,7 +40,7 @@ Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memor
    - **user-decision**: present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-adr/apply-fixes-commit.md to override -->
-5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`.
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-adr/re-review-loop.md to override -->
 6. **Verify pass.** After applying fixes, dispatch exactly one fresh `adr-reviewer` verify pass. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable. This pass confirms the fixes resolved the findings without new issues. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.

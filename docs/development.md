@@ -4,7 +4,7 @@
 <!-- awf:edit setup: from .awf/docs/parts/development/setup.md -->
 ## Setup
 
-A working checkout needs Go 1.26+ (see `go.mod`) and Docker. No host Node, npm,
+A working checkout needs Go 1.26+ (see `go.mod`), native Git, and Docker. No host Node, npm,
 `node_modules`, services, environment variables, or model credentials are required. Clone the
 repo and run `./x test` to confirm the Go toolchain; `./x gate` creates the Pi-extension test
 container on first use. Developer tools (`golangci-lint`, `deadcode`, `gremlins`) are pinned in
@@ -41,8 +41,9 @@ Runtime dependencies are deliberately few (see `go.mod`):
 
 - **`gopkg.in/yaml.v3`**: strict (`KnownFields`) parsing and comment-preserving mutation
   of the `.awf/` config tree, plus ADR and skill/agent frontmatter.
-- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): pure-Go git access for
-  `awf audit`'s history and working-tree reads; awf and its tests need no host `git` binary.
+- **`github.com/go-git/go-git/v5`** (with `go-billy/v5`): the pure-Go implementation for
+  `awf audit` history and working-tree reads. Native `git` is a runtime and test prerequisite for
+  repository control-root resolution, efforts, and managed-worktree operations.
 - **`golang.org/x/mod`**: semver comparison for the binary-version gate (ADR-0039).
 - **`github.com/bmatcuk/doublestar/v4`**: anchored path-glob matching behind
   `internal/pathglob` (ADR-0077).

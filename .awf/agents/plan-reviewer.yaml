@@ -42,6 +42,9 @@ data:
               commit that flips the declaring ADR to `Implemented`; a pre-flip phase keeps the existing
               claim and its marker valid, because the claim mutation is checked only in that Implemented
               transaction, never while the ADR remains `Proposed`
+        - name: dependency-composition-authority
+          description: when a plan changes dependency selection, ownership, or wiring, consult code-design/dependency-composition and reject speculative capability or a capability without one concrete first consumer
     docCurrencyItems:
+        - check: the plan schedules updates for every document its changes invalidate, in the same commits
         - check: docs/decisions/INDEX.md task included whenever an ADR status flip is planned
         - check: AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain

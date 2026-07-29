@@ -93,12 +93,16 @@ Apply all lenses to every plan:
 **invariant-claim-transition-phase-order**: when a plan removes or replaces an invariant claim, the proof marker moves in the same commit that flips the declaring ADR to `Implemented`; a pre-flip phase keeps the existing claim and its marker valid, because the claim mutation is checked only in that Implemented transaction, never while the ADR remains `Proposed`
 
 
+**dependency-composition-authority**: when a plan changes dependency selection, ownership, or wiring, consult code-design/dependency-composition and reject speculative capability or a capability without one concrete first consumer
+
+
 
 ## Doc-currency checklist
 
 <!-- awf:edit doc-currency: default; create .awf/agents/parts/plan-reviewer/doc-currency.md to override -->
 For each item below, flag a finding if the gating condition is met AND the plan does not include a same-commit task to update the listed artifact:
 
+- the plan schedules updates for every document its changes invalidate, in the same commits
 - docs/decisions/INDEX.md task included whenever an ADR status flip is planned
 - AGENTS.md update task included when the plan introduces new conventions or changes the workflow chain
 

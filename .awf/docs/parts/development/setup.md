@@ -1,6 +1,6 @@
 ## Setup
 
-A working checkout needs Go 1.26+ (see `go.mod`) and Docker. No host Node, npm,
+A working checkout needs Go 1.26+ (see `go.mod`), native Git, and Docker. No host Node, npm,
 `node_modules`, services, environment variables, or model credentials are required. Clone the
 repo and run `./x test` to confirm the Go toolchain; `./x gate` creates the Pi-extension test
 container on first use. Developer tools (`golangci-lint`, `deadcode`, `gremlins`) are pinned in

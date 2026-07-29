@@ -45,7 +45,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
    - **user-decision**: present to the user and wait.
 
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-impl/apply-fixes-commit.md to override -->
-5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes, landing them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`; `./x gate` passes before each commit.
 
 <!-- awf:edit run-audit: from .awf/skills/parts/reviewing-impl/run-audit.md -->
 6. **Run the process-conformance audit.** After the code-review findings are routed, run

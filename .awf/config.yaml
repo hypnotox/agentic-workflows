@@ -11,6 +11,8 @@ audit:
       meaning: the ADR machinery code (INDEX.md generation, lifecycle)
     - name: awf
       meaning: genuinely cross-cutting / repo-meta work, the umbrella of last resort
+    - name: code-design
+      meaning: dependency composition and cross-package code structure
     - name: config
       meaning: the .awf config tree, schema, migrations
     - name: invariants
