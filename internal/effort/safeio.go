@@ -89,7 +89,13 @@ func readRegularNoFollow(path string) ([]byte, error) {
 	return raw, nil
 }
 
+// residentOwner is the ownership predicate behind ValidateCurrentOwner. It is a
+// variable so the foreign-owner refusal is provable without a privileged test
+// process able to create a foreign-owned fixture; production always binds the
+// platform check. internal/worktree keeps the same seam as managedOwner.
+var residentOwner = validatePathOwner
+
 // ValidateCurrentOwner applies the platform's no-follow owner check to an existing path.
 func ValidateCurrentOwner(path string, info os.FileInfo) error {
-	return validatePathOwner(path, info, nil)
+	return residentOwner(path, info, nil)
 }

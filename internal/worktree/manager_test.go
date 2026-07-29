@@ -875,6 +875,138 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 	})
 }
 
+// TestRestartCompletesFromPartialTopology proves the restartable property that
+// makes the stateless design safe: after a fault between Remove's two
+// mutations, a fresh manager reads the real topology and finishes from wherever
+// the previous attempt stopped, with no stored evidence of that attempt.
+func TestRestartCompletesFromPartialTopology(t *testing.T) {
+	// invariant: tooling/effort-management:managed-worktree-lifecycle
+	t.Run("branch delete faulted", func(t *testing.T) {
+		m, root := newManagerWithEffort(t, "Restart branch delete")
+		slug := "restart-branch-delete"
+		if _, err := m.Add(slug, "HEAD"); err != nil {
+			t.Fatal(err)
+		}
+		m.run = runnerFailingPrefix(m.run, "branch -d")
+		if _, err := m.Remove(slug); err == nil {
+			t.Fatal("branch delete fault hidden")
+		}
+		// Genuinely partial: the checkout is gone, the branch is not.
+		if _, err := os.Stat(filepath.Join(root, ".awf", "worktrees", slug)); !os.IsNotExist(err) {
+			t.Fatalf("managed path survived the faulted attempt: %v", err)
+		}
+		if !worktreeBranchExists(t, root, slug) {
+			t.Fatal("branch already deleted, so the restart fixture proves nothing")
+		}
+		if _, err := freshWorktreeManager(t, root).Remove(slug); err != nil {
+			t.Fatalf("restart did not complete from partial topology: %v", err)
+		}
+		if worktreeBranchExists(t, root, slug) {
+			t.Fatal("restart left the branch behind")
+		}
+	})
+	t.Run("worktree remove faulted", func(t *testing.T) {
+		m, root := newManagerWithEffort(t, "Restart worktree remove")
+		slug := "restart-worktree-remove"
+		if _, err := m.Add(slug, "HEAD"); err != nil {
+			t.Fatal(err)
+		}
+		m.run = runnerFailingPrefix(m.run, "worktree remove")
+		if _, err := m.Remove(slug); err == nil {
+			t.Fatal("worktree remove fault hidden")
+		}
+		managed := filepath.Join(root, ".awf", "worktrees", slug)
+		if _, err := os.Stat(managed); err != nil {
+			t.Fatalf("faulted removal discarded the checkout anyway: %v", err)
+		}
+		if _, err := freshWorktreeManager(t, root).Remove(slug); err != nil {
+			t.Fatalf("restart did not complete after a failed first mutation: %v", err)
+		}
+		if _, err := os.Stat(managed); !os.IsNotExist(err) {
+			t.Fatalf("restart left the managed path: %v", err)
+		}
+		if worktreeBranchExists(t, root, slug) {
+			t.Fatal("restart left the branch behind")
+		}
+	})
+	t.Run("add faulted before mutating", func(t *testing.T) {
+		m, root := newManagerWithEffort(t, "Restart add")
+		slug := "restart-add"
+		m.run = runnerFailingPrefix(m.run, "worktree add")
+		if _, err := m.Add(slug, "HEAD"); err == nil {
+			t.Fatal("add fault hidden")
+		}
+		if _, err := os.Stat(filepath.Join(root, ".awf", "worktrees", slug)); !os.IsNotExist(err) {
+			t.Fatalf("failed add left a path: %v", err)
+		}
+		if _, err := freshWorktreeManager(t, root).Add(slug, "HEAD"); err != nil {
+			t.Fatalf("restart could not add after a failed attempt: %v", err)
+		}
+	})
+}
+
+// TestPreMutationRefusalInvokesNoDestructiveCommand pins the negative half of
+// the refusal contract: a refusal that reports no topology change must not have
+// run a destructive command at all.
+func TestPreMutationRefusalInvokesNoDestructiveCommand(t *testing.T) {
+	m, root := newManagerWithEffort(t, "Refusal invokes nothing")
+	slug := "refusal-invokes-nothing"
+	if _, err := m.Add(slug, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	managed := filepath.Join(root, ".awf", "worktrees", slug)
+	writeWorktreeFile(t, filepath.Join(managed, "effort.txt"), "unmerged\n")
+	commitWorktree(t, managed, "unmerged")
+
+	var invoked []string
+	m.run = recordingWorktreeRunner(m.run, &invoked)
+	_, err := m.Remove(slug)
+	if err == nil || !strings.Contains(err.Error(), "not merged") {
+		t.Fatalf("unmerged removal error = %v", err)
+	}
+	if !strings.Contains(err.Error(), "changed topology: no") {
+		t.Fatalf("refusal must report an unchanged topology: %v", err)
+	}
+	// Without this the negative loop below would pass on an empty log.
+	if len(invoked) == 0 {
+		t.Fatal("no git command was recorded, so the negative assertion proves nothing")
+	}
+	for _, args := range invoked {
+		for _, destructive := range []string{"worktree remove", "branch -d", "branch -D"} {
+			if strings.HasPrefix(args, destructive) {
+				t.Errorf("refusal invoked %q", args)
+			}
+		}
+	}
+	if _, statErr := os.Stat(managed); statErr != nil {
+		t.Fatalf("refusal discarded the managed worktree: %v", statErr)
+	}
+	if !worktreeBranchExists(t, root, slug) {
+		t.Fatal("refusal deleted the branch")
+	}
+}
+
+func freshWorktreeManager(t *testing.T, root string) *Manager {
+	t.Helper()
+	manager, err := Open(context.Background(), root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return manager
+}
+
+func worktreeBranchExists(t *testing.T, root, slug string) bool {
+	t.Helper()
+	return runWorktreeGit(t, root, "branch", "--list", "awf/"+slug) != ""
+}
+
+func recordingWorktreeRunner(base Runner, log *[]string) Runner {
+	return func(ctx context.Context, dir string, args ...string) ([]byte, error) {
+		*log = append(*log, strings.Join(args, " "))
+		return base(ctx, dir, args...)
+	}
+}
+
 func newManagerWithEffort(t *testing.T, title string) (*Manager, string) {
 	t.Helper()
 	root := initWorktreeRepo(t, "sha1")

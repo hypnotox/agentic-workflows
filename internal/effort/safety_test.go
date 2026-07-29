@@ -9,6 +9,43 @@ import (
 	"testing"
 )
 
+// TestEffortResidentsRefuseForeignOwnedBytesUnprivileged proves the refusal
+// itself through the injectable owner seam, so an ordinary gate run covers the
+// diagnosis that the real-fixture test below can only reach under privilege.
+func TestEffortResidentsRefuseForeignOwnedBytesUnprivileged(t *testing.T) {
+	root := initEffortRepo(t)
+	service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := service.New("Seam owner"); err != nil {
+		t.Fatal(err)
+	}
+	resident := filepath.Join(root, ".awf", "efforts", "seam-owner")
+	before, err := os.ReadFile(filepath.Join(resident, "memory.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	original := residentOwner
+	t.Cleanup(func() { residentOwner = original })
+	residentOwner = func(path string, _ os.FileInfo, _ *os.File) error {
+		return safety("foreign-owner", path, nil)
+	}
+	if _, err := service.Show("seam-owner"); err == nil || !strings.Contains(err.Error(), "foreign-owner") {
+		t.Fatalf("foreign owner refusal = %v", err)
+	}
+	if _, err := service.List(); err == nil || !strings.Contains(err.Error(), "foreign-owner") {
+		t.Fatalf("enumeration foreign owner refusal = %v", err)
+	}
+
+	residentOwner = original
+	after, err := os.ReadFile(filepath.Join(resident, "memory.md"))
+	if err != nil || string(after) != string(before) {
+		t.Fatalf("refusal changed resident bytes: %v", err)
+	}
+}
+
 // TestEffortResidentsRefuseForeignOwnedBytes exercises the no-follow owner check
 // against a resident owned by another user. Creating that fixture requires
 // privilege, so the body runs only under a privileged test process; the

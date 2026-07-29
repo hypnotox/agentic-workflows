@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strings"
 	"sync"
@@ -134,6 +136,22 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 			} else if listErr != nil || len(listed) != 0 {
 				t.Fatalf("incomplete directory must be ignored: list=%#v err=%v", listed, listErr)
 			}
+			assertNoEffortTemporaries(t, filepath.Join(root, ".awf", "efforts", "fault-matrix"))
+
+			// Recreating the same slug must name which reservation blocks it: an
+			// incomplete one is a different condition, and a different repair,
+			// from an active effort.
+			_, retryErr := service.New("Fault matrix")
+			if retryErr == nil {
+				t.Fatal("recreation over an existing reservation succeeded")
+			}
+			wantCondition := "an incomplete reservation exists"
+			if statePublished {
+				wantCondition = "an active effort already exists"
+			}
+			if !strings.Contains(retryErr.Error(), wantCondition) {
+				t.Fatalf("recreation error = %v, want condition %q", retryErr, wantCondition)
+			}
 		})
 	}
 }
@@ -205,9 +223,15 @@ func TestEnumerationPreservesAndDiagnosesForeignResidents(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			// The message clauses are template text, so preservation is asserted
+			// against the real bytes rather than against the wording.
+			before := snapshotEffortsTree(t, root)
 			_, err = service.List()
 			if err == nil || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "preserve") {
 				t.Fatalf("diagnostic = %v", err)
+			}
+			if after := snapshotEffortsTree(t, root); !reflect.DeepEqual(before, after) {
+				t.Fatalf("refused enumeration changed bytes:\nbefore %v\nafter  %v", before, after)
 			}
 		})
 	}
@@ -423,6 +447,61 @@ func indexOfStage(t *testing.T, stages []string, want string) int {
 	}
 	t.Fatalf("stage %q not found", want)
 	return -1
+}
+
+// snapshotEffortsTree records every resident leaf under the efforts root by
+// mode, with contents for regular files. Non-regular leaves are recorded by
+// mode alone so a fifo fixture is never opened.
+func snapshotEffortsTree(t *testing.T, root string) map[string]string {
+	t.Helper()
+	base := filepath.Join(root, ".awf", "efforts")
+	out := map[string]string{}
+	err := filepath.WalkDir(base, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(base, path)
+		if err != nil { // coverage-ignore: every walked path is rooted at base by construction
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			out[rel] = info.Mode().String()
+			return nil
+		}
+		content, err := os.ReadFile(path)
+		if err != nil { // coverage-ignore: the walk just proved this readable regular leaf exists
+			return err
+		}
+		out[rel] = info.Mode().String() + ":" + string(content)
+		return nil
+	})
+	if err != nil { // coverage-ignore: the efforts root is an owned readable directory in every fixture
+		t.Fatalf("snapshot efforts tree: %v", err)
+	}
+	return out
+}
+
+// assertNoEffortTemporaries proves publication cleaned up after itself: a
+// leaked staging file would otherwise sit undetected inside a reserved
+// directory that enumeration deliberately ignores.
+func assertNoEffortTemporaries(t *testing.T, dir string) {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return
+	}
+	if err != nil { // coverage-ignore: the reservation created this owned readable directory
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasSuffix(entry.Name(), ".tmp") {
+			t.Errorf("publication left temporary %s", filepath.Join(dir, entry.Name()))
+		}
+	}
 }
 
 func openEffortService(t *testing.T, root string, now time.Time) *Service {

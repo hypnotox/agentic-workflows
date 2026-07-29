@@ -241,6 +241,10 @@ var routineCheckpointSkills = []string{
 // of brainstorming and the settled ADR review (ADR-0152).
 var approvalCheckpointSkills = []string{"brainstorming", "reviewing-adr"}
 
+// phaseCheckpointSkills own a whole phase, so each renders exactly one routine
+// checkpoint. Skills that checkpoint per resumable change render more.
+var phaseCheckpointSkills = map[string]bool{"executing-plans": true, "subagent-driven-development": true}
+
 // assertOrderedBody asserts each phrase appears in body after the previous one.
 //
 // The cursor only advances, so nothing before the FIRST phrase is ever scanned.
@@ -366,6 +370,13 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 				ordered = append(ordered, "Continue through the target-native successor without claiming session replacement")
 			}
 			assertOrderedBody(t, target+"/"+name+" routine checkpoint", body, ordered)
+			// Only the two phase skills carry exactly one. executing-direct also
+			// checkpoints per resumable change, so it legitimately renders more.
+			if phaseCheckpointSkills[name] {
+				if count := strings.Count(strings.ToLower(body), "routine checkpoint"); count != 1 {
+					t.Errorf("%s/%s renders %d routine checkpoint instructions, want one", target, name, count)
+				}
+			}
 			if strings.Contains(body, "explicitly request approval") {
 				t.Errorf("%s/%s renders an approval stop in a routine skill", target, name)
 			}
@@ -375,6 +386,38 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			if target != "pi" && strings.Contains(body, "handoff_session") {
 				t.Errorf("%s/%s names handoff_session", target, name)
 			}
+		}
+
+		// The claim asserts where a routine checkpoint may occur, so the doc
+		// that states it is part of the proof. Without this the sentence could
+		// be deleted, or a task/helper trigger added beside it, with the suite
+		// still green.
+		assertCheckpointBoundaryDoc(t, target+" catalog workflow", read(t, filepath.Join(root, "docs", "workflow.md")))
+	}
+	assertCheckpointBoundaryDoc(t, "project workflow", read(t, filepath.Join("..", "..", "docs", "workflow.md")))
+}
+
+// checkpointBoundarySentence is the authoritative statement of which boundaries
+// are checkpoints. Its absence, or any sentence adding a task or helper
+// trigger, breaks the claim.
+const checkpointBoundarySentence = "checkbox tasks and helper returns are not checkpoint boundaries"
+
+func assertCheckpointBoundaryDoc(t *testing.T, label, body string) {
+	t.Helper()
+	if !strings.Contains(body, checkpointBoundarySentence) {
+		t.Errorf("%s lost the checkpoint-boundary sentence %q", label, checkpointBoundarySentence)
+	}
+	sentenceBoundary := regexp.MustCompile(`[.!?](?:\s+|$)`)
+	for _, sentence := range sentenceBoundary.Split(strings.ToLower(body), -1) {
+		if !strings.Contains(sentence, "checkpoint") {
+			continue
+		}
+		mentionsTaskOrHelper := strings.Contains(sentence, "checkbox task") || strings.Contains(sentence, "helper return")
+		// "not commit, dispatch, review, or checkpoint boundaries" negates just
+		// as well as the exact phrase, so the check accepts any negated form.
+		negates := strings.Contains(sentence, "not ") && strings.Contains(sentence, "checkpoint boundaries")
+		if mentionsTaskOrHelper && !negates {
+			t.Errorf("%s adds a task/helper checkpoint trigger: %q", label, sentence)
 		}
 	}
 }
