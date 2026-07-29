@@ -110,8 +110,8 @@ review fixes concurrently before execution.
 - [ ] **Task 1.2: Resync this plan against the rebased source closure.** Re-run `awf context` for the
   File structure paths and `awf topic` for each ADR-0175 destination topic. If ADR-0173 added,
   removed, or split an overlapping source, update this still-Proposed plan's exact inventory and
-  tasks without weakening its complete first-class guidance scope. For every later phase, replace
-  its staged-inventory note with an exact `git add -- <path...>` command derived from that phase's
+  tasks without weakening its complete first-class guidance scope. For every phase, replace its
+  staged-inventory note with an exact `git add -- <path...>` command derived from that phase's
   resolved authored and generated closure; require the corresponding `git diff --cached --name-only`
   output to equal the named phase status inventory. Use
   `git diff --name-only --diff-filter=ACMR -- '*.go' | xargs -r gofmt -w` as the exact changed-Go
@@ -136,10 +136,12 @@ review fixes concurrently before execution.
   event, and leave every declared operation Remaining. Run `./x render` so the generated decision
   index and lock travel with the transition.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Explicitly stage only ADR-0175, any plan
-  source-closure correction, `docs/decisions/INDEX.md`, and `.awf/awf.lock`. Run `./awf check
-  --staged` and use its reported digest to settle the Accepted event, restage, then require the staged
-  check and `./x gate` to pass. Commit:
+- [ ] **Phase-close: stage, check, gate, and commit.** Run the exact Phase 1 `git add --` command
+  materialized by Task 1.2; its inventory must contain ADR-0175, this plan when source-closure
+  correction changed it, `docs/decisions/INDEX.md`, and `.awf/awf.lock`, with no other path. Require
+  `git diff --cached --name-only` to equal that inventory. Run `./awf check --staged` and use its
+  reported digest to settle the Accepted event, restage with the same command, then require the
+  staged check and `./x gate` to pass. Commit:
 
 ```commit
 docs(adr): accept 0175 unified efforts
