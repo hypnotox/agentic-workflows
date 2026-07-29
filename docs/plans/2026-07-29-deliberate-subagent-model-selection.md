@@ -46,7 +46,8 @@ commit-capable phase implementer.
   `tools/pi-extension-test/tests/index.test.ts`, `tools/pi-extension-test/tests/runtime.test.ts`,
   and `internal/project/subagent_model_selection_test.go`.
 - **Modified authored workflow sources:** `templates/agents-doc/AGENTS.md.tmpl`,
-  `templates/docs/working-with-awf.md.tmpl`, and
+  `templates/docs/working-with-awf.md.tmpl`,
+  `.awf/parts/working-with-awf/config-and-overrides.md`, and
   `templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl`.
 - **Modified Pi implementation and test plumbing:** `templates/pi/awf-subagents/index.ts.tmpl`,
   `internal/project/target.go`, `internal/project/target_test.go`,
@@ -121,7 +122,11 @@ including the operation, generated outputs, staged check, gate, and closing comm
   Add the same target-neutral convention to the workflow-subagents section of
   `templates/docs/working-with-awf.md.tmpl`, followed by a Pi-only sentence saying omission uses the
   configured role default and an exact tier reference is supplied only for a deliberate override.
-  Preserve existing phase ownership and preference-file documentation.
+  The root adopter replaces that template section, so add the same convention and Pi-only sentence
+  to `.awf/parts/working-with-awf/config-and-overrides.md` after its phase-ownership paragraph; this
+  part is the authored source for `docs/working-with-awf.md`, while the template remains the authored
+  source for Sundial and generic adopters. Preserve existing phase ownership and preference-file
+  documentation.
 
 - [ ] **Task 1.3: Update every final governed dispatch occurrence in the eight skill templates.** Use
   one shared qualifying wording shape, specialized only for the local role and occurrence. For a Pi
@@ -176,7 +181,7 @@ including the operation, generated outputs, staged check, gate, and closing comm
   individual files, never a directory):
 
   ```sh
-  git add -- templates/agents-doc/AGENTS.md.tmpl templates/docs/working-with-awf.md.tmpl templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl internal/project/subagent_model_selection_test.go internal/project/target_test.go internal/evals/chain_test.go .awf/topics/parts/rendering/workflow-skill-templates/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock AGENTS.md docs/working-with-awf.md docs/topics/rendering/workflow-skill-templates.md docs/domains/rendering.md docs/decisions/INDEX.md .{claude,pi}/skills/awf-{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md examples/sundial/AGENTS.md examples/sundial/docs/working-with-awf.md examples/sundial/.awf/awf.lock examples/sundial/.{agents,claude,cursor,gemini,github,pi}/skills/sundial-{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md
+  git add -- templates/agents-doc/AGENTS.md.tmpl templates/docs/working-with-awf.md.tmpl .awf/parts/working-with-awf/config-and-overrides.md templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl internal/project/subagent_model_selection_test.go internal/project/target_test.go internal/evals/chain_test.go .awf/topics/parts/rendering/workflow-skill-templates/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock AGENTS.md docs/working-with-awf.md docs/topics/rendering/workflow-skill-templates.md docs/domains/rendering.md docs/decisions/INDEX.md .{claude,pi}/skills/awf-{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md examples/sundial/AGENTS.md examples/sundial/docs/working-with-awf.md examples/sundial/.awf/awf.lock examples/sundial/.{agents,claude,cursor,gemini,github,pi}/skills/sundial-{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md
   ```
 
   Require `git diff --cached --name-only` to equal the Phase 1 status inventory. Run `./awf check
