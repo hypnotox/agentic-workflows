@@ -378,8 +378,9 @@ malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable c
 blocks implicit routing while valid explicit calls remain usable; and preference plus registry state
 reloads at preflight and immediately before child startup. Keep the existing wizard behavior and
 generic dispatch guidance coherent. Run `./x render`, inspect deterministic consequences, and stage
-only `templates/docs/working-with-awf.md.tmpl`, `examples/sundial/docs/working-with-awf.md`, and
-`examples/sundial/.awf/awf.lock` if those are the complete render inventory. Run `./awf check
+only `templates/docs/working-with-awf.md.tmpl`, `.awf/awf.lock`,
+`examples/sundial/docs/working-with-awf.md`, and `examples/sundial/.awf/awf.lock`; these are the
+complete deterministic render consequences. Run `./awf check
 --staged` and `./x gate`, then commit `docs(rendering): refresh Pi model preference guidance`.
 
 ## Phase 3: add the routing card, bounded module, and real-runtime proof
