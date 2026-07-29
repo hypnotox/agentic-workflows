@@ -639,13 +639,20 @@ docs(plans): freeze unified effort plan
 - Task 3.4's residual-surface search found one stale current-state doc: the `handoff_session`
   pitfall still described the retired standalone `.awf/memory/<effort-id>.md` path and a diagnostic
   the extension no longer emits. It was corrected in the same transaction.
-- Amendment, Phase 3 source closure: the residual-surface search covered authored `.awf/` parts but
-  not the shipped generic templates behind them, so three sentences in
-  `templates/docs/working-with-awf.md.tmpl` kept naming three resident roots. The root guide
-  overrides two of the three sections, which hid the contradiction locally while still publishing it
-  to every adopter and to Sundial. That template is added to the phase source set. The lesson
-  generalizes: overriding a section in this repo can mask stale generic prose that adopters still
-  receive, so a resident-shape change must search templates as well as `.awf/` parts.
+- Finding, Phase 3 residual-surface gap: the search covered authored `.awf/` parts but not the
+  shipped generic templates behind them, so three sentences in
+  `templates/docs/working-with-awf.md.tmpl` kept naming three resident roots. The template was
+  already named in this plan's File structure, so nothing was missing from the phase source set; the
+  search itself was too narrow. Only one of the three sentences was hidden locally, the `commands`
+  one, because that section is a full-replacement override. The `overview` override opens with
+  `{{=awf:sectionDefault}}` and therefore appends, and `sync-and-drift` is not overridden at all, so
+  both of those sentences rendered straight into this repo's own guide: `docs/working-with-awf.md`
+  asserted three resident roots on line 12 and exactly two on line 29 of the same file, and that
+  self-contradiction went unread until terminal review. Two lessons, neither of them the one first
+  recorded here: a full-replacement override can mask stale generic prose that adopters still
+  receive, so a resident-shape change must search templates as well as `.awf/` parts; and a rendered
+  guide is worth reading end to end after a shape change, because this one stated both shapes
+  seventeen lines apart.
 - Task 4.1 findings settlement: the terminal review returned one blocker (the template prose above),
   two concerns, and two nits. The blocker, the stale `config` domain current-state part, the stale
   `tooling/upgrade-runtime` topic intro, and a dead `"memory"` render-kind string were all settled
@@ -659,6 +666,17 @@ docs(plans): freeze unified effort plan
   multi-generation upgrade may already have mutated config bytes in an earlier generation, was
   accepted as-is: the preceding migration prints its own removal lines immediately above the
   refusal, so the operator sees the full picture.
+- Task 4.1 verify pass: the verifier withdrew its topic-ownership conclusion after reading
+  `internal/topic/markers.go`, and returned three new findings. The substantive one was that the
+  claim's "final lock replacement is the commit point" clause remained unproven: moving the lock's
+  apply ahead of the resident loop passed every test in `internal/upgrade`. The first repair
+  attempted here, asserting the ordered operation log, did not catch it either, because the log line
+  for the lock is emitted at its original trailing site regardless of when the bytes land; nor did
+  the existing collision test, because `restorePriors` walks in reverse and so restores the lock
+  before it halts. The proof now watches the on-disk lock at each emitted operation and requires it
+  to stay at its prior bytes until the commit step, which fails the mutation with an exact
+  diagnostic. The other two findings corrected the overstated amendment above and the settlement
+  commit's message, which named no part of its production and test contents.
 
 ### Phase 2 execution record
 
