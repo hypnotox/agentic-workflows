@@ -190,9 +190,9 @@
     },
     ".pi/extensions/awf-subagents/model-routing.ts": {
       "templateId": "pi/awf-subagents/model-routing.ts.tmpl",
-      "templateHash": "sha256:76c1f0a0d7efdaf58abe5c5c11d7878524e8d6b3c16edab5f7e0cea32c0f734e",
+      "templateHash": "sha256:a2df63b4eadbdd81bdb2cd27e9caffa8460992f507598983bf421a7f0b63d95b",
       "configHash": "sha256:fa0515ab43ff12c639c31ba5013eff15de4319e01b2fc63b81b978323ac74e94",
-      "outputHash": "sha256:82da7a0f834d9c9f9e811947c7ae2b37fc56acfe40ff97cb7fa11616f75c69c6"
+      "outputHash": "sha256:f12dda4849e2f9883d16452a52febf063af20da521e959a989bf8608913fe28a"
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",

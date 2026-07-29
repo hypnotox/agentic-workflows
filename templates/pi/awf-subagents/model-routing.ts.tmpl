@@ -5,15 +5,14 @@ import { Type } from "typebox";
 export const PREFERENCE_ROLES = ["grounding", "exploration", "review", "implementation"] as const;
 export const PREFERENCE_TIERS = ["small", "standard", "large"] as const;
 export const PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS] as const;
-export type PreferenceRole = (typeof PREFERENCE_ROLES)[number];
-export type PreferenceTier = (typeof PREFERENCE_TIERS)[number];
+type PreferenceRole = (typeof PREFERENCE_ROLES)[number];
 export type PreferenceField = (typeof PREFERENCE_FIELDS)[number];
-export type SubagentRole = "grounding" | "explore" | "review" | "implement";
+type SubagentRole = "grounding" | "explore" | "review" | "implement";
 export type ModelSource = "inherited" | "requested" | "project-role" | "global-role" | "project-default" | "global-default";
-export type SourceScope = "global" | "project";
-export type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key";
-export type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable";
-export type InvalidState =
+type SourceScope = "global" | "project";
+type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key";
+type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable";
+type InvalidState =
   | { kind: "source"; scope: SourceScope; reason: SourceReason }
   | { kind: "field"; scope: SourceScope; field: PreferenceField; reason: FieldReason };
 export interface SubagentModelPreferences {
@@ -35,12 +34,12 @@ export interface EffectivePreferenceState {
   blocked: boolean;
   errors: string[];
 }
-export interface ModelRegistryLike {
+interface ModelRegistryLike {
   find(provider: string, id: string): unknown;
   hasConfiguredAuth(model: unknown): boolean;
   getAvailable(): readonly { provider: string; id: string }[];
 }
-export interface PreferenceStoreDependencies {
+interface PreferenceStoreDependencies {
   readFile(path: string, encoding: "utf8"): Promise<string>;
   extensionFile: string;
   agentDir: string;
@@ -181,7 +180,7 @@ export function createPreferenceStore(deps: PreferenceStoreDependencies) {
     state(): EffectivePreferenceState { return effectivePreferenceState(global, project, registryInvalid); },
   };
 }
-export type PreferenceStore = ReturnType<typeof createPreferenceStore>;
+type PreferenceStore = ReturnType<typeof createPreferenceStore>;
 export function preferredReference(project: PreferenceSourceState, global: PreferenceSourceState, role: SubagentRole): { value: string; source: ModelSource } | undefined {
   const key = ROLE_PREFERENCE_KEYS[role];
   const candidates: Array<{ value: string | undefined; source: ModelSource }> = [

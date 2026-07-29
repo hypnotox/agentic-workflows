@@ -71,8 +71,6 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-extension-target-render
-
 // invariant: rendering/pi-workflows:pi-native-workflow-skills
 func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [tdd, local]\nagents: []\ntargets: [pi]\n", map[string]string{
@@ -163,8 +161,22 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 			}
 		}
 	}
-	if !strings.Contains(extensions[".pi/extensions/awf-handoff/index.ts"], "registerHandoff(pi") || !strings.Contains(extensions[".pi/extensions/awf-subagents/index.ts"], "registerSubagentTools(pi") {
+	handoff := extensions[".pi/extensions/awf-handoff/index.ts"]
+	index := extensions[".pi/extensions/awf-subagents/index.ts"]
+	routing := extensions[".pi/extensions/awf-subagents/model-routing.ts"]
+	if !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
 		t.Fatal("Pi extension entrypoints are not registered")
+	}
+	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export function createPreferenceStore", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
+		if !strings.Contains(routing, owned) {
+			t.Errorf("model-routing module missing owned policy %q", owned)
+		}
+		if strings.Contains(index, owned) {
+			t.Errorf("subagent entrypoint duplicates routing policy %q", owned)
+		}
+	}
+	if !strings.Contains(index, `from "./model-routing.ts"`) {
+		t.Error("subagent entrypoint does not consume model-routing module")
 	}
 }
 
@@ -209,6 +221,9 @@ func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-workflows:pi-subagent-model-routing
+// invariant: rendering/pi-workflows:pi-subagent-model-preferences
+// invariant: rendering/pi-workflows:pi-subagent-model-wizard
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	root := repoRootDir(t)
 	cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
@@ -287,7 +302,6 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-subagent-model-routing
 func TestPiSubagentModelRoutingRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
@@ -304,7 +318,6 @@ func TestPiSubagentModelRoutingRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-subagent-model-preferences
 func TestPiSubagentModelPreferencesRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
@@ -320,7 +333,6 @@ func TestPiSubagentModelPreferencesRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-subagent-model-wizard
 func TestPiSubagentModelWizardRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
