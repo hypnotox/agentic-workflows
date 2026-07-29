@@ -48,12 +48,16 @@ for every refusal or partial mutation.
    `state.json` retains an awf-allocated UUID as an internal identity together with the slug, title,
    creation time, and schema version; no command renames either identity.
 
-3. Creation reserves the slug directory exclusively, writes the initial owned `memory.md`, and
-   publishes `state.json` last. A command enumerating or selecting efforts ignores a directory whose
-   static state was never published, but never deletes, overwrites, or guesses malformed, incomplete,
-   symlinked, unconfinable, or foreign bytes. It reports an actionable manual-cleanup diagnostic when
-   a requested slug is blocked by such bytes. Successful creation always includes memory; remove the
-   standalone memory command and every no-memory creation mode.
+3. Creation reserves the slug directory exclusively and durably publishes it in a fixed order. It
+   writes each file through a confined sibling temporary file, syncs the complete file, atomically
+   renames it into place, and syncs the effort directory; it writes and syncs `memory.md` before it
+   publishes `state.json` by the same sequence, then syncs the efforts root. A command enumerating or
+   selecting efforts ignores a directory whose static state was never published, but never deletes,
+   overwrites, or guesses malformed, incomplete, symlinked, unconfinable, or foreign bytes. A reader
+   that sees published state without valid owned memory diagnoses interrupted or foreign publication
+   and directs manual preservation and cleanup rather than treating the effort as usable. Successful
+   creation always includes memory; remove the standalone memory command and every no-memory creation
+   mode.
 
 4. The owned memory file is the only working-memory location. It carries the effort slug and the
    normal brief, decisions, phase, next action, update time, and handoff log needed for restart and
@@ -62,11 +66,14 @@ for every refusal or partial mutation.
    Tracked ADRs, plans, code, and current-state documentation remain authoritative over this
    ephemeral checkpoint.
 
-5. Finishing is deletion, not a lifecycle transition. `awf effort finish <slug>` validates the
-   complete resident and managed-resource preconditions, then removes the whole effort directory.
-   There is no complete, abandon, reopen, repair, or historical-listing state machine. An operator
-   who intentionally discards work uses the same guarded resource cleanup and finish operation;
-   durable project history belongs in Git rather than a local terminal record.
+5. Finishing is restartable deletion, not a lifecycle transition. `awf effort finish <slug>` first
+   validates the complete resident and managed-resource preconditions, atomically renames the owned
+   directory within the efforts root to a reserved finishing name containing its internal UUID,
+   syncs the root, and then recursively deletes only that proven tombstone. The rename is the point at
+   which the effort ceases to be active. Enumeration ignores finishing names; a retry by slug locates
+   and validates the unique tombstone, completes deletion, and reports whether the active rename or
+   cleanup changed bytes. There is no complete, abandon, reopen, repair, or historical-listing state
+   machine. Durable project history belongs in Git rather than a local terminal record.
 
 6. Keep managed worktrees optional and separate at `.awf/worktrees/<slug>/` on branch
    `awf/<slug>`. Worktree creation derives those values from the selected effort and an explicit base
@@ -77,14 +84,18 @@ for every refusal or partial mutation.
 7. Managed integration is a stateless Git utility invoked from the clean target checkout that will
    receive the effort. It verifies the selected effort, expected managed path, worktree registration,
    `awf/<slug>` branch, repository identity, target cleanliness, operation state, and relevant
-   ancestry before changing bytes. It fast-forwards when possible and otherwise performs a normal
-   merge commit. It never runs tests or review, pushes, resolves conflicts, removes a worktree,
-   records an integration disposition, or finishes the effort.
+   ancestry before changing bytes. It fast-forwards when possible. When histories diverge, it starts
+   a normal non-fast-forward merge without committing and reports the staged mutation and required
+   next action; the caller runs `awf check --staged` and the project gate before creating the merge
+   commit. The utility never runs tests or review, commits, pushes, resolves conflicts, removes a
+   worktree, records an integration disposition, or finishes the effort.
 
-8. A merge conflict is a visible partial mutation, not a claimed rollback. The refusal reports that
-   target bytes changed and directs the agent to resolve or abort the merge. A resolved conflict must
-   pass the staged check and project gate and receive renewed terminal implementation review before
-   resource removal, retrospective, or finish continues.
+8. A divergent merge, with or without textual conflicts, combines target history that the prior
+   terminal review did not inspect. After the caller settles or aborts any conflict, a completed
+   merge must pass the staged check and project gate before commit and then receive renewed terminal
+   implementation review before resource removal, retrospective, or finish continues. A conflict is
+   a visible partial mutation, not a claimed rollback: the refusal reports that target bytes changed
+   and directs the agent to resolve or abort the merge.
 
 9. Managed worktree removal is restartable and inspects actual Git topology on every invocation. It
    safely handles the path, registration, and `awf/<slug>` branch as independently present or absent,
@@ -102,42 +113,56 @@ for every refusal or partial mutation.
     creation prevents two writers from allocating the same slug; after creation, agents and users are
     responsible for not concurrently mutating one effort's memory or managed Git resources.
 
-12. Advance the config schema and migrate resident ownership atomically with the ordinary upgrade.
-    Upgrade discards legacy UUID JSON effort records and standalone `.awf/memory/` content rather than
-    inventing slugs or migrating stale lifecycle state. It reports the reset under Breaking changes
-    and refuses before destructive cleanup while any legacy UUID worktree path, registration, or
-    branch remains, naming the required integration or removal action. The migration is retryable,
-    preserves malformed or foreign bytes for manual handling, and leaves the new `.awf/efforts/` and
-    `.awf/worktrees/` roots as the only resident roots owned by render, drift, discovery, sweep, and
-    uninstall behavior.
+12. Advance the config schema and migrate resident ownership through the ordinary journaled upgrade
+    transaction. Config loading and the version gate detect the old generation; migrate performs a
+    complete read-only preflight of legacy records, memory, and Git topology before creating the
+    journal; render and output planning stage the new root declarations and lock image; and manifest
+    replacement remains the final commit point. Extend the journal operation model to quarantine and
+    delete proven resident trees, with prior images or preserved quarantine sufficient for rollback
+    before the lock commit and cleanup-only recovery after it. Every project command except the
+    explicit recovery mode refuses while the journal exists. A retry follows the journal's actual
+    phase and never repeats a destructive step from assumed state.
 
-13. Move the working-memory citation detector and Pi handoff confinement contract to the unified
+13. The upgrade discards legacy UUID JSON effort records and standalone `.awf/memory/` content rather
+    than inventing slugs or migrating stale lifecycle state. It reports the reset under Breaking
+    changes and refuses before journal creation while any legacy UUID worktree path, registration, or
+    branch remains, naming the required integration or removal action. Preflight also preserves and
+    reports malformed, symlinked, non-directory, unconfinable, or foreign bytes for manual handling.
+    After the lock commit, config, render, manifest, migration, drift, discovery, sweep, and uninstall
+    consumers recognize only `.awf/efforts/` and `.awf/worktrees/` as owned resident roots and the
+    new schema; older binaries refuse at the binary-version gate.
+
+14. Move the working-memory citation detector and Pi handoff confinement contract to the unified
     memory path. Durable ADRs, plans, and commit-message bodies may name the efforts directory or an
     angle-bracket placeholder path but may not cite a concrete ephemeral effort memory file. Pi
     handoff remains independent of lifecycle selection and accepts the confined owned memory path;
     it does not parse state, assign an effort, or mutate effort resources.
 
-14. Treat the full agent workflow as first-class generated guidance and tested scope. The agent guide,
+15. Treat the full agent workflow as first-class generated guidance and tested scope. The agent guide,
     working-memory documentation, and every applicable brainstorming, ADR, planning, implementation,
     review, checkpoint, handoff, retrospective, debugging, and task skill must agree that: minimal
     simple fixes use no effort; once a concrete non-minimal outcome is identified the agent creates
     or resumes exactly one slugged effort with owned memory; checkpoints and handoffs carry the slug
-    and exact owned memory path; standalone memory is forbidden; and one effort has one writer.
+    and exact owned memory path; standalone memory is forbidden; and one effort has one writer. Every
+    template remains coherent under missing-key-zero rendering, and deterministic empty-variable
+    tests reject any unresolved-value token.
 
-15. For a worktree-backed effort, generated guidance inserts an explicit worktree-integration phase
+16. For a worktree-backed effort, generated guidance inserts an explicit worktree-integration phase
     after terminal implementation review and before retrospective. The agent integrates into the
-    intended clean target checkout, settles any conflict through the gate and renewed terminal
-    review, removes the managed worktree explicitly, runs retrospective, updates any warranted
-    durable lessons or changelog material, and only then finishes the effort. Without a managed
-    worktree, terminal review proceeds directly to retrospective and finish. No skill treats review,
-    retrospective, or finish as implicit effects of integration.
+    intended clean target checkout, settles any divergent merge through the staged check, gate,
+    commit, and renewed terminal review, removes the managed worktree explicitly, runs retrospective,
+    updates any warranted durable lessons or changelog material, and only then finishes the effort.
+    Without a managed worktree, terminal review proceeds directly to retrospective and finish. No
+    skill treats review, retrospective, or finish as implicit effects of integration.
 
-16. Update all command help, configuration reference, workflow and development documentation,
+17. Update all command help, configuration reference, workflow and development documentation,
     architecture, glossary, pitfalls, changelog, rendered root declarations, generated guides and
     skills, Pi extension contracts, and tests in the same implementation. Deterministic tests cover
-    slug derivation and collision, publication ordering and incomplete directories, legacy reset,
+    publication ordering and crash states, finish tombstones, legacy reset and journal recovery,
     resident-root ownership, refusal diagnostics and partial mutations, actual-Git restartability,
-    citation and handoff paths, and complete generated-agent lifecycle coverage.
+    citation and handoff paths, missing-key-zero rendering, and complete generated-agent lifecycle
+    coverage. Every ADR status-transition commit runs `./x render` and commits the regenerated
+    `docs/decisions/INDEX.md` and lock output with the status change.
 
 ## State changes
 
@@ -149,6 +174,8 @@ for every refusal or partial mutation.
 - update `rendering/singletons-and-payloads:memory-gitignore-always-on`
 - update `rendering/singletons-and-payloads:resident-output-preservation`
 - update `rendering/project-output-plan:output-plan-complete`
+- update `rendering/sync-and-drift:awf-bak-flagged`
+- update `rendering/sync-and-drift:closed-config-tree`
 - update `rendering/guide-and-doc-templates:working-memory-single-home`
 - update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
 - add `rendering/workflow-skill-templates:unified-effort-workflow-coverage`
@@ -192,6 +219,7 @@ and conditional post-review worktree integration are required.
 | Integrate automatically during finish | Integration can conflict and requires gates and review; combining it with destructive checkpoint cleanup obscures changed bytes and unsafe recovery. |
 | Automatically remove the worktree after integration | Explicit restartable removal exposes dirty or foreign topology and prevents integration from becoming an unexpectedly destructive command. |
 | Migrate legacy records by deriving slugs from titles | Collisions, malformed records, stale lifecycle fields, and optional memory make the result guesswork rather than a truthful migration. |
+| Preserve or indefinitely quarantine legacy records and memory | Recovery value is low because the residents are ephemeral and Git is authoritative; permanent quarantine retains privacy, ownership, discovery, and cleanup obligations without making stale lifecycle facts trustworthy. The upgrade journal keeps only the bounded rollback material needed until its commit and recovery complete. |
 | Add awf coordination locks | A lock cannot coordinate external Git and editor mutations reliably; the simpler contract is one user-managed writer per effort and independent concurrency across efforts. |
 
 ## Status history
