@@ -201,7 +201,7 @@ function emptyPreferenceSource(scope: SourceScope, path: string): PreferenceSour
 
 export function parseExactModelReference(value: unknown): { provider: string; id: string } | { reason: "malformed" | "overlong" } {
   if (typeof value !== "string") return { reason: "malformed" };
-  if (value.length > 256) return { reason: "overlong" };
+  if (Array.from(value).length > 256) return { reason: "overlong" };
   if (value === "default" || value === "auto" || value === "inherit parent") return { reason: "malformed" };
   const slash = value.indexOf("/");
   if (value.length < 3 || slash <= 0 || slash === value.length - 1 || /\s/.test(value)) return { reason: "malformed" };

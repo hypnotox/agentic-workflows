@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Value } from "typebox/value";
 import {
+  MAX_EXPLORATION_CONCURRENCY,
   MODEL_REFERENCE_SCHEMA,
   PREFERENCE_FIELDS,
   RECOMMENDED_PRESET,
@@ -263,6 +264,60 @@ test("all schemas and runtime calls enforce omission or one bounded exact refere
     }
   }
   assert.deepEqual(parseExactModelReference("a/b"), { provider: "a", id: "b" });
+
+  const astralAccepted = `p/${"😀".repeat(254)}`;
+  const astralRejected = `${astralAccepted}😀`;
+  assert.equal(Array.from(astralAccepted).length, 256);
+  assert.equal(Array.from(astralRejected).length, 257);
+  h.addModel(astralAccepted);
+  assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, astralAccepted), true);
+  assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, astralRejected), false);
+  assert.deepEqual(parseExactModelReference(astralAccepted), { provider: "p", id: "😀".repeat(254) });
+  assert.deepEqual(parseExactModelReference(astralRejected), { reason: "overlong" });
+});
+
+test("grounding and review reload preferences directly before runner startup", async () => {
+  for (const [name, params, role] of [
+    ["subagent_grounding", { task: "ground" }, "grounding"],
+    ["subagent_review", { task: "review", kind: "code" }, "review"],
+  ] as const) {
+    const values = complete();
+    const files = { [GLOBAL]: JSON.stringify(values) };
+    const h = harness({ files }); registerObject(h, values);
+    h.addModel(`new/${role}`);
+    await new Promise((done) => setImmediate(done));
+    const originalRead = h.deps.readFile;
+    let globalReads = 0;
+    h.deps.readFile = async (path, encoding) => {
+      if (path === GLOBAL && ++globalReads === 2) files[GLOBAL] = JSON.stringify({ ...values, [role]: `new/${role}` });
+      return originalRead(path, encoding);
+    };
+    await call(h, name, params);
+    assert.equal(`${h.requests[0].model.provider}/${h.requests[0].model.id}`, `new/${role}`, name);
+  }
+});
+
+test("exploration queue refresh rejects registration and authentication changes before runner startup", async () => {
+  for (const [label, invalidate, expected] of [
+    ["registration", (h: ReturnType<typeof harness>) => { h.models.delete("p/exploration"); h.available.delete("p/exploration"); }, /unregistered/],
+    ["authentication", (h: ReturnType<typeof harness>) => { h.models.get("p\/exploration").authenticated = false; }, /unauthenticated/],
+  ] as const) {
+    const gate = deferred<RunResult>();
+    const values = complete();
+    const h = harness({ files: { [GLOBAL]: JSON.stringify(values) }, run: async () => gate.promise });
+    registerObject(h, values);
+    const active = Array.from({ length: MAX_EXPLORATION_CONCURRENCY }, (_, index) =>
+      call(h, "subagent_explore", { task: `${label}-${index}`, breadth: "targeted", detail: "paths" }));
+    await new Promise((done) => setImmediate(done));
+    assert.equal(h.requests.length, MAX_EXPLORATION_CONCURRENCY);
+    const queued = call(h, "subagent_explore", { task: `${label}-queued`, breadth: "targeted", detail: "paths" });
+    await new Promise((done) => setImmediate(done));
+    invalidate(h);
+    gate.resolve(baseResult);
+    await Promise.all(active);
+    await assert.rejects(queued, expected);
+    assert.equal(h.requests.some((request) => request.task === `${label}-queued`), false);
+  }
 });
 
 test("serialized queue refreshes preferences and registry immediately before runner start", async () => {
@@ -376,6 +431,17 @@ test("wizard enforces project ignore decline, append, existing ignore, and outsi
   const outside = harness({ git: [{ code: 1 }], answers: [PROJECT_LABEL, true, PRESET, true] }); registerPreset(outside);
   await outside.runWizard();
   assert.deepEqual(outside.notices[0], ["Not a git work tree; skipping ignore check.", "info"]);
+
+  const ignoreRead = harness({ files: { [GITIGNORE]: new Error("ignore read failed") }, git: [{ code: 0 }, { code: 1 }], answers: [PROJECT_LABEL, true, PRESET, true, true] }); registerPreset(ignoreRead);
+  await ignoreRead.runWizard();
+  assert.match(ignoreRead.notices.at(-1)![0], /Cannot read .*ignore read failed/);
+  assert.equal(ignoreRead.writes.length, 0);
+
+  const ignoreWrite = harness({ git: [{ code: 0 }, { code: 1 }], answers: [PROJECT_LABEL, true, PRESET, true, true] }); registerPreset(ignoreWrite);
+  ignoreWrite.deps.writeFile = async (path) => { if (path === GITIGNORE) throw new Error("ignore write failed"); };
+  await ignoreWrite.runWizard();
+  assert.match(ignoreWrite.notices.at(-1)![0], /Cannot update .*ignore write failed/);
+  assert.equal(ignoreWrite.writes.length, 0);
 });
 
 test("wizard detects stale writers and handles read, mkdir, write, rename, and cleanup failures", async () => {
@@ -386,6 +452,12 @@ test("wizard detects stale writers and handles read, mkdir, write, rename, and c
   const read = harness({ files: { [GLOBAL]: new Error("read failed") }, answers: [GLOBAL_LABEL] });
   await read.runWizard(); assert.match(read.notices.at(-1)![0], /Cannot read/);
 
+  const reread = harness({ answers: [GLOBAL_LABEL, true, PRESET, () => {
+    reread.deps.readFile = async () => { throw new Error("reread failed"); };
+    return true;
+  }] }); registerPreset(reread);
+  await reread.runWizard(); assert.match(reread.notices.at(-1)![0], /Cannot re-read .*reread failed/);
+
   for (const [operation, mutate, expected] of [
     ["mkdir", (h: any) => { h.deps.mkdir = async () => { throw new Error("mkdir failed"); }; }, /Cannot create/],
     ["write", (h: any) => { h.deps.writeFile = async () => { throw new Error("write failed"); }; }, /Save failed: write failed/],
@@ -395,4 +467,10 @@ test("wizard detects stale writers and handles read, mkdir, write, rename, and c
     await h.runWizard(); assert.match(h.notices.at(-1)![0], expected, operation);
     if (operation !== "mkdir") assert.equal(h.writes.at(-1)?.op, "unlink", operation);
   }
+
+  const cleanup = harness({ answers: [GLOBAL_LABEL, true, PRESET, true] }); registerPreset(cleanup);
+  cleanup.deps.rename = async () => { throw new Error("rename primary"); };
+  cleanup.deps.unlink = async () => { throw new Error("cleanup secondary"); };
+  await cleanup.runWizard();
+  assert.match(cleanup.notices.at(-1)![0], /Save failed: rename primary/);
 });

@@ -159,14 +159,17 @@ query a single version or a range.
   continuity notice rather than an intervention point.
 - The Pi target's governed subagent tools resolve an omitted `model` through extension-owned local
   per-role preferences before inheriting the parent: a user-global `awf-subagents.json` and a
-  gitignored project-local `awf-subagents.local.json` set a default plus per-role models
-  (grounding, exploration, review, implementation), strictly validated at session start (any
-  invalid entry blocks implicit routing visibly while explicit per-call models keep working) and
-  revalidated against the live registry before every queued child, with routing-source
-  diagnostics. The new `/awf-subagent-models` TUI wizard is the atomic setup and repair path,
-  with a registry-gated recommended preset, informed per-model pricing selectors, and save-time
-  gitignore enforcement for the project-local file. Rendered guidance now steers long
-  implementations toward sequential implementation subagents.
+  gitignored project-local `awf-subagents.local.json` set a shared default, four explicit role
+  models (grounding, exploration, review, implementation), and small, standard, and large tier
+  mappings. Completeness requires all eight fields explicitly after project-over-global merging;
+  missing fields remain visible and non-blocking, while invalid configured state blocks implicit
+  routing and leaves valid explicit calls usable. Omission is the only default form; sentinel
+  values are rejected, and exact references are limited to 256 characters. Preferences and the
+  live registry are validated at preflight and again immediately before every child starts after
+  queue acquisition, with routing-source diagnostics. The `/awf-subagent-models` TUI wizard writes
+  roles and tiers atomically, with a registry-gated recommended preset, informed per-model pricing
+  selectors, and save-time gitignore enforcement for the project-local file. Rendered guidance now
+  steers long implementations toward sequential implementation subagents.
 - `awf context --uncovered` annotates each collapsed unowned directory with how many unowned
   files it covers and how many files beneath it are excluded from coverage (generated, ignored,
   or otherwise ineligible), so a mostly-generated directory no longer reads as wholly unowned.
