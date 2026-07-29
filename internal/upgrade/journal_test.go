@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -379,12 +380,38 @@ func TestJournalResidentKindRejections(t *testing.T) {
 	}
 }
 
+// lockWatcher reads the on-disk lock at the moment each operation line is
+// emitted. The log alone cannot prove when the commit point landed, because a
+// transaction that wrote the lock early would still print that line in its
+// usual place; only the bytes on disk at each step show the real order.
+type lockWatcher struct {
+	root  string
+	lines []string
+	locks []string
+}
+
+func (w *lockWatcher) Write(p []byte) (int, error) {
+	for _, line := range strings.Split(strings.TrimSuffix(string(p), "\n"), "\n") {
+		if line == "" {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(w.root, filepath.FromSlash(LockRel())))
+		if err != nil && !os.IsNotExist(err) {
+			return 0, err
+		}
+		w.lines = append(w.lines, line)
+		w.locks = append(w.locks, string(raw))
+	}
+	return len(p), nil
+}
+
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	root := t.TempDir()
 	seedResidents(t, root)
 	j := residentJournal(phasePrepared)
-	var log bytes.Buffer
-	if err := commitTransaction(root, j.Operations, &log); err != nil {
+	log := &lockWatcher{root: root}
+	if err := commitTransaction(root, j.Operations, log); err != nil {
 		t.Fatalf("commit: %v", err)
 	}
 	for _, gone := range []string{".awf/efforts/legacy.json", ".awf/memory", QuarantineRel()} {
@@ -399,7 +426,8 @@ func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "FINAL" {
 		t.Fatalf("lock: %q", got)
 	}
-	for _, want := range []string{
+	// The order is the contract, not just the membership.
+	want := []string{
 		"operation: applied .awf/config.yaml",
 		"operation: applied .awf/efforts/legacy.json",
 		"operation: applied .awf/memory",
@@ -407,9 +435,25 @@ func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 		"operation: discarded .awf/efforts/legacy.json",
 		"operation: discarded .awf/memory",
 		"operation: upgrade committed",
-	} {
-		if !strings.Contains(log.String(), want) {
-			t.Fatalf("log missing %q: %s", want, log.String())
+	}
+	if !slices.Equal(log.lines, want) {
+		t.Fatalf("operation sequence:\ngot  %q\nwant %q", log.lines, want)
+	}
+	// The lock replacement is the commit point, so it must not reach the disk
+	// until every resident has been quarantined. Writing it any earlier would let
+	// a crash seal the new generation with the residents still in place, and
+	// recovery would then take the committed branch and delete the journal
+	// without ever resetting them: an unrecoverable half-migration. Watching the
+	// bytes rather than the log is what makes that unbuildable, because a
+	// transaction that wrote the lock first would still log it last.
+	commit := slices.Index(want, "operation: applied "+LockRel())
+	for i, line := range log.lines {
+		got, expect := log.locks[i], "FINAL"
+		if i < commit {
+			expect = "old-lock"
+		}
+		if got != expect {
+			t.Fatalf("lock was %q at %q (step %d of %d); the commit point is step %d", got, line, i, len(log.lines), commit)
 		}
 	}
 	if JournalPresent(root) {
