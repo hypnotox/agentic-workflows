@@ -1,7 +1,7 @@
 ---
 date: 2026-07-29
 adrs: [175]
-status: Proposed
+status: Implemented
 ---
 # Plan: Unified ephemeral slug-based efforts
 
@@ -107,7 +107,7 @@ is intentionally the final applied batch because its activation is the cutover b
 onto `main` through ADR-0173's landed model-selection batches, but ADR-0173 may complete or receive
 review fixes concurrently before execution.
 
-- [ ] **Task 1.1: Rebase onto the final clean target authority before freezing the design.** Require
+- [x] **Task 1.1: Rebase onto the final clean target authority before freezing the design.** Require
   `git status --short` to print no output in both the effort worktree and intended target checkout.
   Require ADR-0173 and its plan to be in their final implemented state, with no uncommitted target
   changes to `templates/pi/awf-subagents/{index.ts.tmpl,model-routing.ts.tmpl}` or their generated
@@ -126,7 +126,7 @@ review fixes concurrently before execution.
   ./internal/evals`, `./x pi-test run`, `./x render`, `./x check`, and `git diff --check`; require
   success, clean drift, and no diff-check output.
 
-- [ ] **Task 1.2: Resync this plan against the rebased source closure.** Re-run `awf context` for the
+- [x] **Task 1.2: Resync this plan against the rebased source closure.** Re-run `awf context` for the
   File structure paths and `awf topic` for each ADR-0175 destination topic. If ADR-0173 added,
   removed, or split an overlapping source, update this still-Proposed plan's exact inventory and
   tasks without weakening its complete first-class guidance scope. For every phase, replace its
@@ -138,7 +138,7 @@ review fixes concurrently before execution.
   that changes ADR-0175's settled design stops for an ADR amendment and renewed ADR review;
   mechanical source-closure corrections remain autonomous.
 
-- [ ] **Task 1.3: Preserve the pre-cutover binary needed to remove this legacy worktree.** In the
+- [x] **Task 1.3: Preserve the pre-cutover binary needed to remove this legacy worktree.** In the
   intended clean target checkout, set
   `common=$(git rev-parse --path-format=absolute --git-common-dir)` and
   `legacy_bin="$common/awf-0175-legacy"`; require the destination to be absent, then run
@@ -150,12 +150,12 @@ review fixes concurrently before execution.
   ephemeral checkpoint state, never in a durable authority file. If any check fails, remove only the
   newly built binary and stop before the semantic cutover.
 
-- [ ] **Task 1.4: Accept ADR-0175 without applying state changes.** Use the ADR lifecycle procedure
+- [x] **Task 1.4: Accept ADR-0175 without applying state changes.** Use the ADR lifecycle procedure
   for `Proposed -> Accepted`: set status to `Accepted`, append the digest-bearing Accepted history
   event, and leave every declared operation Remaining. Run `./x render` so the generated decision
   index and lock travel with the transition.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage exactly:
+- [x] **Phase-close: stage, check, gate, and commit.** Stage exactly:
 
   ```sh
   git add -- .awf/awf.lock docs/decisions/0175-unified-ephemeral-slug-based-efforts.md docs/decisions/INDEX.md docs/plans/2026-07-29-unified-ephemeral-slug-based-efforts.md
@@ -182,7 +182,7 @@ Prior bounded implementation dispatches made no mutations, so they create no com
 ownership. The parent may use only sequential, explicitly partitioned, commit-disabled helpers while
 retaining all shared-file, staging, gate, and commit ownership.
 
-- [ ] **Task 2.1: Specify protocol-2 slug residents and crash states before production changes.**
+- [x] **Task 2.1: Specify protocol-2 slug residents and crash states before production changes.**
   Rewrite the `internal/effort` tests to pin `state.json` as schema 2 with ordered fields
   `schemaVersion`, `id`, `slug`, `title`, `createdAt`; expose `memoryPath` only in public objects.
   Test slug derivation exactly: lowercase ASCII letters, retain digits, replace every maximal run of
@@ -200,7 +200,7 @@ retaining all shared-file, staging, gate, and commit ownership.
   unusable foreign/interrupted resident, never auto-repair. Prove no repository or effort lock is
   created and concurrent same-slug creation has one winner.
 
-- [ ] **Task 2.2: Implement immutable residents and restartable finish.** Replace schema-1 types,
+- [x] **Task 2.2: Implement immutable residents and restartable finish.** Replace schema-1 types,
   mutable replacement, lifecycle fields, `partial.go`, and repair with immutable state reads,
   slug-directory creation, and owned memory. The memory skeleton must contain `Effort: <slug>`,
   `Phase:`, `Next:`, `Updated:`, `## Brief`, `## Decisions`, and `## Handoff log` in coherent generic
@@ -216,7 +216,7 @@ retaining all shared-file, staging, gate, and commit ownership.
   tombstones or foreign bytes require preservation and manual cleanup. Tests inject failure after
   rename and during deletion and prove retry never selects or deletes foreign bytes.
 
-- [ ] **Task 2.3: Rewrite managed worktrees as stateless Git utilities.** Keep native Git and
+- [x] **Task 2.3: Rewrite managed worktrees as stateless Git utilities.** Keep native Git and
   `ResolveControlRoots` as authority, remove stored worktree/integration/partial evidence, and key
   exact path/branch as `.awf/worktrees/<slug>` and `awf/<slug>`. `Add` validates the effort, target
   repository, confined absent path, registration and branch collisions, operation state, and base
@@ -243,7 +243,7 @@ retaining all shared-file, staging, gate, and commit ownership.
   unrelated histories, conflicts, dirtiness, unmerged branches, and restart after each mutation
   boundary.
 
-- [ ] **Task 2.4: Replace the effort command grammar and protocol.** In `internal/clispec` and
+- [x] **Task 2.4: Replace the effort command grammar and protocol.** In `internal/clispec` and
   `cmd/awf/effort.go`, expose exactly `new <outcome-title> [--json]`, `list [--json]`, `show <slug>
   [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, and `integrate
   <slug>`. Creation and worktree add are separate commands. Remove `--no-memory`, `--worktree` on
@@ -258,14 +258,14 @@ retaining all shared-file, staging, gate, and commit ownership.
   topology, and next action. Update help/parity tests and command docs only for behavior live in this
   phase.
 
-- [ ] **Task 2.5: Continue the same semantic cutover through citation, handoff, and guidance.** Do
+- [x] **Task 2.5: Continue the same semantic cutover through citation, handoff, and guidance.** Do
   not commit or gate protocol-2 residents and CLI while generated guidance or Pi handoff still names
   standalone memory. Complete Tasks 2.6-2.12 below in this same independently green implementation
   transaction.
 
 ### Citation and Pi handoff tasks within Phase 2
 
-- [ ] **Task 2.6: Change the durable-record detector.** In `internal/memorycite`, detect a concrete
+- [x] **Task 2.6: Change the durable-record detector.** In `internal/memorycite`, detect a concrete
   `.awf/efforts/<slug>/memory.md` citation in staged ADRs/plans and commit-message bodies. Allow the
   bare `.awf/efforts/` directory and angle-bracket placeholder segments, including
   `.awf/efforts/<effort-slug>/memory.md`; reject concrete slash and backslash forms, prose/link/code
@@ -277,7 +277,7 @@ retaining all shared-file, staging, gate, and commit ownership.
   changes with its test: both must name the effort-owned memory file and the bare-directory or
   angle-bracket-slug repair rather than the retired prefix-splitting repair.
 
-- [ ] **Task 2.7: Confine Pi handoff to one owned memory path without lifecycle coupling.** In the
+- [x] **Task 2.7: Confine Pi handoff to one owned memory path without lifecycle coupling.** In the
   handoff template, accept only a regular, bounded UTF-8 file at
   `<primary>/.awf/efforts/<slug>/memory.md`; validate the slug grammar and exact basename, lexical
   containment, no-follow components, ownership, stable identity, and repository identity. Preserve
@@ -292,7 +292,7 @@ The same Phase 2 implementer owns shared partials, every applicable skill, catal
 docs, generated fanout, and the closing commit. Do not delegate template edits: the parent retains
 all source, render, test, staging, and commit ownership.
 
-- [ ] **Task 2.8: Add catalog-derived failing lifecycle coverage.** Rewrite chain/render tests to
+- [x] **Task 2.8: Add catalog-derived failing lifecycle coverage.** Rewrite chain/render tests to
   derive enabled skills and target fanout from catalog/config declarations rather than a corpus
   count. Classify every applicable brainstorming, ADR, planning, implementation, review,
   checkpoint, handoff, retrospective, debugging, bugfix, TDD, refactor-audit, and exploration skill.
@@ -307,7 +307,7 @@ all source, render, test, staging, and commit ownership.
   template with missing-key-zero data; reject unresolved tokens, incoherent empty-variable prose,
   Pi tool leakage into generic branches, or loss of ADR-0173 model-selection clauses.
 
-- [ ] **Task 2.9: Replace shared checkpoint and guide semantics.** Update both checkpoint partials,
+- [x] **Task 2.9: Replace shared checkpoint and guide semantics.** Update both checkpoint partials,
   the agent-guide working-memory source, workflow chain, commands/config documentation, generic
   agent-guide template, and workflow/working-with-awf templates. A checkpoint validates the existing
   `.awf/efforts/<slug>/memory.md`, confirms its `Effort: <slug>` identity, updates phase/next/time/log,
@@ -317,7 +317,7 @@ all source, render, test, staging, and commit ownership.
   other runtimes use their target-native fresh-session mechanism or continue in place. State the
   single-writer rule and forbid a child/helper from editing shared memory.
 
-- [ ] **Task 2.10: Update every applicable skill and adopter override at its decision point.**
+- [x] **Task 2.10: Update every applicable skill and adopter override at its decision point.**
   Modify `.awf/skills/parts/retrospective/procedure.md` and the exhaustive template set listed in
   File structure, retaining each skill's existing model selection and phase
   ownership. Brainstorming creates/resumes once the outcome is concrete and non-minimal, before
@@ -339,7 +339,7 @@ all source, render, test, staging, and commit ownership.
   directly. Update `internal/catalog/standard.go` follow-ups/descriptions so generated entry routing
   exposes this conditional sequence.
 
-- [ ] **Task 2.11: Apply the complete semantic-cutover batch.** Update/add the listed claims with
+- [x] **Task 2.11: Apply the complete semantic-cutover batch.** Update/add the listed claims with
   substantive proof markers. Append ADR-0175's digest-bearing Implementing event and one Applied
   event containing exactly: `update tooling/effort-management:effort-record-authority`, `update
   tooling/effort-management:managed-worktree-lifecycle`, `update
@@ -357,7 +357,7 @@ all source, render, test, staging, and commit ownership.
   sources, then render all root and Sundial guides,
   docs, skills, Pi output, topic/domain docs, and locks.
 
-- [ ] **Task 2.12: Verify, stage, gate, and commit the one green cutover.** Run
+- [x] **Task 2.12: Verify, stage, gate, and commit the one green cutover.** Run
   `git diff --name-only --diff-filter=ACMR -- '*.go' | xargs -r gofmt -w`, `go test
   ./internal/effort ./internal/worktree ./internal/git ./internal/clispec ./internal/memorycite
   ./internal/catalog ./internal/evals ./internal/project ./cmd/awf`, `./x pi-test run`, `./x render`,
@@ -435,7 +435,7 @@ required boundary proves no legacy UUID managed path, registration, or branch ex
 must pass before mutation. Schema activation, upgrade journal, resident output plan, current-state
 claims, generated outputs, and lifecycle close are one commit-capable parent-owned transaction.
 
-- [ ] **Task 3.1: Specify migration preflight and journal recovery before activation.** Add focused
+- [x] **Task 3.1: Specify migration preflight and journal recovery before activation.** Add focused
   tests for a complete read-only classification of every schema-1 binary-owned leaf: UUID
   `.awf/efforts/<uuid>.json` records, `.awf/efforts/.lock`, each
   `.awf/efforts/.<uuid>.<worktree|integration|removal>.partial` evidence file, all standalone
@@ -455,7 +455,7 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
   command refuses while a journal exists. Never encode resident deletion as a regular-file absent
   image or use an unjournaled recursive remove.
 
-- [ ] **Task 3.2: Implement the generation upgrade as one planned transaction.** Register the next
+- [x] **Task 3.2: Implement the generation upgrade as one planned transaction.** Register the next
   schema generation in `internal/migrate/migrate.go`; advance `internal/project.Version`, minimum
   binary mapping, root/Sundial config and lock expectations, and binary-version tests. Make ordinary
   upgrade perform preflight, render/output planning, journal creation, tracked replacements,
@@ -465,7 +465,7 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
   Breaking-change output states that protocol-1 efforts and standalone memory are reset rather than
   migrated; it never invents slugs. Older binaries refuse after the lock advances.
 
-- [ ] **Task 3.3: Reduce resident rendering and discovery to efforts/worktrees.** Remove
+- [x] **Task 3.3: Reduce resident rendering and discovery to efforts/worktrees.** Remove
   `ResidentMemory`, the memory template/embed/output, and root/Sundial memory `.gitignore` outputs.
   Update the shared resident-root table used by output planning, render, drift, backup detection,
   current-state/context discovery, sweep, nested-adopter filtering, install, and uninstall. Govern
@@ -476,7 +476,7 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
   worktrees, closed-tree checks, nested adopters, backups, disable/prune, uninstall, and root/Sundial
   parity.
 
-- [ ] **Task 3.4: Run the real upgrade and verify the reset boundary.** Build the source binary to a
+- [x] **Task 3.4: Run the real upgrade and verify the reset boundary.** Build the source binary to a
   temporary path. Run its upgrade separately at root and `examples/sundial`, inspect the diff before
   rendering, and require only planned schema/config/lock/resident-output changes plus deletion of
   proven legacy residents. Test fixtures, not the live repository, cover malformed and crash states.
@@ -486,7 +486,7 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
   or awf force-discard option outside historical ADRs/plans, migration fixtures, and explicit
   breaking-change prose.
 
-- [ ] **Task 3.5: Apply the final state batch and close ADR-0175.** Add/update claims with substantive
+- [x] **Task 3.5: Apply the final state batch and close ADR-0175.** Add/update claims with substantive
   proof markers, preserving provenance, and append the final Applied event containing exactly:
   `add config/migrations-and-locks:unified-effort-resident-migration`, `update
   rendering/singletons-and-payloads:memory-gitignore-always-on`, `update
@@ -498,7 +498,7 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
   reference, architecture, development, workflow, testing, glossary, pitfalls, README, changelog,
   and generated current-state/index output in the same transaction.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Run
+- [x] **Phase-close: stage, check, gate, and commit.** Run
   `git diff --name-only --diff-filter=ACMR -- '*.go' | xargs -r gofmt -w`, `go test ./...`, `./x
   pi-test run`, `./x render`, `./x check`, `./x gate full`, and `git diff --check`; require all
   tests/coverage/gates to pass, clean drift, and no diff-check output. Stage the resolved Phase 3
@@ -535,7 +535,7 @@ removed the legacy checkpoint, create one protocol-2 slugged effort for this rem
 review/freeze outcome if no suitable protocol-2 effort already exists; use its exact slug and owned
 memory as the sole checkpoint and keep one writer.
 
-- [ ] **Task 4.1: Complete governed implementation review.** Review the full ADR-0175 implementation
+- [x] **Task 4.1: Complete governed implementation review.** Review the full ADR-0175 implementation
   range with focus on slug/path confinement, publication and finish durability, foreign-byte
   preservation, Git partial topology, no-force boundaries, migration rollback/cleanup phases,
   protocol-2 stdout/stderr, current-state operation pairing, complete agent guidance, ADR-0173
@@ -543,7 +543,7 @@ memory as the sole checkpoint and keep one writer.
   path staging, `./awf check --staged`, and `./x gate`; repeat one verify pass until zero findings.
   Any fix that creates a divergent target merge receives the required renewed terminal review.
 
-- [ ] **Task 4.2: Freeze the accepted execution record.** Check completed tasks, record concrete
+- [x] **Task 4.2: Freeze the accepted execution record.** Check completed tasks, record concrete
   implementation/review commits and material findings under Notes, set this plan to `Implemented`,
   and run `./x render`, `./x check`, and `git diff --check`. Stage exactly:
 
@@ -648,11 +648,11 @@ docs(plans): freeze unified effort plan
   `{{=awf:sectionDefault}}` and therefore appends, and `sync-and-drift` is not overridden at all, so
   both of those sentences rendered straight into this repo's own guide: `docs/working-with-awf.md`
   asserted three resident roots on line 12 and exactly two on line 29 of the same file, and that
-  self-contradiction went unread until terminal review. Two lessons, neither of them the one first
-  recorded here: a full-replacement override can mask stale generic prose that adopters still
-  receive, so a resident-shape change must search templates as well as `.awf/` parts; and a rendered
-  guide is worth reading end to end after a shape change, because this one stated both shapes
-  seventeen lines apart.
+  self-contradiction went unread until terminal review. Two lessons, one of them a narrowing of what
+  was first recorded here: a full-replacement override can mask stale generic prose that adopters
+  still receive, so a resident-shape change must search templates as well as `.awf/` parts; and a
+  rendered guide is worth reading end to end after a shape change, because this one stated both
+  shapes seventeen lines apart.
 - Task 4.1 findings settlement: the terminal review returned one blocker (the template prose above),
   two concerns, and two nits. The blocker, the stale `config` domain current-state part, the stale
   `tooling/upgrade-runtime` topic intro, and a dead `"memory"` render-kind string were all settled
@@ -677,6 +677,20 @@ docs(plans): freeze unified effort plan
   to stay at its prior bytes until the commit step, which fails the mutation with an exact
   diagnostic. The other two findings corrected the overstated amendment above and the settlement
   commit's message, which named no part of its production and test contents.
+- Task 4.1 second verify pass: zero blockers, two mechanical nits, both taken. The verifier re-ran
+  its whole mutation matrix against the marked proofs alone and confirmed every one is now caught,
+  including the lock-ordering mutation, and checked that the lock watcher cannot pass silently on an
+  absent lock and is neither flaky nor order-dependent under `-race` and `-shuffle`. The first nit
+  was that the claim quotes its refusal conditions verbatim while no marked proof exercised them, so
+  three tests that already assert those conditions were attributed; `TestJournalLoadRejections` was
+  deliberately left unmarked because it proves the journal's general structural contract, which
+  predates this claim. The second corrected the sentence above, which had claimed both lessons were
+  new when one is a narrowing of the first record.
+- Review commits: the terminal review settled in 95ae3258, verify pass 1 in c50844ec and b41f0d60,
+  verify pass 2 in 670c014d. Implementation commits are d510399d and 0aa55b23 for Phase 1, 02365d89
+  through ca40d0ab for Phase 2, 5b0f5022 for the integration boundary, and b365deca for Phase 3.
+  `./x gate full`, `./x check`, `./awf check --staged`, and `./awf audit ffc289a9..HEAD` are clean at
+  the freeze.
 
 ### Phase 2 execution record
 
