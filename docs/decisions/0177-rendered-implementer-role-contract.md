@@ -115,10 +115,11 @@ established precedent.
    receiving a failed call, which prose alone never achieved.
 
    `rendering/pi-workflows:pi-implement-role-artifact` owns both the disk load in item 3 and this
-   check. `rendering/pi-workflows:pi-subagent-failure-details` needs no revision: the new result is
-   itself a marked error result carrying bounded progress and diagnostics through the same
-   `tool_result` middleware, and the implementation-commit-policy behaviour that claim names is
-   retained unchanged.
+   check. `rendering/pi-workflows:pi-subagent-failure-details` needs no revision: it constrains the
+   *shape* of a post-start failure, a marked error result carrying bounded progress and diagnostics
+   through the `tool_result` middleware, not the commit policy's content. The new case conforms to that
+   shape while extending the policy, which is why the claim survives unrevised even though item 4
+   changes behaviour in the block it governs.
 
 5. Rendered skill prose is corrected in the same change. `subagent-driven-development` and
    `executing-plans` state the brief contract and name the `implementer` agent in both the Pi and
@@ -138,18 +139,42 @@ established precedent.
 6. Catalog wiring lands in one commit with its configuration. `subagent-driven-development` and
    `executing-plans` each gain `RequiresAgent: "implementer"`, declared on both because both dispatch
    implementation children: the phase owner and the commit-disabled batch helpers
-   (`templates/skills/executing-plans/SKILL.md.tmpl:31`). Relying on the transitive edge through
-   `executing-plans`'s `RequiresSkills` would leave the declared structural edge not matching the
-   declared dispatch. Both `.awf/config.yaml` and `examples/sundial/.awf/config.yaml` enable the agent
+   (`templates/skills/executing-plans/SKILL.md.tmpl:31`). Declaring it on both is the only way either
+   skill's dispatch is closed at all, not a preference over a working alternative: ADR-0167's `init()`
+   strip sets `RequiresSkills` empty for every profiled skill
+   (`internal/catalog/standard.go:257`), so the literal list at `standard.go:23` is dead at runtime and
+   a `RequiresAgent` on one skill creates no edge for the other.
+
+   The pairing breaks four Go fixtures that enable one of these skills without the new agent and
+   expect a clean open; each gains `implementer`: `internal/project/resolve_test.go:101` (with its
+   hardcoded expectation map at `:106-112`), `internal/project/resolve_test.go:133`,
+   `internal/project/target_test.go:367` (`explorationFixtureConfig`, whose consumer `t.Fatal`s on the
+   open error, so the whole exploration suite depends on it), `internal/project/target_test.go:659`
+   (`TestMaintainableCodeMultiTargetParity`, itself a backing test for
+   `maintainable-code-subagent-contract`), and `internal/project/project_test.go:1427`.
+   `internal/project/project_test.go:1415` needs no change: it already expects failure, and validation
+   iterates the declared config order (`internal/project/kind.go:31`,
+   `internal/project/validate.go:93`), where `reviewing-impl` is first, so its asserted error string
+   survives. `chainClosureConfig` (`internal/project/drift_test.go:335-347`) is catalog-derived and
+   self-updates.
+
+   Both `.awf/config.yaml` and `examples/sundial/.awf/config.yaml` enable the agent
    in that same commit. Splitting them would leave
    `rendering/catalog-and-targets:enabled-set-closed` unmet, failing every gated command at project
    open, including the gate meant to prove the change. This is the first non-reviewer value of
-   `RequiresAgent`, so the field's doc comment at `internal/catalog/catalog.go:57-58` and the
-   reviewer-only framing around it are corrected in the same commit. No
-   `rendering/catalog-and-targets` operation is needed: `catalog-go-single-source`,
+   `RequiresAgent`, so the field's reviewer-only doc comment at `internal/catalog/catalog.go:57-61` and
+   the fixture comment at `internal/project/project_test.go:1409-1412` are corrected in the same
+   commit. The claim name `rendering/project-output-plan:reviewing-skill-agent-pairing` is deliberately
+   not renamed: a rename is a remove plus an add, and the claim's own text is already generic over
+   agents.
+
+   No `rendering/catalog-and-targets` operation is needed: `catalog-go-single-source`,
    `skill-section-parity`, `structured-agent-encoding`, `target-dialect-render`, `enabled-set-closed`,
    and `requires-skills-exact` are all generic over agents, and item 1's empty `RequiresSkills`
-   conforms to the last of them.
+   conforms to the last of them. The two claims that do tie `requiresAgent` to reviewers also stay
+   true: `reviewing-skill-specs-paired` quantifies one-directionally over skills whose name begins
+   with `reviewing-`, and so says nothing about a skill that does not, while
+   `reviewing-skill-agent-pairing`'s text already reads generically as "a required agent".
 
 7. Adopter trees migrate through one registry entry, `{To: 23, Name: "implementer-agent-closure",
    Apply: applyCloseEnabledSet}`, reusing the existing enabled-set closure (precedent: `{To: 13,
@@ -158,7 +183,8 @@ established precedent.
 8. Three surfaces describe awf's catalog agents as review agents and are falsified by item 1. They
    are corrected in the same commit: `README.md:45-48` (the "**Review agents**" bullet listing exactly
    the three reviewers), `README.md:245-246` ("the three review agents" in the `awf init` default
-   description, which becomes four), and `.awf/parts/agents-doc/identity.md:3` ("multi-runtime skills,
+   description, which becomes "four agents"; a bare count bump to "the four review agents" would
+   reintroduce the same error), and `.awf/parts/agents-doc/identity.md:3` ("multi-runtime skills,
    review agents, docs"), whose correction reaches `AGENTS.md` only through `./x render`. Every status
    transition on this ADR runs `./x render` and commits the regenerated `docs/decisions/INDEX.md` and
    lock alongside the status change.
@@ -176,7 +202,7 @@ established precedent.
 The implementation role gains what the reviewer roles have had since ADR-0148: a rendered,
 drift-checked, review-visible contract that can be changed by editing a template instead of a
 TypeScript string literal. A reasonless "blocked" stops being a silent parent-side puzzle and becomes
-a failed call with a named cause.
+a failed call naming the missing commit and demanding the clause-7 inventory.
 
 The commit-disabled helper mode is prose-only outside Pi. Agent encoders emit a literal name plus a
 rendered description and the rendered instruction body, and the Codex TOML profile is a closed
@@ -200,11 +226,11 @@ gate if skipped: a golden test in `internal/project/spine_test.go` (required by
 `TestEveryCatalogArtifactHasGoldenTest` in `internal/project/catalog_sweep_test.go:139-152`),
 `dataKeys` entries in `internal/configspec` for every data key
 (`internal/configspec/spec_test.go:207`), `awf:section` marker parity between template and spec, a
-hand-authored unset-data fallback for every conditional, a leak-free empty-data render, and fixups to
-the two existing test scaffolds that enable a now-paired skill with `agents: []` and would therefore
-fail `enabled-set-closed` at `Open()`: `internal/project/project_test.go:1415` and
-`internal/project/target_test.go:659`, the latter being `TestMaintainableCodeMultiTargetParity`, itself
-a backing test for `maintainable-code-subagent-contract`. The tool-agnostic scan
+hand-authored unset-data fallback for every conditional, a leak-free empty-data render, and
+conformance to `rendering/catalog-and-targets:catalog-defaults-generic-denylist`, which bars the `./x`
+prefix and the module path from any catalog default data and so constrains how clause 6's gate step may
+be worded. The separate test-scaffold fixups are fallout of item 6's `RequiresAgent` pairing rather than
+of the `AgentSpec`, and are inventoried there. The tool-agnostic scan
 (`rendering/workflow-skill-templates:skill-prose-tool-agnostic`) additionally bans backticked
 `write`, `edit`, and `read` and phrases such as "read tool", so the contract body must be authored
 around it. These are known costs of the chosen home, not surprises.
@@ -220,7 +246,7 @@ deliberate and temporary.
 |---|---|
 | Author the contract in the dispatching skill instead of a rendered agent | The contract would be duplicated across `subagent-driven-development` and `executing-plans`, and it would live in a parent-facing artifact the child is told not to run. |
 | Expand the implement branch of `rolePrompt` in place | Keeps the heaviest contract in a TypeScript string literal: invisible to review of rendered output, unreachable by drift checking, and Pi-only by construction. |
-| Two agents, one per authority mode | The two modes share every clause but one. Two agents would double the five machine-forced obligations to express a single boolean. |
+| Two agents, one per authority mode | The two modes share every clause but one. Two agents would double the machine-forced authoring obligations to express a single boolean. |
 | Extract the shared dispatch spine now | One new agent does not justify the abstraction. Part B extracts it against three call sites instead of guessing at one. |
 | Fix the reasonless stop with prose alone | Prose is what already failed, and the child is under model pressure and reads a lot of text. Clause 7's five fields do remain prose-enforced, but item 4 makes the one thing that matters most, a silent non-completion reported as success, mechanical instead. |
 
