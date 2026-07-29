@@ -65,10 +65,13 @@ accepted or emitted as a tool argument. Those tests do not exist.
    all: `(configured or inherited)`. The ADR-0173 plan recorded a preference for
    `configured/default`, but that string is itself a well-formed `provider/model-id` with one
    separating slash and no whitespace, so it would satisfy both the schema pattern and the form
-   check and then fail later as an unregistered model. A label containing spaces is rejected by
-   construction under decision 1, which is what the plan's stated intent of removing the ambiguity
-   actually requires. This follows the existing precedent in the same module, where the routing
-   preview already displays the phrase `parent (inherited)`. This item rides along with decisions 1
+   check and then fail later as an unregistered model. The replacement is rejected by the form check
+   both layers already carry, unchanged by this ADR: it contains no separating slash, and it
+   contains whitespace, which the existing pattern and the existing runtime check both exclude.
+   Decision 1 narrows the charset further but is not what rejects this label, so a later relaxation
+   of the charset would not reopen this ambiguity. Rejection by the form check is what the plan's
+   stated intent of removing the ambiguity actually requires. This follows the existing precedent in
+   the same module, where the routing preview already displays the phrase `parent (inherited)`. This item rides along with decisions 1
    through 4 because it changes the same claim and is proved by the same test surface, not because
    it shares their motivation.
 
@@ -102,10 +105,10 @@ deliberate trade of future flexibility for present unambiguity.
 
 Removing the `inherit parent` label removes a genuine ambiguity in which one string named both a
 supported case and a forbidden argument, and the new tests close the gap the ADR-0173 plan left
-open. Choosing a label that decision 1 rejects by construction, rather than one that merely differs
-from the three named sentinels, means a caller who copies the displayed string verbatim gets an
-immediate form rejection with the omit-the-field repair instead of a misleading unregistered-model
-error from a later registry lookup. The label is TUI-facing metadata, so no caller contract changes.
+open. Choosing a label the existing form check rejects by construction, rather than one that merely
+differs from the three named sentinels, means a caller who copies the displayed string verbatim gets
+an immediate form rejection with the omit-the-field repair instead of a misleading
+unregistered-model error from a later registry lookup. The label is TUI-facing metadata, so no caller contract changes.
 
 The rejection vocabulary and repair message are unchanged, so no adopter-facing error handling
 changes shape. Preference files that already validate continue to validate.
