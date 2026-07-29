@@ -72,6 +72,7 @@ is intentionally the final applied batch because its activation is the cutover b
 - **Modified - authored docs/current state:** `.awf/parts/agents-doc/working-memory.md`,
   `.awf/parts/workflow/chain.md`, `.awf/parts/working-with-awf/{commands,
   config-and-overrides}.md`, `.awf/docs/glossary.yaml`, `.awf/docs/pitfalls.yaml`,
+  `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/prepend.md`,
   `.awf/docs/parts/pitfalls/prepend.md`, `.awf/docs/parts/development/command-runner.md`,
   `.awf/docs/parts/testing/gate.md`, `.awf/agents-doc.yaml`, `README.md`,
   `changelog/CHANGELOG.md`, the current-state parts for every ADR-0175 operation under
@@ -318,8 +319,10 @@ all source, render, test, staging, and commit ownership.
   rendering/pi-workflows:pi-session-handoff-public-contract`, `update
   rendering/pi-workflows:pi-session-handoff-workflow`. Preserve Origin and prior Revised-by,
   including ADR-0173 provenance, then append ADR-0175. Use only the state sequence reported by staged
-  check. Update authored architecture, CLI, gate, Pi, development, workflow, working-with-awf,
-  testing, glossary, pitfalls, README, and changelog sources, then render all root and Sundial guides,
+  check. Update `.awf/docs/parts/architecture/components.md`,
+  `.awf/docs/parts/glossary/prepend.md`, and the other authored architecture, CLI, gate, Pi,
+  development, workflow, working-with-awf, testing, glossary, pitfalls, README, and changelog
+  sources, then render all root and Sundial guides,
   docs, skills, Pi output, topic/domain docs, and locks.
 
 - [ ] **Task 2.12: Verify, stage, gate, and commit the one green cutover.** Run
