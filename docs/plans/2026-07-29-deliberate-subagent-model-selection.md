@@ -481,8 +481,12 @@ ADR implementation transition, and closing commit.
   rendering/pi-runtime:pi-extension-target-render`, `update
   rendering/pi-runtime:pi-real-runtime-smoke`. Change ADR-0173 to `Implemented`, append its
   `Implemented` event with the unchanged frozen digest, and run `./x render`. If implementation is
-  abandoned before this event, append `Abandoned` with a reason: Phases 1 and 2 remain Applied and
-  only these two operations become Canceled.
+  abandoned before this event, append `Abandoned` with a reason and preserve only completed batches:
+  before Phase 1, all six operations are Canceled; after Phase 1, its workflow-template add remains
+  Applied and the five later operations are Canceled; after Phase 2, the first four operations remain
+  Applied and only the two runtime updates are Canceled. An unfinished batch is never partially
+  Applied: discard its uncommitted claim/source/proof changes and cancel every operation in that
+  batch plus all later operations.
 
 - [ ] **Task 3.6: Verify, stage, gate, and create the final implementation commit.** Run `gofmt -w
   internal/project/target.go internal/project/target_test.go internal/project/output_plan_test.go
