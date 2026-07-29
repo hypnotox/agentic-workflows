@@ -73,6 +73,19 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 	}
 }
 
+func TestLoaderOpenResolvesTargetsBeforeResidentRoot(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\ntargets: [unknown]\n")
+	loader := NewLoader(config.Load, catalog.Standard, func(string) string {
+		t.Fatal("resident resolver called before target resolution")
+		return ""
+	})
+	_, err := loader.Open(root)
+	if err == nil || !strings.Contains(err.Error(), "unknown") {
+		t.Fatalf("error = %v, want unknown target", err)
+	}
+}
+
 // invariant: code-design/dependency-composition:sync-project-loader-wiring
 func TestLoaderOpenUsesSemanticResidentRoot(t *testing.T) {
 	root := t.TempDir()
@@ -110,6 +123,19 @@ func TestLoaderOpenReturnsEffectiveCatalogError(t *testing.T) {
 	_, err := loader.Open(root)
 	if err == nil || !strings.Contains(err.Error(), "skills/local.yaml") {
 		t.Fatalf("error = %v, want skills/local.yaml", err)
+	}
+}
+
+func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\n")
+	injectedValue := *catalog.Standard
+	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
+	delete(injectedValue.Skills, "tdd")
+	loader := NewLoader(config.Load, &injectedValue, func(root string) string { return root })
+	_, err := loader.Open(root)
+	if err == nil || !strings.Contains(err.Error(), "tdd") {
+		t.Fatalf("error = %v, want injected catalog to reject tdd", err)
 	}
 }
 
