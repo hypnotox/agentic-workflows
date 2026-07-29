@@ -170,9 +170,15 @@ docs(adr): accept 0175 unified efforts
 
 ## Phase 2: Replace effort records, Git metadata, and the CLI protocol
 
-**Execution mode: subagent-driven.** The parent requires `git status --short` to print no output and
-`./x gate` to pass. One commit-capable implementer owns the complete phase; it starts from accepted
-ADR-0175 on top of final ADR-0173 authority and returns a clean worktree with the named commit.
+**Execution mode: inline.** The exclusive parent requires `git status --short` to print no output
+and `./x gate` to pass before production edits, then owns the complete phase on accepted ADR-0175 and
+final ADR-0173 authority. Semantic atomicity applies to the final staged cutover and one named closing
+commit; the parent may implement incrementally in the dirty working tree across turns without making
+tasks into transaction boundaries. Session-budget uncertainty is not a blocker. Stop only for an
+authority contradiction, unsafe baseline, user-decision issue, or failed required verification.
+Prior bounded implementation dispatches made no mutations, so they create no competing implementation
+ownership. The parent may use only sequential, explicitly partitioned, commit-disabled helpers while
+retaining all shared-file, staging, gate, and commit ownership.
 
 - [ ] **Task 2.1: Specify protocol-2 slug residents and crash states before production changes.**
   Rewrite the `internal/effort` tests to pin `state.json` as schema 2 with ordered fields
