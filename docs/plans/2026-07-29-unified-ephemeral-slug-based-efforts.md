@@ -62,7 +62,7 @@ is intentionally the final applied batch because its activation is the cutover b
   `context_artifacts_test.go`, and `memory_test.go`; `templates/embed.go`; `.awf/config.yaml`, `.awf/awf.lock`,
   `examples/sundial/.awf/config.yaml`, and `examples/sundial/.awf/awf.lock`.
 - **Modified - citation and handoff:** `internal/memorycite/{memorycite.go,memorycite_test.go}`;
-  `cmd/awf/{memorygate.go,memorygate_test.go,commitgate_test.go,checkgroup_test.go}`;
+  `cmd/awf/{memorygate.go,memorygate_test.go,commitgate.go,commitgate_test.go,checkgroup_test.go}`;
   `templates/pi/awf-handoff/index.ts.tmpl`; `tools/pi-extension-test/tests/handoff.test.ts`;
   `internal/project/target_test.go`; and generated root/Sundial Pi handoff outputs.
 - **Modified - first-class agent guidance:** `templates/partials/{checkpoint-routine.md,
@@ -599,3 +599,19 @@ docs(plans): freeze unified effort plan
   retain manual integration state.
 - No durable record cites a concrete ephemeral memory file. Placeholder paths in this plan use angle
   brackets as required by the memory-citation gate.
+
+### Phase 2 execution record
+
+- Phase 2 closed as one commit over 265 paths. The Task 2.12 staging command is the named inventory
+  in expanded form; `git status --short` was captured and bytewise sorted before staging, and
+  `git diff --cached --name-only` bytewise sorted compared equal to it with no path outside the
+  command. The comparison result is recorded here rather than the 265 expanded path lines, which
+  would restate the staging command at length inside a frozen plan.
+- Deviation, closure correction: Task 2.6 and the Task 2.12 staging command originally named
+  `cmd/awf/commitgate_test.go` without `cmd/awf/commitgate.go`, although the commit-gate diagnostic
+  and error text the test asserts are emitted by that production file. Task 2.6, the File structure
+  inventory, and the staging command were corrected to name it before staging.
+- Deviation, recovered session: the first Phase 2 session ended mid-edit with the tree
+  non-compiling. The successor repaired a `readRegularNoFollow` arity break, restored routine
+  checkpoint chain coverage and the effort fifo and foreign-owner safety proofs that the rewrite had
+  dropped, and cleared four lint findings before closing the phase.
