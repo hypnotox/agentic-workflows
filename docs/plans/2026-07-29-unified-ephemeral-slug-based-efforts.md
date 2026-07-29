@@ -42,9 +42,11 @@ is intentionally the final applied batch because its activation is the cutover b
 ## File structure
 
 - **Created:** `internal/migrate/unified_effort_residents.go`,
-  `internal/migrate/unified_effort_residents_test.go`; additional focused `_test.go` files under
-  `internal/effort`, `internal/worktree`, `internal/upgrade`, `internal/project`, or `cmd/awf` only
-  when a named fault matrix cannot remain cohesive in the existing same-package suites.
+  `internal/migrate/unified_effort_residents_test.go`. An additional focused `_test.go` file under
+  `internal/effort`, `internal/worktree`, `internal/upgrade`, `internal/project`, or `cmd/awf` is
+  permitted only when a named fault matrix cannot remain cohesive in the existing same-package
+  suites and only after this Proposed plan names the exact path and adds it to the phase staging
+  command before the file is created.
 - **Modified - effort and Git authority:** `internal/effort/{types,paths,store,memory,service,safeio}.go`,
   platform-specific safe-publication files and all affected `internal/effort/*_test.go`;
   `internal/worktree/{git,topology,manager}.go` and all affected `internal/worktree/*_test.go`;
@@ -86,7 +88,8 @@ is intentionally the final applied batch because its activation is the cutover b
   `templates/partials/pi-minimum-runtime.md`, `templates/pi/awf-subagents/{index.ts.tmpl,
   model-routing.ts.tmpl}`, `tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts}`,
   `tools/pi-extension-test/container.sh`, `internal/project/{target.go,output_plan_test.go,
-  project_test.go}`, `.awf/topics/parts/rendering/pi-runtime/current-state.md`, and their root and
+  project_test.go,subagent_model_selection_test.go}`,
+  `.awf/topics/parts/rendering/pi-runtime/current-state.md`, and their root and
   Sundial Pi outputs. Phase 2 changes only the overlapping handoff template and shared tests named
   above; its verification must preserve the other closure byte-for-byte and retain the 4096-byte
   routing card and semantic small/standard/large dispatch contract.
@@ -115,8 +118,9 @@ review fixes concurrently before execution.
   `templates/docs/working-with-awf.md.tmpl`, the eight model-selection skill templates,
   `templates/partials/pi-minimum-runtime.md`, the two Pi subagent templates,
   `tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts}`, `internal/evals/chain_test.go`,
-  `internal/project/{target.go,target_test.go,output_plan_test.go,project_test.go}`, and their
-  generated fanout. Run `go test ./internal/project
+  `internal/project/{target.go,target_test.go,output_plan_test.go,project_test.go,
+  subagent_model_selection_test.go}`, and their generated fanout. Phase 2 guidance changes must keep
+  the model-selection proof green. Run `go test ./internal/project
   ./internal/evals`, `./x pi-test run`, `./x render`, `./x check`, and `git diff --check`; require
   success, clean drift, and no diff-check output.
 
