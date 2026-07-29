@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-29
 ---
 # ADR-0178: Explicit dependency composition architecture
@@ -199,3 +199,4 @@ and its foundation are implemented and reviewed.
 ## Status history
 
 - 2026-07-29: Proposed
+- 2026-07-30: Accepted; content-sha256: 49f987e32c2c08dacb656500fe87c393933cf071f34e2a2e2ed66f407a465814
