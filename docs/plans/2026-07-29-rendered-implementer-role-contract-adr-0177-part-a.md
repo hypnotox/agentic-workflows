@@ -432,6 +432,31 @@ feat(rendering): add the implementer agent contract
   {To: 23, Name: "implementer-agent-closure", Apply: applyCloseEnabledSet},
   ```
 
+  Register the generation's minimum version in the same step, before running anything else. Every gated
+  command calls `ValidateSchemaMinimumVersion(migrate.Current(), awfVersion())` (`cmd/awf/gate.go:38`
+  and `:62`); with generation 23 unmapped that returns a "schema generation 23 has no minimum awf
+  version" error, so the upgrade commands below, `./x render`, `./x check`, and `./x gate` all refuse.
+  `internal/project/project.go:40-41` states this requirement outright, and
+  `config/migrations-and-locks:schema-min-version` claims the current generation always has an entry.
+  In `internal/project/project.go`, bump the version constant at line 31 and add the map entry at the
+  end of `minVersionBySchema`:
+
+  ```diff
+  -const Version = "0.26.0"
+  +const Version = "0.27.0"
+  ```
+
+  ```diff
+   	22: "0.26.0",
+  +	23: "0.27.0",
+   }
+  ```
+
+  This follows the established practice of one unreleased minor per generation: generations 19, 20, 21,
+  and 22 each took their own (`0.23.0` through `0.26.0`) while the newest release tag is `v0.22.0`. It
+  also keeps `internal/project/version_test.go:15` meaningful, since the highest mapped generation
+  continues to equal `Version`.
+
   `Current()` is `registry[len(registry)-1].To` (`internal/migrate/migrate.go:82`), so this bump makes
   both committed trees one generation behind and every gated command in them refuses until they are
   upgraded. Upgrade both in this same transaction, mirroring how `./x render` reaches the example:
@@ -445,8 +470,8 @@ feat(rendering): add the implementer agent contract
   ```
 
   Expect both commands to report the closure adding nothing (task 1.5 already enabled the agent in
-  both trees) and to stamp `"schemaVersion": 23` in `.awf/awf.lock` and
-  `examples/sundial/.awf/awf.lock`.
+  both trees) and to stamp `"schemaVersion": 23` and `"awfVersion": "0.27.0"` in `.awf/awf.lock` and
+  `examples/sundial/.awf/awf.lock`, both of which currently record generation 22 at version `0.26.0`.
 
   Three existing tests pin the old generation and must move in this same task, or the upgrade commands
   above cannot even run:
@@ -457,7 +482,8 @@ feat(rendering): add the implementer agent contract
   - `internal/project/version_test.go` pins the schema-to-version map in three places: line 15 asserts
     the highest generation maps to `Version` and must move from `minVersionBySchema[22]` to
     `minVersionBySchema[23]`; line 28 asserts generation 23 is unmapped and must re-point at `24`; the
-    older-binary case at line 26 stays as it is.
+    older-binary case at line 26 asserts `requires awf 0.26.0` for generation 22 and stays exactly as
+    it is, since generation 22 keeps its `0.26.0` minimum.
 
   Deterministic post-check: `go test ./internal/migrate/ ./internal/project/` passes.
 
@@ -680,7 +706,7 @@ Whole-effort acceptance, beyond the per-phase gates:
 - `grep -rn "fresh-context implementation subagent" templates/pi/awf-subagents/index.ts.tmpl` returns
   no output: the literal implement prose is gone from the extension source.
 - `go run ./cmd/awf list agents` includes `implementer`, and both `.awf/awf.lock` files record
-  `"schemaVersion": 23`.
+  `"schemaVersion": 23` and `"awfVersion": "0.27.0"`.
 - ADR-0177 is `status: Implemented` with both declared operations Applied in declaration order and no
   Remaining operations, and `docs/decisions/INDEX.md` reflects it.
 
