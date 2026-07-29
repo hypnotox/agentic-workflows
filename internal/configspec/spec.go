@@ -97,7 +97,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "agents", Type: "string list", Default: "every catalog agent at init",
-		Description:  "Enabled review agents. A reviewing skill's dispatched agent must stay enabled while the skill is: disabling refuses upfront; `awf enable skill` auto-enables the pair.",
+		Description:  "Enabled agents. A skill's dispatched agent must stay enabled while the skill is: disabling refuses upfront; `awf enable skill` auto-enables the pair.",
 		Availability: "Always.",
 	},
 	{
@@ -353,6 +353,7 @@ var dataKeys = []DataKey{
 	{Kind: "agents", Artifact: "code-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},
 	{Kind: "agents", Artifact: "code-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton: the bullet template the reviewer fills per review."},
+	{Kind: "agents", Artifact: "implementer", Key: "prohibitedShortcuts", Description: "The bolt-on shortcuts the implementer must never take (list of {description}); the default names speculative abstraction and misplaced responsibility. Unset, the body omits the list and the rest of the contract renders unchanged."},
 	{Kind: "docs", Artifact: "glossary", Key: "terms", Description: "The glossary's terms as a `term: meaning` map; the table renders always sorted (case-insensitive, pipes escaped), and empty terms or meanings, interior newlines, or case-insensitive duplicates fail the render naming the key. Unset, the doc renders a pointer telling you where to add terms."},
 	{Kind: "docs", Artifact: "pitfalls", Key: "pitfalls", Description: "The pitfalls as an ordered list of `{title, domains, related, body}` entries; the doc renders each as a `## title` section (an empty/newline title or empty body fails the render), `domains` (optional) drive `awf context` surfacing and must resolve to configured domains, and `related` (optional) ADR numbers must resolve to real ADRs. Unset, the doc renders a pointer telling you where to add entries."},
 	{Kind: "docs", Artifact: "agents-doc", Key: "commands", Description: "Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders."},

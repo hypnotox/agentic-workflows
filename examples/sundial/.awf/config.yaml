@@ -26,6 +26,7 @@ skills:
 agents:
   - adr-reviewer
   - code-reviewer
+  - implementer
   - plan-reviewer
 docs:
   - architecture

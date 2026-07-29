@@ -178,6 +178,21 @@ var Standard = &Catalog{
 				"digestSummary": "- Commits: <one line per commit subject>\n- Headline change: <1-2 sentences>\n- Test additions: <file count or named test files>",
 			},
 		},
+		// The implementer is the one dispatched role that acts rather than
+		// reports (ADR-0177). RequiresSkills stays empty on purpose: the
+		// contract routes the child into no skill, since the chain belongs to
+		// the dispatching parent.
+		"implementer": {
+			Name:        "implementer",
+			Description: "Scoped implementation subagent for {{ .prefix }} work, dispatched either as a commit-capable phase owner or as a commit-disabled path-confined helper.\nReturns a structured completed or stopped report.",
+			Sections:    []string{"identity", "task-scope", "guide-authority", "green-obligation", "escalation", "owner-transaction", "return-schema"},
+			Data: map[string]any{
+				"prohibitedShortcuts": []any{
+					map[string]any{"description": "adding an abstraction with no current call site, on the argument that a later change will use it"},
+					map[string]any{"description": "widening one function's responsibility because the fix is easier to place there than where it belongs"},
+				},
+			},
+		},
 	},
 	DomainDoc: TargetSpec{Sections: []string{"current-state"}},
 	Docs: map[string]DocEntry{

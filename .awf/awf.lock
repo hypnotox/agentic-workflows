@@ -44,6 +44,12 @@
       "configHash": "sha256:7e33a4e601e9b9e867a44d1874221265864a52acacf59d3725cbfb285ca713bb",
       "outputHash": "sha256:0f8a6fa9ac324252753fc7ec7c3aa853dff60d35b9eb54ea12256c5d02f98ec6"
     },
+    ".claude/agents/implementer.md": {
+      "templateId": "agents/implementer.md.tmpl",
+      "templateHash": "sha256:ca60f168ec8ca4efe5442c8736dd362e2f85027872a55ed5f15348f80dcfd600",
+      "configHash": "sha256:e073a133e300d390f035384415f0554ff80e49bd7f2929eea85e15966ae02278",
+      "outputHash": "sha256:94914ec28f9a18fda07144dff784481f0173720fe655ccf25f3ad7f68241514f"
+    },
     ".claude/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
       "templateHash": "sha256:975c286738e5239d06a4b57cf7bd3ad04057f78ba10fc43814aa387e840b2e22",
@@ -163,6 +169,12 @@
       "templateHash": "sha256:514377af748efb0675308ed4dbd9f22a13cfb64fe8667e2aa0801baac8f0d5d1",
       "configHash": "sha256:7c12107ac522ed86109cc0f292a884fc6ec2e6d63f0a41b89ddfc6c1a1105136",
       "outputHash": "sha256:0f8a6fa9ac324252753fc7ec7c3aa853dff60d35b9eb54ea12256c5d02f98ec6"
+    },
+    ".pi/agents/implementer.md": {
+      "templateId": "agents/implementer.md.tmpl",
+      "templateHash": "sha256:ca60f168ec8ca4efe5442c8736dd362e2f85027872a55ed5f15348f80dcfd600",
+      "configHash": "sha256:c8bd4c983bdbdaff320b97cf83d8eeb9db170e4b457bf49b4dc4da7a0b0f2fec",
+      "outputHash": "sha256:94914ec28f9a18fda07144dff784481f0173720fe655ccf25f3ad7f68241514f"
     },
     ".pi/agents/plan-reviewer.md": {
       "templateId": "agents/plan-reviewer.md.tmpl",
@@ -299,8 +311,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:95c47b92c8e5dbffee8108c8bad8340d997347bd5e19de9d1af30f9ce751cf13",
-      "configHash": "sha256:06dfe56d22765428047e63e6e04d58d125bfa500ec39a8f6ac37dde2c8b1cd4b",
-      "outputHash": "sha256:2f39d3d932a254d2fd4f7b5870da5b036263de222e725135fe056060100ea4a0"
+      "configHash": "sha256:846b5bcdb36384ffb0fb01fcd27eb6a7ac9b65d2c7173f39c1637608b945daea",
+      "outputHash": "sha256:90166ba3055245e495e2b7485d33a23183a3c04110ebff2e03c88ed30909fb15"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -330,7 +342,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:5d738c292f82e4a850e7799edc1a7f9dbf079d175440c80269e687b7f53b0649",
+      "outputHash": "sha256:f77d2259292e7248d6fdab07c08da2c4da773440e23bfdce4403c5e475664a83",
       "regenChecked": true
     },
     "docs/decisions/INDEX.md": {

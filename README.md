@@ -42,10 +42,12 @@ instead of rotting.
   retrospective that promotes recurring findings toward deterministic checks. Task
   skills are opt-in (TDD, bugfix, debugging, a refactor coupling audit, a
   roadmap-graduation pass), except `adr-lifecycle`, which is scaffolded on with the chain.
-- **Review agents**, likewise per runtime: `adr-reviewer`, `plan-reviewer`,
-  `code-reviewer`. Each is dispatched with fresh context, so the author never grades
-  its own work. Agents are format-neutral: each runtime gets them in its own dialect
-  (frontmatter Markdown for most, a TOML profile for Codex).
+- **Agents**, likewise per runtime. Three review agents (`adr-reviewer`, `plan-reviewer`,
+  `code-reviewer`) are each dispatched with fresh context, so the author never grades
+  its own work, and are report-only. One `implementer` agent carries the contract for
+  dispatched implementation work, as either a commit-capable phase owner or a
+  commit-disabled path-confined helper. Agents are format-neutral: each runtime gets
+  them in its own dialect (frontmatter Markdown for most, a TOML profile for Codex).
 - **Docs**. An `AGENTS.md` agent guide (with a `CLAUDE.md` or `GEMINI.md` bridge where the
   runtime expects one), workflow and documentation standards, plus opt-in project docs:
   architecture, testing, development, debugging, pitfalls, releasing, glossary, roadmap.
@@ -118,7 +120,7 @@ See [`docs/workflow.md`](docs/workflow.md) for the full rules.
 ├── config.yaml   enable arrays     ├── AGENTS.md            agent guide
 │                 + vars            ├── bridge file          imports AGENTS.md
 ├── <kind>/<name>.yaml  sidecars    ├── .claude/skills/...   workflow skills
-├── <kind>/parts/.../...  overrides ├── .claude/agents/...   review agents
+├── <kind>/parts/.../...  overrides ├── .claude/agents/...   agents
 └── parts/<name>/...  singletons    └── docs/...             project docs
 ```
 
@@ -243,7 +245,7 @@ The Pi extension is executable project code loaded behind Pi's project-trust pro
 files are drift-checked; use `awf render` to restore missing or modified copies.
 
 `awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
-`adr-lifecycle`, and `exploring`) and the three review agents. The workflow, documentation, and agent-guide standards sit outside
+`adr-lifecycle`, and `exploring`) and four agents. The workflow, documentation, and agent-guide standards sit outside
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
 

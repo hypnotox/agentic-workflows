@@ -1,4 +1,4 @@
-// Command awf renders standardised .claude skills, review agents, and docs into a project from embedded templates plus a per-project .awf/ config tree.
+// Command awf renders standardised .claude skills, agents, and docs into a project from embedded templates plus a per-project .awf/ config tree.
 package main
 
 import (

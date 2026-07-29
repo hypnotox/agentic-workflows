@@ -273,6 +273,48 @@ func TestCodeReviewerAgent(t *testing.T) {
 	}
 }
 
+func TestImplementerAgent(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{"gateCmd": "make gate"},
+		"data": map[string]any{
+			"prohibitedShortcuts": []map[string]any{
+				{"description": "adding an abstraction with no current call site"},
+			},
+		},
+	}
+
+	out := renderAgentGolden(t, "implementer", data)
+
+	if !strings.Contains(out, "name: implementer") {
+		t.Errorf("expected 'name: implementer' in output:\n%s", out)
+	}
+	// One phrase per contract clause, so a dropped clause fails loudly.
+	for _, want := range []string{
+		"Scoped implementation subagent for example",
+		"Phase owner",
+		"commits disabled",
+		"act as a helper and say so in your report",
+		"Your brief is the whole job",
+		"adding an abstraction with no current call site",
+		"Its skill catalog and workflow-chain routing do not bind you",
+		"no workflow skill, create or resume no effort, and write to no working-memory file",
+		"Iterating on failures is the work",
+		"Never make a check pass by weakening what it proves",
+		"There is nobody to wait for",
+		"That report is the escalation",
+		"`awf check --staged`",
+		"`make gate`",
+		"the exact output of `git status --short`",
+		"what you already tried, so the next attempt does not repeat it",
+		"There is no third outcome",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
+		}
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses
 func TestMaintainableCodeReviewLenses(t *testing.T) {
 	outputs := map[string]string{
@@ -1320,6 +1362,11 @@ type fallbackCase struct {
 }
 
 var unsetFallbackCases = []fallbackCase{
+	{
+		tmpl: "agents/implementer.md.tmpl",
+		want: []string{"the project's gate command"},
+		ban:  []string{"Shortcuts that are never acceptable here", "``"},
+	},
 	{
 		tmpl: "skills/executing-direct/SKILL.md.tmpl",
 		want: []string{"Invoke `example-reviewing-impl` as the terminal step."},

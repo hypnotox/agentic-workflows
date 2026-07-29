@@ -1,6 +1,7 @@
 agents:
   - adr-reviewer
   - code-reviewer
+  - implementer
   - plan-reviewer
 audit:
   allowedScopes:
