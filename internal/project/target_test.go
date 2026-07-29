@@ -320,9 +320,12 @@ func TestPiSubagentModelRoutingRender(t *testing.T) {
 		t.Errorf("shared model-reference schema uses = %d, want 4", got)
 	}
 	// ADR-0176: both validating layers derive from one pattern constant, so neither can
-	// drift into a different measure or charset than the other.
-	if got := strings.Count(body, `pattern: "`); got != 0 {
-		t.Errorf("model-reference pattern inlined %d times, want the shared constant only", got)
+	// drift into a different measure or charset than the other. Scoped to the module that
+	// owns the constant, so an unrelated inline JSON-Schema pattern elsewhere is not
+	// misreported as a model-reference regression.
+	routing := renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
+	if got := strings.Count(routing, `pattern: "`); got != 0 {
+		t.Errorf("model-routing.ts inlines a literal JSON-Schema pattern %d times, want the shared MODEL_REFERENCE_PATTERN constant only", got)
 	}
 	// ADR-0176: the omitted-model display label must not be a usable argument.
 	if !strings.Contains(body, `: "(configured or inherited)";`) {

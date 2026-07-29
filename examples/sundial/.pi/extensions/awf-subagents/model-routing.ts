@@ -65,7 +65,7 @@ export const RECOMMENDED_PRESET: Required<SubagentModelPreferences> = {
 export const PREFERENCES_BLOCKED = "Subagent model preferences are invalid; implicit routing is blocked.";
 export const PREFERENCES_REPAIR = "Run /awf-subagent-models to repair. Explicit per-call model arguments remain available.";
 export const MODEL_FIELD_REPAIR = "Omit the model field to use configured or inherited routing.";
-export const MODEL_REFERENCE_PATTERN = "^[\\x21-\\x2E\\x30-\\x7E]+/[\\x21-\\x7E]+$";
+const MODEL_REFERENCE_PATTERN = "^[\\x21-\\x2E\\x30-\\x7E]+/[\\x21-\\x7E]+$";
 const MODEL_REFERENCE_FORM = new RegExp(MODEL_REFERENCE_PATTERN);
 export const MODEL_REFERENCE_SCHEMA = Type.String({
   minLength: 3,
@@ -84,6 +84,9 @@ export function emptyPreferenceSource(scope: SourceScope, path: string): Prefere
 export function parseExactModelReference(value: unknown): { provider: string; id: string } | { reason: "malformed" | "overlong" } {
   if (typeof value !== "string") return { reason: "malformed" };
   if (Array.from(value).length > 256) return { reason: "overlong" };
+  // Sentinel values are rejected explicitly, not incidentally. The shared form check below already
+  // subsumes all three, but keeping this line means a later charset change cannot silently accept
+  // one of them.
   if (value === "default" || value === "auto" || value === "inherit parent") return { reason: "malformed" };
   if (!MODEL_REFERENCE_FORM.test(value)) return { reason: "malformed" };
   const slash = value.indexOf("/");

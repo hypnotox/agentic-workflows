@@ -71,7 +71,9 @@ selection: omit model for the role default; otherwise override deliberately with
   assert.equal(ROUTING_CARD_OVERFLOW_WARNING, "awf subagent routing card exceeded 4096 UTF-8 bytes; injected a failure card. Run /awf-subagent-models and retry.");
 
   assert.deepEqual(parseExactModelReference("p/model"), { provider: "p", id: "model" });
-  for (const value of [undefined, "default", "auto", "inherit parent", "ab", "/x", "ab/", "x/y z"]) assert.deepEqual(parseExactModelReference(value), { reason: "malformed" });
+  // "/a/b" and "//a" pin the 0x2F hole in the provider class: it is the only thing still
+  // rejecting an empty provider now that the slash-position checks are gone.
+  for (const value of [undefined, "default", "auto", "inherit parent", "ab", "/x", "ab/", "x/y z", "/a/b", "//a"]) assert.deepEqual(parseExactModelReference(value), { reason: "malformed" });
   assert.deepEqual(parseExactModelReference(`p/${"x".repeat(256)}`), { reason: "overlong" });
 });
 
@@ -413,7 +415,9 @@ test("all schemas and runtime calls enforce omission or one bounded exact refere
     assert.equal(Value.Check(schema, { ...params, model: rejected }), false, `${name} accepted 257`);
     await call(h, name, { ...params, model: accepted });
     await assert.rejects(call(h, name, { ...params, model: rejected }), /Omit the model field to use configured or inherited routing\.$/);
-    for (const sentinel of ["default", "auto", "inherit parent"]) {
+    // ADR-0176: the omitted-model display label is proved rejected by every tool schema and by a
+    // runtime call, exactly like the sentinels, so a displayed value can never be copied back.
+    for (const sentinel of ["default", "auto", "inherit parent", "(configured or inherited)"]) {
       assert.equal(Value.Check(schema, { ...params, model: sentinel }), false, `${name} schema accepted ${sentinel}`);
       await assert.rejects(call(h, name, { ...params, model: sentinel }), /Omit the model field to use configured or inherited routing\.$/);
     }
@@ -436,9 +440,11 @@ test("all schemas and runtime calls enforce omission or one bounded exact refere
   }
 
   // Both ends of the permitted range are accepted; the neighbours just outside it are not.
-  for (const edge of ["\x21/\x21", "\x7E/\x7E", "p/a\x21\x7Eb"]) {
+  // Assert the split, not merely the absence of a reason, so a wrong partition at exactly these
+  // boundary characters cannot pass.
+  for (const [edge, provider, id] of [["\x21/\x21", "\x21", "\x21"], ["\x7E/\x7E", "\x7E", "\x7E"], ["p/a\x21\x7Eb", "p", "a\x21\x7Eb"]] as const) {
     assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, edge), true, `schema rejected ${JSON.stringify(edge)}`);
-    assert.notEqual("reason" in (parseExactModelReference(edge) as any), true, `parse rejected ${JSON.stringify(edge)}`);
+    assert.deepEqual(parseExactModelReference(edge), { provider, id });
   }
   for (const outside of ["p/a b", "p/a\x7Fb", "p/a\tb", "\x20p/model"]) {
     assert.equal(Value.Check(MODEL_REFERENCE_SCHEMA, outside), false, `schema accepted ${JSON.stringify(outside)}`);
