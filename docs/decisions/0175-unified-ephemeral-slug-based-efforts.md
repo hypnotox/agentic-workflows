@@ -41,12 +41,17 @@ for every refusal or partial mutation.
    published directory is the only fact that an effort exists and is active; awf keeps no effort
    ledger, lifecycle state, integration disposition, lock, or retained terminal record.
 
-2. `awf effort new <outcome-title>` derives one meaningful lowercase kebab-case slug from the title.
-   The slug is immutable and is the public command identity, resident path segment, worktree path
-   segment, and branch suffix. Creation rejects a collision with an existing or incomplete reserved
-   slug actionably rather than appending a number or choosing a different identity. Static
-   `state.json` retains an awf-allocated UUID as an internal identity together with the slug, title,
-   creation time, and schema version; no command renames either identity.
+2. `awf effort new <outcome-title>` derives one slug by lowercasing ASCII letters, retaining ASCII
+   digits, replacing each maximal run of every other UTF-8 rune with one hyphen, and trimming leading
+   and trailing hyphens. The result must be 1 through 63 bytes, match `[a-z0-9]+(?:-[a-z0-9]+)*`,
+   pass confined single-segment path validation, and make `refs/heads/awf/<slug>` pass Git ref-format
+   validation; otherwise creation rejects the title and directs the user to provide a shorter title
+   with ASCII words or digits. There are no truncation, transliteration, suffixing, reserved-name, or
+   explicit-slug exceptions beyond those validations. The slug is immutable and is the public command
+   identity, resident path segment, worktree path segment, and branch suffix. Creation rejects a
+   collision with an existing or incomplete reserved slug actionably. Static `state.json` retains an
+   awf-allocated UUID as an internal identity together with the slug, title, creation time, and schema
+   version; no command renames either identity.
 
 3. Creation reserves the slug directory exclusively and durably publishes it in a fixed order. It
    writes each file through a confined sibling temporary file, syncs the complete file, atomically
@@ -76,10 +81,14 @@ for every refusal or partial mutation.
    machine. Durable project history belongs in Git rather than a local terminal record.
 
 6. Keep managed worktrees optional and separate at `.awf/worktrees/<slug>/` on branch
-   `awf/<slug>`. Worktree creation derives those values from the selected effort and an explicit base
-   or caller HEAD, while native Git remains authoritative for registration, branch identity,
-   cleanliness, ancestry, merge state, and repository identity. Static effort state stores no
-   worktree attachment or integration metadata.
+   `awf/<slug>`. Remove combined `awf effort new --worktree` and its `--base` coupling: creation must
+   publish the effort and return before the separate `awf effort worktree add <slug> [--base <ref>]`
+   operation begins. A failed add therefore leaves the complete effort and owned memory unchanged,
+   reports whether Git topology changed, and directs the caller to retry add from actual topology or
+   perform the named manual cleanup. Worktree creation derives path and branch from the selected
+   effort and an explicit base or caller HEAD, while native Git remains authoritative for
+   registration, branch identity, cleanliness, ancestry, merge state, and repository identity.
+   Static effort state stores no worktree attachment or integration metadata.
 
 7. Managed integration is a stateless Git utility invoked from the clean target checkout that will
    receive the effort. It verifies the selected effort, expected managed path, worktree registration,
@@ -100,8 +109,12 @@ for every refusal or partial mutation.
 9. Managed worktree removal is restartable and inspects actual Git topology on every invocation. It
    safely handles the path, registration, and `awf/<slug>` branch as independently present or absent,
    removes only the topology it can prove belongs to that effort, and reports any remaining concrete
-   action. `awf effort finish` refuses until the managed path, registration, and branch are all absent,
-   preventing checkpoint deletion while integration or cleanup may remain.
+   action. It always refuses a dirty worktree, unresolved operation, or branch not merged into the
+   intended target, with no awf force override. Intentionally discarding such work requires the user
+   to inspect and remove the worktree or branch explicitly with native Git; awf may continue removal
+   only after actual topology satisfies its ordinary safe preconditions. `awf effort finish` refuses
+   until the managed path, registration, and branch are all absent, preventing checkpoint deletion
+   while integration or cleanup may remain.
 
 10. Every enforced refusal states the failed condition, whether the command changed any bytes or Git
     topology, and one concrete next action. Confinement, symlink, ownership, repository-identity,
@@ -155,13 +168,26 @@ for every refusal or partial mutation.
     Without a managed worktree, terminal review proceeds directly to retrospective and finish. No
     skill treats review, retrospective, or finish as implicit effects of integration.
 
-17. Update all command help, configuration reference, workflow and development documentation,
+17. Replace effort JSON protocol 1 with protocol 2 in both static `state.json` and public `--json`
+    replies. `new --json` and `show --json` return
+    `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`; `list --json` returns
+    `{schemaVersion:2,efforts:[...]}` with the same effort object shape sorted by slug. Removed rename,
+    memory, repair, complete, abandon, reopen, combined-new-worktree, and manual-integration commands
+    have no protocol-2 reply. Worktree, integrate, remove, and finish mutations remain line-oriented
+    agent commands whose success and refusal text carries condition, changed-bytes or changed-topology
+    status, and next action. Under `--json`, a failure writes no stdout, writes the same actionable
+    plain-text diagnostic to stderr, and exits nonzero; protocol 2 defines no JSON error envelope.
+    Protocol-2 readers reject protocol-1 state rather than adapting it, and the schema upgrade's
+    explicit legacy reset is the only migration boundary.
+
+18. Update all command help, configuration reference, workflow and development documentation,
     architecture, glossary, pitfalls, changelog, rendered root declarations, generated guides and
     skills, Pi extension contracts, and tests in the same implementation. Deterministic tests cover
-    publication ordering and crash states, finish tombstones, legacy reset and journal recovery,
-    resident-root ownership, refusal diagnostics and partial mutations, actual-Git restartability,
-    citation and handoff paths, missing-key-zero rendering, and complete generated-agent lifecycle
-    coverage. Every ADR status-transition commit runs `./x render` and commits the regenerated
+    slug derivation and rejection, protocol-2 shapes, publication ordering and crash states, finish
+    tombstones, legacy reset and journal recovery, resident-root ownership, refusal diagnostics and
+    partial mutations, actual-Git restartability and manual-discard boundaries, citation and handoff
+    paths, missing-key-zero rendering, and complete generated-agent lifecycle coverage. Every ADR
+    status-transition commit runs `./x render` and commits the regenerated
     `docs/decisions/INDEX.md` and lock output with the status change.
 
 ## State changes
@@ -213,11 +239,15 @@ and conditional post-review worktree integration are required.
 |---|---|
 | Keep UUIDs as the public identity and add a display slug | Agents would still carry two identities, and paths and branches would remain opaque. |
 | Auto-suffix colliding slugs | Silent suffixes weaken the promise that the outcome-derived slug is immutable and meaningful; an explicit distinction is safer. |
+| Accept an explicit slug override or transliterate Unicode | Overrides split identity from the approved outcome title, while transliteration needs a new language-sensitive dependency and policy. Deterministic ASCII extraction with actionable rejection is smaller and stable. |
 | Keep memory optional or retain `.awf/memory/` | Either choice preserves split ownership and permits a multi-step effort without its required checkpoint. |
 | Keep completed or abandoned records | A retained lifecycle recreates a local history whose truth can diverge from Git and requires reopen, repair, and pruning semantics. |
 | Store worktree and integration state in `state.json` | Git already owns those facts; duplicating them creates reconciliation and partial-failure states. |
 | Integrate automatically during finish | Integration can conflict and requires gates and review; combining it with destructive checkpoint cleanup obscures changed bytes and unsafe recovery. |
 | Automatically remove the worktree after integration | Explicit restartable removal exposes dirty or foreign topology and prevents integration from becoming an unexpectedly destructive command. |
+| Let awf force-discard dirty or unmerged Git resources | A generic force flag cannot prove that uncommitted or unmerged work is valueless. Requiring explicit native-Git cleanup keeps irreversible intent outside the safe managed command. |
+| Keep combined effort and worktree creation | A Git failure after resident publication creates a compound partial-result protocol. Two explicit commands make the successful effort boundary and retry path unambiguous. |
+| Preserve JSON protocol 1 with nullable or reinterpreted fields | Removed lifecycle and integration fields would make version 1 syntactically familiar but semantically false. A closed version 2 shape is an honest breaking boundary. |
 | Migrate legacy records by deriving slugs from titles | Collisions, malformed records, stale lifecycle fields, and optional memory make the result guesswork rather than a truthful migration. |
 | Preserve or indefinitely quarantine legacy records and memory | Recovery value is low because the residents are ephemeral and Git is authoritative; permanent quarantine retains privacy, ownership, discovery, and cleanup obligations without making stale lifecycle facts trustworthy. The upgrade journal keeps only the bounded rollback material needed until its commit and recovery complete. |
 | Add awf coordination locks | A lock cannot coordinate external Git and editor mutations reliably; the simpler contract is one user-managed writer per effort and independent concurrency across efforts. |
