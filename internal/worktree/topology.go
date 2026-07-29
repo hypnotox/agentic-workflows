@@ -161,20 +161,20 @@ func safeManagedPath(path string) error {
 		if componentInfo.Mode()&os.ModeSymlink != 0 {
 			return &awfgit.HardSafetyError{Category: "symlink", Path: current}
 		}
-		// Shared sticky parents such as /tmp are not manager-owned resident
-		// components; validate ownership once the confined path enters its own
-		// tree.
-		if componentInfo.Mode()&os.ModeSticky == 0 || componentInfo.Mode().Perm()&0o002 == 0 {
-			if err := managedOwner(current, componentInfo); err != nil {
-				return err
-			}
-		}
 	}
 	if info == nil {
 		return errors.New("managed path has no components")
 	}
 	if !info.IsDir() {
 		return &awfgit.HardSafetyError{Category: "file-type", Path: path}
+	}
+	// Ancestors outside the checkout are not manager-owned resident
+	// components. ResolveControlRoots already rejects symlinked identity paths,
+	// while ResidentRoot separately validates ownership from the primary
+	// checkout through resident paths. Require current ownership only for the
+	// live checkout or managed target passed here.
+	if err := managedOwner(clean, info); err != nil {
+		return err
 	}
 	return nil
 }

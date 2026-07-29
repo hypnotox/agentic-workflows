@@ -1,6 +1,8 @@
 package project
 
 import (
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -8,6 +10,7 @@ import (
 )
 
 // invariant: tooling/context-and-topic:context-summary-projection
+// invariant: tooling/context-and-topic:context-concise-projection
 func TestClaimSummaryProjection(t *testing.T) {
 	parse := func(summary, prose string) topic.Claim {
 		t.Helper()
@@ -43,8 +46,6 @@ func TestClaimSummaryProjection(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-concise-projection
-// invariant: tooling/context-and-topic:context-full-authority-packet
 func TestProjectionHelpers(t *testing.T) {
 	changes := []PendingChange{{ADR: "0004"}, {ADR: "0001"}, {ADR: "0002"}, {ADR: "0003"}}
 	bounded := contextPending(changes, false)
@@ -68,6 +69,157 @@ func TestProjectionHelpers(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-concise-projection
+// invariant: tooling/context-and-topic:context-path-attribution
+func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
+	files := ctxFiles()
+	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	p := csRepo(t, ctxConfig, files)
+	res, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/x_test.go"}, ContextOptions{Selection: SelectionExplicit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Requests) != 2 || res.Requests[0].Index != 1 || res.Requests[1].Index != 2 || res.Requests[0].Directory == nil || res.Requests[1].Exact == nil {
+		t.Fatalf("requests=%#v", res.Requests)
+	}
+	impact := res.Requests[1].Exact.Context
+	wantRelationships := ContextRelationships{State: []string{"alpha/one:order"}, Touches: []string{"alpha/one:stable"}, Proofs: []string{"alpha/one:tested"}}
+	if !reflect.DeepEqual(impact.Relationships, wantRelationships) {
+		t.Fatalf("relationships=%#v want=%#v", impact.Relationships, wantRelationships)
+	}
+	if !reflect.DeepEqual(res.Requests[0].Directory.Relationships, wantRelationships) {
+		t.Fatalf("directory relationships=%#v want=%#v", res.Requests[0].Directory.Relationships, wantRelationships)
+	}
+	var alpha TopicImpact
+	for _, topicImpact := range res.Topics {
+		if topicImpact.ID == "alpha/one" {
+			alpha = topicImpact
+		}
+	}
+	if len(alpha.Direct) != 3 {
+		t.Fatalf("direct claims=%#v", alpha.Direct)
+	}
+	if got := []string{alpha.Direct[0].ID, alpha.Direct[1].ID, alpha.Direct[2].ID}; !slices.Equal(got, []string{"alpha/one:order", "alpha/one:stable", "alpha/one:tested"}) {
+		t.Fatalf("globally deduplicated direct claims=%v", got)
+	}
+	wantKinds := map[string][]string{"alpha/one:order": {"State"}, "alpha/one:stable": {"Touches"}, "alpha/one:tested": {"Proofs"}}
+	for _, claim := range alpha.Direct {
+		if len(claim.Sources) != 1 || claim.Sources[0].RequestIndex != 2 || !slices.Equal(claim.Sources[0].Kinds, wantKinds[claim.ID]) {
+			t.Fatalf("claim sources=%#v", claim)
+		}
+	}
+	xResult, err := p.ContextForOptions([]string{"internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	xImpact := xResult.Requests[0].Exact.Context
+	if len(xImpact.Relationships.Proofs) != 0 {
+		t.Fatalf("actual proof filtering=%#v", xImpact.Relationships)
+	}
+}
+
+// invariant: tooling/context-and-topic:context-concise-projection
+// invariant: tooling/context-and-topic:context-full-authority-packet
+func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
+	files := ctxFiles()
+	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `rule: extra`\nExtra.\nOrigin: ADR-0001\n\n### `invariant: tested`\nTested.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect.\n"
+	files[".awf/topics/metadata/alpha/two.yaml"] = "title: Two\nsummary: The second topic.\npaths:\n  - internal/foo/**\n"
+	files[".awf/topics/parts/alpha/two/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n"
+	files[".awf/topics/parts/core/g/current-state.md"] = "Intro.\n\n## Claims\n\n### `invariant: everywhere`\nGlobal invariant.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: inspect global state.\n"
+	files["internal/evidence/core.go"] = "package evidence\n// state: core/g:everywhere\n"
+	p := csRepo(t, ctxConfig, files)
+	find := func(res ContextResult, id string) TopicImpact {
+		t.Helper()
+		for _, impact := range res.Topics {
+			if impact.ID == id {
+				return impact
+			}
+		}
+		t.Fatalf("missing topic %s in %#v", id, res.Topics)
+		return TopicImpact{}
+	}
+	ids := func(claims []ContextClaimImpact) []string {
+		out := []string{}
+		for _, claim := range claims {
+			out = append(out, claim.ID)
+		}
+		return out
+	}
+	for _, selection := range []ContextSelection{SelectionExplicit, SelectionStaged, SelectionRange} {
+		res, err := p.ContextForOptions([]string{"internal/foo/x.go"}, ContextOptions{Selection: selection, Range: "a..b"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := res.Requests[0].Exact.Context.Relationships; !reflect.DeepEqual(got, (ContextRelationships{State: []string{"alpha/one:order"}, Touches: []string{}, Proofs: []string{}})) {
+			t.Fatalf("%s relationships=%#v", selection, got)
+		}
+		alpha := find(res, "alpha/one")
+		if got := ids(alpha.Direct); !reflect.DeepEqual(got, []string{"alpha/one:order"}) {
+			t.Fatalf("%s direct=%v", selection, got)
+		}
+		if alpha.Counts != (ContextAuthorityCounts{Invariants: 2, Rules: 2}) {
+			t.Fatalf("%s counts=%#v", selection, alpha.Counts)
+		}
+	}
+	mixed, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(find(mixed, "alpha/one").Direct); len(got) != 0 {
+		t.Fatalf("bare mixed promoted directory relationships: %v", got)
+	}
+	withRelationships, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"relationships", FacetEvidence, FacetReferences}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	alpha := find(withRelationships, "alpha/one")
+	if got := ids(alpha.Direct); !reflect.DeepEqual(got, []string{"alpha/one:order", "alpha/one:tested"}) {
+		t.Fatalf("expanded direct=%v", got)
+	}
+	if len(alpha.Direct[0].Evidence) == 0 || !reflect.DeepEqual(ids(alpha.Referenced), []string{"core/g:everywhere"}) || len(alpha.Referenced[0].Evidence) != 0 || alpha.Referenced[0].Backing != "" || alpha.Referenced[0].Verify != "" {
+		t.Fatalf("enriched direct=%#v referenced=%#v", alpha.Direct, alpha.Referenced)
+	}
+	globalDedup, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules, FacetReferences}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	referencedEverywhere := 0
+	for _, topicImpact := range globalDedup.Topics {
+		for _, claim := range topicImpact.Referenced {
+			if claim.ID == "core/g:everywhere" {
+				referencedEverywhere++
+			}
+		}
+	}
+	if referencedEverywhere != 1 {
+		t.Fatalf("globally deduplicated referenced target count=%d: %#v", referencedEverywhere, globalDedup.Topics)
+	}
+	invariants, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"invariants"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(find(invariants, "alpha/one").Invariants); !reflect.DeepEqual(got, []string{"alpha/one:stable", "alpha/one:tested"}) {
+		t.Fatalf("invariants=%v", got)
+	}
+	rules, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := ids(find(rules, "alpha/one").Additional); !reflect.DeepEqual(got, []string{"alpha/one:extra", "alpha/one:order"}) {
+		t.Fatalf("rules=%v", got)
+	}
+	for _, facet := range []ContextFacet{FacetEvidence, FacetReferences} {
+		res, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{facet}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		impact := find(res, "alpha/one")
+		if len(impact.Direct)+len(impact.Invariants)+len(impact.Additional)+len(impact.Referenced) != 0 {
+			t.Fatalf("%s revealed hidden claims: %#v", facet, impact)
+		}
+	}
+}
+
 func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	files := ctxFiles()
 	files["internal/foo/a_test.go"] = "package foo\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
@@ -82,7 +234,7 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	if got := claimStateForOperation("add", "alpha/one:order", "applied", ws.Loaded.Topics, nil); got != "active-current" {
 		t.Fatal(got)
 	}
-	facets, _ := ParseContextFacets([]string{"all-rules", "evidence", "selectors", "references", "pending"}, false)
+	facets, _ := ParseContextFacets([]string{"invariants", "all-rules", "evidence", "selectors", "references", "pending"}, false)
 	res, err := p.ContextForOptions([]string{"internal/foo/x.go", "internal/foo/y_test.go"}, ContextOptions{Selection: SelectionExplicit, Facets: facets})
 	if err != nil {
 		t.Fatal(err)
@@ -101,5 +253,8 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	}
 	if len(alpha.Direct[0].Outgoing) != 1 || alpha.Direct[0].Outgoing[0] != "core/g:everywhere" {
 		t.Fatalf("refs=%#v", alpha.Direct[0])
+	}
+	if len(alpha.Referenced) != 0 {
+		t.Fatalf("globally visible claim repeated as referenced=%#v", alpha.Referenced)
 	}
 }

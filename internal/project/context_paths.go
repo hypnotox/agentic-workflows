@@ -15,15 +15,17 @@ import (
 type ContextFacet string
 
 const (
-	FacetAllRules   ContextFacet = "all-rules"
-	FacetEvidence   ContextFacet = "evidence"
-	FacetSelectors  ContextFacet = "selectors"
-	FacetReferences ContextFacet = "references"
-	FacetPending    ContextFacet = "pending"
-	FacetArtifacts  ContextFacet = "artifacts"
+	FacetRelationships ContextFacet = "relationships"
+	FacetInvariants    ContextFacet = "invariants"
+	FacetAllRules      ContextFacet = "all-rules"
+	FacetEvidence      ContextFacet = "evidence"
+	FacetSelectors     ContextFacet = "selectors"
+	FacetReferences    ContextFacet = "references"
+	FacetPending       ContextFacet = "pending"
+	FacetArtifacts     ContextFacet = "artifacts"
 )
 
-var allContextFacets = []ContextFacet{FacetAllRules, FacetEvidence, FacetSelectors, FacetReferences, FacetPending, FacetArtifacts}
+var allContextFacets = []ContextFacet{FacetRelationships, FacetInvariants, FacetAllRules, FacetEvidence, FacetSelectors, FacetReferences, FacetPending, FacetArtifacts}
 
 type ContextSelection string
 
@@ -82,9 +84,10 @@ type ContextExactEntry struct {
 }
 
 type ContextDirectory struct {
-	Included int
-	Excluded []ContextClassificationCount
-	Groups   []ContextGroup
+	Included      int
+	Excluded      []ContextClassificationCount
+	Groups        []ContextGroup
+	Relationships ContextRelationships
 }
 
 type ContextClassificationCount struct {
@@ -98,6 +101,12 @@ type ContextGroup struct {
 	Context ContextPathImpact
 }
 
+type ContextRelationships struct {
+	State   []string
+	Touches []string
+	Proofs  []string
+}
+
 type ContextPathImpact struct {
 	Classification         PathClassification
 	NestedRoot             string
@@ -105,9 +114,7 @@ type ContextPathImpact struct {
 	Provenance             []ContextProvenance
 	Domains                []DomainRef
 	Topics                 []ContextPathTopic
-	DirectRuleIDs          []string
-	InvariantIDs           []string
-	ProofIDs               []string
+	Relationships          ContextRelationships
 	Warnings               []ContextWarning
 	ADR                    *ADRArtifactContext
 }
@@ -118,8 +125,7 @@ type ContextProvenance struct {
 }
 
 type ContextPathTopic struct {
-	ID             string
-	DirectClaimIDs []string
+	ID string
 }
 
 type ContextWarning string
@@ -129,15 +135,27 @@ const (
 	WarningEligibleUnowned ContextWarning = "no domain owns this path; add a domain selector"
 )
 
+type ContextAuthorityCounts struct {
+	Invariants int
+	Rules      int
+}
+
 type TopicImpact struct {
 	ID, Title, Summary                         string
+	Counts                                     ContextAuthorityCounts
 	Direct, Invariants, Additional, Referenced []ContextClaimImpact
 	Pending                                    ContextPendingImpact
 	Selectors                                  *ContextSelectorImpact
 }
 
+type ContextRelationshipSource struct {
+	RequestIndex int
+	Kinds        []string
+}
+
 type ContextClaimImpact struct {
 	ID, Type, Summary, Backing, Verify string
+	Sources                            []ContextRelationshipSource
 	Evidence                           []ContextEvidence
 	Incoming, Outgoing                 []string
 }
@@ -231,7 +249,7 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 		}
 		if directory {
 			report.Kind = RequestDirectoryExpanded
-			dir := ContextDirectory{Excluded: []ContextClassificationCount{}, Groups: []ContextGroup{}}
+			dir := ContextDirectory{Excluded: []ContextClassificationCount{}, Groups: []ContextGroup{}, Relationships: emptyContextRelationships()}
 			counts := map[PathClassification]int{}
 			groups := map[string]*ContextGroup{}
 			for _, f := range files {
@@ -262,7 +280,8 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 					continue
 				}
 				dir.Included++
-				key := contextGroupKey(impact)
+				dir.Relationships = unionContextRelationships(dir.Relationships, impact.Relationships)
+				key := contextGroupKey(impact, options.Facets)
 				g := groups[key]
 				if g == nil {
 					g = &ContextGroup{Members: []string{}, Context: impact}
@@ -305,7 +324,46 @@ func buildContextRequests(queries []string, set contextPathSet, options ContextO
 	return requests
 }
 
-func contextGroupKey(impact ContextPathImpact) string {
+func emptyContextRelationships() ContextRelationships {
+	return ContextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}
+}
+
+func contextRelationshipsForPath(sitesByPath map[string][]topic.MarkerSite, filePath string) ContextRelationships {
+	relationships := emptyContextRelationships()
+	for _, site := range sitesByPath[filePath] {
+		switch site.Kind {
+		case topic.StateMarker:
+			relationships.State = append(relationships.State, site.ClaimID)
+		case topic.TouchesMarker:
+			relationships.Touches = append(relationships.Touches, site.ClaimID)
+		case topic.ProofMarker:
+			relationships.Proofs = append(relationships.Proofs, site.ClaimID)
+		}
+	}
+	return compactContextRelationships(relationships)
+}
+
+func unionContextRelationships(inputs ...ContextRelationships) ContextRelationships {
+	out := emptyContextRelationships()
+	for _, relationships := range inputs {
+		out.State = append(out.State, relationships.State...)
+		out.Touches = append(out.Touches, relationships.Touches...)
+		out.Proofs = append(out.Proofs, relationships.Proofs...)
+	}
+	return compactContextRelationships(out)
+}
+
+func compactContextRelationships(relationships ContextRelationships) ContextRelationships {
+	slices.Sort(relationships.State)
+	relationships.State = slices.Compact(relationships.State)
+	slices.Sort(relationships.Touches)
+	relationships.Touches = slices.Compact(relationships.Touches)
+	slices.Sort(relationships.Proofs)
+	relationships.Proofs = slices.Compact(relationships.Proofs)
+	return relationships
+}
+
+func contextGroupKey(impact ContextPathImpact, facets []ContextFacet) string {
 	var b strings.Builder
 	add := func(s string) {
 		var n [8]byte
@@ -323,20 +381,22 @@ func contextGroupKey(impact ContextPathImpact) string {
 	for _, p := range impact.Provenance {
 		add(p.Role)
 		add(p.Identity)
-		for _, e := range p.Sources {
-			add("s")
-			add(e.Path)
-			add(e.Label)
-		}
-		for _, e := range p.Outputs {
-			add("o")
-			add(e.Path)
-			add(e.Label)
-		}
-		for _, e := range p.Navigation {
-			add("n")
-			add(e.Path)
-			add(e.Label)
+		if slices.Contains(facets, FacetArtifacts) {
+			for _, e := range p.Sources {
+				add("s")
+				add(e.Path)
+				add(e.Label)
+			}
+			for _, e := range p.Outputs {
+				add("o")
+				add(e.Path)
+				add(e.Label)
+			}
+			for _, e := range p.Navigation {
+				add("n")
+				add(e.Path)
+				add(e.Label)
+			}
 		}
 	}
 	for _, d := range impact.Domains {
@@ -345,14 +405,6 @@ func contextGroupKey(impact ContextPathImpact) string {
 	}
 	for _, t := range impact.Topics {
 		add(t.ID)
-		for _, id := range t.DirectClaimIDs {
-			add(id)
-		}
-	}
-	for _, ids := range [][]string{impact.DirectRuleIDs, impact.InvariantIDs, impact.ProofIDs} {
-		for _, id := range ids {
-			add(id)
-		}
 	}
 	for _, w := range impact.Warnings {
 		add(string(w))

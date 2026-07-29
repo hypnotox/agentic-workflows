@@ -13,7 +13,7 @@ func TestContextHumanOnlyFacetSpec(t *testing.T) {
 	if strings.Contains(strings.Join(context.BoolFlags, " "), "--json") || !strings.Contains(strings.Join(context.ValueFlags, " "), "--show") || !strings.Contains(strings.Join(context.Repeatable, " "), "--show") {
 		t.Fatalf("context spec=%#v", context)
 	}
-	for _, text := range []string{"all-rules", "8,192", "caller", "JSON is not supported"} {
+	for _, text := range []string{"tier 0", "tier-1", "relationships", "invariants", "all-rules", "all eight facets", "Only artifacts", "8,192", "caller", "JSON is not supported"} {
 		if !strings.Contains(context.HelpBody, text) {
 			t.Errorf("help missing %q", text)
 		}

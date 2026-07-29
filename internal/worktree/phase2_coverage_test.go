@@ -356,6 +356,15 @@ func TestPhase2SafeManagedPathChecksComponents(t *testing.T) {
 	if err := safeManagedPath(root); err == nil || !strings.Contains(err.Error(), "foreign owner") {
 		t.Fatal("foreign owner accepted")
 	}
+	managedOwner = func(path string, _ os.FileInfo) error {
+		if path != root {
+			return errors.New("injected foreign ancestor")
+		}
+		return nil
+	}
+	if err := safeManagedPath(root); err != nil {
+		t.Fatalf("current-owned root beneath foreign ancestor rejected: %v", err)
+	}
 	managedOwner = oldOwner
 	link := filepath.Join(root, "link")
 	if err := os.Symlink(t.TempDir(), link); err != nil {

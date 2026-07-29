@@ -2,4 +2,5 @@
 - `internal/worktree` owns opt-in native-Git managed worktrees.
 - `internal/migrate` applies schema upgrades, including removal of obsolete disposable residents.
 - Generated Pi extensions provide subagent dispatch and effort-independent session handoff.
-- `cmd/awf` is the command binary; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide its bounded project checks.
+- `internal/project` assembles request-sensitive context: tier-0 directory orientation, actual marker-kind file and directory relationships, topic-level authority expansion, and artifact-sensitive grouping.
+- `cmd/awf` renders context tiers and per-topic authority counts before unchanged direct-or-spill delivery; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide its bounded project checks.

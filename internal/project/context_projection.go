@@ -8,28 +8,32 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directIDs []string, currentPaths []string, pending []PendingChange, facets []ContextFacet) TopicImpact {
-	directSet := map[string]bool{}
-	for _, id := range directIDs {
-		directSet[id] = true
-	}
+func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directSources map[string][]ContextRelationshipSource, globallyVisible, referencedSeen map[string]bool, currentPaths []string, pending []PendingChange, facets []ContextFacet) TopicImpact {
 	out := TopicImpact{ID: t.ID.String(), Title: t.Metadata.Title, Summary: t.Metadata.Summary, Direct: []ContextClaimImpact{}, Invariants: []ContextClaimImpact{}, Additional: []ContextClaimImpact{}, Referenced: []ContextClaimImpact{}, Pending: contextPending(pending, slices.Contains(facets, FacetPending))}
-	visible := map[string]bool{}
+	for _, claim := range t.Claims {
+		if claim.Type == topic.Invariant {
+			out.Counts.Invariants++
+		} else {
+			out.Counts.Rules++
+		}
+	}
 	for _, claim := range t.Claims {
 		category := ""
 		switch {
-		case directSet[claim.ID]:
+		case len(directSources[claim.ID]) > 0:
 			category = "direct"
-		case claim.Type == topic.Invariant:
+		case claim.Type == topic.Invariant && slices.Contains(facets, FacetInvariants):
 			category = "invariant"
-		case slices.Contains(facets, FacetAllRules):
+		case claim.Type != topic.Invariant && slices.Contains(facets, FacetAllRules):
 			category = "additional"
 		}
 		if category == "" {
 			continue
 		}
 		impact := projectClaimImpact(claim, corpus, facets)
-		visible[claim.ID] = true
+		if category == "direct" {
+			impact.Sources = cloneContextRelationshipSources(directSources[claim.ID])
+		}
 		switch category {
 		case "direct":
 			out.Direct = append(out.Direct, impact)
@@ -56,7 +60,7 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directIDs []string, 
 				items[i].Incoming = nonNilStrings(corpus.Incoming(items[i].ID))
 				items[i].Outgoing = nonNilStrings(corpus.Outgoing(items[i].ID))
 				for _, id := range append(slices.Clone(items[i].Incoming), items[i].Outgoing...) {
-					if !visible[id] {
+					if !globallyVisible[id] && !referencedSeen[id] {
 						refs[id] = true
 					}
 				}
@@ -73,7 +77,8 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directIDs []string, 
 		slices.Sort(refIDs)
 		for _, id := range refIDs {
 			if claim, ok := byID[id]; ok {
-				out.Referenced = append(out.Referenced, projectClaimImpact(claim, corpus, facets))
+				out.Referenced = append(out.Referenced, projectClaimImpact(claim, corpus, nil))
+				referencedSeen[id] = true
 			}
 		}
 	}
@@ -88,10 +93,18 @@ func projectTopicImpact(t topic.Topic, corpus topic.Corpus, directIDs []string, 
 }
 
 func projectClaimImpact(claim topic.Claim, corpus topic.Corpus, facets []ContextFacet) ContextClaimImpact {
-	out := ContextClaimImpact{ID: claim.ID, Type: string(claim.Type), Summary: claimSummary(claim), Evidence: []ContextEvidence{}, Incoming: []string{}, Outgoing: []string{}}
+	out := ContextClaimImpact{ID: claim.ID, Type: string(claim.Type), Summary: claimSummary(claim), Sources: []ContextRelationshipSource{}, Evidence: []ContextEvidence{}, Incoming: []string{}, Outgoing: []string{}}
 	if slices.Contains(facets, FacetEvidence) {
 		out.Backing, out.Verify = string(claim.Backing), claim.Verify
 		out.Evidence = contextEvidenceForClaim(claim.ID, corpus)
+	}
+	return out
+}
+
+func cloneContextRelationshipSources(in []ContextRelationshipSource) []ContextRelationshipSource {
+	out := make([]ContextRelationshipSource, 0, len(in))
+	for _, source := range in {
+		out = append(out, ContextRelationshipSource{RequestIndex: source.RequestIndex, Kinds: slices.Clone(source.Kinds)})
 	}
 	return out
 }

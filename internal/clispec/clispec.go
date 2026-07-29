@@ -256,14 +256,20 @@ sidecar.local, or a data key name).
 		BoolFlags: []string{"--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range", "--show"}, Repeatable: []string{"--show"}, MaxPos: -1, Gating: GatedInHandler,
 		HelpBody: `Usage: awf context <path>... [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]
 
-Report request-oriented current-state impact. Exact files and Git selections stay
-individual; directory descendants group by complete semantic context. Groups of
-at most three list every member and larger groups disclose no paths. Authority
-renders once globally with bounded one-line summaries.
+Report request-oriented current-state impact. Bare directories use tier 0:
+census, compact groups, classification, compact provenance, domains, topics,
+per-topic invariant/rule counts, and bounded pending summaries. Bare exact files
+and Git-selected staged/range files add tier-1 relationships declared on that
+file, rendering only non-empty State, Touches, and Proofs marker-kind sets.
+Groups of at most three list every member and larger groups disclose no paths.
 
-Repeat --show with one of all-rules, evidence, selectors, references, pending,
-or artifacts. --full is exactly their normalized union. Neither changes grouping.
---show and --full cannot be combined with --uncovered. JSON is not supported.
+Repeat --show with one of relationships, invariants, all-rules, evidence,
+selectors, references, pending, or artifacts. relationships expands a directory's
+aggregated direct relationships; invariants and all-rules expand non-direct claim
+summaries. evidence and references only enrich claims already visible through a
+tier or authority facet. Only artifacts may refine directory grouping. --full is
+exactly the normalized union of all eight facets. --show and --full cannot be
+combined with --uncovered. JSON is not supported.
 
 The complete human rendering is written unchanged through 8,192 bytes. Larger
 results spill to an owner-only temporary file outside the repository and stdout
@@ -276,7 +282,7 @@ or --range <a>..<b>. With --uncovered, positional args are optional scan roots;
 
 Flags:
   --show <facet>        add one bounded detail facet (repeatable)
-  --full                add all six facets
+  --full                add all eight facets
   --staged              use the staged index universe
   --range <a>..<b>      use paths changed between revisions a and b
   --uncovered           report unowned and uncovered paths

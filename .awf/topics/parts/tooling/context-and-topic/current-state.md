@@ -18,38 +18,38 @@ Backing: test
 
 ### `invariant: context-default-excludes-history`
 
-Default context authority is a compact impact map with one topic summary, every applicable invariant summary, and summaries only for directly marker-selected rules; it excludes additional rules, full claim prose, reference expansion, detailed pending operations, Implemented ADR prose, historical plans, and unrelated ADR history.
+Bare directory context exposes tier-0 census, compact groups, classification, compact provenance, domains, topics, authority counts, and bounded pending orientation. Bare exact and Git-selected files additionally expose only their actual `State`, `Touches`, and `Proofs` marker-kind relationships. Claim summaries require `relationships`, `invariants`, or `all-rules`; history and full claim prose remain excluded.
 Origin: ADR-0148
-Revised-by: ADR-0165
+Revised-by: ADR-0165, ADR-0174
 Backing: unbacked
-Verify: On a fixture with indirect rules, references, pending operations, and ADR history, bare context contains only the topic, applicable-invariant, directly selected rule, and bounded pending summaries; named facets add only their declared detail.
+Verify: On a fixture with indirect claims, mixed directory and file requests, references, pending operations, and history, compare bare output and each of `relationships`, `invariants`, `all-rules`, `evidence`, `selectors`, `references`, `pending`, and `artifacts` independently; each projection contains only its declared tier or enrichment.
 
 ### `invariant: context-concise-projection`
 
-Context renders globally deduplicated authority in closest-category order: directly related claims, applicable non-direct invariants, additional topic rules, referenced context, then pending changes; every visible claim has a bounded one-line summary and occupies only its closest category.
+Context renders each topic summary and active invariant/rule count once. Direct claim summaries deduplicate globally with sorted request-index and marker-kind sources; non-direct invariant and rule summaries require their respective facets. Every visible claim has a deterministic bounded summary and occupies only its closest category: direct, invariant, additional rule, referenced context, then pending.
 Origin: ADR-0153
-Revised-by: ADR-0165
+Revised-by: ADR-0165, ADR-0174
 Backing: test
 
 ### `invariant: context-full-authority-packet`
 
-Repeatable context facets compose in canonical declaration order without changing grouping or relevance, and --full is byte-for-byte the union of all-rules, evidence, selectors, references, pending, and artifacts; neither form restores full prose, an expanded path census, or per-path authority repetition.
+Repeatable context facets compose in canonical order: `relationships`, `invariants`, `all-rules`, `evidence`, `selectors`, `references`, `pending`, and `artifacts`; `--full` is their byte-identical union. Evidence and references enrich only already-visible origin claims. No facet restores full prose, a descendant census, or per-path authority repetition.
 Origin: ADR-0148
-Revised-by: ADR-0153, ADR-0155, ADR-0165
+Revised-by: ADR-0153, ADR-0155, ADR-0165, ADR-0174
 Backing: test
 
 ### `invariant: context-known-artifact-navigation`
 
-Known config, lock, manifest, template, convention-part, authored-data, topic-metadata, claim-part, decision-record, and managed-output artifacts receive compact deterministic provenance from loaded authorities rather than path-lookalike heuristics; the artifacts facet expands sorted source, output, and navigation edges, and full provenance participates in grouping even when compact.
+Known config, lock, manifest, template, convention-part, authored-data, topic-metadata, claim-part, decision-record, and managed-output artifacts receive compact deterministic provenance from loaded authorities rather than path-lookalike heuristics. The `artifacts` facet expands sorted source, output, and navigation edges and is the only facet allowed to refine directory groups when those detailed edges differ.
 Origin: ADR-0148
-Revised-by: ADR-0165
+Revised-by: ADR-0165, ADR-0174
 Backing: test
 
 ### `invariant: context-path-attribution`
 
-Context preserves every nonblank positional token's original display spelling and input order, including repeats, while slash-clean normalization is lookup-only; each request remains an independent exact-file or directory block, Git selections remain sorted individual entries, directory descendants group by complete semantic impact, and authority shared across blocks renders once.
+Context preserves every nonblank positional token's original display spelling and input order, including repeats, while slash-clean normalization is lookup-only. Files carry only actual marker-kind relationships; each directory retains a separate union across included descendants. Direct claim bodies deduplicate globally with request sources, and mixed requests never promote directory-only relationships into default file detail.
 Origin: ADR-0148
-Revised-by: ADR-0165
+Revised-by: ADR-0165, ADR-0174
 Backing: test
 
 ### `invariant: context-path-classification`

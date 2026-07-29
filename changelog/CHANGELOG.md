@@ -44,8 +44,9 @@ query a single version or a range.
 - Add safe managed effort worktrees. `awf effort new --worktree` and `awf effort worktree add` create fixed manager-owned paths and branches; `awf effort integrate` integrates them, `awf effort integrated` records manual integration, and `awf effort worktree remove` removes them. Native-Git topology checks, explicit integration dispositions, and paired force/reason recovery protect recoverable risks.
 - Add binary-owned lightweight effort records as repository-local resident state. `awf effort` supports memory-by-default creation, deterministic list/show output, rename, explicit memory creation, complete, abandon, reopen, and confined repair from primary or linked worktrees.
 - Managed context callers now start with bare context or request only the facets required by their active lens, never prescribe `--full`, and share verified spill-packet consumption and cleanup guidance across rendered targets.
+- Add request-sensitive context tiers: bare directories provide compact tier-0 orientation, exact and Git-selected files add actual marker-kind relationships, and explicit facets expand non-direct authority without changing request ownership.
 - The awf source repository now provides `./x context`, which preserves context output and status while recording path-free spill observations in an ignored owner-only locked local log. Logging failures warn without hiding a delivered spill, and `./x check` gives a non-failing advisory until the operator resolves or promotes the issue and removes the log.
-- `awf context` now preserves request blocks, groups equivalent directory descendants without disclosing large member sets, deduplicates authority globally, and offers six bounded repeatable detail facets with `--full` as their canonical union.
+- `awf context` now preserves request blocks, groups equivalent directory descendants without disclosing large member sets, deduplicates authority globally, and offers eight bounded repeatable detail facets with `--full` as their canonical union.
 - Context output now writes unchanged through 8,192 bytes and securely delivers larger complete renderings through a caller-owned mode-0600 temporary file and versioned two-line notice.
 - New `awf check memory` command scans the staged decisions and plans directories for a citation of
   a specific working-memory file and exits non-zero on any finding, and `awf check commit` applies
@@ -63,6 +64,7 @@ query a single version or a range.
 ### Bug fixes
 
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.
+- Managed effort worktrees now support current-user-owned checkouts beneath system-owned filesystem ancestors while retaining ancestor symlink, resident ownership, and repository-identity protections.
 
 ## [0.22.0] - 2026-07-24
 

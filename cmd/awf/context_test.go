@@ -14,6 +14,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
+	"github.com/hypnotox/agentic-workflows/internal/contextdelivery"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -101,13 +102,112 @@ func ctxCmdFixture(t *testing.T) string {
 func TestRunContextHumanAndFacets(t *testing.T) {
 	root := ctxCmdFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"internal/foo"}, false, "", false, false, []string{"evidence", "all-rules", "evidence"}, &out); err != nil {
+	if err := runContext(root, []string{"internal/foo"}, false, "", false, false, []string{"relationships", "invariants", "evidence", "all-rules", "evidence"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
 	for _, want := range []string{"Selection: explicit", "[1] internal/foo", "Directory: 3 included", "## Authority", "Directly related:", "Additional topic rules:", "Backing: test", "Evidence invariant:"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+}
+
+func TestRunContextRendersMarkerRelationships(t *testing.T) {
+	root := ctxCmdFixture(t)
+	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
+	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runContext(root, []string{"internal/foo/x_test.go"}, false, "", false, false, nil, &out); err != nil {
+		t.Fatal(err)
+	}
+	want := "  State: alpha/one:order\n  Touches: alpha/one:stable\n  Proofs: alpha/one:tested\n"
+	if !strings.Contains(out.String(), want) || strings.Contains(out.String(), "Direct rules:") || strings.Contains(out.String(), "Invariants:") {
+		t.Fatalf("marker relationship projection missing:\n%s", out.String())
+	}
+}
+
+// invariant: tooling/context-and-topic:context-concise-projection
+// invariant: tooling/context-and-topic:context-full-authority-packet
+func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
+	root := ctxCmdFixture(t)
+	partPath := filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md")
+	part, err := os.ReadFile(partPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	part = bytes.Replace(part, []byte("Order is deterministic.\nOrigin:"), []byte("Order is deterministic.\n\nFULL PROSE SECRET.\nOrigin:"), 1)
+	if err := os.WriteFile(partPath, part, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err := project.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	full, err := project.ParseContextFacets(nil, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	explicit, err := project.ParseContextFacets([]string{"relationships", "invariants", "all-rules", "evidence", "selectors", "references", "pending", "artifacts"}, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	render := func(facets []project.ContextFacet) string {
+		t.Helper()
+		result, err := p.ContextForOptions([]string{"internal/foo/x.go"}, project.ContextOptions{Selection: project.SelectionExplicit, Facets: facets})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		renderContext(&out, result, "header", facets)
+		return out.String()
+	}
+	got, want := render(full), render(explicit)
+	if got != want {
+		t.Fatalf("full differs from union:\n--- full ---\n%s\n--- union ---\n%s", got, want)
+	}
+	if strings.Count(got, "alpha/one - One") != 1 || strings.Count(got, "Authority counts: invariants=2, rules=1") != 1 || strings.Contains(got, "FULL PROSE SECRET") || strings.Contains(got, "Direct rules:") {
+		t.Fatalf("full restored repetition, prose, or legacy rosters:\n%s", got)
+	}
+}
+
+func TestRenderContextRequestSourceAttribution(t *testing.T) {
+	root := ctxCmdFixture(t)
+	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n"
+	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runContext(root, []string{"internal/foo", "internal/foo/x_test.go"}, false, "", false, false, []string{"relationships"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Sources: request 1 [State]; request 2 [State]",
+		"Sources: request 1 [Touches]; request 2 [Touches]",
+		"Sources: request 1 [Proofs]; request 2 [Proofs]",
+	} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("missing %q:\n%s", want, out.String())
+		}
+	}
+}
+
+func TestBareRepositoryContextFitsDirectDelivery(t *testing.T) {
+	p, err := project.Open("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, paths := range [][]string{{"internal/project", "cmd/awf"}, {"cmd/awf/context.go"}} {
+		result, err := p.ContextForOptions(paths, project.ContextOptions{Selection: project.SelectionExplicit})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out bytes.Buffer
+		renderContext(&out, result, "context: live state for this project", nil)
+		if bytes.HasPrefix(out.Bytes(), []byte("AWF_CONTEXT_SPILL_V1")) || out.Len() > contextdelivery.MaxDirectBytes {
+			t.Errorf("bare context %v rendered %d bytes; direct limit is %d", paths, out.Len(), contextdelivery.MaxDirectBytes)
 		}
 	}
 }
@@ -166,7 +266,7 @@ func TestRunContextStaticAndUsage(t *testing.T) {
 		shows           []string
 		part            string
 	}{
-		{nil, false, "", false, false, nil, "usage:"}, {[]string{"x"}, false, "", false, false, []string{"bad"}, "unknown context facet"}, {nil, false, "a..b", true, false, nil, "--range"}, {nil, false, "", true, true, nil, "cannot be combined"},
+		{nil, false, "", false, false, nil, "usage:"}, {[]string{"x"}, false, "", false, false, []string{"bad"}, "unknown context facet"}, {nil, false, "a..b", true, false, nil, "--range"}, {nil, false, "", true, true, nil, "cannot be combined"}, {nil, false, "", true, false, []string{"relationships"}, "cannot be combined"},
 	}
 	for _, tc := range cases {
 		if err := runContext(root, tc.paths, tc.staged, tc.rng, tc.uncovered, tc.full, tc.shows, io.Discard); err == nil || !strings.Contains(err.Error(), tc.part) {
@@ -177,15 +277,15 @@ func TestRunContextStaticAndUsage(t *testing.T) {
 
 func TestRenderContextGrammar(t *testing.T) {
 	inside := false
-	impact := project.ContextPathImpact{Classification: project.PathSymlink, TargetInsideRepository: &inside, Provenance: []project.ContextProvenance{{Role: "template", Identity: "skills/example/SKILL.md.tmpl", Sources: []project.ArtifactLink{{Path: "templates/x", Label: "template source"}}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}, Domains: []project.DomainRef{{Name: "tooling"}}, Topics: []project.ContextPathTopic{{ID: "tooling/example"}}, DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []project.ContextWarning{project.WarningGlobLiteral}}
+	impact := project.ContextPathImpact{Classification: project.PathSymlink, TargetInsideRepository: &inside, Provenance: []project.ContextProvenance{{Role: "template", Identity: "skills/example/SKILL.md.tmpl", Sources: []project.ArtifactLink{{Path: "templates/x", Label: "template source"}}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}, Domains: []project.DomainRef{{Name: "tooling"}}, Topics: []project.ContextPathTopic{{ID: "tooling/example"}}, Relationships: project.ContextRelationships{State: []string{"tooling/example:r"}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningGlobLiteral}}
 	res := project.ContextResult{
 		Selection: project.SelectionRange, Range: "a..b",
 		Requests: []project.ContextRequestReport{{Index: 1, Argument: "x", Exact: &project.ContextExactEntry{Path: "x", Context: impact}}},
-		Topics:   []project.TopicImpact{{ID: "tooling/example", Title: "Example", Summary: "Summary.", Direct: []project.ContextClaimImpact{{ID: "tooling/example:r", Type: "rule", Summary: "Rule.", Incoming: []string{"a"}, Outgoing: []string{"b"}}}}},
+		Topics:   []project.TopicImpact{{ID: "tooling/example", Title: "Example", Summary: "Summary.", Counts: project.ContextAuthorityCounts{Invariants: 1, Rules: 2}, Direct: []project.ContextClaimImpact{{ID: "tooling/example:r", Type: "rule", Summary: "Rule.", Sources: []project.ContextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Incoming: []string{"a"}, Outgoing: []string{"b"}}}}},
 	}
 	var out bytes.Buffer
 	renderContext(&out, res, "header", []project.ContextFacet{project.FacetArtifacts})
-	for _, want := range []string{"Selection: range a..b", "File: x", "Symlink target inside repository: false", "Source: templates/x", "Warning: globs", "Incoming: a", "Outgoing: b"} {
+	for _, want := range []string{"Selection: range a..b", "File: x", "Symlink target inside repository: false", "Source: templates/x", "State: tooling/example:r", "Authority counts: invariants=1, rules=2", "Sources: request 1 [State]", "Warning: globs", "Incoming: a", "Outgoing: b"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q:\n%s", want, out.String())
 		}
@@ -233,7 +333,7 @@ func TestRenderAllContextBranches(t *testing.T) {
 		}
 	}
 	current := project.ContextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Evidence: []project.ContextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
-	impact := project.ContextPathImpact{Classification: project.PathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []project.ContextProvenance{{Role: "template", Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{{Path: "out", Label: "managed output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []project.DomainRef{}, Topics: []project.ContextPathTopic{}, DirectRuleIDs: []string{}, InvariantIDs: []string{}, ProofIDs: []string{}, Warnings: []project.ContextWarning{project.WarningEligibleUnowned}, ADR: &project.ADRArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []project.ADROperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", StateSequence: 7, Detail: &project.ADROperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &project.ADROperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002", StateSequence: 7}}}}}}}
+	impact := project.ContextPathImpact{Classification: project.PathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []project.ContextProvenance{{Role: "template", Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{{Path: "out", Label: "managed output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []project.DomainRef{}, Topics: []project.ContextPathTopic{}, Relationships: project.ContextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningEligibleUnowned}, ADR: &project.ADRArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []project.ADROperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", StateSequence: 7, Detail: &project.ADROperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &project.ADROperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002", StateSequence: 7}}}}}}}
 	res := project.ContextResult{Selection: project.SelectionStaged, Requests: []project.ContextRequestReport{{Index: 1, Argument: "empty", Directory: &project.ContextDirectory{Included: 0, Excluded: []project.ContextClassificationCount{{Classification: project.PathGeneratedOutput, Count: 2}}, Groups: []project.ContextGroup{{Count: 2, Members: []string{"a", "b"}, Context: impact}}}}}, Topics: []project.TopicImpact{{ID: "d/t", Title: "T", Summary: "S", Selectors: &project.ContextSelectorImpact{DomainPaths: []string{}, TopicPaths: []string{}, DeclaredGlobal: false}, Invariants: []project.ContextClaimImpact{current}, Pending: project.ContextPendingImpact{OperationCount: 4, ADRs: []string{"0001", "0002", "0003"}, AdditionalADRCount: 1}}}}
 	var out bytes.Buffer
 	renderContext(&out, res, "header", []project.ContextFacet{project.FacetArtifacts})
