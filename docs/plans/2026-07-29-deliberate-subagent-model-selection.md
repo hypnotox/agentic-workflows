@@ -38,7 +38,11 @@ rendered outputs travel in the same batch. Generated files are never edited dire
 
 Every repository path below is relative to `/home/hypno/Projects/agentic-workflows/`. Each
 subagent-driven phase starts only from the declared clean and green baseline and is owned by one
-commit-capable phase implementer.
+commit-capable phase implementer. If grounding reveals that an already-declared behavior is owned
+by an omitted authoritative source, the parent may amend the plan with that exact source and its
+deterministic rendered or lock consequences without another design decision; this source-closure
+rule may not add behavior, alter an ownership boundary, or broaden the phase beyond those direct
+consequences.
 
 ## File structure
 
@@ -50,7 +54,8 @@ commit-capable phase implementer.
   `.awf/parts/working-with-awf/config-and-overrides.md`, and
   `templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl`.
 - **Modified Pi implementation and test plumbing:** `templates/pi/awf-subagents/index.ts.tmpl`,
-  `internal/project/target.go`, `internal/project/target_test.go`,
+  `templates/partials/pi-minimum-runtime.md`, `internal/project/target.go`,
+  `internal/project/target_test.go`,
   `internal/project/output_plan_test.go`, `internal/project/project_test.go`,
   `internal/evals/chain_test.go` and `tools/pi-extension-test/container.sh`.
 - **Modified current state and lifecycle records:**
@@ -61,12 +66,14 @@ commit-capable phase implementer.
   `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
 - **Generated root outputs:** `AGENTS.md`, `docs/working-with-awf.md`,
   `docs/topics/rendering/{workflow-skill-templates,pi-workflows,pi-runtime}.md`,
-  `docs/domains/rendering.md`, `.pi/extensions/awf-subagents/{index,model-routing,runner}.ts`, and
+  `docs/domains/rendering.md`, `.pi/extensions/awf-subagents/{index,model-routing,runner}.ts`,
+  `.pi/extensions/awf-handoff/index.ts`, and
   enabled target copies of the eight changed skills under `.agents`, `.claude`, `.cursor`,
   `.gemini`, `.github`, and `.pi`.
 - **Generated Sundial outputs:** `examples/sundial/AGENTS.md`,
   `examples/sundial/docs/working-with-awf.md`,
-  `examples/sundial/.pi/extensions/awf-subagents/{index,model-routing,runner}.ts`, the enabled
+  `examples/sundial/.pi/extensions/awf-subagents/{index,model-routing,runner}.ts`,
+  `examples/sundial/.pi/extensions/awf-handoff/index.ts`, the enabled
   Sundial target copies of the eight changed skills, and `examples/sundial/.awf/awf.lock`.
 - **Deleted:** none.
 
@@ -422,9 +429,12 @@ ADR implementation transition, and closing commit.
   maximum-length, and defensive fixtures; they construct every field at the 256-character boundary
   to prove the normal form fits rather than relying only on the defensive branch.
 
-- [ ] **Task 3.3: Wire one per-run `before_agent_start` injection with current state.** Add
-  `getActiveTools` to the minimum-runtime requirement. Register one async `before_agent_start`
-  handler in `index.ts.tmpl`. Determine the active awf tool set from
+- [ ] **Task 3.3: Wire one per-run `before_agent_start` injection with current state.** In the
+  shared authoritative source `templates/partials/pi-minimum-runtime.md`, add `getActiveTools` to
+  `MinimumRuntimeAPI` and its capability map; require it from `index.ts.tmpl`. Because the handoff
+  entrypoint consumes the same partial, regenerate both root and Sundial handoff entrypoints and
+  their already-inventoried locks without changing handoff behavior. Register one async
+  `before_agent_start` handler in `index.ts.tmpl`. Determine the active awf tool set from
   `event.systemPromptOptions.selectedTools` when it is an array; otherwise use
   `pi.getActiveTools()`. If none of `subagent_grounding`, `subagent_explore`, `subagent_review`, or
   `subagent_implement` is active, return `undefined` and perform no notice. Otherwise reload both
@@ -501,7 +511,7 @@ ADR implementation transition, and closing commit.
   complete transaction with this exact command:
 
   ```sh
-  git add -- templates/pi/awf-subagents/{index.ts.tmpl,model-routing.ts.tmpl} tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts} tools/pi-extension-test/container.sh internal/project/{target.go,target_test.go,output_plan_test.go,project_test.go} .awf/topics/parts/rendering/pi-runtime/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock .pi/extensions/awf-subagents/{index.ts,model-routing.ts} docs/topics/rendering/pi-runtime.md docs/domains/rendering.md docs/decisions/INDEX.md examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-subagents/{index.ts,model-routing.ts}
+  git add -- templates/pi/awf-subagents/{index.ts.tmpl,model-routing.ts.tmpl} templates/partials/pi-minimum-runtime.md tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts} tools/pi-extension-test/container.sh internal/project/{target.go,target_test.go,output_plan_test.go,project_test.go} .awf/topics/parts/rendering/pi-runtime/current-state.md docs/decisions/0173-deliberate-subagent-model-selection.md .awf/awf.lock .pi/extensions/awf-subagents/{index.ts,model-routing.ts} .pi/extensions/awf-handoff/index.ts docs/topics/rendering/pi-runtime.md docs/domains/rendering.md docs/decisions/INDEX.md examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-subagents/{index.ts,model-routing.ts} examples/sundial/.pi/extensions/awf-handoff/index.ts
   ```
 
   Require `git diff --cached --name-only` to equal the Phase 3 status inventory, run `./awf check
@@ -549,3 +559,6 @@ docs(plans): freeze deliberate subagent model selection plan
 - Phase 3 deliberately creates and consumes `model-routing.ts` in the same transaction. Creating the
   template or output descriptor earlier would leave an unconsumed definition or apply the runtime
   output claim out of order.
+- Phase 3's `getActiveTools` requirement is owned by the shared minimum-runtime partial. Its handoff
+  output changes are provenance-only consequences of that shared source; they do not change handoff
+  behavior or widen the runtime operation batch.
