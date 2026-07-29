@@ -75,7 +75,17 @@ export const REVIEWER_PATHS = {
 } as const;
 
 export const PREFERENCE_ROLES = ["grounding", "exploration", "review", "implementation"] as const;
+export const PREFERENCE_TIERS = ["small", "standard", "large"] as const;
+export const PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS] as const;
 export type PreferenceRole = (typeof PREFERENCE_ROLES)[number];
+export type PreferenceTier = (typeof PREFERENCE_TIERS)[number];
+export type PreferenceField = (typeof PREFERENCE_FIELDS)[number];
+export type SourceScope = "global" | "project";
+export type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key";
+export type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable";
+export type InvalidState =
+  | { kind: "source"; scope: SourceScope; reason: SourceReason }
+  | { kind: "field"; scope: SourceScope; field: PreferenceField; reason: FieldReason };
 export const ROLE_PREFERENCE_KEYS: Record<RunRequest["role"], PreferenceRole> = {
   grounding: "grounding", explore: "exploration", review: "review", implement: "implementation",
 };
@@ -83,6 +93,7 @@ export const GLOBAL_PREFERENCES_FILE = "awf-subagents.json";
 export const LOCAL_PREFERENCES_FILE = "awf-subagents.local.json";
 export interface SubagentModelPreferences {
   default?: string; grounding?: string; exploration?: string; review?: string; implementation?: string;
+  small?: string; standard?: string; large?: string;
 }
 export const RECOMMENDED_PRESET: Required<SubagentModelPreferences> = {
   default: "openai-codex/gpt-5.6-terra",
@@ -90,11 +101,21 @@ export const RECOMMENDED_PRESET: Required<SubagentModelPreferences> = {
   exploration: "openai-codex/gpt-5.6-luna",
   review: "openai-codex/gpt-5.6-sol",
   implementation: "openai-codex/gpt-5.6-terra",
+  small: "openai-codex/gpt-5.6-luna",
+  standard: "openai-codex/gpt-5.6-terra",
+  large: "openai-codex/gpt-5.6-sol",
 };
-const PREFERENCE_KEYS = new Set<string>(["default", ...PREFERENCE_ROLES]);
-const PREFERENCES_NOTICE = Symbol.for("awf.pi.subagent-preferences-notified");
+const PREFERENCE_KEYS = new Set<string>(PREFERENCE_FIELDS);
+const preferenceNotices = new WeakSet<object>();
 const PREFERENCES_BLOCKED = "Subagent model preferences are invalid; implicit routing is blocked.";
 const PREFERENCES_REPAIR = "Run /awf-subagent-models to repair. Explicit per-call model arguments remain available.";
+const MODEL_FIELD_REPAIR = "Omit the model field to use configured or inherited routing.";
+export const MODEL_REFERENCE_SCHEMA = Type.String({
+  minLength: 3,
+  maxLength: 256,
+  pattern: "^[^/\\s]+/[^\\s]+$",
+  description: "Exact provider/model-id. Omit the model field to use configured or inherited routing; default, auto, and inherit parent are invalid.",
+});
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
 const COLLAPSED_EVENT_COUNT = 10;
 export const MAX_EXPLORATION_CONCURRENCY = 10;
@@ -159,18 +180,32 @@ function projectRoot(extensionFile: string): string {
 
 export interface PreferenceSourceState {
   path: string;
-  scope: "global" | "project";
+  scope: SourceScope;
   values: SubagentModelPreferences;
+  invalid: InvalidState[];
+}
+
+export interface EffectivePreferenceState {
+  global: PreferenceSourceState;
+  project: PreferenceSourceState;
+  effective: Partial<Record<PreferenceField, { reference: string; scope: SourceScope }>>;
+  missing: PreferenceField[];
+  invalid: InvalidState[];
+  blocked: boolean;
   errors: string[];
 }
 
-function emptyPreferenceSource(scope: "global" | "project", path: string): PreferenceSourceState {
-  return { scope, path, values: {}, errors: [] };
+function emptyPreferenceSource(scope: SourceScope, path: string): PreferenceSourceState {
+  return { scope, path, values: {}, invalid: [] };
 }
 
-function exactModelReference(value: string): boolean {
+export function parseExactModelReference(value: unknown): { provider: string; id: string } | { reason: "malformed" | "overlong" } {
+  if (typeof value !== "string") return { reason: "malformed" };
+  if (value.length > 256) return { reason: "overlong" };
+  if (value === "default" || value === "auto" || value === "inherit parent") return { reason: "malformed" };
   const slash = value.indexOf("/");
-  return slash > 0 && slash < value.length - 1;
+  if (value.length < 3 || slash <= 0 || slash === value.length - 1 || /\s/.test(value)) return { reason: "malformed" };
+  return { provider: value.slice(0, slash), id: value.slice(slash + 1) };
 }
 
 function errorText(error: unknown): string {
@@ -181,59 +216,103 @@ function errorCode(error: unknown): string | undefined {
   return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
 }
 
-function parsePreferenceSource(scope: "global" | "project", path: string, raw: string): PreferenceSourceState {
+export function parsePreferenceSource(scope: SourceScope, path: string, raw: string): PreferenceSourceState {
   const source = emptyPreferenceSource(scope, path);
   let parsed: unknown;
   try { parsed = JSON.parse(raw); }
-  catch (error) {
-    source.errors.push(`${path}: malformed JSON (${errorText(error)}).`);
-    return source;
-  }
+  catch { source.invalid.push({ kind: "source", scope, reason: "malformed-json" }); return source; }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    source.errors.push(`${path}: preferences must be a JSON object.`);
+    source.invalid.push({ kind: "source", scope, reason: "non-object" });
     return source;
   }
-  const values: SubagentModelPreferences = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    if (!PREFERENCE_KEYS.has(key)) {
-      source.errors.push(`${path}: unknown key "${key}".`);
-      continue;
-    }
-    if (typeof value !== "string" || !exactModelReference(value)) {
-      source.errors.push(`${path}: key "${key}" must be an exact provider/model-id string, got ${JSON.stringify(value)}.`);
-      continue;
-    }
-    (values as Record<string, string>)[key] = value;
+  if (Object.keys(parsed).some((key) => !PREFERENCE_KEYS.has(key))) {
+    source.invalid.push({ kind: "source", scope, reason: "unknown-key" });
+    return source;
   }
-  if (source.errors.length === 0) source.values = values;
+  for (const field of PREFERENCE_FIELDS) {
+    const value = (parsed as Record<string, unknown>)[field];
+    if (value === undefined) continue;
+    const parsedReference = parseExactModelReference(value);
+    if ("reason" in parsedReference) {
+      source.invalid.push({ kind: "field", scope, field, reason: parsedReference.reason });
+      continue;
+    }
+    (source.values as Record<string, string>)[field] = value as string;
+  }
   return source;
 }
 
-function requireRegistered(ctx: any, reference: string, describe: string): { provider: string; id: string } {
-  const slash = reference.indexOf("/");
-  const found = ctx.modelRegistry.find(reference.slice(0, slash), reference.slice(slash + 1));
-  if (!found) throw new Error(`${describe} ${reference} is not registered`);
-  if (!ctx.modelRegistry.hasConfiguredAuth(found)) throw new Error(`${describe} ${reference} has no configured authentication`);
-  return { provider: found.provider, id: found.id };
+function registryReason(ctx: any, reference: string): FieldReason | undefined {
+  const parsed = parseExactModelReference(reference);
+  if ("reason" in parsed) return parsed.reason;
+  const found = ctx.modelRegistry.find(parsed.provider, parsed.id);
+  if (!found) return "unregistered";
+  if (!ctx.modelRegistry.hasConfiguredAuth(found)) return "unauthenticated";
+  const available = ctx.modelRegistry.getAvailable();
+  if (!available.some((model: any) => model.provider === parsed.provider && model.id === parsed.id)) return "unavailable";
+  return undefined;
+}
+
+function requireExactModel(ctx: any, reference: unknown): { provider: string; id: string } {
+  const parsed = parseExactModelReference(reference);
+  if ("reason" in parsed) throw new Error(`Subagent model is ${parsed.reason === "overlong" ? "longer than 256 characters" : "not an exact provider/model-id"}. ${MODEL_FIELD_REPAIR}`);
+  const reason = registryReason(ctx, reference as string);
+  if (reason) throw new Error(`Subagent model is ${reason}. ${MODEL_FIELD_REPAIR}`);
+  return parsed;
+}
+
+function invalidText(invalid: InvalidState): string {
+  return invalid.kind === "source"
+    ? `${invalid.scope}:source:${invalid.reason}`
+    : `${invalid.scope}:${invalid.field}:${invalid.reason}`;
+}
+
+const SOURCE_REASON_ORDER: SourceReason[] = ["read-error", "malformed-json", "non-object", "unknown-key"];
+function sortInvalid(left: InvalidState, right: InvalidState): number {
+  const scope = (left.scope === "global" ? 0 : 1) - (right.scope === "global" ? 0 : 1);
+  if (scope !== 0) return scope;
+  if (left.kind !== right.kind) return left.kind === "source" ? -1 : 1;
+  if (left.kind === "source" && right.kind === "source") return SOURCE_REASON_ORDER.indexOf(left.reason) - SOURCE_REASON_ORDER.indexOf(right.reason);
+  if (left.kind === "field" && right.kind === "field") return PREFERENCE_FIELDS.indexOf(left.field) - PREFERENCE_FIELDS.indexOf(right.field);
+  return 0;
+}
+
+function registryFailures(ctx: any, sources: PreferenceSourceState[]): InvalidState[] {
+  const invalid: InvalidState[] = [];
+  for (const source of sources) {
+    for (const field of PREFERENCE_FIELDS) {
+      const reference = source.values[field];
+      if (reference === undefined) continue;
+      const reason = registryReason(ctx, reference);
+      if (reason) invalid.push({ kind: "field", scope: source.scope, field, reason });
+    }
+  }
+  return invalid;
+}
+
+function effectivePreferenceState(global: PreferenceSourceState, project: PreferenceSourceState, registryInvalid: InvalidState[]): EffectivePreferenceState {
+  const effective: EffectivePreferenceState["effective"] = {};
+  for (const field of PREFERENCE_FIELDS) {
+    if (project.values[field] !== undefined) effective[field] = { reference: project.values[field]!, scope: "project" };
+    else if (global.values[field] !== undefined) effective[field] = { reference: global.values[field]!, scope: "global" };
+  }
+  const invalid = [...global.invalid, ...project.invalid, ...registryInvalid].sort(sortInvalid);
+  const missing = PREFERENCE_FIELDS.filter((field) => effective[field] === undefined);
+  return { global, project, effective, missing, invalid, blocked: invalid.length > 0, errors: invalid.map(invalidText) };
 }
 
 export function createPreferenceStore(deps: ExtensionDependencies) {
-  const readFile = deps.readFile;
   const globalPath = join(deps.agentDir, GLOBAL_PREFERENCES_FILE);
   const projectPath = join(projectRoot(deps.extensionFile), deps.configDirName, LOCAL_PREFERENCES_FILE);
   let global = emptyPreferenceSource("global", globalPath);
   let project = emptyPreferenceSource("project", projectPath);
-  let registryErrors: string[] = [];
-  const read = async (scope: "global" | "project", path: string): Promise<PreferenceSourceState> => {
-    let raw: string;
-    try { raw = await readFile(path, "utf8"); }
+  let registryInvalid: InvalidState[] = [];
+  const read = async (scope: SourceScope, path: string): Promise<PreferenceSourceState> => {
+    try { return parsePreferenceSource(scope, path, await deps.readFile(path, "utf8")); }
     catch (error) {
       if (errorCode(error) === "ENOENT") return emptyPreferenceSource(scope, path);
-      const source = emptyPreferenceSource(scope, path);
-      source.errors.push(`${path}: ${errorText(error)}.`);
-      return source;
+      return { ...emptyPreferenceSource(scope, path), invalid: [{ kind: "source", scope, reason: "read-error" }] };
     }
-    return parsePreferenceSource(scope, path, raw);
   };
   let ready: Promise<void> = Promise.resolve();
   const store = {
@@ -242,66 +321,53 @@ export function createPreferenceStore(deps: ExtensionDependencies) {
       ready = (async () => {
         global = await read("global", globalPath);
         project = await read("project", projectPath);
-        registryErrors = [];
+        registryInvalid = [];
       })();
       return ready;
     },
-    validateAgainstRegistry(ctx: any): void {
-      const errors: string[] = [];
-      for (const source of [project, global]) {
-        for (const [key, value] of Object.entries(source.values)) {
-          try { requireRegistered(ctx, value as string, `${source.path}: key "${key}" names model`); }
-          catch (error) { errors.push(`${errorText(error)}.`); }
-        }
-      }
-      registryErrors = errors;
-    },
-    state(): { global: PreferenceSourceState; project: PreferenceSourceState; blocked: boolean; errors: string[] } {
-      const errors = [...global.errors, ...project.errors, ...registryErrors];
-      return { global, project, blocked: errors.length > 0, errors };
-    },
+    validateAgainstRegistry(ctx: any): void { registryInvalid = registryFailures(ctx, [global, project]); },
+    state(): EffectivePreferenceState { return effectivePreferenceState(global, project, registryInvalid); },
   };
   return store;
 }
 
 export type PreferenceStore = ReturnType<typeof createPreferenceStore>;
 
-function preferredReference(project: PreferenceSourceState, global: PreferenceSourceState, role: RunRequest["role"]): { value: string; source: ExecutionMetadata["modelSource"]; from: PreferenceSourceState; key: string } | undefined {
+function preferredReference(project: PreferenceSourceState, global: PreferenceSourceState, role: RunRequest["role"]): { value: string; source: ExecutionMetadata["modelSource"] } | undefined {
   const key = ROLE_PREFERENCE_KEYS[role];
-  const candidates: Array<{ value: string | undefined; source: ExecutionMetadata["modelSource"]; from: PreferenceSourceState; key: string }> = [
-    { value: project.values[key], source: "project-role", from: project, key },
-    { value: global.values[key], source: "global-role", from: global, key },
-    { value: project.values.default, source: "project-default", from: project, key: "default" },
-    { value: global.values.default, source: "global-default", from: global, key: "default" },
+  const candidates: Array<{ value: string | undefined; source: ExecutionMetadata["modelSource"] }> = [
+    { value: project.values[key], source: "project-role" },
+    { value: global.values[key], source: "global-role" },
+    { value: project.values.default, source: "project-default" },
+    { value: global.values.default, source: "global-default" },
   ];
-  for (const candidate of candidates) {
-    if (candidate.value !== undefined) return { value: candidate.value, source: candidate.source, from: candidate.from, key: candidate.key };
-  }
+  for (const candidate of candidates) if (candidate.value !== undefined) return { value: candidate.value, source: candidate.source };
   return undefined;
 }
 
-function routingPreview(project: PreferenceSourceState, global: PreferenceSourceState): string[] {
-  return (Object.keys(ROLE_PREFERENCE_KEYS) as Array<RunRequest["role"]>).map((role) => {
+function routingPreview(project: PreferenceSourceState, global: PreferenceSourceState, state?: EffectivePreferenceState): string[] {
+  const roles = PREFERENCE_ROLES.map((key) => {
+    const role = (Object.keys(ROLE_PREFERENCE_KEYS) as Array<RunRequest["role"]>).find((candidate) => ROLE_PREFERENCE_KEYS[candidate] === key)!;
     const preferred = preferredReference(project, global, role);
-    return `${ROLE_PREFERENCE_KEYS[role]}: ${preferred ? `${preferred.value} (${preferred.source})` : "parent (inherited)"}`;
+    return `${key}: ${preferred ? `${preferred.value} (${preferred.source})` : "parent (inherited)"}`;
   });
+  const tiers = PREFERENCE_TIERS.map((key) => {
+    const value = project.values[key] ?? global.values[key];
+    return `${key}: ${value ?? "unset"}`;
+  });
+  const current = state ?? {
+    missing: PREFERENCE_FIELDS.filter((field) => project.values[field] === undefined && global.values[field] === undefined),
+    invalid: [...global.invalid, ...project.invalid],
+  };
+  return ["Role defaults:", ...roles, "Tier mappings:", ...tiers, `Missing: ${current.missing.length ? current.missing.join(", ") : "none"}`, `Invalid: ${current.invalid.length ? current.invalid.map(invalidText).join(", ") : "none"}`];
 }
 
 export function resolveChildModel(ctx: any, role: RunRequest["role"], requested: string | undefined, store: PreferenceStore): { model: { provider: string; id: string }; requested: string | undefined; source: ExecutionMetadata["modelSource"] } {
-  if (requested !== undefined) {
-    if (!exactModelReference(requested)) throw new Error("Subagent model must be an exact provider/model-id reference");
-    return { model: requireRegistered(ctx, requested, "Subagent model"), requested, source: "requested" };
-  }
+  if (requested !== undefined) return { model: requireExactModel(ctx, requested), requested, source: "requested" };
   const state = store.state();
-  if (state.blocked) throw new Error(`${PREFERENCES_BLOCKED} ${state.errors.join(" ")} ${PREFERENCES_REPAIR}`);
+  if (state.blocked) throw new Error(`${PREFERENCES_BLOCKED} ${state.errors.join("; ")}. ${PREFERENCES_REPAIR}`);
   const preferred = preferredReference(state.project, state.global, role);
-  if (preferred) {
-    return {
-      model: requireRegistered(ctx, preferred.value, `Configured subagent model (${preferred.from.path}: key "${preferred.key}")`),
-      requested: undefined,
-      source: preferred.source,
-    };
-  }
+  if (preferred) return { model: requireExactModel(ctx, preferred.value), requested: undefined, source: preferred.source };
   if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
   return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined, source: "inherited" };
 }
@@ -602,12 +668,15 @@ function modelLabel(model: any, parent: { provider: string; id: string } | undef
   return parts.join(" ");
 }
 
-const SLOT_GUIDANCE: Array<{ key: keyof SubagentModelPreferences; guidance: string }> = [
+const SLOT_GUIDANCE: Array<{ key: PreferenceField; guidance: string }> = [
   { key: "default", guidance: "Shared fallback for every role; a mid-tier coding model fits." },
   { key: "grounding", guidance: "Grounding verifies designs against source; favor the strongest model." },
   { key: "exploration", guidance: "Exploration fans out cheap reads; favor the cheapest capable model." },
   { key: "review", guidance: "Review judges finished work; favor the strongest model." },
   { key: "implementation", guidance: "Implementation edits code; a mid-tier coding model fits." },
+  { key: "small", guidance: "Small is for narrow, mechanical, low-ambiguity work." },
+  { key: "standard", guidance: "Standard is for substantive but bounded work." },
+  { key: "large", guidance: "Large is for broad, intricate, cross-cutting, or high-consequence work." },
 ];
 
 export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependencies): void {
@@ -618,15 +687,25 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   const nextObservationId = deps.observationId ?? randomUUID;
   const preferences = createPreferenceStore(deps);
   preferences.reload();
-  pi.on("session_start", async (_event, ctx) => {
-    await preferences.ready();
+  const reloadState = async (ctx: any): Promise<EffectivePreferenceState> => {
+    await preferences.reload();
     preferences.validateAgainstRegistry(ctx);
-    const state = preferences.state();
-    if (!state.blocked) return;
-    if ((globalThis as any)[PREFERENCES_NOTICE]) return;
-    (globalThis as any)[PREFERENCES_NOTICE] = true;
-    ctx.ui.notify(`${PREFERENCES_BLOCKED} ${state.errors.join(" ")} ${PREFERENCES_REPAIR}`, "error");
-  });
+    return preferences.state();
+  };
+  const notifyPreferenceState = (ctx: any, state: EffectivePreferenceState): void => {
+    const identity = ctx.sessionManager;
+    if (!identity || typeof identity !== "object" || preferenceNotices.has(identity)) return;
+    if (state.blocked) ctx.ui.notify(`${PREFERENCES_BLOCKED} ${state.errors.join("; ")}. ${PREFERENCES_REPAIR}`, "error");
+    else if (state.missing.length > 0) ctx.ui.notify(`Subagent model preferences are incomplete; missing: ${state.missing.join(", ")}. Run /awf-subagent-models to configure roles and tiers.`, "info");
+    else return;
+    preferenceNotices.add(identity);
+  };
+  const refreshAndResolve = async (ctx: any, role: RunRequest["role"], requested: string | undefined) => {
+    const state = await reloadState(ctx);
+    notifyPreferenceState(ctx, state);
+    return resolveChildModel(ctx, role, requested, preferences);
+  };
+  pi.on("session_start", async (_event, ctx) => notifyPreferenceState(ctx, await reloadState(ctx)));
   pi.registerCommand("awf-subagent-models", {
     description: "Configure per-role subagent model preferences.",
     handler: async (_args: string, ctx: any) => {
@@ -634,9 +713,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         ctx.ui?.notify?.("awf-subagent-models requires an interactive TUI session.", "error");
         return;
       }
-      await preferences.ready();
-      preferences.validateAgainstRegistry(ctx);
-      const state = preferences.state();
+      const state = await reloadState(ctx);
       const canceled = () => ctx.ui.notify("Subagent model preferences unchanged.", "info");
       const globalLabel = `User-global (${state.global.path})`;
       const scopeChoice = await ctx.ui.select("Preference scope", [globalLabel, `Project-local (${state.project.path})`]);
@@ -648,16 +725,19 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         if (errorCode(error) !== "ENOENT") { ctx.ui.notify(`Cannot read ${scope.path}: ${errorText(error)}`, "error"); return; }
         snapshot = undefined;
       }
-      const currentLines = scope.errors.length > 0 ? scope.errors : Object.entries(scope.values).map(([key, value]) => `${key}: ${value}`);
+      const scopeInvalid = state.invalid.filter((item) => item.scope === scope.scope);
+      const currentLines = scopeInvalid.length > 0 ? scopeInvalid.map(invalidText) : Object.entries(scope.values).map(([key, value]) => `${key}: ${value}`);
       const proceed = await ctx.ui.confirm(
         "Current subagent model preferences",
-        `${scope.path}\n${currentLines.join("\n") || "(empty)"}\n\nEffective routing now:\n${routingPreview(state.project, state.global).join("\n")}\n\nThis wizard configures child routing only; the parent session remains the mastermind for brainstorming and plan authoring. Configure this scope now?`,
+        `${scope.path}\n${currentLines.join("\n") || "(empty)"}\n\nEffective routing now:\n${routingPreview(state.project, state.global, state).join("\n")}\n\nThis wizard configures child routing only; the parent session remains the mastermind for brainstorming and plan authoring. Configure this scope now?`,
       );
       if (!proceed) return canceled();
       const presetIssues: string[] = [];
       for (const [slot, reference] of Object.entries(RECOMMENDED_PRESET)) {
-        try { requireRegistered(ctx, reference, `preset ${slot} model`); }
-        catch (error) { presetIssues.push(`${errorText(error)}.`); }
+        const parsed = parseExactModelReference(reference);
+        const found = "reason" in parsed ? undefined : ctx.modelRegistry.find(parsed.provider, parsed.id);
+        if (!found) presetIssues.push(`preset ${slot} model is unregistered.`);
+        else if (!ctx.modelRegistry.hasConfiguredAuth(found)) presetIssues.push(`preset ${slot} model is unauthenticated.`);
       }
       let next: SubagentModelPreferences | undefined;
       if (presetIssues.length === 0) {
@@ -680,10 +760,11 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         next = chosen;
       }
       const content = `${JSON.stringify(next, null, 2)}\n`;
-      const nextScope: PreferenceSourceState = { ...scope, values: next, errors: [] };
-      const preview = scope.scope === "project"
-        ? routingPreview(nextScope, state.global)
-        : routingPreview(state.project, nextScope);
+      const nextScope: PreferenceSourceState = { ...scope, values: next, invalid: [] };
+      const previewGlobal = scope.scope === "global" ? nextScope : state.global;
+      const previewProject = scope.scope === "project" ? nextScope : state.project;
+      const previewState = effectivePreferenceState(previewGlobal, previewProject, registryFailures(ctx, [previewGlobal, previewProject]));
+      const preview = routingPreview(previewProject, previewGlobal, previewState);
       const confirmed = await ctx.ui.confirm("Save subagent model preferences", `${scope.path}\n${content}\nEffective routing after save:\n${preview.join("\n")}\n\nWrite this file?`);
       if (!confirmed) return canceled();
       if (scope.scope === "project") {
@@ -803,15 +884,15 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_grounding",
     label: "Grounding Subagent",
-    description: "Run one fresh-context, no-mutation grounding check. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
+    description: "Run one fresh-context, no-mutation grounding check. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
     promptSnippet: "Ground an agreed design against source and project constraints",
-    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. model is optional and omission resolves configured preferences, then inherits the parent."],
-    parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(Type.String()) }, { additionalProperties: false }),
+    promptGuidelines: ["Use subagent_grounding once after brainstorm design approval; include the complete grounding brief in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
+    parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
-      await preferences.ready();
-      const selected = resolveChildModel(ctx, "grounding", params.model, preferences);
+      await refreshAndResolve(ctx, "grounding", params.model);
+      const selected = await refreshAndResolve(ctx, "grounding", params.model);
       const metadata = executionMetadata(selected, thinkingLevel);
       const queuedAt = now();
       return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate, queuedAt), metadata);
@@ -822,26 +903,27 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_explore",
     label: "Explore Subagent",
-    description: "Run one fresh-context, no-mutation exploration child. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
+    description: "Run one fresh-context, no-mutation exploration child. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
     promptSnippet: "Delegate a self-contained read-oriented investigation to fresh context",
-    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. model is optional and omission resolves configured preferences, then inherits the parent."],
+    promptGuidelines: ["Use subagent_explore for one scoped investigation; include all required context in task. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       breadth: StringEnum(["targeted", "bounded", "broad"] as const),
       detail: StringEnum(["paths", "summary", "analysis"] as const),
-      model: Type.Optional(Type.String()),
+      model: Type.Optional(MODEL_REFERENCE_SCHEMA),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
-      await preferences.ready();
-      const selected = resolveChildModel(ctx, "explore", params.model, preferences);
+      const selected = await refreshAndResolve(ctx, "explore", params.model);
       const metadata = executionMetadata(selected, thinkingLevel, { breadth: params.breadth, detail: params.detail });
       publishState(onUpdate, "explore", params.task, "queued", metadata);
       const queuedAt = now();
       const release = await explorationLimiter.acquire(signal);
       try {
-        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), selected.model, metadata, signal, onUpdate, queuedAt), metadata);
+        const finalSelected = await refreshAndResolve(ctx, "explore", params.model);
+        const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { breadth: params.breadth, detail: params.detail });
+        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), finalSelected.model, finalMetadata, signal, onUpdate, queuedAt), finalMetadata);
       } finally {
         release();
       }
@@ -852,21 +934,21 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_review",
     label: "Review Subagent",
-    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
+    description: "Run one governed report-only ADR, plan, or code reviewer in fresh context. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
     promptSnippet: "Delegate governed ADR, plan, or code review to fresh context",
-    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief. model is optional and omission resolves configured preferences, then inherits the parent."],
+    promptGuidelines: ["Use subagent_review with kind adr, plan, or code and a self-contained review brief. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
     parameters: Type.Object({
       kind: StringEnum(["adr", "plan", "code"] as const),
       task: Type.String({ minLength: 1 }),
-      model: Type.Optional(Type.String()),
+      model: Type.Optional(MODEL_REFERENCE_SCHEMA),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
-      await preferences.ready();
-      const selected = resolveChildModel(ctx, "review", params.model, preferences);
-      const metadata = executionMetadata(selected, thinkingLevel, { kind: params.kind });
+      await refreshAndResolve(ctx, "review", params.model);
       const prompt = await loadReviewer(deps, root, params.kind);
+      const selected = await refreshAndResolve(ctx, "review", params.model);
+      const metadata = executionMetadata(selected, thinkingLevel, { kind: params.kind });
       const queuedAt = now();
       return toolResult("review", params.task, await run("review", params.task, REVIEW_TOOLS, prompt, selected.model, metadata, signal, onUpdate, queuedAt), { ...metadata, kind: params.kind });
     },
@@ -876,19 +958,18 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   pi.registerTool({
     name: "subagent_implement",
     label: "Implementation Subagent",
-    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch. Optional model uses exact provider/model-id; omission resolves configured preferences, then inherits the parent.",
+    description: "Run one serialized implementation child in the shared checkout. Call this tool alone in its parent tool batch. Omit model for configured or inherited routing; use an exact tier provider/model-id only for deliberate override. Omission is the only default form.",
     promptSnippet: "Delegate one sequential implementation task to fresh context",
-    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. model is optional and omission resolves configured preferences, then inherits the parent."],
+    promptGuidelines: ["Call subagent_implement alone in a tool batch, never in parallel; set allowCommits explicitly. Omit model for configured or inherited routing; use the selected tier's exact provider/model-id only for deliberate override. Omit the model field to use configured or inherited routing."],
     parameters: Type.Object({
       task: Type.String({ minLength: 1 }),
       allowCommits: Type.Boolean(),
-      model: Type.Optional(Type.String()),
+      model: Type.Optional(MODEL_REFERENCE_SCHEMA),
     }, { additionalProperties: false }),
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
-      await preferences.ready();
-      const selected = resolveChildModel(ctx, "implement", params.model, preferences);
+      const selected = await refreshAndResolve(ctx, "implement", params.model);
       const metadata = executionMetadata(selected, thinkingLevel, { allowCommits: params.allowCommits });
       const queuedAt = now();
       let release!: () => void;
@@ -899,10 +980,12 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       try {
         if (signal?.aborted) throw new Error("Implementation subagent was aborted while queued");
         const before = await snapshot(pi, root);
-        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), selected.model, metadata, signal, onUpdate, queuedAt);
+        const finalSelected = await refreshAndResolve(ctx, "implement", params.model);
+        const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { allowCommits: params.allowCommits });
+        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), finalSelected.model, finalMetadata, signal, onUpdate, queuedAt);
         const after = await snapshot(pi, root);
         const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
-        const gitDetails = { ...metadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
+        const gitDetails = { ...finalMetadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
         if (violation) {
           const failure = {
             ...result,

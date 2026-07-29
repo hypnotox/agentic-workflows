@@ -64,21 +64,23 @@ Backing: test
 
 ### `invariant: pi-subagent-model-preferences`
 
-The generated Pi extension loads a user-global and a gitignored project-local JSON preference file at session start, strictly validates keys, role names, and canonical registry-authenticated model references, blocks all implicit routing including parent inheritance while either file is invalid, keeps explicit per-call models usable throughout, revalidates current registry availability immediately before every queued child, and names each child's routing source in diagnostics.
+The generated Pi extension merges user-global and gitignored project-local preferences per field for the shared default, every grounding, exploration, review, and implementation role, and the small, standard, and large tiers. Completeness requires every field explicitly after merging; missing fields remain valid and visible, while any malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable configured field blocks all implicit routing and leaves valid explicit calls usable. Preference and registry state reloads at preflight and again immediately before child startup.
 Origin: ADR-0151
+Revised-by: ADR-0173
 Backing: test
 
 ### `invariant: pi-subagent-model-routing`
 
-Every Pi subagent role accepts an optional exact provider/model-id; an omitted model resolves configured preferences in explicit, project-role, global-role, project-default, global-default, parent order; unknown, unauthenticated, or unregistered explicit or configured choices reject visibly before queueing without fallback; thinking is inherited for child clamping; and diagnostics report requested, resolved, and actual models with the routing source.
+Every Pi subagent role accepts only omission or an exact registry-valid provider/model-id of at most 256 characters. Omission alone requests configured role routing and parent fallback; default, auto, inherit parent, and other sentinel values reject with an omit-the-field repair and are never normalized. Queue acquisition is followed by preference and registry revalidation immediately before child startup, failures never fall through, thinking remains inherited for child clamping, and diagnostics report requested, resolved, and actual models with routing source.
 Origin: ADR-0148
-Revised-by: ADR-0151
+Revised-by: ADR-0151, ADR-0173
 Backing: test
 
 ### `invariant: pi-subagent-model-wizard`
 
-The /awf-subagent-models command is a TUI-only atomic wizard that selects scope, surfaces current preferences and validation errors, offers the embedded recommended preset only when every referenced model is currently registered and authenticated, presents informed model selectors distinguishing base from request-wide tier pricing, enforces the project-local gitignore rule at save with a visible-notice degradation outside a git work tree, persists with owner-only permissions and stale-writer detection via sibling-temp rename, refreshes in-memory preferences after success, and leaves the existing file unchanged on cancellation or failure.
+The /awf-subagent-models command is a TUI-only atomic wizard for the shared default, all four explicit role defaults, and the small, standard, and large tiers. It preserves scope and error display, complete cancellation without writes, live registry-gated Luna/Terra/Sol preset selection, informed manual selectors, project-local gitignore enforcement, owner-only sibling-temp replacement, stale-writer detection, cleanup, and in-memory refresh, and it writes roles and tiers together as one preference transaction.
 Origin: ADR-0151
+Revised-by: ADR-0173
 Backing: test
 
 ### `invariant: pi-subagent-progress-bounds`

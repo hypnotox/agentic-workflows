@@ -278,12 +278,60 @@ func TestTargetOutputRenderError(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract
+func TestPiStructuredExplorationContractRender(t *testing.T) {
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{"subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement", "MAX_EXPLORATION_CONCURRENCY = 10", "queues the rest FIFO with abort-aware removal"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Pi subagent extension missing %q", want)
+		}
+	}
+}
 
 // invariant: rendering/pi-workflows:pi-subagent-model-routing
+func TestPiSubagentModelRoutingRender(t *testing.T) {
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		"maxLength: 256", "^[^/\\\\s]+/[^\\\\s]+$", "default, auto, and inherit parent are invalid",
+		"Omit the model field to use configured or inherited routing.", "const finalSelected = await refreshAndResolve",
+		"requestedModel", "resolvedModel", "thinkingLevel",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Pi model routing render missing %q", want)
+		}
+	}
+	if got := strings.Count(body, "model: Type.Optional(MODEL_REFERENCE_SCHEMA)"); got != 4 {
+		t.Errorf("shared model-reference schema uses = %d, want 4", got)
+	}
+}
 
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences
+func TestPiSubagentModelPreferencesRender(t *testing.T) {
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		`PREFERENCE_TIERS = ["small", "standard", "large"]`,
+		`PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS]`,
+		`type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key"`,
+		`type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable"`,
+		"await preferences.reload()", "new WeakSet<object>()", "ctx.sessionManager",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Pi model preference render missing %q", want)
+		}
+	}
+}
 
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard
+func TestPiSubagentModelWizardRender(t *testing.T) {
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		`small: "openai-codex/gpt-5.6-luna"`, `standard: "openai-codex/gpt-5.6-terra"`, `large: "openai-codex/gpt-5.6-sol"`,
+		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "await preferences.reload()",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Pi model wizard render missing %q", want)
+		}
+	}
+}
 
 func explorationFixtureConfig(target string) string {
 	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [" + target + "]\n"
