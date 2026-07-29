@@ -60,6 +60,20 @@ func TestLoaderOpenReturnsLoadError(t *testing.T) {
 	}
 }
 
+func TestLoaderOpenRejectsNilLoadedConfig(t *testing.T) {
+	loader := NewLoader(func(string) (*config.Config, error) {
+		var cfg *config.Config
+		return cfg, nil
+	}, catalog.Standard, func(string) string {
+		t.Fatal("resident resolver called after nil config")
+		return ""
+	})
+	_, err := loader.Open(t.TempDir())
+	if err == nil || err.Error() != "project Loader: load config tree returned nil config" {
+		t.Fatalf("error = %v", err)
+	}
+}
+
 func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 	loader := NewLoader(func(string) (*config.Config, error) {
 		return &config.Config{}, nil

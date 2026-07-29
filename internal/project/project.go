@@ -147,6 +147,9 @@ func (l *Loader) Open(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
+	if cfg == nil {
+		return nil, errors.New("project Loader: load config tree returned nil config")
+	}
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
