@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-29
 ---
 # ADR-0175: Unified Ephemeral Slug-Based Efforts
@@ -260,3 +260,4 @@ and conditional post-review worktree integration are required.
 ## Status history
 
 - 2026-07-29: Proposed
+- 2026-07-29: Accepted; content-sha256: 9e25b81686b7f78ca393007db2810f6cea90efee73b6a6aeb3035182e2fbff55

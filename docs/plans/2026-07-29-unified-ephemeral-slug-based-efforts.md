@@ -82,6 +82,14 @@ is intentionally the final applied batch because its activation is the cutover b
   for every target, Pi handoff output, resident `.gitignore` outputs, decision index, and locks
   produced by `./x render`. Inspect `git status --short` after every render and add any newly produced
   path caused solely by a listed authored input to this Proposed plan before staging.
+- **Preserved ADR-0173 closure:** final authority also includes
+  `templates/partials/pi-minimum-runtime.md`, `templates/pi/awf-subagents/{index.ts.tmpl,
+  model-routing.ts.tmpl}`, `tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts}`,
+  `tools/pi-extension-test/container.sh`, `internal/project/{target.go,output_plan_test.go,
+  project_test.go}`, `.awf/topics/parts/rendering/pi-runtime/current-state.md`, and their root and
+  Sundial Pi outputs. Phase 2 changes only the overlapping handoff template and shared tests named
+  above; its verification must preserve the other closure byte-for-byte and retain the 4096-byte
+  routing card and semantic small/standard/large dispatch contract.
 - **Deleted:** `internal/effort/partial.go` and schema-1-only partial/repair tests once replacement
   coverage is live; `templates/memory/gitignore.tmpl`; root and Sundial `.awf/memory/.gitignore`;
   obsolete production/test branches for rename, memory creation, repair, complete, abandon, reopen,
@@ -102,10 +110,13 @@ review fixes concurrently before execution.
   onto the local intended target branch. Resolve `docs/decisions/INDEX.md` and `.awf/awf.lock` by
   retaining authored ADR files and running `./x render`, never by hand. Preserve ADR-0173's semantic
   small/standard/large dispatch clauses and Pi routing-card changes in all overlapping files:
-  `.awf/parts/working-with-awf/config-and-overrides.md`, the workflow-skill and Pi-workflow current
-  state parts, `templates/agents-doc/AGENTS.md.tmpl`, `templates/docs/working-with-awf.md.tmpl`, the
-  eight model-selection skill templates, `internal/evals/chain_test.go`,
-  `internal/project/target_test.go`, and their generated fanout. Run `go test ./internal/project
+  `.awf/parts/working-with-awf/config-and-overrides.md`, the workflow-skill, Pi-workflow, and
+  Pi-runtime current-state parts, `templates/agents-doc/AGENTS.md.tmpl`,
+  `templates/docs/working-with-awf.md.tmpl`, the eight model-selection skill templates,
+  `templates/partials/pi-minimum-runtime.md`, the two Pi subagent templates,
+  `tools/pi-extension-test/tests/{index.test.ts,runtime.test.ts}`, `internal/evals/chain_test.go`,
+  `internal/project/{target.go,target_test.go,output_plan_test.go,project_test.go}`, and their
+  generated fanout. Run `go test ./internal/project
   ./internal/evals`, `./x pi-test run`, `./x render`, `./x check`, and `git diff --check`; require
   success, clean drift, and no diff-check output.
 
@@ -138,10 +149,14 @@ review fixes concurrently before execution.
   event, and leave every declared operation Remaining. Run `./x render` so the generated decision
   index and lock travel with the transition.
 
-- [ ] **Phase-close: stage, check, gate, and commit.** Run the exact Phase 1 `git add --` command
-  materialized by Task 1.2; its inventory must contain ADR-0175, this plan when source-closure
-  correction changed it, `docs/decisions/INDEX.md`, and `.awf/awf.lock`, with no other path. Require
-  `git diff --cached --name-only` to equal that inventory. Run `./awf check --staged` and use its
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage exactly:
+
+  ```sh
+  git add -- .awf/awf.lock docs/decisions/0175-unified-ephemeral-slug-based-efforts.md docs/decisions/INDEX.md docs/plans/2026-07-29-unified-ephemeral-slug-based-efforts.md
+  ```
+
+  Require `git diff --cached --name-only` to equal those four paths after bytewise sorting, with no
+  other path. Run `./awf check --staged` and use its
   reported digest to settle the Accepted event, restage with the same command, then require the
   staged check and `./x gate` to pass. Commit:
 
@@ -331,9 +346,31 @@ all source, render, test, staging, and commit ownership.
   ./internal/effort ./internal/worktree ./internal/git ./internal/clispec ./internal/memorycite
   ./internal/catalog ./internal/evals ./internal/project ./cmd/awf`, `./x pi-test run`, `./x render`,
   `./x check`, and `git diff --check`; require success and no diff-check output. Inspect generated
-  fanout for complete lifecycle and preserved ADR-0173 routing guidance. Run the exact Phase 2
-  `git add --` command materialized by Task 1.2 and require `git diff --cached --name-only` to equal
-  its named status inventory. Require `./awf check --staged` and `./x gate` to pass, and commit:
+  fanout for complete lifecycle and preserved ADR-0173 routing guidance. Stage the resolved Phase 2
+  closure exactly with this command; every brace expands to individual files, and the plan path is
+  inert unless a render-discovered closure correction was required:
+
+  ```sh
+  git add -- \
+    internal/effort/{types.go,paths.go,store.go,memory.go,service.go,safeio.go,safeio_darwin.go,safeio_linux.go,safeio_unix.go,safeio_windows.go,publication_darwin.go,publication_linux.go,publication_other.go,publication_windows.go,partial.go,branches_test.go,durability_test.go,memory_test.go,partial_safety_test.go,partial_test.go,paths_test.go,platform_test.go,platform_windows_test.go,repair_test.go,safeio_linux_test.go,safety_test.go,service_test.go,service_worktree_test.go,store_test.go,testsys_unix_test.go,testsys_windows_test.go,types_test.go} \
+    internal/worktree/{git.go,topology.go,manager.go,coverage_closure_test.go,coverage_final_test.go,coverage_more_test.go,coverage_mutations_test.go,manager_closure_test.go,manager_fault_test.go,manager_integration_test.go,manager_more_test.go,manager_remaining_test.go,manager_test.go,phase2_coverage_test.go,topology_failure_test.go,topology_parity_test.go} \
+    internal/git/{controlroot.go,controlroot_test.go} cmd/awf/{effort.go,effort_test.go,effort_worktree_test.go,memorygate.go,memorygate_test.go,checkgroup_test.go} internal/clispec/{clispec.go,clispec_test.go} internal/memorycite/{memorycite.go,memorycite_test.go} \
+    internal/catalog/standard.go internal/evals/chain_test.go internal/project/{topics_test.go,spine_test.go,target_test.go,project_test.go,output_plan_test.go,currentstate_test.go} \
+    templates/partials/{checkpoint-routine.md,checkpoint-approval.md} templates/pi/awf-handoff/index.ts.tmpl tools/pi-extension-test/tests/handoff.test.ts templates/agents-doc/AGENTS.md.tmpl templates/docs/{workflow.md.tmpl,working-with-awf.md.tmpl} \
+    templates/skills/{brainstorming,proposing-adr,adr-lifecycle,writing-plans,reviewing-plan,reviewing-plan-resync,reviewing-adr,executing-direct,executing-plans,subagent-driven-development,reviewing-impl,retrospective,debugging,bugfix,tdd,refactor-coupling-audit,exploring,roadmap-graduation}/SKILL.md.tmpl \
+    .awf/skills/parts/retrospective/procedure.md .awf/parts/agents-doc/working-memory.md .awf/parts/workflow/chain.md .awf/parts/working-with-awf/{commands.md,config-and-overrides.md} \
+    .awf/docs/{glossary.yaml,pitfalls.yaml} .awf/docs/parts/architecture/{overview.md,components.md,data-flow.md} .awf/docs/parts/glossary/prepend.md .awf/docs/parts/pitfalls/prepend.md .awf/docs/parts/development/command-runner.md .awf/docs/parts/testing/gate.md .awf/agents-doc.yaml README.md changelog/CHANGELOG.md \
+    .awf/topics/parts/tooling/effort-management/current-state.md .awf/topics/parts/tooling/cli/current-state.md .awf/topics/parts/tooling/quality-gates/current-state.md .awf/topics/parts/rendering/guide-and-doc-templates/current-state.md .awf/topics/parts/rendering/workflow-skill-templates/current-state.md .awf/topics/parts/rendering/pi-workflows/current-state.md \
+    docs/decisions/0175-unified-ephemeral-slug-based-efforts.md docs/plans/2026-07-29-unified-ephemeral-slug-based-efforts.md docs/decisions/INDEX.md .awf/awf.lock \
+    AGENTS.md docs/{architecture.md,development.md,glossary.md,pitfalls.md,testing.md,workflow.md,working-with-awf.md} docs/domains/{rendering.md,tooling.md} docs/topics/rendering/{guide-and-doc-templates.md,pi-workflows.md,workflow-skill-templates.md} docs/topics/tooling/{cli.md,effort-management.md,quality-gates.md} .pi/extensions/awf-handoff/index.ts \
+    .{claude,pi}/skills/awf-{adr-lifecycle,brainstorming,bugfix,debugging,executing-direct,executing-plans,exploring,proposing-adr,refactor-coupling-audit,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development,tdd,writing-plans}/SKILL.md \
+    examples/sundial/AGENTS.md examples/sundial/docs/{architecture.md,development.md,glossary.md,pitfalls.md,testing.md,workflow.md,working-with-awf.md} examples/sundial/.awf/awf.lock examples/sundial/.pi/extensions/awf-handoff/index.ts \
+    examples/sundial/.{agents,claude,cursor,gemini,github,pi}/skills/sundial-{adr-lifecycle,brainstorming,bugfix,debugging,executing-direct,executing-plans,exploring,proposing-adr,refactor-coupling-audit,retrospective,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,roadmap-graduation,subagent-driven-development,tdd,writing-plans}/SKILL.md
+  ```
+
+  Before staging, write `git status --short`'s Phase 2 paths in bytewise order into the phase Notes;
+  require `git diff --cached --name-only` after bytewise sorting to equal that named inventory and
+  reject every path outside the command. Require `./awf check --staged` and `./x gate` to pass, and commit:
 
 ```commit
 feat(rendering): cut over to effort-owned workflows (applies 0175 batch)
@@ -448,9 +485,27 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
 - [ ] **Phase-close: stage, check, gate, and commit.** Run
   `git diff --name-only --diff-filter=ACMR -- '*.go' | xargs -r gofmt -w`, `go test ./...`, `./x
   pi-test run`, `./x render`, `./x check`, `./x gate full`, and `git diff --check`; require all
-  tests/coverage/gates to pass, clean drift, and no diff-check output. Run the exact Phase 3
-  `git add --` command materialized by Task 1.2 and require `git diff --cached --name-only` to equal
-  its named status inventory. Run `./awf check --staged`, settle its sequence/digest diagnostics,
+  tests/coverage/gates to pass, clean drift, and no diff-check output. Stage the resolved Phase 3
+  closure exactly with this command; every brace expands to individual files, and the plan path is
+  inert unless a render-discovered closure correction was required:
+
+  ```sh
+  git add -- \
+    internal/migrate/{unified_effort_residents.go,unified_effort_residents_test.go,migrate.go,migrate_test.go} internal/upgrade/{journal.go,journal_test.go,upgrade.go,upgrade_test.go} \
+    cmd/awf/{upgrade.go,upgrade_test.go,main.go,run_test.go,check_test.go,checkgroup_test.go} internal/project/{project.go,project_test.go,render.go,render_test.go,render_tree_test.go,output_plan.go,output_plan_test.go,install.go,install_test.go,currentstate.go,currentstate_test.go,context.go,context_test.go,context_wrapper_test.go,sweep.go,sweep_test.go,check_test.go,target_test.go} \
+    templates/embed.go templates/memory/gitignore.tmpl .awf/config.yaml examples/sundial/.awf/config.yaml .awf/memory/.gitignore examples/sundial/.awf/memory/.gitignore \
+    .awf/docs/{glossary.yaml,pitfalls.yaml} .awf/docs/parts/architecture/{overview.md,components.md,data-flow.md} .awf/docs/parts/glossary/prepend.md .awf/docs/parts/pitfalls/prepend.md .awf/docs/parts/development/command-runner.md .awf/docs/parts/testing/gate.md \
+    .awf/parts/workflow/chain.md .awf/parts/working-with-awf/{commands.md,config-and-overrides.md} README.md changelog/CHANGELOG.md \
+    .awf/topics/parts/config/migrations-and-locks/current-state.md .awf/topics/parts/rendering/singletons-and-payloads/current-state.md .awf/topics/parts/rendering/project-output-plan/current-state.md .awf/topics/parts/rendering/sync-and-drift/current-state.md \
+    docs/decisions/0175-unified-ephemeral-slug-based-efforts.md docs/plans/2026-07-29-unified-ephemeral-slug-based-efforts.md docs/decisions/INDEX.md .awf/awf.lock examples/sundial/.awf/awf.lock \
+    .awf/efforts/.gitignore .awf/worktrees/.gitignore examples/sundial/.awf/efforts/.gitignore examples/sundial/.awf/worktrees/.gitignore \
+    docs/{architecture.md,config-reference.md,development.md,glossary.md,pitfalls.md,testing.md,workflow.md,working-with-awf.md} docs/domains/{config.md,rendering.md} docs/topics/config/migrations-and-locks.md docs/topics/rendering/{singletons-and-payloads.md,project-output-plan.md,sync-and-drift.md} \
+    examples/sundial/docs/{architecture.md,config-reference.md,development.md,glossary.md,pitfalls.md,testing.md,workflow.md,working-with-awf.md}
+  ```
+
+  Before staging, write `git status --short`'s Phase 3 paths in bytewise order into the phase Notes;
+  require `git diff --cached --name-only` after bytewise sorting to equal that named inventory and
+  reject every path outside the command. Run `./awf check --staged`, settle its sequence/digest diagnostics,
   restage, then require staged check and `./x gate` to pass. Commit:
 
 ```commit
@@ -474,9 +529,14 @@ memory as the sole checkpoint and keep one writer.
 
 - [ ] **Task 4.2: Freeze the accepted execution record.** Check completed tasks, record concrete
   implementation/review commits and material findings under Notes, set this plan to `Implemented`,
-  and run `./x render`, `./x check`, and `git diff --check`. Run the exact Phase 4 `git add --`
-  command materialized by Task 1.2, require `git diff --cached --name-only` to equal its named status
-  inventory, then run `./awf check --staged` and `./x gate`. ADR-0175 is already Implemented and must
+  and run `./x render`, `./x check`, and `git diff --check`. Stage exactly:
+
+  ```sh
+  git add -- docs/plans/2026-07-29-unified-ephemeral-slug-based-efforts.md
+  ```
+
+  Require `git diff --cached --name-only` to equal that one path, then run `./awf check --staged`
+  and `./x gate`. ADR-0175 is already Implemented and must
   not be edited. Commit:
 
 ```commit
