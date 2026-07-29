@@ -49,7 +49,9 @@ for every refusal or partial mutation.
    with ASCII words or digits. There are no truncation, transliteration, suffixing, reserved-name, or
    explicit-slug exceptions beyond those validations. The slug is immutable and is the public command
    identity, resident path segment, worktree path segment, and branch suffix. Creation rejects a
-   collision with an existing or incomplete reserved slug actionably. Static `state.json` retains an
+   collision with an existing effort, incomplete reservation, or finishing tombstone for that slug
+   actionably. A finishing tombstone reserves its slug until deletion completes, so creation directs
+   the caller to retry `finish` rather than allocating a new effort. Static `state.json` retains an
    awf-allocated UUID as an internal identity together with the slug, title, creation time, and schema
    version; no command renames either identity.
 
@@ -75,9 +77,12 @@ for every refusal or partial mutation.
    validates the complete resident and managed-resource preconditions, atomically renames the owned
    directory within the efforts root to a reserved finishing name containing its internal UUID,
    syncs the root, and then recursively deletes only that proven tombstone. The rename is the point at
-   which the effort ceases to be active. Enumeration ignores finishing names; a retry by slug locates
-   and validates the unique tombstone, completes deletion, and reports whether the active rename or
-   cleanup changed bytes. There is no complete, abandon, reopen, repair, or historical-listing state
+   which the effort ceases to be active, but its tombstone continues to reserve the slug. Enumeration
+   omits finishing names while creation detects them. A retry by slug requires the active directory to
+   be absent, locates and validates exactly one tombstone whose stored slug and UUID match its name,
+   completes deletion, and reports whether the active rename or cleanup changed bytes. Multiple or
+   mismatched tombstones are foreign-byte refusals with manual-preservation guidance, never an
+   arbitrary selection. There is no complete, abandon, reopen, repair, or historical-listing state
    machine. Durable project history belongs in Git rather than a local terminal record.
 
 6. Keep managed worktrees optional and separate at `.awf/worktrees/<slug>/` on branch
