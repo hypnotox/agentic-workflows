@@ -21,7 +21,7 @@ dispatched roles divide cleanly:
   authored in `templates/agents/*.md.tmpl` and governed by `rendering/workflow-skill-templates:reviewers-report-only`.
 - The explore and grounding roles carry literal persona prose in `rolePrompt()`
   (`templates/pi/awf-subagents/index.ts.tmpl:172-197`), several paragraphs each.
-- The implement role gets one sentence (`templates/pi/awf-subagents/index.ts.tmpl:199`, rendered at
+- The implement role gets one sentence (`templates/pi/awf-subagents/index.ts.tmpl:198`, rendered at
   `.pi/extensions/awf-subagents/index.ts:232`): follow AGENTS.md and the task exactly, commits are
   allowed or forbidden, "Report changed files, verification, and blockers." That sentence invites
   "blockers" and specifies nothing about what a blocker report must contain.
@@ -51,7 +51,7 @@ and grounding-checker roles, deletes the remaining `rolePrompt` branches, and ex
 dispatch spine (Part B). The split keeps this fix off two blockers that Part B genuinely owns:
 revising `rendering/workflow-skill-templates:bounded-exploration-reporting`, whose text explicitly
 names "Pi's fixed prompt" and whose literal strings are pinned by `TestBoundedExplorationReporting`
-(`internal/project/target_test.go:435`), and settling whether non-Pi dispatch prose may name those
+(`internal/project/target_test.go:454`), and settling whether non-Pi dispatch prose may name those
 agents at all, which `rendering/workflow-skill-templates:cross-runtime-exploration-dispatch`
 deliberately constrains.
 
@@ -79,47 +79,91 @@ established precedent.
       the child. Its skill catalog and chain routing do not: the child runs no workflow skill, opens
       no effort, and writes no memory.
    4. **The green obligation.** Reaching green is the job. Iterating on failures is expected work,
-      not a blocker. The child never weakens an assertion, relaxes a golden, or edits a test to make
-      a failure disappear.
+      not a blocker. The child never weakens an assertion, relaxes a golden, or edits a test in
+      order to make a failure disappear; updating a golden that the phase legitimately changes is
+      expected work and is reported as such.
    5. **No user exists.** The child has no interactive channel. Escalation means returning an
       inventory and finishing the turn, never stopping to wait for an answer.
    6. **The owner transaction procedure.** A commit-capable owner stages the complete transaction,
       runs `awf check --staged`, runs the gate, and commits once, only after both pass, leaving a
       clean tree.
-   7. **The structured return.** A closed return schema whose `stopped` outcome is invalid without
-      all five of: `git status --short` output, work completed, work remaining, the failing check
-      with its actual output, and what was already tried.
+   7. **The structured return.** A closed two-outcome return schema, so the parent distinguishes
+      outcomes without parsing free text. `completed` requires the closing commit subject and sha in
+      owner mode or the changed-file list in helper mode, plus each verification actually run and its
+      result. `stopped` is invalid without all five of: `git status --short` output, work completed,
+      work remaining, the failing check with its actual output, and what was already tried. There is
+      no third outcome; an aborted or crashed child is the runtime's failure to report, not the
+      child's.
 
 3. Pi loads the implementer contract from the rendered artifact rather than from a literal string.
    `subagent_implement` reads `.pi/agents/implementer.md` through a loader that preserves
    `loadReviewer`'s three behaviours: frontmatter strip, per-role prepend, and a hard error on an
-   empty instruction body (`templates/pi/awf-subagents/index.ts.tmpl:243-244`). Only the implement
-   branch of `rolePrompt` is deleted; the explore and grounding branches stay, so no backed claim is
-   revised by this ADR.
+   empty instruction body (`templates/pi/awf-subagents/index.ts.tmpl:208-210`). Its missing-file error
+   carries the same actionable repair shape as the reviewer loader's ("Enable the matching ... agent
+   and run awf render"). Only the implement branch of `rolePrompt` is deleted; the explore and
+   grounding branches stay, so neither exploration claim is revised by this ADR.
 
-4. The stop-report rule is enforced mechanically, not by prose. The existing before/after git
-   snapshot around the implement run (`templates/pi/awf-subagents/index.ts.tmpl:741-752`) is extended
-   so that `allowCommits: true` with HEAD unchanged and no reported commit produces a failure result
-   naming the missing inventory. Prose alone cannot stop a reasonless "blocked"; a check that fails
-   the call can.
+4. A commit-capable owner that produces no commit fails the call. The existing before/after git
+   snapshot around the implement run (`templates/pi/awf-subagents/index.ts.tmpl:741-752`) currently
+   fails only the mirror case, `allowCommits: false` with a changed HEAD; it gains the case
+   `allowCommits: true` with HEAD unchanged, whose failure message demands the clause-7 `stopped`
+   inventory. Be precise about what this buys: the check is a no-commit detector, so it makes the
+   *existence* of a silent non-completion mechanical, and it deliberately also fails a child that
+   stopped correctly with a full inventory, because that phase did not complete and a failure result
+   is the honest report. It cannot inspect the five clause-7 fields, which stay prose-enforced. That
+   is still the difference between a parent receiving an unexplained "blocked" as success and
+   receiving a failed call, which prose alone never achieved.
+
+   `rendering/pi-workflows:pi-implement-role-artifact` owns both the disk load in item 3 and this
+   check. `rendering/pi-workflows:pi-subagent-failure-details` needs no revision: the new result is
+   itself a marked error result carrying bounded progress and diagnostics through the same
+   `tool_result` middleware, and the implementation-commit-policy behaviour that claim names is
+   retained unchanged.
 
 5. Rendered skill prose is corrected in the same change. `subagent-driven-development` and
    `executing-plans` state the brief contract and name the `implementer` agent in both the Pi and
-   non-Pi dispatch branches. Every subject-less imperative that a child could read as addressed to
-   itself gains an explicit subject, including subagent-driven-development step 2. The
-   `checkpoint-routine` partial stays parent-only and is not included in any child-facing artifact.
+   non-Pi dispatch branches. Within those two skill bodies and any partial they include, every
+   subject-less imperative that a child could read as addressed to itself gains an explicit subject,
+   including subagent-driven-development step 2; the obligation is bounded to those two artifacts and
+   does not reach the wider skill corpus. The `checkpoint-routine` partial stays parent-only and is
+   not included in any child-facing artifact.
 
-6. Catalog wiring lands in one commit with its configuration. `subagent-driven-development` gains
-   `RequiresAgent: "implementer"`, and both `.awf/config.yaml` and
-   `examples/sundial/.awf/config.yaml` enable the agent in that same commit. Splitting them would
-   leave `rendering/catalog-and-targets:enabled-set-closed` unmet, failing every gated command at
-   project open, including the gate meant to prove the change.
+   `implementer-role-contract` covers these prose corrections.
+   `rendering/workflow-skill-templates:maintainable-code-subagent-contract` and
+   `rendering/workflow-skill-templates:phase-transaction-ownership` need no revision even though
+   clauses 2 and 6 restate obligations they already pin: both claims constrain what the dispatching
+   skills must say, and neither asserts that only a skill may carry the obligation, so a second
+   artifact repeating it leaves both true.
+
+6. Catalog wiring lands in one commit with its configuration. `subagent-driven-development` and
+   `executing-plans` each gain `RequiresAgent: "implementer"`, declared on both because both dispatch
+   implementation children: the phase owner and the commit-disabled batch helpers
+   (`templates/skills/executing-plans/SKILL.md.tmpl:31`). Relying on the transitive edge through
+   `executing-plans`'s `RequiresSkills` would leave the declared structural edge not matching the
+   declared dispatch. Both `.awf/config.yaml` and `examples/sundial/.awf/config.yaml` enable the agent
+   in that same commit. Splitting them would leave
+   `rendering/catalog-and-targets:enabled-set-closed` unmet, failing every gated command at project
+   open, including the gate meant to prove the change. This is the first non-reviewer value of
+   `RequiresAgent`, so the field's doc comment at `internal/catalog/catalog.go:57-58` and the
+   reviewer-only framing around it are corrected in the same commit. No
+   `rendering/catalog-and-targets` operation is needed: `catalog-go-single-source`,
+   `skill-section-parity`, `structured-agent-encoding`, `target-dialect-render`, `enabled-set-closed`,
+   and `requires-skills-exact` are all generic over agents, and item 1's empty `RequiresSkills`
+   conforms to the last of them.
 
 7. Adopter trees migrate through one registry entry, `{To: 23, Name: "implementer-agent-closure",
    Apply: applyCloseEnabledSet}`, reusing the existing enabled-set closure (precedent: `{To: 13,
    "exploring-skill-closure"}`), sequenced after ADR-0175's generation 22.
 
-8. No shared dispatch spine is extracted here. One new agent does not justify the abstraction; Part B
+8. Three surfaces describe awf's catalog agents as review agents and are falsified by item 1. They
+   are corrected in the same commit: `README.md:45-48` (the "**Review agents**" bullet listing exactly
+   the three reviewers), `README.md:245-246` ("the three review agents" in the `awf init` default
+   description, which becomes four), and `.awf/parts/agents-doc/identity.md:3` ("multi-runtime skills,
+   review agents, docs"), whose correction reaches `AGENTS.md` only through `./x render`. Every status
+   transition on this ADR runs `./x render` and commits the regenerated `docs/decisions/INDEX.md` and
+   lock alongside the status change.
+
+9. No shared dispatch spine is extracted here. One new agent does not justify the abstraction; Part B
    extracts it when the second and third arrive.
 
 ## State changes
@@ -134,20 +178,33 @@ drift-checked, review-visible contract that can be changed by editing a template
 TypeScript string literal. A reasonless "blocked" stops being a silent parent-side puzzle and becomes
 a failed call with a named cause.
 
-The commit-disabled helper mode is prose-only outside Pi. Agent encoders emit name and description
-only, and the Codex TOML profile is a closed three-key schema
-(`rendering/catalog-and-targets:structured-agent-encoding`), so no non-Pi target can express an
-authority mode structurally. Off Pi the mode is carried by the dispatch brief and honoured by the
-child; only the Pi snapshot check enforces it. This is accepted rather than mitigated: forcing the
-distinction into every encoder would be a much larger change for a guarantee only one runtime can
-currently keep.
+The commit-disabled helper mode is prose-only outside Pi. Agent encoders emit a literal name plus a
+rendered description and the rendered instruction body, and the Codex TOML profile is a closed
+three-key schema (`internal/project/agent.go:22-26`,
+`rendering/catalog-and-targets:structured-agent-encoding`), so the seven-clause body does reach every
+target but no non-Pi target can express an authority mode structurally. Off Pi the mode is carried by
+the dispatch brief and honoured by the child; only the Pi snapshot check enforces it. This is accepted
+rather than mitigated: forcing the distinction into every encoder would be a much larger change for a
+guarantee only one runtime can currently keep.
 
-Adding an `AgentSpec` triggers five machine-forced authoring obligations, each of which fails the
+`subagent_implement` starts failing closed. Adopting the reviewer loader's empty-body and missing-file
+errors means a Pi adopter who enables the pi target without `subagent-driven-development` or
+`executing-plans` has no rendered implementer agent and loses a tool that works today off the literal
+string; generation 23 closes the enabled set only for adopters who already enable one of those skills.
+The precedent is exact and accepted: `subagent_review` already fails identically, and item 3 commits
+the implementer loader to the same actionable repair hint
+(`.pi/extensions/awf-subagents/index.ts:240`).
+
+Adding an `AgentSpec` triggers six machine-forced authoring obligations, each of which fails the
 gate if skipped: a golden test in `internal/project/spine_test.go` (required by
-`TestCatalogSweep` in `internal/project/catalog_sweep_test.go:137-152`), `dataKeys` entries in
-`internal/configspec` for every data key (`internal/configspec/spec_test.go:207`), `awf:section`
-marker parity between template and spec, a hand-authored unset-data fallback for every conditional,
-and a leak-free empty-data render. The tool-agnostic scan
+`TestEveryCatalogArtifactHasGoldenTest` in `internal/project/catalog_sweep_test.go:139-152`),
+`dataKeys` entries in `internal/configspec` for every data key
+(`internal/configspec/spec_test.go:207`), `awf:section` marker parity between template and spec, a
+hand-authored unset-data fallback for every conditional, a leak-free empty-data render, and fixups to
+the two existing test scaffolds that enable a now-paired skill with `agents: []` and would therefore
+fail `enabled-set-closed` at `Open()`: `internal/project/project_test.go:1415` and
+`internal/project/target_test.go:659`, the latter being `TestMaintainableCodeMultiTargetParity`, itself
+a backing test for `maintainable-code-subagent-contract`. The tool-agnostic scan
 (`rendering/workflow-skill-templates:skill-prose-tool-agnostic`) additionally bans backticked
 `write`, `edit`, and `read` and phrases such as "read tool", so the contract body must be authored
 around it. These are known costs of the chosen home, not surprises.
@@ -165,7 +222,7 @@ deliberate and temporary.
 | Expand the implement branch of `rolePrompt` in place | Keeps the heaviest contract in a TypeScript string literal: invisible to review of rendered output, unreachable by drift checking, and Pi-only by construction. |
 | Two agents, one per authority mode | The two modes share every clause but one. Two agents would double the five machine-forced obligations to express a single boolean. |
 | Extract the shared dispatch spine now | One new agent does not justify the abstraction. Part B extracts it against three call sites instead of guessing at one. |
-| Fix the reasonless stop with prose alone | Prose is what already failed. The child is under model pressure and reads a lot of text; a check that fails the call is the only enforcement that cannot be skimmed past. |
+| Fix the reasonless stop with prose alone | Prose is what already failed, and the child is under model pressure and reads a lot of text. Clause 7's five fields do remain prose-enforced, but item 4 makes the one thing that matters most, a silent non-completion reported as success, mechanical instead. |
 
 ## Status history
 
