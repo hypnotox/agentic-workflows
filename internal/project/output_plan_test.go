@@ -48,17 +48,31 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
 	}
-	for _, n := range op.Nodes {
-		if n.Path == ".pi/extensions/awf-handoff/index.ts" {
-			templateInput := slices.Contains(n.ConsumedInputs, OutputInput{Path: "templates/pi/awf-handoff/index.ts.tmpl", Role: ArtifactTemplate})
-			if n.Reservation || strings.Join(n.Declarers, ",") != "pi" || !templateInput {
-				t.Errorf("handoff output-plan node = %#v", n)
+	for _, expected := range []struct {
+		path     string
+		template string
+	}{
+		{path: ".pi/extensions/awf-handoff/index.ts", template: "templates/pi/awf-handoff/index.ts.tmpl"},
+		{path: ".pi/extensions/awf-subagents/model-routing.ts", template: "templates/pi/awf-subagents/model-routing.ts.tmpl"},
+	} {
+		var found bool
+		for _, n := range op.Nodes {
+			if n.Path != expected.path {
+				continue
 			}
+			found = true
+			templateInput := slices.Contains(n.ConsumedInputs, OutputInput{Path: expected.template, Role: ArtifactTemplate})
+			if n.Reservation || strings.Join(n.Declarers, ",") != "pi" || !templateInput || n.file.ConfigHash == "" {
+				t.Errorf("target output-plan node %s = %#v", expected.path, n)
+			}
+		}
+		if !found {
+			t.Errorf("missing target output-plan node %s", expected.path)
 		}
 	}
 	files := op.writeFiles()

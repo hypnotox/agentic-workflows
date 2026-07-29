@@ -3,17 +3,25 @@ import test from "node:test";
 import { Value } from "typebox/value";
 import {
   MAX_EXPLORATION_CONCURRENCY,
-  MODEL_REFERENCE_SCHEMA,
-  PREFERENCE_FIELDS,
-  RECOMMENDED_PRESET,
-  createPreferenceStore,
-  parseExactModelReference,
   registerSubagentTools,
-  resolveChildModel,
   type ExtensionDependencies,
 } from "../../../.pi/extensions/awf-subagents/index.ts";
 import type { RunRequest, RunResult } from "../../../.pi/extensions/awf-subagents/runner.ts";
-import { buildRoutingCard, parseExactModelReference as parseRoutingReference, PREFERENCE_FIELDS as ROUTING_FIELDS } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
+import {
+  MODEL_REFERENCE_SCHEMA,
+  PREFERENCE_FIELDS,
+  RECOMMENDED_PRESET,
+  ROUTING_CARD_OVERFLOW_WARNING,
+  buildRoutingCard,
+  createPreferenceStore,
+  effectivePreferenceState,
+  emptyPreferenceSource,
+  invalidText,
+  parseExactModelReference,
+  registryFailures,
+  resolveChildModel,
+  routingPreview,
+} from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
 const GLOBAL = "/agent/awf-subagents.json";
 const PROJECT = "/repo/.pi/awf-subagents.local.json";
@@ -23,23 +31,48 @@ const PROJECT_LABEL = `Project-local (${PROJECT})`;
 const PRESET = "Apply recommended GPT-5.6 preset";
 const MANUAL = "Configure each slot";
 const UNSET = "leave unset (use fallback chain)";
-test("routing module builds bounded deterministic cards", () => {
-  const source = (scope: "global" | "project") => ({ scope, path: `/${scope}`, values: {}, invalid: [] });
+test("routing module builds exact complete, fallback, mixed, maximum, and defensive cards", () => {
+  const source = (scope: "global" | "project") => emptyPreferenceSource(scope, `/${scope}`);
   const complete: any = { global: source("global"), project: source("project"), effective: {}, missing: [], invalid: [], blocked: false, errors: [] };
-  for (const field of ROUTING_FIELDS) complete.effective[field] = { reference: `example/${field}`, scope: "global" };
-  assert.match(buildRoutingCard(complete), /^\[awf subagent routing\]\ndefault: example\/default/);
-  const partial = { ...complete, missing: ["grounding", "small"], effective: { ...complete.effective, grounding: undefined, small: undefined } };
-  assert.match(buildRoutingCard(partial), /roles: grounding=missing/);
-  assert.match(buildRoutingCard(partial), /missing: grounding, small/);
-  const invalid = { ...complete, invalid: [{ kind: "source", scope: "global", reason: "malformed-json" }, { kind: "field", scope: "project", field: "small", reason: "unavailable" }], blocked: true };
-  assert.match(buildRoutingCard(invalid), /invalid: global:source:malformed-json; project:small:unavailable/);
-  assert.match(buildRoutingCard(invalid), /repair: Run \/awf-subagent-models/);
+  for (const field of PREFERENCE_FIELDS) complete.effective[field] = { reference: `example/${field}`, scope: "global" };
+  assert.equal(buildRoutingCard(complete), `[awf subagent routing]
+default: example/default
+roles: grounding=example/grounding; exploration=example/exploration; review=example/review; implementation=example/implementation
+tiers: small=example/small; standard=example/standard; large=example/large
+missing: none
+invalid: none
+selection: omit model for the role default; otherwise override deliberately with the selected tier's exact provider/model-id.`);
+
+  const fallback = { ...complete, missing: ["grounding", "small"], effective: { ...complete.effective, grounding: undefined, small: undefined } };
+  assert.equal(buildRoutingCard(fallback), `[awf subagent routing]
+default: example/default
+roles: grounding=example/default; exploration=example/exploration; review=example/review; implementation=example/implementation
+tiers: small=missing; standard=example/standard; large=example/large
+missing: grounding, small
+invalid: none
+selection: omit model for the role default; otherwise override deliberately with the selected tier's exact provider/model-id.`);
+
+  const mixed = { ...fallback, invalid: [
+    { kind: "source", scope: "global", reason: "malformed-json" },
+    { kind: "source", scope: "project", reason: "unknown-key" },
+    { kind: "field", scope: "project", field: "small", reason: "unavailable" },
+  ], blocked: true };
+  assert.match(buildRoutingCard(mixed), /missing: grounding, small\ninvalid: global:source:malformed-json; project:source:unknown-key; project:small:unavailable\nrepair: Run \/awf-subagent-models/);
+
+  const boundaryReference = `p/${"x".repeat(254)}`;
+  const maximum = { ...complete, effective: Object.fromEntries(PREFERENCE_FIELDS.map((field) => [field, { reference: boundaryReference, scope: "global" }])) };
+  const maximumCard = buildRoutingCard(maximum);
+  assert.ok(Buffer.byteLength(maximumCard, "utf8") <= 4096);
+  assert.equal(maximumCard.includes("state: unavailable"), false);
+
   const huge: any = { ...complete, effective: {} };
-  for (const field of ROUTING_FIELDS) huge.effective[field] = { reference: `x/${"z".repeat(1000)}`, scope: "global" };
-  assert.match(buildRoutingCard(huge), /state: unavailable/);
-  assert.deepEqual(parseRoutingReference("p/model"), { provider: "p", id: "model" });
-  for (const value of [undefined, "default", "auto", "inherit parent", "ab", "/x", "ab/", "x/y z"]) assert.deepEqual(parseRoutingReference(value), { reason: "malformed" });
-  assert.deepEqual(parseRoutingReference(`p/${"x".repeat(256)}`), { reason: "overlong" });
+  for (const field of PREFERENCE_FIELDS) huge.effective[field] = { reference: `x/${"z".repeat(1000)}`, scope: "global" };
+  assert.equal(buildRoutingCard(huge), "[awf subagent routing]\nstate: unavailable (routing card exceeded 4096 UTF-8 bytes)\nrepair: Run /awf-subagent-models and retry; implicit routing remains strict.");
+  assert.equal(ROUTING_CARD_OVERFLOW_WARNING, "awf subagent routing card exceeded 4096 UTF-8 bytes; injected a failure card. Run /awf-subagent-models and retry.");
+
+  assert.deepEqual(parseExactModelReference("p/model"), { provider: "p", id: "model" });
+  for (const value of [undefined, "default", "auto", "inherit parent", "ab", "/x", "ab/", "x/y z"]) assert.deepEqual(parseExactModelReference(value), { reason: "malformed" });
+  assert.deepEqual(parseExactModelReference(`p/${"x".repeat(256)}`), { reason: "overlong" });
 });
 
 const baseResult: RunResult = {
@@ -62,6 +95,8 @@ function harness(options: {
   git?: Array<{ code: number; stdout?: string; stderr?: string }>;
   run?: (request: RunRequest) => Promise<RunResult>;
   sessionManager?: object;
+  activeTools?: string[];
+  missingGetActiveTools?: boolean;
 } = {}) {
   const files = options.files ?? {};
   const tools = new Map<string, any>();
@@ -94,10 +129,11 @@ function harness(options: {
     registerTool: (tool: any) => tools.set(tool.name, tool),
     registerCommand: (name: string, command: any) => commands.set(name, command),
     getThinkingLevel: () => "high",
-    getActiveTools: () => [],
+    getActiveTools: () => options.activeTools ?? [],
     events: { emit() {} },
     exec: async () => git.shift() ?? { code: 1, stdout: "", stderr: "" },
   };
+  if (options.missingGetActiveTools) delete pi.getActiveTools;
   const deps: ExtensionDependencies = {
     readFile: async (path: string) => {
       if (path.startsWith("/repo/.pi/agents/")) return "---\nname: reviewer\ndescription: test\n---\nReview carefully.";
@@ -157,6 +193,104 @@ async function call(h: ReturnType<typeof harness>, name: string, params: any, si
   return { value, updates };
 }
 
+test("routing policy covers sorting, preview, registry, store, and inherited seams", async () => {
+  const global = emptyPreferenceSource("global", "/global");
+  const project = emptyPreferenceSource("project", "/project");
+  global.invalid = [
+    { kind: "field", scope: "global", field: "small", reason: "unavailable" },
+    { kind: "source", scope: "global", reason: "unknown-key" },
+    { kind: "source", scope: "global", reason: "malformed-json" },
+    { kind: "field", scope: "global", field: "small", reason: "unavailable" },
+  ];
+  const sorted = effectivePreferenceState(global, project, []);
+  assert.deepEqual(sorted.errors, [
+    "global:source:malformed-json", "global:source:unknown-key",
+    "global:small:unavailable", "global:small:unavailable",
+  ]);
+  assert.match(routingPreview(project, global, sorted).join("\n"), /Invalid: global:source:malformed-json/);
+  assert.equal(invalidText({ kind: "field", scope: "project", field: "large", reason: "malformed" }), "project:large:malformed");
+
+  const preview = routingPreview(emptyPreferenceSource("project", "/p"), emptyPreferenceSource("global", "/g"));
+  assert.match(preview.join("\n"), /grounding: parent \(inherited\)/);
+  assert.match(preview.join("\n"), /small: unset/);
+  assert.match(preview.join("\n"), /Missing: default, grounding/);
+  assert.match(preview.join("\n"), /Invalid: none/);
+  const configuredGlobal = emptyPreferenceSource("global", "/g");
+  const configuredProject = emptyPreferenceSource("project", "/p");
+  configuredGlobal.values = { default: "g/default", small: "g/small" };
+  configuredProject.values = { grounding: "p/grounding", small: "p/small" };
+  const configuredPreview = routingPreview(configuredProject, configuredGlobal);
+  assert.match(configuredPreview.join("\n"), /grounding: p\/grounding \(project-role\)/);
+  assert.match(configuredPreview.join("\n"), /exploration: g\/default \(global-default\)/);
+  assert.match(configuredPreview.join("\n"), /small: p\/small/);
+
+  const h = harness();
+  const malformed = emptyPreferenceSource("global", "/g");
+  malformed.values.default = "bad";
+  assert.deepEqual(registryFailures(h.ctx.modelRegistry, [malformed]), [{ kind: "field", scope: "global", field: "default", reason: "malformed" }]);
+  const stateStore: any = { state: () => effectivePreferenceState(emptyPreferenceSource("global", "/g"), emptyPreferenceSource("project", "/p"), []) };
+  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, stateStore), {
+    model: { provider: "test", id: "parent" }, requested: undefined, source: "inherited",
+  });
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, undefined, "grounding", undefined, stateStore), /without an active parent model/);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "ghost/model", stateStore), /unregistered/);
+  h.addModel("locked/model", false);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "locked/model", stateStore), /unauthenticated/);
+  h.addModel("gone/model", true, false);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "gone/model", stateStore), /unavailable/);
+
+  const primitiveFailure = createPreferenceStore({ ...h.deps, readFile: async () => { throw "primitive"; } });
+  await primitiveFailure.ready();
+  await primitiveFailure.reload();
+  assert.deepEqual(primitiveFailure.state().errors, ["global:source:read-error", "project:source:read-error"]);
+});
+
+test("before_agent_start injects current routing once with selectedTools precedence and active-tool fallback", async () => {
+  const values = complete();
+  const files = { [GLOBAL]: JSON.stringify(values) };
+  const h = harness({ files, activeTools: ["subagent_grounding"] });
+  registerObject(h, values);
+  const hook = h.hooks.get("before_agent_start");
+
+  const selectedInactive = await hook({ systemPrompt: "base", systemPromptOptions: { selectedTools: ["read"] } }, h.ctx);
+  assert.equal(selectedInactive, undefined);
+  const fallback = await hook({ systemPrompt: "base", systemPromptOptions: {} }, h.ctx);
+  assert.deepEqual(Object.keys(fallback), ["systemPrompt"]);
+  assert.equal((fallback.systemPrompt.match(/\[awf subagent routing\]/g) ?? []).length, 1);
+  assert.match(fallback.systemPrompt, /grounding=p\/grounding/);
+
+  files[GLOBAL] = JSON.stringify({ ...values, grounding: "new/grounding" });
+  h.addModel("new/grounding");
+  const selectedActive = await hook({ systemPrompt: "chained", systemPromptOptions: { selectedTools: ["subagent_review"] } }, h.ctx);
+  assert.equal((selectedActive.systemPrompt.match(/\[awf subagent routing\]/g) ?? []).length, 1);
+  assert.match(selectedActive.systemPrompt, /grounding=new\/grounding/);
+  assert.equal(selectedActive.systemPrompt.startsWith("chained\n\n"), true);
+});
+
+test("routing hook skips notices without active awf tools and notices incomplete state once when active", async () => {
+  const h = harness({ activeTools: ["read"] });
+  const hook = h.hooks.get("before_agent_start");
+  assert.equal(await hook({ systemPrompt: "base", systemPromptOptions: {} }, h.ctx), undefined);
+  assert.equal(h.notices.length, 0);
+  const activeEvent = { systemPrompt: "base", systemPromptOptions: { selectedTools: ["subagent_grounding"] } };
+  await hook(activeEvent, h.ctx);
+  await hook(activeEvent, h.ctx);
+  assert.equal(h.notices.length, 1);
+  assert.match(h.notices[0][0], /incomplete/);
+});
+
+test("subagent minimum-runtime guard rejects missing getActiveTools without registration", async () => {
+  delete (globalThis as any)[Symbol.for("awf.pi.minimum-runtime-notified")];
+  const h = harness({ missingGetActiveTools: true });
+  assert.equal(h.tools.size, 0);
+  assert.equal(h.commands.size, 0);
+  assert.deepEqual([...h.hooks.keys()], ["session_start"]);
+  await h.hooks.get("session_start")({}, h.ctx);
+  await h.hooks.get("session_start")({}, h.ctx);
+  assert.equal(h.notices.length, 1);
+  assert.match(h.notices[0][0], /Missing runtime APIs: getActiveTools/);
+});
+
 function registerPreset(h: ReturnType<typeof harness>) {
   for (const reference of new Set(Object.values(RECOMMENDED_PRESET))) h.addModel(reference);
 }
@@ -188,7 +322,7 @@ test("preference states are complete only after explicit project-over-global fie
     const h = harness({ files });
     registerObject(h, { ...(global as any), ...(project as any) });
     const store = createPreferenceStore(h.deps);
-    await store.reload(); store.validateAgainstRegistry(h.ctx);
+    await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
     assert.deepEqual(store.state().missing, missing, label);
     assert.equal(store.state().blocked, blocked, label);
   }
@@ -198,7 +332,7 @@ test("preference states are complete only after explicit project-over-global fie
   const h = harness({ files: { [GLOBAL]: JSON.stringify(global), [PROJECT]: JSON.stringify(project) } });
   registerObject(h, { ...global, ...project });
   const store = createPreferenceStore(h.deps);
-  await store.reload(); store.validateAgainstRegistry(h.ctx);
+  await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
   assert.deepEqual(store.state().effective.exploration, { reference: "p/exploration", scope: "project" });
   assert.deepEqual(store.state().effective.small, { reference: "p/small", scope: "project" });
   assert.equal(store.state().missing.length, 0);
@@ -209,7 +343,7 @@ test("shared default routes but does not satisfy explicit role completeness", as
   const result = await call(h, "subagent_grounding", { task: "ground" });
   assert.equal(result.value.details.modelSource, "global-default");
   const store = createPreferenceStore(h.deps);
-  await store.reload(); store.validateAgainstRegistry(h.ctx);
+  await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
   assert.ok(store.state().missing.includes("grounding"));
 });
 
@@ -226,7 +360,7 @@ test("bounded source and field failures are deterministic, block implicit routin
   for (const [label, source, expected] of cases) {
     const h = harness({ files: { [GLOBAL]: source } });
     const store = createPreferenceStore(h.deps);
-    await store.reload(); store.validateAgainstRegistry(h.ctx);
+    await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
     assert.equal(store.state().errors[0], expected, label);
     const serialized = JSON.stringify(store.state());
     for (const raw of ["raw-secret", "secretUnknownKey", "raw disk secret"]) assert.equal(serialized.includes(raw), false, `${label} leaked ${raw}`);
@@ -240,7 +374,7 @@ test("bounded source and field failures are deterministic, block implicit routin
   h.addModel("gone/model", true, false);
   h.addModel("later/model", true, false);
   const store = createPreferenceStore(h.deps);
-  await store.reload(); store.validateAgainstRegistry(h.ctx);
+  await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
   assert.deepEqual(store.state().errors, [
     "global:default:unauthenticated", "global:grounding:unavailable", "project:small:unavailable", "project:large:malformed",
   ]);

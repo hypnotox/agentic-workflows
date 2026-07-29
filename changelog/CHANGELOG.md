@@ -37,6 +37,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Add a generated bounded Pi subagent model-routing module and inject a current per-run routing card only when an awf subagent tool is active. Preference and registry state refresh before injection, the card stays out of session history, and pinned in-process runtime coverage proves delivery without an external model call.
 - Make each plan phase an independently green implementation transaction with per-phase inline or subagent-driven ownership. A complete subagent-driven phase has one commit-capable owner; the parent retains review settlement and dirty recovery, while optional batch helpers remain sequential, commit-disabled, explicitly partitioned, and excluded from shared files and phase checkpoints.
 - Add the mandatory Maintainable Code Design guide and its document-map link to rendered adopter documentation. Brainstorming, ADR proposal, coupling audit, plan writing, TDD, inline plan execution, direct execution, subagent-driven development, and bugfix workflows now carry stage-specific model, boundary, dependency, validation, and scope obligations, including bounded enabling-refactor assessment and materially larger-work escalation.
 - Add first-class local efforts, managed resident roots, binary session assignment, and independent schema-1 Pi session telemetry.

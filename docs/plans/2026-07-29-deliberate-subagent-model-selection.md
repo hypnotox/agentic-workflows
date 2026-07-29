@@ -54,7 +54,8 @@ consequences.
   `.awf/parts/working-with-awf/config-and-overrides.md`, and
   `templates/skills/{brainstorming,executing-plans,exploring,reviewing-adr,reviewing-impl,reviewing-plan,reviewing-plan-resync,subagent-driven-development}/SKILL.md.tmpl`.
 - **Modified Pi implementation and test plumbing:** `templates/pi/awf-subagents/index.ts.tmpl`,
-  `templates/partials/pi-minimum-runtime.md`, `internal/project/target.go`,
+  `templates/partials/pi-minimum-runtime.md`, `tools/pi-extension-test/tests/handoff.test.ts`,
+  `internal/project/target.go`,
   `internal/project/target_test.go`,
   `internal/project/output_plan_test.go`, `internal/project/project_test.go`,
   `internal/evals/chain_test.go` and `tools/pi-extension-test/container.sh`.

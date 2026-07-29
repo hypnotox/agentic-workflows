@@ -26,7 +26,31 @@ import {
   type ThinkingLevel,
   type Usage,
 } from "./runner.ts";
-import { buildRoutingCard, ROUTING_CARD_OVERFLOW_WARNING } from "./model-routing.ts";
+import {
+  GLOBAL_PREFERENCES_FILE,
+  LOCAL_PREFERENCES_FILE,
+  MODEL_REFERENCE_SCHEMA,
+  PREFERENCE_FIELDS,
+  PREFERENCE_ROLES,
+  PREFERENCE_TIERS,
+  PREFERENCES_BLOCKED,
+  PREFERENCES_REPAIR,
+  RECOMMENDED_PRESET,
+  ROUTING_CARD_OVERFLOW_WARNING,
+  buildRoutingCard,
+  createPreferenceStore,
+  effectivePreferenceState,
+  invalidText,
+  parseExactModelReference,
+  registryFailures,
+  resolveChildModel,
+  routingPreview,
+  type EffectivePreferenceState,
+  type ModelSource,
+  type PreferenceField,
+  type PreferenceSourceState,
+  type SubagentModelPreferences,
+} from "./model-routing.ts";
 
 export const MIN_PI_VERSION = "0.81.1";
 const MINIMUM_RUNTIME_NOTICE = Symbol.for("awf.pi.minimum-runtime-notified");
@@ -45,7 +69,6 @@ export function versionSupported(value: string): boolean {
   }
   return true;
 }
-/* c8 ignore next */
 export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDependencies, required: readonly MinimumRuntimeAPI[]): boolean {
   const requirements: Record<MinimumRuntimeAPI, boolean> = {
     on: typeof pi.on === "function", eventsOn: typeof pi.events?.on === "function", eventsEmit: typeof pi.events?.emit === "function",
@@ -56,10 +79,8 @@ export function guardMinimumRuntime(pi: ExtensionAPI, deps: MinimumRuntimeDepend
   if (versionSupported(deps.packageVersion) && missing.length === 0) return true;
   if (typeof pi.on !== "function") return false;
   pi.on("session_start", async (_event, ctx) => {
-    /* c8 ignore next */
     if ((globalThis as any)[MINIMUM_RUNTIME_NOTICE]) return;
     (globalThis as any)[MINIMUM_RUNTIME_NOTICE] = true;
-    /* c8 ignore next */
     const missingAPI = missing.length > 0 ? ` Missing runtime APIs: ${missing.join(", ")}.` : "";
     ctx.ui.notify(`awf Pi extensions require Pi ${MIN_PI_VERSION} or newer with their factory event, persistence, tool, command, process, and thinking APIs; found ${deps.packageVersion}.${missingAPI} Upgrade Pi and reload.`, "error");
   });
@@ -75,48 +96,7 @@ export const REVIEWER_PATHS = {
   code: ".pi/agents/code-reviewer.md",
 } as const;
 
-export const PREFERENCE_ROLES = ["grounding", "exploration", "review", "implementation"] as const;
-export const PREFERENCE_TIERS = ["small", "standard", "large"] as const;
-export const PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS] as const;
-export type PreferenceRole = (typeof PREFERENCE_ROLES)[number];
-export type PreferenceTier = (typeof PREFERENCE_TIERS)[number];
-export type PreferenceField = (typeof PREFERENCE_FIELDS)[number];
-export type SourceScope = "global" | "project";
-export type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key";
-export type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable";
-export type InvalidState =
-  | { kind: "source"; scope: SourceScope; reason: SourceReason }
-  | { kind: "field"; scope: SourceScope; field: PreferenceField; reason: FieldReason };
-export const ROLE_PREFERENCE_KEYS: Record<RunRequest["role"], PreferenceRole> = {
-  grounding: "grounding", explore: "exploration", review: "review", implement: "implementation",
-};
-export const GLOBAL_PREFERENCES_FILE = "awf-subagents.json";
-export const LOCAL_PREFERENCES_FILE = "awf-subagents.local.json";
-export interface SubagentModelPreferences {
-  default?: string; grounding?: string; exploration?: string; review?: string; implementation?: string;
-  small?: string; standard?: string; large?: string;
-}
-export const RECOMMENDED_PRESET: Required<SubagentModelPreferences> = {
-  default: "openai-codex/gpt-5.6-terra",
-  grounding: "openai-codex/gpt-5.6-sol",
-  exploration: "openai-codex/gpt-5.6-luna",
-  review: "openai-codex/gpt-5.6-sol",
-  implementation: "openai-codex/gpt-5.6-terra",
-  small: "openai-codex/gpt-5.6-luna",
-  standard: "openai-codex/gpt-5.6-terra",
-  large: "openai-codex/gpt-5.6-sol",
-};
-const PREFERENCE_KEYS = new Set<string>(PREFERENCE_FIELDS);
 const preferenceNotices = new WeakSet<object>();
-const PREFERENCES_BLOCKED = "Subagent model preferences are invalid; implicit routing is blocked.";
-const PREFERENCES_REPAIR = "Run /awf-subagent-models to repair. Explicit per-call model arguments remain available.";
-const MODEL_FIELD_REPAIR = "Omit the model field to use configured or inherited routing.";
-export const MODEL_REFERENCE_SCHEMA = Type.String({
-  minLength: 3,
-  maxLength: 256,
-  pattern: "^[^/\\s]+/[^\\s]+$",
-  description: "Exact provider/model-id. Omit the model field to use configured or inherited routing; default, auto, and inherit parent are invalid.",
-});
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
 const COLLAPSED_EVENT_COUNT = 10;
 export const MAX_EXPLORATION_CONCURRENCY = 10;
@@ -132,7 +112,7 @@ export type SubagentState = "queued" | "running" | "completed" | "failed" | "abo
 export interface ExecutionMetadata extends Record<string, unknown> {
   resolvedModel: string;
   requestedModel?: string;
-  modelSource: "inherited" | "requested" | "project-role" | "global-role" | "project-default" | "global-default";
+  modelSource: ModelSource;
   thinkingLevel: ThinkingLevel;
   options: Readonly<Record<string, string | boolean>>;
 }
@@ -152,7 +132,6 @@ export interface SubagentDetails extends ExecutionMetadata {
   awfFailure?: true;
   [roleSpecific: string]: unknown;
 }
-
 export interface ExtensionDependencies {
   readFile(path: string, encoding: "utf8"): Promise<string>;
   runner: Runner;
@@ -167,211 +146,15 @@ export interface ExtensionDependencies {
   now?: () => number;
   observationId?: () => string;
 }
-
 function utf8Bound(value: string, maximum: number, marker: string): string {
   if (Buffer.byteLength(value, "utf8") <= maximum) return value;
   let end = Math.min(value.length, maximum - Buffer.byteLength(marker, "utf8"));
   while (end > 0 && Buffer.byteLength(value.slice(0, end), "utf8") > maximum - Buffer.byteLength(marker, "utf8")) end--;
   return value.slice(0, Math.max(0, end)) + marker;
 }
-
-function projectRoot(extensionFile: string): string {
-  return resolve(dirname(extensionFile), "../../..");
-}
-
-export interface PreferenceSourceState {
-  path: string;
-  scope: SourceScope;
-  values: SubagentModelPreferences;
-  invalid: InvalidState[];
-}
-
-export interface EffectivePreferenceState {
-  global: PreferenceSourceState;
-  project: PreferenceSourceState;
-  effective: Partial<Record<PreferenceField, { reference: string; scope: SourceScope }>>;
-  missing: PreferenceField[];
-  invalid: InvalidState[];
-  blocked: boolean;
-  errors: string[];
-}
-
-function emptyPreferenceSource(scope: SourceScope, path: string): PreferenceSourceState {
-  return { scope, path, values: {}, invalid: [] };
-}
-
-export function parseExactModelReference(value: unknown): { provider: string; id: string } | { reason: "malformed" | "overlong" } {
-  if (typeof value !== "string") return { reason: "malformed" };
-  if (Array.from(value).length > 256) return { reason: "overlong" };
-  if (value === "default" || value === "auto" || value === "inherit parent") return { reason: "malformed" };
-  const slash = value.indexOf("/");
-  if (value.length < 3 || slash <= 0 || slash === value.length - 1 || /\s/.test(value)) return { reason: "malformed" };
-  return { provider: value.slice(0, slash), id: value.slice(slash + 1) };
-}
-
-function errorText(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function errorCode(error: unknown): string | undefined {
-  return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined;
-}
-
-export function parsePreferenceSource(scope: SourceScope, path: string, raw: string): PreferenceSourceState {
-  const source = emptyPreferenceSource(scope, path);
-  let parsed: unknown;
-  try { parsed = JSON.parse(raw); }
-  catch { source.invalid.push({ kind: "source", scope, reason: "malformed-json" }); return source; }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    source.invalid.push({ kind: "source", scope, reason: "non-object" });
-    return source;
-  }
-  if (Object.keys(parsed).some((key) => !PREFERENCE_KEYS.has(key))) {
-    source.invalid.push({ kind: "source", scope, reason: "unknown-key" });
-    return source;
-  }
-  for (const field of PREFERENCE_FIELDS) {
-    const value = (parsed as Record<string, unknown>)[field];
-    if (value === undefined) continue;
-    const parsedReference = parseExactModelReference(value);
-    if ("reason" in parsedReference) {
-      source.invalid.push({ kind: "field", scope, field, reason: parsedReference.reason });
-      continue;
-    }
-    (source.values as Record<string, string>)[field] = value as string;
-  }
-  return source;
-}
-
-function registryReason(ctx: any, reference: string): FieldReason | undefined {
-  const parsed = parseExactModelReference(reference);
-  if ("reason" in parsed) return parsed.reason;
-  const found = ctx.modelRegistry.find(parsed.provider, parsed.id);
-  if (!found) return "unregistered";
-  if (!ctx.modelRegistry.hasConfiguredAuth(found)) return "unauthenticated";
-  const available = ctx.modelRegistry.getAvailable();
-  if (!available.some((model: any) => model.provider === parsed.provider && model.id === parsed.id)) return "unavailable";
-  return undefined;
-}
-
-function requireExactModel(ctx: any, reference: unknown): { provider: string; id: string } {
-  const parsed = parseExactModelReference(reference);
-  if ("reason" in parsed) throw new Error(`Subagent model is ${parsed.reason === "overlong" ? "longer than 256 characters" : "not an exact provider/model-id"}. ${MODEL_FIELD_REPAIR}`);
-  const reason = registryReason(ctx, reference as string);
-  if (reason) throw new Error(`Subagent model is ${reason}. ${MODEL_FIELD_REPAIR}`);
-  return parsed;
-}
-
-function invalidText(invalid: InvalidState): string {
-  return invalid.kind === "source"
-    ? `${invalid.scope}:source:${invalid.reason}`
-    : `${invalid.scope}:${invalid.field}:${invalid.reason}`;
-}
-
-const SOURCE_REASON_ORDER: SourceReason[] = ["read-error", "malformed-json", "non-object", "unknown-key"];
-function sortInvalid(left: InvalidState, right: InvalidState): number {
-  const scope = (left.scope === "global" ? 0 : 1) - (right.scope === "global" ? 0 : 1);
-  if (scope !== 0) return scope;
-  if (left.kind !== right.kind) return left.kind === "source" ? -1 : 1;
-  if (left.kind === "source" && right.kind === "source") return SOURCE_REASON_ORDER.indexOf(left.reason) - SOURCE_REASON_ORDER.indexOf(right.reason);
-  if (left.kind === "field" && right.kind === "field") return PREFERENCE_FIELDS.indexOf(left.field) - PREFERENCE_FIELDS.indexOf(right.field);
-  return 0;
-}
-
-function registryFailures(ctx: any, sources: PreferenceSourceState[]): InvalidState[] {
-  const invalid: InvalidState[] = [];
-  for (const source of sources) {
-    for (const field of PREFERENCE_FIELDS) {
-      const reference = source.values[field];
-      if (reference === undefined) continue;
-      const reason = registryReason(ctx, reference);
-      if (reason) invalid.push({ kind: "field", scope: source.scope, field, reason });
-    }
-  }
-  return invalid;
-}
-
-function effectivePreferenceState(global: PreferenceSourceState, project: PreferenceSourceState, registryInvalid: InvalidState[]): EffectivePreferenceState {
-  const effective: EffectivePreferenceState["effective"] = {};
-  for (const field of PREFERENCE_FIELDS) {
-    if (project.values[field] !== undefined) effective[field] = { reference: project.values[field]!, scope: "project" };
-    else if (global.values[field] !== undefined) effective[field] = { reference: global.values[field]!, scope: "global" };
-  }
-  const invalid = [...global.invalid, ...project.invalid, ...registryInvalid].sort(sortInvalid);
-  const missing = PREFERENCE_FIELDS.filter((field) => effective[field] === undefined);
-  return { global, project, effective, missing, invalid, blocked: invalid.length > 0, errors: invalid.map(invalidText) };
-}
-
-export function createPreferenceStore(deps: ExtensionDependencies) {
-  const globalPath = join(deps.agentDir, GLOBAL_PREFERENCES_FILE);
-  const projectPath = join(projectRoot(deps.extensionFile), deps.configDirName, LOCAL_PREFERENCES_FILE);
-  let global = emptyPreferenceSource("global", globalPath);
-  let project = emptyPreferenceSource("project", projectPath);
-  let registryInvalid: InvalidState[] = [];
-  const read = async (scope: SourceScope, path: string): Promise<PreferenceSourceState> => {
-    try { return parsePreferenceSource(scope, path, await deps.readFile(path, "utf8")); }
-    catch (error) {
-      if (errorCode(error) === "ENOENT") return emptyPreferenceSource(scope, path);
-      return { ...emptyPreferenceSource(scope, path), invalid: [{ kind: "source", scope, reason: "read-error" }] };
-    }
-  };
-  let ready: Promise<void> = Promise.resolve();
-  const store = {
-    ready(): Promise<void> { return ready; },
-    reload(): Promise<void> {
-      ready = (async () => {
-        global = await read("global", globalPath);
-        project = await read("project", projectPath);
-        registryInvalid = [];
-      })();
-      return ready;
-    },
-    validateAgainstRegistry(ctx: any): void { registryInvalid = registryFailures(ctx, [global, project]); },
-    state(): EffectivePreferenceState { return effectivePreferenceState(global, project, registryInvalid); },
-  };
-  return store;
-}
-
-export type PreferenceStore = ReturnType<typeof createPreferenceStore>;
-
-function preferredReference(project: PreferenceSourceState, global: PreferenceSourceState, role: RunRequest["role"]): { value: string; source: ExecutionMetadata["modelSource"] } | undefined {
-  const key = ROLE_PREFERENCE_KEYS[role];
-  const candidates: Array<{ value: string | undefined; source: ExecutionMetadata["modelSource"] }> = [
-    { value: project.values[key], source: "project-role" },
-    { value: global.values[key], source: "global-role" },
-    { value: project.values.default, source: "project-default" },
-    { value: global.values.default, source: "global-default" },
-  ];
-  for (const candidate of candidates) if (candidate.value !== undefined) return { value: candidate.value, source: candidate.source };
-  return undefined;
-}
-
-function routingPreview(project: PreferenceSourceState, global: PreferenceSourceState, state?: EffectivePreferenceState): string[] {
-  const roles = PREFERENCE_ROLES.map((key) => {
-    const role = (Object.keys(ROLE_PREFERENCE_KEYS) as Array<RunRequest["role"]>).find((candidate) => ROLE_PREFERENCE_KEYS[candidate] === key)!;
-    const preferred = preferredReference(project, global, role);
-    return `${key}: ${preferred ? `${preferred.value} (${preferred.source})` : "parent (inherited)"}`;
-  });
-  const tiers = PREFERENCE_TIERS.map((key) => {
-    const value = project.values[key] ?? global.values[key];
-    return `${key}: ${value ?? "unset"}`;
-  });
-  const current = state ?? {
-    missing: PREFERENCE_FIELDS.filter((field) => project.values[field] === undefined && global.values[field] === undefined),
-    invalid: [...global.invalid, ...project.invalid],
-  };
-  return ["Role defaults:", ...roles, "Tier mappings:", ...tiers, `Missing: ${current.missing.length ? current.missing.join(", ") : "none"}`, `Invalid: ${current.invalid.length ? current.invalid.map(invalidText).join(", ") : "none"}`];
-}
-
-export function resolveChildModel(ctx: any, role: RunRequest["role"], requested: string | undefined, store: PreferenceStore): { model: { provider: string; id: string }; requested: string | undefined; source: ExecutionMetadata["modelSource"] } {
-  if (requested !== undefined) return { model: requireExactModel(ctx, requested), requested, source: "requested" };
-  const state = store.state();
-  if (state.blocked) throw new Error(`${PREFERENCES_BLOCKED} ${state.errors.join("; ")}. ${PREFERENCES_REPAIR}`);
-  const preferred = preferredReference(state.project, state.global, role);
-  if (preferred) return { model: requireExactModel(ctx, preferred.value), requested: undefined, source: preferred.source };
-  if (!ctx.model) throw new Error("Cannot start a subagent without an active parent model");
-  return { model: { provider: ctx.model.provider, id: ctx.model.id }, requested: undefined, source: "inherited" };
-}
+function projectRoot(extensionFile: string): string { return resolve(dirname(extensionFile), "../../.."); }
+function errorText(error: unknown): string { return error instanceof Error ? error.message : String(error); }
+function errorCode(error: unknown): string | undefined { return typeof error === "object" && error !== null ? (error as { code?: string }).code : undefined; }
 
 export function createLimiter(limit: number) {
   let active = 0;
@@ -690,7 +473,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   preferences.reload();
   const reloadState = async (ctx: any): Promise<EffectivePreferenceState> => {
     await preferences.reload();
-    preferences.validateAgainstRegistry(ctx);
+    preferences.validateAgainstRegistry(ctx.modelRegistry);
     return preferences.state();
   };
   const notifyPreferenceState = (ctx: any, state: EffectivePreferenceState): void => {
@@ -704,7 +487,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   const refreshAndResolve = async (ctx: any, role: RunRequest["role"], requested: string | undefined) => {
     const state = await reloadState(ctx);
     notifyPreferenceState(ctx, state);
-    return resolveChildModel(ctx, role, requested, preferences);
+    return resolveChildModel(ctx.modelRegistry, ctx.model, role, requested, preferences);
   };
   pi.on("session_start", async (_event, ctx) => notifyPreferenceState(ctx, await reloadState(ctx)));
   pi.on("before_agent_start", async (event: any, ctx: any) => {
@@ -773,7 +556,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       const nextScope: PreferenceSourceState = { ...scope, values: next, invalid: [] };
       const previewGlobal = scope.scope === "global" ? nextScope : state.global;
       const previewProject = scope.scope === "project" ? nextScope : state.project;
-      const previewState = effectivePreferenceState(previewGlobal, previewProject, registryFailures(ctx, [previewGlobal, previewProject]));
+      const previewState = effectivePreferenceState(previewGlobal, previewProject, registryFailures(ctx.modelRegistry, [previewGlobal, previewProject]));
       const preview = routingPreview(previewProject, previewGlobal, previewState);
       const confirmed = await ctx.ui.confirm("Save subagent model preferences", `${scope.path}\n${content}\nEffective routing after save:\n${preview.join("\n")}\n\nWrite this file?`);
       if (!confirmed) return canceled();
@@ -821,7 +604,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         return;
       }
       await preferences.reload();
-      preferences.validateAgainstRegistry(ctx);
+      preferences.validateAgainstRegistry(ctx.modelRegistry);
       const saved = preferences.state();
       if (saved.blocked) {
         ctx.ui.notify(`Preferences saved, but they are invalid and block implicit routing: ${saved.errors.join(" ")} ${PREFERENCES_REPAIR}`, "error");

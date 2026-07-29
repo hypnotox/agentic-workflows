@@ -289,7 +289,7 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-subagent-model-routing
 func TestPiSubagentModelRoutingRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
 		"maxLength: 256", "^[^/\\\\s]+/[^\\\\s]+$", "default, auto, and inherit parent are invalid",
 		"Omit the model field to use configured or inherited routing.", "const finalSelected = await refreshAndResolve",
@@ -306,7 +306,7 @@ func TestPiSubagentModelRoutingRender(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences
 func TestPiSubagentModelPreferencesRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
 		`PREFERENCE_TIERS = ["small", "standard", "large"]`,
 		`PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS]`,
@@ -322,7 +322,7 @@ func TestPiSubagentModelPreferencesRender(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard
 func TestPiSubagentModelWizardRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
 		`small: "openai-codex/gpt-5.6-luna"`, `standard: "openai-codex/gpt-5.6-terra"`, `large: "openai-codex/gpt-5.6-sol"`,
 		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "await preferences.reload()",

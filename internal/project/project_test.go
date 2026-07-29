@@ -318,7 +318,7 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	for _, rel := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/runner.ts"} {
+	for _, rel := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-subagents/runner.ts"} {
 		if _, err := os.Stat(filepath.Join(root, rel)); err != nil {
 			t.Fatalf("missing %s: %v", rel, err)
 		}
