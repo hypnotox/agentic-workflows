@@ -367,7 +367,9 @@ feat(rendering): add Pi subagent complexity tiers (applies 0173 batch)
 
 ### Phase 2 documentation settlement prerequisite
 
-Before Phase 3 starts, update the adopter-facing preference paragraph in
+Phase 2 and its ADR operations are already committed and Applied, so this correction is recorded
+forward rather than moved into or represented as part of that retained transaction. Before Phase 3
+starts, update the adopter-facing preference paragraph in
 `templates/docs/working-with-awf.md.tmpl` to reflect the already-applied Phase 2 contract: both
 preference files accept the shared default, four explicit roles, and three semantic tiers;
 completeness requires every field after project-over-global merging; references are exact
@@ -573,6 +575,14 @@ docs(plans): freeze deliberate subagent model selection plan
 
 ## Notes
 
+- Phase 2 settlement commits `2014e4df` and `2249e36f` already updated
+  `changelog/CHANGELOG.md`; its File structure entry records that settled work and does not imply
+  another Phase 3 staging change.
+- Review after Phase 2 found that adopter-facing preference documentation had not traveled with the
+  Applied operation batch. Retained commits and lifecycle events are not rearranged for a cleaner
+  plan narrative; the explicit forward documentation prerequisite corrects current truth before
+  Phase 3. The retrospective should record shared-source and adopter-document closure as a planning
+  pitfall.
 - The current entrypoint displays `inherit parent` as TUI call metadata. That display label may
   remain only if tests prove it is never accepted or emitted as a tool argument; changing the label
   to `configured/default` is preferred to remove ambiguity.
