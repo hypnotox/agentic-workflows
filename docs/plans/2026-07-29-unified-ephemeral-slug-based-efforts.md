@@ -53,14 +53,16 @@ is intentionally the final applied batch because its activation is the cutover b
   `internal/git/controlroot.go` and focused tests; `cmd/awf/{effort.go,effort_test.go,
   effort_worktree_test.go}`; `internal/clispec/{clispec.go,clispec_test.go}`; and
   `internal/project/topics_test.go`.
-- **Modified - migration and resident ownership:** `internal/migrate/migrate.go` and focused tests;
+- **Modified - migration and resident ownership:** `internal/migrate/{migrate.go,
+  remove_workflow_residents_test.go}` and focused tests;
   `internal/upgrade/{journal.go,journal_test.go,upgrade.go,upgrade_test.go}`;
   `cmd/awf/{upgrade.go,upgrade_test.go,main.go,run_test.go,check_test.go,checkgroup_test.go}`;
   `internal/project/{project.go,render.go,output_plan.go,install.go,currentstate.go,context.go,
-  sweep.go}` and their focused tests; `templates/embed.go`; `.awf/config.yaml`, `.awf/awf.lock`,
+  sweep.go,banner.go}` and their focused tests, including `banner_test.go`, `coverage_test.go`,
+  `context_artifacts_test.go`, and `memory_test.go`; `templates/embed.go`; `.awf/config.yaml`, `.awf/awf.lock`,
   `examples/sundial/.awf/config.yaml`, and `examples/sundial/.awf/awf.lock`.
 - **Modified - citation and handoff:** `internal/memorycite/{memorycite.go,memorycite_test.go}`;
-  `cmd/awf/{memorygate.go,memorygate_test.go,checkgroup_test.go}`;
+  `cmd/awf/{memorygate.go,memorygate_test.go,commitgate_test.go,checkgroup_test.go}`;
   `templates/pi/awf-handoff/index.ts.tmpl`; `tools/pi-extension-test/tests/handoff.test.ts`;
   `internal/project/target_test.go`; and generated root/Sundial Pi handoff outputs.
 - **Modified - first-class agent guidance:** `templates/partials/{checkpoint-routine.md,
@@ -171,7 +173,7 @@ docs(adr): accept 0175 unified efforts
 ## Phase 2: Replace effort records, Git metadata, and the CLI protocol
 
 **Execution mode: inline.** The exclusive parent requires `git status --short` to print no output
-and `./x gate` to pass before production edits, then owns the complete phase on accepted ADR-0175 and
+and `./x gate` to pass before any Phase 2 edit, then owns the complete phase on accepted ADR-0175 and
 final ADR-0173 authority. Semantic atomicity applies to the final staged cutover and one named closing
 commit; the parent may implement incrementally in the dirty working tree across turns without making
 tasks into transaction boundaries. Session-budget uncertainty is not a blocker. Stop only for an
@@ -269,7 +271,8 @@ retaining all shared-file, staging, gate, and commit ownership.
   `.awf/efforts/<effort-slug>/memory.md`; reject concrete slash and backslash forms, prose/link/code
   contexts, and normalized relative forms without inspecting resident files. Preserve bounded input
   and deterministic location diagnostics. Update memory-gate command tests so failure names the
-  owned-memory rule and repair while stdout/stderr/exit behavior remains unchanged.
+  owned-memory rule and repair while stdout/stderr/exit behavior remains unchanged. Update
+  `cmd/awf/commitgate_test.go` so its invariant fixture exercises a concrete owned-memory citation.
 
 - [ ] **Task 2.7: Confine Pi handoff to one owned memory path without lifecycle coupling.** In the
   handoff template, accept only a regular, bounded UTF-8 file at
@@ -364,7 +367,7 @@ all source, render, test, staging, and commit ownership.
   git add -- \
     internal/effort/{types.go,paths.go,store.go,memory.go,service.go,safeio.go,safeio_darwin.go,safeio_linux.go,safeio_unix.go,safeio_windows.go,publication_darwin.go,publication_linux.go,publication_other.go,publication_windows.go,partial.go,branches_test.go,durability_test.go,memory_test.go,partial_safety_test.go,partial_test.go,paths_test.go,platform_test.go,platform_windows_test.go,repair_test.go,safeio_linux_test.go,safety_test.go,service_test.go,service_worktree_test.go,store_test.go,testsys_unix_test.go,testsys_windows_test.go,types_test.go} \
     internal/worktree/{git.go,topology.go,manager.go,coverage_closure_test.go,coverage_final_test.go,coverage_more_test.go,coverage_mutations_test.go,manager_closure_test.go,manager_fault_test.go,manager_integration_test.go,manager_more_test.go,manager_remaining_test.go,manager_test.go,phase2_coverage_test.go,topology_failure_test.go,topology_parity_test.go} \
-    internal/git/{controlroot.go,controlroot_test.go} cmd/awf/{effort.go,effort_test.go,effort_worktree_test.go,memorygate.go,memorygate_test.go,checkgroup_test.go} internal/clispec/{clispec.go,clispec_test.go} internal/memorycite/{memorycite.go,memorycite_test.go} \
+    internal/git/{controlroot.go,controlroot_test.go} cmd/awf/{effort.go,effort_test.go,effort_worktree_test.go,memorygate.go,memorygate_test.go,commitgate_test.go,checkgroup_test.go} internal/clispec/{clispec.go,clispec_test.go} internal/memorycite/{memorycite.go,memorycite_test.go} \
     internal/catalog/standard.go internal/evals/chain_test.go internal/project/{topics_test.go,spine_test.go,target_test.go,project_test.go,output_plan_test.go,currentstate_test.go} \
     templates/partials/{checkpoint-routine.md,checkpoint-approval.md} templates/pi/awf-handoff/index.ts.tmpl tools/pi-extension-test/tests/handoff.test.ts templates/agents-doc/AGENTS.md.tmpl templates/docs/{workflow.md.tmpl,working-with-awf.md.tmpl} \
     templates/skills/{brainstorming,proposing-adr,adr-lifecycle,writing-plans,reviewing-plan,reviewing-plan-resync,reviewing-adr,executing-direct,executing-plans,subagent-driven-development,reviewing-impl,retrospective,debugging,bugfix,tdd,refactor-coupling-audit,exploring,roadmap-graduation}/SKILL.md.tmpl \
@@ -501,8 +504,8 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
 
   ```sh
   git add -- \
-    internal/migrate/{unified_effort_residents.go,unified_effort_residents_test.go,migrate.go,migrate_test.go} internal/upgrade/{journal.go,journal_test.go,upgrade.go,upgrade_test.go} \
-    cmd/awf/{upgrade.go,upgrade_test.go,main.go,run_test.go,check_test.go,checkgroup_test.go} internal/project/{project.go,project_test.go,render.go,render_test.go,render_tree_test.go,output_plan.go,output_plan_test.go,install.go,install_test.go,currentstate.go,currentstate_test.go,context.go,context_test.go,context_wrapper_test.go,sweep.go,sweep_test.go,check_test.go,target_test.go} \
+    internal/migrate/{unified_effort_residents.go,unified_effort_residents_test.go,migrate.go,migrate_test.go,remove_workflow_residents_test.go} internal/upgrade/{journal.go,journal_test.go,upgrade.go,upgrade_test.go} \
+    cmd/awf/{upgrade.go,upgrade_test.go,main.go,run_test.go,check_test.go,checkgroup_test.go} internal/project/{project.go,project_test.go,render.go,render_test.go,render_tree_test.go,output_plan.go,output_plan_test.go,install.go,install_test.go,currentstate.go,currentstate_test.go,context.go,context_test.go,context_wrapper_test.go,sweep.go,sweep_test.go,check_test.go,target_test.go,banner.go,banner_test.go,coverage_test.go,context_artifacts_test.go,memory_test.go} \
     templates/embed.go templates/memory/gitignore.tmpl .awf/config.yaml examples/sundial/.awf/config.yaml .awf/memory/.gitignore examples/sundial/.awf/memory/.gitignore \
     .awf/docs/{glossary.yaml,pitfalls.yaml} .awf/docs/parts/architecture/{overview.md,components.md,data-flow.md} .awf/docs/parts/glossary/prepend.md .awf/docs/parts/pitfalls/prepend.md .awf/docs/parts/development/command-runner.md .awf/docs/parts/testing/gate.md \
     .awf/parts/workflow/chain.md .awf/parts/working-with-awf/{commands.md,config-and-overrides.md} README.md changelog/CHANGELOG.md \
