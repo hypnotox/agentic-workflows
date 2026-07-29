@@ -4,7 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sort"
+	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
@@ -61,6 +64,69 @@ func FinalUpgrade(root string, lock *manifest.Lock, log io.Writer) error {
 		return err
 	}
 	return commitTransaction(root, ops, log)
+}
+
+// ResetLegacyResidents commits a schema advance that discards resident state,
+// as one journaled transaction: every already-proven legacy resident is
+// quarantined, then the lock is replaced last. The lock replacement is the
+// commit point in both directions - a failure before it restores every
+// quarantined resident and leaves the old generation authoritative, and a
+// failure after it discards them and leaves the new generation authoritative.
+// No binary older than the new generation runs against this tree again from
+// the moment that lock lands.
+//
+// The residents must already have been proven obsolete by a read-only
+// preflight; this function moves bytes and asks no questions about them. Only
+// the schema generation is stamped, exactly as every other migration leaves the
+// release version to the terminal sync; the generation alone is what makes an
+// older binary refuse this tree.
+func ResetLegacyResidents(root string, residents []string, schema int, log io.Writer) error {
+	lockPrior, err := imageOf(root, LockRel())
+	if err != nil { // coverage-ignore: the caller loaded this same lock immediately before
+		return err
+	}
+	if !lockPrior.Present {
+		// A tree with no lock yet is the legacy layout port's output, whose
+		// terminal sync stamps the first lock; Generation already reads it as
+		// current. There is nothing to advance and, on such a tree, nothing a
+		// modern binary could have left behind to reset.
+		if len(residents) == 0 {
+			return nil
+		}
+		// Residents without a lock have no commit point to hang the reset on,
+		// so the transaction refuses rather than discarding them unprotected.
+		return fmt.Errorf("cannot reset %d legacy resident(s) because %s is absent; %s", len(residents), LockRel(), gitRestorationGuidance)
+	}
+	lock, err := manifest.Parse(lockPrior.Content)
+	if err != nil { // coverage-ignore: the caller parsed this same lock immediately before
+		return fmt.Errorf("invalid authority: restore %s from version control: %w", LockRel(), err)
+	}
+	lock.SchemaVersion = schema
+	finalBytes, err := lock.Marshal()
+	if err != nil { // coverage-ignore: the lock marshals cleanly; see manifest.Marshal
+		return err
+	}
+	ops := make([]Operation, 0, len(residents)+1)
+	for _, resident := range residents {
+		ops = append(ops, Operation{Path: resident, Kind: KindResidentTree, Quarantine: quarantinePath(resident)})
+	}
+	sort.Slice(ops, func(i, j int) bool { return ops[i].Path < ops[j].Path })
+	ops = append(ops, Operation{Path: LockRel(), Prior: lockPrior, Replacement: Image{Present: true, Mode: 0o644, Content: finalBytes}})
+	if err := validateOperations(ops); err != nil {
+		return fmt.Errorf("invalid resident reset plan: %w; %s", err, gitRestorationGuidance)
+	}
+	return commitTransaction(root, ops, log)
+}
+
+// quarantinePath maps a resident path to its destination under the quarantine
+// root. The awf directory prefix is dropped and the remaining separators are
+// folded, so the destination is a single flat leaf whose name still reads as
+// the resident it came from. Two residents can never fold onto one name in
+// practice, and the journal contract refuses the transaction outright if they
+// ever did.
+func quarantinePath(resident string) string {
+	flat := strings.ReplaceAll(strings.TrimPrefix(resident, config.DirName+"/"), "/", "__")
+	return QuarantineRel() + "/" + flat
 }
 
 // cutoverOperations builds the two-operation cutover plan: delete the sealed

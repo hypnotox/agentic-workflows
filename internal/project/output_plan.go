@@ -291,8 +291,8 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
 		}
 	}
-	for _, resident := range []struct{ name, tid string }{{"efforts", "efforts/gitignore.tmpl"}, {"memory", "memory/gitignore.tmpl"}, {"worktrees", "worktrees/gitignore.tmpl"}} {
-		add(".awf/"+resident.name+"/.gitignore", resident.tid, resident.tid, inputs(resident.tid), false)
+	for _, resident := range residentRoots {
+		add(".awf/"+resident.Name+"/.gitignore", resident.TemplateID, resident.TemplateID, inputs(resident.TemplateID), false)
 	}
 	for i := range decls {
 		switch decls[i].TemplateID {

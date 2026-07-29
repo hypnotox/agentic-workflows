@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-29
 ---
 # ADR-0175: Unified Ephemeral Slug-Based Efforts
@@ -263,3 +263,5 @@ and conditional post-review worktree integration are required.
 - 2026-07-29: Accepted; content-sha256: 9e25b81686b7f78ca393007db2810f6cea90efee73b6a6aeb3035182e2fbff55
 - 2026-07-29: Implementing; content-sha256: 9e25b81686b7f78ca393007db2810f6cea90efee73b6a6aeb3035182e2fbff55
 - 2026-07-29: Applied; state-sequence: 83; operations: update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:managed-worktree-lifecycle`, update `tooling/cli:effort-command-contract`, update `tooling/quality-gates:memory-citation-gate`, update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, add `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/pi-workflows:pi-session-handoff-lifecycle`, update `rendering/pi-workflows:pi-session-handoff-public-contract`, update `rendering/pi-workflows:pi-session-handoff-workflow`
+- 2026-07-29: Applied; state-sequence: 84; operations: add `config/migrations-and-locks:unified-effort-resident-migration`, update `rendering/singletons-and-payloads:memory-gitignore-always-on`, update `rendering/singletons-and-payloads:resident-output-preservation`, update `rendering/project-output-plan:output-plan-complete`, update `rendering/sync-and-drift:awf-bak-flagged`, update `rendering/sync-and-drift:closed-config-tree`
+- 2026-07-29: Implemented; content-sha256: 9e25b81686b7f78ca393007db2810f6cea90efee73b6a6aeb3035182e2fbff55

@@ -291,6 +291,447 @@ func TestJournalCommitPreparedWriteFailure(t *testing.T) {
 	}
 }
 
+// treeOp builds a resident-tree quarantine operation for path, sending it to
+// the given leaf name under the dedicated quarantine root.
+func treeOp(path, leaf string) Operation {
+	return Operation{Path: path, Kind: KindResidentTree, Quarantine: QuarantineRel() + "/" + leaf}
+}
+
+// residentJournal builds the canonical mixed transaction: one tracked file
+// replacement, one quarantined resident leaf, one quarantined resident tree,
+// and the lock last. The three non-lock paths are already sorted.
+func residentJournal(phase string) Journal {
+	lockFinal := presentImg("FINAL")
+	return Journal{
+		Version:         JournalVersion,
+		Phase:           phase,
+		FinalLockSHA256: imageSHA(lockFinal),
+		Operations: []Operation{
+			{Path: ".awf/config.yaml", Prior: presentImg("old-config"), Replacement: presentImg("new-config")},
+			treeOp(".awf/efforts/legacy.json", "efforts-legacy.json"),
+			treeOp(".awf/memory", "memory"),
+			{Path: LockRel(), Prior: presentImg("old-lock"), Replacement: lockFinal},
+		},
+	}
+}
+
+// seedResidents materializes the residents residentJournal quarantines: a
+// single-file leaf and a tree with a descendant, plus the pre-transaction
+// config and lock bytes.
+func seedResidents(t *testing.T, root string) {
+	t.Helper()
+	mustMkdir(t, filepath.Join(root, ".awf", "efforts"))
+	mustMkdir(t, filepath.Join(root, ".awf", "memory"))
+	mustWrite(t, filepath.Join(root, ".awf", "efforts", "legacy.json"), []byte(`{"schemaVersion":1}`))
+	mustWrite(t, filepath.Join(root, ".awf", "memory", "notes.md"), []byte("standalone"))
+	mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), []byte("old-config"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+}
+
+func exists(t *testing.T, path string) bool {
+	t.Helper()
+	_, err := os.Lstat(path)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
+	}
+	return err == nil
+}
+
+func TestJournalResidentKindRejections(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		mut  func(*Journal)
+		want string
+	}{
+		{"unknown-kind", func(j *Journal) { j.Operations[1].Kind = "resident-file" }, "unknown operation kind"},
+		{"file-carries-quarantine", func(j *Journal) {
+			j.Operations[0].Quarantine = QuarantineRel() + "/config"
+		}, "a file operation carries quarantine"},
+		{"tree-carries-prior-image", func(j *Journal) { j.Operations[2].Prior = presentImg("bytes") }, "carries file images"},
+		{"tree-carries-replacement-image", func(j *Journal) {
+			j.Operations[2].Replacement = presentImg("bytes")
+		}, "carries file images"},
+		{"unsafe-quarantine", func(j *Journal) { j.Operations[2].Quarantine = "../outside" }, "unsafe quarantine path"},
+		{"empty-quarantine", func(j *Journal) { j.Operations[2].Quarantine = "" }, "unsafe quarantine path"},
+		{"unconfined-quarantine", func(j *Journal) { j.Operations[2].Quarantine = ".awf/elsewhere/memory" }, "is outside"},
+		{"quarantine-root-itself", func(j *Journal) { j.Operations[2].Quarantine = QuarantineRel() }, "is outside"},
+		{"duplicate-quarantine", func(j *Journal) {
+			j.Operations[2].Quarantine = j.Operations[1].Quarantine
+		}, "duplicate quarantine destination"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			j := residentJournal(phasePrepared)
+			tc.mut(&j)
+			root := t.TempDir()
+			writeRawJournal(t, root, j)
+			if _, err := LoadJournal(root); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("want %q, got %v", tc.want, err)
+			}
+		})
+	}
+	// The canonical mixed transaction itself must load: the resident operations
+	// take part in the same sorted run as the file operation, and the lock stays
+	// the distinguished last entry.
+	root := t.TempDir()
+	writeRawJournal(t, root, residentJournal(phasePrepared))
+	if _, err := LoadJournal(root); err != nil {
+		t.Fatalf("canonical resident journal rejected: %v", err)
+	}
+}
+
+func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
+	root := t.TempDir()
+	seedResidents(t, root)
+	j := residentJournal(phasePrepared)
+	var log bytes.Buffer
+	if err := commitTransaction(root, j.Operations, &log); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	for _, gone := range []string{".awf/efforts/legacy.json", ".awf/memory", QuarantineRel()} {
+		if exists(t, filepath.Join(root, filepath.FromSlash(gone))) {
+			t.Fatalf("%s survived the committed transaction", gone)
+		}
+	}
+	// The resident root that merely held a quarantined leaf is untouched.
+	if !exists(t, filepath.Join(root, ".awf", "efforts")) {
+		t.Fatal("the efforts resident root was removed with its leaf")
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "FINAL" {
+		t.Fatalf("lock: %q", got)
+	}
+	for _, want := range []string{
+		"operation: applied .awf/config.yaml",
+		"operation: applied .awf/efforts/legacy.json",
+		"operation: applied .awf/memory",
+		"operation: applied .awf/awf.lock",
+		"operation: discarded .awf/efforts/legacy.json",
+		"operation: discarded .awf/memory",
+		"operation: upgrade committed",
+	} {
+		if !strings.Contains(log.String(), want) {
+			t.Fatalf("log missing %q: %s", want, log.String())
+		}
+	}
+	if JournalPresent(root) {
+		t.Fatal("journal residue after success")
+	}
+}
+
+func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := t.TempDir()
+	seedResidents(t, root)
+	mustMkdir(t, filepath.Join(root, "ro"))
+	if err := os.Chmod(filepath.Join(root, "ro"), 0o555); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(filepath.Join(root, "ro"), 0o755) }()
+	// Sorted after both resident operations, so both renames happen first and
+	// must be undone in reverse when this operation fails.
+	ops := make([]Operation, 0, 5)
+	ops = append(ops, residentJournal(phasePrepared).Operations[:3]...)
+	ops = append(ops,
+		Operation{Path: "ro/new.txt", Prior: Image{}, Replacement: presentImg("blocked")},
+		Operation{Path: LockRel(), Prior: presentImg("old-lock"), Replacement: presentImg("FINAL")},
+	)
+	var log bytes.Buffer
+	if err := commitTransaction(root, ops, &log); err == nil || !strings.Contains(err.Error(), "ro/new.txt") {
+		t.Fatalf("want apply failure, got %v", err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, ".awf", "memory", "notes.md")); string(got) != "standalone" {
+		t.Fatalf("quarantined tree not restored: %q", got)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, ".awf", "efforts", "legacy.json")); string(got) != `{"schemaVersion":1}` {
+		t.Fatalf("quarantined leaf not restored: %q", got)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, ".awf", "config.yaml")); string(got) != "old-config" {
+		t.Fatalf("config not restored: %q", got)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "old-lock" {
+		t.Fatalf("lock replaced despite rollback: %q", got)
+	}
+	if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
+		t.Fatal("quarantine residue after rollback")
+	}
+	if JournalPresent(root) {
+		t.Fatal("journal residue after rollback")
+	}
+}
+
+// TestJournalResidentInterruption pins every crash point around the resident
+// renames. Each case materializes the exact tree an interruption would leave
+// and requires `awf upgrade --recover` to converge, twice.
+func TestJournalResidentInterruption(t *testing.T) {
+	const (
+		leafRel  = ".awf/efforts/legacy.json"
+		treeRel  = ".awf/memory"
+		leafQrel = ".awf/.upgrade-quarantine/efforts-legacy.json"
+		treeQrel = ".awf/.upgrade-quarantine/memory"
+	)
+	// quarantine moves a seeded resident to its quarantine destination, standing
+	// in for a rename the interrupted run had already completed.
+	quarantine := func(t *testing.T, root, from, to string) {
+		t.Helper()
+		mustMkdir(t, filepath.Join(root, filepath.FromSlash(QuarantineRel())))
+		if err := os.Rename(filepath.Join(root, filepath.FromSlash(from)), filepath.Join(root, filepath.FromSlash(to))); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, tc := range []struct {
+		name string
+		// phase is the journal phase the interrupted run left behind.
+		phase string
+		// lockFinal writes the committed lock image before recovery.
+		lockFinal bool
+		setup     func(t *testing.T, root string)
+		// wantResidents is true when recovery must leave both residents at their
+		// original paths, false when it must leave them discarded.
+		wantResidents bool
+	}{
+		{
+			name:          "before-any-rename",
+			phase:         phaseApplying,
+			setup:         func(*testing.T, string) {},
+			wantResidents: true,
+		},
+		{
+			name:  "after-first-rename",
+			phase: phaseApplying,
+			setup: func(t *testing.T, root string) {
+				quarantine(t, root, leafRel, leafQrel)
+			},
+			wantResidents: true,
+		},
+		{
+			name:  "after-every-rename",
+			phase: phaseApplying,
+			setup: func(t *testing.T, root string) {
+				quarantine(t, root, leafRel, leafQrel)
+				quarantine(t, root, treeRel, treeQrel)
+			},
+			wantResidents: true,
+		},
+		{
+			name:  "after-rename-before-lock-replacement",
+			phase: phaseRollingBack,
+			setup: func(t *testing.T, root string) {
+				quarantine(t, root, leafRel, leafQrel)
+				quarantine(t, root, treeRel, treeQrel)
+			},
+			wantResidents: true,
+		},
+		{
+			// The lock landed before the phase advanced: authority is committed,
+			// so recovery discards rather than restores.
+			name:      "after-lock-replacement-before-phase-write",
+			phase:     phaseApplying,
+			lockFinal: true,
+			setup: func(t *testing.T, root string) {
+				quarantine(t, root, leafRel, leafQrel)
+				quarantine(t, root, treeRel, treeQrel)
+			},
+		},
+		{
+			name:      "after-phase-write-before-cleanup",
+			phase:     phaseLockCommitted,
+			lockFinal: true,
+			setup: func(t *testing.T, root string) {
+				quarantine(t, root, leafRel, leafQrel)
+				quarantine(t, root, treeRel, treeQrel)
+			},
+		},
+		{
+			// Cleanup had already discarded one tree when it was interrupted.
+			name:      "after-partial-cleanup",
+			phase:     phaseLockCommitted,
+			lockFinal: true,
+			setup: func(t *testing.T, root string) {
+				quarantine(t, root, leafRel, leafQrel)
+				quarantine(t, root, treeRel, treeQrel)
+				if err := os.RemoveAll(filepath.Join(root, filepath.FromSlash(leafQrel))); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			seedResidents(t, root)
+			tc.setup(t, root)
+			if tc.lockFinal {
+				mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
+				mustWrite(t, filepath.Join(root, ".awf", "config.yaml"), []byte("new-config"))
+			}
+			writeRawJournal(t, root, residentJournal(tc.phase))
+			var log bytes.Buffer
+			if err := Recover(root, &log); err != nil {
+				t.Fatalf("recover: %v", err)
+			}
+			leaf := filepath.Join(root, filepath.FromSlash(leafRel))
+			tree := filepath.Join(root, filepath.FromSlash(treeRel))
+			if exists(t, leaf) != tc.wantResidents || exists(t, tree) != tc.wantResidents {
+				t.Fatalf("residents present=%v/%v, want %v", exists(t, leaf), exists(t, tree), tc.wantResidents)
+			}
+			if tc.wantResidents {
+				if got, _ := os.ReadFile(filepath.Join(tree, "notes.md")); string(got) != "standalone" {
+					t.Fatalf("restored tree lost its descendant: %q", got)
+				}
+			}
+			if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
+				t.Fatal("quarantine residue after recovery")
+			}
+			if JournalPresent(root) {
+				t.Fatal("journal residue after recovery")
+			}
+			// `awf upgrade --recover` is idempotent in effect: a second run has
+			// no journal to act on and must not mutate the converged tree.
+			if err := Recover(root, io.Discard); err == nil {
+				t.Fatal("second recovery without a journal accepted")
+			}
+			if exists(t, leaf) != tc.wantResidents || exists(t, tree) != tc.wantResidents {
+				t.Fatal("second recovery mutated the converged tree")
+			}
+		})
+	}
+}
+
+// TestJournalResidentRenameHelpers pins the two rename helpers directly: both
+// treat an absent source as already-converged so a restarted run makes
+// progress, and both surface an unreadable source rather than silently
+// treating it as absent.
+func TestJournalResidentRenameHelpers(t *testing.T) {
+	op := treeOp(".awf/efforts/legacy.json", "efforts-legacy.json")
+	t.Run("absent-source-converges", func(t *testing.T) {
+		root := t.TempDir()
+		mustMkdir(t, filepath.Join(root, ".awf", "efforts"))
+		if err := quarantineTree(root, op); err != nil {
+			t.Fatalf("quarantine an absent resident: %v", err)
+		}
+		if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
+			t.Fatal("quarantine root created for an absent resident")
+		}
+		if err := restoreTree(root, op); err != nil {
+			t.Fatalf("restore an absent quarantine: %v", err)
+		}
+		if exists(t, filepath.Join(root, filepath.FromSlash(op.Path))) {
+			t.Fatal("resident recreated from an absent quarantine")
+		}
+	})
+	t.Run("unreadable-source-refuses", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root bypasses directory permissions")
+		}
+		root := t.TempDir()
+		sealed := []string{filepath.Join(root, ".awf", "efforts"), filepath.Join(root, filepath.FromSlash(QuarantineRel()))}
+		for _, dir := range sealed {
+			mustMkdir(t, dir)
+		}
+		for _, dir := range sealed {
+			if err := os.Chmod(dir, 0o000); err != nil {
+				t.Fatal(err)
+			}
+			defer func() { _ = os.Chmod(dir, 0o755) }()
+		}
+		if err := quarantineTree(root, op); err == nil {
+			t.Fatal("unreadable resident quarantined")
+		}
+		if err := restoreTree(root, op); err == nil {
+			t.Fatal("unreadable quarantine restored")
+		}
+	})
+}
+
+// TestJournalResidentAbsentResidentCommits pins the whole transaction for the
+// ordinary adopter that simply has no such resident: the operation converges,
+// still reports itself, and the lock still commits.
+func TestJournalResidentAbsentResidentCommits(t *testing.T) {
+	root := t.TempDir()
+	seedResidents(t, root)
+	if err := os.RemoveAll(filepath.Join(root, ".awf", "memory")); err != nil {
+		t.Fatal(err)
+	}
+	var log bytes.Buffer
+	if err := commitTransaction(root, residentJournal(phasePrepared).Operations, &log); err != nil {
+		t.Fatalf("commit: %v", err)
+	}
+	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "FINAL" {
+		t.Fatalf("lock: %q", got)
+	}
+	if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
+		t.Fatal("quarantine residue")
+	}
+	for _, want := range []string{"operation: applied .awf/memory", "operation: discarded .awf/memory"} {
+		if !strings.Contains(log.String(), want) {
+			t.Fatalf("log missing %q: %s", want, log.String())
+		}
+	}
+}
+
+func TestJournalResidentCollisionRefusals(t *testing.T) {
+	t.Run("occupied-quarantine-destination", func(t *testing.T) {
+		root := t.TempDir()
+		seedResidents(t, root)
+		// A previous interrupted run already put something at the destination;
+		// overwriting it would destroy the only copy of those bytes.
+		mustMkdir(t, filepath.Join(root, filepath.FromSlash(QuarantineRel())))
+		mustWrite(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()), "efforts-legacy.json"), []byte("earlier"))
+		ops := residentJournal(phasePrepared).Operations
+		err := commitTransaction(root, ops, io.Discard)
+		if err == nil || !strings.Contains(err.Error(), "quarantine destination") || !strings.Contains(err.Error(), gitRestorationGuidance) {
+			t.Fatalf("want a quarantine-collision refusal, got %v", err)
+		}
+		// Rolling this operation back would have to choose between the occupied
+		// destination and the untouched resident, so the rollback halts on it and
+		// preserves the journal instead of guessing.
+		if !strings.Contains(err.Error(), "rollback halted") {
+			t.Fatalf("want a halted rollback, got %v", err)
+		}
+		if !JournalPresent(root) {
+			t.Fatal("journal cleared despite a halted rollback")
+		}
+		if got, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(QuarantineRel()), "efforts-legacy.json")); string(got) != "earlier" {
+			t.Fatalf("earlier quarantined bytes destroyed: %q", got)
+		}
+		if got, _ := os.ReadFile(filepath.Join(root, ".awf", "efforts", "legacy.json")); string(got) != `{"schemaVersion":1}` {
+			t.Fatalf("untouched resident destroyed: %q", got)
+		}
+		if got, _ := os.ReadFile(filepath.Join(root, ".awf", "memory", "notes.md")); string(got) != "standalone" {
+			t.Fatalf("later resident destroyed: %q", got)
+		}
+		if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "old-lock" {
+			t.Fatalf("lock replaced despite the refusal: %q", got)
+		}
+	})
+	t.Run("occupied-resident-path-halts-restore", func(t *testing.T) {
+		root := t.TempDir()
+		seedResidents(t, root)
+		// The rename already happened and something recreated the resident path,
+		// so restoring would have to overwrite foreign bytes.
+		mustMkdir(t, filepath.Join(root, filepath.FromSlash(QuarantineRel())))
+		if err := os.Rename(filepath.Join(root, ".awf", "memory"), filepath.Join(root, filepath.FromSlash(QuarantineRel()), "memory")); err != nil {
+			t.Fatal(err)
+		}
+		mustMkdir(t, filepath.Join(root, ".awf", "memory"))
+		mustWrite(t, filepath.Join(root, ".awf", "memory", "foreign.md"), []byte("recreated"))
+		writeRawJournal(t, root, residentJournal(phaseApplying))
+		err := Recover(root, io.Discard)
+		if err == nil || !strings.Contains(err.Error(), ".awf/memory") || !strings.Contains(err.Error(), gitRestorationGuidance) {
+			t.Fatalf("want a restore refusal, got %v", err)
+		}
+		if !JournalPresent(root) {
+			t.Fatal("journal cleared despite a halted restore")
+		}
+		if got, _ := os.ReadFile(filepath.Join(root, ".awf", "memory", "foreign.md")); string(got) != "recreated" {
+			t.Fatalf("foreign bytes destroyed: %q", got)
+		}
+		if got, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(QuarantineRel()), "memory", "notes.md")); string(got) != "standalone" {
+			t.Fatalf("quarantined bytes destroyed: %q", got)
+		}
+	})
+}
+
 func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
 	root := t.TempDir()
 	mustMkdir(t, filepath.Join(root, ".awf"))

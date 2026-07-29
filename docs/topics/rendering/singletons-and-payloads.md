@@ -35,9 +35,9 @@ Backing: test
 
 ### `invariant: memory-gitignore-always-on`
 
-Every render declares a self-ignoring `.gitignore` for exactly the three repository-wide resident roots: efforts, memory, and worktrees. Only each root ignore file is governed; dynamic descendants are preserved.
+Every render declares a self-ignoring `.gitignore` for exactly the two repository-wide resident roots awf owns: efforts and worktrees. Only each root ignore file is governed; dynamic descendants are preserved, and no render reintroduces a standalone memory root.
 Origin: ADR-0148
-Revised-by: ADR-0159, ADR-0164, ADR-0167
+Revised-by: ADR-0159, ADR-0164, ADR-0167, ADR-0175
 Backing: test
 
 ### `invariant: plain-singleton-via-renderkind`
@@ -61,6 +61,7 @@ Backing: test
 
 ### `invariant: resident-output-preservation`
 
-The output plan preserves exactly the effort, memory, and managed-worktree resident roots and their dynamic descendants at the primary control root. Generation 21 destructively removes only the obsolete metrics and assignments roots.
+The output plan preserves exactly the effort and managed-worktree resident roots and their dynamic descendants at the primary control root. Generation 21 destructively removes only the obsolete metrics and assignments roots, and generation 22 resets the protocol-1 effort records and the whole standalone memory root through the journaled upgrade transaction.
 Origin: ADR-0167
+Revised-by: ADR-0175
 Backing: test

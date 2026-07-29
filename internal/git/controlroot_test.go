@@ -275,7 +275,6 @@ func TestControlRootResidentNameClosedSet(t *testing.T) {
 	roots := awfgit.ControlRoots{PrimaryRoot: primary}
 	for name, leaf := range map[awfgit.ResidentName]string{
 		awfgit.ResidentEfforts:   "efforts",
-		awfgit.ResidentMemory:    "memory",
 		awfgit.ResidentWorktrees: "worktrees",
 	} {
 		t.Run("accepts-"+leaf, func(t *testing.T) {
@@ -360,7 +359,7 @@ func TestControlRootRejectsForeignOwnedResidentAncestor(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = os.Chown(awfDir, os.Geteuid(), -1) })
 
-	_, err := roots.ResidentRoot(awfgit.ResidentMemory)
+	_, err := roots.ResidentRoot(awfgit.ResidentEfforts)
 	requireNonForceableHardSafety(t, err, "foreign-owner", awfDir)
 }
 

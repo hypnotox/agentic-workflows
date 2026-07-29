@@ -28,7 +28,7 @@ import (
 // Version is the awf release version - the single version authority
 // (ADR-0049): gate comparisons, the lock stamp, the bootstrap pin, and the
 // CLI output all read this const.
-const Version = "0.25.0"
+const Version = "0.26.0"
 
 // BridgeTrancheComplete blocks publication while the two-plan current-state
 // bridge tranche is only partially implemented. Plans 1 and 2 have both landed
@@ -56,6 +56,7 @@ var minVersionBySchema = map[int]string{
 	19: "0.23.0",
 	20: "0.24.0",
 	21: "0.25.0",
+	22: "0.26.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a

@@ -48,7 +48,7 @@ func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {
 	}
 	// Catalog/local, target-owned, neutral singleton, generated index/domain,
 	// and generated reference producers all appear in the one plan.
-	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/memory/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
+	for _, path := range []string{".pi/extensions/awf-handoff/index.ts", ".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", "AGENTS.md", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore", "docs/decisions/INDEX.md", "docs/domains/rendering.md", "docs/config-reference.md"} {
 		if !seen[path] {
 			t.Errorf("plan missing producer class path %q", path)
 		}
@@ -181,8 +181,8 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	if got := declaredPolicy("target-output", false); got.ScanReferences {
 		t.Fatalf("target output policy = %#v", got)
 	}
-	if got := declaredPolicy("memory", false); got.ScanReferences {
-		t.Fatalf("memory policy = %#v", got)
+	if got := declaredPolicy("efforts", false); got.ScanReferences {
+		t.Fatalf("efforts policy = %#v", got)
 	}
 	if (OutputPolicy{}).ScanReferences {
 		t.Fatal("zero policy must not scan")

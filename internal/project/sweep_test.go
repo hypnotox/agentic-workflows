@@ -56,8 +56,8 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		"skills/readme.txt":               "stray\n",
 		"skills/parts/tdd/stray.txt":      "stray\n",
 		"skills/parts/tdd/bogus.md":       "undeclared section\n",
-		"memory/anything.md":              "session scratch - exempt\n",
-		"memory/deep/file.awf-bak":        "exempt too\n",
+		"efforts/anything.md":             "session scratch - exempt\n",
+		"efforts/deep/file.awf-bak":       "exempt too\n",
 		"config.yaml.awf-bak.2":           "numbered backup\n",
 		"hooks/pre-commit.sh.awf-bak":     "backup beside a claimed unit\n",
 		"skills/debugging.yaml":           "data: {}\n", // debugging not enabled
@@ -97,12 +97,15 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	}
 }
 
-func TestSweepExemptsMemory(t *testing.T) {
+// Sweep never recurses into an owned resident root: every descendant is dynamic
+// local authority, including one shaped like a nested adopter or a stale backup.
+func TestSweepExemptsResidentRoots(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - tdd\nagents: []\n", map[string]string{
-		"memory/anything.md":         "scratch\n",
-		"memory/deep/file.awf-bak":   "scratch\n",
-		"efforts/e/sessions/s":       "resident\n",
-		"efforts/e/.awf/config.yaml": "adversarial\n",
+		"efforts/e/memory.md":         "scratch\n",
+		"efforts/e/deep/file.awf-bak": "scratch\n",
+		"efforts/e/sessions/s":        "resident\n",
+		"efforts/e/.awf/config.yaml":  "adversarial\n",
+		"worktrees/w/anything.md":     "scratch\n",
 	})
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("dynamic resident trees must be exempt, got %#v", got)

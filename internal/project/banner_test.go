@@ -60,14 +60,14 @@ func TestInjectBannerFrontmatter(t *testing.T) {
 	}
 }
 
-// The memory gitignore is neither markdown nor a shebang script: its banner is a
+// A resident gitignore is neither markdown nor a shebang script: its banner is a
 // leading #-comment keyed on the template id (ADR-0069).
-func TestInjectBannerMemoryGitignore(t *testing.T) {
+func TestInjectBannerResidentGitignore(t *testing.T) {
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
 	for _, tc := range []struct {
 		name string
 		tid  string
-	}{{"memory", memoryTID}, {"worktrees", worktreesTID}} {
+	}{{"efforts", effortsTID}, {"worktrees", worktreesTID}} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := injectBanner("*\n!.gitignore\n", tc.tid)
 			if got != want {

@@ -83,6 +83,12 @@ The singleton-standard-docs migration relocates each promoted standard doc's sid
 Origin: ADR-0043
 Backing: test
 
+### `invariant: unified-effort-resident-migration`
+
+Schema generation 22 resets the protocol-1 residents rather than migrating them, as one journaled transaction whose final lock replacement is the commit point. A complete read-only preflight first classifies every legacy leaf, the UUID `<uuid>.json` records, the efforts `.lock`, each `.<uuid>.<worktree|integration|removal>.partial` evidence file, and the whole standalone `.awf/memory/` root, keeping each governed `.gitignore` and every protocol-2 effort directory untouched. The preflight refuses before the journal exists, reporting that no bytes changed and naming the required next action, while any legacy managed worktree path, Git registration, `awf/<uuid>` branch, or partial-evidence checkout remains, and equally for any unknown, malformed, symlinked, hard-linked, non-directory, foreign-owned, or unconfinable resident. Proven residents are quarantined by rename, restored whole if the transaction fails before the lock commits, and discarded only after it, so the reset and the new generation become true together or not at all.
+Origin: ADR-0175
+Backing: test
+
 ### `invariant: upgrade-gate`
 
 awf render and awf check exit non-zero with a run-awf-upgrade message when the project's effective generation (0 for the legacy layout, else the lock's schemaVersion) is below current and at least one registered migration targets a generation inside the open gap; a project already at the current schema does not gate.

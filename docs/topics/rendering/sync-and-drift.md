@@ -11,8 +11,9 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 ### `invariant: awf-bak-flagged`
 
-A collision-backup file under .awf whose name ends in .awf-bak or .awf-bak.<N>, outside the memory directory, is reported by awf check as drift with a distinct stale-backup detail rather than passing silently.
+A collision-backup file under .awf whose name ends in .awf-bak or .awf-bak.<N>, outside an owned resident root, is reported by awf check as drift with a distinct stale-backup detail rather than passing silently.
 Origin: ADR-0148
+Revised-by: ADR-0175
 Backing: test
 
 ### `invariant: catalog-data-in-confighash`
@@ -35,8 +36,9 @@ Backing: test
 
 ### `invariant: closed-config-tree`
 
-Every filesystem entry under .awf that falls outside the claimed-path model, with the memory directory exempt, is reported by awf check as failing orphaned drift.
+Every filesystem entry under .awf that falls outside the claimed-path model, with the owned resident roots exempt, is reported by awf check as failing orphaned drift.
 Origin: ADR-0148
+Revised-by: ADR-0175
 Backing: test
 
 ### `invariant: drift-source-set`

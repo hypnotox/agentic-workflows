@@ -40,6 +40,22 @@ const (
 // reinstalled rather than left half-migrated.
 const gitRestorationGuidance = "restore the working tree from Git (git restore + git clean) and reinstall the bridge release before retrying"
 
+// Operation kinds. An empty kind is a file replacement, so every journal written
+// before resident quarantine existed keeps its exact meaning. A resident-tree
+// operation moves a whole directory aside instead of imaging its bytes: a
+// resident tree holds unbounded ephemeral descendants, so recording it as file
+// images would be both enormous and lossy, and deleting it outright would leave
+// nothing to roll back to.
+const (
+	KindFile         = ""
+	KindResidentTree = "resident-tree"
+)
+
+// QuarantineRel is the repo-relative root every quarantined resident tree moves
+// under. It sits inside the awf directory so one tracked-authority restore
+// reaches it, and it is never a resident root itself.
+func QuarantineRel() string { return config.DirName + "/.upgrade-quarantine" }
+
 // Image is one file's exact recorded state: present with an octal permission
 // mode and content, or absent (present:false, mode 0, empty content).
 type Image struct {
@@ -49,12 +65,20 @@ type Image struct {
 }
 
 // Operation records one path's prior and replacement images. The final journal
-// operation is always the lock replacement.
+// operation is always the lock replacement. A resident-tree operation carries no
+// images and instead names the quarantine path its tree is renamed to; the
+// rename is the mutation, so it is reversible before the lock commits and only
+// needs deleting after.
 type Operation struct {
 	Path        string `json:"path"`
+	Kind        string `json:"kind,omitempty"`
 	Prior       Image  `json:"prior"`
 	Replacement Image  `json:"replacement"`
+	Quarantine  string `json:"quarantine,omitempty"`
 }
+
+// residentTree reports whether op quarantines a tree rather than imaging a file.
+func (o Operation) residentTree() bool { return o.Kind == KindResidentTree }
 
 // Journal is the durable transaction record. Version is always 1; Operations
 // are unique, sorted, and end with the lock operation; FinalLockSHA256 is the
@@ -115,6 +139,82 @@ func applyImage(root, path string, img Image) error {
 	return os.Chmod(full, os.FileMode(img.Mode))
 }
 
+// quarantineTree renames a resident tree aside. An absent source is already in
+// the desired state, so a restarted run converges instead of failing. An
+// existing destination is never overwritten: that would destroy the only copy
+// of whatever a previous interrupted run put there.
+func quarantineTree(root string, op Operation) error {
+	source := filepath.Join(root, filepath.FromSlash(op.Path))
+	destination := filepath.Join(root, filepath.FromSlash(op.Quarantine))
+	if _, err := os.Lstat(source); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if _, err := os.Lstat(destination); err == nil {
+		return fmt.Errorf("quarantine destination %s already exists; %s", op.Quarantine, gitRestorationGuidance)
+	}
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil { // coverage-ignore: the quarantine root's parent is the awf directory the journal itself lives in
+		return err
+	}
+	return os.Rename(source, destination)
+}
+
+// restoreTree renames a quarantined tree back to its resident path. It mirrors
+// quarantineTree's restart tolerance: an absent quarantine means the tree is
+// already home, and an occupied resident path is never overwritten.
+func restoreTree(root string, op Operation) error {
+	source := filepath.Join(root, filepath.FromSlash(op.Quarantine))
+	destination := filepath.Join(root, filepath.FromSlash(op.Path))
+	if _, err := os.Lstat(source); err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	if _, err := os.Lstat(destination); err == nil {
+		return fmt.Errorf("cannot restore %s because it already exists; %s", op.Path, gitRestorationGuidance)
+	}
+	if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil { // coverage-ignore: the resident path's parent is the awf directory
+		return err
+	}
+	return os.Rename(source, destination)
+}
+
+// completeQuarantine discards every quarantined tree once the lock has
+// committed, then drops the shared quarantine root. It is idempotent so a
+// repeated recovery converges rather than failing on already-deleted bytes.
+func completeQuarantine(root string, j Journal, log io.Writer) error {
+	for _, op := range j.Operations {
+		if !op.residentTree() {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(root, filepath.FromSlash(op.Quarantine))); err != nil { // coverage-ignore: the quarantine root is an owned writable directory created by this transaction
+			return fmt.Errorf("discard quarantine %s: %w", op.Quarantine, err)
+		}
+		fmt.Fprintf(log, "operation: discarded %s\n", op.Path)
+	}
+	dropQuarantineRoot(root)
+	return nil
+}
+
+// dropQuarantineRoot removes the shared quarantine root once it is empty. It is
+// deliberately best effort: the root only becomes removable after the last tree
+// has left it, and unrelated bytes someone else put under it are not this
+// transaction's to delete.
+func dropQuarantineRoot(root string) {
+	_ = os.Remove(filepath.Join(root, filepath.FromSlash(QuarantineRel())))
+}
+
+// applyOperation performs one operation's mutation according to its kind.
+func applyOperation(root string, op Operation) error {
+	if op.residentTree() {
+		return quarantineTree(root, op)
+	}
+	return applyImage(root, op.Path, op.Replacement)
+}
+
 // imagesEqual reports whether two images are byte-for-byte and mode-for-mode
 // identical, so recovery can tell an untouched or already-restored path from a
 // third-party edit.
@@ -142,6 +242,7 @@ func validateOperations(ops []Operation) error {
 		return fmt.Errorf("journal does not end with the lock operation %q", lockRel)
 	}
 	var last string
+	quarantines := map[string]bool{}
 	for i, op := range ops {
 		if !safeRelPath(op.Path) {
 			return fmt.Errorf("journal operation %d has an unsafe path %q", i, op.Path)
@@ -151,6 +252,9 @@ func validateOperations(ops []Operation) error {
 		}
 		if err := validateImage(op.Replacement); err != nil {
 			return fmt.Errorf("journal operation %q replacement image: %w", op.Path, err)
+		}
+		if err := validateKind(op, quarantines); err != nil {
+			return fmt.Errorf("journal operation %q: %w", op.Path, err)
 		}
 		if i == len(ops)-1 {
 			break
@@ -164,6 +268,38 @@ func validateOperations(ops []Operation) error {
 		last = op.Path
 	}
 	return nil
+}
+
+// validateKind enforces the per-kind contract. A file operation carries no
+// quarantine; a resident-tree operation carries no images, quarantines under the
+// dedicated root, and never shares a quarantine destination with another
+// operation, so one interrupted run can never fold two trees into one name.
+func validateKind(op Operation, seen map[string]bool) error {
+	switch op.Kind {
+	case KindFile:
+		if op.Quarantine != "" {
+			return fmt.Errorf("a file operation carries quarantine %q", op.Quarantine)
+		}
+		return nil
+	case KindResidentTree:
+		if op.Prior.Present || op.Replacement.Present {
+			return errors.New("a resident-tree operation carries file images")
+		}
+		if !safeRelPath(op.Quarantine) {
+			return fmt.Errorf("unsafe quarantine path %q", op.Quarantine)
+		}
+		prefix := QuarantineRel() + "/"
+		if !strings.HasPrefix(op.Quarantine, prefix) {
+			return fmt.Errorf("quarantine %q is outside %s", op.Quarantine, QuarantineRel())
+		}
+		if seen[op.Quarantine] {
+			return fmt.Errorf("duplicate quarantine destination %q", op.Quarantine)
+		}
+		seen[op.Quarantine] = true
+		return nil
+	default:
+		return fmt.Errorf("unknown operation kind %q", op.Kind)
+	}
 }
 
 // validateImage rejects a malformed image: a present image needs a nonzero
@@ -260,7 +396,7 @@ func commitTransaction(root string, ops []Operation, log io.Writer) error {
 	}
 	lockOp := ops[len(ops)-1]
 	for _, op := range ops[:len(ops)-1] {
-		if err := applyImage(root, op.Path, op.Replacement); err != nil {
+		if err := applyOperation(root, op); err != nil {
 			return rollBack(root, j, fmt.Errorf("apply %s: %w", op.Path, err), log)
 		}
 		fmt.Fprintf(log, "operation: applied %s\n", op.Path)
@@ -272,6 +408,11 @@ func commitTransaction(root string, ops []Operation, log io.Writer) error {
 	j.Phase = phaseLockCommitted
 	if err := writeJournal(root, j); err != nil { // coverage-ignore: the lock is committed; a phase-write fault leaves a recoverable journal that --recover cleans
 		return fmt.Errorf("lock committed but journal update failed (%w); run `awf upgrade --recover`", err)
+	}
+	// Authority is committed from here on, so quarantined trees are discarded
+	// rather than restored. A fault leaves a recoverable journal, never a rollback.
+	if err := completeQuarantine(root, j, log); err != nil { // coverage-ignore: the only failure path inside completeQuarantine is itself coverage-ignored
+		return fmt.Errorf("lock committed but quarantine cleanup failed (%w); run `awf upgrade --recover`", err)
 	}
 	if err := os.Remove(JournalPath(root)); err != nil { // coverage-ignore: the lock is committed; a cleanup fault leaves a recoverable journal that --recover removes
 		return fmt.Errorf("lock committed but journal cleanup failed (%w); run `awf upgrade --recover`", err)
@@ -303,6 +444,13 @@ func rollBack(root string, j Journal, cause error, log io.Writer) error {
 func restorePriors(root string, j Journal, log io.Writer) error {
 	for i := len(j.Operations) - 1; i >= 0; i-- {
 		op := j.Operations[i]
+		if op.residentTree() {
+			if err := restoreTree(root, op); err != nil {
+				return fmt.Errorf("restore %s: %w", op.Path, err)
+			}
+			fmt.Fprintf(log, "operation: restored %s\n", op.Path)
+			continue
+		}
 		current, err := imageOf(root, op.Path)
 		if err != nil {
 			return fmt.Errorf("read %s: %w", op.Path, err)
@@ -315,6 +463,9 @@ func restorePriors(root string, j Journal, log io.Writer) error {
 		}
 		fmt.Fprintf(log, "operation: restored %s\n", op.Path)
 	}
+	// Every tree is home again, so a fully restored transaction leaves no
+	// quarantine residue behind for the next run to trip over.
+	dropQuarantineRoot(root)
 	return nil
 }
 
@@ -332,19 +483,29 @@ func Recover(root string, log io.Writer) error {
 	lockIsFinal := current.Present && imageSHA(current) == j.FinalLockSHA256
 	if j.Phase == phaseLockCommitted {
 		if lockIsFinal {
-			return cleanupJournal(root, log)
+			return finishCommitted(root, j, log)
 		}
 		return fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
 	}
 	if lockIsFinal {
 		// The lock was written before the phase advanced; treat it as committed.
-		return cleanupJournal(root, log)
+		return finishCommitted(root, j, log)
 	}
 	j.Phase = phaseRollingBack
 	if err := writeJournal(root, j); err != nil { // coverage-ignore: the journal directory is writable during recovery
 		return err
 	}
 	if err := restorePriors(root, j, log); err != nil {
+		return err
+	}
+	return cleanupJournal(root, log)
+}
+
+// finishCommitted completes a transaction whose lock is already the sealed
+// authority: quarantined trees are discarded, never restored, and then the
+// journal residue is cleared.
+func finishCommitted(root string, j Journal, log io.Writer) error {
+	if err := completeQuarantine(root, j, log); err != nil { // coverage-ignore: the only failure path inside completeQuarantine is itself coverage-ignored
 		return err
 	}
 	return cleanupJournal(root, log)

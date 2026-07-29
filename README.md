@@ -66,7 +66,7 @@ instead of rotting.
   [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
-- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state and `memory.md`; optional managed worktrees use Git-authoritative path, registration, and branch topology. The legacy standalone memory root remains render-recognized only until the schema migration removes it.
+- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state and `memory.md`; optional managed worktrees use Git-authoritative path, registration, and branch topology. These two are the only resident roots awf owns; schema generation 22 reset the legacy standalone memory root, and no render recreates it.
 
 awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
 Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native

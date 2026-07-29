@@ -193,8 +193,12 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 	}
 }
 
+// Generation 21 removes the obsolete workflow roots and generation 22 resets
+// the standalone memory root, while the two roots awf still owns keep every
+// dynamic descendant through migration, sync, and render alike.
+//
 // invariant: rendering/singletons-and-payloads:resident-output-preservation
-func TestGeneration21MigrationPreservesResidentsThroughProjectSync(t *testing.T) {
+func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
@@ -221,11 +225,16 @@ func TestGeneration21MigrationPreservesResidentsThroughProjectSync(t *testing.T)
 			t.Fatalf("obsolete %s root remains after migration: %v", name, err)
 		}
 	}
-	for _, name := range []string{"efforts", "memory", "worktrees"} {
+	for _, name := range []string{"efforts", "worktrees"} {
 		path := filepath.Join(root, ".awf", name, "retained", "resident")
 		if got, err := os.ReadFile(path); err != nil || string(got) != name {
 			t.Fatalf("retained %s resident changed: %q, %v", name, got, err)
 		}
+	}
+	// The standalone memory root is reset, not migrated: generation 22 stops
+	// owning it, so the whole root goes with the journaled schema advance.
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "memory")); !os.IsNotExist(err) {
+		t.Fatalf("standalone memory root survived the schema-22 reset: %v", err)
 	}
 
 	p, err := Open(root)
@@ -243,10 +252,13 @@ func TestGeneration21MigrationPreservesResidentsThroughProjectSync(t *testing.T)
 			t.Fatalf("obsolete %s root was recreated by sync/render: %v", name, err)
 		}
 	}
-	for _, name := range []string{"efforts", "memory", "worktrees"} {
+	for _, name := range []string{"efforts", "worktrees"} {
 		if _, err := os.Stat(filepath.Join(root, ".awf", name, "retained", "resident")); err != nil {
 			t.Fatalf("retained %s resident missing after sync/render: %v", name, err)
 		}
+	}
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "memory")); !os.IsNotExist(err) {
+		t.Fatalf("sync/render recreated the standalone memory root: %v", err)
 	}
 }
 
@@ -763,7 +775,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	// Both hashes moved.
 	mutate("CLAUDE.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x"; e.ConfigHash = "x" })
 	// Output moved, real hashes unmoved → a non-hashed input.
-	mutate(".awf/memory/.gitignore", func(e *manifest.Entry) { e.OutputHash = "x" })
+	mutate(".awf/efforts/.gitignore", func(e *manifest.Entry) { e.OutputHash = "x" })
 	// Output moved on a generated index (no hashes by design) → regenerated.
 	mutate("docs/decisions/INDEX.md", func(e *manifest.Entry) { e.OutputHash = "x" })
 	// No prior entry → added.
@@ -777,7 +789,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Change{
-		{Path: ".awf/memory/.gitignore", Cause: "internal"},
+		{Path: ".awf/efforts/.gitignore", Cause: "internal"},
 		{Path: ".claude/skills/example-tdd/SKILL.md", Cause: "config"},
 		{Path: "AGENTS.md", Cause: "template"},
 		{Path: "CLAUDE.md", Cause: "template+config"},

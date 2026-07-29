@@ -23,7 +23,6 @@ type ResidentName string
 
 const (
 	ResidentEfforts   ResidentName = "efforts"
-	ResidentMemory    ResidentName = "memory"
 	ResidentWorktrees ResidentName = "worktrees"
 )
 
@@ -230,7 +229,7 @@ func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunne
 // existing component beneath PrimaryRoot is non-symlinked and current-owned.
 func (r ControlRoots) ResidentRoot(name ResidentName) (string, error) {
 	switch name {
-	case ResidentEfforts, ResidentMemory, ResidentWorktrees:
+	case ResidentEfforts, ResidentWorktrees:
 	default:
 		return "", &HardSafetyError{Category: "unknown-resident", Path: string(name)}
 	}

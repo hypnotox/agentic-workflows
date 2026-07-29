@@ -5,11 +5,13 @@ import (
 	"testing"
 )
 
-// TestMemoryGitignoreAlwaysOn asserts RenderAll unconditionally emits the
-// self-ignoring .awf/memory/.gitignore with a #-comment banner (ADR-0069) -
-// no config gate, unlike bootstrap/hooks.
+// TestResidentGitignoresAlwaysOn asserts RenderAll unconditionally emits one
+// self-ignoring .gitignore with a #-comment banner (ADR-0069) for every
+// resident root awf owns - no config gate, unlike bootstrap/hooks. The
+// standalone memory root is not among them: schema 22 stopped owning it, so no
+// render may bring it back.
 // invariant: rendering/singletons-and-payloads:memory-gitignore-always-on
-func TestMemoryGitignoreAlwaysOn(t *testing.T) {
+func TestResidentGitignoresAlwaysOn(t *testing.T) {
 	root := scaffold(t, "prefix: example\n")
 	p, err := Open(root)
 	if err != nil {
@@ -19,20 +21,25 @@ func TestMemoryGitignoreAlwaysOn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var found *RenderedFile
+	rendered := map[string]string{}
 	for i := range out {
-		if out[i].Path == ".awf/memory/.gitignore" {
-			found = &out[i]
-		}
-	}
-	if found == nil {
-		t.Fatal("expected .awf/memory/.gitignore in every RenderAll output")
+		rendered[out[i].Path] = out[i].Content
 	}
 	want := "# " + bannerText + "\n*\n!.gitignore\n"
-	if found.Content != want {
-		t.Errorf("content = %q, want %q", found.Content, want)
+	for _, name := range residentRootNames() {
+		path := ".awf/" + name + "/.gitignore"
+		content, found := rendered[path]
+		if !found {
+			t.Fatalf("expected %s in every RenderAll output", path)
+		}
+		if content != want {
+			t.Errorf("%s content = %q, want %q", path, content, want)
+		}
+		if !strings.HasPrefix(content, "# ") {
+			t.Errorf("%s banner must be a #-comment, got %q", path, content)
+		}
 	}
-	if !strings.HasPrefix(found.Content, "# ") {
-		t.Errorf("banner must be a #-comment, got %q", found.Content)
+	if _, found := rendered[".awf/memory/.gitignore"]; found {
+		t.Error("render reintroduced the standalone memory resident root")
 	}
 }

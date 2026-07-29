@@ -1356,21 +1356,22 @@ that artifact's render path, and pin both branches in a test. A deterministic
 conditional-key consumption check (extending the ADR-0086 union) is recorded on the
 roadmap.
 
-## handoff_session memory paths are repository-relative
+## handoff_session memory paths are one effort-owned spelling
 
 _Domains: rendering_
 
-_Related: ADR-0145_
+_Related: ADR-0145, ADR-0175_
 
-The `handoff_session` tool's `memoryPath` is not an arbitrary exact filesystem path. It
-must be an exact repository-relative path beginning with `.awf/memory/`, such as
-`.awf/memory/<effort-id>.md`. Passing the absolute path to that same valid regular file
-fails with the shared diagnostic `memoryPath must be a canonical file below
-.awf/memory/`, because the extension rejects absolute paths before checking the file.
-The word "exact" in workflow guidance means exact repository-relative spelling, not an
-absolute canonical path. Before invoking the tool, preserve the `.awf/memory/` prefix and
-pass no repository-root prefix, backslashes, empty components, `.` or `..` components, or
-symlink components. The file itself must exist and be a regular file (ADR-0145).
+The `handoff_session` tool's `memoryPath` is not an arbitrary filesystem path. It must be
+exactly `.awf/efforts/<slug>/memory.md`, repository-relative or in an absolute spelling
+that normalizes to it; anything else fails with `memoryPath must be exactly
+.awf/efforts/<slug>/memory.md`. ADR-0175 replaced the earlier standalone
+`.awf/memory/<effort-id>.md` form, so a handoff copied from older guidance fails on the
+prefix alone. The slug is validated too, and the file must begin with the line
+`Effort: <slug>`, so pointing at another effort's memory is rejected rather than
+silently accepted. Before invoking the tool, pass no repository-root prefix,
+backslashes, empty components, `.` or `..` components, or symlink components; the leaf
+must be a bounded singly-linked regular file of valid UTF-8 (ADR-0145, ADR-0175).
 
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 

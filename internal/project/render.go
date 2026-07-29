@@ -25,7 +25,6 @@ const (
 	bridgeTID    = "claude/CLAUDE.md.tmpl"
 	bootstrapTID = "bootstrap/awf-bootstrap.sh.tmpl"
 	upgradeTID   = "bootstrap/awf-upgrade.sh.tmpl"
-	memoryTID    = "memory/gitignore.tmpl"
 	effortsTID   = "efforts/gitignore.tmpl"
 	worktreesTID = "worktrees/gitignore.tmpl"
 	runnerTID    = "runner/awf.tmpl"
@@ -654,10 +653,8 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
-	for _, resident := range []struct{ name, tid string }{
-		{"efforts", effortsTID}, {"memory", memoryTID}, {"worktrees", worktreesTID},
-	} {
-		rf, err := p.renderTarget(resident.name, "", resident.tid, nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/"+resident.name+"/.gitignore")
+	for _, resident := range residentRoots {
+		rf, err := p.renderTarget(resident.Name, "", resident.TemplateID, nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/"+resident.Name+"/.gitignore")
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}

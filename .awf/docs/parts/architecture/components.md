@@ -1,6 +1,7 @@
 - `internal/effort` owns schema-2 immutable `.awf/efforts/<slug>/state.json` and always-owned `memory.md`, durable publication, and restartable finish tombstones.
 - `internal/worktree` owns stateless native-Git add, integrate, and restartable safe removal over `.awf/worktrees/<slug>/` and `awf/<slug>`.
-- `internal/migrate` applies schema upgrades, including removal of obsolete disposable residents.
+- `internal/migrate` applies schema upgrades, including the read-only preflight and journaled reset that retire obsolete disposable residents.
+- `internal/upgrade` owns the recoverable upgrade journal: tracked file images, proven resident-tree quarantine, and the lock replacement that commits every schema advance.
 - Generated Pi extensions provide governed subagent dispatch and effort-state-independent session handoff confined to one owned memory path.
 - `internal/project` assembles request-sensitive context: tier-0 directory orientation, actual marker-kind file and directory relationships, topic-level authority expansion, and artifact-sensitive grouping.
 - `cmd/awf` exposes protocol-2 effort JSON and line-oriented mutation diagnostics, renders context tiers and per-topic authority counts, and routes bounded project checks; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide the repo-owned supporting checks.

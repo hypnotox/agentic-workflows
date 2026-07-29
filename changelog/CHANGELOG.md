@@ -12,6 +12,24 @@ query a single version or a range.
 
 - Replace effort JSON protocol 1 and mutable UUID lifecycle commands with protocol 2 immutable slug residents. `awf effort` now exposes only new/list/show/finish, separate worktree add/remove, and stateless integrate; standalone memory, rename, complete, abandon, reopen, repair, combined creation, manual integration, and every awf force-discard flag are removed. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`, list sorts the same objects by slug, and JSON failures write no stdout.
 
+- Schema generation 22 resets protocol-1 effort residents and standalone memory rather than
+  migrating them. `awf upgrade` discards every `.awf/efforts/<uuid>.json` record, the efforts
+  `.lock`, each `.<uuid>.<worktree|integration|removal>.partial` evidence file, and the whole
+  `.awf/memory/` root, which stops being a resident root: rendering now governs only
+  `.awf/efforts/.gitignore` and `.awf/worktrees/.gitignore`, and no render recreates the memory
+  one. Nothing is ported, because a UUID record carries no slug and inventing one would fabricate
+  identity; recreate the efforts you still need with `awf effort new "<outcome>"`, and copy
+  anything you want to keep out of `.awf/memory/` before upgrading.
+  The reset is one journaled transaction whose final lock replacement is the commit point, so it
+  either completes or leaves the old generation and every resident exactly as they were. Before
+  the journal exists, a complete read-only preflight refuses, changing no bytes and naming the
+  next action, while any legacy managed worktree path, Git registration, or `awf/<uuid>` branch
+  remains: settle or remove those with the pre-upgrade release first. It refuses the same way for
+  an unknown, malformed, symlinked, hard-linked, non-directory, or foreign-owned resident, which
+  is preserved for you to inspect by hand. An interrupted upgrade is resumed with
+  `awf upgrade --recover`; every other command refuses while its journal exists.
+  Older binaries refuse a tree that has advanced to generation 22.
+
 - Remove `awf context --json` from normal and uncovered modes. Context now has one human-text contract; a future structured form will require a demonstrated consumer.
 
 - Schema generation 21 destructively removes obsolete `.awf/metrics` and `.awf/assignments` residents during upgrade. Remove metrics and assignment commands, `/awf-effort`, `awf_workflow`, the Pi telemetry extension, and hidden workflow bodies. Enabled workflows now render as native Pi skills.

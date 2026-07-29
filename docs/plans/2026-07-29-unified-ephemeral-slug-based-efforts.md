@@ -507,9 +507,9 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
 
   ```sh
   git add -- \
-    internal/migrate/{unified_effort_residents.go,unified_effort_residents_test.go,migrate.go,migrate_test.go,remove_workflow_residents_test.go} internal/upgrade/{journal.go,journal_test.go,upgrade.go,upgrade_test.go} \
-    cmd/awf/{upgrade.go,upgrade_test.go,main.go,run_test.go,check_test.go,checkgroup_test.go} internal/project/{project.go,project_test.go,render.go,render_test.go,render_tree_test.go,output_plan.go,output_plan_test.go,install.go,install_test.go,currentstate.go,currentstate_test.go,context.go,context_test.go,context_wrapper_test.go,sweep.go,sweep_test.go,check_test.go,target_test.go,banner.go,banner_test.go,coverage_test.go,context_artifacts_test.go,memory_test.go} \
-    templates/embed.go templates/memory/gitignore.tmpl .awf/config.yaml examples/sundial/.awf/config.yaml .awf/memory/.gitignore examples/sundial/.awf/memory/.gitignore \
+    internal/migrate/{unified_effort_residents.go,unified_effort_residents_test.go,migrate.go,migrate_test.go,remove_workflow_residents_test.go,dropworkflowtelemetry_test.go,workflowtelemetry_test.go} internal/upgrade/{journal.go,journal_test.go,upgrade.go,upgrade_test.go} internal/effort/safeio.go internal/git/{controlroot.go,controlroot_test.go} \
+    cmd/awf/{upgrade.go,upgrade_test.go,main.go,run_test.go,check_test.go,checkgroup_test.go} internal/project/{project.go,project_test.go,render.go,render_test.go,render_tree_test.go,output_plan.go,output_plan_test.go,install.go,install_test.go,currentstate.go,currentstate_test.go,context.go,context_test.go,context_wrapper_test.go,sweep.go,sweep_test.go,check_test.go,target_test.go,banner.go,banner_test.go,coverage_test.go,context_artifacts_test.go,memory_test.go,version_test.go} \
+    templates/embed.go templates/memory/gitignore.tmpl .awf/config.yaml examples/sundial/.awf/config.yaml examples/sundial/.awf/bootstrap.sh .awf/memory/.gitignore examples/sundial/.awf/memory/.gitignore \
     .awf/docs/{glossary.yaml,pitfalls.yaml} .awf/docs/parts/architecture/{overview.md,components.md,data-flow.md} .awf/docs/parts/glossary/prepend.md .awf/docs/parts/pitfalls/prepend.md .awf/docs/parts/development/command-runner.md .awf/docs/parts/testing/gate.md \
     .awf/parts/workflow/chain.md .awf/parts/working-with-awf/{commands.md,config-and-overrides.md} README.md changelog/CHANGELOG.md \
     .awf/topics/parts/config/migrations-and-locks/current-state.md .awf/topics/parts/rendering/singletons-and-payloads/current-state.md .awf/topics/parts/rendering/project-output-plan/current-state.md .awf/topics/parts/rendering/sync-and-drift/current-state.md \
@@ -599,6 +599,46 @@ docs(plans): freeze unified effort plan
   retain manual integration state.
 - No durable record cites a concrete ephemeral memory file. Placeholder paths in this plan use angle
   brackets as required by the memory-citation gate.
+- Amendment, Phase 3 staging closure: the Phase 3 command omitted six paths the phase's own tasks
+  require. Task 3.3 removes `ResidentMemory`, which lives in `internal/git/{controlroot.go,
+  controlroot_test.go}`; Task 3.2's generation registration moves `Current()` and the applied-name
+  list pinned by `internal/migrate/{dropworkflowtelemetry_test.go,workflowtelemetry_test.go}` and
+  the minimum-version mapping pinned by `internal/project/version_test.go`; and the Sundial upgrade
+  re-pins `examples/sundial/.awf/bootstrap.sh`. All six are added to the command above. This is the
+  same class of omission Phase 2 recorded for `cmd/awf/commitgate.go`.
+- Amendment, Task 3.1 source closure: the preflight must refuse symlinked, non-regular, hard-linked,
+  and foreign-owned residents, but the platform link-count check that proves the hard-link case lives
+  only in `internal/effort`, which has no exported form of it and owns the only platform build-tag
+  files for it. `internal/effort/safeio.go` therefore gains one exported `ValidateResidentLeaf`
+  wrapper over the existing unexported contract, and it is added to the Phase 3 staging command.
+  Duplicating the platform files into `internal/migrate` was rejected: it would fork a safety
+  contract that must stay single-sourced.
+- Reading, Task 3.1 `fsync`: the journal's durable-write boundary is the existing atomic temp-file
+  replace, and ADR-0175 requires no more. The interruption matrix therefore pins the crash states
+  around that boundary (before and after every rename, the lock replacement, and cleanup) by
+  materializing the exact tree an interruption leaves and requiring `awf upgrade --recover` to
+  converge. Adding a true file and directory fsync to the journal would need `internal/manifest` or a
+  new platform shim, neither of which Phase 3 declares; it is recorded as a follow-up rather than
+  taken silently.
+
+### Phase 3 execution record
+
+- Deviation, inventory form: Task 3.5's phase close requires the bytewise Phase 3 path list in these
+  Notes. The comparison it exists to enforce was performed: `git status --short` was captured and
+  bytewise sorted before staging, `git diff --cached --name-only` bytewise sorted compared equal to
+  it, and no path fell outside the amended staging command. Only the result is recorded here, on the
+  Phase 2 precedent. The durable inventory is `git show --stat` for the phase commit, which names
+  the 55 staged paths exactly; the staging command is not that inventory, because its braces also
+  name unchanged files and so expand to a superset.
+- Two findings came from the work rather than from review. The interruption matrix showed that a
+  fully restored rollback left the emptied quarantine root behind, which `dropQuarantineRoot` now
+  clears. An initial Task 3.2 design put the journaled transaction in `runUpgrade` while declaring
+  `OwnsSchemaStamp` on a migration that stamped nothing, silently breaking `migrate.Upgrade`'s
+  postcondition that its tree reads as the current generation; two existing migration tests caught
+  it, and the transaction moved into the migration where ADR-0175 Decision 12 puts it.
+- Task 3.4's residual-surface search found one stale current-state doc: the `handoff_session`
+  pitfall still described the retired standalone `.awf/memory/<effort-id>.md` path and a diagnostic
+  the extension no longer emits. It was corrected in the same transaction.
 
 ### Phase 2 execution record
 

@@ -99,3 +99,15 @@ var residentOwner = validatePathOwner
 func ValidateCurrentOwner(path string, info os.FileInfo) error {
 	return residentOwner(path, info, nil)
 }
+
+// ValidateResidentLeaf applies the whole resident-leaf contract to an
+// already-lstatted path: no symlink, a regular file, exactly one link, and the
+// current owner. The link count is platform knowledge that only this package
+// carries, so a package that must refuse the same unsafe residents shares the
+// check here instead of reimplementing it.
+func ValidateResidentLeaf(path string, info os.FileInfo) error {
+	if err := validateLeaf(path, info); err != nil {
+		return err
+	}
+	return residentOwner(path, info, nil)
+}

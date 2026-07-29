@@ -103,14 +103,33 @@ type UninstallReport struct {
 	ResidentPreserved bool // compatibility summary for callers; roots are authoritative.
 }
 
-var residentRootNames = []string{"efforts", "memory", "worktrees"}
+// residentRoots is the closed set of repository-wide resident roots awf owns,
+// each paired with the template that renders its one governed .gitignore.
+// Output planning, render, drift, backup detection, current-state and context
+// discovery, sweep, nested-adopter filtering, install, and uninstall all read
+// this single table, so a root joins or leaves awf's ownership here and only
+// here. Everything below a root is dynamic local authority: it is never
+// rendered, manifested, recursed into, or deleted.
+var residentRoots = []struct{ Name, TemplateID string }{
+	{"efforts", "efforts/gitignore.tmpl"},
+	{"worktrees", "worktrees/gitignore.tmpl"},
+}
+
+// residentRootNames returns just the owned root names, in table order.
+func residentRootNames() []string {
+	names := make([]string, len(residentRoots))
+	for i, resident := range residentRoots {
+		names[i] = resident.Name
+	}
+	return names
+}
 
 // inspectResidentRoots examines direct children only. It never traverses a
 // dynamic resident tree; a descendant other than the managed .gitignore keeps
 // its root intact.
 func inspectResidentRoots(root string) ([]string, error) {
 	preserved := []string{}
-	for _, name := range residentRootNames {
+	for _, name := range residentRootNames() {
 		path := filepath.Join(root, config.DirName, name)
 		info, err := os.Lstat(path)
 		if errors.Is(err, os.ErrNotExist) {

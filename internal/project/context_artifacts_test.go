@@ -217,7 +217,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	for _, d := range decls {
 		byPath[d.Path] = d
 	}
-	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "awf", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/memory/.gitignore"} {
+	for _, p := range []string{".one/skills/p-local/SKILL.md", "shared", "AGENTS.md", "docs/domains/d.md", "docs/topics/d/t.md", "docs/decisions/INDEX.md", "awf", ".awf/bootstrap.sh", ".awf/upgrade.sh", ".awf/hooks/pre-commit.sh", ".awf/efforts/.gitignore", ".awf/worktrees/.gitignore"} {
 		if _, ok := byPath[p]; !ok {
 			t.Errorf("missing %s", p)
 		}
