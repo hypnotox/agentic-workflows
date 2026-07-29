@@ -177,18 +177,21 @@ configured authentication. Unknown, unauthenticated, or malformed selections fai
 queueing with no fallback. The parent's thinking level is forwarded unchanged so child Pi can
 clamp it for the selected model, and details report both the requested and actual model.
 
-The extension also reads per-role child model preferences from two local JSON files: a user-global
+The extension also reads child model preferences from two local JSON files: a user-global
 `awf-subagents.json` in Pi's agent directory and a gitignored project-local
 `awf-subagents.local.json` in the project's Pi config directory under the project root. Each file
-may set a `default` plus per-role keys (`grounding`, `exploration`, `review`, `implementation`),
-and an omitted per-call model resolves in explicit-argument, project-role, global-role,
-project-default, global-default, then parent-inheritance order. Both files are strictly validated
-at session start: any malformed, unknown, unregistered, or unauthenticated entry raises a
-prominent error and blocks all implicit routing (parent inheritance included) until repaired,
-while explicit per-call models keep working. Configured choices are revalidated against the live
-model registry before every queued child. The `/awf-subagent-models` command is the setup and
-repair path: a TUI-only wizard that selects the scope, shows current preferences and validation
-errors, offers an embedded recommended preset only when every referenced model is currently
+may set a shared `default`, explicit role keys (`grounding`, `exploration`, `review`,
+`implementation`), and semantic tier keys (`small`, `standard`, `large`); project values override
+global values per field. Completeness requires every field explicitly after merging, although an
+absent role can still route through the shared default and remains visible as missing. Every model
+reference is an exact `provider/model-id` of at most 256 characters. Missing fields remain valid,
+while malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable configured
+state blocks all implicit routing (parent inheritance included) until repaired; valid explicit
+per-call models keep working. Preference files and the live registry reload at preflight and again
+immediately before child startup, so queued work never falls through after a routing change. The
+`/awf-subagent-models` command is the setup and repair path: a TUI-only wizard that selects the
+scope, shows current preferences and validation errors, configures roles and tiers as one atomic
+transaction, offers an embedded recommended preset only when every referenced model is currently
 registered and authenticated, presents per-model pricing with request-wide tiers distinguished
 from base rates alongside context and output limits and capability markers, enforces the
 project-local gitignore rule at save time, persists atomically, and leaves the file unchanged on
