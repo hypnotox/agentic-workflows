@@ -56,15 +56,27 @@ accepted or emitted as a tool argument. Those tests do not exist.
 
 4. Reject a non-ASCII reference as `malformed`, reusing the existing rejection vocabulary and the
    existing omit-the-field repair message. Do not add a new reason code, and never normalize or
-   transliterate a rejected reference.
+   transliterate a rejected reference. Preserve the existing check order, in which the length check
+   precedes the form check, so a reference that is both overlong and non-ASCII reports `overlong`
+   rather than `malformed`. The accept-or-reject outcome is identical either way; fixing the order
+   keeps the reported reason deterministic across both validating layers.
 
-5. Change the omitted-model display label from `inherit parent` to `configured/default`, so no
-   rejected sentinel value doubles as the name of a supported case.
+5. Change the omitted-model display label to a string that cannot be mistaken for an argument at
+   all: `(configured or inherited)`. The ADR-0173 plan recorded a preference for
+   `configured/default`, but that string is itself a well-formed `provider/model-id` with one
+   separating slash and no whitespace, so it would satisfy both the schema pattern and the form
+   check and then fail later as an unregistered model. A label containing spaces is rejected by
+   construction under decision 1, which is what the plan's stated intent of removing the ambiguity
+   actually requires. This follows the existing precedent in the same module, where the routing
+   preview already displays the phrase `parent (inherited)`. This item rides along with decisions 1
+   through 4 because it changes the same claim and is proved by the same test surface, not because
+   it shares their motivation.
 
-6. Add the test coverage the ADR-0173 plan required before that label could change: prove
-   `inherit parent` is never accepted as a `model` argument by any of the four subagent tool
-   schemas and never emitted as one. Convert the astral acceptance case into a rejection case, and
-   pin both ends of the ASCII range so `0x21` and `0x7E` are accepted while space and DEL are not.
+6. Add the test coverage the ADR-0173 plan required before that label could change: prove that
+   neither `inherit parent` nor the replacement label is ever accepted as a `model` argument by any
+   of the four subagent tool schemas, and that neither is ever emitted as one. Convert the astral
+   acceptance case into a rejection case, and pin both ends of the ASCII range so `0x21` and `0x7E`
+   are accepted while space and DEL are not.
 
 7. Carry the change through the authored templates to every rendered output, including the Sundial
    adopter, in the same transaction, and update the changelog entry that currently describes the
@@ -90,7 +102,10 @@ deliberate trade of future flexibility for present unambiguity.
 
 Removing the `inherit parent` label removes a genuine ambiguity in which one string named both a
 supported case and a forbidden argument, and the new tests close the gap the ADR-0173 plan left
-open. The label is TUI-facing metadata, so no caller contract changes.
+open. Choosing a label that decision 1 rejects by construction, rather than one that merely differs
+from the three named sentinels, means a caller who copies the displayed string verbatim gets an
+immediate form rejection with the omit-the-field repair instead of a misleading unregistered-model
+error from a later registry lookup. The label is TUI-facing metadata, so no caller contract changes.
 
 The rejection vocabulary and repair message are unchanged, so no adopter-facing error handling
 changes shape. Preference files that already validate continue to validate.
@@ -103,6 +118,7 @@ changes shape. Preference files that already validate continue to validate.
 | Bound UTF-8 bytes at both layers, dropping `maxLength` | JSON Schema cannot express a byte bound, so tool-argument validation would lose its declarative length check and overlong input would only fail after schema validation passed |
 | Two-stage bound: `maxLength` as a coarse character pre-filter, runtime bytes as the authority | The layers would then legitimately disagree for multi-byte input, so a reference could pass the schema and fail the runtime, which is exactly the inconsistency ADR-0173 point 14 forbids |
 | Split the label change into its own record | It touches the same claim's diagnostics behaviour and the same module, and the required tests overlap; a separate record would duplicate the context for a one-string change |
+| Use `configured/default` as the replacement label, per the ADR-0173 plan's preference | That string is a well-formed `provider/model-id`, so it would pass both validating layers and fail later as an unregistered model, recreating the ambiguity the change exists to remove |
 
 ## Status history
 
