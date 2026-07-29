@@ -602,15 +602,17 @@ docs(plans): freeze unified effort plan
 
 ### Phase 2 execution record
 
-- Phase 2 closed as one commit over 265 paths. The Task 2.12 staging command is the named inventory
-  in expanded form; `git status --short` was captured and bytewise sorted before staging, and
-  `git diff --cached --name-only` bytewise sorted compared equal to it with no path outside the
-  command. The comparison result is recorded here rather than the 265 expanded path lines, which
-  would restate the staging command at length inside a frozen plan.
+- Deviation, inventory form: Task 2.12 requires the bytewise Phase 2 path list in these Notes. The
+  comparison it exists to enforce was performed: `git status --short` was captured and bytewise
+  sorted before staging, `git diff --cached --name-only` bytewise sorted compared equal to it, and
+  no path fell outside the staging command. Only the result is recorded here. The durable inventory
+  is `git show --stat 3395b4d8`, which names the 265 staged paths exactly; the staging command is
+  not that inventory, because its braces also name unchanged files and so expand to a superset.
 - Deviation, closure correction: Task 2.6 and the Task 2.12 staging command originally named
   `cmd/awf/commitgate_test.go` without `cmd/awf/commitgate.go`, although the commit-gate diagnostic
-  and error text the test asserts are emitted by that production file. Task 2.6, the File structure
-  inventory, and the staging command were corrected to name it before staging.
+  and error text the test asserts are emitted by that production file. Task 2.6 and the staging
+  command were corrected to name it before staging; the File structure inventory was corrected
+  afterwards, during review settlement.
 - Deviation, recovered session: the first Phase 2 session ended mid-edit with the tree
   non-compiling. The successor repaired a `readRegularNoFollow` arity break, restored routine
   checkpoint chain coverage and the effort fifo and foreign-owner safety proofs that the rewrite had
