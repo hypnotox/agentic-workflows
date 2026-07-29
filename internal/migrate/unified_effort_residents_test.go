@@ -169,6 +169,7 @@ func TestClassifyLegacyResidentsAbsentAndEmptyRoots(t *testing.T) {
 	})
 }
 
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestClassifyLegacyResidentsUnknownAndMalformedLeaves(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
@@ -205,6 +206,7 @@ func TestClassifyLegacyResidentsUnknownAndMalformedLeaves(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 	t.Run("symlinked-leaf", func(t *testing.T) {
 		root := residentTree(t)

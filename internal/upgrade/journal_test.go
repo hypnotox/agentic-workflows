@@ -715,6 +715,7 @@ func TestJournalResidentAbsentResidentCommits(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestJournalResidentCollisionRefusals(t *testing.T) {
 	t.Run("occupied-quarantine-destination", func(t *testing.T) {
 		root := t.TempDir()
