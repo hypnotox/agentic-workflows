@@ -80,6 +80,12 @@ Origin: ADR-0151
 Revised-by: ADR-0173
 Backing: test
 
+### `invariant: pi-implement-role-artifact`
+
+The generated Pi extension builds the implementation child's role prompt by loading the rendered implementer agent from its `.pi/agents/` path, stripping frontmatter, prepending the commit-authority role line, and failing with an actionable enable-and-render repair on a missing file or an empty instruction body; no implementation role prose remains inline in the extension. The before-and-after git snapshot fails a commit-capable implementation call whose HEAD is unchanged, naming the required stopped inventory, and retains the existing commit-forbidden violation, its message, cancellation, cleanup, and bounded-diagnostic reporting.
+Origin: ADR-0177
+Backing: test
+
 ### `invariant: pi-subagent-progress-bounds`
 
 The generated Pi extension retains at most 20 display events of at most 2 KiB each, reports cumulative omitted-event counts and truncation explicitly, and never keeps a second raw child-transcript store.

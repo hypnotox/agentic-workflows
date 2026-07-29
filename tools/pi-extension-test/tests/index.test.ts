@@ -658,3 +658,79 @@ test("wizard detects stale writers and handles read, mkdir, write, rename, and c
   assert.equal(cleanupAttempts, 1);
   assert.match(cleanup.notices.at(-1)![0], /Save failed: rename primary/);
 });
+
+const HEAD_BEFORE = { code: 0, stdout: "aaaaaaa\n" };
+const HEAD_AFTER = { code: 0, stdout: "bbbbbbb\n" };
+const STATUS_CLEAN = { code: 0, stdout: "" };
+const STATUS_DIRTY = { code: 0, stdout: " M internal/thing.go\n" };
+
+test("a commit-capable implementation that leaves HEAD unchanged fails and demands the stopped inventory", async () => {
+  // Two snapshots, two exec calls each: rev-parse then status.
+  const h = harness({ git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_DIRTY] });
+  const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: true });
+  assert.equal(value.details.state, "failed");
+  assert.equal(value.details.awfFailure, true);
+  assert.equal(value.details.commitVerification, "verified");
+  const text = value.content[0].text;
+  assert.match(text, /commit-capable but created no commit/);
+  assert.match(text, /HEAD unchanged at aaaaaaa/);
+  for (const clause of [
+    /working-tree status/,
+    /work completed/,
+    /work remaining/,
+    /named failing check with its actual output/,
+    /what was already tried/,
+  ]) assert.match(text, clause);
+});
+
+test("a commit-capable implementation that advanced HEAD succeeds", async () => {
+  const h = harness({ git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_AFTER, STATUS_CLEAN] });
+  const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: true });
+  assert.notEqual(value.details.state, "failed");
+  assert.equal(value.details.awfFailure, undefined);
+});
+
+test("the commit-forbidden violation keeps its original failure", async () => {
+  const h = harness({ git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_AFTER, STATUS_CLEAN] });
+  const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: false });
+  assert.equal(value.details.state, "failed");
+  assert.match(value.content[0].text, /committed despite allowCommits=false \(HEAD aaaaaaa -> bbbbbbb\)/);
+});
+
+test("a commit-disabled implementation that changed nothing is not a no-commit failure", async () => {
+  const h = harness({ git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_DIRTY] });
+  const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: false });
+  assert.notEqual(value.details.state, "failed");
+});
+
+// Override only the implementer path; every other read (the preference sources
+// among them) must still reach the harness stub, or routing blocks first.
+function withImplementerDoc(h: ReturnType<typeof harness>, doc: string | Error) {
+  const original = h.deps.readFile;
+  h.deps.readFile = async (path: string, encoding: "utf8") => {
+    if (path !== "/repo/.pi/agents/implementer.md") return original(path, encoding);
+    if (doc instanceof Error) throw doc;
+    return doc;
+  };
+}
+
+test("the implementation role loads its contract from the rendered agent and fails closed without it", async () => {
+  const present = harness();
+  withImplementerDoc(present, "---\nname: implementer\ndescription: test\n---\nOwn the transaction.");
+  const { value } = await call(present, "subagent_implement", { task: "x", allowCommits: false });
+  assert.notEqual(value.details.state, "failed");
+
+  const absent = harness();
+  withImplementerDoc(absent, Object.assign(new Error("missing"), { code: "ENOENT" }));
+  await assert.rejects(
+    call(absent, "subagent_implement", { task: "x", allowCommits: false }),
+    /Missing Pi implementer \.pi\/agents\/implementer\.md\. Enable the implementer agent and run awf render\./,
+  );
+
+  const bodyless = harness();
+  withImplementerDoc(bodyless, "---\nname: implementer\ndescription: test\n---\n   \n");
+  await assert.rejects(
+    call(bodyless, "subagent_implement", { task: "x", allowCommits: false }),
+    /has no instruction body; run awf render\./,
+  );
+});

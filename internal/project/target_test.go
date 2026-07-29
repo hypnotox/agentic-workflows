@@ -760,3 +760,29 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
 	}
 }
+
+// invariant: rendering/pi-workflows:pi-implement-role-artifact
+func TestPiImplementRoleArtifact(t *testing.T) {
+	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		".pi/agents/implementer.md",
+		"loadImplementer",
+		"Enable the implementer agent and run awf render.",
+		"has no instruction body; run awf render.",
+		"parseFrontmatter",
+		// Both snapshot directions, the pre-existing one and the new mirror.
+		"before.head !== after.head",
+		"before.head === after.head",
+		"commit-capable but created no commit",
+		"committed despite allowCommits=false",
+	} {
+		if !strings.Contains(src, want) {
+			t.Errorf("rendered Pi extension missing %q", want)
+		}
+	}
+	// The literal implement prose must be gone, so a half-applied edit that adds
+	// the loader while leaving the old string in place fails here.
+	if strings.Contains(src, "You are a fresh-context implementation subagent") {
+		t.Error("the literal implement role prose survived the loader cutover")
+	}
+}

@@ -95,6 +95,7 @@ export const REVIEWER_PATHS = {
   plan: ".pi/agents/plan-reviewer.md",
   code: ".pi/agents/code-reviewer.md",
 } as const;
+export const IMPLEMENTER_PATH = ".pi/agents/implementer.md";
 
 const preferenceNotices = new WeakSet<object>();
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
@@ -203,7 +204,7 @@ export function createLimiter(limit: number) {
   };
 }
 
-function rolePrompt(role: "grounding" | "explore" | "implement", options: { allowCommits?: boolean; breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string {
+function rolePrompt(role: "grounding" | "explore", options: { breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string {
   if (role === "grounding") {
     return [
       "You are a fresh-context grounding-check subagent. Read and run evidence-producing commands, but do not edit files or commit.",
@@ -212,24 +213,24 @@ function rolePrompt(role: "grounding" | "explore" | "implement", options: { allo
       "verified means mechanically confirmed against source; interpreted means the reading requires judgment; unverified means the claim could not be confirmed.",
     ].join("\n");
   }
-  if (role === "explore") {
-    return [
-      "You are a fresh-context exploration subagent. Read files and run evidence-producing commands only. This is report-only: do not edit files or commit.",
-      "Handle exactly one information need. Do not bundle unrelated questions and do not recursively delegate.",
-      "The parent may run independent information needs concurrently as separate calls, but refinement of an earlier result stays sequential. Pi admits at most ten active exploration children and queues the rest FIFO with abort-aware removal.",
-      `Selected breadth maximum: ${options.breadth}`,
-      "Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.",
-      "Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.",
-      "For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.",
-      `Selected report detail: ${options.detail}`,
-      "Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.",
-      "Ground every material claim with file:line evidence.",
-      "Distinguish not-found, inconclusive, and unverified outcomes. Not-found is successful execution and begins exactly: Not found within <breadth> boundary: <what was searched>. A broad absence report must name the project search universe and searched surfaces. A not-found result may suggest one concise next refinement. An inconclusive or unverified result is not an absence claim.",
-      "Return only the relevant final report, never the search narrative or intermediate activity.",
-      "After a not-found, inconclusive, unverified, or insufficient report, the parent may issue a new fresh-context call that corrects the task, changes report detail, or widens breadth. Retain no search session or state.",
-    ].join("\n");
-  }
-  return `You are a fresh-context implementation subagent. Follow AGENTS.md and the task exactly. You may edit files. Commits are ${options.allowCommits ? "allowed when the task requests them" : "forbidden; do not change HEAD"}. Report changed files, verification, and blockers.`;
+  // The exploration prose is the trailing unconditional return: the implement
+  // role loads its contract from the rendered agent instead, and a guarded final
+  // branch would leave this function without an ending return.
+  return [
+    "You are a fresh-context exploration subagent. Read files and run evidence-producing commands only. This is report-only: do not edit files or commit.",
+    "Handle exactly one information need. Do not bundle unrelated questions and do not recursively delegate.",
+    "The parent may run independent information needs concurrently as separate calls, but refinement of an earlier result stays sequential. Pi admits at most ten active exploration children and queues the rest FIFO with abort-aware removal.",
+    `Selected breadth maximum: ${options.breadth}`,
+    "Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.",
+    "Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.",
+    "For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.",
+    `Selected report detail: ${options.detail}`,
+    "Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.",
+    "Ground every material claim with file:line evidence.",
+    "Distinguish not-found, inconclusive, and unverified outcomes. Not-found is successful execution and begins exactly: Not found within <breadth> boundary: <what was searched>. A broad absence report must name the project search universe and searched surfaces. A not-found result may suggest one concise next refinement. An inconclusive or unverified result is not an absence claim.",
+    "Return only the relevant final report, never the search narrative or intermediate activity.",
+    "After a not-found, inconclusive, unverified, or insufficient report, the parent may issue a new fresh-context call that corrects the task, changes report detail, or widens breadth. Retain no search session or state.",
+  ].join("\n");
 }
 
 async function loadReviewer(deps: ExtensionDependencies, root: string, kind: ReviewKind): Promise<string> {
@@ -242,6 +243,23 @@ async function loadReviewer(deps: ExtensionDependencies, root: string, kind: Rev
   const parsed = parseFrontmatter<Record<string, unknown>>(content);
   if (!parsed.body.trim()) throw new Error(`Pi reviewer ${relative} has no instruction body; run awf render.`);
   return `You are the governed ${kind} reviewer. You are report-only: never edit or commit.\n\n${parsed.body}`;
+}
+
+// The implementation role's contract is a rendered artifact, like the reviewers'.
+// The per-role prepend carries the commit authority, which the rendered body
+// describes but cannot know for a given call.
+async function loadImplementer(deps: ExtensionDependencies, root: string, allowCommits: boolean): Promise<string> {
+  let content: string;
+  try { content = await deps.readFile(join(root, IMPLEMENTER_PATH), "utf8"); }
+  catch {
+    throw new Error(`Missing Pi implementer ${IMPLEMENTER_PATH}. Enable the implementer agent and run awf render.`);
+  }
+  const parsed = parseFrontmatter<Record<string, unknown>>(content);
+  if (!parsed.body.trim()) throw new Error(`Pi implementer ${IMPLEMENTER_PATH} has no instruction body; run awf render.`);
+  const authority = allowCommits
+    ? "Commits are allowed when the task requests them; you are the phase owner."
+    : "Commits are forbidden; do not change HEAD. You are a helper.";
+  return `You are the governed implementation subagent. ${authority}\n\n${parsed.body}`;
 }
 
 async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
@@ -775,15 +793,30 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         const before = await snapshot(pi, root);
         const finalSelected = await refreshAndResolve(ctx, "implement", params.model);
         const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { allowCommits: params.allowCommits });
-        const result = await run("implement", params.task, IMPLEMENT_TOOLS, rolePrompt("implement", { allowCommits: params.allowCommits }), finalSelected.model, finalMetadata, signal, onUpdate, queuedAt);
+        const contract = await loadImplementer(deps, root, params.allowCommits);
+        const result = await run("implement", params.task, IMPLEMENT_TOOLS, contract, finalSelected.model, finalMetadata, signal, onUpdate, queuedAt);
         const after = await snapshot(pi, root);
-        const violation = !params.allowCommits && before.available && after.available && before.head !== after.head;
-        const gitDetails = { ...finalMetadata, allowCommits: params.allowCommits, before, after, commitVerification: before.available && after.available ? "verified" : "unavailable" };
-        if (violation) {
+        const comparable = before.available && after.available;
+        const committedWhenForbidden = !params.allowCommits && comparable && before.head !== after.head;
+        // A commit-capable owner that left HEAD alone did not complete its phase.
+        // This detects the absence of a commit, not the absence of a reason, so a
+        // child that stopped correctly with a full inventory also lands here: that
+        // phase did not complete, and a failure result is the honest report.
+        const missingCommitWhenOwner = params.allowCommits && comparable && before.head === after.head;
+        const gitDetails = { ...finalMetadata, allowCommits: params.allowCommits, before, after, commitVerification: comparable ? "verified" : "unavailable" };
+        if (committedWhenForbidden) {
           const failure = {
             ...result,
             failed: true,
             failureMessage: `Implementation committed despite allowCommits=false (HEAD ${before.head} -> ${after.head}); changes were not reverted.`,
+          };
+          return toolResult("implement", params.task, failure, gitDetails);
+        }
+        if (missingCommitWhenOwner) {
+          const failure = {
+            ...result,
+            failed: true,
+            failureMessage: `Implementation was commit-capable but created no commit (HEAD unchanged at ${before.head}). A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.`,
           };
           return toolResult("implement", params.task, failure, gitDetails);
         }

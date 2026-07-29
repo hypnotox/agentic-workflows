@@ -1,7 +1,7 @@
 ---
 date: 2026-07-29
 adrs: [177]
-status: Proposed
+status: Implemented
 ---
 # Plan: Rendered implementer role contract (ADR-0177 Part A)
 

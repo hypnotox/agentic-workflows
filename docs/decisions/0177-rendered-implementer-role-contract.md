@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-29
 ---
 # ADR-0177: Rendered implementer role contract
@@ -255,3 +255,5 @@ deliberate and temporary.
 - 2026-07-29: Proposed
 - 2026-07-30: Implementing; content-sha256: a11420e95015bf48ce1bf48cafc16a46f68645775e3a2b6569f443f6453079ee
 - 2026-07-30: Applied; state-sequence: 86; operations: add `rendering/workflow-skill-templates:implementer-role-contract`
+- 2026-07-30: Applied; state-sequence: 87; operations: add `rendering/pi-workflows:pi-implement-role-artifact`
+- 2026-07-30: Implemented; content-sha256: a11420e95015bf48ce1bf48cafc16a46f68645775e3a2b6569f443f6453079ee
