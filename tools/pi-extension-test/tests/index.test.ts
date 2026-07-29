@@ -469,8 +469,10 @@ test("wizard detects stale writers and handles read, mkdir, write, rename, and c
   }
 
   const cleanup = harness({ answers: [GLOBAL_LABEL, true, PRESET, true] }); registerPreset(cleanup);
+  let cleanupAttempts = 0;
   cleanup.deps.rename = async () => { throw new Error("rename primary"); };
-  cleanup.deps.unlink = async () => { throw new Error("cleanup secondary"); };
+  cleanup.deps.unlink = async () => { cleanupAttempts++; throw new Error("cleanup secondary"); };
   await cleanup.runWizard();
+  assert.equal(cleanupAttempts, 1);
   assert.match(cleanup.notices.at(-1)![0], /Save failed: rename primary/);
 });

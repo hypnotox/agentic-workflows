@@ -165,8 +165,9 @@ query a single version or a range.
   missing fields remain visible and non-blocking, while invalid configured state blocks implicit
   routing and leaves valid explicit calls usable. Omission is the only default form; sentinel
   values are rejected, and exact references are limited to 256 characters. Preferences and the
-  live registry are validated at preflight and again immediately before every child starts after
-  queue acquisition, with routing-source diagnostics. The `/awf-subagent-models` TUI wizard writes
+  live registry are validated at preflight and again immediately before startup: queued roles
+  refresh after acquisition, while direct roles refresh immediately before their child starts, with
+  routing-source diagnostics. The `/awf-subagent-models` TUI wizard writes
   roles and tiers atomically, with a registry-gated recommended preset, informed per-model pricing
   selectors, and save-time gitignore enforcement for the project-local file. Rendered guidance now
   steers long implementations toward sequential implementation subagents.
