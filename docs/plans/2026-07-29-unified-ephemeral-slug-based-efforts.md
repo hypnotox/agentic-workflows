@@ -72,7 +72,8 @@ is intentionally the final applied batch because its activation is the cutover b
 - **Modified - authored docs/current state:** `.awf/parts/agents-doc/working-memory.md`,
   `.awf/parts/workflow/chain.md`, `.awf/parts/working-with-awf/{commands,
   config-and-overrides}.md`, `.awf/docs/glossary.yaml`, `.awf/docs/pitfalls.yaml`,
-  `.awf/docs/parts/architecture/components.md`, `.awf/docs/parts/glossary/prepend.md`,
+  `.awf/docs/parts/architecture/{overview,components,data-flow}.md`,
+  `.awf/docs/parts/glossary/prepend.md`,
   `.awf/docs/parts/pitfalls/prepend.md`, `.awf/docs/parts/development/command-runner.md`,
   `.awf/docs/parts/testing/gate.md`, `.awf/agents-doc.yaml`, `README.md`,
   `changelog/CHANGELOG.md`, the current-state parts for every ADR-0175 operation under
@@ -319,7 +320,7 @@ all source, render, test, staging, and commit ownership.
   rendering/pi-workflows:pi-session-handoff-public-contract`, `update
   rendering/pi-workflows:pi-session-handoff-workflow`. Preserve Origin and prior Revised-by,
   including ADR-0173 provenance, then append ADR-0175. Use only the state sequence reported by staged
-  check. Update `.awf/docs/parts/architecture/components.md`,
+  check. Update `.awf/docs/parts/architecture/{overview,components,data-flow}.md`,
   `.awf/docs/parts/glossary/prepend.md`, and the other authored architecture, CLI, gate, Pi,
   development, workflow, working-with-awf, testing, glossary, pitfalls, README, and changelog
   sources, then render all root and Sundial guides,
@@ -415,7 +416,8 @@ claims, generated outputs, and lifecycle close are one commit-capable parent-own
   `ResidentMemory`, the memory template/embed/output, and root/Sundial memory `.gitignore` outputs.
   Update the shared resident-root table used by output planning, render, drift, backup detection,
   current-state/context discovery, sweep, nested-adopter filtering, install, and uninstall. Govern
-  only `.awf/efforts/.gitignore` and `.awf/worktrees/.gitignore`; never recurse into or delete dynamic
+  only `.awf/efforts/.gitignore` and `.awf/worktrees/.gitignore`; update the resident-root flow in
+  `.awf/docs/parts/architecture/data-flow.md`; never recurse into or delete dynamic
   descendants during render/check/sweep/uninstall. Preserve nonempty residents actionably and retain
   the primary-root resident versus invoking-checkout tracked-authority split. Tests cover linked
   worktrees, closed-tree checks, nested adopters, backups, disable/prune, uninstall, and root/Sundial
