@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0177: Rendered implementer role contract](0177-rendered-implementer-role-contract.md) (Proposed)
+- [ADR-0178: Explicit dependency composition architecture](0178-explicit-dependency-composition-architecture.md) (Proposed)
 
 ## History
 

@@ -1,0 +1,1 @@
+The code-design domain owns cross-package structure guidance that does not belong to one product area. It is pathless: its topics may supply explicit global authority, but the domain claims no file territory and creates no path-coverage obligation. Read the owning topic before changing a governed structure rather than copying its claims into local guidance.
