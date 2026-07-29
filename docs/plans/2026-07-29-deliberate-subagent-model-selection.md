@@ -63,16 +63,16 @@ consequences.
   `.awf/topics/parts/rendering/pi-workflows/current-state.md`,
   `.awf/topics/parts/rendering/pi-runtime/current-state.md`,
   `docs/decisions/0173-deliberate-subagent-model-selection.md`, this plan,
-  `docs/decisions/INDEX.md`, and `.awf/awf.lock`.
+  `docs/decisions/INDEX.md`, `changelog/CHANGELOG.md`, and `.awf/awf.lock`.
 - **Generated root outputs:** `AGENTS.md`, `docs/working-with-awf.md`,
   `docs/topics/rendering/{workflow-skill-templates,pi-workflows,pi-runtime}.md`,
-  `docs/domains/rendering.md`, `.pi/extensions/awf-subagents/{index,model-routing,runner}.ts`,
+  `docs/domains/rendering.md`, `.pi/extensions/awf-subagents/{index,model-routing}.ts`,
   `.pi/extensions/awf-handoff/index.ts`, and
   enabled target copies of the eight changed skills under `.agents`, `.claude`, `.cursor`,
   `.gemini`, `.github`, and `.pi`.
 - **Generated Sundial outputs:** `examples/sundial/AGENTS.md`,
   `examples/sundial/docs/working-with-awf.md`,
-  `examples/sundial/.pi/extensions/awf-subagents/{index,model-routing,runner}.ts`,
+  `examples/sundial/.pi/extensions/awf-subagents/{index,model-routing}.ts`,
   `examples/sundial/.pi/extensions/awf-handoff/index.ts`, the enabled
   Sundial target copies of the eight changed skills, and `examples/sundial/.awf/awf.lock`.
 - **Deleted:** none.
@@ -365,6 +365,21 @@ the three Pi-workflow operations may not split.
 feat(rendering): add Pi subagent complexity tiers (applies 0173 batch)
 ```
 
+### Phase 2 documentation settlement prerequisite
+
+Before Phase 3 starts, update the adopter-facing preference paragraph in
+`templates/docs/working-with-awf.md.tmpl` to reflect the already-applied Phase 2 contract: both
+preference files accept the shared default, four explicit roles, and three semantic tiers;
+completeness requires every field after project-over-global merging; references are exact
+`provider/model-id` values of at most 256 characters; missing fields remain valid and visible;
+malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable configured state
+blocks implicit routing while valid explicit calls remain usable; and preference plus registry state
+reloads at preflight and immediately before child startup. Keep the existing wizard behavior and
+generic dispatch guidance coherent. Run `./x render`, inspect deterministic consequences, and stage
+only `templates/docs/working-with-awf.md.tmpl`, `examples/sundial/docs/working-with-awf.md`, and
+`examples/sundial/.awf/awf.lock` if those are the complete render inventory. Run `./awf check
+--staged` and `./x gate`, then commit `docs(rendering): refresh Pi model preference guidance`.
+
 ## Phase 3: add the routing card, bounded module, and real-runtime proof
 
 **Execution mode: subagent-driven.** From the clean Phase 2 tree, the parent runs `git status
@@ -404,9 +419,13 @@ ADR implementation transition, and closing commit.
   selection: omit model for the role default; otherwise override deliberately with the selected tier's exact provider/model-id.
   ```
 
-  Substitute the state's exact reference for each representative reference and the literal `missing`
-  when that mapping is absent. A missing state replaces the `missing: none` line with, for example,
-  exactly `missing: grounding, small`; fields are comma-space-separated in preference-field order.
+  Substitute the state's exact reference for each representative reference. When an explicit role
+  mapping is absent but the shared default resolves that role, render the shared-default reference
+  in the `roles:` entry while still listing the absent explicit role in `missing:`; use the literal
+  `missing` only when no effective reference exists. A missing state replaces the `missing: none`
+  line with, for example, exactly `missing: grounding, small`; fields are comma-space-separated in
+  preference-field order. Add a fallback-card fixture proving the effective shared-default role
+  reference and explicit-role missing marker coexist.
   An invalid state replaces `invalid: none` with semicolon-space-separated entries; exact
   representatives are `global:source:malformed-json`, `project:source:unknown-key`, and
   `project:small:unavailable`, ordered by Task 2.2. A mixed state carries both non-`none` lines. After a non-`none` invalid line, insert exactly
@@ -455,8 +474,11 @@ ADR implementation transition, and closing commit.
   notices, and hook registration. Add routing-card assertions for deterministic field order,
   complete/partial/invalid state, bounded reasons, no raw errors, maximum-length normal form,
   defensive failure card, exactly one append per handler call, no injection without an active awf
-  tool, `selectedTools` precedence, `getActiveTools` fallback, and preference/registry refresh.
-  Update `tools/pi-extension-test/container.sh` so c8 includes
+  tool, `selectedTools` precedence, `getActiveTools` fallback, and preference/registry refresh. Add
+  an entrypoint regression test proving that a runtime missing `getActiveTools` registers no
+  subagent tools and emits the bounded actionable incompatibility notice, plus a handoff assertion
+  proving its required capability set and behavior remain unchanged despite consuming the shared
+  partial. Update `tools/pi-extension-test/container.sh` so c8 includes
   `.pi/extensions/awf-subagents/model-routing.ts` at 100% while retaining runner and handoff coverage;
   do not include the integration-heavy ignored entrypoint in the metric.
 
@@ -525,8 +547,9 @@ feat(rendering): inject Pi subagent routing cards (implements 0173)
   perform the required report-only phase review. Resolve findings through focused parent-owned
   commits, each with explicit staging, `./awf check --staged`, and `./x gate`; never amend the phase
   commit. Record settled implementation findings under Notes, check every completed task, change
-  this plan to `status: Implemented`, and commit the plan-only freeze after the same staged check and
-  gate:
+  this plan to `status: Implemented`, stage exactly with `git add --
+  docs/plans/2026-07-29-deliberate-subagent-model-selection.md`, require the cached inventory to
+  contain only that path, and commit the plan-only freeze after `./awf check --staged` and `./x gate`:
 
 ```commit
 docs(plans): freeze deliberate subagent model selection plan
