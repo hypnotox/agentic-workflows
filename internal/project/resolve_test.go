@@ -98,7 +98,7 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 		t.Errorf("adding a leaf to a closed config plans %d ops, want 1: %v", len(leafPlan), leafPlan)
 	}
 	// Enabled-subtree skip mid-walk never re-adds an enabled member.
-	p3, err := Open(scaffold(t, "prefix: example\nskills: [executing-plans, retrospective, reviewing-impl, subagent-driven-development]\nagents: [code-reviewer]\n"))
+	p3, err := Open(scaffold(t, "prefix: example\nskills: [executing-plans, retrospective, reviewing-impl, subagent-driven-development]\nagents: [code-reviewer, implementer]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,6 +109,7 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 		{Kind: "skill", Name: "reviewing-impl"}:              true,
 		{Kind: "skill", Name: "subagent-driven-development"}: true,
 		{Kind: "agent", Name: "code-reviewer"}:               true,
+		{Kind: "agent", Name: "implementer"}:                 true,
 	}
 	want3 := map[catalog.Node]bool{}
 	for _, node := range closure {
@@ -130,7 +131,7 @@ func TestResolveEnableClosurePlan(t *testing.T) {
 // a remove plan, mirroring the validator's skip.
 func TestResolveDisableSkipsLocalDependents(t *testing.T) {
 	p, err := Open(scaffoldFiles(t,
-		"prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer]\n",
+		"prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n",
 		map[string]string{"skills/reviewing-impl.yaml": "local: true\n"}))
 	if err != nil {
 		t.Fatal(err)

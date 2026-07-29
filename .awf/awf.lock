@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.26.0",
-  "schemaVersion": 22,
+  "awfVersion": "0.27.0",
+  "schemaVersion": 23,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",
@@ -88,9 +88,9 @@
     },
     ".claude/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:9661ce84029b147a7cde87c1cd6cafe08715f71ea83e0756ac36b75667e78b93",
+      "templateHash": "sha256:ecc2886f4d6ad1e82512251b47fd0a08bffd117b3512ab50567639b15f33c2eb",
       "configHash": "sha256:fdf74607592310315313d40cf680ca50ccf6a120cccc81f6cfd8ab45ddf8bcd5",
-      "outputHash": "sha256:896bc8731e97ac785c16fa09deff470f9d42d2cbd16f87bb4c7e7fe6b17b6cb1"
+      "outputHash": "sha256:b33a4406e9a5b5a093d16495d773fc009971b62afca0dd4676b83db7269e418c"
     },
     ".claude/skills/awf-exploring/SKILL.md": {
       "templateId": "skills/exploring/SKILL.md.tmpl",
@@ -142,9 +142,9 @@
     },
     ".claude/skills/awf-subagent-driven-development/SKILL.md": {
       "templateId": "skills/subagent-driven-development/SKILL.md.tmpl",
-      "templateHash": "sha256:43e72431d48f9b8da17d3747a53c84ae70d7fdf22cad75d05627850ba7302711",
+      "templateHash": "sha256:2846a6884e8ce1dae34f68589f71859996326d9b3856e26218b76d2b49c85a30",
       "configHash": "sha256:fdf74607592310315313d40cf680ca50ccf6a120cccc81f6cfd8ab45ddf8bcd5",
-      "outputHash": "sha256:6928712b55a278ef73fad7592b39d9a87b4eefa8cb8ad7baa902e21cfe46681e"
+      "outputHash": "sha256:1fe64d605027633cef808707713b23ab76034d92e257c85b419453089ffceaa9"
     },
     ".claude/skills/awf-tdd/SKILL.md": {
       "templateId": "skills/tdd/SKILL.md.tmpl",
@@ -238,9 +238,9 @@
     },
     ".pi/skills/awf-executing-plans/SKILL.md": {
       "templateId": "skills/executing-plans/SKILL.md.tmpl",
-      "templateHash": "sha256:9661ce84029b147a7cde87c1cd6cafe08715f71ea83e0756ac36b75667e78b93",
+      "templateHash": "sha256:ecc2886f4d6ad1e82512251b47fd0a08bffd117b3512ab50567639b15f33c2eb",
       "configHash": "sha256:047bfe83483a2c43cd1aaf948a55cb598c9f88059490def5c30a8c04359d668e",
-      "outputHash": "sha256:7b0d98c62268698850f757185b1f39a3d4ddf9b88b0c00f6f53bd6a5d216b33e"
+      "outputHash": "sha256:4d0f3f7b0eb86ef9db58d1782ba389308f9b53b8083fdd601139ed9a7c94f294"
     },
     ".pi/skills/awf-exploring/SKILL.md": {
       "templateId": "skills/exploring/SKILL.md.tmpl",
@@ -292,9 +292,9 @@
     },
     ".pi/skills/awf-subagent-driven-development/SKILL.md": {
       "templateId": "skills/subagent-driven-development/SKILL.md.tmpl",
-      "templateHash": "sha256:43e72431d48f9b8da17d3747a53c84ae70d7fdf22cad75d05627850ba7302711",
+      "templateHash": "sha256:2846a6884e8ce1dae34f68589f71859996326d9b3856e26218b76d2b49c85a30",
       "configHash": "sha256:047bfe83483a2c43cd1aaf948a55cb598c9f88059490def5c30a8c04359d668e",
-      "outputHash": "sha256:2fba17f40ab6d3446bb89025eed452e37823faf7debee1a25a5f9ae6ef8a4f2b"
+      "outputHash": "sha256:3ab94b44310c74f4d9e249d8c4ad02dc1d49dafdcb6bb0255e8b41603c159415"
     },
     ".pi/skills/awf-tdd/SKILL.md": {
       "templateId": "skills/tdd/SKILL.md.tmpl",
@@ -349,7 +349,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:da1b5c23cd032ae7a86b121f0aec2d679f8a02beda769dd1bf7bd97ee3933afd",
+      "outputHash": "sha256:16c15d0cd09cdbb53d0c2fca4dae60bf7b51e31fb5be331b294f4968210d641c",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -643,8 +643,8 @@
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:2e9984652f99b095bf49df9b042a9cb21c6c6df3e339b99194f04a2634db7cf6",
-      "outputHash": "sha256:93baf7b614e95451699e4f168f370242632172184137a051727e4e0425feda5c"
+      "configHash": "sha256:47635e94fce207637aab3451a61a67509292663c440c341ef4c6c587f2a51e28",
+      "outputHash": "sha256:c794a4b82665c0c73e8b6301ef66057525c3eccd5c2e9f9b1110f189790440b3"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",

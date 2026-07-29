@@ -110,6 +110,12 @@ Every final governed subagent dispatch chooses the smallest model expected to co
 Origin: ADR-0173
 Backing: test
 
+### `invariant: implementer-role-contract`
+
+The rendered implementer agent body states its two authority modes, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that reaching green is the job and no assertion or golden may be weakened to hide a failure, that no interactive channel exists so escalation is a returned inventory, the commit-capable owner's explicit-stage, staged-check, gate, single-commit procedure, and a closed two-outcome return whose stopped outcome requires working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch and address their own imperatives to an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
+Origin: ADR-0177
+Backing: test
+
 ### `invariant: maintainable-code-review-lenses`
 
 Plan review checks that structural choices and necessary enabling refactors are explicit, ordered, bounded, approved or durably dispositioned when larger, and verifiable; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and settled-design conformance; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only.

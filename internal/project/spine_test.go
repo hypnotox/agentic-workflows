@@ -273,6 +273,7 @@ func TestCodeReviewerAgent(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:implementer-role-contract
 func TestImplementerAgent(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -312,6 +313,34 @@ func TestImplementerAgent(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
 		}
+	}
+
+	// The claim's second sentence: both dispatching skills name the agent in
+	// every dispatch branch, and their own imperatives carry a subject. Rendered
+	// with and without subagent-tool capability, since each shape has its own
+	// dispatch branch.
+	for _, capable := range []bool{true, false} {
+		for _, skill := range []string{"subagent-driven-development", "executing-plans"} {
+			data := map[string]any{
+				"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+				"skills": map[string]bool{}, "layout": testLayout(),
+			}
+			if capable {
+				data["targetSubagentTools"] = true
+			}
+			rendered := renderSkillGolden(t, skill, data)
+			if !strings.Contains(rendered, "`implementer` agent") {
+				t.Errorf("%s (subagentTools=%v) does not name the implementer agent:\n%s", skill, capable, rendered)
+			}
+		}
+	}
+
+	sdd := renderSkillGolden(t, "subagent-driven-development", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+		"skills": map[string]bool{}, "layout": testLayout(),
+	})
+	if !strings.Contains(sdd, "You, the dispatching parent, stop before dispatch") {
+		t.Errorf("the raise-concerns imperative lost its explicit subject:\n%s", sdd)
 	}
 }
 
@@ -1537,6 +1566,9 @@ var unsetFallbackCases = []fallbackCase{
 	},
 }
 
+// The unset-data half of the implementer contract's third sentence: its
+// fallback case above pins the degraded body.
+// invariant: rendering/workflow-skill-templates:implementer-role-contract
 func TestUnsetFallbackRenders(t *testing.T) {
 	for _, tc := range unsetFallbackCases {
 		t.Run(tc.tmpl, func(t *testing.T) {

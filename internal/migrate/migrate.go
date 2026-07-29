@@ -54,6 +54,7 @@ var registry = []Migration{
 	{To: 20, Name: "drop-workflow-telemetry", Apply: applyDropWorkflowTelemetry},
 	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
 	{To: 22, Name: "unified-effort-residents", Apply: applyUnifiedEffortResidents, OwnsSchemaStamp: true},
+	{To: 23, Name: "implementer-agent-closure", Apply: applyCloseEnabledSet},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state

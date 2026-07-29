@@ -20,13 +20,13 @@ var Standard = &Catalog{
 			"terminal-step", "plan-lifecycle", "plan-resync", "notes",
 		}},
 		"executing-direct": {Core: true, RequiresSkills: []string{"reviewing-impl"}},
-		"executing-plans": {Core: true, RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
+		"executing-plans": {Core: true, RequiresAgent: "implementer", RequiresSkills: []string{"reviewing-impl", "subagent-driven-development"}, Sections: []string{
 			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
 			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
 			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
 			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
 		}},
-		"subagent-driven-development": {Core: true, RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
+		"subagent-driven-development": {Core: true, RequiresAgent: "implementer", RequiresSkills: []string{"executing-plans", "reviewing-impl"}, Sections: []string{
 			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
 			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
 			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",

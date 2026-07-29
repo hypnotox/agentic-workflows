@@ -1406,9 +1406,11 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 	}
 }
 
-// A reviewing skill enabled without its dispatched agent fails project open -
-// the error names both sides and the fix. The fixture carries reviewing-impl's
-// skill closure so the agent edge is the failing one (ADR-0050, generalized by
+// A skill enabled without its dispatched agent fails project open - the error
+// names both sides and the fix. The fixture carries reviewing-impl's skill
+// closure so the agent edge is the failing one, and validation walks the
+// declared config order, so reviewing-impl's missing code-reviewer is reported
+// rather than executing-plans' missing implementer (ADR-0050, generalized by
 // ADR-0081's closure validation).
 // invariant: rendering/project-output-plan:reviewing-skill-agent-pairing
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
@@ -1424,7 +1426,7 @@ func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 }
 
 func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer]\n")
+	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n")
 	if _, err := Open(root); err != nil {
 		t.Fatalf("paired skill with its agent must open cleanly, got: %v", err)
 	}

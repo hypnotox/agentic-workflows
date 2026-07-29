@@ -364,7 +364,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -656,7 +656,7 @@ func TestMultiTargetRender(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
 func TestMaintainableCodeMultiTargetParity(t *testing.T) {
-	root := scaffold(t, "prefix: example\nskills:\n  - subagent-driven-development\nagents: []\ndocs: []\ntargets:\n  - claude\n  - pi\n")
+	root := scaffold(t, "prefix: example\nskills:\n  - subagent-driven-development\nagents: [implementer]\ndocs: []\ntargets:\n  - claude\n  - pi\n")
 	p, err := Open(root)
 	if err != nil {
 		t.Fatal(err)
