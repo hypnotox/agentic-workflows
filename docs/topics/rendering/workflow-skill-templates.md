@@ -37,14 +37,15 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance treats memory as optional local effort state and recommends outcome-specific
-`awf effort` creation when durable coordination, memory, or worktrees warrant it. Routine
-implementation checkpoints occur only after a phase's closing implementation commit has been
-reviewed and all findings are settled; checkbox tasks and batch-helper returns are not checkpoint
-boundaries. The guidance contains no selection, assignment, adoption, detour, or telemetry-
-lifecycle gate.
+Checkpoint guidance creates no effort for a minimal simple fix or merely because a boundary was reached. Once the outcome is concrete and non-minimal, it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, updates phase, next action, time, and handoff log in one writer-owned batch, and subordinates checkpoint prose to repository authority. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166, ADR-0175
+Backing: test
+
+### `invariant: unified-effort-workflow-coverage`
+
+Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, exact slug/path continuity, repository-authority precedence, standalone-memory ban, and one-writer/report-only-child contract. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
+Origin: ADR-0175
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`

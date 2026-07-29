@@ -2,20 +2,20 @@
 # Architecture
 
 <!-- awf:edit overview: from .awf/docs/parts/architecture/overview.md -->
-awf renders tracked workflow guidance from `.awf/`, while its binary owns local effort records, optional memory and worktrees, and atomic Pi session association at the repository primary control root. Pi may select one optional effort but workflow routing is passive: it returns fixed rendered guidance without lifecycle mutation.
+awf renders tracked workflow guidance from `.awf/`, while its binary owns immutable schema-2 effort residents and stateless optional managed-worktree operations at the repository primary control root. A concrete non-minimal workflow carries one slug and owned memory; Git remains the worktree topology authority. Generated Pi handoff accepts only the confined owned memory path and never selects an effort or mutates lifecycle state.
 
 
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
-- `internal/effort` owns schema-1 effort records and optional memory.
-- `internal/worktree` owns opt-in native-Git managed worktrees.
+- `internal/effort` owns schema-2 immutable `.awf/efforts/<slug>/state.json` and always-owned `memory.md`, durable publication, and restartable finish tombstones.
+- `internal/worktree` owns stateless native-Git add, integrate, and restartable safe removal over `.awf/worktrees/<slug>/` and `awf/<slug>`.
 - `internal/migrate` applies schema upgrades, including removal of obsolete disposable residents.
-- Generated Pi extensions provide subagent dispatch and effort-independent session handoff.
+- Generated Pi extensions provide governed subagent dispatch and effort-state-independent session handoff confined to one owned memory path.
 - `internal/project` assembles request-sensitive context: tier-0 directory orientation, actual marker-kind file and directory relationships, topic-level authority expansion, and artifact-sensitive grouping.
-- `cmd/awf` renders context tiers and per-topic authority counts before unchanged direct-or-spill delivery; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide its bounded project checks.
+- `cmd/awf` exposes protocol-2 effort JSON and line-oriented mutation diagnostics, renders context tiers and per-topic authority counts, and routes bounded project checks; `cmd/contextspilllog`, `cmd/covercheck`, `cmd/pincheck`, `cmd/releasecheck`, and `cmd/repoaudit` provide the repo-owned supporting checks.
 
 
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
-The invoking checkout supplies tracked configuration and native workflow skills. For context requests, the project snapshot classifies selected paths, preserves actual `State`, `Touches`, and `Proofs` file relationships plus separate directory aggregates, groups directories by tier-0-visible fields unless `artifacts` exposes detailed edges, and expands topic authority only through the request tier or named facets. The CLI renders that projection and preserves unchanged direct-or-spill delivery. Native Git resolves one primary control root for resident efforts, memory, and worktrees. Pi invokes the binary only for explicit effort management; handoff uses an optional confined memory file without effort selection.
+The invoking checkout supplies tracked configuration and native workflow skills. Native Git resolves one primary control root. Effort creation derives and exclusively reserves a slug directory, publishes `memory.md` before static `state.json`, and syncs each boundary; enumeration ignores unpublished directories but preserves foreign bytes. Managed worktree commands derive path and branch from the slug and re-read actual Git path, registration, branch, cleanliness, operation, identity, and ancestry facts before each mutation. Pi handoff independently revalidates the exact owned memory file without parsing state. For context requests, the project snapshot classifies selected paths, preserves actual `State`, `Touches`, and `Proofs` relationships, expands authority only through the requested tier or facets, and delivers direct or secure spill output unchanged.
 
 
 <!-- awf:edit dependencies: from .awf/docs/parts/architecture/dependencies.md -->

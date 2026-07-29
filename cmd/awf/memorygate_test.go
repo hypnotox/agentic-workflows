@@ -14,7 +14,7 @@ import (
 // dir is the working-memory prefix; every fixture below builds its citation
 // from it rather than writing the shape out, so this file does not carry the
 // very thing the gate rejects.
-const dir = ".awf/memory/"
+const dir = ".awf/efforts/"
 
 // memoryGateRepo writes an .awf/config.yaml with the given memoryCite block,
 // git-inits the root, and stages the named files (content keyed by path).
@@ -57,7 +57,7 @@ func TestMemoryGateKnobOff(t *testing.T) {
 	// Knob absent, and knob explicitly false: both no-op and return nil, even
 	// with a citing file staged.
 	for _, y := range []string{"", "memoryCite:\n  enabled: false\n"} {
-		root := memoryGateRepo(t, y, map[string]string{"docs/plans/p.md": dir + "effort.md\n"})
+		root := memoryGateRepo(t, y, map[string]string{"docs/plans/p.md": cite() + "\n"})
 		if err := runMemoryGate(root, io.Discard); err != nil {
 			t.Errorf("knob off (%q): want nil, got %v", y, err)
 		}
@@ -81,7 +81,7 @@ func TestMemoryGateRefusesMissingOrInvalidStagedConfig(t *testing.T) {
 
 func TestMemoryGateClean(t *testing.T) {
 	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n", map[string]string{
-		"docs/plans/p.md":     "the file lives under " + dir + " and is named " + dir + "<effort-slug>.md\n",
+		"docs/plans/p.md":     "the file lives under " + dir + " and is named " + dir + "<effort-slug>/memory.md\n",
 		"docs/decisions/a.md": "the ignore file " + dir + ".gitignore" + " is fine\n",
 	})
 	var out strings.Builder
@@ -97,7 +97,7 @@ func TestMemoryGateClean(t *testing.T) {
 func TestMemoryGateFindings(t *testing.T) {
 	for _, path := range []string{"docs/decisions/0001-x.md", "docs/plans/2026-01-01-x.md"} {
 		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
-			map[string]string{path: "intro\n" + dir + "effort.md\n"})
+			map[string]string{path: "intro\n" + cite() + "\n"})
 		var out strings.Builder
 		err := runMemoryGate(root, &out)
 		if err == nil || !strings.Contains(err.Error(), "memoryCite.exemptions") {
@@ -111,8 +111,8 @@ func TestMemoryGateFindings(t *testing.T) {
 
 func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n", map[string]string{
-		"docs/guide.md": dir + "effort.md\n",
-		"notes.md":      dir + "effort.md\n",
+		"docs/guide.md": cite() + "\n",
+		"notes.md":      cite() + "\n",
 	})
 	var out strings.Builder
 	if err := runMemoryGate(root, &out); err != nil {
@@ -125,8 +125,8 @@ func TestMemoryGateScansOnlyDecisionRecords(t *testing.T) {
 
 func TestMemoryGateFollowsDocsDir(t *testing.T) {
 	root := memoryGateRepo(t, "docsDir: handbook\nmemoryCite:\n  enabled: true\n", map[string]string{
-		"handbook/plans/p.md": dir + "effort.md\n",
-		"docs/plans/q.md":     dir + "other.md\n",
+		"handbook/plans/p.md": cite() + "\n",
+		"docs/plans/q.md":     dir + "other/memory.md\n",
 	})
 	var out strings.Builder
 	err := runMemoryGate(root, &out)
@@ -141,7 +141,7 @@ func TestMemoryGateFollowsDocsDir(t *testing.T) {
 func TestMemoryGateExemptionPermits(t *testing.T) {
 	root := memoryGateRepo(t,
 		"memoryCite:\n  enabled: true\n  exemptions:\n    - path: docs/plans/p.md\n",
-		map[string]string{"docs/plans/p.md": dir + "effort.md\n"})
+		map[string]string{"docs/plans/p.md": cite() + "\n"})
 	var out strings.Builder
 	if err := runMemoryGate(root, &out); err != nil {
 		t.Fatalf("exempt path: want nil, got %v", err)
@@ -156,7 +156,7 @@ func TestMemoryGateSkipsStagedSymlink(t *testing.T) {
 	// target of exactly the flagged shape is not a citation.
 	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
 		map[string]string{"docs/plans/p.md": "clean\n"})
-	if err := os.Symlink(dir+"effort.md", filepath.Join(root, "docs/plans/link.md")); err != nil {
+	if err := os.Symlink(cite(), filepath.Join(root, "docs/plans/link.md")); err != nil {
 		t.Fatal(err)
 	}
 	repo, err := git.PlainOpen(root)
@@ -178,7 +178,7 @@ func TestMemoryGateSkipsStagedSymlink(t *testing.T) {
 func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	t.Run("citation cleaned without restaging remains a finding", func(t *testing.T) {
 		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
-			map[string]string{"docs/plans/p.md": dir + "effort.md\n"})
+			map[string]string{"docs/plans/p.md": cite() + "\n"})
 		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte("worktree clean\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -189,7 +189,7 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	t.Run("citation added without staging is not a finding", func(t *testing.T) {
 		root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
 			map[string]string{"docs/plans/p.md": "clean\n"})
-		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte(dir+"effort.md\n"), 0o644); err != nil {
+		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte(cite()+"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		if err := runMemoryGate(root, io.Discard); err != nil {
@@ -200,7 +200,7 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 
 func TestMemoryGateUsesStagedConfig(t *testing.T) {
 	root := memoryGateRepo(t, "memoryCite:\n  enabled: true\n",
-		map[string]string{"docs/plans/p.md": dir + "effort.md\n"})
+		map[string]string{"docs/plans/p.md": cite() + "\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\nmemoryCite:\n  enabled: false\n")
 	if err := runMemoryGate(root, io.Discard); err == nil {
 		t.Fatal("worktree disabled knob must not override staged enabled config")

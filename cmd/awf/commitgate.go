@@ -49,10 +49,10 @@ func runCommitGate(root, msgPath string, stdin io.Reader, stdout io.Writer) erro
 		// text git itself discards.
 		refs := memorycite.ScanText("commit message", []byte(cleanCommitBody(string(raw))))
 		for _, r := range refs {
-			fmt.Fprintf(stdout, "check commit: %s line %d names the working-memory file %q\n", r.Path, r.Line, r.Segment)
+			fmt.Fprintf(stdout, "check commit: %s line %d names the effort-owned memory file %q\n", r.Path, r.Line, r.Segment)
 		}
 		if len(refs) > 0 {
-			return errors.New("check commit: a commit message must not name a specific working-memory file; name it separately from the prefix, or write the segment as an angle-bracket placeholder")
+			return errors.New("check commit: a commit message must not cite a concrete effort-owned memory file; name the bare .awf/efforts/ directory or use an angle-bracket slug placeholder")
 		}
 	}
 	// A git-generated merge or autosquash subject is exempt from the Conventional

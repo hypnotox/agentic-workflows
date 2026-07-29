@@ -18,6 +18,8 @@ When the root cause is known and a fix is ready to land. Two callers in practice
 
 ## Procedure
 
+A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, create or resume exactly one immutable slugged effort before mutation; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, preserve one user-managed writer, and carry slug/path through TDD and review. Repository sources and current-state documentation outrank checkpoint prose, children never edit shared memory, and standalone memory is forbidden.
+
 1. **Ensure a regression test exists that fails for the right reason.** {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix.{{ else }}Write the failing test first and confirm it fails for the right reason before the fix.{{ end }} Before writing the test, run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix touches a claimed surface).
 <!-- awf:include context-spill -->
 

@@ -8,44 +8,40 @@ import (
 
 func ptr(n int) *int { return &n }
 
-// Every fixture is built from the dir constant rather than written out, for the
-// reason the package doc-comment gives: a test line writing a concrete name
-// right after the prefix would carry the shape the detector flags.
-func TestScanTextDiscriminatesConcreteSegments(t *testing.T) {
-	for _, tc := range []struct {
+func owned(slug string) string { return dir + slug + "/" + memoryBase }
+
+func TestScanTextDiscriminatesConcreteOwnedMemoryPaths(t *testing.T) {
+	for _, test := range []struct {
 		name string
 		text string
-		want []string // expected segments, in order
+		want []string
 	}{
-		{"concrete file flags", dir + "effort.md", []string{"effort.md"}},
-		{"placeholder segment passes", dir + "<effort-slug>.md", nil},
-		{"placeholder mid-segment passes", dir + "eff<x>.md", nil},
-		{"bare directory before a space passes", "see " + dir + " for the file", nil},
-		{"bare directory before a backtick passes", "`" + dir + "` holds it", nil},
-		{"bare directory before a backslash passes", dir + `\` + "`", nil},
-		{"bare directory at end of input passes", "it lives in " + dir, nil},
-		{"ignore file passes", dir + ignoreFile, nil},
-		{"ignore file before a double quote passes", `"` + dir + ignoreFile + `"`, nil},
-		{"ignore file before a single quote passes", "'" + dir + ignoreFile + "'", nil},
-		{"ignore-file prefix is not an exact match", dir + ".gitignored.md", []string{".gitignored.md"}},
-		{"nested path flags its first segment", dir + "nested/file.awf-bak", []string{"nested"}},
-		{
-			"two on one line, left to right",
-			dir + "first.md and " + dir + "second.md",
-			[]string{"first.md", "second.md"},
-		},
+		{"slash path", owned("real-effort"), []string{"real-effort/memory.md"}},
+		{"backslash path", strings.ReplaceAll(owned("real-effort"), "/", `\`), []string{"real-effort/memory.md"}},
+		{"relative path", "../../" + owned("real-effort"), []string{"real-effort/memory.md"}},
+		{"prose", "see " + owned("real-effort") + " for details", []string{"real-effort/memory.md"}},
+		{"link", "[checkpoint](" + owned("real-effort") + ")", []string{"real-effort/memory.md"}},
+		{"code", "`" + owned("real-effort") + "`", []string{"real-effort/memory.md"}},
+		{"bare efforts directory", "see " + dir + " for residents", nil},
+		{"placeholder", dir + "<effort-slug>/" + memoryBase, nil},
+		{"placeholder mid slug", dir + "effort-<slug>/" + memoryBase, nil},
+		{"wrong basename", dir + "real-effort/notes.md", nil},
+		{"invalid slug", dir + "Real_Effort/" + memoryBase, nil},
+		{"overlong slug", owned(strings.Repeat("a", 64)), nil},
+		{"leading hyphen", owned("-effort"), nil},
+		{"trailing hyphen", owned("effort-"), nil},
+		{"double hyphen", owned("effort--name"), nil},
+		{"basename prefix", owned("real-effort") + ".bak", nil},
+		{"two references", owned("first") + " and " + owned("second"), []string{"first/memory.md", "second/memory.md"}},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := ScanText("f.md", []byte(tc.text))
-			if len(got) != len(tc.want) {
-				t.Fatalf("%q: got %d reference(s) %v, want %d", tc.text, len(got), got, len(tc.want))
+		t.Run(test.name, func(t *testing.T) {
+			got := ScanText("f.md", []byte(test.text))
+			if len(got) != len(test.want) {
+				t.Fatalf("%q: got %d reference(s) %v, want %d", test.text, len(got), got, len(test.want))
 			}
-			for i, ref := range got {
-				if ref.Segment != tc.want[i] {
-					t.Errorf("reference %d: segment %q, want %q", i, ref.Segment, tc.want[i])
-				}
-				if ref.Path != "f.md" || ref.Line != 1 {
-					t.Errorf("reference %d: got %s:%d, want f.md:1", i, ref.Path, ref.Line)
+			for index, reference := range got {
+				if reference.Segment != test.want[index] || reference.Path != "f.md" || reference.Line != 1 {
+					t.Errorf("reference %d = %#v, want segment %q at f.md:1", index, reference, test.want[index])
 				}
 			}
 		})
@@ -53,32 +49,32 @@ func TestScanTextDiscriminatesConcreteSegments(t *testing.T) {
 }
 
 func TestScanTextNumbersLines(t *testing.T) {
-	text := "clean\n" + dir + "one.md\nalso clean\n" + dir + "two.md\n"
+	text := "clean\n" + owned("one") + "\nalso clean\n" + owned("two") + "\n"
 	got := ScanText("plan.md", []byte(text))
 	wantLines := []int{2, 4}
 	if len(got) != 2 {
 		t.Fatalf("got %d reference(s) %v, want 2", len(got), got)
 	}
-	for i, ref := range got {
-		if ref.Line != wantLines[i] {
-			t.Errorf("reference %d: line %d, want %d", i, ref.Line, wantLines[i])
+	for index, reference := range got {
+		if reference.Line != wantLines[index] {
+			t.Errorf("reference %d: line %d, want %d", index, reference.Line, wantLines[index])
 		}
 	}
 }
 
 func TestScanAppliesExemptions(t *testing.T) {
 	files := []File{
-		{Path: "a.md", Bytes: []byte(dir + "one.md\n")},
+		{Path: "a.md", Bytes: []byte(owned("one") + "\n")},
 		{Path: "clean.md", Bytes: []byte("nothing here\n")},
-		{Path: "any.md", Bytes: []byte(dir + "x.md\n" + dir + "y.md\n")},
-		{Path: "pinned.md", Bytes: []byte(dir + "z.md\n")},
-		{Path: "mismatch.md", Bytes: []byte(dir + "p.md\n" + dir + "q.md\n")},
+		{Path: "any.md", Bytes: []byte(owned("x") + "\n" + owned("y") + "\n")},
+		{Path: "pinned.md", Bytes: []byte(owned("z") + "\n")},
+		{Path: "mismatch.md", Bytes: []byte(owned("p") + "\n" + owned("q") + "\n")},
 	}
 	exemptions := []Exemption{
-		{Path: "any.md"},                     // nil count: suppressed at any count
-		{Path: "pinned.md", Count: ptr(1)},   // matching pin: suppressed
-		{Path: "mismatch.md", Count: ptr(1)}, // pin below the actual count: reported
-		{Path: "gone.md", Count: ptr(2)},     // pinned but the citations are gone
+		{Path: "any.md"},
+		{Path: "pinned.md", Count: ptr(1)},
+		{Path: "mismatch.md", Count: ptr(1)},
+		{Path: "gone.md", Count: ptr(2)},
 	}
 	got := Scan(files, exemptions)
 	want := []Finding{
@@ -89,29 +85,29 @@ func TestScanAppliesExemptions(t *testing.T) {
 	if len(got) != len(want) {
 		t.Fatalf("got %d finding(s) %v, want %d", len(got), got, len(want))
 	}
-	for i, f := range got {
-		w := want[i]
-		if f.Path != w.Path || !slices.Equal(f.Lines, w.Lines) {
-			t.Errorf("finding %d: got %s %v, want %s %v", i, f.Path, f.Lines, w.Path, w.Lines)
+	for index, finding := range got {
+		expected := want[index]
+		if finding.Path != expected.Path || !slices.Equal(finding.Lines, expected.Lines) {
+			t.Errorf("finding %d: got %s %v, want %s %v", index, finding.Path, finding.Lines, expected.Path, expected.Lines)
 		}
 		switch {
-		case (f.Pinned == nil) != (w.Pinned == nil):
-			t.Errorf("finding %d: pin presence mismatch, got %v", i, f.Pinned)
-		case f.Pinned != nil && *f.Pinned != *w.Pinned:
-			t.Errorf("finding %d: pin %d, want %d", i, *f.Pinned, *w.Pinned)
+		case (finding.Pinned == nil) != (expected.Pinned == nil):
+			t.Errorf("finding %d: pin presence mismatch", index)
+		case finding.Pinned != nil && *finding.Pinned != *expected.Pinned:
+			t.Errorf("finding %d: pin %d, want %d", index, *finding.Pinned, *expected.Pinned)
 		}
 	}
 }
 
-func TestFormat(t *testing.T) {
+func TestFormatNamesOwnedMemoryRepair(t *testing.T) {
 	plain := Format(Finding{Path: "docs/plans/p.md", Lines: []int{3, 9}})
-	for _, want := range []string{"docs/plans/p.md", "2 working-memory citation(s)", "3, 9", "placeholder"} {
+	for _, want := range []string{"docs/plans/p.md", "2 effort-owned memory citation(s)", "3, 9", ".awf/efforts/", "placeholder"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("unpinned format missing %q: %s", want, plain)
 		}
 	}
 	pinned := Format(Finding{Path: "docs/plans/p.md", Lines: []int{3}, Pinned: ptr(2)})
-	for _, want := range []string{"docs/plans/p.md", "1 working-memory citation(s)", "pins 2"} {
+	for _, want := range []string{"docs/plans/p.md", "1 effort-owned memory citation(s)", "pins 2"} {
 		if !strings.Contains(pinned, want) {
 			t.Errorf("pinned format missing %q: %s", want, pinned)
 		}

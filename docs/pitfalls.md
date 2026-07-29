@@ -4,7 +4,7 @@
 <!-- awf:edit prepend: from .awf/docs/parts/pitfalls/prepend.md -->
 ## Current pitfalls
 
-Keep local effort, memory, and managed-worktree state confined to the primary control root. Native Pi skills are independently discoverable, and handoff must remain independent of effort selection.
+Treat one concrete non-minimal outcome as one immutable slugged effort with one user-managed memory writer. Repository sources and current-state documentation outrank `.awf/efforts/<slug>/memory.md`. Never infer managed-worktree integration or removal from effort state: inspect native Git topology on every retry, never use awf to force-discard dirty or unmerged work, and finish only after path, registration, and branch are absent.
 
 ## go-git status can expose files below an ignored managed-worktree root
 

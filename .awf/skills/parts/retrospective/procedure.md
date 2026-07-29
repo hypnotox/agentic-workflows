@@ -1,13 +1,13 @@
 ## Procedure
 
-1. **Reflect on the session.** Gather its signals: the `awf-reviewing-impl` findings, the pitfalls or friction hit while implementing, and any issue that came up more than once.
+1. **Validate closure context.** Carry the exact effort slug and `.awf/efforts/<slug>/memory.md`, confirm `Effort: <slug>`, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
 
-2. **Record the worthy observations.** A first-occurrence pitfall or tricky area is *recorded* (rung 3 or 4 below), not promoted; the record is the memory the next retrospective reads to detect recurrence.
+2. **Reflect and record worthy observations.** Gather implementation and terminal-review findings plus friction. Record a first occurrence at the appropriate durable rung; never treat ephemeral memory as the next retrospective's authority.
 
-3. **Promote recurring, codifiable observations** to the strongest rung each can support (see the ladder). Verify a candidate genuinely recurs and is worth the effort before promoting.
+3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting and land any pitfall, invariant, deterministic check, or reviewer-focus change with its required render, staged check, gate, and commit.
 
-4. **Update the adopter changelog.** If the effort changed anything adopter-facing (rendered template output, `awf` CLI behavior, or the config/lock schema), confirm it is recorded under the standing `## [Unreleased]` section of `changelog/CHANGELOG.md`, grouped by Breaking changes / Features / Bug fixes / Others (ADR-0041). Entries are supposed to land with the change itself; this step is the catch-net so a release cut never starts from an empty section.
+4. **Update adopter-facing records.** Confirm adopter-visible behavior is recorded under `## [Unreleased]` in `changelog/CHANGELOG.md`, grouped by Breaking changes / Features / Bug fixes / Others, and note where each lesson landed.
 
-5. **Note where each landed** in the session summary, so the loop is visible.
+5. **Verify managed topology is absent.** Require no `.awf/worktrees/<slug>` path, native Git registration, or `awf/<slug>` branch. Integration and removal belong after terminal review and before retrospective; retrospective never discards Git resources.
 
-6. **Delete the effort's working-memory file** (`.awf/memory/<effort-slug>.md`), if one exists; the chain is complete and the ADR/plan/commits are the durable record. Working memory never outlives its effort.
+6. **Finish last.** Update the final checkpoint, then run `awf effort finish <slug>` and report its changed active-rename and cleanup status. Never delete memory directly. Finish is the last effort mutation and occurs only after every durable lesson or changelog correction is committed.

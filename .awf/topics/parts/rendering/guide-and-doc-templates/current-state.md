@@ -65,9 +65,9 @@ Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working-memory guidance has one canonical workflow-doc home. Efforts and memory are optional for durable coordination, memory, or managed worktrees; direct effort commands remain available without Pi selection or session assignment, and durable records never cite a particular memory file. There is no adoption gate, fabricated lifecycle, or detour protocol.
+Working-memory guidance has one canonical workflow-doc home. A minimal simple fix uses no effort; a concrete non-minimal outcome creates or resumes exactly one immutable slugged effort that always owns `.awf/efforts/<slug>/memory.md`. Guides carry slug/path, repository-authority, one-user-managed-writer, conditional worktree integration/removal, retrospective, and finish routing without duplicating the detailed skeleton; standalone memory and concrete durable-record citations are forbidden, and children never become a second memory writer.
 Origin: ADR-0157
-Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167
+Revised-by: ADR-0160, ADR-0161, ADR-0164, ADR-0167, ADR-0175
 Backing: test
 
 ### `invariant: maintainable-code-design-guide`

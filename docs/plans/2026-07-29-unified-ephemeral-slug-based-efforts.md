@@ -273,6 +273,9 @@ retaining all shared-file, staging, gate, and commit ownership.
   and deterministic location diagnostics. Update memory-gate command tests so failure names the
   owned-memory rule and repair while stdout/stderr/exit behavior remains unchanged. Update
   `cmd/awf/commitgate_test.go` so its invariant fixture exercises a concrete owned-memory citation.
+  The commit-gate diagnostic and error text live in `cmd/awf/commitgate.go`, so that production file
+  changes with its test: both must name the effort-owned memory file and the bare-directory or
+  angle-bracket-slug repair rather than the retired prefix-splitting repair.
 
 - [ ] **Task 2.7: Confine Pi handoff to one owned memory path without lifecycle coupling.** In the
   handoff template, accept only a regular, bounded UTF-8 file at
@@ -367,7 +370,7 @@ all source, render, test, staging, and commit ownership.
   git add -- \
     internal/effort/{types.go,paths.go,store.go,memory.go,service.go,safeio.go,safeio_darwin.go,safeio_linux.go,safeio_unix.go,safeio_windows.go,publication_darwin.go,publication_linux.go,publication_other.go,publication_windows.go,partial.go,branches_test.go,durability_test.go,memory_test.go,partial_safety_test.go,partial_test.go,paths_test.go,platform_test.go,platform_windows_test.go,repair_test.go,safeio_linux_test.go,safety_test.go,service_test.go,service_worktree_test.go,store_test.go,testsys_unix_test.go,testsys_windows_test.go,types_test.go} \
     internal/worktree/{git.go,topology.go,manager.go,coverage_closure_test.go,coverage_final_test.go,coverage_more_test.go,coverage_mutations_test.go,manager_closure_test.go,manager_fault_test.go,manager_integration_test.go,manager_more_test.go,manager_remaining_test.go,manager_test.go,phase2_coverage_test.go,topology_failure_test.go,topology_parity_test.go} \
-    internal/git/{controlroot.go,controlroot_test.go} cmd/awf/{effort.go,effort_test.go,effort_worktree_test.go,memorygate.go,memorygate_test.go,commitgate_test.go,checkgroup_test.go} internal/clispec/{clispec.go,clispec_test.go} internal/memorycite/{memorycite.go,memorycite_test.go} \
+    internal/git/{controlroot.go,controlroot_test.go} cmd/awf/{effort.go,effort_test.go,effort_worktree_test.go,memorygate.go,memorygate_test.go,commitgate.go,commitgate_test.go,checkgroup_test.go} internal/clispec/{clispec.go,clispec_test.go} internal/memorycite/{memorycite.go,memorycite_test.go} \
     internal/catalog/standard.go internal/evals/chain_test.go internal/project/{topics_test.go,spine_test.go,target_test.go,project_test.go,output_plan_test.go,currentstate_test.go} \
     templates/partials/{checkpoint-routine.md,checkpoint-approval.md} templates/pi/awf-handoff/index.ts.tmpl tools/pi-extension-test/tests/handoff.test.ts templates/agents-doc/AGENTS.md.tmpl templates/docs/{workflow.md.tmpl,working-with-awf.md.tmpl} \
     templates/skills/{brainstorming,proposing-adr,adr-lifecycle,writing-plans,reviewing-plan,reviewing-plan-resync,reviewing-adr,executing-direct,executing-plans,subagent-driven-development,reviewing-impl,retrospective,debugging,bugfix,tdd,refactor-coupling-audit,exploring,roadmap-graduation}/SKILL.md.tmpl \

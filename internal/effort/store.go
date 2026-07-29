@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -16,7 +17,9 @@ import (
 )
 
 var uuidV4Pattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
-var objectIDPattern = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
+var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
+
+const finishingPrefix = ".finishing-"
 
 // CorruptError identifies resident input that must be preserved byte-for-byte.
 type CorruptError struct {
@@ -25,125 +28,109 @@ type CorruptError struct {
 }
 
 func (e *CorruptError) Error() string {
-	return fmt.Sprintf("corrupt effort state at %s: %v", e.Path, e.Err)
+	return fmt.Sprintf("unusable effort resident at %s: %v; changed bytes: no; next action: preserve the resident and inspect it for manual cleanup", e.Path, e.Err)
 }
 func (e *CorruptError) Unwrap() error { return e.Err }
 
 type persistedRecord struct {
-	SchemaVersion int         `json:"schemaVersion"`
-	ID            string      `json:"id"`
-	Title         string      `json:"title"`
-	State         State       `json:"state"`
-	CreatedAt     time.Time   `json:"createdAt"`
-	UpdatedAt     time.Time   `json:"updatedAt"`
-	MemoryPresent bool        `json:"memoryPresent"`
-	Worktree      *Worktree   `json:"worktree"`
-	Integration   Integration `json:"integration"`
+	SchemaVersion int       `json:"schemaVersion"`
+	ID            string    `json:"id"`
+	Slug          string    `json:"slug"`
+	Title         string    `json:"title"`
+	CreatedAt     time.Time `json:"createdAt"`
 }
 
 func persisted(r Record) persistedRecord {
-	return persistedRecord(r)
+	return persistedRecord{SchemaVersion: r.SchemaVersion, ID: r.ID, Slug: r.Slug, Title: r.Title, CreatedAt: r.CreatedAt}
 }
 
 func logical(r persistedRecord) Record {
-	return Record(r)
+	return Record{SchemaVersion: r.SchemaVersion, ID: r.ID, Slug: r.Slug, Title: r.Title, CreatedAt: r.CreatedAt, MemoryPath: memoryPublicPath(r.Slug)}
 }
 
-type durableFile interface {
-	Name() string
-	Stat() (os.FileInfo, error)
-	Write([]byte) (int, error)
-	Sync() error
-	Close() error
+func normalizeTitle(title string) (string, error) {
+	title = strings.TrimSpace(title)
+	if title == "" {
+		return "", errors.New("outcome title must be nonblank")
+	}
+	if !utf8.ValidString(title) {
+		return "", errors.New("outcome title must be valid UTF-8")
+	}
+	return title, nil
 }
 
-type fileSystem interface {
-	CreateTemp(string, string) (durableFile, error)
-	Publish(string, string, *fileIdentity) error
-	Remove(string) error
-	OpenDirectory(string) (durableFile, error)
+func deriveSlug(title string) (string, error) {
+	if !utf8.ValidString(title) {
+		return "", slugRepairError("outcome title is not valid UTF-8")
+	}
+	var b strings.Builder
+	separator := false
+	for _, r := range title {
+		switch {
+		case r >= 'A' && r <= 'Z':
+			if separator && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			separator = false
+			b.WriteByte(byte(r + ('a' - 'A')))
+		case r >= 'a' && r <= 'z' || r >= '0' && r <= '9':
+			if separator && b.Len() > 0 {
+				b.WriteByte('-')
+			}
+			separator = false
+			b.WriteRune(r)
+		default:
+			separator = true
+		}
+	}
+	slug := strings.Trim(b.String(), "-")
+	if err := validateSlug(slug); err != nil {
+		return "", slugRepairError(err.Error())
+	}
+	return slug, nil
 }
 
-type osFileSystem struct{}
-
-func (osFileSystem) CreateTemp(dir, pattern string) (durableFile, error) {
-	return os.CreateTemp(dir, pattern)
-}
-func (osFileSystem) Publish(tempPath, path string, expected *fileIdentity) error {
-	return publishAtomic(tempPath, path, expected)
-}
-func (osFileSystem) Remove(path string) error { return os.Remove(path) }
-func (osFileSystem) OpenDirectory(path string) (durableFile, error) {
-	return openDirectoryForSync(path)
+func slugRepairError(condition string) error {
+	return fmt.Errorf("cannot derive effort slug: %s; changed bytes: no; next action: provide a shorter outcome title with ASCII words or digits", condition)
 }
 
-type store struct {
-	paths paths
-	fs    fileSystem
+func validateSlug(slug string) error {
+	if len(slug) < 1 || len(slug) > 63 {
+		return errors.New("slug must contain 1-63 bytes")
+	}
+	if !slugPattern.MatchString(slug) {
+		return fmt.Errorf("slug must match %s", slugPattern)
+	}
+	if filepath.Base(slug) != slug || filepath.Clean(slug) != slug { // coverage-ignore: the stricter ASCII slug regexp already excludes separators, dot segments, and platform volume syntax
+		return errors.New("slug must be one confined path segment")
+	}
+	if err := exec.Command("git", "check-ref-format", "--branch", "awf/"+slug).Run(); err != nil { // coverage-ignore: the bounded lowercase ASCII grammar with a fixed awf/ prefix is always a valid branch ref; this remains defense in depth
+		return fmt.Errorf("refs/heads/awf/%s is not a valid Git ref", slug)
+	}
+	return nil
 }
 
-func (s store) filesystem() fileSystem {
-	if s.fs == nil {
-		return osFileSystem{}
+func validatePersisted(r persistedRecord, expectedSlug string) error {
+	if r.SchemaVersion != SchemaVersion {
+		return fmt.Errorf("unsupported schemaVersion %d", r.SchemaVersion)
 	}
-	return s.fs
-}
-
-func (s store) withLock(fn func() error) error {
-	if err := s.paths.ensure(s.paths.efforts); err != nil {
-		return fmt.Errorf("prepare effort lock directory %s: %w", s.paths.efforts, err)
+	if !uuidV4Pattern.MatchString(r.ID) {
+		return errors.New("invalid internal UUIDv4")
 	}
-	path := filepath.Join(s.paths.efforts, ".lock")
-	file, identity, err := openRegularNoFollow(path, true, 0o600)
-	if err != nil {
-		return fmt.Errorf("open effort lock %s: %w", path, err)
+	if r.Slug != expectedSlug {
+		return errors.New("state slug does not match its stable directory")
 	}
-	defer func() { _ = file.Close() }()
-	if fileMode, statErr := file.Stat(); statErr != nil { // coverage-ignore: the no-follow opener already validated this live descriptor
-		return fmt.Errorf("inspect effort lock %s: %w", path, statErr)
-	} else if err := validateLockPermissions(path, fileMode); err != nil {
-		return err
+	if err := validateSlug(r.Slug); err != nil {
+		return fmt.Errorf("invalid slug: %w", err)
 	}
-	if err := lockRepositoryFile(file); err != nil { // coverage-ignore: the descriptor is a validated owned regular file and the exclusive lock arguments are fixed
-		return fmt.Errorf("lock effort repository file %s: %w", path, err)
+	title, err := normalizeTitle(r.Title)
+	if err != nil || title != r.Title {
+		return errors.New("invalid title")
 	}
-	defer func() { _ = unlockRepositoryFile(file) }()
-	if err := requireIdentity(path, identity); err != nil { // coverage-ignore: replacing the lock name between adjacent open and flock calls requires a concurrent namespace race
-		return fmt.Errorf("verify effort lock identity %s after flock: %w", path, err)
+	if r.CreatedAt.IsZero() || r.CreatedAt.Location() != time.UTC {
+		return errors.New("invalid createdAt")
 	}
-	return fn()
-}
-
-func (s store) load(id string) (Record, error) {
-	record, _, err := s.loadIdentity(id)
-	return record, err
-}
-
-func (s store) loadIdentity(id string) (Record, fileIdentity, error) {
-	if err := s.paths.validate(s.paths.efforts); err != nil {
-		return Record{}, fileIdentity{}, fmt.Errorf("validate effort resident root before load: %w", err)
-	}
-	if !uuidV4Pattern.MatchString(id) {
-		return Record{}, fileIdentity{}, fmt.Errorf("invalid effort id %q", id)
-	}
-	path := s.paths.record(id)
-	raw, identity, err := readRegularNoFollow(path)
-	if err != nil {
-		return Record{}, fileIdentity{}, fmt.Errorf("read effort record %s: %w", path, err)
-	}
-	var value persistedRecord
-	decoder := json.NewDecoder(bytes.NewReader(raw))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&value); err != nil {
-		return Record{}, fileIdentity{}, &CorruptError{Path: path, Err: err}
-	}
-	if err := requireJSONEOF(decoder); err != nil {
-		return Record{}, fileIdentity{}, &CorruptError{Path: path, Err: err}
-	}
-	if err := validatePersisted(value, id); err != nil {
-		return Record{}, fileIdentity{}, &CorruptError{Path: path, Err: err}
-	}
-	return logical(value), identity, nil
+	return nil
 }
 
 func requireJSONEOF(decoder *json.Decoder) error {
@@ -157,53 +144,198 @@ func requireJSONEOF(decoder *json.Decoder) error {
 	return nil
 }
 
-func validatePersisted(r persistedRecord, expectedID string) error {
-	if r.SchemaVersion != SchemaVersion {
-		return fmt.Errorf("unsupported schemaVersion %d", r.SchemaVersion)
-	}
-	if !uuidV4Pattern.MatchString(r.ID) || r.ID != expectedID {
-		return errors.New("record ID does not match its stable path")
-	}
-	if _, err := normalizeTitle(r.Title); err != nil || strings.TrimSpace(r.Title) != r.Title {
-		return errors.New("invalid title")
-	}
-	if r.State != StateActive && r.State != StateCompleted && r.State != StateAbandoned {
-		return fmt.Errorf("invalid state %q", r.State)
-	}
-	if r.CreatedAt.IsZero() || r.UpdatedAt.IsZero() || r.CreatedAt.Location() != time.UTC || r.UpdatedAt.Location() != time.UTC || r.UpdatedAt.Before(r.CreatedAt) {
-		return errors.New("invalid timestamps")
-	}
-	validIntegration := r.Integration == IntegrationNone || r.Integration == IntegrationPending || r.Integration == IntegrationFastForward || r.Integration == IntegrationMerge || r.Integration == IntegrationManual
-	if !validIntegration {
-		return fmt.Errorf("invalid integration %q", r.Integration)
-	}
-	if r.Worktree == nil {
-		if r.Integration == IntegrationPending {
-			return errors.New("pending integration requires worktree metadata")
-		}
+type store struct {
+	paths paths
+	fault func(string) error
+}
+
+func (s store) hit(stage string) error {
+	if s.fault == nil {
 		return nil
 	}
-	if r.Integration == IntegrationNone {
-		return errors.New("worktree metadata requires an integration disposition")
-	}
-	if r.Worktree.Branch != "awf/"+r.ID || !objectIDPattern.MatchString(r.Worktree.Base) || r.Worktree.AttachedAt.IsZero() || r.Worktree.AttachedAt.Location() != time.UTC {
-		return errors.New("invalid worktree metadata")
+	if err := s.fault(stage); err != nil {
+		return fmt.Errorf("injected failure at %s: %w", stage, err)
 	}
 	return nil
 }
 
-func normalizeTitle(title string) (string, error) {
-	title = strings.TrimSpace(title)
-	if title == "" {
-		return "", errors.New("title must be nonblank")
+func (s store) reserve(slug string) (string, error) {
+	if err := s.paths.ensure(s.paths.efforts); err != nil {
+		return "", fmt.Errorf("prepare efforts root: %w", err)
 	}
-	if !utf8.ValidString(title) {
-		return "", errors.New("title must be valid UTF-8")
+	if tombstone, err := s.findTombstones(slug); err != nil {
+		return "", err
+	} else if len(tombstone) > 0 {
+		return "", fmt.Errorf("effort slug %q is reserved by finishing cleanup; changed bytes: no; next action: run `awf effort finish %s`", slug, slug)
 	}
-	if len([]byte(title)) > 160 {
-		return "", errors.New("title must be at most 160 UTF-8 bytes")
+	dir := s.paths.effort(slug)
+	if err := os.Mkdir(dir, 0o700); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			condition := "an incomplete reservation exists"
+			if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
+				condition = "an active effort already exists"
+			}
+			return "", fmt.Errorf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct outcome title or inspect %s", slug, condition, dir)
+		}
+		return "", fmt.Errorf("reserve effort directory %s: %w", dir, err) // coverage-ignore: ensure and tombstone enumeration just proved the parent usable; a non-collision failure requires a concurrent namespace or storage fault
 	}
-	return title, nil
+	if err := s.hit("reserve.directory"); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+func (s store) create(record Record) error {
+	dir, err := s.reserve(record.Slug)
+	if err != nil {
+		return err
+	}
+	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(record.Slug), "memory"); err != nil {
+		return err
+	}
+	raw, err := json.Marshal(persisted(record))
+	if err != nil { // coverage-ignore: persistedRecord contains only JSON-native scalar and time fields
+		return fmt.Errorf("encode effort state: %w", err)
+	}
+	if err := s.publishNew(s.paths.stateFile(record.Slug), raw, "state"); err != nil {
+		return err
+	}
+	if err := s.hit("efforts-root.fsync"); err != nil {
+		return err
+	}
+	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: fault injection covers the ordered root-sync boundary; an actual failure requires a kernel or storage fault
+		return fmt.Errorf("fsync efforts root after publishing %s: %w", dir, err)
+	}
+	return nil
+}
+
+func (s store) publishNew(path string, raw []byte, label string) (returnErr error) {
+	dir := filepath.Dir(path)
+	temp, err := os.CreateTemp(dir, "."+label+"-*.tmp")
+	if err != nil { // coverage-ignore: reservation created the owned writable directory; CreateTemp failure requires a concurrent permission change or storage fault
+		return fmt.Errorf("create sibling temporary file for %s: %w", path, err)
+	}
+	tempPath := temp.Name()
+	closed, published := false, false
+	defer func() {
+		if !closed {
+			returnErr = errors.Join(returnErr, temp.Close()) // coverage-ignore: fault stages cover pre-close cleanup; a close failure itself requires a kernel or storage fault
+		}
+		if !published {
+			if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) { // coverage-ignore: the owned sibling temporary remains removable absent a concurrent namespace or storage fault
+				returnErr = errors.Join(returnErr, fmt.Errorf("remove temporary file %s: %w", tempPath, err))
+			}
+		}
+	}()
+	if err := s.hit(label + ".write"); err != nil {
+		return err
+	}
+	if n, err := temp.Write(raw); err != nil { // coverage-ignore: injected write stages cover the boundary; os.File write failure requires a kernel or storage fault
+		return fmt.Errorf("write temporary file for %s: %w", path, err)
+	} else if n != len(raw) { // coverage-ignore: os.File.Write returns a non-nil error on a short write
+		return fmt.Errorf("write temporary file for %s: %w", path, io.ErrShortWrite)
+	}
+	if err := s.hit(label + ".fsync"); err != nil {
+		return err
+	}
+	if err := temp.Sync(); err != nil { // coverage-ignore: injected fsync stages cover the boundary; os.File.Sync failure requires a kernel or storage fault
+		return fmt.Errorf("fsync temporary file for %s: %w", path, err)
+	}
+	if err := temp.Close(); err != nil { // coverage-ignore: closing a successfully synced local file has no userspace failure trigger
+		return fmt.Errorf("close temporary file for %s: %w", path, err)
+	}
+	closed = true
+	if err := s.hit(label + ".rename"); err != nil {
+		return err
+	}
+	if err := publishAtomic(tempPath, path, nil); err != nil { // coverage-ignore: exclusive directory reservation makes a destination collision a same-user namespace race; platform refusal behavior is covered directly
+		return fmt.Errorf("publish temporary file without replacement to %s: %w", path, err)
+	}
+	published = true
+	if err := s.hit(label + ".directory-fsync"); err != nil {
+		return err
+	}
+	if err := syncDirectory(dir); err != nil { // coverage-ignore: injected directory-fsync stages cover the boundary; an actual failure requires a kernel or storage fault
+		return fmt.Errorf("fsync effort directory after publishing %s: %w", path, err)
+	}
+	return nil
+}
+
+func syncDirectory(path string) error {
+	dir, err := openDirectoryForSync(path)
+	if err != nil { // coverage-ignore: callers pass an existing validated directory; open failure requires a concurrent namespace or kernel fault
+		return err
+	}
+	if err := dir.Sync(); err != nil { // coverage-ignore: sync failure requires a kernel or storage fault
+		_ = dir.Close()
+		return err
+	}
+	return dir.Close()
+}
+
+func (s store) load(slug string) (Record, error) {
+	if err := validateSlug(slug); err != nil {
+		return Record{}, fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+	}
+	return s.loadDirectory(s.paths.effort(slug), slug, true)
+}
+
+func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Record, error) {
+	if err := validateOwnedDirectory(dir); err != nil {
+		return Record{}, &CorruptError{Path: dir, Err: err}
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil { // coverage-ignore: validateOwnedDirectory just proved a readable owned directory; failure requires a concurrent namespace or storage fault
+		return Record{}, &CorruptError{Path: dir, Err: err}
+	}
+	allowed := map[string]bool{"state.json": true, "memory.md": true}
+	for _, entry := range entries {
+		if !allowed[entry.Name()] {
+			return Record{}, &CorruptError{Path: filepath.Join(dir, entry.Name()), Err: errors.New("foreign leaf in effort resident")}
+		}
+	}
+	statePath := filepath.Join(dir, "state.json")
+	raw, err := readRegularNoFollow(statePath)
+	if err != nil {
+		return Record{}, &CorruptError{Path: statePath, Err: err}
+	}
+	var value persistedRecord
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&value); err != nil {
+		return Record{}, &CorruptError{Path: statePath, Err: err}
+	}
+	if err := requireJSONEOF(decoder); err != nil {
+		return Record{}, &CorruptError{Path: statePath, Err: err}
+	}
+	if err := validatePersisted(value, expectedSlug); err != nil {
+		return Record{}, &CorruptError{Path: statePath, Err: err}
+	}
+	if requireMemory {
+		memoryPath := filepath.Join(dir, "memory.md")
+		memory, err := readRegularNoFollow(memoryPath)
+		if err != nil {
+			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has absent or invalid owned memory: %w", err)}
+		}
+		if !strings.HasPrefix(string(memory), "Effort: "+expectedSlug+"\n") {
+			return Record{}, &CorruptError{Path: memoryPath, Err: errors.New("published state has memory with a mismatched effort identity")}
+		}
+	}
+	return logical(value), nil
+}
+
+func validateOwnedDirectory(path string) error {
+	info, err := os.Lstat(path)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return safety("symlink", path, nil)
+	}
+	if !info.IsDir() {
+		return safety("file-type", path, fmt.Errorf("mode %s is not a directory", info.Mode()))
+	}
+	return ValidateCurrentOwner(path, info)
 }
 
 func (s store) list() ([]Record, error) {
@@ -214,135 +346,91 @@ func (s store) list() ([]Record, error) {
 	if errors.Is(err, os.ErrNotExist) {
 		return []Record{}, nil
 	}
-	if err != nil { // coverage-ignore: the validated resident directory is either present or absent unless a kernel fault or concurrent race occurs
-		return nil, fmt.Errorf("read effort directory %s: %w", s.paths.efforts, err)
+	if err != nil { // coverage-ignore: resident-root validation just proved an owned directory; failure requires a concurrent namespace or storage fault
+		return nil, fmt.Errorf("read efforts root: %w", err)
 	}
-	ids := make([]string, 0, len(entries))
+	result := make([]Record, 0, len(entries))
 	for _, entry := range entries {
-		path := filepath.Join(s.paths.efforts, entry.Name())
-		if entry.Type()&os.ModeSymlink != 0 {
-			return nil, safety("symlink", path, nil)
-		}
-		if !strings.HasSuffix(entry.Name(), ".json") {
+		name := entry.Name()
+		path := filepath.Join(s.paths.efforts, name)
+		if name == ".gitignore" {
 			continue
 		}
-		if entry.IsDir() || (entry.Type() != 0 && !entry.Type().IsRegular()) {
-			return nil, safety("file-type", path, fmt.Errorf("mode %s is not regular", entry.Type()))
+		if strings.HasPrefix(name, finishingPrefix) {
+			if _, _, ok := parseTombstoneName(name); !ok {
+				return nil, &CorruptError{Path: path, Err: errors.New("malformed finishing reservation")}
+			}
+			if err := validateOwnedDirectory(path); err != nil {
+				return nil, &CorruptError{Path: path, Err: err}
+			}
+			continue
 		}
-		id := strings.TrimSuffix(entry.Name(), ".json")
-		if !uuidV4Pattern.MatchString(id) {
-			return nil, &CorruptError{Path: path, Err: errors.New("invalid effort filename")}
+		if err := validateSlug(name); err != nil {
+			return nil, &CorruptError{Path: path, Err: fmt.Errorf("foreign or invalid effort entry: %w", err)}
 		}
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	result := make([]Record, 0, len(ids))
-	for _, id := range ids {
-		record, err := s.load(id)
+		if err := validateOwnedDirectory(path); err != nil {
+			return nil, &CorruptError{Path: path, Err: err}
+		}
+		if _, err := os.Lstat(filepath.Join(path, "state.json")); errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil { // coverage-ignore: local lstat returns either an inode or os.ErrNotExist absent a kernel fault
+			return nil, &CorruptError{Path: filepath.Join(path, "state.json"), Err: err}
+		}
+		record, err := s.loadDirectory(path, name, true)
 		if err != nil {
 			return nil, err
 		}
 		result = append(result, record)
 	}
+	sort.Slice(result, func(i, j int) bool { return result[i].Slug < result[j].Slug })
 	return result, nil
 }
 
-func (s store) replace(record Record, requireExisting bool) error {
-	path := s.paths.record(record.ID)
-	var expected *fileIdentity
-	if requireExisting {
-		_, identity, err := s.loadIdentity(record.ID)
-		if err != nil {
-			return err
-		}
-		expected = &identity
-	} else if err := requireAbsent(path); err != nil {
-		return fmt.Errorf("require absent effort record %s: %w", path, err)
-	}
-	value := persisted(record)
-	if err := validatePersisted(value, record.ID); err != nil {
-		return fmt.Errorf("validate replacement for %s: %w", path, err)
-	}
-	raw, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Errorf("encode replacement for %s: %w", path, err)
-	}
-	return atomicReplaceFS(s.filesystem(), path, raw, expected)
+func tombstoneName(record Record) string {
+	return finishingPrefix + record.ID + "-" + record.Slug
 }
 
-func atomicReplaceFS(fs fileSystem, path string, raw []byte, expected *fileIdentity) (returnErr error) {
-	dir := filepath.Dir(path)
-	temp, err := fs.CreateTemp(dir, ".effort-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create sibling temporary file in %s for %s: %w", dir, path, err)
+func parseTombstoneName(name string) (id, slug string, ok bool) {
+	if !strings.HasPrefix(name, finishingPrefix) {
+		return "", "", false
 	}
-	tempPath := temp.Name()
-	published := false
-	closed := false
-	defer func() {
-		if !closed {
-			if err := temp.Close(); err != nil {
-				returnErr = errors.Join(returnErr, fmt.Errorf("close temporary file %s while cleaning publication of %s: %w", tempPath, path, err))
-			}
+	rest := strings.TrimPrefix(name, finishingPrefix)
+	if len(rest) < 38 || rest[36] != '-' {
+		return "", "", false
+	}
+	id, slug = rest[:36], rest[37:]
+	if !uuidV4Pattern.MatchString(id) || validateSlug(slug) != nil {
+		return "", "", false
+	}
+	return id, slug, true
+}
+
+func (s store) findTombstones(slug string) ([]string, error) {
+	entries, err := os.ReadDir(s.paths.efforts)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil { // coverage-ignore: callers validate the efforts root; ReadDir failure requires a concurrent namespace or storage fault
+		return nil, err
+	}
+	var matches []string
+	for _, entry := range entries {
+		id, foundSlug, ok := parseTombstoneName(entry.Name())
+		if !ok || foundSlug != slug {
+			continue
 		}
-		if !published {
-			if err := fs.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-				returnErr = errors.Join(returnErr, fmt.Errorf("remove temporary file %s after failed publication of %s: %w", tempPath, path, err))
-			}
+		path := filepath.Join(s.paths.efforts, entry.Name())
+		record, loadErr := s.loadDirectory(path, slug, false)
+		if loadErr != nil || record.ID != id {
+			return nil, &CorruptError{Path: path, Err: errors.New("finishing name does not match stored slug and UUID")}
 		}
-	}()
-	tempInfo, err := temp.Stat()
-	if err != nil {
-		return fmt.Errorf("fstat temporary file %s for %s: %w", tempPath, path, err)
+		matches = append(matches, path)
 	}
-	if err := validateLeaf(tempPath, tempInfo); err != nil {
-		return fmt.Errorf("validate temporary file %s for %s: %w", tempPath, path, err)
-	}
-	tempIdentity := fileIdentity{info: tempInfo}
-	if filepath.Dir(tempPath) != dir {
-		return fmt.Errorf("create sibling temporary file for %s: temporary path %s is outside %s", path, tempPath, dir)
-	}
-	if count, err := temp.Write(raw); err != nil {
-		return fmt.Errorf("write temporary file %s for %s: %w", tempPath, path, err)
-	} else if count != len(raw) {
-		return fmt.Errorf("write temporary file %s for %s: %w", tempPath, path, io.ErrShortWrite)
-	}
-	if err := temp.Sync(); err != nil {
-		return fmt.Errorf("fsync temporary file %s for %s: %w", tempPath, path, err)
-	}
-	if err := temp.Close(); err != nil {
-		return fmt.Errorf("close temporary file %s for %s: %w", tempPath, path, err)
-	}
-	closed = true
-	if err := requireIdentity(tempPath, tempIdentity); err != nil {
-		return fmt.Errorf("verify temporary file identity %s before publishing %s: %w", tempPath, path, err)
-	}
-	if err := fs.Publish(tempPath, path, expected); err != nil {
-		return fmt.Errorf("atomically publish temporary file %s to %s: %w", tempPath, path, err)
-	}
-	published = true
-	var cleanupErr error
-	if err := fs.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-		cleanupErr = fmt.Errorf("remove displaced record %s after publishing %s: %w", tempPath, path, err)
-	}
-	directory, err := fs.OpenDirectory(dir)
-	if err != nil {
-		return errors.Join(cleanupErr, fmt.Errorf("open directory %s to sync publication of %s: %w", dir, path, err))
-	}
-	directoryClosed := false
-	defer func() {
-		if !directoryClosed {
-			if err := directory.Close(); err != nil {
-				returnErr = errors.Join(returnErr, fmt.Errorf("close directory %s while finishing publication of %s: %w", dir, path, err))
-			}
-		}
-	}()
-	if err := directory.Sync(); err != nil {
-		return errors.Join(cleanupErr, fmt.Errorf("fsync directory %s after publishing %s: %w", dir, path, err))
-	}
-	if err := directory.Close(); err != nil {
-		return errors.Join(cleanupErr, fmt.Errorf("close directory %s after publishing %s: %w", dir, path, err))
-	}
-	directoryClosed = true
-	return cleanupErr
+	sort.Strings(matches)
+	return matches, nil
+}
+
+type durableFile interface {
+	Sync() error
+	Close() error
 }

@@ -56,7 +56,7 @@ func runMemoryGate(root string, stdout io.Writer) error {
 		fmt.Fprintln(stdout, memorycite.Format(f))
 	}
 	if len(findings) > 0 {
-		return errors.New("check memory: name the working-memory file separately from the prefix or use the placeholder form, or exempt the path in memoryCite.exemptions")
+		return errors.New("check memory: remove the concrete effort-owned memory citation, name the bare .awf/efforts/ directory, use an angle-bracket slug placeholder, or exempt the path in memoryCite.exemptions")
 	}
 	fmt.Fprintln(stdout, "check memory: clean")
 	return nil

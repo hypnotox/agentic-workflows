@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,44 +9,67 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
-// invariant: tooling/effort-management:effort-record-authority
-// invariant: rendering/singletons-and-payloads:resident-output-preservation
-func TestEffortPathsClosedResidentRoots(t *testing.T) {
-	primary := filepath.Join(t.TempDir(), "primary")
-	p, err := resolvePaths(awfgit.ControlRoots{PrimaryRoot: primary})
+func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
+	root := initEffortRepo(t)
+	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, root := range []string{p.efforts, p.memory, p.worktrees} {
-		if err := p.ensure(root); err != nil {
-			t.Fatal(err)
-		}
-		if info, err := os.Stat(root); err != nil || info.Mode().Perm() != 0o700 {
-			t.Fatalf("resident %s: %v, %v", root, info, err)
-		}
-	}
-	if err := p.ensure(filepath.Join(primary, "other")); err == nil {
-		t.Fatal("unknown resident root accepted")
-	}
-	if p.record(idA) != filepath.Join(p.efforts, idA+".json") || p.memoryFile(idA) != filepath.Join(p.memory, idA+".md") || p.managedWorktree(idA) != filepath.Join(p.worktrees, idA) {
-		t.Fatal("stable ID-derived paths changed")
-	}
-}
-
-// invariant: tooling/effort-management:effort-record-authority
-func TestEffortPathsRejectUnsafePrimary(t *testing.T) {
-	if _, err := resolvePaths(awfgit.ControlRoots{PrimaryRoot: "relative"}); err == nil {
-		t.Fatal("relative primary accepted")
-	}
-	primary := filepath.Join(t.TempDir(), "primary")
-	if err := os.MkdirAll(primary, 0o700); err != nil {
+	paths, err := resolvePaths(roots)
+	if err != nil {
 		t.Fatal(err)
 	}
-	outside := t.TempDir()
-	if err := os.Symlink(outside, filepath.Join(primary, ".awf")); err != nil {
-		t.Skip(err)
+	wantEffort := filepath.Join(root, ".awf", "efforts", "meaningful-slug")
+	if paths.effort("meaningful-slug") != wantEffort {
+		t.Fatalf("effort path = %s, want %s", paths.effort("meaningful-slug"), wantEffort)
 	}
-	if _, err := resolvePaths(awfgit.ControlRoots{PrimaryRoot: primary}); err == nil {
-		t.Fatal("symlinked resident ancestor accepted")
+	if paths.stateFile("meaningful-slug") != filepath.Join(wantEffort, "state.json") {
+		t.Fatalf("unexpected state path: %s", paths.stateFile("meaningful-slug"))
+	}
+	if paths.memoryFile("meaningful-slug") != filepath.Join(wantEffort, "memory.md") {
+		t.Fatalf("unexpected memory path: %s", paths.memoryFile("meaningful-slug"))
+	}
+	if got := memoryPublicPath("meaningful-slug"); got != ".awf/efforts/meaningful-slug/memory.md" {
+		t.Fatalf("public memory path = %q", got)
+	}
+	if err := paths.validate(paths.worktrees); err != nil {
+		t.Fatalf("worktrees root rejected: %v", err)
+	}
+	if err := paths.validate(filepath.Join(root, "foreign")); err == nil {
+		t.Fatal("unknown resident root accepted")
+	}
+	blocked := filepath.Join(root, "blocked")
+	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := paths.ensure(filepath.Join(blocked, "child")); err == nil {
+		t.Fatal("resident root below file accepted")
+	}
+	if err := os.Chmod(paths.efforts, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if err := paths.ensure(paths.efforts); err == nil {
+		t.Fatal("unsafe resident permissions accepted")
+	}
+	if err := os.Chmod(paths.efforts, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	badPaths := paths
+	badPaths.roots.PrimaryRoot = "relative"
+	if err := badPaths.validate(badPaths.efforts); err == nil {
+		t.Fatal("invalid resident authority accepted")
+	}
+
+	badRoots := roots
+	badRoots.PrimaryRoot = "relative"
+	if _, err := resolvePaths(badRoots); err == nil {
+		t.Fatal("invalid efforts root accepted")
+	}
+	worktrees := filepath.Join(root, ".awf", "worktrees")
+	if err := os.Symlink(t.TempDir(), worktrees); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolvePaths(roots); err == nil {
+		t.Fatal("symlinked worktrees root accepted")
 	}
 }

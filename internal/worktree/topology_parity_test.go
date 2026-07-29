@@ -3,6 +3,9 @@ package worktree
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -55,5 +58,59 @@ func TestWorktreePorcelainParityFixtures(t *testing.T) {
 	_, err := registrations(context.Background(), func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("runner") }, ".")
 	if err == nil {
 		t.Fatal("runner error was hidden")
+	}
+}
+
+func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
+	cause := errors.New("cause")
+	refused := refusalCause("test", "condition", false, "next", cause)
+	if !errors.Is(refused, cause) || !strings.Contains(refused.Error(), "changed topology: no") {
+		t.Fatalf("refusal = %v", refused)
+	}
+	var nilRefusal *RefusalError
+	if nilRefusal.Unwrap() != nil {
+		t.Fatal("nil refusal unwrap was non-nil")
+	}
+
+	runner := func(raw string) Runner {
+		return func(context.Context, string, ...string) ([]byte, error) { return []byte(raw), nil }
+	}
+	if err := exactRegistration(context.Background(), runner("worktree /other\x00HEAD abc\x00branch refs/heads/awf/wanted\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "elsewhere") {
+		t.Fatalf("foreign branch error = %v", err)
+	}
+	if err := exactRegistration(context.Background(), runner("worktree /other\x00HEAD abc\x00branch refs/heads/main\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "uniquely") {
+		t.Fatalf("missing registration error = %v", err)
+	}
+	if err := exactRegistration(context.Background(), runner("worktree /wanted\x00HEAD abc\x00detached\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "mismatch") {
+		t.Fatalf("detached registration error = %v", err)
+	}
+
+	root := t.TempDir()
+	oldOwner := managedOwner
+	defer func() { managedOwner = oldOwner }()
+	managedOwner = func(string, os.FileInfo) error { return errors.New("foreign owner") }
+	if err := safeManagedPath(root); err == nil || !strings.Contains(err.Error(), "foreign owner") {
+		t.Fatalf("owner error = %v", err)
+	}
+	managedOwner = oldOwner
+	link := filepath.Join(root, "link")
+	if err := os.Symlink(t.TempDir(), link); err != nil {
+		t.Fatal(err)
+	}
+	if err := safeManagedPath(link); err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("symlink error = %v", err)
+	}
+	file := filepath.Join(root, "file")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := safeManagedPath(file); err == nil || !strings.Contains(err.Error(), "file-type") {
+		t.Fatalf("file error = %v", err)
+	}
+	if err := safeManagedPath(filepath.Join(root, "missing")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing error = %v", err)
+	}
+	if err := safeManagedPath(string(filepath.Separator)); err == nil || !strings.Contains(err.Error(), "no components") {
+		t.Fatalf("root-only error = %v", err)
 	}
 }

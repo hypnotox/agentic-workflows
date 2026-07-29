@@ -181,7 +181,7 @@ func TestPiMinimumRuntime(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-session-handoff-lifecycle
-func TestHandoffLifecycleWithoutEffort(t *testing.T) {
+func TestHandoffLifecycleIndependentOfEffortState(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
 	for _, want := range []string{"let pending", "queueCommand(\"awf-handoff-continue\"", "Fresh-session handoff", "parentSession:old", "prepared?.cleanup?.()", "pending=undefined"} {
 		if !strings.Contains(out, want) {
@@ -195,14 +195,14 @@ func TestHandoffLifecycleWithoutEffort(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-session-handoff-public-contract
-func TestHandoffPublicContractWithoutEffort(t *testing.T) {
+func TestHandoffPublicOwnedMemoryContract(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
+	for _, want := range []string{"memoryPath:Type.Optional(Type.String())", "validateMemoryPath", ".awf/efforts/", "/memory.md", "1048576", "TextDecoder", "sameIdentity", "Effort: ${slug}", "kickoff:Type.String({maxLength:1000})", "Then continue with this immediate action"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff public contract missing %q", want)
 		}
 	}
-	for _, banned := range []string{"Effort:", "runAwf", "assignment", "selected-effort", "telemetry", "adopt"} {
+	for _, banned := range []string{"runAwf", "state.json", "assignment", "selected-effort", "telemetry", "adopt"} {
 		if strings.Contains(out, banned) {
 			t.Errorf("handoff public contract retains %q", banned)
 		}
@@ -219,9 +219,9 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-session-handoff-workflow
-func TestHandoffWorkflowWithoutEffort(t *testing.T) {
+func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 	out := renderPiExtensionFile(t, "awf-handoff/index.ts")
-	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional durable awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
+	for _, want := range []string{"Continue a validated fresh-session handoff.", "Continue from an optional effort-owned awf checkpoint", "Read ${memoryPath} first.", "Then continue with this immediate action"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("handoff workflow contract missing %q", want)
 		}
@@ -238,7 +238,7 @@ func TestHandoffWorkflowWithoutEffort(t *testing.T) {
 	}
 	settled := map[string]string{
 		"executing-plans":             "Review settles before checkpointing.",
-		"subagent-driven-development": "checkpoints only after findings resolve.",
+		"subagent-driven-development": "checkpoints only after findings resolve",
 	}
 	for name, settledPhrase := range settled {
 		body := renderSkillGolden(t, name, data)

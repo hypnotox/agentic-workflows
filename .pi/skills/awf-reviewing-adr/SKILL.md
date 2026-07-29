@@ -17,6 +17,8 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 
 ## Procedure
 
+Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the ADR corpus, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+
 <!-- awf:edit procedure: default; create .awf/skills/parts/reviewing-adr/procedure.md to override -->
 1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `docs/decisions/` matching the `NNNN-*.md` pattern.
 
@@ -25,7 +27,7 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->
 3. **Call `subagent_review` with `kind: "adr"`.** Put the complete reviewer brief in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. The brief must include:
-   - The absolute ADR path.
+   - The absolute ADR path, effort slug, and exact `.awf/efforts/<slug>/memory.md` path, with an explicit instruction that the reviewer must not edit memory.
    - The hint that the reviewer may run `awf topic <domain>/<topic>` on each destination topic named in the ADR's State changes when it needs current claim text. No context packet accompanies this dispatch: an explicit ADR path reports lifecycle progress, not path-claim grounding.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
@@ -50,9 +52,10 @@ Terminal step of `awf-proposing-adr`. Invoked once the ADR file is written and c
 8. **Stop for approval, then hand off to plan resync.** Once the review converges (the ADR remains `Proposed`), the settled ADR is the second mandatory approval check-in: complete the approval protocol below, present the settled-ADR summary, and route onward only after explicit user approval; the review loop itself (dispatch, fix application, verify pass) stays autonomous. After approval, check whether a plan exists (a `docs/plans/YYYY-MM-DD-*.md` file named or implied by the ADR). If a plan exists, invoke `awf-reviewing-plan-resync` against that plan. If no plan exists yet, route by the brainstorm's terminal decision (the ADR settles before the plan is written): invoke `awf-writing-plans` when planning is warranted, else proceed directly to implementation.
 
 **Mandatory approval check-in.** This boundary requires explicit user approval:
-1. Complete the memory update in its own tool batch. In `.awf/memory/<effort-slug>.md`, confirm its `Effort: <effort-id>` line names this effort, rewriting it when a runtime has since assigned an active ID, set `Phase:` to the completed phase, set `Next:` to the immediate next action pending approval, append one line to `## Handoff log`, and refresh `Updated:`. If this non-trivial effort has no memory file yet, create it before `Phase:` with this effort's identity on the `Effort: <effort-id>` line: a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface; never adopt another effort's identity.
-2. Present the completed work summary, explicitly request approval, and end the turn. Stop even when there is no concern to raise; this stop is the protocol, not a judgment call.
-3. If the user rejects or requests changes: revise, persist and commit as applicable, regenerate the summary, and request approval again. After explicit approval, persist the approval and next action before continuing. Then, with the validated memory file, invoke `handoff_session` alone with its exact path and a kickoff that states the approved successor action; continue automatically in the fresh session unless the user cancels during the five-second window. A failed handoff leaves the checkpoint valid and becomes a check-in, never a silent retry. The file skeleton and ground rules live in the workflow doc's working-memory section.
+1. This boundary follows a concrete non-minimal outcome. Create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"` if it does not already exist; it always owns `.awf/efforts/<slug>/memory.md`, and standalone memory is forbidden. Repository sources and current-state documentation remain authoritative over checkpoint prose.
+2. Validate the exact `<slug>` and owned path, confirm the memory file starts with `Effort: <slug>`, and preserve one user-managed writer. A reviewer, explorer, grounding child, or helper never edits the shared memory. In its own tool batch set `Phase:` to the completed phase, set `Next:` to the immediate action pending approval, append one line to `## Handoff log`, and refresh `Updated:`.
+3. Present the completed work summary, explicitly request approval, and end the turn. Stop even when there is no concern to raise; this stop is the protocol, not a judgment call.
+4. If the user rejects or requests changes: revise, persist and commit as applicable, regenerate the summary, and request approval again. After explicit approval, persist the approval and next action before continuing, carrying the same slug and owned memory path. Then invoke `handoff_session` alone with the exact `.awf/efforts/<slug>/memory.md` path and a kickoff that states the approved successor action; continue automatically in the fresh session unless the user cancels during the five-second window. A failed handoff leaves the checkpoint valid and becomes a check-in, never a silent retry. The file skeleton and ground rules live in the workflow doc's working-memory section.
 
 ## Notes
 

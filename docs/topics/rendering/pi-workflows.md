@@ -11,9 +11,9 @@ Pi workflow contracts: governed subagent tools, session handoff, native skills, 
 
 ### `invariant: pi-session-handoff-lifecycle`
 
-Pi handoff retains its single-use queue, countdown, cancellation, parent link, confined optional regular-file memory validation, kickoff, child cleanup, and editor fallback. It neither selects nor assigns an effort, invokes awf, parses an `Effort:` header, nor appends selection state.
+Pi handoff retains its single-use queue, countdown, cancellation, parent link, kickoff, child cleanup, editor fallback, and post-countdown revalidation. When supplied, memory must be the stable, current-owned, singly-linked, bounded valid-UTF-8 regular file at `.awf/efforts/<slug>/memory.md` with matching `Effort: <slug>` identity and confined repository identity. Handoff never parses state, selects or assigns an effort, invokes awf, or mutates memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0175
 Backing: test
 
 ### `invariant: pi-dedicated-grounding-dispatch`
@@ -36,19 +36,16 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff accepts an optional confined regular-file memoryPath and bounded kickoff; absent memory is valid. It never selects or assigns an effort, invokes awf, adopts checkpoints, or fabricates history.
+Pi handoff accepts an optional exact repository-relative `.awf/efforts/<slug>/memory.md` path, or an absolute spelling that normalizes to it, plus a bounded kickoff; absent memory remains valid. It validates slug grammar, exact basename, lexical and no-follow containment, ownership, one hard link, 1 MiB size, fatal UTF-8 decoding, stable identity, effort header, and repository identity without selecting or assigning an effort, invoking awf, adopting checkpoints, or fabricating history.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
 
-Pi checkpoint guidance permits effort-independent handoff after normal persistence at a settled
-phase boundary, with optional confined memory, and never requires selection, telemetry lifecycle
-state, adoption, or structured resume. Checkbox tasks and batch-helper returns do not trigger
-routine handoff.
+Pi checkpoint guidance invokes handoff alone after persistence at a settled phase boundary, carrying the same effort slug and exact owned memory path for non-minimal work. It never creates standalone memory, requires selection or telemetry lifecycle state, adopts a checkpoint, or treats checkbox tasks and helper returns as routine handoff boundaries; repository authority remains primary and report-only children do not edit memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0166
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0166, ADR-0175
 Backing: test
 
 ### `invariant: pi-native-workflow-skills`

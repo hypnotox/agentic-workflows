@@ -1,4 +1,6 @@
-The three repository-wide resident roots are `.awf/efforts`, `.awf/memory`, and `.awf/worktrees`. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state preserved by render, drift checks, and uninstall. Schema generation 21 removes obsolete metrics and assignment residents during upgrade.
+Until the schema migration lands, rendering still recognizes the three repository-wide resident roots `.awf/efforts`, `.awf/memory`, and `.awf/worktrees`; protocol-2 workflow state already uses only `.awf/efforts/<slug>/` and `.awf/worktrees/<slug>/`, and creates no standalone memory. Rendering governs only each root's self-ignoring `.gitignore`; dynamic descendants are local state preserved by render, drift checks, and uninstall. Schema generation 21 removes obsolete metrics and assignment residents during upgrade.
+
+A minimal simple fix uses no effort. A concrete non-minimal outcome uses exactly one immutable slugged effort whose memory is `.awf/efforts/<slug>/memory.md`, with one user-managed writer. Repository authority outranks the checkpoint. Worktree-backed efforts integrate after terminal review, renew review after a divergent merge, remove all managed topology, run retrospective, and finish last.
 
 Plan execution selects `inline` or `subagent-driven` ownership independently per phase. One
 commit-capable owner takes a complete subagent-driven phase from a clean green baseline through its

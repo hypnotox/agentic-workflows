@@ -42,7 +42,7 @@ func resolve(ctx context.Context, run Runner, root, revision string) (string, er
 	return value, nil
 }
 
-var ownedResidentUntracked = regexp.MustCompile(`^\?\? \.awf/(?:efforts/(?:\.lock|\.[0-9a-f-]{36}\.(?:worktree|integration|removal)\.partial|[0-9a-f-]{36}\.json)|worktrees/[0-9a-f-]{36}/?)$`)
+var ownedResidentUntracked = regexp.MustCompile(`^\?\? \.awf/(?:efforts|worktrees)(?:/.*)?$`)
 
 func status(ctx context.Context, run Runner, root string) error {
 	out, err := run(ctx, root, "status", "--porcelain=v1", "-z", "--untracked-files=all")
@@ -58,10 +58,22 @@ func status(ctx context.Context, run Runner, root string) error {
 		if ownedResidentUntracked.MatchString(entry) {
 			continue
 		}
-		return &RefusalError{Category: "cleanliness", Risk: "checkout has tracked, untracked, or staged changes", Forceable: true}
+		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "commit, remove, or explicitly inspect and discard the changes with native Git, then retry")
 	}
 	return nil
 }
+func branchExists(ctx context.Context, run Runner, root, name string) (bool, error) {
+	_, err := run(ctx, root, "show-ref", "--verify", "--quiet", "refs/heads/"+name)
+	if err == nil {
+		return true, nil
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) && exit.ExitCode() == 1 {
+		return false, nil
+	}
+	return false, err
+}
+
 func ancestor(ctx context.Context, run Runner, root, older, newer string) (bool, error) {
 	_, err := run(ctx, root, "merge-base", "--is-ancestor", older, newer)
 	if err == nil {

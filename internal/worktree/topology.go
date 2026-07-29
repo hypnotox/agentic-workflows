@@ -13,35 +13,34 @@ import (
 )
 
 type RefusalError struct {
-	Category, Risk string
-	Forceable      bool
+	Category        string
+	Condition       string
+	ChangedTopology bool
+	NextAction      string
+	Err             error
 }
 
 func (e *RefusalError) Error() string {
-	if e.Risk == "" {
-		return "worktree refusal (" + e.Category + ")"
-	}
-	return "worktree refusal (" + e.Category + "): " + e.Risk
-}
-
-type PartialMutationError struct {
-	EffortID, Repair string
-	Err              error
-}
-
-func (e *PartialMutationError) Error() string {
-	message := fmt.Sprintf("effort %s has partial Git mutation; repair with awf effort repair %s (%s)", e.EffortID, e.EffortID, e.Repair)
+	message := fmt.Sprintf("worktree refusal (%s): %s; changed topology: %s; next action: %s", e.Category, e.Condition, yesNo(e.ChangedTopology), e.NextAction)
 	if e.Err != nil {
 		message += ": " + e.Err.Error()
 	}
 	return message
 }
 
-func (e *PartialMutationError) Unwrap() error {
+func (e *RefusalError) Unwrap() error {
 	if e == nil {
 		return nil
 	}
 	return e.Err
+}
+
+func refusal(category, condition string, changed bool, next string) error {
+	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: next}
+}
+
+func refusalCause(category, condition string, changed bool, next string, err error) error {
+	return &RefusalError{Category: category, Condition: condition, ChangedTopology: changed, NextAction: next, Err: err}
 }
 
 type registration struct {

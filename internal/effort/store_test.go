@@ -1,32 +1,34 @@
 package effort
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
 
 const (
-	idA = "11111111-1111-4111-8111-111111111111"
-	idB = "22222222-2222-4222-8222-222222222222"
+	testIDA = "018f47a0-7b3d-4c52-8f1a-123456789abc"
+	testIDB = "128f47a0-7b3d-4c52-8f1a-123456789abc"
 )
 
-// invariant: tooling/effort-management:effort-record-authority
-func TestEffortRecordAuthorityLifecycleListingCollisionAndMemory(t *testing.T) {
+func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	root := initEffortRepo(t)
-	now := time.Date(2026, 7, 27, 1, 2, 3, 4, time.UTC)
-	ids := []string{idB, idB, idA}
-	service, err := Open(t.Context(), root, Options{
+	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	ids := []string{testIDA, testIDB}
+	service, err := Open(context.Background(), root, Options{
 		Clock: func() time.Time { return now },
 		UUID: func() (string, error) {
+			if len(ids) == 0 {
+				return testIDB, nil
+			}
 			id := ids[0]
 			ids = ids[1:]
 			return id, nil
@@ -35,306 +37,429 @@ func TestEffortRecordAuthorityLifecycleListingCollisionAndMemory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	first, err := service.New("  Useful outcome  ", true)
+
+	zeta, err := service.New("Zeta result")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.ID != idB || first.Title != "Useful outcome" || !first.MemoryPresent || first.State != StateActive || first.Integration != IntegrationNone {
-		t.Fatalf("first record = %#v", first)
-	}
-	second, err := service.New("Another outcome", false)
+	alpha, err := service.New("Alpha result")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if second.ID != idA || second.MemoryPresent {
-		t.Fatalf("collision retry record = %#v", second)
+	if zeta.Slug != "zeta-result" || alpha.Slug != "alpha-result" {
+		t.Fatalf("unexpected slugs: %#v %#v", zeta, alpha)
+	}
+	shown, err := service.Show("zeta-result")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if shown != zeta {
+		t.Fatalf("show = %#v, want %#v", shown, zeta)
 	}
 	listed, err := service.List()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := []string{listed[0].ID, listed[1].ID}; !reflect.DeepEqual(got, []string{idA, idB}) {
-		t.Fatalf("list order = %v", got)
+	if len(listed) != 2 || listed[0].Slug != "alpha-result" || listed[1].Slug != "zeta-result" {
+		t.Fatalf("list is not sorted by slug: %#v", listed)
 	}
-	path, withMemory, err := service.Memory(idA)
+	resident := filepath.Join(root, ".awf", "efforts", "zeta-result")
+	entries, err := os.ReadDir(resident)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !withMemory.MemoryPresent || path != filepath.Join(root, ".awf", "memory", idA+".md") {
-		t.Fatalf("memory result path=%q record=%#v", path, withMemory)
+	var names []string
+	for _, entry := range entries {
+		names = append(names, entry.Name())
 	}
-	createdAt := second.CreatedAt
-	previousUpdate := withMemory.UpdatedAt
-
-	renamed, err := service.Rename(idA, "Renamed display")
+	sort.Strings(names)
+	if strings.Join(names, ",") != "memory.md,state.json" {
+		t.Fatalf("resident leaves = %v", names)
+	}
+	memory, err := os.ReadFile(filepath.Join(resident, "memory.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if renamed.ID != idA || renamed.Title != "Renamed display" || renamed.CreatedAt != createdAt || !renamed.MemoryPresent || !renamed.UpdatedAt.After(previousUpdate) {
-		t.Fatalf("rename = %#v", renamed)
-	}
-	previousUpdate = renamed.UpdatedAt
-	completed, err := service.Complete(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if completed.State != StateCompleted || completed.CreatedAt != createdAt || !completed.MemoryPresent || completed.Worktree != nil || !completed.UpdatedAt.After(previousUpdate) {
-		t.Fatalf("complete = %#v", completed)
-	}
-	previousUpdate = completed.UpdatedAt
-	reopened, err := service.Reopen(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reopened.State != StateActive || reopened.CreatedAt != createdAt || !reopened.MemoryPresent || !reopened.UpdatedAt.After(previousUpdate) {
-		t.Fatalf("reopen = %#v", reopened)
-	}
-	previousUpdate = reopened.UpdatedAt
-	abandoned, err := service.Abandon(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if abandoned.State != StateAbandoned || abandoned.CreatedAt != createdAt || !abandoned.MemoryPresent || !abandoned.UpdatedAt.After(previousUpdate) {
-		t.Fatalf("abandon = %#v", abandoned)
-	}
-	path, withMemory, err = service.Memory(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !withMemory.MemoryPresent || path != filepath.Join(root, ".awf", "memory", idA+".md") {
-		t.Fatalf("memory result path=%q record=%#v", path, withMemory)
-	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasPrefix(string(raw), "Effort: "+idA+"\nRoute: unselected\nPhase: unselected\nWorkflow: unselected\nNext: ") {
-		t.Fatalf("memory skeleton = %q", raw)
-	}
-}
-
-// invariant: tooling/effort-management:effort-record-authority
-func TestEffortExactSchemaAndValidation(t *testing.T) {
-	root := initEffortRepo(t)
-	now := time.Date(2026, 7, 27, 0, 0, 0, 123, time.UTC)
-	service := openEffortService(t, root, now)
-	_, err := service.New("Schema contract", false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", idA+".json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `{"schemaVersion":1,"id":"11111111-1111-4111-8111-111111111111","title":"Schema contract","state":"active","createdAt":"2026-07-27T00:00:00.000000123Z","updatedAt":"2026-07-27T00:00:00.000000123Z","memoryPresent":false,"worktree":null,"integration":"none"}`
-	if string(raw) != want {
-		t.Fatalf("persisted JSON = %s\nwant = %s", raw, want)
-	}
-	var persistedKeys map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &persistedKeys); err != nil {
-		t.Fatal(err)
-	}
-	wantKeys := []string{"createdAt", "id", "integration", "memoryPresent", "schemaVersion", "state", "title", "updatedAt", "worktree"}
-	gotKeys := make([]string, 0, len(persistedKeys))
-	for key := range persistedKeys {
-		gotKeys = append(gotKeys, key)
-	}
-	sort.Strings(gotKeys)
-	if !reflect.DeepEqual(gotKeys, wantKeys) {
-		t.Fatalf("persisted authority fields = %v, want exactly %v", gotKeys, wantKeys)
-	}
-	for name, title := range map[string]string{"blank": "   ", "too-long": strings.Repeat("a", 161), "too-many-multibyte-bytes": strings.Repeat("é", 81), "invalid-utf8": string([]byte{0xff})} {
-		t.Run(name, func(t *testing.T) {
-			if _, err := normalizeTitle(title); err == nil {
-				t.Fatal("invalid title accepted")
-			}
-		})
-	}
-}
-
-// invariant: tooling/effort-management:effort-record-authority
-func TestEffortCorruptionSchemaPairsRepairAndAtomicReplacement(t *testing.T) {
-	root := initEffortRepo(t)
-	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
-	service := openEffortService(t, root, now)
-	if _, err := service.New("Repair me", true); err != nil {
-		t.Fatal(err)
-	}
-	recordPath := filepath.Join(root, ".awf", "efforts", idA+".json")
-	original, _ := os.ReadFile(recordPath)
-	writeEffortFile(t, recordPath, `{"schemaVersion":2}`)
-	if _, err := service.Show(idA); err == nil {
-		t.Fatal("unsupported schema accepted")
-	} else {
-		var corrupt *CorruptError
-		if !errors.As(err, &corrupt) {
-			t.Fatalf("schema error = %T %v", err, err)
+	for _, phrase := range []string{"Effort: zeta-result\n", "Phase:", "Next:", "Updated:", "## Brief", "## Decisions", "## Handoff log"} {
+		if !strings.Contains(string(memory), phrase) {
+			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}
 	}
-	if _, err := service.Repair(idA); err == nil {
-		t.Fatal("repair accepted corrupt schema")
-	} else {
-		var corrupt *CorruptError
-		if !errors.As(err, &corrupt) {
-			t.Fatalf("repair corruption error = %T %v", err, err)
+	if _, err := service.New("Zeta result"); err == nil || !strings.Contains(err.Error(), "collides") || !strings.Contains(err.Error(), "changed bytes: no") {
+		t.Fatalf("collision error = %v", err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", ".lock")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("effort lock exists: %v", err)
+	}
+}
+
+func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
+	stages := []string{
+		"reserve.directory",
+		"memory.write", "memory.fsync", "memory.rename", "memory.directory-fsync",
+		"state.write", "state.fsync", "state.rename", "state.directory-fsync",
+		"efforts-root.fsync",
+	}
+	for _, failStage := range stages {
+		t.Run(failStage, func(t *testing.T) {
+			root := initEffortRepo(t)
+			var seen []string
+			service, err := Open(context.Background(), root, Options{
+				Clock: func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) },
+				UUID:  func() (string, error) { return testIDA, nil },
+				Fault: func(stage string) error {
+					seen = append(seen, stage)
+					if stage == failStage {
+						return errors.New("stop")
+					}
+					return nil
+				},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.New("Fault matrix"); err == nil {
+				t.Fatal("creation succeeded at injected failure")
+			}
+			wantPrefix := stages[:indexOfStage(t, stages, failStage)+1]
+			if strings.Join(seen, ",") != strings.Join(wantPrefix, ",") {
+				t.Fatalf("stages = %v, want prefix %v", seen, wantPrefix)
+			}
+			listed, listErr := service.List()
+			statePublished := indexOfStage(t, stages, failStage) >= indexOfStage(t, stages, "state.directory-fsync")
+			if statePublished {
+				if listErr != nil || len(listed) != 1 {
+					t.Fatalf("published state must enumerate: list=%#v err=%v", listed, listErr)
+				}
+			} else if listErr != nil || len(listed) != 0 {
+				t.Fatalf("incomplete directory must be ignored: list=%#v err=%v", listed, listErr)
+			}
+		})
+	}
+}
+
+func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
+	root := initEffortRepo(t)
+	var wg sync.WaitGroup
+	errs := make(chan error, 2)
+	for _, id := range []string{testIDA, testIDB} {
+		wg.Add(1)
+		go func(id string) {
+			defer wg.Done()
+			service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return id, nil }})
+			if err == nil {
+				_, err = service.New("One winner")
+			}
+			errs <- err
+		}(id)
+	}
+	wg.Wait()
+	close(errs)
+	var successes, failures int
+	for err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case strings.Contains(err.Error(), "collides"):
+			failures++
+		default:
+			t.Fatalf("unexpected concurrent error: %v", err)
 		}
 	}
-	still, _ := os.ReadFile(recordPath)
-	if string(still) != `{"schemaVersion":2}` {
-		t.Fatalf("corrupt input changed to %q", still)
-	}
-	writeEffortFile(t, recordPath, string(original))
-	if err := os.Remove(filepath.Join(root, ".awf", "memory", idA+".md")); err != nil {
-		t.Fatal(err)
-	}
-	repaired, err := service.Repair(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(repaired.Changes) != 1 || repaired.Changes[0].Field != "memoryPresent" || repaired.Record.MemoryPresent {
-		t.Fatalf("repair = %#v", repaired)
-	}
-
-	for name, pair := range map[string]struct{ worktree, integration string }{
-		"absent-none":          {"null", "none"},
-		"absent-fast-forward":  {"null", "fast-forward"},
-		"absent-merge":         {"null", "merge"},
-		"absent-manual":        {"null", "manual"},
-		"present-pending":      {worktreeJSON(now), "pending"},
-		"present-fast-forward": {worktreeJSON(now), "fast-forward"},
-		"present-merge":        {worktreeJSON(now), "merge"},
-		"present-manual":       {worktreeJSON(now), "manual"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			raw := schemaRecordJSON(now, pair.worktree, pair.integration)
-			writeEffortFile(t, recordPath, raw)
-			if _, err := service.Show(idA); err != nil {
-				t.Fatalf("legal pair refused: %v", err)
-			}
-		})
-	}
-	for name, pair := range map[string]struct{ worktree, integration string }{
-		"absent-pending": {"null", "pending"},
-		"present-none":   {worktreeJSON(now), "none"},
-	} {
-		t.Run(name, func(t *testing.T) {
-			writeEffortFile(t, recordPath, schemaRecordJSON(now, pair.worktree, pair.integration))
-			if _, err := service.Show(idA); err == nil {
-				t.Fatal("illegal worktree/integration pair accepted")
-			}
-		})
-	}
-
-	writeEffortFile(t, recordPath, schemaRecordJSON(now, worktreeJSON(now), "pending"))
-	completed, err := service.Complete(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if completed.Worktree == nil || completed.Integration != IntegrationPending {
-		t.Fatalf("completion discarded worktree authority: %#v", completed)
-	}
-	reopened, err := service.Reopen(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	abandoned, err := service.Abandon(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if reopened.Worktree == nil || abandoned.Worktree == nil || abandoned.Integration != IntegrationPending {
-		t.Fatalf("lifecycle discarded worktree authority: reopened=%#v abandoned=%#v", reopened, abandoned)
-	}
-
-	writeEffortFile(t, recordPath, schemaRecordJSON(now, "null", "none"))
-	if err := atomicReplaceForTest(recordPath, []byte(schemaRecordJSON(now.Add(time.Second), "null", "none"))); err != nil {
-		t.Fatal(err)
-	}
-	newPath := filepath.Join(filepath.Dir(recordPath), idB+".json")
-	if err := atomicReplaceForTest(newPath, []byte("new")); err != nil {
-		t.Fatal(err)
-	}
-	if got, err := os.ReadFile(newPath); err != nil || string(got) != "new" {
-		t.Fatalf("new atomic publication = %q, %v", got, err)
-	}
-	cleanup := filepath.Join(filepath.Dir(recordPath), ".remove-me")
-	writeEffortFile(t, cleanup, "temp")
-	if err := (osFileSystem{}).Remove(cleanup); err != nil {
-		t.Fatal(err)
-	}
-	info, err := os.Stat(recordPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("record mode = %o", info.Mode().Perm())
-	}
-	matches, _ := filepath.Glob(filepath.Join(filepath.Dir(recordPath), ".effort-*.tmp"))
-	if len(matches) != 0 {
-		t.Fatalf("sibling temps remain: %v", matches)
+	if successes != 1 || failures != 1 {
+		t.Fatalf("successes=%d failures=%d", successes, failures)
 	}
 }
 
-func TestEffortMemoryRefusesForeignExistingFile(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openEffortService(t, root, time.Now().UTC())
-	if _, err := service.New("No memory", false); err != nil {
-		t.Fatal(err)
+func TestEnumerationPreservesAndDiagnosesForeignResidents(t *testing.T) {
+	tests := map[string]func(*testing.T, string){
+		"invalid entry": func(t *testing.T, root string) {
+			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "foreign.json"), "foreign")
+		},
+		"symlink": func(t *testing.T, root string) {
+			outside := t.TempDir()
+			if err := os.Symlink(outside, filepath.Join(root, ".awf", "efforts", "linked-effort")); err != nil {
+				t.Fatal(err)
+			}
+		},
+		"non-directory fifo": func(t *testing.T, root string) {
+			// A fifo names a well-formed slug, so only the leaf type rejects it.
+			// Enumeration must diagnose it without opening the pipe and blocking.
+			if err := testMkfifo(filepath.Join(root, ".awf", "efforts", "fifo-effort"), 0o600); err != nil {
+				t.Skipf("fifo fixture unavailable: %v", err)
+			}
+		},
+		"published state missing memory": func(t *testing.T, root string) {
+			dir := filepath.Join(root, ".awf", "efforts", "missing-memory")
+			if err := os.Mkdir(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeEffortFile(t, filepath.Join(dir, "state.json"), `{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"missing-memory","title":"Missing memory","createdAt":"2026-07-29T12:00:00Z"}`)
+		},
 	}
-	path := filepath.Join(root, ".awf", "memory", idA+".md")
-	writeEffortFile(t, path, "foreign\n")
-	if _, _, err := service.Memory(idA); err == nil || !strings.Contains(err.Error(), "non-owned") {
-		t.Fatalf("foreign memory error = %v", err)
-	}
-	if got, _ := os.ReadFile(path); string(got) != "foreign\n" {
-		t.Fatalf("foreign memory changed to %q", got)
+	for name, setup := range tests {
+		t.Run(name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			setup(t, root)
+			service, err := Open(context.Background(), root, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, err = service.List()
+			if err == nil || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "preserve") {
+				t.Fatalf("diagnostic = %v", err)
+			}
+		})
 	}
 }
 
-func atomicReplaceForTest(path string, raw []byte) error {
-	var expected *fileIdentity
-	if identity, err := lstatRegular(path); err == nil {
-		expected = &identity
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return err
+func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
+	if got := (&CorruptError{Err: os.ErrInvalid}).Unwrap(); !errors.Is(got, os.ErrInvalid) {
+		t.Fatalf("unwrap = %v", got)
 	}
-	return atomicReplaceFS(osFileSystem{}, path, raw, expected)
+	if _, err := normalizeTitle(string([]byte{0xff})); err == nil {
+		t.Fatal("invalid UTF-8 title accepted")
+	}
+	for _, slug := range []string{"", strings.Repeat("a", 64), "bad_slug", "bad..slug"} {
+		if err := validateSlug(slug); err == nil {
+			t.Errorf("invalid slug %q accepted", slug)
+		}
+	}
+	base := persistedRecord{SchemaVersion: 2, ID: testIDA, Slug: "valid-slug", Title: "Valid slug", CreatedAt: time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)}
+	invalid := []persistedRecord{
+		{SchemaVersion: 1, ID: base.ID, Slug: base.Slug, Title: base.Title, CreatedAt: base.CreatedAt},
+		{SchemaVersion: 2, ID: "bad", Slug: base.Slug, Title: base.Title, CreatedAt: base.CreatedAt},
+		{SchemaVersion: 2, ID: base.ID, Slug: "other", Title: base.Title, CreatedAt: base.CreatedAt},
+		{SchemaVersion: 2, ID: base.ID, Slug: "bad_slug", Title: base.Title, CreatedAt: base.CreatedAt},
+		{SchemaVersion: 2, ID: base.ID, Slug: base.Slug, Title: " padded ", CreatedAt: base.CreatedAt},
+		{SchemaVersion: 2, ID: base.ID, Slug: base.Slug, Title: base.Title},
+	}
+	invalidSlug := base
+	invalidSlug.Slug = "bad_slug"
+	if err := validatePersisted(invalidSlug, "bad_slug"); err == nil {
+		t.Fatal("persisted invalid slug accepted")
+	}
+	for index, record := range invalid {
+		if err := validatePersisted(record, base.Slug); err == nil {
+			t.Errorf("invalid persisted record %d accepted: %#v", index, record)
+		}
+	}
+	decoder := json.NewDecoder(strings.NewReader(`{} {}`))
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireJSONEOF(decoder); err == nil {
+		t.Fatal("multiple JSON values accepted")
+	}
+	decoder = json.NewDecoder(strings.NewReader(`{} nope`))
+	if err := decoder.Decode(&value); err != nil {
+		t.Fatal(err)
+	}
+	if err := requireJSONEOF(decoder); err == nil {
+		t.Fatal("malformed trailing JSON accepted")
+	}
+	for _, name := range []string{"plain", finishingPrefix + "bad", finishingPrefix + testIDA + "-bad_slug"} {
+		if _, _, ok := parseTombstoneName(name); ok {
+			t.Errorf("malformed tombstone %q accepted", name)
+		}
+	}
+
+	t.Run("empty list without resident root", func(t *testing.T) {
+		root := initEffortRepo(t)
+		if err := os.RemoveAll(filepath.Join(root, ".awf", "efforts")); err != nil {
+			t.Fatal(err)
+		}
+		service, err := Open(context.Background(), root, Options{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		listed, err := service.List()
+		if err != nil || len(listed) != 0 {
+			t.Fatalf("list=%v err=%v", listed, err)
+		}
+	})
+
+	for name, setup := range map[string]func(*testing.T, string){
+		"foreign leaf": func(t *testing.T, root string) {
+			service := openEffortService(t, root, time.Now().UTC())
+			if _, err := service.New("Foreign leaf"); err != nil {
+				t.Fatal(err)
+			}
+			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "foreign-leaf", "extra"), "x")
+		},
+		"mismatched memory": func(t *testing.T, root string) {
+			service := openEffortService(t, root, time.Now().UTC())
+			if _, err := service.New("Wrong memory"); err != nil {
+				t.Fatal(err)
+			}
+			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "wrong-memory", "memory.md"), "Effort: other\n")
+		},
+		"non-directory effort": func(t *testing.T, root string) {
+			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "regular-file"), "x")
+		},
+		"trailing state JSON": func(t *testing.T, root string) {
+			dir := filepath.Join(root, ".awf", "efforts", "trailing-state")
+			if err := os.Mkdir(dir, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			writeEffortFile(t, filepath.Join(dir, "state.json"), `{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"trailing-state","title":"Trailing state","createdAt":"2026-07-29T12:00:00Z"} {}`)
+			writeEffortFile(t, filepath.Join(dir, "memory.md"), "Effort: trailing-state\n")
+		},
+		"malformed finishing name": func(t *testing.T, root string) {
+			if err := os.Mkdir(filepath.Join(root, ".awf", "efforts", ".finishing-bad"), 0o700); err != nil {
+				t.Fatal(err)
+			}
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			setup(t, root)
+			service, err := Open(context.Background(), root, Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := service.List(); err == nil {
+				t.Fatal("corrupt resident accepted")
+			}
+		})
+	}
+
+	t.Run("list skips tracked marker and valid tombstone", func(t *testing.T) {
+		root := initEffortRepo(t)
+		writeEffortFile(t, filepath.Join(root, ".awf", "efforts", ".gitignore"), "*")
+		service := openEffortService(t, root, time.Now().UTC())
+		if _, err := service.New("Listed tombstone"); err != nil {
+			t.Fatal(err)
+		}
+		active := filepath.Join(root, ".awf", "efforts", "listed-tombstone")
+		tombstone := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDA+"-listed-tombstone")
+		if err := os.Rename(active, tombstone); err != nil {
+			t.Fatal(err)
+		}
+		listed, err := service.List()
+		if err != nil || len(listed) != 0 {
+			t.Fatalf("list=%v err=%v", listed, err)
+		}
+	})
+
+	t.Run("unsafe reserve and list authority", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, time.Now().UTC())
+		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o000); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := service.New("Unreadable reserve"); err == nil {
+			t.Fatal("unreadable reserve accepted")
+		}
+		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o777); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := service.New("Unsafe reserve"); err == nil {
+			t.Fatal("unsafe reserve accepted")
+		}
+		if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		service.store.paths.roots.PrimaryRoot = "relative"
+		if _, err := service.List(); err == nil {
+			t.Fatal("invalid list authority accepted")
+		}
+	})
+
+	t.Run("invalid finishing resident", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, time.Now().UTC())
+		name := finishingPrefix + testIDA + "-bad-finish"
+		if err := os.Symlink(t.TempDir(), filepath.Join(root, ".awf", "efforts", name)); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := service.List(); err == nil {
+			t.Fatal("symlinked finishing resident accepted")
+		}
+	})
+
+	t.Run("mismatched finishing state", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, time.Now().UTC())
+		if _, err := service.New("Mismatched finish"); err != nil {
+			t.Fatal(err)
+		}
+		active := filepath.Join(root, ".awf", "efforts", "mismatched-finish")
+		mismatch := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDB+"-mismatched-finish")
+		if err := os.Rename(active, mismatch); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := service.store.findTombstones("mismatched-finish"); err == nil {
+			t.Fatal("mismatched finishing state accepted")
+		}
+	})
+
+	t.Run("direct missing state and tombstone root", func(t *testing.T) {
+		root := initEffortRepo(t)
+		service := openEffortService(t, root, time.Now().UTC())
+		dir := filepath.Join(root, ".awf", "efforts", "missing-state")
+		if err := os.Mkdir(dir, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := service.store.loadDirectory(dir, "missing-state", true); err == nil {
+			t.Fatal("missing state accepted")
+		}
+		if err := os.RemoveAll(filepath.Join(root, ".awf", "efforts")); err != nil {
+			t.Fatal(err)
+		}
+		if found, err := service.store.findTombstones("missing-state"); err != nil || len(found) != 0 {
+			t.Fatalf("tombstones=%v err=%v", found, err)
+		}
+	})
+}
+
+func indexOfStage(t *testing.T, stages []string, want string) int {
+	t.Helper()
+	for index, stage := range stages {
+		if stage == want {
+			return index
+		}
+	}
+	t.Fatalf("stage %q not found", want)
+	return -1
 }
 
 func openEffortService(t *testing.T, root string, now time.Time) *Service {
 	t.Helper()
-	service, err := Open(t.Context(), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return idA, nil }})
+	service, err := Open(context.Background(), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return testIDA, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
 	return service
 }
 
-func schemaRecordJSON(at time.Time, worktree, integration string) string {
-	stamp := at.UTC().Format(time.RFC3339Nano)
-	return fmt.Sprintf(`{"schemaVersion":1,"id":"%s","title":"Repair me","state":"active","createdAt":"%s","updatedAt":"%s","memoryPresent":false,"worktree":%s,"integration":"%s"}`, idA, stamp, stamp, worktree, integration)
-}
-
-func worktreeJSON(at time.Time) string {
-	return fmt.Sprintf(`{"branch":"awf/%s","base":"%s","attachedAt":"%s"}`, idA, strings.Repeat("a", 40), at.UTC().Format(time.RFC3339Nano))
-}
-
 func initEffortRepo(t *testing.T) string {
 	t.Helper()
-	root := filepath.Join(t.TempDir(), "effort repository with spaces")
+	root := t.TempDir()
 	runEffortGit(t, "init", root)
 	writeEffortFile(t, filepath.Join(root, "tracked.txt"), "base\n")
 	runEffortGit(t, "-C", root, "add", "tracked.txt")
 	runEffortGit(t, "-C", root, "-c", "user.name=Test", "-c", "user.email=test@example.com", "commit", "-m", "base")
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
+		t.Fatal(err)
+	}
 	return root
 }
 
 func runEffortGit(t *testing.T, args ...string) {
 	t.Helper()
-	cmd := exec.CommandContext(t.Context(), "git", args...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_NOSYSTEM=1")
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git %s: %v\n%s", strings.Join(args, " "), err, output)
+	_ = runEffortGitOutput(t, args...)
+}
+
+func runEffortGitOutput(t *testing.T, args ...string) string {
+	t.Helper()
+	command := exec.Command("git", args...)
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, output)
 	}
+	return string(output)
 }
 
 func writeEffortFile(t *testing.T, path, content string) {

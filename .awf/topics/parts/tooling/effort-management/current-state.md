@@ -4,13 +4,14 @@ The awf binary owns lightweight repository-local effort records and their option
 
 ### `invariant: effort-record-authority`
 
-The awf binary alone allocates lowercase UUIDv4 effort IDs and owns schema-1 repository-local effort records and optional memory and managed-worktree state. Records contain no Pi-session assignment; creation, rename, lifecycle, and repair retain their existing resident-state authority without replacing Git-tracked project truth.
+The awf binary derives an immutable 1-63 byte ASCII slug from each outcome, allocates an internal lowercase UUIDv4, and durably publishes schema-2 `.awf/efforts/<slug>/state.json` only after its always-owned `memory.md`. Directory presence is the active-effort fact; listing ignores unpublished incomplete directories and preserves malformed or foreign residents, while restartable finish renames to a slug-and-UUID-matched tombstone and deletes only proven bytes after managed topology is absent. Efforts have no lifecycle ledger, coordination lock, Pi-session assignment, standalone memory, or stored worktree state, and Git-tracked project truth remains authoritative.
 Origin: ADR-0164
-Revised-by: ADR-0167
+Revised-by: ADR-0167, ADR-0175
 Backing: test
 
 ### `invariant: managed-worktree-lifecycle`
 
-Managed effort worktrees use the fixed `.awf/worktrees/<effort-id>/` path and `awf/<effort-id>` branch, resolve an explicit base or caller HEAD through native Git, and retain the schema-1 integration state machine through integration and until explicit removal. Native-Git operations validate registration, repository identity, branch, operation state, cleanliness, and ancestry before mutation; confinement, symlink, ownership, repository-identity, merge-conflict, and destructive-topology safety refusals are never forceable, while only recoverable cleanliness or non-destructive topology risk accepts paired `--force --reason <nonblank>`. Integration is explicit as fast-forward, merge, or manually recorded only after its required ancestry proof, and completion never removes a managed worktree.
+Managed effort worktrees are stateless native-Git utilities at `.awf/worktrees/<slug>/` on `awf/<slug>`. Add is separate from effort creation and leaves the complete effort unchanged on failure. Integration revalidates clean target, registration, repository identity, branch, operation state, and ancestry immediately before mutation; it reports already-contained history, fast-forwards, or starts a divergent `--no-commit` merge, never tests, reviews, commits, pushes, resolves, removes, records disposition, or finishes. Remove independently inspects path, registration, and branch on every retry, requires cleanliness and target ancestry, and uses no awf force-discard path; intentional discard stays explicit native Git.
 Origin: ADR-0164
+Revised-by: ADR-0175
 Backing: test

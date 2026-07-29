@@ -143,23 +143,6 @@ func validateOpenedFile(path string, file *os.File) error {
 	return nil
 }
 
-func validateLockPermissions(string, os.FileInfo) error {
-	// Windows has no Unix mode bits. The no-follow opener validates that the
-	// lock is a regular, single-link file owned by the process user, while the
-	// owner-controlled resident directory confines creation and replacement.
-	return nil
-}
-
-func lockRepositoryFile(file *os.File) error {
-	var overlapped windows.Overlapped
-	return windows.LockFileEx(windows.Handle(file.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK, 0, 1, 0, &overlapped)
-}
-
-func unlockRepositoryFile(file *os.File) error {
-	var overlapped windows.Overlapped
-	return windows.UnlockFileEx(windows.Handle(file.Fd()), 0, 1, 0, &overlapped)
-}
-
 type windowsDirectorySyncFile struct{ *os.File }
 
 func (windowsDirectorySyncFile) Sync() error {

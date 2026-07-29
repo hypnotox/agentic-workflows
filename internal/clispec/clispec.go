@@ -167,66 +167,41 @@ There is no default range, so an audit never reports over commits nobody named.
 `,
 	},
 	{
-		Name: "effort", Summary: "Manage lightweight repository-local efforts",
+		Name: "effort", Summary: "Manage slugged repository-local efforts",
 		MaxPos: 0, Gating: Gated,
 		HelpBody: `Usage: awf effort <subcommand>
 
-Create, inspect, rename, repair, and change the lifecycle of lightweight local efforts.
+Create, inspect, finish, integrate, and remove immutable slugged efforts and their optional managed worktrees.
 `,
 		Children: []Command{
-			{Name: "new", Summary: "Create an active effort", BoolFlags: []string{"--no-memory", "--worktree"}, ValueFlags: []string{"--base"}, MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort new <title> [--no-memory] [--worktree [--base <revision>]]
+			{Name: "new", Summary: "Create an effort with owned memory", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort new <outcome-title> [--json]
 
-Create an active effort and, by default, its working-memory file. --worktree attaches the fixed managed branch at the explicit base or caller HEAD.
+Derive one immutable slug and publish schema-2 state plus owned memory.
 `},
-			{Name: "list", Summary: "List efforts by stable ID", BoolFlags: []string{"--json"}, MaxPos: 0,
+			{Name: "list", Summary: "List efforts by slug", BoolFlags: []string{"--json"}, MaxPos: 0,
 				HelpBody: `Usage: awf effort list [--json]
 
-List every lightweight effort in stable ID order.
+List every usable active effort in slug order.
 `},
 			{Name: "show", Summary: "Show one effort", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort show <id> [--json]
+				HelpBody: `Usage: awf effort show <slug> [--json]
 
-Show one logical effort record.
+Show one schema-2 effort and its owned memory path.
 `},
-			{Name: "rename", Summary: "Rename one effort", MinPos: 2, MaxPos: 2,
-				HelpBody: `Usage: awf effort rename <id> <title>
+			{Name: "finish", Summary: "Finish and delete one effort", MinPos: 1, MaxPos: 1,
+				HelpBody: `Usage: awf effort finish <slug>
 
-Change display metadata without changing the stable ID or resource paths.
+Restartably delete an effort only after all managed Git topology is absent.
 `},
-			{Name: "memory", Summary: "Create an effort's memory file", MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort memory <id>
+			{Name: "worktree", Summary: "Add or remove a managed worktree", ValueFlags: []string{"--base"}, MinPos: 2, MaxPos: 2,
+				HelpBody: `Usage: awf effort worktree add <slug> [--base <ref>]
+       awf effort worktree remove <slug>
 
-Create or confirm the effort-owned normalized working-memory file.
+Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without stored attachment state.
 `},
-			{Name: "complete", Summary: "Complete an active effort", MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort complete <id>
-
-Mark an active effort completed while retaining its resources.
-`},
-			{Name: "abandon", Summary: "Abandon an active effort", MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort abandon <id>
-
-Mark an active effort abandoned while retaining its resources.
-`},
-			{Name: "reopen", Summary: "Reopen a terminal effort", MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort reopen <id>
-
-Return a completed or abandoned effort to active state.
-`},
-			{Name: "repair", Summary: "Repair derivable effort metadata", BoolFlags: []string{"--json"}, MinPos: 1, MaxPos: 1,
-				HelpBody: `Usage: awf effort repair <id> [--json]
-
-Repair only metadata derivable from confined resident filesystem truth and report every change.
-`},
-			{Name: "worktree", Summary: "Attach or remove a managed worktree", BoolFlags: []string{"--force"}, ValueFlags: []string{"--base", "--reason"}, MinPos: 2, MaxPos: 2,
-				HelpBody: `Usage: awf effort worktree add <id> [--base <revision>]
-       awf effort worktree remove <id> [--force --reason <text>]
-
-Manage the fixed-path, fixed-branch worktree for one effort.
-`},
-			{Name: "integrate", Summary: "Integrate a managed worktree", BoolFlags: []string{"--force"}, ValueFlags: []string{"--reason"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort integrate <id> [--force --reason <text>]\n"},
-			{Name: "integrated", Summary: "Record manual integration", BoolFlags: []string{"--force"}, ValueFlags: []string{"--commit", "--reason"}, MinPos: 1, MaxPos: 1, HelpBody: "Usage: awf effort integrated <id> --commit <revision> [--force --reason <text>]\n"},
+			{Name: "integrate", Summary: "Integrate a managed worktree", MinPos: 1, MaxPos: 1,
+				HelpBody: "Usage: awf effort integrate <slug>\n\nIntegrate into the invoking clean target checkout without committing, reviewing, removing, or finishing.\n"},
 		},
 	},
 	{

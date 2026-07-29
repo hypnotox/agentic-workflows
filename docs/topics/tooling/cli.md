@@ -116,7 +116,7 @@ Backing: test
 
 ### `invariant: effort-command-contract`
 
-`awf effort` owns creation, memory, rename, terminal state, repair, and managed-worktree attachment, integration, and removal. It has no assignment command or Pi-session concept; creation defaults to memory, worktrees are opt-in, recoverable worktree risks require paired force and reason, and JSON replies carry schema version 1.
+`awf effort` exposes exactly schema-2 `new <outcome-title> [--json]`, `list [--json]`, `show <slug> [--json]`, `finish <slug>`, `worktree add <slug> [--base <ref>]`, `worktree remove <slug>`, and `integrate <slug>`. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`, list returns the same objects sorted by slug, and JSON failures keep stdout empty while returning the actionable text error on stderr. Mutation replies are line-oriented and report condition, changed bytes or topology, and next action; there is no rename, standalone memory, lifecycle, repair, combined creation, manual integration, assignment, Pi-session, or force command.
 Origin: ADR-0164
-Revised-by: ADR-0167
+Revised-by: ADR-0167, ADR-0175
 Backing: test

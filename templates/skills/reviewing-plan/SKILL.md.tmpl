@@ -20,6 +20,8 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 
 ## Procedure
 
+Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+
 <!-- awf:section procedure -->
 1. **Identify the plan path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .layout.plansDir }}/` matching the `YYYY-MM-DD-*.md` pattern.
 <!-- awf:end -->
@@ -31,7 +33,7 @@ This skill owns the post-write **full** plan review only. The plan↔ADR resync 
 <!-- awf:section dispatch-subagent -->
 {{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "plan"`.** Put the complete reviewer brief in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. The brief must include:
 {{ else }}3. **Dispatch the `plan-reviewer` subagent.** Provide it a brief that includes the following. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.
-{{ end }}   - The absolute plan path.
+{{ end }}   - The absolute plan path, effort slug, and exact `.awf/efforts/<slug>/memory.md` path, with an explicit instruction that the reviewer must not edit memory.
    - The declared per-phase ownership, phase context, closing subjects, and any helper partitions alongside created/modified paths, so review assesses the same phase boundary.
    - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
    - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the non-direct invariant summaries, additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.

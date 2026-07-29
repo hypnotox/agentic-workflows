@@ -1,50 +1,30 @@
 package effort
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 )
 
-func TestEffortMemoryTruthAndIdempotence(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openEffortService(t, root, time.Now().UTC())
-	if _, err := service.New("Memory", false); err != nil {
-		t.Fatal(err)
+func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
+	raw := string(memorySkeleton("coherent-effort"))
+	phrases := []string{
+		"Effort: coherent-effort\n",
+		"Phase: Not started.",
+		"Next: Record the next concrete action.",
+		"Updated: Not yet updated.",
+		"## Brief",
+		"Describe the intended outcome.",
+		"## Decisions",
+		"Record settled implementation decisions.",
+		"## Handoff log",
+		"No handoffs recorded.",
 	}
-	if present, err := service.paths.memoryTruth(idA); err != nil || present {
-		t.Fatalf("absent memory = %v, %v", present, err)
-	}
-	path, _, err := service.Memory(idA)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, err := service.Memory(idA); err != nil {
-		t.Fatalf("owned memory is not idempotent: %v", err)
-	}
-	writeEffortFile(t, path, "Effort: other\n")
-	if _, err := service.paths.memoryTruth(idA); err == nil {
-		t.Fatal("foreign memory accepted as truth")
-	}
-	if err := os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(path, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.paths.memoryTruth(idA); err == nil || !strings.Contains(err.Error(), "file-type") {
-		t.Fatalf("directory memory = %v", err)
-	}
-	if err := os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-	outside := filepath.Join(t.TempDir(), "outside")
-	writeEffortFile(t, outside, "Effort: "+idA+"\n")
-	if err := os.Symlink(outside, path); err == nil {
-		if _, err := service.paths.memoryTruth(idA); err == nil {
-			t.Fatal("symlink memory accepted")
+	cursor := 0
+	for _, phrase := range phrases {
+		index := strings.Index(raw[cursor:], phrase)
+		if index < 0 {
+			t.Fatalf("memory skeleton missing ordered phrase %q:\n%s", phrase, raw)
 		}
+		cursor += index + len(phrase)
 	}
 }

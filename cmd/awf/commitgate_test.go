@@ -155,7 +155,7 @@ func TestCleanCommitLines(t *testing.T) {
 
 // cite is the working-memory prefix followed by a concrete name, built rather
 // than written out so this file does not carry the shape the gate rejects.
-func cite() string { return dir + "effort.md" }
+func cite() string { return dir + "concrete-effort/memory.md" }
 
 // invariant: tooling/quality-gates:memory-citation-gate
 func TestRunCommitGateCitationScan(t *testing.T) {
@@ -177,10 +177,10 @@ func TestRunCommitGateCitationScan(t *testing.T) {
 		root := citingProject(t)
 		var out bytes.Buffer
 		err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out)
-		if err == nil || !strings.Contains(err.Error(), "working-memory file") {
+		if err == nil || !strings.Contains(err.Error(), "effort-owned memory file") {
 			t.Fatalf("citing body must be rejected: %v", err)
 		}
-		if !strings.Contains(out.String(), "line 3") || !strings.Contains(out.String(), "effort.md") {
+		if !strings.Contains(out.String(), "line 3") || !strings.Contains(out.String(), "concrete-effort/memory.md") {
 			t.Errorf("diagnostic must name the reference: %q", out.String())
 		}
 	})
@@ -195,7 +195,7 @@ func TestRunCommitGateCitationScan(t *testing.T) {
 		// Assert the citation error specifically: a bare non-nil check would also
 		// pass if the config never parsed, which is the opposite of the point.
 		err := runCommitGate(root, writeMsg(t, "feat: a\n\nsee "+cite()+"\n"), nil, &out)
-		if err == nil || !strings.Contains(err.Error(), "working-memory file") {
+		if err == nil || !strings.Contains(err.Error(), "effort-owned memory file") {
 			t.Errorf("a configured exemption must not reach the commit-message scan: %v", err)
 		}
 	})

@@ -54,19 +54,4 @@ func platformOpenRegularNoFollow(path string, create bool, mode os.FileMode) (*o
 
 func validateOpenedFile(string, *os.File) error { return nil }
 
-func validateLockPermissions(path string, info os.FileInfo) error {
-	if info.Mode().Perm() != 0o600 {
-		return safety("unsafe-lock", path, fmt.Errorf("mode is %o, want 600", info.Mode().Perm()))
-	}
-	return nil
-}
-
-func lockRepositoryFile(file *os.File) error {
-	return unix.Flock(int(file.Fd()), unix.LOCK_EX)
-}
-
-func unlockRepositoryFile(file *os.File) error {
-	return unix.Flock(int(file.Fd()), unix.LOCK_UN)
-}
-
 func openDirectoryForSync(path string) (durableFile, error) { return os.Open(path) }

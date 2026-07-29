@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -15,18 +14,24 @@ import (
 
 type Options struct {
 	Runner Runner
-	Clock  func() time.Time
 }
 
-var makeManagedDir = os.MkdirAll
+// Result is the line-oriented mutation protocol.
+type Result struct {
+	Condition       string
+	ChangedTopology bool
+	NextAction      string
+}
+
+func (r Result) String() string {
+	return fmt.Sprintf("%s; changed topology: %s; next action: %s", r.Condition, yesNo(r.ChangedTopology), r.NextAction)
+}
 
 type Manager struct {
-	ctx          context.Context
-	roots        awfgit.ControlRoots
-	efforts      *effort.Service
-	run          Runner
-	clock        func() time.Time
-	clearPartial func(string, string) error
+	ctx     context.Context
+	roots   awfgit.ControlRoots
+	efforts *effort.Service
+	run     Runner
 }
 
 func Open(ctx context.Context, invoking string, options Options) (*Manager, error) {
@@ -38,32 +43,27 @@ func Open(ctx context.Context, invoking string, options Options) (*Manager, erro
 	if run == nil {
 		run = nativeRunner
 	}
-	service, err := effort.Open(ctx, invoking, effort.Options{Clock: options.Clock, Git: func(ctx context.Context, root string, args ...string) ([]byte, error) {
-		return run(ctx, root, args...)
-	}})
-	if err != nil {
+	service, err := effort.Open(ctx, invoking, effort.Options{})
+	if err != nil { // coverage-ignore: the same control-root proof just succeeded; a second resolution failure requires a concurrent repository-identity race
 		return nil, err
 	}
-	clock := options.Clock
-	if clock == nil {
-		clock = time.Now
-	}
-	return &Manager{ctx: ctx, roots: roots, efforts: service, run: run, clock: clock, clearPartial: service.ClearPartial}, nil
+	return &Manager{ctx: ctx, roots: roots, efforts: service, run: run}, nil
 }
-func (m *Manager) managed(id string) (string, error) {
+
+func (m *Manager) managed(slug string) (string, error) {
 	root, err := m.roots.ResidentRoot(awfgit.ResidentWorktrees)
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(root, id), nil
+	return filepath.Join(root, slug), nil
 }
-func branch(id string) string                 { return "awf/" + id }
-func approved(force bool, reason string) bool { return force && strings.TrimSpace(reason) != "" }
+
+func branch(slug string) string { return "awf/" + slug }
+
 func (m *Manager) validateManagedTarget(path string) error {
 	if _, err := m.roots.ResidentRoot(awfgit.ResidentWorktrees); err != nil {
 		return err
 	}
-	// coverage-ignore: platform path-swap fault injection.
 	if err := safeManagedPath(path); err != nil {
 		return err
 	}
@@ -77,8 +77,6 @@ func (m *Manager) validateManagedTarget(path string) error {
 	return nil
 }
 
-// validateLiveInvokingCheckout is deliberately repeated at mutation boundaries.
-// The checkout may have been replaced after Open or after an earlier probe.
 func (m *Manager) validateLiveInvokingCheckout() error {
 	if err := safeManagedPath(m.roots.InvokingRoot); err != nil {
 		return &awfgit.HardSafetyError{Category: "repository-identity", Path: m.roots.InvokingRoot, Err: err}
@@ -104,320 +102,279 @@ func (m *Manager) operationFree(path string) error {
 			candidate = filepath.Join(path, candidate)
 		}
 		if _, err = os.Lstat(candidate); err == nil {
-			return &RefusalError{Category: "operation", Risk: "checkout has an in-progress Git operation", Forceable: false}
-		} else if !errors.Is(err, os.ErrNotExist) {
+			return refusal("operation", "checkout has an in-progress Git operation", false, "finish or abort the native Git operation, then retry")
+		} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 			return err
 		}
 	}
 	return nil
 }
-func (m *Manager) settleAddFailure(id string, path string, cause error) error {
-	regs, verifyErr := registrations(m.ctx, m.run, m.roots.InvokingRoot)
-	mutated := false
-	if verifyErr == nil {
-		for _, r := range regs {
-			if filepath.Clean(r.path) == filepath.Clean(path) || r.branch == "refs/heads/"+branch(id) {
-				mutated = true
-				break
-			}
-		}
-		// Only a positive ENOENT proves that the checkout was not created.
-		// Any other stat result leaves durable evidence for repair.
-		if !mutated {
-			if _, statErr := managedLstat(path); statErr == nil {
-				mutated = true
-			} else if !errors.Is(statErr, os.ErrNotExist) {
-				return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failure is unverifiable: %w (cause: %w)", statErr, cause)}
-			}
-		}
-	}
-	// coverage-ignore: native Git topology race during failure verification.
-	if verifyErr != nil || mutated {
-		return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("worktree add failed before registration could settle: %w", cause)}
-	}
-	// coverage-ignore: evidence-directory fsync fault injection.
-	if clearErr := m.clearPartial(id, "worktree"); clearErr != nil {
-		return &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence after failed add: %w", clearErr)}
-	}
-	return cause
-}
 
-func (m *Manager) Add(id, base string) (effort.Record, error) {
-	record, err := m.efforts.Show(id)
-	if err != nil {
-		return effort.Record{}, err
+func (m *Manager) Add(slug, base string) (Result, error) {
+	if _, err := m.efforts.Show(slug); err != nil {
+		return Result{}, err
 	}
-	if record.Worktree != nil {
-		return effort.Record{}, &RefusalError{Category: "topology", Risk: "effort already records a managed worktree", Forceable: false}
-	}
-	path, err := m.managed(id)
+	path, err := m.managed(slug)
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, err
 	}
 	if _, err := managedLstat(path); err == nil {
-		// Do not classify a hostile resident path as an ordinary retryable
-		// collision. The path is manager-owned and must never be a symlink or
-		// another file type, even before Git is asked to create it.
-		if err := m.validateManagedTarget(path); err != nil {
-			return effort.Record{}, err
-		}
-		return effort.Record{}, &RefusalError{Category: "topology", Risk: "managed path already exists", Forceable: true}
+		return Result{}, refusal("topology", "managed path already exists", false, "inspect the existing path and retry add only after safe manual cleanup")
 	} else if !errors.Is(err, os.ErrNotExist) {
-		return effort.Record{}, err
+		return Result{}, err
+	}
+	regs, err := registrations(m.ctx, m.run, m.roots.InvokingRoot)
+	if err != nil {
+		return Result{}, err
+	}
+	wantBranch := "refs/heads/" + branch(slug)
+	for _, registration := range regs {
+		if filepath.Clean(registration.path) == filepath.Clean(path) || registration.branch == wantBranch {
+			return Result{}, refusal("topology", "managed registration or branch is already present", false, "inspect `git worktree list --porcelain` and retry after safe cleanup")
+		}
+	}
+	exists, err := branchExists(m.ctx, m.run, m.roots.InvokingRoot, branch(slug))
+	if err != nil {
+		return Result{}, err
+	}
+	if exists {
+		return Result{}, refusal("topology", "managed branch already exists", false, "inspect the branch and retry after safe cleanup")
+	}
+	if err := m.operationFree(m.roots.InvokingRoot); err != nil {
+		return Result{}, err
 	}
 	if base == "" {
 		base = "HEAD"
 	}
 	full, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, base)
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, err
 	}
-	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "worktree", Base: full, Branch: branch(id), Path: path, CommonDir: filepath.Clean(m.roots.CommonDir)}
-	if err := m.efforts.RecordPartial(evidence); err != nil {
-		return effort.Record{}, fmt.Errorf("record worktree partial evidence: %w", err)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil { // coverage-ignore: ResidentRoot proved the owned resident ancestry; failure requires a concurrent namespace or storage fault
+		return Result{}, fmt.Errorf("create managed worktree root: %w", err)
 	}
-	if err := makeManagedDir(filepath.Dir(path), 0o700); err != nil {
-		return effort.Record{}, m.settleAddFailure(id, path, err)
-	}
-	// Evidence is published before the final identity check so a checkout swap
-	// cannot turn an accepted preflight into a foreign Git mutation.
 	if err := m.validateLiveInvokingCheckout(); err != nil {
-		// coverage-ignore: evidence cleanup durability fault
-		if clearErr := m.efforts.ClearPartial(id, "worktree"); clearErr != nil {
-			return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence after identity refusal: %w", clearErr)}
-		}
-		return effort.Record{}, err
+		return Result{}, err
 	}
-	if err := runWorktreeAdd(m.ctx, m.run, m.roots.InvokingRoot, branch(id), path, full); err != nil {
-		return effort.Record{}, m.settleAddFailure(id, path, err)
+	if _, err := m.run(m.ctx, m.roots.InvokingRoot, "worktree", "add", "-b", branch(slug), path, full); err != nil {
+		changed := m.topologyPresent(slug, path)
+		return Result{}, refusalCause("add", "git worktree add failed", changed, "inspect actual Git topology and retry add, or clean only the named path, registration, and branch with native Git", err)
 	}
-	result, err := m.efforts.AttachWorktree(id, full)
-	if err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("attach worktree record: %w", err)}
+	if err := exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, wantBranch); err != nil {
+		return Result{}, refusalCause("repository-identity", "Git add returned without exact managed registration", true, "inspect actual Git topology and perform safe native-Git cleanup before retrying", err)
 	}
-	if err := m.efforts.ClearPartial(id, "worktree"); err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree", Err: fmt.Errorf("settle worktree evidence: %w", err)}
-	}
-	return result, nil
-}
-func runWorktreeAdd(ctx context.Context, run Runner, root, name, path, full string) error {
-	_, err := run(ctx, root, "worktree", "add", "-b", name, path, full)
-	return err
+	return Result{Condition: "managed worktree added for " + slug, ChangedTopology: true, NextAction: "continue the effort in " + path}, nil
 }
 
-func (m *Manager) Integrate(id string, force bool, reason string) (effort.Record, error) {
-	record, err := m.efforts.Show(id)
-	if err != nil {
-		return effort.Record{}, err
+func (m *Manager) topologyPresent(slug, path string) bool {
+	if _, err := managedLstat(path); err == nil {
+		return true
 	}
-	if record.Worktree == nil {
-		return effort.Record{}, errors.New("effort has no managed worktree")
-	}
-	path, err := m.managed(id)
-	if err != nil {
-		return effort.Record{}, err
-	}
-	if err = m.validateManagedTarget(path); err != nil {
-		return effort.Record{}, err
-	}
-	if filepath.Clean(m.roots.InvokingRoot) == filepath.Clean(path) {
-		return effort.Record{}, &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("cannot integrate from managed worktree")}
-	}
-	if err = exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(id)); err != nil {
-		return effort.Record{}, err
-	}
-	if err = m.operationFree(m.roots.InvokingRoot); err != nil {
-		return effort.Record{}, err
-	}
-	if err = status(m.ctx, m.run, m.roots.InvokingRoot); err != nil {
-		if r, ok := errors.AsType[*RefusalError](err); ok && r.Forceable && approved(force, reason) {
-		} else {
-			return effort.Record{}, err
+	regs, err := registrations(m.ctx, m.run, m.roots.InvokingRoot)
+	if err == nil {
+		for _, registration := range regs {
+			if filepath.Clean(registration.path) == filepath.Clean(path) || registration.branch == "refs/heads/"+branch(slug) {
+				return true
+			}
 		}
 	}
-	targetRaw, err := m.run(m.ctx, m.roots.InvokingRoot, "symbolic-ref", "-q", "--short", "HEAD")
-	if err != nil {
-		return effort.Record{}, &RefusalError{Category: "topology", Risk: "invoking checkout is detached", Forceable: false}
-	}
-	target := strings.TrimSpace(string(targetRaw))
-	if target == branch(id) {
-		return effort.Record{}, &RefusalError{Category: "topology", Risk: "invoking checkout is the effort branch", Forceable: false}
-	}
-	tip, err := resolve(m.ctx, m.run, path, "HEAD")
-	if err != nil {
-		return effort.Record{}, err
-	}
-	targetTip, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
-	if err != nil {
-		return effort.Record{}, err
-	}
-	ff, err := ancestor(m.ctx, m.run, m.roots.InvokingRoot, targetTip, tip)
-	if err != nil {
-		return effort.Record{}, err
-	}
-	disposition := effort.IntegrationMerge
-	var args []string
-	if ff {
-		args = []string{"merge", "--ff-only", branch(id)}
-		disposition = effort.IntegrationFastForward
-	} else {
-		args = []string{"merge", "--no-ff", "-m", "Merge effort " + id, branch(id)}
-	}
-	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "integration", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), Tip: tip, TargetPath: filepath.Clean(m.roots.InvokingRoot), TargetBranch: target, Integration: disposition}
-	if err := m.efforts.RecordPartial(evidence); err != nil {
-		return effort.Record{}, fmt.Errorf("record integration partial evidence: %w", err)
-	}
-	if err := m.validateLiveInvokingCheckout(); err != nil {
-		_ = m.efforts.ClearPartial(id, "integration")
-		return effort.Record{}, err
-	}
-	if _, err = m.run(m.ctx, m.roots.InvokingRoot, args...); err != nil {
-		if settleErr := m.efforts.ClearPartial(id, "integration"); settleErr != nil {
-			return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("settle failed integration evidence after merge failure: %w", settleErr)}
-		}
-		return effort.Record{}, &awfgit.HardSafetyError{Category: "merge-conflict", Path: m.roots.InvokingRoot, Err: err}
-	}
-	result, err := m.efforts.SetIntegration(id, disposition)
-	if err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("record integration disposition: %w", err)}
-	}
-	if err := m.efforts.ClearPartial(id, "integration"); err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-integration", Err: fmt.Errorf("settle integration evidence: %w", err)}
-	}
-	return result, nil
+	exists, err := branchExists(m.ctx, m.run, m.roots.InvokingRoot, branch(slug))
+	return err != nil || exists
 }
-func (m *Manager) RecordManualIntegration(id, commit string, force bool, reason string) (effort.Record, error) {
-	record, err := m.efforts.Show(id)
+
+func (m *Manager) Integrate(slug string) (Result, error) {
+	if _, err := m.efforts.Show(slug); err != nil {
+		return Result{}, err
+	}
+	path, err := m.managed(slug)
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, err
 	}
-	if record.Worktree == nil {
-		return effort.Record{}, errors.New("effort has no managed worktree")
+	if filepath.Clean(path) == filepath.Clean(m.roots.InvokingRoot) {
+		return Result{}, refusal("repository-identity", "integration must run from the receiving checkout, not the managed worktree", false, "change to the intended clean target checkout and retry")
 	}
-	path, err := m.managed(id)
+	if err := m.validateManagedTarget(path); err != nil {
+		return Result{}, err
+	}
+	if err := exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(slug)); err != nil {
+		return Result{}, err
+	}
+	if err := m.operationFree(m.roots.InvokingRoot); err != nil {
+		return Result{}, err
+	}
+	if err := status(m.ctx, m.run, m.roots.InvokingRoot); err != nil {
+		return Result{}, err
+	}
+	targetBranchRaw, err := m.run(m.ctx, m.roots.InvokingRoot, "symbolic-ref", "-q", "--short", "HEAD")
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, refusal("topology", "receiving checkout is detached", false, "check out the intended target branch and retry")
 	}
-	// Validate the confined target before any registration lookup or HEAD
-	// resolution. A swapped checkout must remain pending and untouched.
-	if err = m.validateManagedTarget(path); err != nil {
-		return effort.Record{}, err
+	if strings.TrimSpace(string(targetBranchRaw)) == branch(slug) {
+		return Result{}, refusal("topology", "receiving checkout is the effort branch", false, "change to the intended target branch and retry")
 	}
-	if filepath.Clean(m.roots.InvokingRoot) == filepath.Clean(path) {
-		return effort.Record{}, &awfgit.HardSafetyError{Category: "repository-identity", Path: path, Err: errors.New("cannot record integration from managed worktree")}
-	}
-	if err = exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(id)); err != nil {
-		return effort.Record{}, err
-	}
-	tip, err := resolve(m.ctx, m.run, path, "HEAD")
+	tip, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, branch(slug))
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, err
 	}
-	target, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, commit)
+	target, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, err
 	}
-	ok, err := ancestor(m.ctx, m.run, m.roots.InvokingRoot, tip, target)
+	already, err := ancestor(m.ctx, m.run, m.roots.InvokingRoot, tip, target)
 	if err != nil {
-		return effort.Record{}, err
+		return Result{}, err
 	}
-	if !ok && !approved(force, reason) {
-		return effort.Record{}, &RefusalError{Category: "ancestry", Risk: "named commit does not contain the effort tip", Forceable: true}
+	if already {
+		return Result{Condition: "effort tip is already integrated into the target", ChangedTopology: false, NextAction: "run `awf effort worktree remove " + slug + "` after terminal review is settled"}, nil
 	}
-	return m.efforts.SetIntegration(id, effort.IntegrationManual)
+	fastForward, err := ancestor(m.ctx, m.run, m.roots.InvokingRoot, target, tip)
+	if err != nil {
+		return Result{}, err
+	}
+	if err := m.validateIntegrationFacts(path, slug, target, tip); err != nil {
+		return Result{}, err
+	}
+	if fastForward {
+		if _, err := m.run(m.ctx, m.roots.InvokingRoot, "merge", "--ff-only", branch(slug)); err != nil {
+			return Result{}, refusalCause("integration", "fast-forward failed", m.targetChanged(target), "inspect the receiving checkout and retry only from clean verified topology", err)
+		}
+		return Result{Condition: "target fast-forwarded to effort tip", ChangedTopology: true, NextAction: "settle terminal review, then remove the managed worktree"}, nil
+	}
+	base, err := m.run(m.ctx, m.roots.InvokingRoot, "merge-base", "HEAD", branch(slug))
+	if err != nil || strings.TrimSpace(string(base)) == "" {
+		return Result{}, refusalCause("ancestry", "target and effort have no proven common ancestor", false, "inspect repository and branch identity; do not use --allow-unrelated-histories", err)
+	}
+	if _, err := m.run(m.ctx, m.roots.InvokingRoot, "merge", "--no-ff", "--no-commit", branch(slug)); err != nil {
+		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, "resolve or abort the merge; after resolution run `./awf check --staged`, `./x gate`, commit, and renew terminal review", err)
+	}
+	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check --staged`, `./x gate`, commit the merge, and renew terminal implementation review"}, nil
 }
-func (m *Manager) Remove(id string, force bool, reason string) (effort.Record, error) {
-	record, err := m.efforts.Show(id)
-	if err != nil {
-		return effort.Record{}, err
-	}
-	if record.Worktree == nil {
-		return effort.Record{}, errors.New("effort has no managed worktree")
-	}
-	path, err := m.managed(id)
-	if err != nil {
-		return effort.Record{}, err
-	}
-	if err = m.validateManagedTarget(path); err != nil {
-		return effort.Record{}, err
-	}
-	// Registration is the identity authority. Check it before touching the
-	// filesystem so a missing or foreign path is a non-forceable identity
-	// refusal rather than an incidental filesystem error.
-	if err = exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(id)); err != nil {
-		return effort.Record{}, err
-	}
-	if err = m.operationFree(path); err != nil {
-		return effort.Record{}, err
-	}
-	worktreeRemoveForce := false
-	if err = status(m.ctx, m.run, path); err != nil {
-		if r, ok := errors.AsType[*RefusalError](err); ok && r.Forceable && approved(force, reason) {
-			worktreeRemoveForce = true
-		} else {
-			return effort.Record{}, err
-		}
-	}
-	pending := record.Integration == effort.IntegrationPending
-	if pending && !approved(force, reason) {
-		return effort.Record{}, &RefusalError{Category: "integration", Risk: "pending worktree has no recorded integration", Forceable: true}
-	}
-	branchTip, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, branch(id))
-	if err != nil {
-		return effort.Record{}, err
-	}
-	branchDeleteForce := pending && approved(force, reason)
-	if record.Integration == effort.IntegrationManual {
-		targetTip, targetErr := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
-		if targetErr != nil {
-			return effort.Record{}, targetErr
-		}
-		contained, ancestryErr := ancestor(m.ctx, m.run, m.roots.InvokingRoot, branchTip, targetTip)
-		if ancestryErr != nil {
-			return effort.Record{}, ancestryErr
-		}
-		if !contained && !approved(force, reason) {
-			return effort.Record{}, &RefusalError{Category: "ancestry", Risk: "manual integration does not contain the effort tip", Forceable: true}
-		}
-		if !contained {
-			branchDeleteForce = true
-		}
-	}
-	if pending {
-		worktreeRemoveForce = true
-	}
-	evidence := effort.PartialEvidence{SchemaVersion: 1, EffortID: id, Action: "removal", Branch: branch(id), CommonDir: filepath.Clean(m.roots.CommonDir), WorktreeRemoveForce: worktreeRemoveForce, BranchDeleteForce: branchDeleteForce, BranchTip: branchTip}
-	if err := m.efforts.RecordPartial(evidence); err != nil {
-		return effort.Record{}, fmt.Errorf("record removal partial evidence: %w", err)
-	}
+
+func (m *Manager) validateIntegrationFacts(path, slug, target, tip string) error {
 	if err := m.validateLiveInvokingCheckout(); err != nil {
-		_ = m.efforts.ClearPartial(id, "removal")
-		return effort.Record{}, err
+		return err
 	}
-	removeArgs := []string{"worktree", "remove"}
-	if worktreeRemoveForce {
-		removeArgs = append(removeArgs, "--force")
+	if err := m.validateManagedTarget(path); err != nil {
+		return err
 	}
-	removeArgs = append(removeArgs, path)
-	if _, err = m.run(m.ctx, m.roots.InvokingRoot, removeArgs...); err != nil {
-		return effort.Record{}, err
+	if err := exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, "refs/heads/"+branch(slug)); err != nil {
+		return err
 	}
-	deleteFlag := "-d"
-	if branchDeleteForce {
-		deleteFlag = "-D"
+	currentTarget, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
+	if err != nil || currentTarget != target {
+		return refusalCause("topology", "target HEAD changed during integration preflight", false, "restart integration from the clean intended target checkout", err)
 	}
-	if err := m.validateLiveInvokingCheckout(); err != nil {
-		return effort.Record{}, err
+	currentTip, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, branch(slug))
+	if err != nil || currentTip != tip {
+		return refusalCause("topology", "effort branch changed during integration preflight", false, "restart integration after the effort writer settles the branch", err)
 	}
-	if _, err = m.run(m.ctx, m.roots.InvokingRoot, "branch", deleteFlag, branch(id)); err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "delete-worktree-branch", Err: fmt.Errorf("delete managed branch: %w", err)}
+	return nil
+}
+
+func (m *Manager) targetChanged(before string) bool {
+	after, err := resolve(m.ctx, m.run, m.roots.InvokingRoot, "HEAD")
+	return err != nil || after != before
+}
+
+func (m *Manager) Remove(slug string) (Result, error) {
+	if _, err := m.efforts.Show(slug); err != nil {
+		return Result{}, err
 	}
-	result, err := m.efforts.RemoveWorktreeMetadata(id, pending)
+	path, err := m.managed(slug)
 	if err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree-removal", Err: fmt.Errorf("clear worktree metadata: %w", err)}
+		return Result{}, err
 	}
-	if err := m.efforts.ClearPartial(id, "removal"); err != nil {
-		return effort.Record{}, &PartialMutationError{EffortID: id, Repair: "record-worktree-removal", Err: fmt.Errorf("settle removal evidence: %w", err)}
+	if filepath.Clean(path) == filepath.Clean(m.roots.InvokingRoot) {
+		return Result{}, refusal("repository-identity", "removal must run from the intended target checkout", false, "change to the target checkout and retry")
 	}
-	return result, nil
+	if err := m.operationFree(m.roots.InvokingRoot); err != nil {
+		return Result{}, err
+	}
+	if err := status(m.ctx, m.run, m.roots.InvokingRoot); err != nil {
+		return Result{}, err
+	}
+	changed := false
+	for {
+		pathPresent := false
+		if _, statErr := managedLstat(path); statErr == nil {
+			pathPresent = true
+		} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+			return Result{}, statErr
+		}
+		regs, regsErr := registrations(m.ctx, m.run, m.roots.InvokingRoot)
+		if regsErr != nil {
+			return Result{}, regsErr
+		}
+		var exact *registration
+		for index := range regs {
+			registration := &regs[index]
+			if filepath.Clean(registration.path) == filepath.Clean(path) {
+				if exact != nil || registration.branch != "refs/heads/"+branch(slug) || registration.detached || registration.bare {
+					return Result{}, refusal("repository-identity", "managed path registration is not exact", changed, "inspect native Git topology and clean it manually without discarding work")
+				}
+				exact = registration
+			}
+			if registration.branch == "refs/heads/"+branch(slug) && filepath.Clean(registration.path) != filepath.Clean(path) {
+				return Result{}, refusal("repository-identity", "managed branch is registered at a foreign path", changed, "inspect native Git topology and clean it manually without discarding work")
+			}
+		}
+		branchPresent, branchErr := branchExists(m.ctx, m.run, m.roots.InvokingRoot, branch(slug))
+		if branchErr != nil {
+			return Result{}, branchErr
+		}
+		if !pathPresent && exact == nil && !branchPresent {
+			return Result{Condition: "managed worktree topology is absent", ChangedTopology: changed, NextAction: "continue to retrospective, then finish the effort"}, nil
+		}
+		if branchPresent {
+			merged, ancestryErr := ancestor(m.ctx, m.run, m.roots.InvokingRoot, branch(slug), "HEAD")
+			if ancestryErr != nil {
+				return Result{}, ancestryErr
+			}
+			if !merged {
+				return Result{}, refusal("ancestry", "managed branch is not merged into the target", changed, "integrate and settle terminal review, or inspect and discard explicitly with native Git")
+			}
+		}
+		if pathPresent {
+			if err := m.validateManagedTarget(path); err != nil {
+				return Result{}, err
+			}
+			if err := m.operationFree(path); err != nil {
+				return Result{}, err
+			}
+			if err := status(m.ctx, m.run, path); err != nil {
+				return Result{}, refusalCause("cleanliness", "managed worktree is dirty", changed, "commit or explicitly inspect and discard changes with native Git, then retry ordinary removal", err)
+			}
+			if exact != nil {
+				if _, err := m.run(m.ctx, m.roots.InvokingRoot, "worktree", "remove", path); err != nil {
+					return Result{}, refusalCause("removal", "native Git worktree removal failed", changed, "inspect actual topology and retry ordinary removal", err)
+				}
+			} else {
+				if err := os.RemoveAll(path); err != nil { // coverage-ignore: path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault
+					return Result{}, refusalCause("removal", "proven unregistered managed path cleanup failed", changed, "inspect the path and retry ordinary removal", err)
+				}
+			}
+			changed = true
+			continue
+		}
+		if exact != nil {
+			if _, err := m.run(m.ctx, m.roots.InvokingRoot, "worktree", "prune", "--expire", "now"); err != nil {
+				return Result{}, refusalCause("removal", "prunable registration cleanup failed", changed, "inspect `git worktree list --porcelain` and retry", err)
+			}
+			changed = true
+			continue
+		}
+		if branchPresent {
+			if _, err := m.run(m.ctx, m.roots.InvokingRoot, "branch", "-d", branch(slug)); err != nil {
+				return Result{}, refusalCause("removal", "safe managed branch deletion failed", changed, "inspect branch ancestry and retry without force", err)
+			}
+			changed = true
+		}
+	}
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
 }

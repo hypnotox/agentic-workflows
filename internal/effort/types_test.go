@@ -1,106 +1,121 @@
 package effort
 
 import (
-	"errors"
-	"os"
-	"path/filepath"
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 )
 
-// invariant: tooling/effort-management:effort-record-authority
-func TestEffortPersistedValidationMatrix(t *testing.T) {
-	now := time.Date(2026, 7, 27, 0, 0, 0, 0, time.UTC)
-	valid := persistedRecord{SchemaVersion: 1, ID: idA, Title: "Title", State: StateActive, CreatedAt: now, UpdatedAt: now, Integration: IntegrationNone}
-	mutations := map[string]func(*persistedRecord){
-		"schema":          func(r *persistedRecord) { r.SchemaVersion = 2 },
-		"id-format":       func(r *persistedRecord) { r.ID = "bad" },
-		"id-path":         func(r *persistedRecord) { r.ID = idB },
-		"blank-title":     func(r *persistedRecord) { r.Title = " " },
-		"untrimmed-title": func(r *persistedRecord) { r.Title = " Title" },
-		"state":           func(r *persistedRecord) { r.State = "unknown" },
-		"created-zero":    func(r *persistedRecord) { r.CreatedAt = time.Time{} },
-		"created-non-UTC": func(r *persistedRecord) { r.CreatedAt = now.In(time.FixedZone("local", 3600)) },
-		"updated-zero":    func(r *persistedRecord) { r.UpdatedAt = time.Time{} },
-		"updated-non-UTC": func(r *persistedRecord) { r.UpdatedAt = now.In(time.FixedZone("local", 3600)) },
-		"updated-before":  func(r *persistedRecord) { r.UpdatedAt = now.Add(-time.Second) },
-		"integration":     func(r *persistedRecord) { r.Integration = "unknown" },
-		"worktree-branch": func(r *persistedRecord) {
-			r.Worktree = &Worktree{Branch: "wrong", Base: strings.Repeat("a", 40), AttachedAt: now}
-			r.Integration = IntegrationPending
-		},
-		"worktree-base": func(r *persistedRecord) {
-			r.Worktree = &Worktree{Branch: "awf/" + idA, Base: "bad", AttachedAt: now}
-			r.Integration = IntegrationPending
-		},
-		"worktree-time": func(r *persistedRecord) {
-			r.Worktree = &Worktree{Branch: "awf/" + idA, Base: strings.Repeat("a", 40)}
-			r.Integration = IntegrationPending
-		},
+func TestProtocol2StaticStateAndPublicObject(t *testing.T) {
+	// invariant: tooling/effort-management:effort-record-authority
+	created := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	record := Record{
+		SchemaVersion: SchemaVersion,
+		ID:            "018f47a0-7b3d-4c52-8f1a-123456789abc",
+		Slug:          "ship-protocol-2",
+		Title:         "Ship protocol 2",
+		CreatedAt:     created,
+		MemoryPath:    ".awf/efforts/ship-protocol-2/memory.md",
 	}
-	for name, mutate := range mutations {
-		t.Run(name, func(t *testing.T) {
-			record := valid
-			mutate(&record)
-			if err := validatePersisted(record, idA); err == nil {
-				t.Fatal("invalid record accepted")
-			}
-		})
+
+	staticRaw, err := json.Marshal(persisted(record))
+	if err != nil {
+		t.Fatal(err)
 	}
-	if got := logical(valid); got.ID != idA || persisted(got).ID != idA {
-		t.Fatal("logical/persisted projection changed")
+	wantStatic := `{"schemaVersion":2,"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"ship-protocol-2","title":"Ship protocol 2","createdAt":"2026-07-29T12:00:00Z"}`
+	if string(staticRaw) != wantStatic {
+		t.Fatalf("static state = %s\nwant         = %s", staticRaw, wantStatic)
+	}
+	if strings.Contains(string(staticRaw), "memoryPath") {
+		t.Fatalf("static state exposed public path: %s", staticRaw)
+	}
+
+	publicRaw, err := json.Marshal(record)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPublic := `{"id":"018f47a0-7b3d-4c52-8f1a-123456789abc","slug":"ship-protocol-2","title":"Ship protocol 2","createdAt":"2026-07-29T12:00:00Z","memoryPath":".awf/efforts/ship-protocol-2/memory.md"}`
+	if string(publicRaw) != wantPublic {
+		t.Fatalf("public effort = %s\nwant          = %s", publicRaw, wantPublic)
 	}
 }
 
-func TestEffortStoreRejectsUnsafeEntriesAndJSONTails(t *testing.T) {
-	corrupt := &CorruptError{Path: "p", Err: os.ErrInvalid}
-	if !strings.Contains(corrupt.Error(), "p") || !errors.Is(corrupt, os.ErrInvalid) {
-		t.Fatalf("corrupt error contract = %v", corrupt)
+func TestSlugDerivationAndValidation(t *testing.T) {
+	tests := []struct {
+		title string
+		want  string
+	}{
+		{title: "Ship Protocol 2", want: "ship-protocol-2"},
+		{title: "  Alpha---BETA___42  ", want: "alpha-beta-42"},
+		{title: "a🙂界b", want: "a-b"},
+		{title: "one\t\n two", want: "one-two"},
+		{title: "123", want: "123"},
 	}
-	root := initEffortRepo(t)
-	service := openEffortService(t, root, time.Now().UTC())
-	if _, err := service.New("List", false); err != nil {
+	for _, test := range tests {
+		t.Run(test.title, func(t *testing.T) {
+			got, err := deriveSlug(test.title)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != test.want {
+				t.Fatalf("deriveSlug(%q) = %q, want %q", test.title, got, test.want)
+			}
+			if err := validateSlug(got); err != nil {
+				t.Fatalf("derived slug is invalid: %v", err)
+			}
+		})
+	}
+
+	for _, title := range []string{
+		"界🙂",
+		strings.Repeat("a", 64),
+		string([]byte{0xff}),
+	} {
+		t.Run("reject-title", func(t *testing.T) {
+			_, err := deriveSlug(title)
+			if err == nil || !strings.Contains(err.Error(), "shorter outcome title with ASCII words or digits") {
+				t.Fatalf("error = %v, want actionable ASCII-title repair", err)
+			}
+		})
+	}
+
+	for _, slug := range []string{"", "A", "a_b", "a/b", ".", "..", "a-", "-a", strings.Repeat("a", 64)} {
+		t.Run("reject-slug-"+slug, func(t *testing.T) {
+			if err := validateSlug(slug); err == nil {
+				t.Fatalf("validateSlug(%q) succeeded", slug)
+			}
+		})
+	}
+}
+
+func TestPersistedProtocol2Validation(t *testing.T) {
+	created := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
+	valid := persistedRecord{
+		SchemaVersion: SchemaVersion,
+		ID:            "018f47a0-7b3d-4c52-8f1a-123456789abc",
+		Slug:          "valid-slug",
+		Title:         "Valid slug",
+		CreatedAt:     created,
+	}
+	if err := validatePersisted(valid, "valid-slug"); err != nil {
 		t.Fatal(err)
 	}
-	efforts := filepath.Join(root, ".awf", "efforts")
-	if err := os.Mkdir(filepath.Join(efforts, "ignored-dir"), 0o700); err != nil {
-		t.Fatal(err)
+
+	mutations := map[string]func(*persistedRecord){
+		"schema":    func(r *persistedRecord) { r.SchemaVersion = 1 },
+		"uuid":      func(r *persistedRecord) { r.ID = "not-a-uuid" },
+		"slug":      func(r *persistedRecord) { r.Slug = "other-slug" },
+		"title":     func(r *persistedRecord) { r.Title = " " },
+		"createdAt": func(r *persistedRecord) { r.CreatedAt = time.Time{} },
 	}
-	if records, err := service.List(); err != nil || len(records) != 1 {
-		t.Fatalf("directory entry affected list: %#v, %v", records, err)
-	}
-	writeEffortFile(t, filepath.Join(efforts, "bad.json"), `{}`)
-	if _, err := service.List(); err == nil {
-		t.Fatal("invalid filename accepted")
-	}
-	if err := os.Remove(filepath.Join(efforts, "bad.json")); err != nil {
-		t.Fatal(err)
-	}
-	outside := filepath.Join(t.TempDir(), "outside")
-	writeEffortFile(t, outside, `{}`)
-	if err := os.Symlink(outside, filepath.Join(efforts, "bad-link")); err == nil {
-		if _, err := service.List(); err == nil {
-			t.Fatal("symlinked effort entry accepted")
-		}
-		if err := os.Remove(filepath.Join(efforts, "bad-link")); err != nil {
-			t.Fatal(err)
-		}
-	}
-	path := filepath.Join(efforts, idA+".json")
-	raw, _ := os.ReadFile(path)
-	writeEffortFile(t, path, string(raw)+` {}`)
-	if _, err := service.Show(idA); err == nil {
-		t.Fatal("multiple JSON values accepted")
-	}
-	if _, err := service.Show("bad"); err == nil {
-		t.Fatal("invalid requested ID accepted")
-	}
-	writeEffortFile(t, path, schemaRecordJSON(time.Now().UTC(), "null", "none"))
-	if err := service.store.replace(Record{ID: idA}, false); !errors.Is(err, os.ErrExist) {
-		t.Fatalf("exclusive replace = %v", err)
-	}
-	if err := service.store.replace(Record{ID: idB}, false); err == nil {
-		t.Fatal("invalid replacement accepted")
+	for name, mutate := range mutations {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			mutate(&candidate)
+			if err := validatePersisted(candidate, "valid-slug"); err == nil {
+				t.Fatal("invalid state accepted")
+			}
+		})
 	}
 }

@@ -13,11 +13,11 @@ Invoke only after brainstorming has settled the design and concluded that the ch
 
 ## Procedure
 
-1. Re-read the settled design brief and the applicable current-state authority. Per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries. Do not introduce design choices that brainstorming did not settle.
+1. Before mutation, classify and validate continuity. A minimal simple fix uses no effort. A concrete non-minimal outcome must already have exactly one immutable slugged effort that always owns `.awf/efforts/<slug>/memory.md`; confirm `Effort: <slug>`, carry the exact path, and preserve one user-managed writer. Repository sources and current-state documentation outrank the checkpoint, helpers never edit shared memory, and standalone memory is forbidden. Re-read the settled design brief and the applicable current-state authority. Per `{{ .layout.maintainableCodeDesign }}`, assess bounded enabling refactoring before editing and preserve settled boundaries. Do not introduce design choices that brainstorming did not settle.
 2. Implement only the agreed change. Add or update focused tests, and keep documentation current in the same change.
 3. Run the project's required formatting and verification commands. Fix the cause of every failure; do not weaken expected behavior.
 4. Follow the project's commit discipline unless the caller explicitly requires a larger authority batch or forbids commits.
-5. When the effort is memory-backed, after each independently resumable committed and reviewed change run the routine checkpoint below before continuing; checkpoint-less small efforts skip it.
+5. For an effort-backed outcome, after each independently resumable committed and reviewed change run the routine checkpoint below before continuing; a minimal simple fix remains effort-free.
 
 <!-- awf:include checkpoint-routine -->
 

@@ -1234,11 +1234,37 @@ func TestAgentsDocGuide(t *testing.T) {
 	}
 }
 
-// TestWorkingMemorySingleHomeSurfaces asserts the ADR-0157 canonical-home
-// shape: the workflow doc carries the working-memory protocol while the guide
-// and the two checkpoint-partial-carrying skill renders (routine via
-// executing-plans, approval via brainstorming) carry only the pointer to it.
+// TestWorkingMemorySingleHomeSurfaces asserts the workflow doc remains the
+// detailed protocol home while guides and skills carry executable routing.
 // invariant: rendering/guide-and-doc-templates:working-memory-single-home
+func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{},
+		"skills":               map[string]bool{"brainstorming": true, "reviewing-impl": true, "retrospective": true},
+		"targetSessionHandoff": true,
+	}
+	workflow := renderGolden(t, "docs/workflow.md.tmpl", data)
+	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", data)
+	routine := renderSkillGolden(t, "executing-plans", data)
+	approval := renderSkillGolden(t, "brainstorming", data)
+	for label, body := range map[string]string{"workflow": workflow, "guide": guide, "routine": routine, "approval": approval} {
+		if !strings.Contains(body, ".awf/efforts/<slug>/memory.md") {
+			t.Errorf("%s missing unified owned-memory path", label)
+		}
+		if strings.Contains(body, ".awf/memory/") {
+			t.Errorf("%s retains standalone memory path", label)
+		}
+	}
+	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decisions`", "`## Handoff log`", "awf effort finish <slug>"} {
+		if !strings.Contains(workflow, detailed) {
+			t.Errorf("workflow protocol missing %q", detailed)
+		}
+	}
+	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
+		t.Error("guide or routine skill duplicated the workflow document's detailed skeleton")
+	}
+}
 
 func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 	data := map[string]any{

@@ -48,7 +48,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 ## Procedure
 
-Pick the status transition, then:
+Pick the status transition, then carry the same verified effort slug and exact `.awf/efforts/<slug>/memory.md` path. A lifecycle child or reviewer never edits shared memory; repository and current-state authority outrank it, one user-managed writer remains responsible, and standalone memory is forbidden.
 
 <!-- awf:edit procedure-status-edit: default; create .awf/skills/parts/adr-lifecycle/procedure-status-edit.md to override -->
 1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; state-sequence: <n>; operations: <operation-list>`. Repeat the frozen digest on status events and use the next sequence `awf check` reports.

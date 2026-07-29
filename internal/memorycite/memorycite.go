@@ -16,19 +16,16 @@ import (
 	"strings"
 )
 
-// dir is the working-memory directory prefix every citation starts with.
-const dir = ".awf/memory/"
+// dir is the unified effort-resident prefix every owned-memory citation starts
+// with. A bare directory or an angle-bracket placeholder below it is durable
+// prose; only a concrete slug followed by the exact memory basename is banned.
+const dir = ".awf/efforts/"
+const memoryBase = "memory.md"
 
-// terminators end a path segment: a separator, any ASCII whitespace character,
-// or a quoting character that commonly closes an inline mention. The whitespace
-// set is the full ASCII one so the shell approximation used to sweep a corpus
-// (which spells it as the POSIX space class) stays exactly equivalent. Newline
-// is absent because ScanText has already split on it.
-const terminators = "/ \t\v\f\r`\"'"
-
-// ignoreFile is the one concrete name that is not a citation: the directory's
-// self-ignoring gitignore file, which prose legitimately names.
-const ignoreFile = ".gitignore"
+// terminators bound a path mention in prose, links, and code spans. Slash is
+// included so a reference to the owned file remains a citation even when prose
+// appends another path component.
+const terminators = "/ \t\v\f\r`\"'()[]{}<>;,!?"
 
 // Reference is one citation, with a 1-based line number.
 type Reference struct {
@@ -63,15 +60,16 @@ type Finding struct {
 // label such as the name of the message it is scanning.
 func ScanText(path string, b []byte) []Reference {
 	var out []Reference
-	for i, line := range strings.Split(string(b), "\n") {
+	for i, rawLine := range strings.Split(string(b), "\n") {
+		line := strings.ReplaceAll(rawLine, `\`, "/")
 		for pos := 0; ; {
 			j := strings.Index(line[pos:], dir)
 			if j < 0 {
 				break
 			}
 			after := pos + j + len(dir)
-			if seg, ok := concreteSegment(line[after:]); ok {
-				out = append(out, Reference{Path: path, Line: i + 1, Segment: seg})
+			if segment, ok := concreteOwnedMemory(line[after:]); ok {
+				out = append(out, Reference{Path: path, Line: i + 1, Segment: segment})
 			}
 			pos = after
 		}
@@ -79,32 +77,42 @@ func ScanText(path string, b []byte) []Reference {
 	return out
 }
 
-// concreteSegment reads the path segment following the prefix and reports it
-// only when it names an actual file: it starts with a path-segment character
-// (so the bare directory and an angle-bracket placeholder both pass), contains
-// no angle bracket (so a placeholder mid-segment passes too), and is not the
-// ignore file.
-func concreteSegment(rest string) (string, bool) {
-	end := strings.IndexAny(rest, terminators)
-	if end < 0 {
-		end = len(rest)
-	}
-	seg := rest[:end]
-	if seg == "" || !isSegmentByte(seg[0]) {
+func concreteOwnedMemory(rest string) (string, bool) {
+	slash := strings.IndexByte(rest, '/')
+	if slash <= 0 {
 		return "", false
 	}
-	if strings.ContainsAny(seg, "<>") {
+	slug := rest[:slash]
+	if strings.ContainsAny(slug, "<>") || !validSlug(slug) {
 		return "", false
 	}
-	if seg == ignoreFile {
+	afterSlug := rest[slash+1:]
+	if !strings.HasPrefix(afterSlug, memoryBase) {
 		return "", false
 	}
-	return seg, true
+	remaining := afterSlug[len(memoryBase):]
+	if remaining != "" && !strings.ContainsRune(terminators, rune(remaining[0])) {
+		return "", false
+	}
+	return slug + "/" + memoryBase, true
 }
 
-func isSegmentByte(c byte) bool {
-	return c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z' || c >= '0' && c <= '9' ||
-		c == '.' || c == '_' || c == '-'
+func validSlug(slug string) bool {
+	if len(slug) < 1 || len(slug) > 63 {
+		return false
+	}
+	lastHyphen := true
+	for _, c := range []byte(slug) {
+		letterOrDigit := c >= 'a' && c <= 'z' || c >= '0' && c <= '9'
+		if !letterOrDigit && c != '-' {
+			return false
+		}
+		if c == '-' && lastHyphen {
+			return false
+		}
+		lastHyphen = c == '-'
+	}
+	return !lastHyphen
 }
 
 // Scan reports every citation in the supplied files outside the exemptions,
@@ -143,13 +151,13 @@ func Scan(files []File, exemptions []Exemption) []Finding {
 // Format renders one finding as a diagnostic line.
 func Format(f Finding) string {
 	if f.Pinned != nil {
-		return fmt.Sprintf("%s: %d working-memory citation(s); the exemption pins %d",
+		return fmt.Sprintf("%s: %d effort-owned memory citation(s); the exemption pins %d",
 			f.Path, len(f.Lines), *f.Pinned)
 	}
 	nums := make([]string, len(f.Lines))
 	for i, n := range f.Lines {
 		nums[i] = strconv.Itoa(n)
 	}
-	return fmt.Sprintf("%s: %d working-memory citation(s) on line(s) %s; name the file separately from the prefix, write the segment as an angle-bracket placeholder, or name the bare directory",
+	return fmt.Sprintf("%s: %d effort-owned memory citation(s) on line(s) %s; name the .awf/efforts/ directory, use an angle-bracket slug placeholder, or remove the ephemeral file citation",
 		f.Path, len(f.Lines), strings.Join(nums, ", "))
 }

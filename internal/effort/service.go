@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,22 +17,26 @@ import (
 
 // Options supplies deterministic dependencies to focused tests.
 type Options struct {
-	Clock      func() time.Time
-	UUID       func() (string, error)
-	Filesystem fileSystem
-	Worktrees  func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
-	Git        func(context.Context, string, ...string) ([]byte, error)
+	Clock        func() time.Time
+	UUID         func() (string, error)
+	Fault        func(string) error
+	Worktrees    func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
+	Git          func(context.Context, string, ...string) ([]byte, error)
+	BranchExists func(context.Context, string, string) (bool, error)
+	RemoveTree   func(string) error
 }
 
-// Service owns ordinary effort record and memory operations.
+// Service owns immutable effort residents and restartable finish.
 type Service struct {
-	ctx       context.Context
-	paths     paths
-	store     store
-	clock     func() time.Time
-	uuid      func() (string, error)
-	worktrees func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
-	git       func(context.Context, string, ...string) ([]byte, error)
+	ctx          context.Context
+	paths        paths
+	store        store
+	clock        func() time.Time
+	uuid         func() (string, error)
+	worktrees    func(context.Context, string) ([]awfgit.WorktreeRegistration, error)
+	git          func(context.Context, string, ...string) ([]byte, error)
+	branchExists func(context.Context, string, string) (bool, error)
+	removeTree   func(string) error
 }
 
 func Open(ctx context.Context, invokingRoot string, options Options) (*Service, error) {
@@ -43,7 +48,6 @@ func Open(ctx context.Context, invokingRoot string, options Options) (*Service, 
 	if err != nil {
 		return nil, fmt.Errorf("resolve effort resident paths from %s: %w", roots.PrimaryRoot, err)
 	}
-	resolved.fs = options.Filesystem
 	clock := options.Clock
 	if clock == nil {
 		clock = time.Now
@@ -56,13 +60,23 @@ func Open(ctx context.Context, invokingRoot string, options Options) (*Service, 
 	if worktrees == nil {
 		worktrees = awfgit.ListWorktreeRegistrations
 	}
-	git := options.Git
-	if git == nil {
-		git = func(ctx context.Context, root string, args ...string) ([]byte, error) {
-			return partialGit(ctx, root, args...)
-		}
+	gitRunner := options.Git
+	if gitRunner == nil {
+		gitRunner = nativeGit
 	}
-	return &Service{ctx: ctx, paths: resolved, store: store{paths: resolved, fs: options.Filesystem}, clock: clock, uuid: allocator, worktrees: worktrees, git: git}, nil
+	branchExists := options.BranchExists
+	if branchExists == nil {
+		branchExists = nativeBranchExists
+	}
+	removeTree := options.RemoveTree
+	if removeTree == nil {
+		removeTree = os.RemoveAll
+	}
+	return &Service{
+		ctx: ctx, paths: resolved, store: store{paths: resolved, fault: options.Fault},
+		clock: clock, uuid: allocator, worktrees: worktrees, git: gitRunner,
+		branchExists: branchExists, removeTree: removeTree,
+	}, nil
 }
 
 func randomUUIDv4() (string, error) {
@@ -74,545 +88,155 @@ func randomUUIDv4() (string, error) {
 	return encoded[0:8] + "-" + encoded[8:12] + "-" + encoded[12:16] + "-" + encoded[16:20] + "-" + encoded[20:32], nil
 }
 
+func nativeGit(ctx context.Context, root string, args ...string) ([]byte, error) {
+	command := exec.CommandContext(ctx, "git", args...)
+	command.Dir = root
+	output, err := command.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), strings.TrimSpace(string(output)), err)
+	}
+	return output, nil
+}
+
+func nativeBranchExists(ctx context.Context, root, branch string) (bool, error) {
+	command := exec.CommandContext(ctx, "git", "show-ref", "--verify", "--quiet", "refs/heads/"+branch)
+	command.Dir = root
+	err := command.Run()
+	if err == nil {
+		return true, nil
+	}
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+		return false, nil
+	}
+	return false, fmt.Errorf("inspect branch %s: %w", branch, err)
+}
+
 func (s *Service) now() time.Time { return s.clock().UTC() }
 
-func (s *Service) New(title string, withMemory bool) (Record, error) {
-	title, err := normalizeTitle(title)
+func (s *Service) New(title string) (Record, error) {
+	normalized, err := normalizeTitle(title)
+	if err != nil {
+		return Record{}, fmt.Errorf("invalid outcome title: %w; changed bytes: no; next action: provide a nonblank valid UTF-8 outcome title", err)
+	}
+	slug, err := deriveSlug(normalized)
 	if err != nil {
 		return Record{}, err
 	}
-	var created Record
-	err = s.store.withLock(func() error {
-		for range 128 {
-			id, err := s.uuid()
-			if err != nil {
-				return fmt.Errorf("allocate effort id: %w", err)
-			}
-			if !uuidV4Pattern.MatchString(id) {
-				return fmt.Errorf("allocator returned invalid UUIDv4 %q", id)
-			}
-			if err := requireAbsent(s.paths.record(id)); errors.Is(err, os.ErrExist) {
-				continue
-			} else if err != nil {
-				return fmt.Errorf("check effort ID collision at %s: %w", s.paths.record(id), err)
-			}
-			now := s.now()
-			created = Record{SchemaVersion: SchemaVersion, ID: id, Title: title, State: StateActive, CreatedAt: now, UpdatedAt: now, Integration: IntegrationNone}
-			if withMemory {
-				if _, err := s.paths.createMemory(id); err != nil {
-					return fmt.Errorf("create default memory for effort %s: %w", id, err)
-				}
-				created.MemoryPresent = true
-			}
-			return s.store.replace(created, false)
-		}
-		return errors.New("unable to allocate a unique effort ID after 128 collisions")
-	})
+	id, err := s.uuid()
 	if err != nil {
-		return Record{}, err
+		return Record{}, fmt.Errorf("allocate internal effort UUID: %w; changed bytes: no; next action: retry `awf effort new %q`", err, normalized)
 	}
-	return created, nil
-}
-
-func (s *Service) List() ([]Record, error) {
-	records, err := s.store.list()
-	if err != nil {
-		return nil, err
+	if !uuidV4Pattern.MatchString(id) {
+		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry", id)
 	}
-	return records, nil
-}
-
-func (s *Service) Show(id string) (Record, error) {
-	record, err := s.store.load(id)
-	if err != nil {
+	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: slug, Title: normalized, CreatedAt: s.now(), MemoryPath: memoryPublicPath(slug)}
+	if err := s.store.create(record); err != nil {
 		return Record{}, err
 	}
 	return record, nil
 }
 
-func (s *Service) Rename(id, title string) (Record, error) {
-	title, err := normalizeTitle(title)
+func (s *Service) List() ([]Record, error) { return s.store.list() }
+
+func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) }
+
+func (s *Service) Finish(slug string) (FinishResult, error) {
+	if err := validateSlug(slug); err != nil {
+		return FinishResult{}, fmt.Errorf("invalid effort slug %q: %w; changed bytes: no; next action: use the exact slug from `awf effort list`", slug, err)
+	}
+	active := s.paths.effort(slug)
+	_, err := os.Lstat(active)
+	if err == nil {
+		record, loadErr := s.store.load(slug)
+		if loadErr != nil {
+			return FinishResult{}, loadErr
+		}
+		if topologyErr := s.requireNoManagedTopology(slug); topologyErr != nil {
+			return FinishResult{}, topologyErr
+		}
+		tombstone := filepath.Join(s.paths.efforts, tombstoneName(record))
+		if err := s.store.hit("finish.rename"); err != nil {
+			return FinishResult{}, err
+		}
+		if err := os.Rename(active, tombstone); err != nil { // coverage-ignore: the validated owned active directory and absent UUID tombstone make rename failure a concurrent namespace or storage fault
+			return FinishResult{}, fmt.Errorf("rename effort %s to finishing reservation: %w", slug, err)
+		}
+		if err := s.store.hit("finish.root-fsync"); err != nil {
+			return FinishResult{Renamed: true}, fmt.Errorf("effort became inactive but finishing root sync failed: %w; changed bytes: yes; next action: retry `awf effort finish %s`", err, slug)
+		}
+		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers the ordered boundary; actual sync failure requires a kernel or storage fault
+			return FinishResult{Renamed: true}, fmt.Errorf("fsync efforts root after finishing rename: %w; changed bytes: yes; next action: retry `awf effort finish %s`", err, slug)
+		}
+		return s.cleanTombstone(slug, tombstone, true)
+	}
+	if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
+		return FinishResult{}, fmt.Errorf("inspect active effort %s: %w", active, err)
+	}
+	tombstones, err := s.store.findTombstones(slug)
 	if err != nil {
-		return Record{}, err
+		return FinishResult{}, err
 	}
-	return s.mutate(id, func(record *Record) error { record.Title = title; return nil })
-}
-
-func (s *Service) Complete(id string) (Record, error) {
-	return s.transition(id, StateCompleted)
-}
-func (s *Service) Abandon(id string) (Record, error) {
-	return s.transition(id, StateAbandoned)
-}
-func (s *Service) Reopen(id string) (Record, error) {
-	return s.mutate(id, func(record *Record) error {
-		if record.State == StateActive {
-			return errors.New("effort is already active")
-		}
-		record.State = StateActive
-		return nil
-	})
-}
-
-// AttachWorktree records a successfully-created manager-owned checkout.
-func (s *Service) AttachWorktree(id, base string) (Record, error) {
-	return s.mutate(id, func(record *Record) error {
-		if record.Worktree != nil {
-			return errors.New("effort already has a managed worktree")
-		}
-		record.Worktree = &Worktree{Branch: "awf/" + id, Base: base, AttachedAt: s.now()}
-		record.Integration = IntegrationPending
-		return nil
-	})
-}
-
-// SetIntegration retains the supplied explicit integration disposition.
-func (s *Service) SetIntegration(id string, integration Integration) (Record, error) {
-	return s.mutate(id, func(record *Record) error {
-		if record.Worktree == nil {
-			return errors.New("effort has no managed worktree")
-		}
-		record.Integration = integration
-		return nil
-	})
-}
-
-// RemoveWorktreeMetadata clears an attached checkout while retaining its disposition.
-func (s *Service) RemoveWorktreeMetadata(id string, resetPending bool) (Record, error) {
-	return s.mutate(id, func(record *Record) error {
-		if record.Worktree == nil {
-			return errors.New("effort has no managed worktree")
-		}
-		if record.Integration == IntegrationPending && !resetPending {
-			return errors.New("pending integration cannot be removed without approved recovery")
-		}
-		record.Worktree = nil
-		if resetPending {
-			record.Integration = IntegrationNone
-		}
-		return nil
-	})
-}
-
-func (s *Service) transition(id string, state State) (Record, error) {
-	return s.mutate(id, func(record *Record) error {
-		if record.State != StateActive {
-			return fmt.Errorf("effort is %s, want active", record.State)
-		}
-		record.State = state
-		return nil
-	})
-}
-
-func (s *Service) mutate(id string, change func(*Record) error) (Record, error) {
-	var result Record
-	err := s.store.withLock(func() error {
-		record, err := s.store.load(id)
-		if err != nil {
-			return err
-		}
-		if err := change(&record); err != nil {
-			return err
-		}
-		now := s.now()
-		if !now.After(record.UpdatedAt) {
-			now = record.UpdatedAt.Add(time.Nanosecond)
-		}
-		record.UpdatedAt = now
-		if err := s.store.replace(record, true); err != nil {
-			return fmt.Errorf("replace mutated effort record %s: %w", s.paths.record(id), err)
-		}
-		result = record
-		return nil
-	})
-	if err != nil {
-		return Record{}, err
+	if len(tombstones) == 0 {
+		return FinishResult{}, fmt.Errorf("effort %q has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug", slug)
 	}
-	return result, nil
+	if len(tombstones) != 1 {
+		return FinishResult{}, &CorruptError{Path: s.paths.efforts, Err: fmt.Errorf("multiple finishing reservations match slug %q", slug)}
+	}
+	return s.cleanTombstone(slug, tombstones[0], false)
 }
 
-// Memory creates or confirms the owned normalized memory file.
-func (s *Service) Memory(id string) (string, Record, error) {
-	var path string
-	var result Record
-	err := s.store.withLock(func() error {
-		record, err := s.store.load(id)
-		if err != nil {
-			return err
-		}
-		path, err = s.paths.createMemory(id)
-		if err != nil {
-			return fmt.Errorf("create memory for effort %s: %w", id, err)
-		}
-		if !record.MemoryPresent {
-			now := s.now()
-			if !now.After(record.UpdatedAt) {
-				now = record.UpdatedAt.Add(time.Nanosecond)
-			}
-			record.MemoryPresent, record.UpdatedAt = true, now
-			if err := s.store.replace(record, true); err != nil {
-				return fmt.Errorf("publish memory presence in effort record %s: %w", s.paths.record(id), err)
-			}
-		}
-		result = record
-		return nil
-	})
-	if err != nil {
-		return "", Record{}, err
+func (s *Service) requireNoManagedTopology(slug string) error {
+	managed := filepath.Clean(s.paths.managedWorktree(slug))
+	if _, err := os.Lstat(managed); err == nil {
+		return fmt.Errorf("managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
+	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
+		return fmt.Errorf("inspect managed worktree path %s: %w", managed, err)
 	}
-	return path, result, nil
-}
-
-func (s *Service) Repair(id string) (RepairResult, error) {
-	result := RepairResult{SchemaVersion: SchemaVersion, Changes: []RepairChange{}}
-	err := s.store.withLock(func() error {
-		record, err := s.store.load(id)
-		if err != nil {
-			return err
-		}
-		memory, err := s.paths.memoryTruth(id)
-		if err != nil {
-			return fmt.Errorf("derive memory truth for effort %s: %w", id, err)
-		}
-		if record.MemoryPresent != memory {
-			result.Changes = append(result.Changes, RepairChange{Field: "memoryPresent", From: record.MemoryPresent, To: memory})
-			record.MemoryPresent = memory
-		}
-		if err := s.recoverPartial(&record, &result); err != nil {
-			return err
-		}
-		if err := s.repairWorktree(&record, &result); err != nil {
-			return err
-		}
-		if len(result.Changes) > 0 {
-			now := s.now()
-			if !now.After(record.UpdatedAt) {
-				now = record.UpdatedAt.Add(time.Nanosecond)
-			}
-			record.UpdatedAt = now
-			if err := s.store.replace(record, true); err != nil {
-				return fmt.Errorf("publish repaired effort record %s: %w", s.paths.record(id), err)
-			}
-		}
-		result.Record = record
-		return nil
-	})
-	if err != nil {
-		return RepairResult{}, err
-	}
-	return result, nil
-}
-
-func (s *Service) repairWorktree(record *Record, result *RepairResult) error {
-	if err := s.paths.validate(s.paths.worktrees); err != nil {
-		return fmt.Errorf("validate worktree resident root before repair: %w", err)
-	}
-	managed := filepath.Clean(s.paths.managedWorktree(record.ID))
 	registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
 	if err != nil {
-		return fmt.Errorf("list native Git registrations for repair of %s: %w", managed, err)
+		return fmt.Errorf("inspect managed worktree registrations: %w", err)
 	}
-	wantBranch := "refs/heads/awf/" + record.ID
-	var exact []awfgit.WorktreeRegistration
+	wantBranch := "refs/heads/awf/" + slug
 	for _, registration := range registrations {
-		pathMatches := filepath.Clean(registration.Path) == managed
-		branchMatches := registration.Branch == wantBranch
-		if branchMatches && !pathMatches {
-			return safety("repository-identity", managed, fmt.Errorf("managed branch %q is registered at unexpected path %s", wantBranch, registration.Path))
-		}
-		if pathMatches {
-			exact = append(exact, registration)
+		if filepath.Clean(registration.Path) == managed || registration.Branch == wantBranch {
+			return fmt.Errorf("managed Git registration for %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 		}
 	}
-	if len(exact) > 1 {
-		return safety("repository-identity", managed, fmt.Errorf("managed path has %d Git registrations", len(exact)))
-	}
-	pathPresent, err := managedDirectoryTruth(managed)
+	exists, err := s.branchExists(s.ctx, s.paths.roots.InvokingRoot, "awf/"+slug)
 	if err != nil {
-		return err
+		return fmt.Errorf("inspect managed branch for %s: %w", slug, err)
 	}
-	if len(exact) == 0 {
-		if pathPresent {
-			return safety("repository-identity", managed, errors.New("resident directory is not registered by native Git"))
-		}
-		if record.Worktree != nil {
-			result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: record.Worktree, To: nil})
-			record.Worktree = nil
-			if record.Integration == IntegrationPending {
-				result.Changes = append(result.Changes, RepairChange{Field: "integration", From: IntegrationPending, To: IntegrationNone})
-				record.Integration = IntegrationNone
-			}
-		}
-		return nil
-	}
-	registration := exact[0]
-	if registration.Bare || registration.Detached || registration.Branch != wantBranch || !objectIDPattern.MatchString(registration.HEAD) {
-		return safety("repository-identity", managed, fmt.Errorf("registration has branch %q and HEAD %q, want %q and a full object ID", registration.Branch, registration.HEAD, wantBranch))
-	}
-	if !pathPresent {
-		if record.Worktree == nil {
-			return safety("repair-evidence", managed, errors.New("git registration has no present managed checkout"))
-		}
-		return nil
-	}
-	roots, err := awfgit.ResolveControlRoots(s.ctx, managed)
-	if err != nil {
-		return safety("repository-identity", managed, err)
-	}
-	if filepath.Clean(roots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(roots.InvokingRoot) != managed {
-		return safety("repository-identity", managed, errors.New("registered worktree belongs to a different repository identity"))
-	}
-	if record.Worktree != nil {
-		return nil
-	}
-	// Phase 1 has no persisted partial-mutation evidence that authoritatively
-	// records the attachment base. HEAD is the current worktree tip, not its
-	// base, so reconstruction must wait for a later operation to supply such
-	// evidence rather than inventing schema-1 metadata.
-	return safety("repair-evidence", managed, errors.New("authoritative attachment base evidence is unavailable"))
-}
-
-var partialGit = gitPartial
-var partialAncestor = ancestorPartial
-var partialBranches = branchExistsPartial
-var partialClear = func(s store, id, action string) error { return s.clearPartial(id, action) }
-
-func (s *Service) recoverPartial(record *Record, result *RepairResult) error {
-	for _, action := range []string{"worktree", "integration", "removal"} {
-		evidence, _, err := s.store.getPartial(record.ID, action)
-		if errors.Is(err, os.ErrNotExist) {
-			continue
-		}
-		if err != nil {
-			return fmt.Errorf("read %s partial evidence: %w", action, err)
-		}
-		if filepath.Clean(evidence.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) {
-			return safety("repository-identity", s.paths.efforts, errors.New("partial evidence repository identity mismatch"))
-		}
-		managed := s.paths.managedWorktree(record.ID)
-		switch action {
-		case "worktree":
-			if evidence.Path != managed {
-				return safety("repair-evidence", managed, errors.New("partial evidence managed path mismatch"))
-			}
-			registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
-			if err != nil {
-				return err
-			}
-			matches := 0
-			var registration awfgit.WorktreeRegistration
-			for _, r := range registrations {
-				if filepath.Clean(r.Path) == filepath.Clean(managed) {
-					matches++
-					registration = r
-				}
-				if r.Branch == "refs/heads/"+evidence.Branch && filepath.Clean(r.Path) != filepath.Clean(managed) {
-					return safety("repository-identity", managed, errors.New("managed branch registered elsewhere"))
-				}
-			}
-			if matches != 1 || registration.Branch != "refs/heads/"+evidence.Branch || registration.HEAD != evidence.Base || registration.Detached || registration.Bare {
-				return safety("repair-evidence", managed, errors.New("partial worktree registration is not exact"))
-			}
-			roots, err := awfgit.ResolveControlRoots(s.ctx, managed)
-			if err != nil {
-				return safety("repository-identity", managed, err)
-			}
-			if filepath.Clean(roots.CommonDir) != filepath.Clean(evidence.CommonDir) {
-				return safety("repository-identity", managed, errors.New("partial worktree common directory mismatch"))
-			}
-			if record.Worktree == nil {
-				record.Worktree = &Worktree{Branch: evidence.Branch, Base: evidence.Base, AttachedAt: s.now()}
-				record.Integration = IntegrationPending
-				result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: nil, To: record.Worktree}, RepairChange{Field: "integration", From: IntegrationNone, To: IntegrationPending})
-			} else if record.Worktree.Branch != evidence.Branch || record.Worktree.Base != evidence.Base {
-				return safety("repair-evidence", managed, errors.New("partial worktree evidence does not match record"))
-			}
-		case "integration":
-			if evidence.TargetPath != s.paths.roots.InvokingRoot {
-				return safety("repair-evidence", evidence.TargetPath, errors.New("partial integration target path mismatch"))
-			}
-			currentBranch, err := partialGit(s.ctx, evidence.TargetPath, "symbolic-ref", "-q", "--short", "HEAD")
-			if err != nil || strings.TrimSpace(string(currentBranch)) != evidence.TargetBranch {
-				return safety("repository-identity", evidence.TargetPath, errors.New("partial integration target branch mismatch"))
-			}
-			contains, err := partialAncestor(s.ctx, evidence.TargetPath, evidence.Tip, "HEAD")
-			if err != nil {
-				return err
-			}
-			if !contains {
-				return safety("repair-evidence", evidence.TargetPath, errors.New("integration target does not contain recorded tip"))
-			}
-			if record.Worktree == nil || record.Worktree.Branch != evidence.Branch {
-				return safety("repair-evidence", managed, errors.New("recorded worktree does not match integration evidence"))
-			}
-			if record.Integration != evidence.Integration {
-				result.Changes = append(result.Changes, RepairChange{Field: "integration", From: record.Integration, To: evidence.Integration})
-				record.Integration = evidence.Integration
-			}
-		case "removal":
-			// Revalidate the live control root and confined resident path immediately
-			// before either destructive operation. Recovery must not trust stale
-			// evidence across a symlink, ownership, or checkout swap.
-			validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
-			liveRoots, err := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
-			err = errors.Join(err, validationErr)
-			if err != nil || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) {
-				return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed"))
-			}
-			if err := safeRecoveryPath(filepath.Dir(managed)); err != nil {
-				return safety("repository-identity", managed, fmt.Errorf("validate managed path parent before removal: %w", err))
-			}
-			registrations, err := s.worktrees(s.ctx, s.paths.roots.InvokingRoot)
-			if err != nil {
-				return err
-			}
-			present := false
-			for _, r := range registrations {
-				if r.Branch == "refs/heads/"+evidence.Branch && filepath.Clean(r.Path) != filepath.Clean(managed) {
-					return safety("repository-identity", managed, errors.New("removal branch registered elsewhere"))
-				}
-				if filepath.Clean(r.Path) == filepath.Clean(managed) {
-					if present || r.Branch != "refs/heads/"+evidence.Branch || r.Detached || r.Bare {
-						return safety("repository-identity", managed, errors.New("removal registration is not exact"))
-					}
-					present = true
-				}
-			}
-			if present {
-				// Establish directory truth before the final no-follow and Git
-				// identity validation. No probe may intervene before removal.
-				if _, err := managedDirectoryTruth(managed); err != nil {
-					return err
-				}
-				managedValidationErr := validateRecoveryMutationPath(managed)
-				managedRoots, err := awfgit.ResolveControlRoots(s.ctx, managed)
-				err = errors.Join(err, managedValidationErr)
-				if err != nil || filepath.Clean(managedRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(managedRoots.InvokingRoot) != filepath.Clean(managed) { // coverage-ignore: repository identity mismatch is exercised through the preceding hard-safety probes
-					return safety("repository-identity", managed, errors.New("managed checkout identity changed"))
-				}
-				validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
-				liveRoots, err := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
-				err = errors.Join(err, validationErr)
-				if err != nil || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) { // coverage-ignore: repository identity mismatch is exercised through the preceding hard-safety probes
-					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed"))
-				}
-			}
-			if present {
-				args := []string{"worktree", "remove"}
-				if evidence.WorktreeRemoveForce || evidence.DeleteForce {
-					args = append(args, "--force")
-				}
-				args = append(args, managed)
-				if _, err := s.git(s.ctx, s.paths.roots.InvokingRoot, args...); err != nil {
-					return err
-				}
-			} else {
-				absent, absentErr := partialAbsent(managed)
-				if absentErr != nil { // coverage-ignore: partial-path stat faults are validated at the no-follow boundary above
-					return absentErr
-				}
-				if !absent {
-					return safety("repository-identity", managed, errors.New("unregistered managed path remains"))
-				}
-			}
-			exists, err := partialBranches(s.ctx, s.paths.roots.InvokingRoot, evidence.Branch)
-			if err != nil {
-				return err
-			}
-			if exists {
-				tip, err := resolvePartial(s.ctx, s.paths.roots.InvokingRoot, "refs/heads/"+evidence.Branch)
-				if err != nil {
-					return err
-				}
-				if tip != evidence.BranchTip {
-					return safety("repair-evidence", managed, errors.New("managed branch identity changed"))
-				}
-				// Recheck every invoking-root component immediately before deleting
-				// the branch; no probe may intervene before the mutation.
-				validationErr := validateRecoveryMutationPath(s.paths.roots.InvokingRoot)
-				liveRoots, liveErr := awfgit.ResolveControlRoots(s.ctx, s.paths.roots.InvokingRoot)
-				liveErr = errors.Join(liveErr, validationErr)
-				if liveErr != nil || filepath.Clean(liveRoots.InvokingRoot) != filepath.Clean(s.paths.roots.InvokingRoot) || filepath.Clean(liveRoots.CommonDir) != filepath.Clean(s.paths.roots.CommonDir) || filepath.Clean(liveRoots.PrimaryRoot) != filepath.Clean(s.paths.roots.PrimaryRoot) {
-					return safety("repository-identity", s.paths.roots.InvokingRoot, errors.New("live control-root identity changed before branch deletion"))
-				}
-				flag := "-d"
-				if evidence.BranchDeleteForce || evidence.DeleteForce {
-					flag = "-D"
-				}
-				if _, err = s.git(s.ctx, s.paths.roots.InvokingRoot, "branch", flag, evidence.Branch); err != nil {
-					return err
-				}
-			}
-
-			if record.Worktree != nil {
-				result.Changes = append(result.Changes, RepairChange{Field: "worktree", From: record.Worktree, To: nil})
-				record.Worktree = nil
-			}
-			if record.Integration == IntegrationPending {
-				result.Changes = append(result.Changes, RepairChange{Field: "integration", From: IntegrationPending, To: IntegrationNone})
-				record.Integration = IntegrationNone
-			}
-		}
-		// Publish the derived record before settling evidence. A settlement failure
-		// leaves exact evidence behind for an idempotent later repair.
-		if err := s.store.replace(*record, true); err != nil {
-			return fmt.Errorf("publish recovered %s record: %w", action, err)
-		}
-		if err := partialClear(s.store, record.ID, action); err != nil {
-			return fmt.Errorf("settle recovered %s evidence: %w", action, err)
-		}
+	if exists {
+		return fmt.Errorf("managed branch awf/%s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 	}
 	return nil
 }
 
-var residentOwner = func(path string, info os.FileInfo) error { return validatePathOwner(path, info, nil) }
-
-func validateRecoveryMutationPath(path string) error {
-	return safeRecoveryPath(path)
-}
-
-func safeRecoveryPath(path string) error {
-	clean := filepath.Clean(path)
-	volume := filepath.VolumeName(clean)
-	remainder := strings.TrimPrefix(strings.TrimPrefix(clean, volume), string(filepath.Separator))
-	current := volume + string(filepath.Separator)
-	for _, component := range strings.Split(remainder, string(filepath.Separator)) {
-		if component == "" {
-			continue
-		}
-		current = filepath.Join(current, component)
-		info, err := partialLstat(current)
-		if err != nil {
-			return err
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return safety("symlink", current, nil)
-		}
-		if info.Mode()&os.ModeSticky == 0 || info.Mode().Perm()&0o002 == 0 {
-			if err := residentOwner(current, info); err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func managedDirectoryTruth(path string) (bool, error) {
-	info, err := os.Lstat(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
+func (s *Service) cleanTombstone(slug, tombstone string, renamed bool) (FinishResult, error) {
+	record, err := s.store.loadDirectory(tombstone, slug, true)
 	if err != nil {
-		return false, fmt.Errorf("lstat managed worktree %s: %w", path, err)
+		return FinishResult{Renamed: renamed}, err
 	}
-	if info.Mode()&os.ModeSymlink != 0 {
-		return false, safety("symlink", path, nil)
+	want := filepath.Join(s.paths.efforts, tombstoneName(record))
+	if filepath.Clean(want) != filepath.Clean(tombstone) {
+		return FinishResult{Renamed: renamed}, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
 	}
-	if !info.IsDir() {
-		return false, safety("file-type", path, fmt.Errorf("mode %s is not a directory", info.Mode()))
+	if err := s.store.hit("finish.delete"); err != nil {
+		return FinishResult{Renamed: renamed}, fmt.Errorf("finishing cleanup interrupted: %w; changed bytes: %s; next action: retry `awf effort finish %s`", err, yesNo(renamed), slug)
 	}
-	if err := residentOwner(path, info); err != nil {
-		return false, err
+	if err := s.removeTree(tombstone); err != nil {
+		return FinishResult{Renamed: renamed}, fmt.Errorf("delete proven finishing reservation %s: %w; changed bytes: %s; next action: retry `awf effort finish %s`", tombstone, err, yesNo(renamed), slug)
 	}
-	return true, nil
+	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: the owned root remains openable after deleting one proven child; failure requires a kernel or storage fault
+		return FinishResult{Renamed: renamed, Cleaned: true}, fmt.Errorf("fsync efforts root after finishing cleanup: %w; changed bytes: yes; next action: verify %s is absent, then retry finish if it remains", err, tombstone)
+	}
+	return FinishResult{Renamed: renamed, Cleaned: true}, nil
+}
+
+func yesNo(value bool) string {
+	if value {
+		return "yes"
+	}
+	return "no"
 }

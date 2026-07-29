@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Replace effort JSON protocol 1 and mutable UUID lifecycle commands with protocol 2 immutable slug residents. `awf effort` now exposes only new/list/show/finish, separate worktree add/remove, and stateless integrate; standalone memory, rename, complete, abandon, reopen, repair, combined creation, manual integration, and every awf force-discard flag are removed. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`, list sorts the same objects by slug, and JSON failures write no stdout.
+
 - Remove `awf context --json` from normal and uncovered modes. Context now has one human-text contract; a future structured form will require a demonstrated consumer.
 
 - Schema generation 21 destructively removes obsolete `.awf/metrics` and `.awf/assignments` residents during upgrade. Remove metrics and assignment commands, `/awf-effort`, `awf_workflow`, the Pi telemetry extension, and hidden workflow bodies. Enabled workflows now render as native Pi skills.
@@ -37,6 +39,7 @@ query a single version or a range.
   that line everywhere. The churn is content-free.
 
 ### Features
+- Unify every concrete non-minimal workflow around one immutable slugged effort with always-owned `.awf/efforts/<slug>/memory.md`, one user-managed writer, repository-authority precedence, conditional post-review worktree integration/removal, renewed review after divergent merge, retrospective, and restartable finish last. Minimal simple fixes remain effort-free. Pi handoff and durable-memory citation checks now enforce the owned path without selecting or mutating effort state.
 - Add a generated bounded Pi subagent model-routing module and inject a current per-run routing card only when an awf subagent tool is active. Preference and registry state refresh before injection, the card stays out of session history, and pinned in-process runtime coverage proves delivery without an external model call.
 - Make each plan phase an independently green implementation transaction with per-phase inline or subagent-driven ownership. A complete subagent-driven phase has one commit-capable owner; the parent retains review settlement and dirty recovery, while optional batch helpers remain sequential, commit-disabled, explicitly partitioned, and excluded from shared files and phase checkpoints.
 - Add the mandatory Maintainable Code Design guide and its document-map link to rendered adopter documentation. Brainstorming, ADR proposal, coupling audit, plan writing, TDD, inline plan execution, direct execution, subagent-driven development, and bugfix workflows now carry stage-specific model, boundary, dependency, validation, and scope obligations, including bounded enabling-refactor assessment and materially larger-work escalation.

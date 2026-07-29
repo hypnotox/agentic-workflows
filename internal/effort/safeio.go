@@ -66,58 +66,30 @@ func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, 
 	return file, fileIdentity{info: opened}, nil
 }
 
-func readRegularNoFollow(path string) ([]byte, fileIdentity, error) {
+func readRegularNoFollow(path string) ([]byte, error) {
 	file, identity, err := openRegularNoFollow(path, false, 0)
 	if err != nil {
-		return nil, fileIdentity{}, err
+		return nil, err
 	}
 	raw, readErr := io.ReadAll(file)
 	closeErr := file.Close()
 	if readErr != nil { // coverage-ignore: a validated local regular file read fails only on a kernel or storage fault
-		return nil, fileIdentity{}, fmt.Errorf("read %s: %w", path, readErr)
+		return nil, fmt.Errorf("read %s: %w", path, readErr)
 	}
 	if closeErr != nil { // coverage-ignore: closing a read-only descriptor after successful ReadAll has no userspace failure trigger
-		return nil, fileIdentity{}, fmt.Errorf("close %s after read: %w", path, closeErr)
+		return nil, fmt.Errorf("close %s after read: %w", path, closeErr)
 	}
 	resident, err := lstatRegular(path)
 	if err != nil { // coverage-ignore: the leaf was validated immediately before reading; failure requires a concurrent namespace race
-		return nil, fileIdentity{}, err
+		return nil, err
 	}
 	if !os.SameFile(identity.info, resident.info) { // coverage-ignore: replacing the leaf during a bounded read requires a concurrent namespace race
-		return nil, fileIdentity{}, safety("identity", path, errors.New("leaf changed while reading"))
+		return nil, safety("identity", path, errors.New("leaf changed while reading"))
 	}
-	return raw, identity, nil
+	return raw, nil
 }
 
 // ValidateCurrentOwner applies the platform's no-follow owner check to an existing path.
 func ValidateCurrentOwner(path string, info os.FileInfo) error {
 	return validatePathOwner(path, info, nil)
-}
-
-func requireIdentity(path string, expected fileIdentity) error {
-	current, err := lstatRegular(path)
-	if err != nil { // coverage-ignore: callers retain a prior identity; failure here requires a concurrent namespace race
-		return err
-	}
-	if !os.SameFile(expected.info, current.info) {
-		return safety("identity", path, errors.New("leaf was replaced before publication"))
-	}
-	return nil
-}
-
-func requireAbsent(path string) error {
-	info, err := os.Lstat(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil
-	}
-	if err != nil { // coverage-ignore: local lstat reports either a resident inode or os.ErrNotExist absent a kernel fault
-		return fmt.Errorf("lstat destination %s: %w", path, err)
-	}
-	if err := validateLeaf(path, info); err != nil {
-		return err
-	}
-	if err := validatePathOwner(path, info, nil); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
-		return err
-	}
-	return os.ErrExist
 }

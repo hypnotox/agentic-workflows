@@ -53,9 +53,9 @@ Backing: test
 
 ### `invariant: memory-citation-gate`
 
-With memoryCite.enabled true, the check memory command reports every concrete working-memory file reference in the staged decisions and plans directories and exits non-zero on any finding outside memoryCite.exemptions; the check commit command applies the same detector to the git-cleaned commit-message body, where no exemption applies, and exits non-zero on any reference. A reference written in the angle-bracket placeholder form, one naming the bare directory, and the ignore-file name all pass.
+With memoryCite.enabled true, the check memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
 Origin: ADR-0158
-Revised-by: ADR-0159
+Revised-by: ADR-0159, ADR-0175
 Backing: test
 
 ### `invariant: mutants-timeout-untrusted`

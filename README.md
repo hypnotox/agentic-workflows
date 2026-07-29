@@ -66,7 +66,7 @@ instead of rotting.
   [`examples/sundial/`](examples/sundial/README.md) adopter shows the rendered one.
 - **A pinned bootstrap** (`.awf/bootstrap.sh`): an optional installer that fetches the
   exact awf version the repo was rendered with, for hooks and CI.
-- **Resident directories** (`.awf/efforts/`, `.awf/memory/`, `.awf/worktrees/`): each has a governed self-ignoring `.gitignore`. They hold optional local coordination state; only each ignore file is rendered.
+- **Effort residents** (`.awf/efforts/<slug>/`, `.awf/worktrees/<slug>/`): one concrete non-minimal outcome owns immutable schema-2 state and `memory.md`; optional managed worktrees use Git-authoritative path, registration, and branch topology. The legacy standalone memory root remains render-recognized only until the schema migration removes it.
 
 awf renders for six runtimes: Pi, [Claude Code](https://www.anthropic.com/claude-code),
 Codex, GitHub Copilot, Cursor, and Gemini. Each gets skills and agents in its own native
@@ -82,7 +82,7 @@ independent calls run through a ten-active FIFO queue. Grounding, exploration, a
 no-mutation prompt policy, not an OS sandbox. Implementation shares the checkout, runs alone and
 sequentially, and mixed parent batches are mechanically blocked; it commits only when its
 orchestrator sets `allowCommits`. Every role shows bounded inline child progress while intermediate
-activity stays outside parent model content. A separate `handoff_session` tool continues from an optional confined `.awf/memory/` file in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
+activity stays outside parent model content. A separate `handoff_session` tool continues from an optional exact `.awf/efforts/<slug>/memory.md` file in a parent-linked fresh persisted TUI session. Workflow checkpoints stay durable and visible first; the handoff runs alone afterward, waits five cancellable seconds, preserves old history and memory, and submits the bounded kickoff through the replacement context. Unsupported modes reject, cleanup is manual, kickoff failure leaves prepared editor text, and failures after replacement teardown begins are nontransactional.
 
 ## The workflow it renders
 
@@ -267,6 +267,8 @@ disk.
 | `awf new adr "<title>"` | Scaffold the next ADR under `docs/decisions/`. |
 | `awf new plan "<title>"` | Scaffold a dated plan under `docs/plans/`. |
 | `awf new topic <domain> "<title>"` | Scaffold paired topic metadata and authored inputs without syncing; edit paths and author claims manually. |
+| `awf effort new "<outcome>" [--json]` | Derive an immutable slug and publish schema-2 state plus always-owned `.awf/efforts/<slug>/memory.md`; `list` and `show` expose the same protocol. |
+| `awf effort worktree add|remove <slug>` / `awf effort integrate <slug>` / `awf effort finish <slug>` | Manage optional Git-authoritative topology separately, integrate without committing or reviewing, remove safely without force, and finish by restartable resident deletion last. |
 | `awf new skill\|agent\|doc <name> "<desc>"` | Scaffold a project-local skill, agent, or doc and enable it. |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over an explicit commit range (a bare `<base>` means `<base>..HEAD`). Required, with no default, so an audit never reports over commits nobody named. Not part of any gate, but exits non-zero on error-severity findings. |
 | `awf check invariants` | Report documented invariants that lack a backing comment in source. |
@@ -274,7 +276,7 @@ disk.
 | `awf context <paths>` | Report tier-0 directory orientation and tier-1 exact/staged/range file relationships (`State`, `Touches`, `Proofs`), with per-topic counts and eight named `--show` facets. Only `artifacts` refines groups; `--full` is the facet union. Human output is capped at 8 KiB with secure caller-owned spill delivery above it; `--uncovered` shares the cap. |
 | `awf topic <domain>/<topic>[:<claim>]` | Query one topic or claim, active by default; `--history` also resolves removed identities as historical-only operation detail. Add other direct detail with `--references` and `--coverage`, or change presentation with `--json`. |
 | `awf check prose` | Scan tracked text files for typographic punctuation substitutes; blocking, opt-in per project. |
-| `awf check memory` | Scan staged decision records for a citation of a specific working-memory file; blocking, opt-in per project. |
+| `awf check memory` | Scan staged decision and plan text for a concrete `.awf/efforts/<slug>/memory.md` citation; blocking and opt-in, with bare-directory and placeholder forms allowed. |
 | `awf check commit [FILE]` | Validate one commit message against Conventional Commits; built for a `commit-msg` hook. |
 | `awf upgrade` | Migrate the `.awf/` tree to the current schema. A bridge-attested project uses plain upgrade for the sealed current-state cutover; `--recover` replays an interrupted cutover's journal. Readiness and attestation modes exist only in the preceding bridge release. |
 | `awf uninstall` | Remove awf's generated files while keeping authored configuration and optional local residents. |

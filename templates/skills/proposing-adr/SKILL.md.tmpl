@@ -35,6 +35,8 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 
 ## Procedure
 
+Carry the one verified effort slug and exact `.awf/efforts/<slug>/memory.md` path from brainstorming. This ADR is a concrete non-minimal outcome: if no effort exists, create exactly one immutable slugged effort before authoring. It always owns memory, repository sources and current-state documentation outrank checkpoint prose, and standalone memory is forbidden. Preserve one user-managed writer; reviewers never edit the shared file.
+
 <!-- awf:section procedure-number -->
 1. **Scaffold the file.** Run `awf new adr "<Title>"` to create `{{ .layout.adrDir }}/NNNN-kebab-title.md` with the next sequential number, the rendered template's marker comments stripped, and its date and title heading filled in.
 <!-- awf:end -->

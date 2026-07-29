@@ -260,184 +260,120 @@ func assertOrderedBody(t *testing.T, label, body string, phrases []string) {
 	}
 }
 
-// TestMemoryCheckpointCoverage asserts every routine-boundary skill renders the
-// complete routine protocol (persist, classify, then check-in or continue), the
-// implementation skills embed it only after settled phase review, and the
-// chain terminal instructs the deletion (ADR-0152, corrected forward by ADR-0166).
+// TestUnifiedEffortWorkflowCoverage derives the complete applicable skill set
+// from the enabled catalog and validates both target fanouts rather than a
+// hand-maintained corpus count.
 // invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
-func TestMemoryCheckpointCoverage(t *testing.T) {
+// invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage
+func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalogForTarget(t, cat, "pi")
-	ordered := []string{
+	roles := map[string]string{
+		"brainstorming": "creation", "proposing-adr": "carry", "adr-lifecycle": "carry",
+		"writing-plans": "creation", "reviewing-plan": "review", "reviewing-plan-resync": "review",
+		"reviewing-adr": "review", "executing-direct": "execution", "executing-plans": "execution",
+		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
+		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
+		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
+		"roadmap-graduation": "conditional-creation",
+	}
+	if len(roles) != len(cat.Skills) {
+		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
+	}
+	for name := range cat.Skills {
+		if _, ok := roles[name]; !ok {
+			t.Errorf("enabled skill %q has no unified-effort classification", name)
+		}
+	}
+
+	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
+	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true}
+	routineOrdered := []string{
 		"**Routine checkpoint.**",
-		"Working memory is optional",
-		"do not create a file merely because this checkpoint was reached",
-		"update it in its own tool batch",
-		"Effort: <effort-id>",
-		"rewriting it when a runtime has since assigned an active ID",
-		"a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface",
-		"never adopt another effort's identity",
-		"Decide whether user attention is required",
-		"material authority drift",
-		"a blocker, or failed required verification",
-		"raise a check-in that names the issue, the options, a recommendation, and the blocked next action",
-		"then stop and wait",
+		"A minimal simple fix uses no effort",
+		"concrete non-minimal outcome",
+		"`.awf/efforts/<slug>/memory.md` as its only working memory",
+		"Repository sources and current-state documentation remain authoritative",
+		"Effort: <slug>",
+		"one user-managed writer",
+		"never edits it",
 		"continuity notice",
-		"never a stop",
-		"If a validated memory file exists",
-		"invoke `handoff_session` alone",
-		"continue automatically in the fresh session",
-		"unless the user cancels during the five-second window",
-		"A failed handoff leaves the checkpoint valid and becomes a check-in",
 	}
-	piSkillPath := func(name string) string {
-		return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
-	}
-	for _, name := range routineCheckpointSkills {
-		body := read(t, piSkillPath(name))
-		assertOrderedBody(t, "pi/"+name, body, ordered)
-		if strings.Contains(body, "explicitly request approval") {
-			t.Errorf("routine skill %q renders an approval stop", name)
-		}
-		if strings.Contains(body, "Delete the effort's working-memory file") {
-			t.Errorf("non-terminal skill %q claims the retrospective's memory deletion", name)
-		}
-	}
-	perPhase := map[string]string{
-		"executing-plans":             "Review settles before checkpointing.",
-		"subagent-driven-development": "checkpoints only after findings resolve.",
-	}
-	for name, sentence := range perPhase {
-		body := read(t, piSkillPath(name))
-		start := strings.Index(body, sentence)
-		if start < 0 {
-			t.Errorf("%s lost its settled-phase checkpoint sentence", name)
-			continue
-		}
-		end := strings.Index(body[start:], "Terminal step")
-		if end < 0 {
-			end = len(body) - start
-		}
-		section := body[start : start+end]
-		assertOrderedBody(t, name+" settled-phase section", section, ordered)
-		if strings.Count(strings.ToLower(body), "routine checkpoint") != 1 {
-			t.Errorf("%s renders %d routine checkpoint instructions, want one", name, strings.Count(strings.ToLower(body), "routine checkpoint"))
-		}
-		for _, forbidden := range []string{
-			"after each implemented and reviewed task", "per-task checkpoint", "after each helper",
-			"after every checkbox task", "after each checkbox task", "after any checkbox task",
-			"checkbox task triggers", "after every batch-helper return", "after each batch-helper return",
-			"batch-helper return triggers", "checkpoint after a helper return",
-		} {
-			if strings.Contains(strings.ToLower(body), strings.ToLower(forbidden)) {
-				t.Errorf("%s retains task/helper checkpoint boundary %q", name, forbidden)
+	for _, target := range []string{"pi", "claude"} {
+		root := syncFullCatalogForTarget(t, cat, target)
+		for name, role := range roles {
+			path := skillPath(root, name)
+			if target == "pi" {
+				path = filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
+			}
+			body := read(t, path)
+			lower := strings.ToLower(body)
+			for _, want := range []string{".awf/efforts/<slug>/memory.md", "standalone memory is forbidden"} {
+				if !strings.Contains(lower, strings.ToLower(want)) {
+					t.Errorf("%s/%s (%s) missing %q", target, name, role, want)
+				}
+			}
+			authoritative := strings.Contains(lower, "authority") || strings.Contains(lower, "authoritative") || strings.Contains(lower, "outrank")
+			if !strings.Contains(lower, "repository") || !authoritative {
+				t.Errorf("%s/%s does not subordinate checkpoint prose to repository authority", target, name)
+			}
+			if !strings.Contains(lower, "writer") {
+				t.Errorf("%s/%s does not carry the one-writer contract", target, name)
+			}
+			if strings.Contains(body, ".awf/memory/") {
+				t.Errorf("%s/%s retains standalone memory path", target, name)
+			}
+			if minimal[name] && !strings.Contains(lower, "minimal simple") {
+				t.Errorf("%s/%s lost the minimal-simple effort exception", target, name)
+			}
+			if reviewers[name] && !strings.Contains(lower, "never edit") {
+				t.Errorf("%s/%s does not keep report-only children from memory mutation", target, name)
 			}
 		}
-	}
-	workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
-	for _, want := range []string{
-		"memory created by `awf effort new`", "Use an outcome-specific title", "Memory is optional",
-		"A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; checkbox tasks and batch-helper returns are not checkpoint boundaries.",
-	} {
-		if !strings.Contains(workflow, want) {
-			t.Errorf("workflow checkpoint guidance missing %q", want)
-		}
-	}
-	projectWorkflow := read(t, filepath.Join("..", "..", "docs", "workflow.md"))
-	const effortRecommendation = "Create an outcome-specific effort with `awf effort` when durable coordination, working memory, or a managed worktree is warranted."
-	if !strings.Contains(projectWorkflow, effortRecommendation) {
-		t.Errorf("authoritative workflow checkpoint guidance missing %q", effortRecommendation)
-	}
-	sentenceBoundary := regexp.MustCompile(`[.!?](?:\s+|$)`)
-	for label, body := range map[string]string{"catalog workflow": workflow, "project workflow": projectWorkflow} {
-		for _, sentence := range sentenceBoundary.Split(strings.ToLower(body), -1) {
-			mentionsTaskOrHelper := strings.Contains(sentence, "checkbox task") || strings.Contains(sentence, "batch-helper return") || strings.Contains(sentence, "helper return")
-			negatesCheckpointBoundary := strings.Contains(sentence, "not checkpoint boundaries") || (strings.Contains(sentence, "not ") && strings.Contains(sentence, "checkpoint boundaries"))
-			if mentionsTaskOrHelper && strings.Contains(sentence, "checkpoint") && !negatesCheckpointBoundary {
-				t.Errorf("%s adds a task/helper checkpoint trigger: %q", label, sentence)
+		pathFor := func(name string) string {
+			if target == "pi" {
+				return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
 			}
-			mentionsLifecycle := strings.Contains(sentence, "selection") || strings.Contains(sentence, "assignment") || strings.Contains(sentence, "adoption") || strings.Contains(sentence, "detour") || strings.Contains(sentence, "telemetry-lifecycle")
-			requiresCheckpointGate := strings.Contains(sentence, "required before a routine checkpoint") || strings.Contains(sentence, "requires a routine checkpoint") || strings.Contains(sentence, "checkpoint gate")
-			if mentionsLifecycle && requiresCheckpointGate {
-				t.Errorf("%s adds a lifecycle checkpoint gate: %q", label, sentence)
+			return skillPath(root, name)
+		}
+		impl := read(t, pathFor("reviewing-impl"))
+		assertOrderedBody(t, target+"/reviewing-impl integration", impl, []string{
+			"Route settled terminal review", "If no managed", "awf effort integrate <slug>",
+			"Integration never implies review, removal, retrospective, or finish",
+			"divergent merge", "awf check --staged", "project gate", "merge commit",
+			"terminal implementation review again", "awf effort worktree remove <slug>", "retrospective",
+		})
+		retro := read(t, pathFor("retrospective"))
+		assertOrderedBody(t, target+"/retrospective finish", retro, []string{
+			"Repository sources and current-state documentation", "Promote recurring",
+			"Verify managed topology is absent", "Finish last", "awf effort finish <slug>",
+		})
+
+		// The routine checkpoint carries the same unified-effort contract as the
+		// approval boundaries, but continues instead of stopping. It must never
+		// render an approval stop or claim the retrospective's finish step, and
+		// only Pi may name the handoff tool.
+		for _, name := range routineCheckpointSkills {
+			body := read(t, pathFor(name))
+			ordered := append([]string{}, routineOrdered...)
+			if target == "pi" {
+				ordered = append(ordered,
+					"invoke `handoff_session` alone",
+					"continue automatically in the fresh session",
+					"unless the user cancels during the five-second window",
+					"A failed handoff leaves the checkpoint valid and becomes a check-in",
+				)
+			} else {
+				ordered = append(ordered, "Continue through the target-native successor without claiming session replacement")
 			}
-		}
-	}
-	perChange := map[string]string{
-		"executing-direct": "after each independently resumable committed and reviewed change",
-	}
-	for name, sentence := range perChange {
-		body := read(t, piSkillPath(name))
-		start := strings.Index(body, sentence)
-		if start < 0 {
-			t.Errorf("%s lost its per-task checkpoint sentence", name)
-			continue
-		}
-		end := strings.Index(body[start:], "Terminal step")
-		if end < 0 {
-			end = len(body) - start
-		}
-		assertOrderedBody(t, name+" per-change section", body[start:start+end], ordered)
-	}
-	if body := read(t, piSkillPath("retrospective")); !strings.Contains(body, "Delete the effort's working-memory file") {
-		t.Errorf("retrospective missing the working-memory deletion step")
-	}
-
-	// The brainstorming template carries the identity rule in its own prose,
-	// ahead of the approval protocol. assertOrderedBody scans strictly forward
-	// from the approval header, so an ordered-list phrase would be satisfied by
-	// the approval partial's copy and would not reach this site (ADR-0160).
-	brainstorming := read(t, piSkillPath("brainstorming"))
-	approvalHeader := strings.Index(brainstorming, "**Mandatory approval check-in.**")
-	if approvalHeader < 0 {
-		t.Fatalf("brainstorming lost its approval header")
-	}
-	identity := strings.Index(brainstorming, "a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface")
-	if identity < 0 || identity >= approvalHeader {
-		t.Errorf("brainstorming must carry the two-source identity rule in its own prose ahead of the approval protocol, got index %d against header %d", identity, approvalHeader)
-	}
-
-	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
-	for _, name := range routineCheckpointSkills {
-		body := read(t, skillPath(nonPiRoot, name))
-		if strings.Contains(body, "handoff_session") {
-			t.Errorf("non-Pi skill %q names handoff_session", name)
-		}
-		notice := strings.Index(body, "continuity notice")
-		continuation := strings.Index(body, "Continue through the target-native successor without claiming session replacement")
-		if notice < 0 || continuation < notice {
-			t.Errorf("non-Pi skill %q does not continue target-natively after the continuity notice", name)
-		}
-	}
-
-	// No rendered site may presuppose a runtime-assigned effort ID: not a skill
-	// body on any target, and not the neutral docs, where this protocol has its
-	// canonical home. The old forms are unsatisfiable wherever no runtime
-	// assigns an ID, and a target-conditional branch or the canonical doc is
-	// exactly where one hides unseen (ADR-0160).
-	type renderedSite struct{ label, path string }
-	sites := []renderedSite{
-		{"pi/docs/workflow.md", filepath.Join(root, "docs", "workflow.md")},
-		{"pi/AGENTS.md", filepath.Join(root, "AGENTS.md")},
-		{"claude/docs/workflow.md", filepath.Join(nonPiRoot, "docs", "workflow.md")},
-		{"claude/AGENTS.md", filepath.Join(nonPiRoot, "AGENTS.md")},
-	}
-	bodies, err := os.ReadDir(filepath.Join(root, ".pi", "skills"))
-	if err != nil {
-		t.Fatalf("list rendered pi workflow bodies: %v", err)
-	}
-	for _, entry := range bodies {
-		name := strings.TrimPrefix(entry.Name(), evalPrefix+"-")
-		sites = append(sites,
-			renderedSite{"pi/" + name, filepath.Join(root, ".pi", "skills", entry.Name(), "SKILL.md")},
-			renderedSite{"claude/" + name, skillPath(nonPiRoot, name)},
-		)
-	}
-	for _, site := range sites {
-		body := read(t, site.path)
-		for _, banned := range []string{"<active-effort-id>", "never invent or infer an effort ID", "never infer the ID"} {
-			if strings.Contains(body, banned) {
-				t.Errorf("rendered site %q presupposes a runtime-assigned effort ID via %q", site.label, banned)
+			assertOrderedBody(t, target+"/"+name+" routine checkpoint", body, ordered)
+			if strings.Contains(body, "explicitly request approval") {
+				t.Errorf("%s/%s renders an approval stop in a routine skill", target, name)
+			}
+			if strings.Contains(body, "awf effort finish") {
+				t.Errorf("%s/%s claims the retrospective's finish step", target, name)
+			}
+			if target != "pi" && strings.Contains(body, "handoff_session") {
+				t.Errorf("%s/%s names handoff_session", target, name)
 			}
 		}
 	}
@@ -453,11 +389,13 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 	nonPiRoot := syncFullCatalogForTarget(t, cat, "claude")
 	ordered := []string{
 		"**Mandatory approval check-in.**",
-		"Complete the memory update in its own tool batch",
-		"Effort: <effort-id>",
-		"rewriting it when a runtime has since assigned an active ID",
-		"a runtime's active ID when one is assigned, otherwise a short kebab-case slug you establish and surface",
-		"never adopt another effort's identity",
+		"concrete non-minimal outcome",
+		"exactly one immutable slugged effort",
+		"always owns `.awf/efforts/<slug>/memory.md`",
+		"Repository sources and current-state documentation remain authoritative",
+		"Effort: <slug>",
+		"one user-managed writer",
+		"never edits the shared memory",
 		"explicitly request approval",
 		"end the turn",
 		"Stop even when there is no concern to raise",

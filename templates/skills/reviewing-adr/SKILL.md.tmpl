@@ -17,6 +17,8 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 
 ## Procedure
 
+Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources, the ADR corpus, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
+
 <!-- awf:section procedure -->
 1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified file under `{{ .layout.adrDir }}/` matching the `NNNN-*.md` pattern.
 <!-- awf:end -->
@@ -28,7 +30,7 @@ Terminal step of `{{ .prefix }}-proposing-adr`. Invoked once the ADR file is wri
 <!-- awf:section dispatch-subagent -->
 {{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "adr"`.** Put the complete reviewer brief in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. The brief must include:
 {{ else }}3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes the following. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.
-{{ end }}   - The absolute ADR path.
+{{ end }}   - The absolute ADR path, effort slug, and exact `.awf/efforts/<slug>/memory.md` path, with an explicit instruction that the reviewer must not edit memory.
    - The hint that the reviewer may run `awf topic <domain>/<topic>` on each destination topic named in the ADR's State changes when it needs current claim text. No context packet accompanies this dispatch: an explicit ADR path reports lifecycle progress, not path-claim grounding.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
