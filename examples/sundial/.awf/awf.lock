@@ -736,9 +736,9 @@
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:24a2da0d09900065944c1fe65281a1e2a197e704db7a61876dbbe8e31d98f3aa",
+      "templateHash": "sha256:650446e7285cd8596a1a76b263d3fae01d8de6911ec51128dadca4047ab93108",
       "configHash": "sha256:c2d0c5389c6bf2322256199fd881e0d05730cd408b50c9816f2300e133b247db",
-      "outputHash": "sha256:d728a89918ab465f1e67e3a394a6840b4e7e8c0a48bab1a695561a5842f33c8a"
+      "outputHash": "sha256:8611a69b85dac5a4100ca365bb6d73bea7e2e8e1960bc39140734b4b42d1cf44"
     },
     ".pi/extensions/awf-subagents/model-routing.ts": {
       "templateId": "pi/awf-subagents/model-routing.ts.tmpl",
@@ -748,9 +748,9 @@
     },
     ".pi/extensions/awf-subagents/runner.ts": {
       "templateId": "pi/awf-subagents/runner.ts.tmpl",
-      "templateHash": "sha256:036e1a232a495bb7910840236d7daa241227c1c4ecf178fc72bde15c2ce883e8",
+      "templateHash": "sha256:181933e623671ed21fdb71b106d220067417cc488cbfc2a3280ca11be46e2efd",
       "configHash": "sha256:c2d0c5389c6bf2322256199fd881e0d05730cd408b50c9816f2300e133b247db",
-      "outputHash": "sha256:739576f29911cb3a1284002f342936ee46b26913de0876363886c0dd7eaa6acb"
+      "outputHash": "sha256:da680eab109eb1ee248b9819c9641c8b2383f9fb4f030c5e351ea554df0e25d8"
     },
     ".pi/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",

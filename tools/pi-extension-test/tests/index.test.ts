@@ -724,9 +724,9 @@ test("the loaded implementer contract is prepended with the call's commit author
     await call(h, "subagent_implement", { task: "x", allowCommits });
     const prompt = h.requests[0].systemPrompt;
     assert.equal(prompt, `You are the governed implementation subagent. ${expected}\n\nOwn the transaction.`);
-    // The frontmatter is stripped, not passed through to the child.
-    assert.doesNotMatch(prompt, /name: implementer/);
-    assert.doesNotMatch(prompt, /^---/);
+    // The exact equality above is what backs the frontmatter-strip clause; this
+    // line-anchored check states the intent discriminatingly.
+    assert.doesNotMatch(prompt, /^---/m);
   }
 });
 

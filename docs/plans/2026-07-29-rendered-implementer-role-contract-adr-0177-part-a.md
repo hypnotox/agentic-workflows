@@ -748,9 +748,18 @@ review's settlement commit.
   Task 2.4 said "in both branches"; the branch split in these two skills is model-routing guidance
   only, so one mention ahead of the split covers both rendered shapes. `TestImplementerAgent` renders
   both capability shapes and asserts the name in each, which is what the claim requires.
-- **The `unsetFallbackCases` ban list uses `` `` `` rather than the planned `<no value>`.**
+- **The `unsetFallbackCases` ban list bans an empty backtick pair rather than the planned `<no value>`.**
   `renderGolden` already runs `assertNoLeaks`, which bans `<no value>` for every case, so the planned
   entry was redundant; banning an empty backtick pair instead catches a deleted `{{ else }}` fallback
   in the gate step, which nothing else would.
 - **The plan's verification step named `awf list agents`; the command takes the singular kind.**
   `awf list agent` is correct and was used.
+- **The terminal review's settlement departed from Decision item 4 twice.** Item 4 describes the new
+  case as flatly `allowCommits: true` with HEAD unchanged. The shipped check additionally requires
+  `!result.failed`, so a child that already failed or was aborted keeps its own diagnostic instead of
+  being relabelled, and the failure message composes the child's report with the demand rather than
+  replacing it, because a failed result renders only `failureMessage` and replacing it discarded the
+  very inventory the ADR exists to obtain. Both narrow the ADR's literal text; see the review-settlement
+  commit body for the reasoning. Both narrowings leave ADR-0177's claim prose asserting a universal
+  that the code contradicts in a provable subset, which needs a successor decision rather than a
+  settlement, since ADR-0177 is frozen.

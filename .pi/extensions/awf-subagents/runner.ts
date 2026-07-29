@@ -122,7 +122,7 @@ export function truncateStderr(value: string): string {
   return `[stderr truncated: ${total - Buffer.byteLength(value.slice(start), "utf8")} bytes omitted]\n${value.slice(start)}`;
 }
 
-function truncateFailure(value: string): string {
+export function truncateFailure(value: string): string {
   return truncateField(value, MAX_FAILURE_BYTES, "\n[failure truncated]");
 }
 

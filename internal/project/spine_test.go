@@ -357,6 +357,11 @@ func TestImplementerAgent(t *testing.T) {
 	if !strings.Contains(inline, "You, the parent executing this plan, raise missing phase context") {
 		t.Errorf("executing-plans' raise-concerns imperative lost its explicit subject:\n%s", inline)
 	}
+	for _, subject := range []string{"you preserve the plan's settled", "You run `awf context"} {
+		if !strings.Contains(inline, subject) {
+			t.Errorf("executing-plans lost the explicit subject %q:\n%s", subject, inline)
+		}
+	}
 	if !strings.Contains(inline, "You inventory each return") {
 		t.Errorf("executing-plans' batch imperatives lost their explicit subject:\n%s", inline)
 	}

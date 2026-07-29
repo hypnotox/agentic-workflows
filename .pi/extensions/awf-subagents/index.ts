@@ -20,6 +20,7 @@ import { Type } from "typebox";
 import {
   createRunner,
   productionRunnerDependencies,
+  truncateFailure,
   type DisplayEvent,
   type RunRequest,
   type Runner,
@@ -822,7 +823,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
           const failure = {
             ...result,
             failed: true,
-            failureMessage: [result.output.trim(), demand].filter(Boolean).join("\n\n"),
+            failureMessage: truncateFailure([result.output.trim(), demand].filter(Boolean).join("\n\n")),
           };
           return toolResult("implement", params.task, failure, gitDetails);
         }
