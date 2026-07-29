@@ -1,7 +1,7 @@
 ---
 date: 2026-07-29
 adrs: [173]
-status: Proposed
+status: Implemented
 ---
 # Plan: Deliberate subagent model selection
 
@@ -87,7 +87,7 @@ exact path to this Proposed plan before staging. Do not replace the inventory wi
 then runs `./x gate` and requires success. One commit-capable implementer owns this complete batch,
 including the operation, generated outputs, staged check, gate, and closing commit.
 
-- [ ] **Task 1.1: Add the failing cross-runtime proof in
+- [x] **Task 1.1: Add the failing cross-runtime proof in
   `internal/project/subagent_model_selection_test.go`.** Create
   `TestDeliberateSubagentModelSelectionAcrossGovernedDispatches` with the marker
   `// invariant: rendering/workflow-skill-templates:deliberate-subagent-model-selection` immediately
@@ -117,7 +117,7 @@ including the operation, generated outputs, staged check, gate, and closing comm
   `go test ./internal/project -run TestDeliberateSubagentModelSelectionAcrossGovernedDispatches`;
   before Task 1.2 it must fail on missing deliberate-selection clauses.
 
-- [ ] **Task 1.2: Update the authored agent-guide and documentation convention.** In the workflow
+- [x] **Task 1.2: Update the authored agent-guide and documentation convention.** In the workflow
   section of `templates/agents-doc/AGENTS.md.tmpl`, add one provider-neutral paragraph after the
   enabled-skill listing and before Conventional Commits. It must say: every governed subagent
   dispatch chooses the smallest model expected to complete reliably; small is narrow, mechanical,
@@ -136,7 +136,7 @@ including the operation, generated outputs, staged check, gate, and closing comm
   source for Sundial and generic adopters. Preserve existing phase ownership and preference-file
   documentation.
 
-- [ ] **Task 1.3: Update every final governed dispatch occurrence in the eight skill templates.** Use
+- [x] **Task 1.3: Update every final governed dispatch occurrence in the eight skill templates.** Use
   one shared qualifying wording shape, specialized only for the local role and occurrence. For a Pi
   branch, state `Omit the model field entirely to use configured role routing; when the selected
   complexity warrants an override, pass the tier's exact provider/model-id. Never pass default,
@@ -153,7 +153,7 @@ including the operation, generated outputs, staged check, gate, and closing comm
   phase commit; the phase review and dedicated review skills retain `kind: adr|plan|code`,
   report-only behavior, and exactly one verify pass. Generic branches must not acquire Pi syntax.
 
-- [ ] **Task 1.4: Update existing render and eval assertions.** In
+- [x] **Task 1.4: Update existing render and eval assertions.** In
   `internal/project/target_test.go`, replace the old `provider/model-id` plus `inherits the parent`
   sweep in `TestCrossRuntimeExplorationDispatch` with assertions delegated to the new exhaustive
   proof while retaining exploration's Pi/non-Pi capability and leakage checks. In
@@ -162,7 +162,7 @@ including the operation, generated outputs, staged check, gate, and closing comm
   invocation-graph semantics. Keep ADR-0166's phase and helper assertions green; do not add a
   task-level dispatch or checkpoint.
 
-- [ ] **Task 1.5: Add and apply the first current-state operation.** In
+- [x] **Task 1.5: Add and apply the first current-state operation.** In
   `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, add this claim with its
   proof marker already present:
 
@@ -181,7 +181,7 @@ including the operation, generated outputs, staged check, gate, and closing comm
   `./awf check --staged`, and use the values it reports. Run `./x render` and inspect every generated
   change for provider/tool leakage and unrelated drift.
 
-- [ ] **Phase-close: verify, stage, gate, and commit.** Run `gofmt -w
+- [x] **Phase-close: verify, stage, gate, and commit.** Run `gofmt -w
   internal/project/subagent_model_selection_test.go internal/project/target_test.go
   internal/evals/chain_test.go`, `go test ./internal/project ./internal/evals`, `./x render`,
   `./x check`, and `git diff --check`; all must pass and the final command prints no output. From
@@ -206,7 +206,7 @@ feat(rendering): govern subagent model selection (applies 0173)
 implementer owns the preference, routing, wizard, claims, generated outputs, and one closing commit;
 the three Pi-workflow operations may not split.
 
-- [ ] **Task 2.1: Reintroduce the Pi entrypoint behavior harness before changing production.** Create
+- [x] **Task 2.1: Reintroduce the Pi entrypoint behavior harness before changing production.** Create
   `tools/pi-extension-test/tests/index.test.ts` using the current `handoff.test.ts` map-based
   tool/command/hook harness and the historical awf-subagents harness shape only as non-authoritative
   reference. Import the rendered `registerSubagentTools`, model schema, store, resolver, and preset.
@@ -223,7 +223,7 @@ the three Pi-workflow operations may not split.
   notice per session-manager identity. Run `./x pi-test run`; it must fail on the unimplemented tier
   and strict-reference cases while the TypeScript compilation remains clean.
 
-- [ ] **Task 2.2: Extend the in-place preference model and deterministic validation state in
+- [x] **Task 2.2: Extend the in-place preference model and deterministic validation state in
   `templates/pi/awf-subagents/index.ts.tmpl`.** Add `PREFERENCE_TIERS = ["small", "standard",
   "large"] as const`, add those optional fields to `SubagentModelPreferences`, and make the legal key
   order exactly `default`, grounding, exploration, review, implementation, small, standard, large.
@@ -255,7 +255,7 @@ the three Pi-workflow operations may not split.
   valid and non-blocking; any configured invalid field or source blocks all implicit routing,
   including when only a tier is invalid, while valid explicit calls remain usable.
 
-- [ ] **Task 2.3: Make queue-time resolution a preflight and revalidate immediately before child
+- [x] **Task 2.3: Make queue-time resolution a preflight and revalidate immediately before child
   startup.** Preserve the existing precedence for an omitted role request and the existing execution
   metadata sources. At execute entry, validate task, snapshot thinking, reload both preference files,
   validate the current registry, and resolve once for actionable preflight. For exploration, acquire
@@ -271,7 +271,7 @@ the three Pi-workflow operations may not split.
   invalid state emits the existing strict error per key. Explicit valid calls remain usable. Do not
   suppress a notice in a later session within the same process.
 
-- [ ] **Task 2.4: Enforce the same public contract in all four tool schemas and guidance.** Export
+- [x] **Task 2.4: Enforce the same public contract in all four tool schemas and guidance.** Export
   and reuse this exact TypeBox field in grounding, exploration, review, and implementation:
 
   ```ts
@@ -288,7 +288,7 @@ the three Pi-workflow operations may not split.
   configured or inherited routing.` The runtime parser must repeat the check because a `tool_call`
   handler may mutate already-validated input.
 
-- [ ] **Task 2.5: Extend `/awf-subagent-models` to one eight-field atomic transaction.** Keep the
+- [x] **Task 2.5: Extend `/awf-subagent-models` to one eight-field atomic transaction.** Keep the
   existing scope choice, current/error display, cancellation behavior, gitignore enforcement,
   owner-only preference write, sibling temporary rename, stale-writer check, cleanup, refresh, and
   live validation. Iterate slots in the fixed field order from Task 2.2. The effective preview must
@@ -302,7 +302,7 @@ the three Pi-workflow operations may not split.
   scope, state confirmation, mode, every slot, final confirmation, and ignore confirmation writes no
   preference file. The summary writes roles and tiers together; no partial schema transaction exists.
 
-- [ ] **Task 2.6: Complete TypeScript and render coverage.** In `index.test.ts`, cover every branch
+- [x] **Task 2.6: Complete TypeScript and render coverage.** In `index.test.ts`, cover every branch
   from Tasks 2.1-2.5, including wizard preset eligibility, eight-slot manual flow, leave-unset,
   cancellation, project ignore decline/append/outside-worktree behavior, stale writer, mkdir/read/
   write/rename failures, temp cleanup, live post-save refresh, and the Luna/Terra/Sol mapping. Add
@@ -317,7 +317,7 @@ the three Pi-workflow operations may not split.
   `tools/pi-extension-test/tsconfig.json`; do not modify that file, add a new rendered extension
   output, or change `internal/project/target.go` in this phase.
 
-- [ ] **Task 2.7: Apply the three Pi-workflow operations together.** Replace the three claims in
+- [x] **Task 2.7: Apply the three Pi-workflow operations together.** Replace the three claims in
   `.awf/topics/parts/rendering/pi-workflows/current-state.md` with these contract bodies, preserving
   each Origin and appending `Revised-by: ADR-0173`:
 
@@ -350,7 +350,7 @@ the three Pi-workflow operations may not split.
   rendering/pi-workflows:pi-subagent-model-wizard`. Keep the ADR Implementing and the two runtime
   operations Remaining. Run `./x render`.
 
-- [ ] **Phase-close: verify, stage, gate, and commit.** Run
+- [x] **Phase-close: verify, stage, gate, and commit.** Run
   `go test ./internal/project ./internal/evals`, `./x pi-test run`, `./x render`, `./x check`, and
   `git diff --check`; require passing tests, 100% configured Pi-extension coverage, clean drift, and
   no diff-check output. Run this exact staging command:
@@ -391,7 +391,7 @@ complete deterministic render consequences. Run `./awf check
 implementer owns the extraction, runtime hook, output-plan change, smoke proof, final claim batch,
 ADR implementation transition, and closing commit.
 
-- [ ] **Task 3.1: Extract the bounded pure routing module with its consumer.** Create
+- [x] **Task 3.1: Extract the bounded pure routing module with its consumer.** Create
   `templates/pi/awf-subagents/model-routing.ts.tmpl` with the provenance-compatible ts-nocheck line
   and move, without duplicating policy, the preference constants/types, exact-reference parser,
   source parser, project-over-global merge, completeness projection, bounded reason-code validation,
@@ -410,7 +410,7 @@ ADR implementation transition, and closing commit.
   unrelated extension files. The resulting awf-subagents directory contains `index.ts`,
   `model-routing.ts`, and `runner.ts`; handoff remains the other Pi extension entrypoint.
 
-- [ ] **Task 3.2: Build the deterministic bounded routing card.** In `model-routing.ts.tmpl`, export
+- [x] **Task 3.2: Build the deterministic bounded routing card.** In `model-routing.ts.tmpl`, export
   `buildRoutingCard(state)` using this exact complete representative fixture and separators:
 
   ```text
@@ -452,7 +452,7 @@ ADR implementation transition, and closing commit.
   maximum-length, and defensive fixtures; they construct every field at the 256-character boundary
   to prove the normal form fits rather than relying only on the defensive branch.
 
-- [ ] **Task 3.3: Wire one per-run `before_agent_start` injection with current state.** In the
+- [x] **Task 3.3: Wire one per-run `before_agent_start` injection with current state.** In the
   shared authoritative source `templates/partials/pi-minimum-runtime.md`, add `getActiveTools` to
   `MinimumRuntimeAPI` and its capability map; require it from `index.ts.tmpl`. Because the handoff
   entrypoint consumes the same partial, regenerate both root and Sundial handoff entrypoints and
@@ -472,7 +472,7 @@ ADR implementation transition, and closing commit.
   over-budget state returns the failure card and emits one actionable warning without weakening
   routing. Next-run preference and registry changes must appear without reload.
 
-- [ ] **Task 3.4: Add pure, hook-level, and real Pi runtime tests.** Move pure policy cases from
+- [x] **Task 3.4: Add pure, hook-level, and real Pi runtime tests.** Move pure policy cases from
   `index.test.ts` into direct imports from `model-routing.ts` where that gives a narrower seam; keep
   entrypoint tests for all tool schemas, queue ordering, wizard integration, active-tool fallback,
   notices, and hook registration. Add routing-card assertions for deterministic field order,
@@ -497,7 +497,7 @@ ADR implementation transition, and closing commit.
   active and assert the captured request has no card. Dispose the session. This is the real-runtime
   assertion used by `./x pi-test run` and `TestPiRealRuntimeSmoke`.
 
-- [ ] **Task 3.5: Apply the final runtime operations and freeze lifecycle records.** In
+- [x] **Task 3.5: Apply the final runtime operations and freeze lifecycle records.** In
   `.awf/topics/parts/rendering/pi-runtime/current-state.md`, replace the two claims as follows,
   preserving Origin and appending `Revised-by: ADR-0173`:
 
@@ -529,7 +529,7 @@ ADR implementation transition, and closing commit.
   Applied: discard its uncommitted claim/source/proof changes and cancel every operation in that
   batch plus all later operations.
 
-- [ ] **Task 3.6: Verify, stage, gate, and create the final implementation commit.** Run `gofmt -w
+- [x] **Task 3.6: Verify, stage, gate, and create the final implementation commit.** Run `gofmt -w
   internal/project/target.go internal/project/target_test.go internal/project/output_plan_test.go
   internal/project/project_test.go`, `go test ./...`, `./x pi-test run`, `./x render`, `./x check`,
   and `git diff --check`. Require all tests and coverage to pass, drift to be clean, and diff-check to
@@ -547,7 +547,7 @@ ADR implementation transition, and closing commit.
 feat(rendering): inject Pi subagent routing cards (implements 0173)
 ```
 
-- [ ] **Task 3.7: Settle phase review and freeze this plan.** After the Phase 3 closing commit,
+- [x] **Task 3.7: Settle phase review and freeze this plan.** After the Phase 3 closing commit,
   perform the required report-only phase review. Resolve findings through focused parent-owned
   commits, each with explicit staging, `./awf check --staged`, and `./x gate`; never amend the phase
   commit. Record settled implementation findings under Notes, check every completed task, change
@@ -577,6 +577,14 @@ docs(plans): freeze deliberate subagent model selection plan
 
 ## Notes
 
+- Phase 3 closed in `e3c5cb65`. Its required report-only review found that the first implementation
+  duplicated routing policy in the entrypoint, misreported shared-default role fallback, substituted
+  a hand-built string test for the pinned runtime proof, omitted hook, output-plan, prune, and
+  changelog coverage, and froze sequence 82 before those two runtime claims were fully true. Forward
+  settlement `017c14e5` moved the complete pure policy into the consumed bounded module, added exact
+  card and hook coverage, exercised a real pinned Pi session with an in-process fake provider and no
+  network or external model cost, completed output and cleanup proofs, and restored documentation
+  currency. The single settlement verify pass returned no findings.
 - Phase 2 settlement commits `2014e4df` and `2249e36f` already updated
   `changelog/CHANGELOG.md`; its File structure entry records that settled work and does not imply
   another Phase 3 staging change.
