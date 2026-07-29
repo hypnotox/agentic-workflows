@@ -757,7 +757,7 @@ func (p *Project) observeRenderInputs(kind, artifact, tid, outPath string, plan 
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "memory" && kind != "efforts" && kind != "worktrees" && kind != "runner" {
+	if kind != "target-output" && kind != "claude" && kind != "bootstrap" && kind != "hooks" && kind != "efforts" && kind != "worktrees" && kind != "runner" {
 		has, err := p.Cfg.HasSidecar(kind, artifact)
 		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
 			return nil, err

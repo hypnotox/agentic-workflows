@@ -269,6 +269,7 @@ func TestCutoverOperationsRequiresApprovalPresent(t *testing.T) {
 // TestResetLegacyResidentsRefusals pins the two ways the resident reset stops
 // before moving a byte: no lock to hang the commit point on, and a resident
 // plan the journal contract itself rejects.
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestResetLegacyResidentsRefusals(t *testing.T) {
 	t.Run("residents-without-a-lock", func(t *testing.T) {
 		root := t.TempDir()
@@ -311,6 +312,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 // TestResetLegacyResidentsCommitsSchemaAndDiscards pins the whole reset: an
 // unordered resident plan is sorted into a valid journal, every resident is
 // discarded, and the lock lands last carrying the new generation.
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	root := t.TempDir()
 	mustMkdir(t, filepath.Join(root, ".awf", "efforts"))

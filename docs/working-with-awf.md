@@ -9,7 +9,7 @@ awf into a new repo is documented in the awf project itself.
 
 First adoption seals `initializedWithVersion`, both ADR format cutoffs, and gaps in the lock: both cutoffs are 1 for an empty corpus, or highest-plus-one with explicit lower gaps for brownfield history. Schema-15 upgrade preserves an existing V1 cutoff and atomically seals V2 at highest-plus-one without rewriting ADRs. Older migrated adopters may omit initialization provenance; sync and forced re-init preserve authority rather than backfilling history. An older adopter with neither permanent authority nor a bridge attestation is refused before mutation.
 
-awf always renders self-ignoring `.gitignore` files at `.awf/efforts/`, `.awf/memory/`, and `.awf/worktrees/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve these roots without recursively deleting worktrees.
+awf always renders self-ignoring `.gitignore` files at `.awf/efforts/` and `.awf/worktrees/`. The tracked root rule is the only rendered artifact; dynamic descendants are repository-local resident state. Render, drift, nested-adopter discovery, and uninstall preserve these roots without recursively deleting worktrees.
 
 A complete worked example lives at
 [`examples/sundial/`](../examples/sundial/README.md): a fictional adopter with the
@@ -75,7 +75,7 @@ gate into CI so drift and rule violations block a merge.
 (an enabled artifact's sidecar or declared-section parts, a rendered unit, or the skeleton),
 and anything else is failing drift with a repair hint, including sync-written `*.awf-bak`
 collision backups (review and delete them) and the parts of a `local: true` artifact
-(`.awf/memory/` is exempt session scratch). Configuration must be consumed, too: a non-empty
+(the resident roots are exempt local state). Configuration must be consumed, too: a non-empty
 `vars:` key or a sidecar `data:` key that no rendered artifact references is flagged, so a
 typo'd override can no longer degrade silently. A `paths:` key outside a domain sidecar, or
 `data:`/`sections:`/`local: true` on a domain sidecar, refuses at project open with the fix

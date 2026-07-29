@@ -417,6 +417,7 @@ func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("root bypasses directory permissions")
@@ -463,6 +464,7 @@ func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
 // TestJournalResidentInterruption pins every crash point around the resident
 // renames. Each case materializes the exact tree an interruption would leave
 // and requires `awf upgrade --recover` to converge, twice.
+// invariant: config/migrations-and-locks:unified-effort-resident-migration
 func TestJournalResidentInterruption(t *testing.T) {
 	const (
 		leafRel  = ".awf/efforts/legacy.json"

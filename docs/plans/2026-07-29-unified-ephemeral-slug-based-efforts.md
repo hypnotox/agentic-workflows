@@ -639,6 +639,26 @@ docs(plans): freeze unified effort plan
 - Task 3.4's residual-surface search found one stale current-state doc: the `handoff_session`
   pitfall still described the retired standalone `.awf/memory/<effort-id>.md` path and a diagnostic
   the extension no longer emits. It was corrected in the same transaction.
+- Amendment, Phase 3 source closure: the residual-surface search covered authored `.awf/` parts but
+  not the shipped generic templates behind them, so three sentences in
+  `templates/docs/working-with-awf.md.tmpl` kept naming three resident roots. The root guide
+  overrides two of the three sections, which hid the contradiction locally while still publishing it
+  to every adopter and to Sundial. That template is added to the phase source set. The lesson
+  generalizes: overriding a section in this repo can mask stale generic prose that adopters still
+  receive, so a resident-shape change must search templates as well as `.awf/` parts.
+- Task 4.1 findings settlement: the terminal review returned one blocker (the template prose above),
+  two concerns, and two nits. The blocker, the stale `config` domain current-state part, the stale
+  `tooling/upgrade-runtime` topic intro, and a dead `"memory"` render-kind string were all settled
+  mechanically. The review's third finding reported that the migration claim's journaled half had no
+  proof marker and concluded that fixing it required a new ADR operation or a topic-ownership change,
+  because `internal/upgrade/**` belongs to the `tooling` domain. The gap was real; the conclusion was
+  not. `internal/topic/markers.go` validates a proof marker against `currentState.testGlobs` alone,
+  and applies the topic-scope-and-domain test only to a `touches-state` marker, so proof markers on
+  the reset and interruption tests in `internal/upgrade` back the claim directly and `awf check`
+  accepts them. The remaining nit, that `changed bytes: no` is migration-scoped while a
+  multi-generation upgrade may already have mutated config bytes in an earlier generation, was
+  accepted as-is: the preceding migration prints its own removal lines immediately above the
+  refusal, so the operator sees the full picture.
 
 ### Phase 2 execution record
 
