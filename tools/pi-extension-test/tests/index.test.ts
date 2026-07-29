@@ -683,6 +683,53 @@ test("a commit-capable implementation that leaves HEAD unchanged fails and deman
   ]) assert.match(text, clause);
 });
 
+test("the no-commit failure carries the child's own report, and never masks a real failure", async () => {
+  const inventory = "stopped\n\ngit status --short:\n M internal/thing.go\n\ncompleted: the parser\nremaining: the encoder\nfailing check: ./x gate, coverage 99.2%\nalready tried: adding a table case";
+  const h = harness({
+    git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_DIRTY],
+    run: async () => ({ ...baseResult, output: inventory }),
+  });
+  const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: true });
+  assert.equal(value.details.state, "failed");
+  // The inventory is the point of the contract, and a failed result renders only
+  // failureMessage, so it must be carried into it rather than replaced.
+  assert.match(value.content[0].text, /already tried: adding a table case/);
+  assert.match(value.content[0].text, /created no commit/);
+
+  // A run that already failed keeps its own diagnostic and is not relabelled.
+  const failed = harness({
+    git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_DIRTY],
+    run: async () => ({ ...baseResult, failed: true, failureMessage: "child exploded", stopReason: "error" }),
+  });
+  const failedResult = await call(failed, "subagent_implement", { task: "x", allowCommits: true });
+  assert.equal(failedResult.value.content[0].text, "child exploded");
+
+  // An aborted run is likewise left alone rather than reported as a missing commit.
+  const aborted = harness({
+    git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_CLEAN],
+    run: async () => ({ ...baseResult, failed: true, failureMessage: "aborted by user", stopReason: "aborted" }),
+  });
+  const abortedResult = await call(aborted, "subagent_implement", { task: "x", allowCommits: true });
+  assert.equal(abortedResult.value.details.state, "aborted");
+  assert.doesNotMatch(abortedResult.value.content[0].text, /created no commit/);
+});
+
+test("the loaded implementer contract is prepended with the call's commit authority and stripped of frontmatter", async () => {
+  for (const [allowCommits, expected] of [
+    [true, "Commits are allowed when the task requests them; you are the phase owner."],
+    [false, "Commits are forbidden; do not change HEAD. You are a helper."],
+  ] as const) {
+    const h = harness();
+    withImplementerDoc(h, "---\nname: implementer\ndescription: test\n---\nOwn the transaction.");
+    await call(h, "subagent_implement", { task: "x", allowCommits });
+    const prompt = h.requests[0].systemPrompt;
+    assert.equal(prompt, `You are the governed implementation subagent. ${expected}\n\nOwn the transaction.`);
+    // The frontmatter is stripped, not passed through to the child.
+    assert.doesNotMatch(prompt, /name: implementer/);
+    assert.doesNotMatch(prompt, /^---/);
+  }
+});
+
 test("a commit-capable implementation that advanced HEAD succeeds", async () => {
   const h = harness({ git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_AFTER, STATUS_CLEAN] });
   const { value } = await call(h, "subagent_implement", { task: "x", allowCommits: true });

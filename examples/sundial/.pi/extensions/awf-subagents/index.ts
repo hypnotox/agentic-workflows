@@ -801,8 +801,10 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         // A commit-capable owner that left HEAD alone did not complete its phase.
         // This detects the absence of a commit, not the absence of a reason, so a
         // child that stopped correctly with a full inventory also lands here: that
-        // phase did not complete, and a failure result is the honest report.
-        const missingCommitWhenOwner = params.allowCommits && comparable && before.head === after.head;
+        // phase did not complete, and a failure result is the honest report. A run
+        // that already failed or was aborted is left alone: it carries its own
+        // diagnostic, and it obviously produced no commit.
+        const missingCommitWhenOwner = params.allowCommits && comparable && before.head === after.head && !result.failed;
         const gitDetails = { ...finalMetadata, allowCommits: params.allowCommits, before, after, commitVerification: comparable ? "verified" : "unavailable" };
         if (committedWhenForbidden) {
           const failure = {
@@ -813,10 +815,14 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
           return toolResult("implement", params.task, failure, gitDetails);
         }
         if (missingCommitWhenOwner) {
+          // The child's own report is the point of the whole exercise, and a
+          // failed result renders only failureMessage, so carry the report into
+          // it rather than replacing it with the demand.
+          const demand = `Implementation was commit-capable but created no commit (HEAD unchanged at ${before.head}). A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.`;
           const failure = {
             ...result,
             failed: true,
-            failureMessage: `Implementation was commit-capable but created no commit (HEAD unchanged at ${before.head}). A stopped report must carry the working-tree status, work completed, work remaining, the named failing check with its actual output, and what was already tried.`,
+            failureMessage: [result.output.trim(), demand].filter(Boolean).join("\n\n"),
           };
           return toolResult("implement", params.task, failure, gitDetails);
         }

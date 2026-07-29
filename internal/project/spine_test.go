@@ -306,9 +306,17 @@ func TestImplementerAgent(t *testing.T) {
 		"That report is the escalation",
 		"`awf check --staged`",
 		"`make gate`",
+		// Each enumerated stopped field and owner step gets its own want, since
+		// section parity catches only whole-section loss, not intra-section drift.
+		"Stage the complete transaction explicitly, by path",
+		"Create exactly one commit",
 		"the exact output of `git status --short`",
+		"what you completed",
+		"what remains",
+		"the failing check, named, with its actual output",
 		"what you already tried, so the next attempt does not repeat it",
 		"There is no third outcome",
+		"The invariants, conventions, and commands in the repository's agent guide bind you",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
@@ -341,6 +349,16 @@ func TestImplementerAgent(t *testing.T) {
 	})
 	if !strings.Contains(sdd, "You, the dispatching parent, stop before dispatch") {
 		t.Errorf("the raise-concerns imperative lost its explicit subject:\n%s", sdd)
+	}
+	inline := renderSkillGolden(t, "executing-plans", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+		"skills": map[string]bool{}, "layout": testLayout(),
+	})
+	if !strings.Contains(inline, "You, the parent executing this plan, raise missing phase context") {
+		t.Errorf("executing-plans' raise-concerns imperative lost its explicit subject:\n%s", inline)
+	}
+	if !strings.Contains(inline, "You inventory each return") {
+		t.Errorf("executing-plans' batch imperatives lost their explicit subject:\n%s", inline)
 	}
 }
 

@@ -9,8 +9,9 @@
 
 `awf` renders an opinionated agentic-development workflow into your repo: a chain of
 skills that walk an agent from brainstorm through ADR, plan, implementation, review, and
-retrospective; independent review agents that read each artifact with fresh context; and
-the project docs both rely on. All of it is generated from a small `.awf/` config tree
+retrospective; independent review agents that read each artifact with fresh context plus a
+contract for dispatched implementation work; and the project docs they all rely on. All of
+it is generated from a small `.awf/` config tree
 you commit, rendered into the native layout of every coding-agent runtime you enable, and
 `awf check` fails the moment a rendered file drifts from the config that produced it.
 

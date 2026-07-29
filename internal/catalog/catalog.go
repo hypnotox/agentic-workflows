@@ -59,9 +59,10 @@ type AgentSpec struct {
 // reviewing skills, the implementer for the plan-execution skills (ADR-0177) -
 // and enabling the skill without that agent fails every gated command at
 // project open, since a silently-dropped dispatching skill would sever the
-// workflow chain, so the pairing must be loud. Core marks a skill as part of the workflow-core set
-// awf init scaffolds by default (ADR-0022). Data carries the artifact's
-// default render data; sidecars override it per top-level key (ADR-0045).
+// workflow chain, so the pairing must be loud. Core marks a skill as part of
+// the workflow-core set awf init scaffolds by default (ADR-0022). Data carries
+// the artifact's default render data; sidecars override it per top-level key
+// (ADR-0045).
 type SkillSpec struct {
 	Sections      []string `yaml:"sections"`
 	RequiresDoc   string   `yaml:"requiresDoc"`

@@ -729,3 +729,28 @@ Whole-effort acceptance, beyond the per-phase gates:
 - ADR-0177 freezes at task 2.8. Any load-bearing discovery after that point needs its own ADR rather
   than an amendment, so surface structural surprises during phase 1 or early phase 2 if at all
   possible.
+
+### Deviations recorded during implementation
+
+Task 3.6 asks for these here; they were omitted from the status flip and are added in the terminal
+review's settlement commit.
+
+- **`internal/catalog/catalog_test.go` changed, though task 2.3 listed it as must-stay-unchanged.**
+  `TestReviewingSkillSpecsArePaired` asserted more than the claim it backs: the claim quantifies
+  one-directionally over `reviewing-` names, but the test also rejected `requiresAgent` on any other
+  skill. It now names the two plan-execution dispatchers in an explicit allowlist rather than taking a
+  blanket exemption, so a future skill still cannot gain an unpaired agent reference silently. The
+  claim's prose needed no change.
+- **The two new Pi template comments dropped their ADR-0177 citation.**
+  `TestTemplateSourceResidue` (ADR-0082) forbids decision citations in shipped templates. The reasoning
+  stayed; only the number went.
+- **The implementer is named in prose common to both dispatch branches, not separately inside each.**
+  Task 2.4 said "in both branches"; the branch split in these two skills is model-routing guidance
+  only, so one mention ahead of the split covers both rendered shapes. `TestImplementerAgent` renders
+  both capability shapes and asserts the name in each, which is what the claim requires.
+- **The `unsetFallbackCases` ban list uses `` `` `` rather than the planned `<no value>`.**
+  `renderGolden` already runs `assertNoLeaks`, which bans `<no value>` for every case, so the planned
+  entry was redundant; banning an empty backtick pair instead catches a deleted `{{ else }}` fallback
+  in the gate step, which nothing else would.
+- **The plan's verification step named `awf list agents`; the command takes the singular kind.**
+  `awf list agent` is correct and was used.
