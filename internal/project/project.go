@@ -74,6 +74,33 @@ func ValidateSchemaMinimumVersion(schema int, version string) error {
 	return nil
 }
 
+// LoadConfigTree loads one project's configuration tree.
+type LoadConfigTree func(string) (*config.Config, error)
+
+// ResolveResidentRoot maps an invoking checkout to the root that owns resident state.
+type ResolveResidentRoot func(string) string
+
+// Loader owns project-opening policy over explicitly selected dependencies.
+type Loader struct {
+	loadConfigTree      LoadConfigTree
+	standard            *catalog.Catalog
+	resolveResidentRoot ResolveResidentRoot
+}
+
+// NewLoader constructs project-opening policy from required dependencies.
+func NewLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot) *Loader {
+	if loadConfigTree == nil {
+		panic("project Loader: missing load config tree dependency")
+	}
+	if standard == nil {
+		panic("project Loader: missing standard catalog dependency")
+	}
+	if resolveResidentRoot == nil {
+		panic("project Loader: missing resolve resident root dependency")
+	}
+	return &Loader{loadConfigTree: loadConfigTree, standard: standard, resolveResidentRoot: resolveResidentRoot}
+}
+
 type Project struct {
 	// Root is the invoking checkout and remains the sole tracked-config authority.
 	Root string
@@ -83,6 +110,7 @@ type Project struct {
 	Cfg          *config.Config
 	Cat          *catalog.Catalog
 	Targets      []Target
+	standard     *catalog.Catalog
 	// effSkills is the effective rendered skill set (enabled minus doc-gate-
 	// suppressed, local kept), populated by RenderAll; templates read it as
 	// .skills and artifactConfigHash folds it in for .skills-referencing
@@ -95,8 +123,27 @@ type Project struct {
 	topics *topic.Corpus
 }
 
+// Open is the transitional compatibility entry point for callers not yet
+// migrated to outer composition. New code composes a Loader explicitly.
 func Open(root string) (*Project, error) {
-	cfg, err := config.Load(config.RootDir(root))
+	resolveResidentRoot := func(invokingRoot string) string {
+		roots, err := awfgit.ResolveControlRoots(context.Background(), invokingRoot)
+		if err != nil {
+			return invokingRoot
+		}
+		primary, err := roots.ResidentRoot(awfgit.ResidentEfforts)
+		if err != nil {
+			return invokingRoot
+		}
+		// All five resident names share the primary worktree parent.
+		return filepath.Dir(filepath.Dir(primary))
+	}
+	return NewLoader(config.Load, catalog.Standard, resolveResidentRoot).Open(root)
+}
+
+// Open loads, validates, and derives one project with the Loader's dependencies.
+func (l *Loader) Open(root string) (*Project, error) {
+	cfg, err := l.loadConfigTree(config.RootDir(root))
 	if err != nil {
 		return nil, err
 	}
@@ -110,12 +157,12 @@ func Open(root string) (*Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	p := &Project{Root: root, residentRoot: root, Cfg: cfg, Targets: targets}
-	if roots, rootErr := awfgit.ResolveControlRoots(context.Background(), root); rootErr == nil {
-		if primary, residentErr := roots.ResidentRoot(awfgit.ResidentEfforts); residentErr == nil {
-			// All five resident names share the primary worktree parent.
-			p.residentRoot = filepath.Dir(filepath.Dir(primary))
-		}
+	p := &Project{
+		Root:         root,
+		residentRoot: l.resolveResidentRoot(root),
+		Cfg:          cfg,
+		Targets:      targets,
+		standard:     l.standard,
 	}
 	cat, err := p.effectiveCatalog()
 	if err != nil {

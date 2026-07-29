@@ -50,3 +50,9 @@ Dependency-composition and cross-package code-structure work uses the `code-desi
 Origin: ADR-0178
 Backing: unbacked
 Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check commit` against the planned dependency-composition subjects after the staged scope addition.
+
+### `invariant: sync-project-loader-wiring`
+
+Top-level render, initialized render, and every existing post-mutation render reach project opening through the one Loader composed by the `runSync` family; `project.Open` remains a transitional compatibility wrapper with no new caller.
+Origin: ADR-0178
+Backing: test

@@ -40,22 +40,22 @@ func ScaffoldVarRefs(kind string) ([]string, error) {
 	return render.ReferencedVars(expanded), nil
 }
 
-// effectiveCatalog returns a per-project clone of catalog.Standard augmented with
-// a synthesized entry for every enabled local (non-Standard) skill/agent - a name
-// outside the standard pool that carries a declaring sidecar. The package global
-// is never mutated: the maps are cloned before any insert, and existing values
-// are only read (ADR-0068).
+// effectiveCatalog returns a per-project clone of the injected standard catalog
+// augmented with a synthesized entry for every enabled local (non-standard)
+// skill/agent - a name outside the standard pool that carries a declaring
+// sidecar. The injected value is never mutated: the maps are cloned before any
+// insert, and existing values are only read (ADR-0068).
 // touches-state: rendering/local-artifacts:local-catalog-clone - effectiveCatalog clones the skill/agent maps before any insert; proof in local_test.go
 func (p *Project) effectiveCatalog() (*catalog.Catalog, error) {
 	// Start from a full struct copy so any Catalog field (present or future) is
 	// carried unchanged, then replace only the two maps synthesis mutates with
 	// fresh clones. The remaining fields stay shared with the global by value -
 	// synthesis never touches them (ADR-0068).
-	clone := *catalog.Standard
-	clone.Skills = maps.Clone(catalog.Standard.Skills)
-	clone.Agents = maps.Clone(catalog.Standard.Agents)
+	clone := *p.standard
+	clone.Skills = maps.Clone(p.standard.Skills)
+	clone.Agents = maps.Clone(p.standard.Agents)
 	// touches-state: rendering/local-artifacts:local-doc-catalog-clone - the Docs map is cloned before doc synthesis; proof in local_test.go
-	clone.Docs = maps.Clone(catalog.Standard.Docs)
+	clone.Docs = maps.Clone(p.standard.Docs)
 	cat := &clone
 	if err := synthesizeLocals(p, cat.Skills, p.Cfg.Skills, "skills", func(n string) catalog.SkillSpec {
 		sc, _ := p.Cfg.Sidecar("skills", n)

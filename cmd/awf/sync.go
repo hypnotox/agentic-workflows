@@ -1,22 +1,41 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
 func runSync(root string, stdout io.Writer) error {
-	return runSyncPrinting(root, nil, stdout)
+	loader := project.NewLoader(config.Load, catalog.Standard, resolveProjectResidentRoot)
+	return runSyncPrinting(loader, root, nil, stdout)
 }
 
 func runSyncInitialized(root string, seed project.InitAuthority, stdout io.Writer) error {
-	return runSyncPrinting(root, &seed, stdout)
+	loader := project.NewLoader(config.Load, catalog.Standard, resolveProjectResidentRoot)
+	return runSyncPrinting(loader, root, &seed, stdout)
 }
 
-func runSyncPrinting(root string, seed *project.InitAuthority, stdout io.Writer) error {
-	p, err := project.Open(root)
+func resolveProjectResidentRoot(root string) string {
+	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
+	if err != nil {
+		return root
+	}
+	primary, err := roots.ResidentRoot(awfgit.ResidentEfforts)
+	if err != nil {
+		return root
+	}
+	return filepath.Dir(filepath.Dir(primary))
+}
+
+func runSyncPrinting(loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+	p, err := loader.Open(root)
 	if err != nil {
 		return err
 	}

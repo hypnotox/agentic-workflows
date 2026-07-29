@@ -4,14 +4,19 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -43,6 +48,144 @@ func scaffoldProject(t *testing.T) string {
 		t.Fatalf("scaffold sync: %v", err)
 	}
 	return root
+}
+
+func TestResolveProjectResidentRoot(t *testing.T) {
+	repo, primary := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, primary, "base", map[string]string{"README.md": "base\n"})
+	linked := filepath.Join(t.TempDir(), "linked")
+	cmd := exec.Command("git", "-C", primary, "worktree", "add", "-b", "linked", linked)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git worktree add: %v\n%s", err, out)
+	}
+	if got := resolveProjectResidentRoot(linked); got != primary {
+		t.Fatalf("resident root = %q, want primary %q", got, primary)
+	}
+}
+
+func TestResolveProjectResidentRootFallsBackOutsideGit(t *testing.T) {
+	root := t.TempDir()
+	if got := resolveProjectResidentRoot(root); got != root {
+		t.Fatalf("resident root = %q, want invoking root", got)
+	}
+}
+
+func TestResolveProjectResidentRootFallsBackOnUnsafeResident(t *testing.T) {
+	_, root := gitfixture.InitRepo(t)
+	external := t.TempDir()
+	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
+		t.Fatal(err)
+	}
+	if got := resolveProjectResidentRoot(root); got != root {
+		t.Fatalf("resident root = %q, want invoking root", got)
+	}
+}
+
+func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
+	repo, root := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, root, minimalYAML)
+	if _, err := os.Stat(config.LockPath(root)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("lock stat error = %v, want not exist", err)
+	}
+	var loadPaths []string
+	loader := project.NewLoader(func(path string) (*config.Config, error) {
+		loadPaths = append(loadPaths, path)
+		return config.Load(path)
+	}, catalog.Standard, func(got string) string { return got })
+	if err := runSyncPrinting(loader, root, &project.InitAuthority{InitializedWithVersion: project.Version}, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	want := config.RootDir(root)
+	if len(loadPaths) != 1 || loadPaths[0] != want {
+		t.Fatalf("config load paths = %v, want [%q]", loadPaths, want)
+	}
+}
+
+// invariant: code-design/dependency-composition:sync-project-loader-wiring
+func TestSyncCompositionAndCallers(t *testing.T) {
+	paths, err := filepath.Glob("*.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	type call struct{ file, owner, name string }
+	var calls []call
+	fset := token.NewFileSet()
+	for _, path := range paths {
+		if strings.HasSuffix(path, "_test.go") {
+			continue
+		}
+		src, err := parser.ParseFile(fset, path, nil, 0)
+		if err != nil {
+			t.Fatalf("parse %s: %v", path, err)
+		}
+		owners := map[token.Pos]string{}
+		for _, decl := range src.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Body == nil {
+				continue
+			}
+			ast.Inspect(fn.Body, func(n ast.Node) bool {
+				if n != nil {
+					owners[n.Pos()] = fn.Name.Name
+				}
+				return true
+			})
+		}
+		ast.Inspect(src, func(n ast.Node) bool {
+			ce, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			name := ""
+			switch fun := ce.Fun.(type) {
+			case *ast.Ident:
+				if fun.Name == "runSync" || fun.Name == "runSyncInitialized" || fun.Name == "runSyncPrinting" {
+					name = fun.Name
+				}
+			case *ast.SelectorExpr:
+				recv, ok := fun.X.(*ast.Ident)
+				if ok && recv.Name == "project" && fun.Sel.Name == "NewLoader" {
+					name = "project.NewLoader"
+				} else if ok && recv.Name == "loader" && fun.Sel.Name == "Open" {
+					name = "loader.Open"
+				}
+			}
+			if name != "" {
+				calls = append(calls, call{file: path, owner: owners[ce.Pos()], name: name})
+			}
+			return true
+		})
+	}
+
+	want := map[call]int{
+		{file: "sync.go", owner: "runSync", name: "project.NewLoader"}:            1,
+		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:              1,
+		{file: "sync.go", owner: "runSyncInitialized", name: "project.NewLoader"}: 1,
+		{file: "sync.go", owner: "runSyncInitialized", name: "runSyncPrinting"}:   1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "loader.Open"}:          1,
+		{file: "dispatch.go", owner: "", name: "runSync"}:                         1,
+		{file: "init.go", owner: "runInit", name: "runSync"}:                      1,
+		{file: "init.go", owner: "runInit", name: "runSyncInitialized"}:           1,
+		{file: "list_add.go", owner: "enableDisableSingleton", name: "runSync"}:   1,
+		{file: "list_add.go", owner: "enableDisableTarget", name: "runSync"}:      1,
+		{file: "list_add.go", owner: "toggle", name: "runSync"}:                   2,
+		{file: "new.go", owner: "newLocal", name: "runSync"}:                      1,
+		{file: "upgrade.go", owner: "runUpgrade", name: "runSync"}:                1,
+	}
+	got := map[call]int{}
+	for _, site := range calls {
+		got[site]++
+	}
+	for site, count := range want {
+		if got[site] != count {
+			t.Errorf("call %s:%s %s count = %d, want %d", site.file, site.owner, site.name, got[site], count)
+		}
+		delete(got, site)
+	}
+	for site, count := range got {
+		t.Errorf("unexpected call %s:%s %s count %d", site.file, site.owner, site.name, count)
+	}
 }
 
 // invariant: tooling/upgrade-runtime:initial-adoption-version-immutable

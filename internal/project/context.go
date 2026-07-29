@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -40,7 +41,7 @@ func (p *Project) ContextForOptions(paths []string, options ContextOptions) (Con
 	if err != nil {
 		return ContextResult{}, err
 	}
-	universe := &Project{Root: p.Root, Cfg: ws.Cfg}
+	universe := &Project{Root: p.Root, Cfg: ws.Cfg, standard: p.standard}
 	universe.Targets, err = resolveTargets(ws.Cfg.Targets)
 	if err != nil {
 		return ContextResult{}, err
@@ -57,7 +58,7 @@ func (p *Project) ContextForOptions(paths []string, options ContextOptions) (Con
 }
 
 func StagedContextRootOptions(root string, paths []string, options ContextOptions) (ContextResult, error) {
-	p := &Project{Root: root}
+	p := &Project{Root: root, standard: catalog.Standard}
 	state, err := p.indexCurrentState()
 	if err != nil {
 		return ContextResult{}, err

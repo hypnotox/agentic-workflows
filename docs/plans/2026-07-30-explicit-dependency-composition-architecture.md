@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [178]
-status: Proposed
+status: Implemented
 ---
 # Plan: Explicit Dependency Composition Architecture
 
@@ -207,6 +207,8 @@ refactor(code-design): compose project loader (implements 0178)
 
 ## Notes
 
+- During Phase 2 verification, the broad unresolved-token `rg` matched four pre-existing intentional literal template examples and no `<no value>` output; inspection confirmed the generated reviewer prompts introduced no unresolved value.
+- Phase 3 also updates `internal/project/context.go`: its working-tree snapshot must carry the Loader-selected standard catalog into the snapshot Project, while the standalone staged-context entry selects `catalog.Standard` explicitly. This necessary propagation was omitted from the planned file list and prevents snapshot context assembly from dereferencing an absent standard catalog after `effectiveCatalog` stops reading the package global.
 - The paused filesystem/global-seam refactor remains a downstream consumer after this plan; it is not resumed or edited here.
 - Existing direct mechanism calls and package-global seams outside the Loader slice are not converted by this plan.
 - The Loader contract deliberately has no cancellation input. Production resident-root resolution closes over `context.Background()` until a real signal-aware or embedded consumer exists.

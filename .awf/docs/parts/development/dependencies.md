@@ -14,6 +14,8 @@ Runtime dependencies are deliberately few (see `go.mod`):
   (`internal/project/agent.go`).
 
 
+When introducing or deliberately converting a volatile mechanism, compose it at the outer boundary that owns production knowledge and inject a consumer-owned semantic function or immutable value before considering an interface. Consult `code-design/dependency-composition` for the complete authority.
+
 Developer tools are pinned in `go.mod`'s `tool` block for reproducibility:
 `golangci-lint` (lint and format), `deadcode` (the dead-code gate, ADR-0063), and
 `gremlins` (advisory mutation testing, ADR-0066).

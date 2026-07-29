@@ -335,8 +335,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:20cf060974dc29a970334b0ef03e0c6cd4675ff135e87b73611e59abc8ab0dd0",
-      "configHash": "sha256:5abb3a8e53a0b5b067151570d76f4c6af26ce034f4ecdbb34b19ab4f0b53df5f",
-      "outputHash": "sha256:1eea7db41b80b04c1fcb7c14172c7bec662a6d09abfefc951db0322fce86c343"
+      "configHash": "sha256:68d122d49c31544c4f625b6d3e2c5fe38364bb41e66a80baf982e0829e033f37",
+      "outputHash": "sha256:7b8019838299f0ad1c136283c019b3408ebe1142ad2ab83ef98cf676b7d0e90c"
     },
     "docs/config-reference.md": {
       "templateId": "",
@@ -349,7 +349,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:919a43d489e80513d96bc8f14514fb5f0f93ca2602aec0f95055256f55e0ed33",
+      "outputHash": "sha256:16eb6ee36bc48438b3f689530ef369044991e735482bdc3671b7aabaca43cecd",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -367,8 +367,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:756f30538913a1c1fa491d803b540b31526d209d99034eea2409d2cfed09e982",
-      "outputHash": "sha256:8c41d6a5552abb9fed94e6b62b6571ac0b0d11824ca36f16958c8aeccf783bcb"
+      "configHash": "sha256:36b5a22753141800a40189130242178f60489d60c0c9817e67dfd240fd5b4d04",
+      "outputHash": "sha256:e9ed1d8b1a80a3dd282ec760150f7d55c512d88d3d46cf05dded90b807f510ff"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
@@ -493,8 +493,8 @@
     "docs/topics/code-design/dependency-composition.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:9a50a323ce7480635fe64f97a29f325b2394456e09b6039c04ba83bc752aab67",
-      "outputHash": "sha256:9ded4291dcda3a4d8febaeb7f40e1f9716daad3f660cf91f360cfc874e2a442c"
+      "configHash": "sha256:c2fdc17c9e66ff80de863a0fa46ad785ebfc0c3416d48d2d114a7d047590b8ba",
+      "outputHash": "sha256:42b4bfdb66740a5c57a88847b44fef1cd28155ba79fdecbe1a6ef1b889457c1d"
     },
     "docs/topics/code-design/index.md": {
       "templateId": "topics/index.md.tmpl",
