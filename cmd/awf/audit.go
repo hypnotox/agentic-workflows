@@ -24,8 +24,10 @@ func runAudit(root, rangeArg string, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	// The audit's live cleanliness rule shells out to git, so the handler bounds
-	// that work here at the command boundary rather than letting it hang.
+	// The audit's live cleanliness rule shells out to git, so the handler sets a
+	// ceiling here at the command boundary rather than letting the run hang. The
+	// ceiling bounds the whole audit, the go-git commit walk included, not just
+	// the shell-out that motivates it.
 	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
 	defer cancel()
 	findings, commits, err := p.Audit(ctx, base, head)

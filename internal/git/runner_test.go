@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"errors"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 // The runner is the package's only subprocess boundary, so its contract is
@@ -97,6 +99,43 @@ func TestRunnerNonExitFailureKeepsItsOwnCause(t *testing.T) {
 	}
 	if !errors.Is(err, exec.ErrNotFound) {
 		t.Fatalf("missing-binary failure lost its cause: %T %v", err, err)
+	}
+}
+
+// TestRunnerMidRunContextExpiryKeepsItsContextCause proves a deadline that
+// expires while Git is already running does not flatten into the kill signal's
+// exit status: exec's Wait prefers the ExitError, so the runner rejoins the
+// context cause and the caller can still match both the context and the command.
+func TestRunnerMidRunContextExpiryKeepsItsContextCause(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake native Git fixture requires a POSIX script")
+	}
+	bin := t.TempDir()
+	// exec replaces the shell, so the deadline kill reaches the sleeping process
+	// itself rather than leaving a grandchild holding the captured stdout pipe.
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\nexec sleep 30\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	root := t.TempDir()
+	ctx, cancel := context.WithTimeout(t.Context(), 50*time.Millisecond)
+	defer cancel()
+	_, err := newRunner(root).run(ctx, "worktree", "list", "--porcelain")
+
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("mid-run expiry error = %T %v, want a chain carrying context.DeadlineExceeded", err, err)
+	}
+	var failure *CommandError
+	if !errors.As(err, &failure) {
+		t.Fatalf("mid-run expiry error = %T %v, want a matchable *CommandError", err, err)
+	}
+	if len(failure.Args) < 2 || failure.Args[0] != "-C" || failure.Args[1] != root {
+		t.Fatalf("recorded args = %#v, want the pinned root selection first", failure.Args)
+	}
+	var exit *exec.ExitError
+	if !errors.As(err, &exit) {
+		t.Fatal("mid-run expiry CommandError dropped its exec cause")
 	}
 }
 

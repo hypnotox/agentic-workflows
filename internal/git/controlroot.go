@@ -72,7 +72,7 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 	}
 	native := newRunner(originalRoot)
 
-	bare, err := runGitTextWith(native, ctx, "rev-parse", "--is-bare-repository")
+	bare, err := runGitTextWith(ctx, native, "rev-parse", "--is-bare-repository")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("inspect bare-repository state from %s: %w", originalRoot, err)
 	}
@@ -82,11 +82,11 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 	if bare == "true" {
 		return ControlRoots{}, &HardSafetyError{Category: "bare-repository", Path: originalRoot}
 	}
-	invokingRoot, err := runGitPathWith(native, ctx, "rev-parse", "--show-toplevel")
+	invokingRoot, err := runGitPathWith(ctx, native, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve invoking checkout from %s: %w", originalRoot, err)
 	}
-	commonDir, err := runGitPathWith(native, ctx, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	commonDir, err := runGitPathWith(ctx, native, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve common Git directory from %s: %w", originalRoot, err)
 	}
@@ -136,12 +136,12 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 			if record.prunable && os.IsNotExist(unwrappedError(err)) {
 				continue
 			}
-			return ControlRoots{}, identityError(worktree, err) // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+			return ControlRoots{}, identityError(worktree, err)
 		}
 		if !record.bare && (sameCleanPath(worktreeIdentity, invokingIdentity) || sameCleanPath(worktreeIdentity, invokingGitDirIdentity)) {
 			invokingListed++
 		}
-		if record.bare { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		if record.bare {
 			continue
 		}
 		// Git reports a --separate-git-dir primary at CommonDir rather than at
@@ -376,7 +376,7 @@ func worktreeGitDir(worktree string) (string, error) {
 	return filepath.Clean(pointer), nil
 }
 
-func runGitPathWith(native runner, ctx context.Context, args ...string) (string, error) {
+func runGitPathWith(ctx context.Context, native runner, args ...string) (string, error) {
 	output, err := native.run(ctx, args...)
 	if err != nil {
 		return "", err
@@ -388,7 +388,7 @@ func runGitPathWith(native runner, ctx context.Context, args ...string) (string,
 	return cleanAbsolute(value)
 }
 
-func runGitTextWith(native runner, ctx context.Context, args ...string) (string, error) {
+func runGitTextWith(ctx context.Context, native runner, args ...string) (string, error) {
 	output, err := native.run(ctx, args...)
 	if err != nil {
 		return "", err

@@ -241,6 +241,54 @@ func TestControlRootRejectsMissingNonPrunableWorktreeGitFile(t *testing.T) {
 	requireNonForceableHardSafety(t, err, "repository-identity", linked)
 }
 
+// A registered worktree whose directory is swapped for a symlink is still
+// listed by native Git with no prunable marker, so the identity ladder is the
+// only thing standing between the swap and a resolution through it.
+func TestControlRootRejectsSymlinkedRegisteredWorktree(t *testing.T) {
+	base := t.TempDir()
+	primary := filepath.Join(base, "primary")
+	initNativeRepo(t, primary)
+	linked := filepath.Join(base, "linked")
+	runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
+	moved := filepath.Join(base, "linked.moved")
+	if err := os.Rename(linked, moved); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(moved, linked); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if strings.Contains(runGit(t, "-C", primary, "worktree", "list", "--porcelain"), "prunable") {
+		t.Fatal("fixture no longer reaches the non-prunable identity refusal: Git now prunes the symlinked registration")
+	}
+
+	_, err := awfgit.ResolveControlRoots(t.Context(), primary)
+	requireNonForceableHardSafety(t, err, "symlink", linked)
+}
+
+// A bare primary emits a bare worktree record even when the invoking checkout
+// is a non-bare linked worktree, so the bare record must be skipped and the
+// call must end in the missing-primary refusal rather than adopting it.
+func TestControlRootSkipsBareRecordFromLinkedCheckout(t *testing.T) {
+	base := t.TempDir()
+	source := filepath.Join(base, "source")
+	initNativeRepo(t, source)
+	bare := filepath.Join(base, "bare repository with spaces.git")
+	runGit(t, "clone", "--bare", source, bare)
+	linked := filepath.Join(base, "linked checkout with spaces")
+	runGit(t, "-C", bare, "worktree", "add", "--detach", linked, "HEAD")
+
+	if got := trimGitOutputLine(runGit(t, "-C", linked, "rev-parse", "--is-bare-repository")); got != "false" {
+		t.Fatalf("linked checkout of a bare primary reports is-bare-repository = %q, want false", got)
+	}
+	if !strings.Contains(runGit(t, "-C", linked, "worktree", "list", "--porcelain"), "\nbare\n") {
+		t.Fatal("fixture no longer lists the bare primary record from the linked checkout")
+	}
+
+	common := trimGitOutputLine(runGit(t, "-C", linked, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+	_, err := awfgit.ResolveControlRoots(t.Context(), linked)
+	requireNonForceableHardSafety(t, err, "missing-primary", common)
+}
+
 func TestControlRootRejectsMissingListedGitdirPointerTarget(t *testing.T) {
 	base := t.TempDir()
 	primary := filepath.Join(base, "primary")

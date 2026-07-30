@@ -41,22 +41,28 @@ func (e *CommandError) Unwrap() error {
 }
 
 // runner is the package's only native-Git subprocess boundary. One runner is
-// pinned to one already-validated repository root: every invocation selects
-// that repository with -C and runs under the isolated Git environment, so no
-// inherited repository selection, configuration, or credential control can
-// redirect it.
+// pinned to one repository root: every invocation selects that repository with
+// -C and runs under the isolated Git environment, so no inherited repository
+// selection, configuration, or credential control can redirect it. Validating
+// root is the caller's obligation, not the runner's: ResolveControlRoots
+// discharges it today, and the Phase 3 Open(root) handle closes the remaining
+// construction sites.
 type runner struct {
 	root string
 }
 
-// newRunner pins a runner to root, which the caller has already validated.
+// newRunner pins a runner to root. The caller is responsible for validating
+// root; see the runner type comment for which sites discharge that obligation.
 func newRunner(root string) runner {
 	return runner{root: root}
 }
 
 // run invokes native Git with argv against the pinned root and returns stdout.
 // A non-zero exit becomes a *CommandError carrying the captured stderr; any
-// other failure (a missing binary, a cancelled context) keeps its own cause.
+// other failure (a missing binary, a context cancelled before launch) keeps its
+// own cause. A context that expires or is cancelled mid-run reaches the caller
+// as a *CommandError whose chain still carries the context cause, because
+// exec's Wait reports only the kill signal's exit status.
 func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 	args := append([]string{"-C", r.root}, argv...)
 	cmd := exec.CommandContext(ctx, "git", args...)
@@ -67,7 +73,11 @@ func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 	if err != nil {
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
-			return nil, &CommandError{Args: args, ExitCode: exit.ExitCode(), Stderr: strings.TrimSpace(stderr.String()), Err: err}
+			cause := err
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				cause = errors.Join(err, ctxErr)
+			}
+			return nil, &CommandError{Args: args, ExitCode: exit.ExitCode(), Stderr: strings.TrimSpace(stderr.String()), Err: cause}
 		}
 		return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
