@@ -60,7 +60,10 @@ unchanged, and the new grammar and rules are fully covered.
 - [ ] **Task 1.1: failing tests for the new grammar and chain rules.** In
   `internal/adr/format_test.go`, add table-driven cases (following the file's existing fixture
   style for V2 records) asserting, before any production change, that these currently fail or
-  error as described; after Tasks 1.2-1.4 they must all pass:
+  error as described; after Tasks 1.2-1.4 they must all pass. Name the new chain-rule test
+  function `TestParseV2StampChain`; Phase 4 references it by that exact name, and it immediately
+  carries the existing proof marker `// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix`
+  (the claim already exists, and this test proves its event-kind recognition).
   - Parse accepts `- 2026-07-30: Amended; content-sha256: <64 lowercase hex>` inside a V2 Status
     history whose current status at that point is Accepted or Implementing, yielding an event with
     the new kind and the digest.
@@ -69,7 +72,9 @@ unchanged, and the new grammar and rules are fully covered.
     Amended event whose digest equals the immediately preceding stamp; an Amended event between an
     Implementing status event and its first Applied event; an Amended event between the final
     Applied event and an explicit Implemented status event (expected message: the existing
-    "explicit Implemented transition requires a final Applied event immediately before it").
+    "explicit Implemented transition requires a final Applied event immediately before it"); a
+    non-Proposed status event carrying no `content-sha256` segment (expected message: the new
+    "must carry a content-sha256").
   - Chain rules: a status event whose digest differs from the preceding stamp fails with the new
     repeat-the-stamp message; a record whose latest stamp does not equal the computed content
     digest fails with the new latest-stamp message; a record with an Amended event introducing a
@@ -86,12 +91,19 @@ unchanged, and the new grammar and rules are fully covered.
     appending exactly one Amended event is valid; appending an Amended event plus any other event
     in one pair is invalid; a same-status Proposed, Implemented, or Abandoned pair appending an
     Amended event is invalid.
-  Run `go test ./internal/adr/` and record the expected failures, then proceed.
+  Also adapt the two existing `TestParseV2RejectsInvalidHistory` cases "earlier accepted digest
+  mismatch" and "earlier implementing digest mismatch": under the chain rule they fail on the
+  repeat-the-stamp message, so rename them to name the chain violation and change their `want` to
+  "does not repeat the preceding stamp" (the sibling "digest mismatch" and "latest status
+  mismatch" cases keep matching the new latest-stamp message and stay untouched).
+  Run `go test ./internal/adr/` and record the expected failures, then proceed; the phase-close
+  gate run, not any case count, verifies the adaptation is complete.
 - [ ] **Task 1.2: parse the Amended event.** In `internal/adr/history.go`:
   - Add `HistoryAmended` as the third `HistoryEventKind` constant.
-  - Add the head regex (exact pattern):
-    `amendedHeadRe = regexp.MustCompile("^- (\\d{4}-\\d{2}-\\d{2}): Amended; content-sha256: ([0-9a-f]{64})$")`
-    declared beside `appliedHeadRe` in the raw-string style the file already uses.
+  - Add the head regex, declared beside `appliedHeadRe`, exactly:
+    ```go
+    amendedHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Amended; content-sha256: ([0-9a-f]{64})$`)
+    ```
   - In `parseHistory`, inside the existing `format == CurrentStateV2` branch and beside the
     Applied match, match `amendedHeadRe` and append
     `HistoryEvent{Kind: HistoryAmended, Date: m[1], Digest: m[2]}`. V1 parsing is untouched; an
@@ -117,8 +129,9 @@ unchanged, and the new grammar and rules are fully covered.
 - [ ] **Task 1.4: format-aware freeze and transition shape.** In `internal/adr/format.go`:
   - `FrozenContentEqual`: for `before.Format == CurrentStateV2`, return true unless the before
     status is Implemented or Abandoned with differing content digests; other formats keep the
-    Proposed rule. Reuse an existing terminal-status helper in the `adr` package if one exists
-    (check `internal/adr/status.go`); otherwise add an unexported one beside the status constants.
+    Proposed rule. `internal/adr/status.go` has no terminal-status predicate today: add an
+    unexported `terminalStatus(s string) bool` beside the status constants there, returning true
+    for `statusImplemented` and `statusAbandoned`, and call it from `FrozenContentEqual`.
     Rewrite the function's doc comment: V1 editable only while Proposed; V2 editable until
     terminal, then frozen at the before-state digest.
   - `HistoryTransitionValid`, same-status branch: exactly one added event is valid when it is an
@@ -134,11 +147,12 @@ unchanged, and the new grammar and rules are fully covered.
   `"ADR-%s violates the frozen-content rule: canonical decision content changed after the record froze"`.
   Post-check: `grep -rn "changed after Proposed" internal/` returns no output (update any test
   asserting the old message). Add pair tests in the existing `internal/currentstate`
-  transition-test file covering: an Accepted-to-Accepted pair with amended content plus one
-  appended Amended event is finding-free; the same pair without the Amended event yields findings
-  (the after side fails its latest-stamp parse, surfacing through `CheckPair`); an Implemented
-  before side with changed content yields the frozen-content finding; a MergeAggregate pair whose
-  appended events interleave Amended and Applied events legally is finding-free.
+  transition-test file covering only the genuinely pair-level cases (`CheckPair` consumes parsed
+  structs and never re-parses, so a content-edit-without-Amended-event failure is a parse-level
+  case already covered by Task 1.1's latest-stamp rejection): an Accepted-to-Accepted pair with
+  amended content plus one appended Amended event is finding-free; an Implemented before side
+  with changed content yields the frozen-content finding; a MergeAggregate pair whose appended
+  events interleave Amended and Applied events legally is finding-free.
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run
   `awf check --staged` then `./x gate`; both must pass with the existing corpus untouched.
 
@@ -159,6 +173,9 @@ the transaction's own verifier.
   - Implementing: meaning becomes "A nonempty strict subset of declared operations is applied";
     mutability becomes "Status and append-only Status history; Applied events append while
     operations remain, and the body stays amendable via Amended events".
+  Also in `internal/catalog/standard.go`, the adr-lifecycle skill's `Sections` slice (line 74)
+  declares the section id `amendment-while-proposed`: replace it with `amendment-until-terminal`
+  in the same transaction, or section validation refuses the Task 2.2 rename at render time.
   Post-check: `grep -rn "Design is frozen" internal/catalog/` returns no output. Update any test
   asserting the old strings (find with `grep -rln "the body is frozen" internal/`), keeping
   Implemented/Abandoned assertions intact.
@@ -204,17 +221,20 @@ the transaction's own verifier.
     recorded as an Amended event, then freezes as the historical record; append-only protects
     rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its
     machine-readable encoding."
-  - Post-check: `grep -rn "amendment-while-proposed\|amendment-while-Proposed" templates/ .awf/`
-    returns no output (also proves no local override part referenced the old section id).
+  - Post-check: `grep -rn "amendment-while-proposed\|amendment-while-Proposed" templates/ .awf/ internal/`
+    returns no output (proving the catalog `Sections` rename from Task 2.1 landed and no local
+    override part referenced the old section id).
 - [ ] **Task 2.3: flip-ownership surfaces.** Exact replacements:
   - `templates/skills/reviewing-adr/SKILL.md.tmpl`, `status-flip` section: replace the sentence
     fragment "the flip to `Accepted`/`Implemented` is owned by the implementation step's final
     commit (`{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, or
     `{{ .prefix }}-adr-lifecycle` for the no-plan direct-implementation case)." with "the flip to
+    `Accepted` stays owned by the implementation step that begins the work, while the flip to
     `Implemented` is owned by the terminal-review flow: after the applicable terminal review
     settles, `{{ .prefix }}-reviewing-impl` lands the final Applied batch and the status flip
     immediately before managed-worktree removal and retrospective, with
-    `{{ .prefix }}-adr-lifecycle` supplying the mechanics." Keep the rest of the section.
+    `{{ .prefix }}-adr-lifecycle` supplying the mechanics." Keep the rest of the section, so the
+    Accepted flip keeps a named owner (ADR-0186 item 7 moves only the Implemented flip).
   - `templates/skills/executing-plans/SKILL.md.tmpl`, `procedure-adr-final-commit` section body
     becomes: "4. Apply non-final V2 operation batches atomically with their matching claims and
     lifecycle event in the owning phase. The final batch and the Implemented flip are owned by the
@@ -223,25 +243,31 @@ the transaction's own verifier.
     body becomes: "7. Apply non-final V2 batches atomically with matching claims and lifecycle
     events in the owning phase. The final batch and the Implemented flip are owned by the
     terminal-review flow and land only after the applicable terminal review settles."
-  - `templates/skills/reviewing-impl/SKILL.md.tmpl`, `hand-off` section, replace the final bullet
-    ("- Only after the applicable terminal review has zero findings run ...") with: "- Only after
-    the applicable terminal review has zero findings, land the deferred flip transaction: apply
-    any final V2 batch with exactly its claim mutations and flip the linked ADR(s) and plan to
-    `Implemented` per `{{ .prefix }}-adr-lifecycle`. Then run `awf effort worktree remove <slug>`
-    without force and verify path, registration, and branch are absent. Then invoke
+  - `templates/skills/reviewing-impl/SKILL.md.tmpl`, `hand-off` section: the target is the last
+    of four three-space-indented sub-bullets under numbered item 8 ("   - Only after the
+    applicable terminal review has zero findings run ..."). Replace that sub-bullet, preserving
+    the three-space indent so it stays nested under item 8, with: "   - Only after the applicable
+    terminal review has zero findings, land the deferred flip transaction: apply any final V2
+    batch with exactly its claim mutations and flip the linked ADR(s) and plan to `Implemented`
+    per `{{ .prefix }}-adr-lifecycle`. Then run `awf effort worktree remove <slug>` without force
+    and verify path, registration, and branch are absent. Then invoke
     `{{ .prefix }}-retrospective`."
   - `templates/skills/reviewing-plan-resync/SKILL.md.tmpl` line 15: replace "the status flip is
     owned by the implementation step" with "the status flip is owned by the terminal-review flow".
   - Post-check: `grep -rn "implementation step's final commit" templates/` returns no output.
 - [ ] **Task 2.4: guide, template, and agent-guide prose.**
   - `templates/adr-readme/README.md.tmpl`: replace the sentence "Status events repeat the frozen
-    `content-sha256`." with "Content stays amendable until a terminal status: while Accepted or
+    `content-sha256`." (which wraps across lines 69-70 as "...repeat the\nfrozen `content-sha256`.";
+    match it across the line break and re-wrap the replacement to the file's line width) with
+    "Content stays amendable until a terminal status: while Accepted or
     Implementing an amendment appends `- YYYY-MM-DD: Amended; content-sha256: <new digest>`, a
     status event repeats the latest stamp (or establishes the first), and the latest stamp always
     equals the current content, freezing permanently at Implemented or Abandoned. V1 records
     instead freeze once they leave Proposed." Keep the surrounding Applied-grammar prose intact.
   - `templates/adr-template/template.md.tmpl`: replace "Later status events carry the frozen
-    content digest; direct Implemented events also carry the batch state sequence." with "Later
+    content digest; direct Implemented events also carry the batch state sequence." (wraps across
+    lines 52-53 as "...carry the frozen\ncontent digest;"; match across the line break and re-wrap
+    the replacement) with "Later
     status events carry the latest content stamp, and an Amended event records each post-Accepted
     amendment with its new digest; direct Implemented events also carry the batch state sequence."
   - `templates/agents-doc/AGENTS.md.tmpl` line 33, Append-only ADRs bullet: replace "its meaning
@@ -275,10 +301,13 @@ feat(rendering): publish the amendment-until-terminal lifecycle prose
   - `.awf/docs/glossary.yaml`, term `State changes`: replace the opening "The frozen ADR-to-topic
     operation declaration:" with "The ADR-to-topic operation declaration, each operation frozen
     once an Applied event references it:".
-  - `.awf/docs/pitfalls.yaml`, the ADR-0154 amendment-freeze lesson: append one sentence to the
-    body: "Since ADR-0186 the amendment window extends to any non-terminal status and each
-    post-Accepted amendment appends its own Amended event, so the reviewer re-dispatch travels
-    with the amendment commit rather than racing a freeze."
+  - `.awf/docs/pitfalls.yaml`, the ADR-0154 amendment-freeze lesson: insert one sentence BEFORE
+    the closing attribution (the body ends "(ADR-0154; 2026-07-23)." and every entry keeps its
+    attribution terminal): "Since ADR-0186 the amendment window extends to any non-terminal
+    status and each post-Accepted amendment appends its own Amended event, so the reviewer
+    re-dispatch travels with the amendment commit rather than racing a freeze." Extend the
+    attribution to "(ADR-0154, ADR-0186; 2026-07-23, 2026-07-30)." and align the entry's
+    deferred-audit-rule sentence with the narrowed premise from the roadmap bullet below.
   - `.awf/docs/parts/roadmap/deferred.md`, section "A frozen-state ADR flip can smuggle unreviewed
     section content": rewrite its premise to the residual case: since ADR-0186 the stamp chain
     makes every post-first-stamp flip content-pure by validation, so the candidate audit rule
@@ -320,9 +349,10 @@ direct implicit-batch transaction covering both declared operations.
     Applied, and Amended history events, and accepts only the format-specific status,
     history-event, digest-chain, and application-cardinality transitions."; `Revised-by:` becomes
     `ADR-0143, ADR-0186`; `Origin:` and `Backing:` unchanged.
-  - Add the proof marker `// invariant: adr-system/adr-lifecycle:adr-amendable-until-terminal` on
-    the Phase 1 chain-rule test function in `internal/adr/format_test.go` (same comment form as
-    the existing markers in `internal/adr/adr_test.go`).
+  - Add the proof marker `// invariant: adr-system/adr-lifecycle:adr-amendable-until-terminal`
+    immediately above `TestParseV2StampChain` in `internal/adr/format_test.go` (the function
+    Task 1.1 names; it already carries the `adr-status-enum-and-matrix` marker from Phase 1, and
+    this claim's marker can only land now because the claim first exists in this transaction).
 - [ ] **Task 4.2: flip ADR-0186 and this plan.** In
   `docs/decisions/0186-adr-content-amendable-until-implemented-via-amended-events.md`: set
   frontmatter `status: Implemented` and append the terminal event
