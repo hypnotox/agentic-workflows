@@ -59,7 +59,7 @@ func checkTransitions(before, after []adr.ADR) []Finding {
 				if b.IsV2() {
 					marker = "current-state-v2"
 				}
-				findings = append(findings, Finding{Error, fmt.Sprintf("%s ADR-%s was deleted across this transition", marker, b.Number)})
+				findings = append(findings, Finding{fmt.Sprintf("%s ADR-%s was deleted across this transition", marker, b.Number)})
 			}
 		}
 	}
@@ -72,25 +72,25 @@ func checkTransitions(before, after []adr.ADR) []Finding {
 			continue
 		}
 		if b.Format != a.Format {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s changed governed format across this transition", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed governed format across this transition", a.Number)})
 			continue
 		}
 		if !adr.FrozenContentEqual(b, a) {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after Proposed", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after Proposed", a.Number)})
 		}
 		if !adr.HistoryTransitionValid(b, a) {
 			shape := "Status history must remain equal at the same status or append exactly one entry for a legal transition"
 			if a.IsV2() {
 				shape = "prior events must remain an exact prefix and the transition must append the required status/Applied event shape"
 			}
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the history-prefix rule: %s", a.Number, shape)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the history-prefix rule: %s", a.Number, shape)})
 		}
 		if !b.HasSameStatus(a) && !adr.TransitionLegal(b.Status, a.Status, a.Format) {
 			marker := "current-state-v1"
 			if a.IsV2() {
 				marker = "current-state-v2"
 			}
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal %s transition", a.Number, b.Status, a.Status, marker)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s changed status from %s to %s, which is not a legal %s transition", a.Number, b.Status, a.Status, marker)})
 		}
 	}
 	return findings
@@ -115,7 +115,7 @@ func checkMutations(before, after Universe) []Finding {
 
 	findings := append([]Finding(nil), batchFindings...)
 	for _, id := range dups {
-		findings = append(findings, Finding{Error, fmt.Sprintf("claim %s is the target of more than one operation in this transition", id)})
+		findings = append(findings, Finding{fmt.Sprintf("claim %s is the target of more than one operation in this transition", id)})
 	}
 	for _, id := range unionKeys(ops, beforeClaims, afterClaims) {
 		op, hasOp := ops[id]
@@ -124,11 +124,11 @@ func checkMutations(before, after Universe) []Finding {
 		switch {
 		case hasOp && op.verb == adr.OpAdd:
 			if hasBefore {
-				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s adds claim %s, which already existed before this transition", op.adr, id)})
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s adds claim %s, which already existed before this transition", op.adr, id)})
 			}
 		case hasOp && op.verb == adr.OpRemove:
 			if !hasBefore {
-				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s removes claim %s, which did not exist before this transition", op.adr, id)})
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s removes claim %s, which did not exist before this transition", op.adr, id)})
 			}
 		case hasOp && op.verb == adr.OpUpdate:
 			findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter)...)
@@ -182,12 +182,12 @@ func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
 			}
 		}
 		if len(afterBatches) < beforeCount {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s deleted a previously applied batch", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s deleted a previously applied batch", a.Number)})
 			continue
 		}
 		added := afterBatches[beforeCount:]
 		if len(added) > 1 {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Number, len(added))})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Number, len(added))})
 		}
 		for _, batch := range added {
 			batches = append(batches, appendedBatch{adr: a.Number, sequence: batch.Sequence, ops: batch.Operations})
@@ -197,7 +197,7 @@ func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
 	for i, batch := range batches {
 		expected := maxBefore + i + 1
 		if batch.sequence != expected {
-			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s application batch has state-sequence %d; expected next sequence %d", batch.adr, batch.sequence, expected)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s application batch has state-sequence %d; expected next sequence %d", batch.adr, batch.sequence, expected)})
 		}
 	}
 	ops := map[string]pairOp{}
@@ -225,17 +225,17 @@ func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
 // as an exact prefix.
 func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool) []Finding {
 	if !hasBefore || !hasAfter {
-		return []Finding{{Error, fmt.Sprintf("ADR-%s updates claim %s, which is not present on both sides of this transition", adrNum, id)}}
+		return []Finding{{fmt.Sprintf("ADR-%s updates claim %s, which is not present on both sides of this transition", adrNum, id)}}
 	}
 	var out []Finding
 	if claimMateriallyEqual(before, after) {
-		out = append(out, Finding{Error, fmt.Sprintf("ADR-%s updates claim %s, but no canonical field changed (a provenance- or formatting-only edit is not an update)", adrNum, id)})
+		out = append(out, Finding{fmt.Sprintf("ADR-%s updates claim %s, but no canonical field changed (a provenance- or formatting-only edit is not an update)", adrNum, id)})
 	}
 	if before.Origin != after.Origin {
-		out = append(out, Finding{Error, fmt.Sprintf("ADR-%s update of claim %s changed its Origin from ADR-%s to ADR-%s; an update must preserve Origin", adrNum, id, before.Origin, after.Origin)})
+		out = append(out, Finding{fmt.Sprintf("ADR-%s update of claim %s changed its Origin from ADR-%s to ADR-%s; an update must preserve Origin", adrNum, id, before.Origin, after.Origin)})
 	}
 	if reason, ok := revisedByExtension(before, after, adrNum); !ok {
-		out = append(out, Finding{Error, fmt.Sprintf("ADR-%s update of claim %s %s", adrNum, id, reason)})
+		out = append(out, Finding{fmt.Sprintf("ADR-%s update of claim %s %s", adrNum, id, reason)})
 	}
 	return out
 }
@@ -249,11 +249,11 @@ func checkUnmatchedMutation(records []adr.ADR, id string, before, after topic.Cl
 		if legacyOrigin(records, after.Origin) {
 			return nil
 		}
-		return []Finding{{Error, fmt.Sprintf("claim %s was added with no ADR add operation in this transition", id)}}
+		return []Finding{{fmt.Sprintf("claim %s was added with no ADR add operation in this transition", id)}}
 	case hasBefore && !hasAfter:
-		return []Finding{{Error, fmt.Sprintf("claim %s was removed with no ADR remove operation in this transition", id)}}
+		return []Finding{{fmt.Sprintf("claim %s was removed with no ADR remove operation in this transition", id)}}
 	case hasBefore && hasAfter && (!claimMateriallyEqual(before, after) || before.Origin != after.Origin || !slices.Equal(before.RevisedBy, after.RevisedBy)):
-		return []Finding{{Error, fmt.Sprintf("claim %s was changed with no ADR update operation in this transition", id)}}
+		return []Finding{{fmt.Sprintf("claim %s was changed with no ADR update operation in this transition", id)}}
 	}
 	return nil
 }

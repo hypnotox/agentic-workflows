@@ -89,7 +89,7 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // kinds.
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
-		Static: []currentstate.Finding{{Severity: currentstate.Error, Message: "handshake broke"}},
+		Static: []currentstate.Finding{{Message: "handshake broke"}},
 		Coverage: []topic.CoverageFinding{
 			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
 			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},

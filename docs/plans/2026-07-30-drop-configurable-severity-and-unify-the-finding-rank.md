@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [0179]
-status: Proposed
+status: Implemented
 ---
 # Plan: Drop configurable severity and unify the finding rank
 
@@ -933,6 +933,28 @@ implicated the ADR rather than the plan, and the ADR was amended for them while 
 second resync. That loop was not run: the amendment was authored to the resync reviewer's own written
 specification, touches two prose passages, and changes no `State changes` operation, no Decision item, and no
 claim destination. Recorded here so a later reader sees the deviation rather than inferring the loop ran.
+
+**Two execution deviations, recorded at freeze.**
+
+First, Phase 2 needed one change this plan did not anticipate. `migrate.ConfigForCurrentSchema` forward-ports
+a historical committed config so the current strict parser can read it, and it does so through an explicit
+per-migration byte-level branch; only generation 20 had one. Without a generation-24 branch every
+`awf check --staged` failed to parse HEAD the moment the two keys left the config model, because HEAD still
+carried them. The four drop-a-key precedents never exposed this: none of those keys was actually set in this
+repo, which is also why Task 2.4's precedent reading did not surface it. Added with the two nested removals
+and a test covering the forward-port, its idempotence, and the skip at generation 24. Anyone removing a
+config key hereafter needs that branch, and the phase-close staged check is where its absence surfaces.
+
+Second, Task 2.8's enumeration was incomplete. Beyond the config and configspec sites it lists, fixtures in
+`internal/project/currentstate_test.go`, `internal/project/context_test.go`, `internal/upgrade/upgrade_test.go`,
+and `internal/migrate/maxclaimspertopic_test.go` also carried the keys, most of them only to make the
+`currentState` block non-empty. Each was re-anchored on a surviving key rather than deleted, and the plan's
+own Verification greps caught them, which is what that section is for.
+
+Task 4.4's second post-check half was satisfied in two layers rather than one. Re-adding a `Severity` field
+breaks compilation outright, because every literal in the package is positional, so the reflection test never
+gets to run. The reflection assertion was therefore proven against the shape that would compile - a keyed
+two-field `Finding` - confirming it reports "Finding has 2 fields, want exactly 1" rather than passing.
 
 Out of scope, recorded during authoring:
 

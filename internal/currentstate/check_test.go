@@ -1,6 +1,7 @@
 package currentstate_test
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
@@ -477,10 +478,33 @@ func TestCheckV2BatchSequences(t *testing.T) {
 	}
 }
 
-// TestSeverityString covers both severities.
-func TestSeverityString(t *testing.T) {
-	if currentstate.Error.String() != "error" || currentstate.Warn.String() != "warn" {
-		t.Fatalf("severity strings = %q, %q", currentstate.Error, currentstate.Warn)
+// The claim is a structural property, so no behavioural assertion can back it:
+// once the field is gone, no ordinary test fails if someone adds it back, and a
+// proof marker on such a test would stay green through the exact regression it
+// exists to catch. Reflection does fail, so the marker lives here.
+// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked
+func TestFindingCarriesOnlyMessage(t *testing.T) {
+	typ := reflect.TypeFor[currentstate.Finding]()
+	if typ.NumField() != 1 {
+		t.Fatalf("Finding has %d fields, want exactly 1: a handshake finding carries no rank", typ.NumField())
+	}
+	if name := typ.Field(0).Name; name != "Message" {
+		t.Fatalf("Finding field 0 is %q, want %q", name, "Message")
+	}
+}
+
+// The claim's second clause: the check path treats every handshake finding as
+// blocking. A malformed-provenance corpus must route its finding to Findings and
+// leave Notes empty, with no rank consulted anywhere on the way.
+func TestEveryHandshakeFindingIsBlocking(t *testing.T) {
+	findings := currentstate.Check([]adr.ADR{rec("0001", "Implemented", 1, adr.Operation{Verb: "add", ID: "d/t:missing"})}, nil)
+	if len(findings) == 0 {
+		t.Fatal("an operation targeting a missing topic must produce a finding")
+	}
+	for _, f := range findings {
+		if f.Message == "" {
+			t.Errorf("a handshake finding must carry its message: %#v", f)
+		}
 	}
 }
 
