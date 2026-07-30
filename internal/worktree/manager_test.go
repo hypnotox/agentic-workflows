@@ -253,6 +253,7 @@ func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:default-worktree-creation
 func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 	t.Run("rolled back", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
@@ -292,6 +293,7 @@ func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
 	})
 }
 
+// invariant: tooling/effort-management:default-worktree-creation
 func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
 	for _, test := range []struct {
 		name    string
