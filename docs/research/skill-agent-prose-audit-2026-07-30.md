@@ -210,24 +210,127 @@ everywhere except A11. Frontmatter is accurate and terse except
 reviewing-impl's (no "Use ..." trigger, no mention of its conformance-audit
 and worktree-routing duties) and the roadmap-graduation/resync cases above.
 
-## D. Proposed fix routing
+## D. Corrections to sections A and B (2026-07-31 grounding pass)
 
-1. **Mechanical template batch** (no rendered-behavior change beyond corrected
-   words): A1, A2, A5, A6, A8, A11, A12, B3, B6, and the B2 preamble trims.
-   Template edits + `./x render` + `./x check`; goldens update with them.
-2. **Repo-local config batch**: A4 (`gateCmdFull`), debugging-surfaces part
-   refresh, adr-reviewer.yaml trims.
-3. **Structural partial extraction** (rendered output identical or
-   near-identical): B1 tier (a), B4 partial set. Mechanical but touches many
-   files; a small plan is warranted.
-4. **Catalog/code changes**: A3, A7 (template restructure), A9, A10 - touch
-   `internal/catalog/standard.go` and template structure; direct execution
-   with review.
-5. **Needs an ADR**: B1 tier (b) - rendered-level model-selection dedup and
-   any once-per-skill spine statement, because the invariant claim
-   `deliberate-subagent-model-selection` must change with it. This subsumes
-   the deferred reviewer-spine-dedup backlog item.
-6. **User decisions**: delete vs trim `plan-reviewer.yaml step-exactness`
-   (B5); which kind vocabulary wins in A10 (reword bodies to "support" vs
-   reclassify); whether roadmap-graduation's commit reason lives in subject or
-   body (A9).
+A grounding check against HEAD revised the findings above. Read these before
+acting on any finding.
+
+D1. **A8 is withdrawn.** It would regress an Implemented decision.
+`templates/skills/adr-lifecycle/SKILL.md.tmpl` at HEAD already states that the
+body stays amendable through `Accepted` and `Implementing` and freezes at
+`Implemented` or `Abandoned`, matching the live claim
+`adr-system/adr-lifecycle:adr-amendable-until-terminal` (Origin ADR-0188,
+Backing: test). Do not widen the freeze rule.
+
+D2. **The corpus moved during the audit, so line numbers above are not
+trustworthy.** The amendment-until-terminal prose landed at 2026-07-30 22:25;
+this report committed at 23:48; ADR-0189 was proposed at 2026-07-31 00:11.
+Concurrent sessions work in this checkout. Any plan derived from this report
+must re-verify each finding against HEAD before freezing.
+
+D3. **A5 refined.** Unnumbering the visible refactor-coupling-audit headings
+and uncounting the prose is safe and needs no catalog or test change. Renaming
+the `category-N-*` section ids would break `skill-section-parity` (ADR-0054)
+and orphan adopter override parts, so ids stay stable. The mechanism that
+leaves headings sparse is a convention part overriding a section with empty
+content, not "a sidecar dropping categories".
+
+D4. **A2 refined.** `templates/skills/bugfix/SKILL.md.tmpl:8` also says "task
+skill" and is correctly `WorkflowTask`; leave it. The four to reword are tdd,
+adr-lifecycle, refactor-coupling-audit and roadmap-graduation.
+
+D5. **A4 is wider than stated.** Unsetting `gateCmdFull` also rewrites the
+rendered `.awf/hooks/pre-push.sh` and falsifies four hand-written convention
+parts (`.awf/parts/workflow/local-hooks.md`,
+`.awf/parts/workflow/composing-the-gate.md`, `.awf/docs/parts/testing/tiers.md`,
+`.awf/docs/parts/development/command-runner.md`) that render into
+`docs/workflow.md`, `docs/testing.md` and `docs/development.md`. Same commit.
+
+D6. **A3 costs three test edits.** Moving `allowCommits: true` inside the
+`targetSubagentTools` conditional fails `internal/project/spine_test.go:866`,
+`internal/project/spine_test.go:551` and
+`internal/project/phase_transaction_ownership_test.go:80`, two of which are
+invariant proofs (ADR-0168, ADR-0166). Neither claim text mentions
+`allowCommits`, so removing it from generic-render expectations is a scope
+correction; the plan must quote both claim texts and say so, or terminal review
+will read it as an assertion weakened to hide a failure.
+
+D7. **A6 costs a catalog edit.** Merging the path-identification section pair
+requires dropping the matching entry from the `Sections` list in
+`internal/catalog/standard.go` in the same commit. Nothing else keys off those
+names.
+
+D8. **A5/A9 additions.** The resync single-invoker claim is false in three
+places, not one: the skill body, its frontmatter description, and
+`templates/agents/plan-reviewer.md.tmpl`. `reviewing-plan`'s when-fires prose
+enumerates five lens names rather than counting them, which is the same
+staleness in a different shape.
+
+D9. **B1 is smaller and less separable than stated.** Include directives are
+line-anchored, and every model-selection block sits mid-sentence inside a
+numbered list item, so extraction forces a rendered change: there is no
+"source-only, rendered-identical" tier. Roughly half the block is the Pi and
+non-Pi branch rule, which is claim-load-bearing and test-pinned verbatim; only
+the tier glosses compress. The claim update, template compression, test
+literals, ADR flip and render output must land in one commit, because
+`awf check` validates claim provenance against the declaring ADR's operations.
+
+## E. Settled decisions
+
+E1. **Prose economy is compress-with-reference.** Each dispatch site keeps a
+one-line rule naming the small, standard and large tiers plus the escalation
+trigger; the definitions live in the agent guide and a shared partial. Not full
+deferral. The governing reason is that a dispatched subagent may not have the
+agent guide in context (Pi loads only the agent artifact, per ADR-0179); it is
+NOT that an adopter could disable the guide, which is impossible because
+`agents-doc` is mandatory and ADR-0061 keeps mandatory docs out of the
+toggleable pool.
+
+E2. **`plan-reviewer.yaml` `step-exactness` reduces to a single sentence**
+carrying the consolidated Reject list. Both originally nominated deltas are
+already covered by the universal executability lens; the surviving delta is the
+imperative framing, which is a real steer for an LLM reviewer. Its sibling
+focus items carry incident narrative found nowhere in the universal lenses and
+are not swept into this trim.
+
+E3. **Skill-kind vocabulary: the catalog wins.** The four bodies are reworded
+to "support skill"; catalog `Kind` values are unchanged, so no adopter's
+rendered guide changes. The adjacent layer that uses "task skill" to mean "any
+non-chain skill" (the `taskSkillRows` render key, the glossary line, and the
+test comments) is renamed in the same plan so one vocabulary holds inside and
+out.
+
+E4. **roadmap-graduation's commit reason lives in the body**, with the subject
+staying `docs(roadmap): drop <item>`.
+
+E5. **An ADR still gates the rendered prose economy**, but its justification is
+that it authorises a durable policy (compress-with-reference plus the template
+partials convention, subsuming the deferred reviewer-spine-dedup item), not
+that the current claim text forbids the compression. The claim names the tiers
+without mandating the definitional glosses, so a narrower reading would make
+this a test-literal refresh; the ADR route is chosen deliberately.
+
+## F. Status: parked pending ADR-0187
+
+Execution is deliberately not started. ADR-0187 (Proposed, plan written at
+`docs/plans/2026-07-30-orienting-support-skill-adr-0187.md`) creates
+`templates/partials/orientation-ladder.md`, which is the same partial this work
+would introduce, and also edits `internal/catalog/standard.go`,
+`templates/skills/writing-plans/SKILL.md.tmpl`, the brainstorming and
+proposing-adr templates, `.awf/config.yaml` and the lock, and the same
+`rendering/workflow-skill-templates` current-state file this work must touch.
+It additionally raises the schema generation and the project version. Running
+both concurrently would conflict on every one of those files.
+
+Resume trigger: ADR-0187 reaches `Implemented` and its plan is complete.
+
+Resume checklist:
+1. Re-verify every finding in sections A and B against HEAD; treat all line
+   numbers as stale and expect some findings to have been overtaken, as A8 was.
+2. Re-check whether ADR-0187 already absorbed the orientation partial, the
+   catalog edits, and the writing-plans and brainstorming prose trims, and drop
+   those items from scope if so.
+3. Confirm the `rendering/workflow-skill-templates` claim budget still permits
+   the planned operations; the topic was at its 20-claim ceiling and ADR-0187
+   consumed a granted exception.
+4. Then propose the ADR described in E5 and write the plan.
