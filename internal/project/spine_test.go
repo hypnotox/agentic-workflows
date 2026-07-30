@@ -1067,6 +1067,7 @@ func TestOrientingSkillContract(t *testing.T) {
 				"location is unknown", "and inline search would pollute the parent context",
 				"exact-known-file", "genuinely trivial", "`example-exploring`",
 				"landed since the checkpoint", "git worktree list", "against the decision index",
+				"its decision log including every `Record:` block", "not yours to re-decide",
 				"cited plan and file existence", "A discrepancy resolves in favor of the repository",
 				"never creates an effort, never commits", "never prescribe `--full`",
 				"single-pass and advisory, never a chain gate",
@@ -1521,6 +1522,7 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	orienting := renderSkillGolden(t, "orienting", data)
 	for _, want := range []string{
 		"landed since the checkpoint", "git worktree list", "against the decision index",
+		"its decision log including every `Record:` block", "not yours to re-decide",
 		"A discrepancy resolves in favor of the repository",
 	} {
 		if !strings.Contains(orienting, want) {
