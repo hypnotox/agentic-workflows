@@ -39,7 +39,7 @@ If an owner stops dirty, inventory `git status --short`, diff, completed and rem
 <!-- awf:edit per-task-review: default; create .awf/skills/parts/subagent-driven-development/per-task-review.md to override -->
 6. Review is report-only and phase-level; review fixes remain parent-owned and do not recreate the original transaction.
 <!-- awf:edit final-task-adr-flip: default; create .awf/skills/parts/subagent-driven-development/final-task-adr-flip.md to override -->
-7. Apply V2 batches atomically with matching claims and lifecycle events in the owning phase.
+7. Apply non-final V2 batches atomically with matching claims and lifecycle events in the owning phase. The final batch and the Implemented flip are owned by the terminal-review flow and land only after the applicable terminal review settles.
 <!-- awf:edit terminal-step: default; create .awf/skills/parts/subagent-driven-development/terminal-step.md to override -->
 8. After all settled phases, invoke `awf-reviewing-impl`.
 

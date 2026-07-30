@@ -41,7 +41,7 @@ If an implementer stops dirty, first inventory `git status --short`, diff, compl
 {{ with .data.e2eSuitePaths }}Use the fuller gate when a phase touches a declared end-to-end surface: {{ range . }}`{{ .path }}` {{ end }}.{{ end }}
 <!-- awf:end -->
 <!-- awf:section procedure-adr-final-commit -->
-4. Apply V2 operation batches atomically with their matching claims and lifecycle event in the owning phase.
+4. Apply non-final V2 operation batches atomically with their matching claims and lifecycle event in the owning phase. The final batch and the Implemented flip are owned by the terminal-review flow and land only after the applicable terminal review settles.
 <!-- awf:end -->
 <!-- awf:section procedure-non-adr-final-commit -->
 5. Freeze a plan only in its declared final transaction after review settlement.

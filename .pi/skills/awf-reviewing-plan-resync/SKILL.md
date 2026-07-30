@@ -13,7 +13,7 @@ description: >
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-plan-resync/when-fires.md to override -->
 ## When this skill fires
 
-Only when at least one ADR and a plan exist. Invoked by `awf-reviewing-adr` as its terminal follow-on after the ADR review converges (the ADR remains `Proposed`; the status flip is owned by the implementation step). Do NOT invoke when no plan was written.
+Only when at least one ADR and a plan exist. Invoked by `awf-reviewing-adr` as its terminal follow-on after the ADR review converges (the ADR remains `Proposed`; the status flip is owned by the terminal-review flow). Do NOT invoke when no plan was written.
 
 This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness + doc-currency lenses). The post-write full plan review is owned by the separate `awf-reviewing-plan` skill.
 
@@ -38,7 +38,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
    - **reasoned**: this skill applies with a one-line rationale.
    - **user-decision**: present to the user and wait.
 
-   **Return edge:** when a finding implicates the ADR itself (the plan is right and the still-`Proposed` decision text is wrong), do not bend the plan to stale decision text. Amend the ADR (via `awf-adr-lifecycle`'s amendment-while-Proposed procedure), re-run `awf-reviewing-adr` on the amended ADR, then re-run this resync, looping until plan and ADR(s) converge.
+   **Return edge:** when a finding implicates the ADR itself (the plan is right and the still-`Proposed` decision text is wrong), do not bend the plan to stale decision text. Amend the ADR (via `awf-adr-lifecycle`'s amendment-until-terminal procedure), re-run `awf-reviewing-adr` on the amended ADR, then re-run this resync, looping until plan and ADR(s) converge.
 
 <!-- awf:edit apply-fixes-commit: default; create .awf/skills/parts/reviewing-plan-resync/apply-fixes-commit.md to override -->
 3. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes and commits them as new commits (never `--amend`) using a Conventional-Commits scope from `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`. Resync fixes edit only the plan file; a finding that takes the return edge above routes its ADR amendment through the ADR's own review before this resync re-runs.

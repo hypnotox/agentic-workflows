@@ -1633,7 +1633,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/reviewing-plan-resync/SKILL.md.tmpl",
-		want: []string{"an amendment-while-Proposed edit", "using the project's commit scope conventions"},
+		want: []string{"an amendment-until-terminal edit", "using the project's commit scope conventions"},
 		ban:  []string{"example-adr-lifecycle"},
 	},
 	{

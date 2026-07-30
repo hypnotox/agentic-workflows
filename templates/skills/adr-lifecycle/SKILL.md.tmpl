@@ -3,12 +3,12 @@ name: {{ .prefix }}-adr-lifecycle
 description: >
   Use when transitioning {{ .prefix }} ADRs between lifecycle states.
   Encodes the {{ if .data.adrStates }}{{ len .data.adrStates }}-state{{ else }}multi-state{{ end }} lifecycle, the State changes
-  handshake, and amendment-while-Proposed scope. Self-contained.
+  handshake, and amendment-until-terminal scope. Self-contained.
 ---
 
 # {{ .prefix }}-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-while-Proposed. The authoritative source is `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A task skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
@@ -23,7 +23,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, the S
 ## Transitions
 
 <!-- awf:section transitions -->
-- `Proposed → Accepted` freezes the body and establishes the content digest without applying operations.
+- `Proposed → Accepted` establishes the first content stamp without applying operations; the body stays amendable via Amended events.
 - `Proposed|Accepted → Implementing` appends the status event then a first Applied batch, together with its claim mutations.
 - `Implementing → Implementing` appends exactly one middle Applied batch with its mutations.
 - `Implementing → Implemented` appends the final Applied batch then the terminal status event with its mutations.
@@ -38,7 +38,7 @@ A task skill for mechanical ADR lifecycle transitions: status transitions, the S
 <!-- awf:section state-changes -->
 An ADR's `## State changes` section is the authoritative link to the topics it governs: either `None.` or a list of `- add`, `- update`, and `- remove` entries, each naming one claim by its qualified `<domain>/<topic>:<slug>` id.
 
-- **At `Accepted`** the operations are frozen instruction. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `awf context --show pending <affected paths>`.
+- **At `Accepted`** the operations are settled instruction, amendable under the amendment-until-terminal rules until an Applied event references them. Every operation's destination topic metadata must already exist (an empty topic shell for a pending `add`). The claims describing current reality are unchanged; inspect lifecycle detail where needed with `awf context --show pending <affected paths>`.
 <!-- awf:include context-spill -->
 - **At `Implementing`** each Applied event and exactly its matching claim mutations form one checked Git pair. An `add` appears with this ADR as Origin; an `update` preserves Origin and the prior Revised-by prefix, then appends this ADR; a `remove` disappears. Remaining operations continue to appear as pending progress.
 - **At `Implemented`** all declarations are Applied. A direct transition uses one implicit batch; an incremental transition appends its final batch before the status event.
@@ -50,7 +50,7 @@ An ADR's `## State changes` section is the authoritative link to the topics it g
 Pick the status transition, then carry the same verified effort slug and exact `.awf/efforts/<slug>/memory.md` path. A lifecycle child or reviewer never edits shared memory; repository and current-state authority outrank it, one user-managed writer remains responsible, and standalone memory is forbidden.
 
 <!-- awf:section procedure-status-edit -->
-1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; state-sequence: <n>; operations: <operation-list>`. Repeat the frozen digest on status events and use the next sequence `awf check` reports.
+1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; state-sequence: <n>; operations: <operation-list>`. Repeat the latest stamp on status events and use the next sequence `awf check` reports; an amendment instead appends its own `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event in its own commit.
 <!-- awf:end -->
 
 <!-- awf:section procedure-claim-mutation -->
@@ -80,22 +80,32 @@ Use these subjects for each transition type:
 - `docs(adr): abandon NNNN <short title>` for any legal transition to Abandoned
 <!-- awf:end -->
 
-<!-- awf:section amendment-while-proposed -->
-## Amendment-while-Proposed
+<!-- awf:section amendment-until-terminal -->
+## Amendment-until-terminal
 
-While `status: Proposed`, all sections may be amended freely as edge cases or scope refinements surface. Two flavours:
+While `status: Proposed`, all sections may be amended freely, with no history event. Once
+`Accepted` or `Implementing`, the body stays amendable: each amendment commit appends exactly
+one `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event and changes
+nothing else in the history. At `Implemented` or `Abandoned` the body's meaning is frozen; a
+schema retrofit may migrate its machine-readable encoding.
 
-- **Plain amendment.** Edit the relevant section; commit with `docs(adr): amend Context for <title>` or fold into a co-located implementation commit when the change is small.
-- **Deferral.** When scope shrinks mid-flight, amend the still-`Proposed` ADR's Context with what was deferred and why; commit as `docs(adr): amend NNNN, defer <part>; <reason>`. Deferral is a Context edit on a `Proposed` ADR, not a lifecycle state; deferred work lands in a follow-up ADR or the roadmap.
-
-Once `Accepted` or `Implemented`, the body's meaning is frozen; a schema retrofit may migrate its machine-readable encoding. Only the `status` field and the append-only `## Status history` are editable in place.
+- An amendment must not alter or remove a State-changes operation already referenced by an
+  Applied event; adding new operations and rewording operations not yet applied stay legal.
+- An amendment that changes a Decision item, the State changes operation set, or the meaning
+  of an invariant claim is raised as a user-decision before landing, unless it corrects a
+  clear defect with a no-brainer fix; prose-only clarification stays autonomous. A
+  load-bearing amendment re-dispatches the ADR reviewer over the amended sections before
+  landing.
+- Commit as `docs(adr): amend NNNN <what changed>`. Deferral (scope shrink) stays a Context
+  amendment recorded the same way.
+- current-state-v1 records keep the prior rule: frozen once they leave Proposed.
 <!-- awf:end -->
 
 ## Notes
 
 <!-- awf:section notes -->
 - **Authoritative source:** `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
-- **Append-only rule:** once any live state is reached, only the `status` field and the append-only `## Status history` are editable in place. The body is the historical record: its meaning is frozen, and append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
+- **Append-only rule:** the `## Status history` is append-only in every state. A V2 body stays amendable until a terminal status, each amendment recorded as an Amended event, then freezes as the historical record; append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
 - **`{{ .layout.indexMd }}` is auto-generated** by `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} render{{ end }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->
