@@ -71,10 +71,11 @@ obligated docs, and flips both ADRs and this plan.
   0182+ identities (its own 0182-0185 exist), and ADR-0181 is already on main and keeps
   its number. Rename this branch's git-seam ADR file and heading to the next free
   identity awf reports after the merge (do not hardcode a number), then update every
-  reference to the old number: the `Origin:` targets in Task 7.3, ADR-0181's item 7
-  forward reference, this plan's `adrs:` frontmatter, and every `ADR-0182` literal in
-  this plan's Goal, Architecture summary, File structure, and Tasks. Re-render and
-  confirm `./awf check` is clean.
+  reference to the old number: the `Origin:` targets in Task 7.3, this plan's `adrs:`
+  frontmatter, and every `ADR-0182` literal in this plan's Goal, Architecture summary,
+  File structure, and Tasks. Confirm ADR-0181's item 7 forward reference still carries
+  no literal number (it names "its own ADR next in this effort", so no edit is owed).
+  Re-render and confirm `./awf check` is clean.
 - [ ] **Task 1.2: Re-render and verify.** Run `./x render`; stage everything the merge
   and render touched; `./awf check --staged` clean; `./x gate` ends `0 issues` with
   `check prose: clean` and `check memory: clean`.
@@ -249,7 +250,16 @@ refactor(code-design): git handle, object reads, deadlined open
   `toCommit` into `internal/git/walk.go`. The three `invariant:` proof markers in
   `internal/audit/git_test.go` (`audit-empty-range-clean` and the two
   `audit-uncommitted-changes` markers) and the tests carrying them are preserved
-  verbatim, relocated into `internal/audit/audit_test.go`. Post-check:
+  verbatim, relocated into `internal/audit/audit_test.go`. The remaining
+  `internal/audit/git_test.go` tests split by subject: tests exercising the moved walk
+  machinery (`TestCollectNormalRange`, `TestCollectMergeCommitCarriesNoChanges`,
+  `TestCollectUnrelatedHistories`, `TestSplitMessage`, `TestToCommitRootAndFileText`,
+  `TestCollectWorktreeConfigExtension`, and kin) are superseded by the Task 4.4 walk
+  contract suite, which re-pins their behaviours in `internal/git` - carry over any
+  edge one of them covers that the suite draft lacks; tests exercising audit-level
+  policy over walk results (adopter filtering and rerooting, for example
+  `TestCollectNestedAdopterFiltersAndReroots`) adapt to drive audit's collection path
+  through the seam and relocate into `internal/audit/audit_test.go`. Post-check:
   `grep -rln "go-git" internal/audit --include=*.go | grep -v _test` returns no output
   (test files convert in Phase 6; the enduring oracle is the Phase 7 import-based seam
   walker, since `internal/audit/testmain_test.go` keeps the literal `go-git` in prose).
@@ -363,10 +373,12 @@ refactor(code-design): effort and worktree composition through the seam
   call. Helper partition permitted: one helper per package directory, path-disjoint,
   commit-disabled, shared files parent-owned. Post-check (self-contained, runnable at
   this phase's close): both of
-  `grep -rln '"github.com/go-git/go-git' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
-  and
-  `grep -rln 'exec.Command[^(]*("git"\|exec.Command[^(]*(ctx, "git"' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
-  return no output.
+  `grep -rln '"github.com/go-git/go-git' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/' -e '^./internal/testsupport/deps_test.go'`
+  (the deps_test.go exclusion is a string-literal fixture for the dependency checker,
+  not a real import) and
+  `grep -rlnE 'exec\.Command(Context)?\([^)]*"git"' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
+  return no output (the pattern catches any argument shape before the literal "git",
+  including `t.Context()`).
 - [ ] **Task 6.3: Doc-comment correction and parallelism.** Rewrite
   `cmd/awf/testmain_test.go`'s `TestMain` doc comment so it states the seam contract
   (git reached only through `internal/git`, no ambient host git config) instead of
