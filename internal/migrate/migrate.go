@@ -55,6 +55,10 @@ var registry = []Migration{
 	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
 	{To: 22, Name: "unified-effort-residents", Apply: applyUnifiedEffortResidents, OwnsSchemaStamp: true},
 	{To: 23, Name: "implementer-agent-closure", Apply: applyCloseEnabledSet},
+	// Generation 24 pairs exploring->explorer and brainstorming->grounding-checker
+	// (ADR-0179); closing an enabled set over a new structural edge is what
+	// applyCloseEnabledSet already does, so an adopter who enables either skill
+	// gains its paired agent on upgrade instead of failing at project open.
 	{To: 24, Name: "explorer-grounding-closure", Apply: applyCloseEnabledSet},
 }
 
