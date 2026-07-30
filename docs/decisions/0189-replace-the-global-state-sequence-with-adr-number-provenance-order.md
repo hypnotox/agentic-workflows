@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-07-31
 ---
 # ADR-0189: Replace the global state sequence with ADR-number provenance order
@@ -199,3 +199,4 @@ at implementation time under their declared backing.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Accepted; content-sha256: 6c6dc3d3de5cdc640cf8e8329c50d0f76ec3f2711e18b202d4d5a38a9d3714b9
