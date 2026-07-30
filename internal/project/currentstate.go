@@ -191,7 +191,24 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	if afterCfg == nil {
 		return CurrentStateReport{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe())}
+	// A merge integrates a branch whose commits were each validated as they were
+	// authored, so the pair carries several steps at once and takes the aggregate
+	// contract (ADR-0182). Provenance decides this, not the shape of the diff.
+	// A checkout whose control root cannot be safely resolved, a symlinked .git
+	// being the reachable case, is treated as not merging rather than failing the
+	// check. go-git's index read follows the symlink and succeeds, so propagating
+	// the refusal here would break a staged check that worked before merge
+	// detection existed. Falling back selects the stricter authored-commit
+	// contract, which can refuse a legitimate merge but can never wrongly accept.
+	merging, err := git.MergeInProgress(p.Root)
+	if err != nil {
+		merging = false
+	}
+	mode := currentstate.AuthoredCommit
+	if merging {
+		mode = currentstate.MergeAggregate
+	}
+	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), mode)}
 	if afterCfg.CurrentState != nil {
 		report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	}
@@ -405,7 +422,11 @@ func (p *Project) auditTransitions(base, head string) ([]audit.Finding, error) {
 				Detail: "could not load the current-state universes for this commit: " + err.Error()})
 			continue
 		}
-		for _, f := range currentstate.CheckPair(before, after) {
+		mode := currentstate.AuthoredCommit
+		if c.IsMerge {
+			mode = currentstate.MergeAggregate
+		}
+		for _, f := range currentstate.CheckPair(before, after, mode) {
 			out = append(out, audit.Finding{Severity: audit.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
 		}
 	}

@@ -68,6 +68,17 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- `awf check --staged` and `awf audit` now validate a merge as an ordered aggregate rather than
+  refusing it. A merge is one Git commit but the aggregate of a branch's commits, so an ADR may
+  contribute several application batches, a claim's operations across the pair may form an ordered
+  chain of at most one leading add, any number of updates and at most one trailing remove, and an
+  appended Status history need only preserve the prior history as an exact prefix. Every authored
+  commit keeps the stricter per-step contract. This makes `awf effort integrate`'s divergent path
+  usable for an incrementally-applied ADR and for a branch advancing an ADR the target already
+  carries. Two things deliberately do not change: the global state-sequence namespace must still be
+  contiguous, so a branch numbered before the target advanced still has to renumber before
+  integrating, and a merge is recognized by its recorded provenance (`MERGE_HEAD`), so
+  `git merge --squash`, which records none, keeps the authored-commit contract.
 - Add the `explorer` and `grounding-checker` agents: the child-facing contracts for dispatched
   exploration and grounding-check work, rendered per runtime like the review and implementer agents.
   The explorer body carries the one-information-need rule, the ordered breadth and report-detail

@@ -373,7 +373,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:34d1c7805b265f7868a5203c66900408be7a84229dad11c17640667785937b6c",
+      "outputHash": "sha256:c9a610c8e2e044029f2a47c23c2412306705c04e5dc83d1aef6172cf569d3ff7",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -457,8 +457,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:ae7cad75f724728d7dcc6b042f4786cc2f199c4904223ee0c8bcc43914e870af",
-      "configHash": "sha256:d2e710925c7a5d326633cdd96dec4181c9852fc7294fae379f3df0c1a3ffcede",
-      "outputHash": "sha256:d98d0d8b6e403ebbbd5731558d5f2f4b393159d42ba1c345394cc7ed5a55b31a"
+      "configHash": "sha256:b7a5f5d850ed7524341895709e75d7c7813915ccb18e6bf6300fc4fdaf653a46",
+      "outputHash": "sha256:f3f3e4f0224c636051adbbcd8b89d822db3aba192dd2a965c4fadc0204f91ad4"
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
@@ -571,8 +571,8 @@
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:edd8ac967fa6f3bf8b7d8c4d5451f9d5bf37bd7de03dbaadc22635f8cc2a784a",
-      "outputHash": "sha256:5596b5979434c914650877760ee8864cd5262d1e3cd42786562d94a4bcd6fb9d"
+      "configHash": "sha256:90db463d69ffcfa2ca36d22336d93a94b3d370b1c335925a4ddf89737d9d9d78",
+      "outputHash": "sha256:598a167dd1c23c476af1894464a746e01eefdcec72047c3f7253b728d9ea4f66"
     },
     "docs/topics/invariants/index.md": {
       "templateId": "topics/index.md.tmpl",

@@ -185,3 +185,4 @@
 - [ADR-0177: Rendered implementer role contract](0177-rendered-implementer-role-contract.md) (Implemented)
 - [ADR-0178: Explicit dependency composition architecture](0178-explicit-dependency-composition-architecture.md) (Implemented)
 - [ADR-0179: Rendered explorer and grounding-checker role contracts](0179-rendered-explorer-and-grounding-checker-role-contracts.md) (Implemented)
+- [ADR-0182: Validate a merge transition as an ordered aggregate](0182-validate-a-merge-transition-as-an-ordered-aggregate.md) (Implemented)
