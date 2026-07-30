@@ -31,8 +31,9 @@ obligated docs, and flips both ADRs and this plan.
   `internal/git/handle.go` (`Open`, `Repo`, read entrypoints), `internal/git/walk.go`
   (`Commit`, `FileChange`, range-walk entrypoints), `internal/git/residentroot.go`
   (shared resident-root resolution), per-entrypoint contract-suite test files under
-  `internal/git/`, `internal/git/seamwalker_test.go` and
-  `internal/git/fixturewalker_test.go` (repo-walking proofs), native-lane files in
+  `internal/git/`, `internal/git/seamwalker_test.go`,
+  `internal/git/fixturewalker_test.go` (repo-walking proofs),
+  `internal/git/entrypoints_test.go` (the entrypoint table), native-lane files in
   `internal/testsupport/gitfixture/`.
 - **Modified:** `internal/git/controlroot.go`, `internal/git/git.go`,
   `internal/snapshot/{working,index,commit,range}.go`, `internal/audit/audit.go`,
@@ -40,9 +41,14 @@ obligated docs, and flips both ADRs and this plan.
   `internal/upgrade/upgrade.go`, `internal/project/{project,currentstate,install}.go`,
   `internal/effort/{service,store}.go`, `internal/worktree/{manager,topology}.go`,
   `cmd/awf/{main,sync,effort,gate,memorygate,prosegate}.go`, `cmd/repoaudit/main.go`,
-  `internal/testsupport/gitfixture/gitfixture.go`, the twenty-two converting test files,
+  `cmd/repoaudit/main_test.go`,
+  `internal/testsupport/gitfixture/gitfixture.go`, the converting test files of Task 6.2,
   `cmd/awf/testmain_test.go`, the three agent sidecars, `.awf/parts/workflow/chain.md`,
-  `.awf/docs/glossary.yaml`, `.awf/topics/metadata/tooling/{git-access,audit-and-snapshots}.yaml`,
+  `.awf/docs/glossary.yaml`, `.awf/docs/pitfalls.yaml`,
+  `.awf/docs/parts/architecture/{components,dependencies}.md`,
+  `.awf/docs/parts/testing/{tiers,layout}.md`,
+  `.awf/topics/metadata/tooling/audit-and-snapshots.yaml` (git-access.yaml already
+  carries its two selectors from the proposal commit; no change owed),
   `.awf/topics/parts/tooling/{git-access,audit-and-snapshots}/current-state.md`,
   `.awf/topics/parts/code-design/single-home/current-state.md`,
   `internal/git/parserange_test.go`, `docs/pitfalls.md` sources, `docs/decisions/0181-*.md`,
@@ -60,10 +66,15 @@ obligated docs, and flips both ADRs and this plan.
   `.awf/topics/metadata/tooling/audit-and-snapshots.yaml` and its current-state part
   (take main's severity-chain edits; this plan's Phase 7 narrows paths afterward);
   `internal/project/project.go` and `internal/project/topics.go` (take main's
-  state-ownership shape; this plan's later phases re-apply seam changes on top);
-  ADR numbering (if main consumed 0181/0182, renumber this branch's two ADRs and their
-  file names to the next free numbers, update their cross-references, and re-render;
-  the same renumber applies to this plan's `adrs:` frontmatter).
+  state-ownership shape; this plan's later phases re-apply seam changes on top).
+- [ ] **Task 1.1b: Renumber the git-seam ADR (unconditional).** Main has consumed the
+  0182+ identities (its own 0182-0185 exist), and ADR-0181 is already on main and keeps
+  its number. Rename this branch's git-seam ADR file and heading to the next free
+  identity awf reports after the merge (do not hardcode a number), then update every
+  reference to the old number: the `Origin:` targets in Task 7.3, ADR-0181's item 7
+  forward reference, this plan's `adrs:` frontmatter, and every `ADR-0182` literal in
+  this plan's Goal, Architecture summary, File structure, and Tasks. Re-render and
+  confirm `./awf check` is clean.
 - [ ] **Task 1.2: Re-render and verify.** Run `./x render`; stage everything the merge
   and render touched; `./awf check --staged` clean; `./x gate` ends `0 issues` with
   `check prose: clean` and `check memory: clean`.
@@ -88,17 +99,21 @@ chore(tooling): merge integrated main into the git-seam branch
   `isolatedGitEnvironment(os.Environ())` unconditionally; captures stderr; translates a
   non-zero exit into `*CommandError`. A probe helper wraps run for
   exit-code-1-as-answer: exit 0 -> `(true, nil)`, exit 1 -> `(false, nil)`, otherwise
-  `(false, *CommandError)`. Unexport `IsolatedGitEnvironment` (rename to
+  `(false, *CommandError)`. The existing injection seam `nativeGitRunner`
+  (`controlroot.go`) is superseded: `resolveControlRoots`, `runGitPathWith`, and
+  `runGitTextWith` rebind to the new runner type, and no second runner abstraction
+  survives the phase. Unexport `IsolatedGitEnvironment` (rename to
   `isolatedGitEnvironment`; grounding confirmed no external consumer; its end-to-end
   tests keep working via `ResolveControlRoots`).
 - [ ] **Task 2.2: Convert `internal/git`'s own subprocess sites.** `runGitBytes` in
   `controlroot.go` and the inline exec in `WorktreeChangeCounts` (`git.go`) route through
   the runner. `WorktreeChangeCounts` keeps porcelain v2 semantics and gains isolation,
-  stderr-carrying errors, and the deadline requirement; thread `ctx` parameters up
-  through `ResolveControlRoots`, `ListWorktreeRegistrations`, and `WorktreeChangeCounts`
-  signatures and their existing callers (compile-driven; callers temporarily pass a
-  deadlined context built at their current boundaries with the Task 3.4 constant, which
-  this task introduces early in `cmd/awf` if not yet present).
+  stderr-carrying errors, the deadline requirement, and a `ctx context.Context`
+  parameter (`ResolveControlRoots` and `ListWorktreeRegistrations` already take ctx;
+  only `WorktreeChangeCounts` needs the new parameter, threaded to its existing
+  callers compile-driven). Add `const gitCommandTimeout = 2 * time.Minute` in `cmd/awf`
+  in this task (the hang-prevention ceiling from the git-seam ADR item 4); callers pass
+  a deadlined context built at their current boundaries with it.
 - [ ] **Task 2.3: Extract the identity ladder.** In `controlroot.go`, extract the repeated
   check-act-recheck sequences into named unexported operations (shape: one operation that
   performs lstat-validate, act, and re-validate around a single path, and one that
@@ -140,7 +155,11 @@ refactor(code-design): one isolated deadlined native git runner
   exported signature. `OpenContainingRepo`'s discovery loop moves behind
   `OpenContaining(start string) (*Repo, string, error)`. Unexport `GlobalExcludePatterns`
   and the old package-level read functions as their callers convert in this phase;
-  delete any that end the phase with no caller (the dead-code gate enforces this).
+  delete any that end the phase with no caller (the dead-code gate enforces this). In
+  the same task, delete `TestWorktreeStatusInjectsGlobalExcludes` from
+  `internal/git/git_test.go`: its case-sensitive substring check goes vacuous with the
+  unexport and would red the gate; the Task 3.5 working-tree-paths suite supersedes it
+  (per the git-seam ADR item 9).
 - [ ] **Task 3.2: Snapshot threading (batch).** `internal/snapshot`'s `WorkingTree`,
   `IndexTree`, `CommitTree`, `RangePair` take `(ctx context.Context, repo *git.Repo, ...)`
   instead of `repoRoot string`. Representative: `snapshot.IndexTree(root)` in
@@ -152,8 +171,9 @@ refactor(code-design): one isolated deadlined native git runner
   affected-site set: the callers of those four snapshot functions in `cmd/awf/gate.go`,
   `cmd/awf/main.go`, `cmd/awf/memorygate.go`, `cmd/awf/prosegate.go`,
   `internal/project/context.go`, `internal/project/currentstate.go`,
-  `internal/project/topics.go`. Post-check: `grep -rn "repoRoot string" internal/snapshot`
-  returns no output; `go build ./...` clean.
+  `internal/project/topics.go`. Post-check: `grep -rn "repoRoot" internal/snapshot
+  --include=*.go` returns no output (signatures and doc comments alike); `go build ./...`
+  clean.
 - [ ] **Task 3.3: Migrate, upgrade, and project reads.**
   `internal/migrate/remove_workflow_residents.go` and `unified_effort_residents.go`
   replace `git.OpenRepo` + `errors.Is(err, gogit.ErrRepositoryNotExists)` with
@@ -162,23 +182,26 @@ refactor(code-design): one isolated deadlined native git runner
   returning names) added here with this concrete consumer. `internal/upgrade/upgrade.go`'s
   `HeadHash` and `internal/project/currentstate.go`'s `HeadExists` become handle calls.
   Post-check:
-  `grep -rln "go-git" internal/migrate internal/upgrade internal/project --include=*.go`
-  over non-test files returns no output.
-- [ ] **Task 3.4: The open/deadline path and resident-root single home.** In `cmd/awf`,
-  add `const gitCommandTimeout = 2 * time.Minute` (the hang-prevention ceiling from
-  ADR-0182 item 4) beside the dispatch context plumbing; every handler that reaches git
-  derives `ctx, cancel := context.WithTimeout(...)` at its boundary. `project.Open` and
-  `Loader.Open` gain a leading `ctx context.Context` parameter threaded to their git
-  calls. Convert all nine `context.Background()` feeds: `cmd/awf/effort.go` (three),
-  `cmd/awf/sync.go`, `internal/migrate/remove_workflow_residents.go`,
+  `grep -rln "go-git" internal/migrate internal/upgrade internal/project --include=*.go | grep -v _test`
+  returns no output.
+- [ ] **Task 3.4: The open/deadline path and resident-root single home.** Every `cmd/awf`
+  handler that reaches git derives `ctx, cancel := context.WithTimeout(..., gitCommandTimeout)`
+  at its boundary (the constant exists from Task 2.2). `project.Open` and `Loader.Open`
+  gain a leading `ctx context.Context` parameter, and the loader's injected
+  `project.ResolveResidentRoot` contract type changes from `func(string) string` to
+  `func(context.Context, string) string` so the context reaches the resolution. Convert
+  all nine `context.Background()` feeds: `cmd/awf/effort.go` (three), `cmd/awf/sync.go`,
+  `internal/migrate/remove_workflow_residents.go`,
   `internal/migrate/unified_effort_residents.go` (two), `internal/project/install.go`,
   `internal/project/project.go`. Move the duplicated resident-root resolution into
-  `internal/git/residentroot.go` as `ProjectResidentRoot(ctx, invocationPath)` (body:
+  `internal/git/residentroot.go` as
+  `func ProjectResidentRoot(ctx context.Context, invocationPath string) string` (body:
   `ResolveControlRoots` -> `ResidentRoot(ResidentEfforts)` -> parent-of-parent of the
-  primary, with the two existing error-tolerant fallbacks); `cmd/awf/sync.go`'s
-  `resolveProjectResidentRoot` and `project.Open`'s inline copy both call it. Post-check:
-  `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test` returns
-  no output.
+  primary; on any error at either step it returns `invocationPath`, matching both
+  current copies' fallback-to-root behaviour exactly); `cmd/awf/sync.go`'s
+  `resolveProjectResidentRoot` and `project.Open`'s closure both delegate to it.
+  Post-check: `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test`
+  returns no output.
 - [ ] **Task 3.5: Object-read contract suite.** Pin per entrypoint on fixture repos:
   staged/commit/range blob enumeration including rename and deletion edges;
   `WorkingPaths` honouring the repository gitignore chain AND a global excludes file
@@ -208,13 +231,24 @@ refactor(code-design): git handle, object reads, deadlined open
   collection path takes the walk results through its existing narrow inputs; the package
   drops its go-git import entirely, and callers of the moved types in
   `internal/project` and `cmd/awf` update to `git.Commit`/`git.FileChange` in the same
-  task. Post-check: `grep -rln "go-git" internal/audit --include=*.go` returns no
-  output.
+  task. The two live symbols the file also holds have named destinations:
+  `ruleUncommittedChanges` and its `touches-state:` comment relocate intact into
+  `internal/audit/audit.go`, consuming `Repo.ChangeCounts`; `splitMessage` travels with
+  `toCommit` into `internal/git/walk.go`. The three `invariant:` proof markers in
+  `internal/audit/git_test.go` (`audit-empty-range-clean` and the two
+  `audit-uncommitted-changes` markers) and the tests carrying them are preserved
+  verbatim, relocated into `internal/audit/audit_test.go`. Post-check:
+  `grep -rln "go-git" internal/audit --include=*.go | grep -v _test` returns no output
+  (test files convert in Phase 6; the enduring oracle is the Phase 7 import-based seam
+  walker, since `internal/audit/testmain_test.go` keeps the literal `go-git` in prose).
 - [ ] **Task 4.3: repoaudit converts.** `cmd/repoaudit/main.go` replaces `realGit` and
-  `gitError` with a `git.Open` handle composed in `main` and runner-backed calls through
-  its existing `gitFunc` seam signature (the seam type stays consumer-owned; production
-  binds handle methods). The `coverage-ignore` on `realGit` disappears with the
-  function.
+  `gitError` with a `git.Open` handle composed in `main`; its `gitFunc` raw-argv
+  contract is replaced by a narrow consumer-owned contract over the semantic
+  entrypoints its five call sites need (merge-base, range changed-paths, range diff
+  text, file text) per the resolution recorded in the git-seam ADR's amended item 3.
+  `cmd/repoaudit/main_test.go` converts with it (its `gitError` test dies with the
+  function; fake implementations satisfy the new contract). The `coverage-ignore` on
+  `realGit` disappears with the function.
 - [ ] **Task 4.4: Walk contract suite.** Pin: commit enumeration order and bounds for a
   linear range and a merged range; per-file add/delete stats for create, modify, delete,
   and rename; `FileText` at both range ends; an unresolvable revision yielding an error
@@ -296,33 +330,37 @@ refactor(code-design): effort and worktree composition through the seam
   converting tests exercise that go-git cannot express. Existing exported helpers keep
   their names where their shapes survive; changed signatures compile-drive their
   callers.
-- [ ] **Task 6.2: Convert the twenty-two files (batch with helpers).** Exhaustive set -
+- [ ] **Task 6.2: Convert the fixture lane (batch with helpers).** Exhaustive set -
   go-git importers: `cmd/awf/audit_test.go`, `cmd/awf/memorygate_test.go`,
-  `cmd/awf/prosegate_test.go`, `cmd/awf/run_test.go`, `internal/audit/git_test.go`
-  (whatever of it survives Phase 4), `internal/git/git_test.go` (allowlisted; convert
-  only where gitfixture already serves it), `internal/migrate/remove_workflow_residents_test.go`,
+  `cmd/awf/prosegate_test.go`, `cmd/awf/run_test.go`,
+  `internal/audit/audit_test.go` (the Phase 4 relocation destination),
+  `internal/migrate/remove_workflow_residents_test.go`,
   `internal/migrate/unified_effort_residents_test.go`,
   `internal/project/audit_inputs_test.go`, `internal/project/staged_test.go`,
   `internal/snapshot/commit_test.go`, `internal/snapshot/index_test.go`,
-  `internal/snapshot/range_test.go`, `internal/snapshot/working_test.go`; exec-based
+  `internal/snapshot/range_test.go`, `internal/snapshot/working_test.go`; git-subprocess
   builders: `internal/project/context_test.go`, `internal/project/topics_test.go`,
   `internal/worktree/manager_test.go`, `internal/effort/store_test.go`,
-  `cmd/awf/topic_test.go`, `cmd/awf/context_test.go`, `cmd/awf/audit_test.go`,
-  `internal/migrate/remove_workflow_residents_test.go`. Representative:
-  `internal/snapshot/index_test.go`'s unmerged-entry setup becomes a gitfixture
-  unmerged-entry call. Edge: `internal/worktree/manager_test.go`'s registered-worktree
-  setup becomes a native-lane call. Helper partition permitted: one helper per package
-  directory, path-disjoint, commit-disabled, shared files parent-owned. Post-check: the
-  Phase 7 fixture walker's grep form (go-git imports or `exec.Command("git"` in
-  `*_test.go` outside `internal/testsupport/gitfixture` and `internal/git`) returns no
-  output.
-- [ ] **Task 6.3: Assertion corrections and parallelism.** Rewrite
-  `cmd/awf/testmain_test.go`'s assertion so it states the seam contract (git reached
-  only through `internal/git`, no ambient host git config) instead of "purely through
-  go-git". Delete `TestWorktreeStatusInjectsGlobalExcludes` from
-  `internal/git/git_test.go` (superseded by the Phase 3 suite). Add `t.Parallel()` to
-  converted package tests where no `t.Setenv`/`t.Chdir`/shared-state constraint
-  remains; leave the isolation and missing-binary suites serial.
+  `cmd/awf/topic_test.go`, `cmd/awf/context_test.go`, `cmd/awf/effort_test.go`,
+  `cmd/awf/run_test.go` (in both sublists: go-git import and a worktree-add exec),
+  `internal/migrate/remove_workflow_residents_test.go` (both sublists).
+  `internal/git/git_test.go` is allowlisted; nothing is owed there and it is
+  deliberately outside this set. Representative: `internal/snapshot/index_test.go`'s
+  unmerged-entry setup becomes a gitfixture unmerged-entry call. Edge:
+  `internal/worktree/manager_test.go`'s registered-worktree setup becomes a native-lane
+  call. Helper partition permitted: one helper per package directory, path-disjoint,
+  commit-disabled, shared files parent-owned. Post-check (self-contained, runnable at
+  this phase's close): both of
+  `grep -rln '"github.com/go-git/go-git' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
+  and
+  `grep -rln 'exec.Command[^(]*("git"\|exec.Command[^(]*(ctx, "git"' --include=*_test.go . | grep -v -e '^./internal/testsupport/gitfixture/' -e '^./internal/git/'`
+  return no output.
+- [ ] **Task 6.3: Doc-comment correction and parallelism.** Rewrite
+  `cmd/awf/testmain_test.go`'s `TestMain` doc comment so it states the seam contract
+  (git reached only through `internal/git`, no ambient host git config) instead of
+  "purely through go-git". Add `t.Parallel()` to converted package tests where no
+  `t.Setenv`/`t.Chdir`/shared-state constraint remains; leave the isolation and
+  missing-binary suites serial.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -338,10 +376,11 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   any go-git/go-billy import or `exec.Command("git"`/`exec.CommandContext(..., "git"`
   construction outside `internal/git/**` and `internal/testsupport/gitfixture/**`.
   `internal/git/fixturewalker_test.go`: walks `*_test.go` files and fails on the same
-  two forms outside `internal/testsupport/gitfixture/**` and `internal/git/**`. An
-  entrypoint-table test enumerates every exported `Repo` method plus the free
-  entrypoints and fails when one lacks a registered contract-suite function (a map from
-  entrypoint name to suite function, complete by construction).
+  two forms outside `internal/testsupport/gitfixture/**` and `internal/git/**`.
+  `internal/git/entrypoints_test.go`: enumerates every exported `Repo` method plus the
+  free entrypoints (the Notes' exhaustive list) and fails when one lacks a registered
+  contract-suite function (a map from entrypoint name to suite function, complete by
+  construction).
 - [ ] **Task 7.2: Apply ADR-0181's operations and anchors.** Author the two claims in
   `.awf/topics/parts/code-design/single-home/current-state.md` per ADR-0181 items 2-5
   (`single-implementation` encoding items 2 and 3, including the reasoned-divergence and
@@ -361,21 +400,27 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `.awf/topics/parts/tooling/audit-and-snapshots/current-state.md` and narrow that
   topic's metadata paths to `internal/audit/**` and `internal/snapshot/**`. Rewrite the
   two proof markers in `internal/git/parserange_test.go` to the new qualified ids.
-- [ ] **Task 7.4: Obligated docs.** Rewrite the three pitfalls entries (repo-open route,
-  global-excludes injection, gitfile resolution) to name the seam entrypoints; update
-  `docs/architecture.md`'s `internal/worktree` bullet and go-git dependency note; add
-  the contract-suite category and the serial-by-construction exception to
-  `docs/testing.md`. All via their `.awf` parts/sources followed by `./x render`.
+- [ ] **Task 7.4: Obligated docs.** Exact sources, each followed by `./x render`:
+  `.awf/docs/pitfalls.yaml` (the three entries: repo-open route, global-excludes
+  injection, gitfile resolution - rewritten to name the seam entrypoints);
+  `.awf/docs/parts/architecture/components.md` (the `internal/worktree` bullet);
+  `.awf/docs/parts/architecture/dependencies.md` (the go-git note);
+  `.awf/docs/parts/testing/tiers.md` and `.awf/docs/parts/testing/layout.md` (the
+  contract-suite category and the serial-by-construction exception).
 - [ ] **Task 7.5: Flip and freeze.** Apply the direct Proposed-to-Implemented transition
-  to both ADRs per the `awf-adr-lifecycle` skill (append the status events with their
-  frozen content digests, and the batch state sequence covering the ten 0182
-  operations); regenerate `INDEX.md`; set this plan's `status: Implemented` and record
-  implementation-surfaced findings in its Notes. Terminal state: `./awf check` clean,
-  `./awf check --staged` clean, `./x gate` ends `0 issues`.
+  to both ADRs per the `awf-adr-lifecycle` skill: each ADR appends one batch (ADR-0181's
+  two adds; the git-seam ADR's ten operations), the two batches taking the next two
+  consecutive global state-sequence values awf reports at execution time (never a
+  literal number - the counter is repo-global and concurrent efforts advance it), with
+  frozen content digests on both status events. ADR-0181's claims from Task 7.2 land in
+  the same commit as its flip. Regenerate `INDEX.md`; set this plan's
+  `status: Implemented` and record implementation-surfaced findings in its Notes.
+  Terminal state: `./awf check` clean, `./awf check --staged` clean, `./x gate` ends
+  `0 issues`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
-docs(code-design): apply single-home and git-access authority
+refactor(code-design): apply single-home and git-access authority
 ```
 
 ## Verification
@@ -393,11 +438,14 @@ docs(code-design): apply single-home and git-access authority
 
 ## Notes
 
-- Control-root resolution (`ResolveControlRoots`) and `ParseRange` remain free
-  functions: both operate before or without an opened repository (root discovery and
-  pure parsing); every root-bound entrypoint is a `Repo` method. This is the plan's
-  reading of ADR-0182 item 2's "entrypoints as methods" and is flagged for the plan
-  review to confirm.
+- Free-entrypoint principle: an operation stays a free function only when it precedes
+  or does without an opened repository (root discovery, pure parsing); everything
+  root-bound on an open repo is a `Repo` method. The exhaustive free-entrypoint list
+  for the entrypoint table: `ResolveControlRoots`, `ListWorktreeRegistrations`,
+  `ProjectResidentRoot`, `ParseRange`. (`ListWorktreeRegistrations` qualifies because
+  it inspects registration topology across roots before any single repo is the
+  subject.) The disposition of `ChangedPaths` follows the git-seam ADR's amended
+  item 3.
 - Integration after this plan completes: `awf effort integrate
   single-home-and-git-seam-decisions` from a clean main checkout, then renewed review
   per `awf-reviewing-impl`, then worktree removal and retrospective per the effort
