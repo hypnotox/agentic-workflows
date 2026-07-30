@@ -420,6 +420,23 @@ func TestHeadHash(t *testing.T) {
 	}
 }
 
+func TestChangeCountsDoesNotLeakExecErrors(t *testing.T) {
+	_, dir := gitfixture.InitRepo(t)
+	repo := gitRepo(t, dir)
+	t.Setenv("PATH", t.TempDir())
+	_, _, err := repo.ChangeCounts(testsupport.Context(t))
+	if err == nil {
+		t.Fatal("ChangeCounts succeeded without a git binary")
+	}
+	if errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("ChangeCounts leaked exec.ErrNotFound: %v", err)
+	}
+	var exit *exec.ExitError
+	if errors.As(err, &exit) {
+		t.Fatalf("ChangeCounts leaked *exec.ExitError: %v", err)
+	}
+}
+
 func TestChangedPathsRange(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "one", map[string]string{"a.txt": "a"})

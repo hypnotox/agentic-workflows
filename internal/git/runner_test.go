@@ -100,7 +100,19 @@ func TestRunnerExcludesLookupIgnoresHostileGitEnvironmentButHonorsHomeConfig(t *
 	got := newRunner(root).excludesFileArgs(testContext(t))
 	want := []string{"-c", "core.excludesfile=" + excludes}
 	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
-		t.Fatalf("ambient excludes lookup = %#v, want %#v", got, want)
+		t.Fatalf("ambient user excludes lookup = %#v, want %#v", got, want)
+	}
+
+	local := filepath.Join(t.TempDir(), "local-ignore")
+	cmd := exec.CommandContext(testContext(t), "git", "-C", root, "config", "core.excludesFile", local)
+	cmd.Env = ambientConfigEnvironment(os.Environ())
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("configure local excludes: %v: %s", err, out)
+	}
+	got = newRunner(root).excludesFileArgs(testContext(t))
+	want = []string{"-c", "core.excludesfile=" + local}
+	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("ambient local excludes lookup = %#v, want local precedence %#v", got, want)
 	}
 }
 
@@ -150,8 +162,8 @@ func TestRunnerFailureCarriesCommandIdentityAndStderr(t *testing.T) {
 		t.Fatalf("error text %q dropped the root or the stderr", failure.Error())
 	}
 	var exit *exec.ExitError
-	if !errors.As(err, &exit) {
-		t.Fatal("CommandError did not unwrap to its exec cause")
+	if errors.As(err, &exit) {
+		t.Fatal("CommandError leaked its exec cause")
 	}
 
 	var nilFailure *CommandError
@@ -160,10 +172,10 @@ func TestRunnerFailureCarriesCommandIdentityAndStderr(t *testing.T) {
 	}
 }
 
-// TestRunnerNonExitFailureKeepsItsOwnCause proves a failure that never produced
-// an exit status (here, no git binary at all) is not dressed up as a
-// CommandError: its own cause survives for errors.Is.
-func TestRunnerNonExitFailureKeepsItsOwnCause(t *testing.T) {
+// TestRunnerNonExitFailureIsOpaque proves a failure that never produced an
+// exit status (here, no git binary at all) is not dressed up as a CommandError
+// and does not leak the os/exec mechanism identity.
+func TestRunnerNonExitFailureIsOpaque(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	_, err := newRunner(t.TempDir()).run(testContext(t), "version")
 
@@ -171,15 +183,18 @@ func TestRunnerNonExitFailureKeepsItsOwnCause(t *testing.T) {
 	if errors.As(err, &failure) {
 		t.Fatalf("missing-binary failure reported as a command exit: %v", err)
 	}
-	if !errors.Is(err, exec.ErrNotFound) {
-		t.Fatalf("missing-binary failure lost its cause: %T %v", err, err)
+	if errors.Is(err, exec.ErrNotFound) {
+		t.Fatalf("missing-binary failure leaked its exec cause: %T %v", err, err)
+	}
+	if err == nil || !strings.Contains(err.Error(), "executable file not found") {
+		t.Fatalf("missing-binary diagnostic = %v", err)
 	}
 }
 
 // TestRunnerMidRunContextExpiryKeepsItsContextCause proves a deadline that
 // expires while Git is already running does not flatten into the kill signal's
-// exit status: exec's Wait prefers the ExitError, so the runner rejoins the
-// context cause and the caller can still match both the context and the command.
+// exit status: the caller can match both the context and the seam CommandError,
+// but never the exec mechanism error.
 func TestRunnerMidRunContextExpiryKeepsItsContextCause(t *testing.T) {
 	if runtime.GOOS == "windows" {
 		t.Skip("fake native Git fixture requires a POSIX script")
@@ -208,8 +223,8 @@ func TestRunnerMidRunContextExpiryKeepsItsContextCause(t *testing.T) {
 		t.Fatalf("recorded args = %#v, want the pinned root selection first", failure.Args)
 	}
 	var exit *exec.ExitError
-	if !errors.As(err, &exit) {
-		t.Fatal("mid-run expiry CommandError dropped its exec cause")
+	if errors.As(err, &exit) {
+		t.Fatal("mid-run expiry CommandError leaked its exec cause")
 	}
 }
 

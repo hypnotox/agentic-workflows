@@ -98,6 +98,48 @@ func TestResolveProjectResidentRootFallsBackOnUnsafeResident(t *testing.T) {
 	}
 }
 
+func TestCommandStagesUseIndependentDeadlines(t *testing.T) {
+	first, cancelFirst := newGitCommandContext()
+	second, cancelSecond := newGitCommandContext()
+	defer cancelSecond()
+	if _, ok := first.Deadline(); !ok {
+		t.Fatal("first stage has no deadline")
+	}
+	if _, ok := second.Deadline(); !ok {
+		t.Fatal("second stage has no deadline")
+	}
+	cancelFirst()
+	if !errors.Is(first.Err(), context.Canceled) || second.Err() != nil {
+		t.Fatalf("stage cancellation leaked: first=%v second=%v", first.Err(), second.Err())
+	}
+
+	fset := token.NewFileSet()
+	src, err := parser.ParseFile(fset, "main.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	for _, decl := range src.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Name.Name != "run" {
+			continue
+		}
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			if name, ok := call.Fun.(*ast.Ident); ok && name.Name == "newGitCommandContext" {
+				calls++
+			}
+			return true
+		})
+	}
+	if calls != 3 {
+		t.Fatalf("run creates %d stage contexts, want guard, gate, and handler", calls)
+	}
+}
+
 func TestRunSyncEntryPointsRejectMalformedRepository(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {

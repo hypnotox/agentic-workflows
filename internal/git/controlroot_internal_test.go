@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -46,28 +45,28 @@ func TestControlRootInternalParserAndHelpers(t *testing.T) {
 	}
 }
 
-func TestNativeGitFailuresRetainWrappedCauseAndContext(t *testing.T) {
+func TestNativeGitFailuresRetainSeamIdentityAndContext(t *testing.T) {
 	nonRepository := filepath.Join(t.TempDir(), "not-a-repository")
 	if err := os.Mkdir(nonRepository, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	_, err := ResolveControlRoots(testContext(t), nonRepository)
-	var exit *exec.ExitError
-	if !errors.As(err, &exit) || !strings.Contains(err.Error(), "inspect bare-repository state") || !strings.Contains(err.Error(), nonRepository) {
-		t.Fatalf("non-repository error lost exit cause or context: %T %v", err, err)
+	var command *CommandError
+	if !errors.As(err, &command) || !strings.Contains(err.Error(), "inspect bare-repository state") || !strings.Contains(err.Error(), nonRepository) {
+		t.Fatalf("non-repository error lost command identity or context: %T %v", err, err)
 	}
 
 	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
 	_, err = newRunner(t.TempDir()).run(ctx, "version")
-	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "git -C") {
-		t.Fatalf("canceled Git error lost cause or context: %T %v", err, err)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled Git error lost context identity: %T %v", err, err)
 	}
 
 	t.Setenv("PATH", t.TempDir())
 	_, err = newRunner(t.TempDir()).run(testContext(t), "version")
-	if !errors.Is(err, exec.ErrNotFound) || !strings.Contains(err.Error(), "git -C") {
-		t.Fatalf("failed Git execution lost cause or context: %T %v", err, err)
+	if err == nil || !strings.Contains(err.Error(), "git -C") || !strings.Contains(err.Error(), "executable file not found") {
+		t.Fatalf("failed Git execution lost diagnostic context: %T %v", err, err)
 	}
 }
 
@@ -121,9 +120,9 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			}
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 			_, err := ResolveControlRoots(testContext(t), root)
-			var exit *exec.ExitError
-			if !errors.As(err, &exit) || !strings.Contains(err.Error(), root) {
-				t.Fatalf("%s-stage error lost exit cause or path context: %T %v", stage, err, err)
+			var command *CommandError
+			if !errors.As(err, &command) || !strings.Contains(err.Error(), root) {
+				t.Fatalf("%s-stage error lost command identity or path context: %T %v", stage, err, err)
 			}
 		})
 	}

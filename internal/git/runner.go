@@ -62,11 +62,10 @@ func newRunner(root string) runner {
 // blocked on a stale index.lock or a credential prompt would otherwise hang awf
 // indefinitely, including inside the pre-commit hook, so the deadline is a
 // structural requirement of the seam rather than a per-call courtesy.
-// A non-zero exit becomes a *CommandError carrying the captured stderr; any
-// other failure (a missing binary, a context cancelled before launch) keeps its
-// own cause. A context that expires or is cancelled mid-run reaches the caller
-// as a *CommandError whose chain still carries the context cause, because
-// exec's Wait reports only the kill signal's exit status.
+// A non-zero exit becomes a *CommandError carrying the captured stderr. A
+// context cancellation remains matchable, while os/exec identities are made
+// opaque at this boundary. A context that expires or is cancelled mid-run
+// reaches the caller through the CommandError's context-only cause.
 func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 	args := append([]string{"-C", r.root}, argv...)
 	if !hasDeadline(ctx) {
@@ -80,13 +79,12 @@ func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 	if err != nil {
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
-			cause := err
-			if ctxErr := ctx.Err(); ctxErr != nil {
-				cause = errors.Join(err, ctxErr)
-			}
-			return nil, &CommandError{Args: args, ExitCode: exit.ExitCode(), Stderr: strings.TrimSpace(stderr.String()), Err: cause}
+			// The seam exposes CommandError and a context cause, never exec's
+			// mechanism identity. A normal non-zero exit needs no wrapped cause;
+			// its exit code and stderr are already explicit fields.
+			return nil, &CommandError{Args: args, ExitCode: exit.ExitCode(), Stderr: strings.TrimSpace(stderr.String()), Err: ctx.Err()}
 		}
-		return nil, fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		return nil, opaqueWrap("git "+strings.Join(args, " "), err)
 	}
 	return stdout, nil
 }
