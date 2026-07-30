@@ -31,7 +31,7 @@ Check convention fit: does the design contradict a current-state claim, an Accep
 
 Ground guide-first before verifying:
 
-Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs, then the recent history of the touched paths (`git log --oneline -20 <path>`).
+Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs under `docs/domains`. Current-state documentation is what binds. Consult the recent history of the touched paths (`git log --oneline -20 <path>`) only when current state leaves what you are seeing unexplained.
 
 For managed context calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.

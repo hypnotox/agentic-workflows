@@ -48,7 +48,7 @@ Four transactions. First the skill comes into existence everywhere at once (cata
 - [ ] **Task 1.1: Create `templates/partials/orientation-ladder.md`.** The partial carries both the guide-first grounding order and the managed-context discipline, as ADR-0187 Decision 3 requires. Its discipline says `managed context calls` rather than naming the `awf context` command: the projection-pinning spine test scans expanded skill includes line by line and treats every line naming that command as a call requiring its own spill contract. The orienting skill's `context-command` section owns the one literal command invocation and points back to this shared discipline. Exact content (no `awf:include` directive may appear inside it; the include engine rejects nested includes):
 
   ```
-  Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs, then the recent history of the touched paths (`git log --oneline -20 <path>`).
+  Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs under `{{ .layout.domainsDir }}`. Current-state documentation is what binds. Consult the recent history of the touched paths (`git log --oneline -20 <path>`) only when current state leaves what you are seeing unexplained.
 
   For managed context calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
   ```
