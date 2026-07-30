@@ -696,22 +696,26 @@ test("the no-commit failure carries the child's own report, and never masks a re
   assert.match(value.content[0].text, /already tried: adding a table case/);
   assert.match(value.content[0].text, /created no commit/);
 
-  // A run that already failed keeps its own diagnostic and is not relabelled.
+  // A run that already failed keeps its own diagnostic, ahead of the demand
+  // rather than replaced by it.
   const failed = harness({
     git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_DIRTY],
     run: async () => ({ ...baseResult, failed: true, failureMessage: "child exploded", stopReason: "error" }),
   });
   const failedResult = await call(failed, "subagent_implement", { task: "x", allowCommits: true });
-  assert.equal(failedResult.value.content[0].text, "child exploded");
+  assert.match(failedResult.value.content[0].text, /^child exploded\n\n/);
+  assert.match(failedResult.value.content[0].text, /created no commit/);
 
-  // An aborted run is likewise left alone rather than reported as a missing commit.
+  // An aborted run keeps its aborted state and its own message, and is still told
+  // what a stopped report owes, so the claim holds without exception.
   const aborted = harness({
     git: [HEAD_BEFORE, STATUS_CLEAN, HEAD_BEFORE, STATUS_CLEAN],
     run: async () => ({ ...baseResult, failed: true, failureMessage: "aborted by user", stopReason: "aborted" }),
   });
   const abortedResult = await call(aborted, "subagent_implement", { task: "x", allowCommits: true });
   assert.equal(abortedResult.value.details.state, "aborted");
-  assert.doesNotMatch(abortedResult.value.content[0].text, /created no commit/);
+  assert.match(abortedResult.value.content[0].text, /^aborted by user\n\n/);
+  assert.match(abortedResult.value.content[0].text, /created no commit/);
 });
 
 test("the loaded implementer contract is prepended with the call's commit authority and stripped of frontmatter", async () => {

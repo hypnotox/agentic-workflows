@@ -754,12 +754,18 @@ review's settlement commit.
   in the gate step, which nothing else would.
 - **The plan's verification step named `awf list agents`; the command takes the singular kind.**
   `awf list agent` is correct and was used.
-- **The terminal review's settlement departed from Decision item 4 twice.** Item 4 describes the new
-  case as flatly `allowCommits: true` with HEAD unchanged. The shipped check additionally requires
-  `!result.failed`, so a child that already failed or was aborted keeps its own diagnostic instead of
-  being relabelled, and the failure message composes the child's report with the demand rather than
-  replacing it, because a failed result renders only `failureMessage` and replacing it discarded the
-  very inventory the ADR exists to obtain. Both narrow the ADR's literal text; see the review-settlement
-  commit body for the reasoning. Both narrowings leave ADR-0177's claim prose asserting a universal
-  that the code contradicts in a provable subset, which needs a successor decision rather than a
-  settlement, since ADR-0177 is frozen.
+- **The no-commit failure composes rather than replaces the message.** Decision item 4 says the
+  failure message demands the clause-7 inventory, and a first attempt set it to the demand alone. A
+  failed result renders only `failureMessage`, so that discarded `result.output`, the very inventory
+  the ADR exists to obtain. The shipped branch carries the child's own account (its `failureMessage`
+  when it already failed, else its output) ahead of the demand, bounded by the same 2 KiB cap every
+  other failure message respects. The condition itself matches item 4 exactly: every commit-capable
+  call with an unchanged HEAD fails, aborted and already-failed runs included, so the claim holds
+  without exception.
+- **Deferred to Part B: `implementer-role-contract`'s second sentence is broader than ADR-0177 item 5.**
+  The claim says both skills "address their own imperatives to an explicit subject", unqualified,
+  while item 5's obligation was every subject-less imperative *a child could read as addressed to
+  itself*. Rendered `executing-plans` still carries roughly twenty subject-less imperatives, several
+  behind pinned literals. ADR-0177 is frozen, so restoring the qualifier needs a successor `update`
+  operation; Part B already revises claims in this topic and will carry it. Recorded here so the
+  over-breadth is a known, dispositioned gap rather than an oversight.
