@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -614,7 +615,7 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
-	if len(findings) != 1 || findings[0].Severity != audit.Error || !strings.Contains(findings[0].Detail, "changed governed format") {
+	if len(findings) != 1 || findings[0].Severity != severity.Error || !strings.Contains(findings[0].Detail, "changed governed format") {
 		t.Fatalf("audit transitions findings=%#v; want the parsed format-transition error, not a snapshot-load warning", findings)
 	}
 }
@@ -655,7 +656,7 @@ func TestAuditTransitionsFinding(t *testing.T) {
 	}
 	var errs []audit.Finding
 	for _, f := range findings {
-		if f.Severity != audit.Error || f.Rule != "current-state-transition" {
+		if f.Severity != severity.Error || f.Rule != "current-state-transition" {
 			t.Fatalf("unexpected finding %#v", f)
 		}
 		errs = append(errs, f)
@@ -682,7 +683,7 @@ func TestAuditTransitionsWarning(t *testing.T) {
 	}
 	var warned bool
 	for _, f := range findings {
-		if f.Severity == audit.Warning && strings.Contains(f.Detail, "could not load the current-state universes") {
+		if f.Severity == severity.Warn && strings.Contains(f.Detail, "could not load the current-state universes") {
 			warned = true
 		}
 	}
@@ -743,7 +744,7 @@ func TestAuditTransitionsMerge(t *testing.T) {
 	}
 	var mergeReported bool
 	for _, f := range findings {
-		if f.Subject == "merge" && f.Severity == audit.Error && strings.Contains(f.Detail, "was removed with no ADR remove operation") {
+		if f.Subject == "merge" && f.Severity == severity.Error && strings.Contains(f.Detail, "was removed with no ADR remove operation") {
 			mergeReported = true
 		}
 	}

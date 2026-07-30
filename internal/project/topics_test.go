@@ -33,10 +33,7 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := p.Topics()
-	if err != nil {
-		t.Fatal(err)
-	}
+	corpus := mustDeriveTopics(t, p)
 	paths := map[string]string{
 		"cmd/awf/effort.go":                         "tooling/effort-management",
 		"cmd/awf/effort_test.go":                    "tooling/effort-management",
@@ -102,7 +99,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Topics(); err == nil {
+	if _, _, _, err := p.deriveOperationState(); err == nil {
 		t.Fatal("malformed topic corpus accepted")
 	}
 
@@ -112,7 +109,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := withBadADR.Topics(); err == nil {
+	if _, _, _, err := withBadADR.deriveOperationState(); err == nil {
 		t.Fatal("malformed ADR corpus accepted by topic loader")
 	}
 }
@@ -525,10 +522,7 @@ Backing: test
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := p.Topics()
-	if err != nil {
-		t.Fatalf("completed corpus: %v", err)
-	}
+	corpus := mustDeriveTopics(t, p)
 	completed, ok := corpus.ByTopicID("schedule/contracts")
 	if !ok || len(completed.Claims) != 2 {
 		t.Fatalf("completed topic = %#v, found %v", completed, ok)

@@ -9,9 +9,28 @@
   and patch-producing parallel workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
-- Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
-  `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR
-  revising `tooling/cli:topic-claim-budget-advisory` and an adopter-facing config key.
+- Let a global topic carry path selectors, so it can own specific paths as well as supply
+  global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
+  and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never
+  own a path and can never satisfy scoped coverage. That leaves a shared-pattern holder
+  with nowhere natural to live: a small package existing only to carry a cross-cutting
+  type belongs to the global topic describing that pattern, not to whichever scoped topic
+  happens to be closest. ADR-0183 hit this concretely and had to extend an unrelated
+  topic's selectors to keep a new package covered. Needs its own ADR: the coverage
+  semantics, whether a path-owning global topic satisfies scoped coverage or only
+  ownership, and what it does to the fan-out budget, which deliberately excludes global
+  topics today.
+- Pin what `internal/config`'s editors guarantee about an adopter's `config.yaml`. The `yaml.Node`
+  round-trip ADR-0026 chose preserves every key, value, and comment but canonicalizes layout: a
+  four-space block returns two-space, a sequence item under a surviving key re-indents, and blank
+  lines are dropped. No claim states this, so every migration that edits config inherits an unstated
+  contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
+  covering whether the property is claimed once for the package or restated per migration.
+- Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
+  rank now that ADR-0148 brought every topic under budget; needs its own small ADR
+  revising `tooling/cli:topic-claim-budget-advisory`. ADR-0183 forecloses the
+  configurable-severity and adopter-facing-config-key half of this idea: awf exposes no
+  severity setting, so the promotion is to a rank fixed in code or not at all.
 - Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
@@ -45,6 +64,17 @@
   The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
   been dead prose since authoring; the fix plumbed the key, but nothing today prevents the
   next dead conditional (recorded as a rendering pitfall, 2026-07-23).
+- A mechanical check for over-broad current-state claim prose. The `claim-prose-no-broader-than-reality`
+  reviewer focus item exists and works: it caught all four over-broad claims in the 2026-07-30 severity
+  session. It prevented none of them, which is the signal to climb from a judgment rung to a
+  deterministic one. Two shapes look mechanizable without natural-language understanding: an absolute
+  quantifier in a claim sentence ("every", "always", "never", "no", "byte-identical") could require an
+  explicit justification marker, and a claim whose sentence is edited while its Origin ADR is frozen
+  could be flagged, since that is the exact case needing a successor `update` operation. Twice in that
+  session the false wording was INHERITED from an earlier record that the correcting pass never
+  re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
+  it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
+  expensive.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
@@ -157,4 +187,56 @@ caught it afterwards. Candidate `awf audit` advisory rule: flag a status transit
 frozen state whose commit also changes the ADR's digest-covered section content relative to the
 parent snapshot. Deferred because audit rules ship behind their own decision; the pitfalls
 entry recording the occurrence is the interim memory.
+
+## Decomposing the `internal/project` god object
+
+`internal/project.Project` carries roughly ninety-five production methods across
+thirty production files, imports seventeen internal packages, and is imported by
+exactly two. Fourteen of those files touch no `Project` field at all, which is
+the clearest signal that several cohesive units are sharing one type.
+
+The split has been deferred repeatedly and, until now, was recorded only in
+ephemeral working memory under `.awf/efforts/`, so it vanished whenever an
+effort finished. This entry is the durable record.
+
+Two of its three prerequisites are settled. ADR-0178 established
+`code-design/dependency-composition`, so dependency direction and wiring have an
+authority to answer to. ADR-0180 established `code-design/state-ownership` and
+converted the three per-invocation derived fields, so the type no longer holds
+state written after construction and a future package boundary cannot inherit a
+hidden cache. The remaining prerequisite is a package-cohesion and boundary
+pattern, which is where the deferred `receiver-reads-owned-state` rule belongs:
+a method reads at least one receiver field, and behaviour that reads none takes
+parameters instead. Its evidence is already collected, the fourteen zero-field
+files and the four synthetic partial `Project` literals.
+
+Sequencing matters more than usual here. Half of "where does a package boundary
+go" is dependency direction, which `dependency-composition` already owns, so a
+cohesion pattern authored without reference to it would create dual authority.
+The decomposition itself should follow the pattern rather than accompany it.
+
+## A `coverage-ignore` the profile records as executed is a false ignore
+
+The `coverage-ignore-reachability` review item and the pitfalls entry behind it have now failed
+to prevent eight recurrences of a false exclusion. Both are rung-3 and rung-4 controls:
+probabilistic, and applied only when a reviewer runs. One whole subclass is mechanically
+decidable and needs no judgement at all: an exclusion sitting on a guarded body that the
+coverage profile records as EXECUTED is false by construction, because the branch it declares
+unreachable was just reached.
+
+`cmd/covercheck` already parses the profile and already applies the ignore filter, so it holds
+both halves of the comparison; the rule is to fail when a block is both ignored and counted.
+That turns the most common shape into a gate failure at write time rather than a finding a
+reviewer may or may not reach.
+
+What deferred it until now was an unmeasured cost, which the 2026-07-30 state-ownership review
+finally supplied: a sweep found EIGHT excluded-but-covered sites currently in the repository,
+seven of them predating that session. So the work is the rule plus its own tests at the 100%
+floor, plus resolving eight existing sites that span several efforts' territory, each needing
+its own judgement about whether to delete the exclusion or cover the branch. That is a bounded
+but real slice, and it should be one deliberate effort rather than a drive-by.
+
+Worth settling in the same decision: whether the rule is an error or a warning during the
+transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
+subsumed by it or kept as the complementary "touched, re-evaluate" signal.
 

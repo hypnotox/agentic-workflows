@@ -39,7 +39,7 @@ import {
   RECOMMENDED_PRESET,
   ROUTING_CARD_OVERFLOW_WARNING,
   buildRoutingCard,
-  createPreferenceStore,
+  loadPreferenceState,
   effectivePreferenceState,
   invalidText,
   parseExactModelReference,
@@ -496,12 +496,8 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   const root = projectRoot(deps.extensionFile);
   const now = deps.now ?? Date.now;
   const nextObservationId = deps.observationId ?? randomUUID;
-  const preferences = createPreferenceStore(deps);
-  preferences.reload();
   const reloadState = async (ctx: any): Promise<EffectivePreferenceState> => {
-    await preferences.reload();
-    preferences.validateAgainstRegistry(ctx.modelRegistry);
-    return preferences.state();
+    return loadPreferenceState(deps, ctx.modelRegistry);
   };
   const notifyPreferenceState = (ctx: any, state: EffectivePreferenceState): void => {
     const identity = ctx.sessionManager;
@@ -514,7 +510,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
   const refreshAndResolve = async (ctx: any, role: RunRequest["role"], requested: string | undefined) => {
     const state = await reloadState(ctx);
     notifyPreferenceState(ctx, state);
-    return resolveChildModel(ctx.modelRegistry, ctx.model, role, requested, preferences);
+    return resolveChildModel(ctx.modelRegistry, ctx.model, role, requested, state);
   };
   pi.on("session_start", async (_event, ctx) => notifyPreferenceState(ctx, await reloadState(ctx)));
   pi.on("before_agent_start", async (event: any, ctx: any) => {
@@ -630,9 +626,7 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
         ctx.ui.notify(`Save failed: ${errorText(error)}`, "error");
         return;
       }
-      await preferences.reload();
-      preferences.validateAgainstRegistry(ctx.modelRegistry);
-      const saved = preferences.state();
+      const saved = await loadPreferenceState(deps, ctx.modelRegistry);
       if (saved.blocked) {
         ctx.ui.notify(`Preferences saved, but they are invalid and block implicit routing: ${saved.errors.join(" ")} ${PREFERENCES_REPAIR}`, "error");
         return;

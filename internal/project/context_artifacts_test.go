@@ -231,6 +231,11 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 			t.Fatal("malformed document declaration accepted")
 		}
 	}
+	badSkillRead := memoryProjectReader{".awf/skills/bad.yaml": []byte("local: [bad")}
+	badSkillCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nskills: [bad]\n"), configReaderAdapter{badSkillRead})
+	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, adr.NewCorpus(nil)); err == nil {
+		t.Fatal("malformed skill declaration accepted")
+	}
 	badRead := memoryProjectReader{".awf/agents/bad.yaml": []byte("local: [bad")}
 	badCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nagents: [bad]\n"), configReaderAdapter{badRead})
 	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, adr.NewCorpus(nil)); err == nil {

@@ -151,18 +151,8 @@ var keys = []Entry{
 		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{
-		Path: "currentState.topicCoverage", Type: "severity (error, warn, or off)", Default: "error",
-		Description:  "Severity for missing scoped current-state topic coverage during topic validation.",
-		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
-	},
-	{
-		Path: "currentState.topicFanout", Type: "severity (error, warn, or off)", Default: "warn",
-		Description:  "Severity for paths exceeding the current-state topic fan-out budget during topic validation.",
-		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
-	},
-	{
 		Path: "currentState.maxTopicsPerPath", Type: "positive int", Default: "8",
-		Description:  "Maximum path-scoped current-state topics permitted to match one path before the configured fan-out finding is emitted.",
+		Description:  "Maximum path-scoped current-state topics permitted to match one path before the fan-out finding is emitted.",
 		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
 	},
 	{

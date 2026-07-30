@@ -10,6 +10,22 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
+  the `off` value with them. A tree that declares a `currentState` block now always evaluates both
+  topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
+  Where the two keys were a present block's only children the migration seeds and announces
+  `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped, since an
+  absent block stops both checks evaluating. That is the one case where `awf upgrade` adds a line to
+  your `config.yaml` instead of only removing one; it materializes the budget that was already in
+  force by default, and the regenerated `docs/config-reference.md` prints that row as `8` rather than
+  `8 (default)`. A caller that does not want a finding
+  class no longer suppresses it with a rank, it does not request the check. Every finding rank
+  awf reports is now one shared two-member rank spelled `error` or `warn`; the audit surfaces
+  that previously printed `warning` for a rank print `warn`, while the `%d warning(s)` verdict
+  summaries are unchanged. Schema generation 25 removes both keys from a config tree, announcing
+  each removal; run `awf upgrade`. `config.yaml` is strict-parsed, so a surviving key hard-fails
+  on the new binary rather than warning.
+
 - Replace effort JSON protocol 1 and mutable UUID lifecycle commands with protocol 2 immutable slug residents. `awf effort` now exposes only new/list/show/finish, separate worktree add/remove, and stateless integrate; standalone memory, rename, complete, abandon, reopen, repair, combined creation, manual integration, and every awf force-discard flag are removed. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`, list sorts the same objects by slug, and JSON failures write no stdout.
 
 - Schema generation 22 resets protocol-1 effort residents and standalone memory rather than
@@ -68,6 +84,30 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- `awf check --staged` and `awf audit` now validate a merge as an ordered aggregate rather than
+  refusing it. A merge is one Git commit but the aggregate of a branch's commits, so an ADR may
+  contribute several application batches, a claim's operations across the pair may form an ordered
+  chain of at most one leading add, any number of updates and at most one trailing remove, and an
+  appended Status history need only preserve the prior history as an exact prefix. Every authored
+  commit keeps the stricter per-step contract. This makes `awf effort integrate`'s divergent path
+  usable for an incrementally-applied ADR and for a branch advancing an ADR the target already
+  carries. Two things deliberately do not change: the global state-sequence namespace must still be
+  contiguous, so a branch numbered before the target advanced still has to renumber before
+  integrating, and a merge is recognized by its recorded provenance (`MERGE_HEAD`), so
+  `git merge --squash`, which records none, keeps the authored-commit contract.
+- Establish `code-design/state-ownership`, the second code-design authority, with four reasoned claims
+  (construction-immutable state, operation-owned derivation, no remembered invalidation, and a single
+  derivation producer) plus one test-backed claim over `internal/project`. The `code-design` commit
+  scope now means "code-design authority and cross-package code structure" rather than dependency
+  composition alone, so the rendered scope tables and the reviewer sidecars change with it. ADR-0180
+
+- Change the rendered Pi subagent extension's preference API: `model-routing.ts` no longer exports
+  `createPreferenceStore`, exports `async loadPreferenceState(deps, registry)` returning an immutable
+  `EffectivePreferenceState` instead, and `resolveChildModel`'s last parameter is that derived state
+  rather than the store. Adopters regenerating `.pi/extensions/awf-subagents/` see the store's
+  `ready`/`reload`/`validateAgainstRegistry`/`state` protocol replaced by one load call; behaviour,
+  including the ENOENT and read-error paths and registry validation, is unchanged. ADR-0180
+
 - Add the `explorer` and `grounding-checker` agents: the child-facing contracts for dispatched
   exploration and grounding-check work, rendered per runtime like the review and implementer agents.
   The explorer body carries the one-information-need rule, the ordered breadth and report-detail

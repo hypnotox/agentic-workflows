@@ -87,14 +87,14 @@ type RenderedFile struct {
 
 // data assembles the template data namespace for a target: the prefix, the
 // project vars, the sidecar's structured data, and the awf-given docs layout.
-func (p *Project) data(sc config.Sidecar) map[string]any {
+func (p *Project) data(sc config.Sidecar, eff map[string]bool) map[string]any {
 	return map[string]any{
 		"prefix":        p.Cfg.Prefix,
 		"vars":          nonNil(p.Cfg.Vars),
 		"data":          nonNil(sc.Data),
 		"layout":        p.layout().templateMap(),
 		"version":       Version,
-		"skills":        p.effSkills,
+		"skills":        eff,
 		"taskSkillRows": p.taskSkillRows(),
 		"commitScopes":  p.commitScopesDisplay(),
 		"gatedCommands": gatedCommandsDisplay(),
@@ -414,7 +414,7 @@ func (p *Project) docTID(n string) string {
 	return p.Cat.Docs[n].TID
 }
 
-func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
+func (p *Project) renderKind(spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
 		sc, err := p.Cfg.Sidecar(spec.kind, name)
@@ -432,7 +432,7 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 				return nil, err
 			}
 		}
-		data := p.data(sc)
+		data := p.data(sc, eff)
 		var options *renderOutputOptions
 		if spec.target.Name != "" {
 			for key, value := range spec.target.targetTemplateData() {
@@ -445,7 +445,7 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 			options.bannerStyle = spec.target.agentCommentStyle()
 			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
-		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), options)
+		rf, err := p.renderTarget(spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), eff, options)
 		if err != nil {
 			return nil, err
 		}
@@ -468,13 +468,8 @@ func (p *Project) renderKind(spec renderKindSpec) ([]RenderedFile, error) {
 
 // renderAllBase renders declarative catalog and singleton producers. OutputPlan
 // owns the public render/sync/check lifecycle and adds generated producers.
-func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration) ([]RenderedFile, error) {
+func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration, eff map[string]bool) ([]RenderedFile, error) {
 	var out []RenderedFile
-	eff, err := p.effectiveSkills()
-	if err != nil { // coverage-ignore: OutputPlan has already resolved the same enabled sidecars
-		return nil, err
-	}
-	p.effSkills = eff
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := p.renderKind(renderKindSpec{
 		kind: "docs", names: p.Cfg.Docs,
@@ -483,7 +478,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		outPath:   func(_ Target, n string) string { return p.docOutPath(n) },
 		defaults:  func(n string) map[string]any { return p.Cat.Docs[n].Data },
 		transform: docDataTransform,
-	})
+	}, eff)
 	if err != nil {
 		return nil, err
 	}
@@ -512,7 +507,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				},
 			},
 		} {
-			rfs, err := p.renderKind(spec)
+			rfs, err := p.renderKind(spec, eff)
 			if err != nil {
 				return nil, err
 			}
@@ -523,13 +518,13 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				continue
 			}
 			target := t
-			data := p.data(config.Sidecar{})
+			data := p.data(config.Sidecar{}, eff)
 
 			for key, value := range t.targetTemplateData() {
 				data[key] = value
 			}
 			rf, err := p.renderTarget("target-output", "", targetOutput.TemplateID, nil,
-				config.Sidecar{}, data, targetOutput.Path, &renderOutputOptions{
+				config.Sidecar{}, data, targetOutput.Path, eff, &renderOutputOptions{
 					bannerStyle: targetOutput.Provenance,
 					target:      &target,
 				})
@@ -555,15 +550,15 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	}
 	if !ad.Local {
 		ad = withDefaultData(ad, p.Cat.Docs["agents-doc"].Data)
-		data := p.data(ad)
+		data := p.data(ad, eff)
 		docs, err := p.resolvedDocs()
-		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which RenderAll's docs loop already surfaces earlier
+		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which renderAllBase's docs loop already surfaces earlier
 			return nil, err
 		}
 		data["docs"] = docs
 		data["mandatoryDocs"] = p.documentMapDocs()
 		rf, err := p.renderTarget("agents-doc", "", "agents-doc/AGENTS.md.tmpl",
-			p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md")
+			p.Cat.Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 		if err != nil {
 			return nil, err
 		}
@@ -586,7 +581,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 				continue
 			}
 			brf, err := p.renderTarget("claude", "", t.BridgeTemplate,
-				nil, config.Sidecar{}, p.data(config.Sidecar{}), t.BridgeFile)
+				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), t.BridgeFile, eff)
 			if err != nil { // coverage-ignore: the bridge template is static, part-free, and references no vars, so renderTarget cannot produce <no value> or a read error
 				return nil, err
 			}
@@ -604,7 +599,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			sections: func(string) []string { return sg.sections(p.Cat) },
 			outPath:  func(Target, string) string { return sg.outPath(lay) },
 			defaults: func(string) map[string]any { return p.Cat.Docs[sg.kind].Data },
-		})
+		}, eff)
 		if err != nil {
 			return nil, err
 		}
@@ -620,7 +615,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 			{upgradeTID, config.DirName + "/upgrade.sh"},
 		} {
 			brf, err := p.renderTarget("bootstrap", "", u.tid,
-				nil, config.Sidecar{}, p.data(config.Sidecar{}), u.path)
+				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), u.path, eff)
 			if err != nil { // coverage-ignore: the bootstrap-unit templates reference only .version (always set) and no parts, so renderTarget cannot produce <no value> or a read error
 				return nil, err
 			}
@@ -633,7 +628,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	if p.Cfg.Hooks != nil && p.Cfg.Hooks.Enabled {
 		for _, name := range hookNames {
 			hrf, err := p.renderTarget("hooks", "", "hooks/"+name+".sh.tmpl",
-				nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/hooks/"+name+".sh")
+				nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/hooks/"+name+".sh", eff)
 			if err != nil { // coverage-ignore: every var reference in the hook templates is with/else- or if-wrapped (ADR-0045), and they use no parts, so renderTarget cannot produce <no value> or a read error
 				return nil, err
 			}
@@ -645,7 +640,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// catalog DocEntry, so it stays out of SingletonKinds()).
 	if p.Cfg.Runner != nil && p.Cfg.Runner.Enabled {
 		rrf, err := p.renderTarget("runner", "", runnerTID,
-			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}), "awf")
+			runnerSections, config.Sidecar{}, p.data(config.Sidecar{}, eff), "awf", eff)
 		if err != nil {
 			return nil, err
 		}
@@ -654,7 +649,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, resident := range residentRoots {
-		rf, err := p.renderTarget(resident.Name, "", resident.TemplateID, nil, config.Sidecar{}, p.data(config.Sidecar{}), config.DirName+"/"+resident.Name+"/.gitignore")
+		rf, err := p.renderTarget(resident.Name, "", resident.TemplateID, nil, config.Sidecar{}, p.data(config.Sidecar{}, eff), config.DirName+"/"+resident.Name+"/.gitignore", eff)
 		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
 			return nil, err
 		}
@@ -668,7 +663,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-artifact ConfigHash over the artifact's effective inputs.
-func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
+func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
 	var options *renderOutputOptions
 	if len(outputOptions) != 0 {
 		options = outputOptions[0]
@@ -678,11 +673,11 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
 	expanded, err := render.ExpandIncludes(string(src), templates.FS)
-	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through RenderAll; its error branches are unit-tested in internal/render
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stripped, err := render.StripAuthoringComments(expanded)
-	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through RenderAll; its error branch is unit-tested in internal/render
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	segs := render.ParseSections(stripped)
@@ -699,7 +694,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	assembled, parts := render.Assemble(segs, plan, style)
-	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through RenderAll; its error branch is unit-tested in internal/render
+	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
@@ -711,7 +706,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		partVarRefs = append(partVarRefs, plan[name].PartVarRefs...)
 	}
 	content, err := render.Execute(assembled, data, parts, tid)
-	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
+	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if options != nil && options.encode != nil {
@@ -732,7 +727,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 	if options != nil && options.target != nil {
 		targetInput = []Target{*options.target}
 	}
-	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), targetInput...)
+	cfgHash, err := p.artifactConfigHash(assembled, sc, p.consumedParts(kind, artifact, plan), eff, targetInput...)
 	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
 		return RenderedFile{}, err
 	}
@@ -808,18 +803,14 @@ func (p *Project) encodeAgent(t Target, name, body string, data map[string]any) 
 // (ADR-0135 item 8). It always produces a file: In flight and History sections,
 // each with a placeholder line when empty, so the document-map link always
 // resolves (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
-func (p *Project) generateIndexMD() (RenderedFile, error) {
-	corpus, err := p.Corpus()
-	if err != nil { // coverage-ignore: OutputPlan loads the same corpus through topic generation before this producer
-		return RenderedFile{}, err
-	}
+func (p *Project) generateIndexMD(corpus adr.Corpus) RenderedFile {
 	content := adr.RenderIndexMD(corpus)
 	content = injectBanner(content, "")
 	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
 	for _, record := range corpus.All() {
 		inputs = append(inputs, OutputInput{Path: p.layout().ADRDir + "/" + record.Filename, Role: ArtifactDecisionRecord})
 	}
-	return RenderedFile{Path: p.layout().IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: normalizeOutputInputs(inputs)}, nil
+	return RenderedFile{Path: p.layout().IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: normalizeOutputInputs(inputs)}
 }
 
 // generateDomainDocs renders one content-only doc per declared domain
@@ -828,19 +819,15 @@ func (p *Project) generateIndexMD() (RenderedFile, error) {
 // per-domain ADR index is gone (ADR-0135 item 8): a domain doc points at topics,
 // not decisions. Like INDEX.md the result carries no TemplateID/Hash - drift is
 // checked by regeneration, since the topic navigation depends on external state.
-func (p *Project) generateDomainDocs() ([]RenderedFile, error) {
-	topics, err := p.Topics()
-	if err != nil {
-		return nil, err
-	}
+func (p *Project) generateDomainDocs(topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error) {
 	lay := p.layout()
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
-		data := p.data(config.Sidecar{})
+		data := p.data(config.Sidecar{}, eff)
 		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
 		rf, err := p.renderTarget("domains", name, mustDescriptor("domains").tid(name),
 			p.Cat.DomainDoc.Sections, config.Sidecar{}, data,
-			lay.DomainsDir+"/"+name+".md")
+			lay.DomainsDir+"/"+name+".md", eff)
 		if err != nil { // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
 			return nil, err
 		}

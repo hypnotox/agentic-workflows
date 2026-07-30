@@ -138,16 +138,6 @@ func (p *Project) currentValue(path string) string {
 			return "(none)"
 		}
 		return strconv.Itoa(len(p.Cfg.CurrentState.TestGlobs)) + " globs"
-	case "currentState.topicCoverage":
-		if p.Cfg.CurrentState == nil {
-			return "error (default)"
-		}
-		return withDefault(p.Cfg.CurrentState.TopicCoverage, p.Cfg.CurrentState.TopicCoverage == "error")
-	case "currentState.topicFanout":
-		if p.Cfg.CurrentState == nil {
-			return "warn (default)"
-		}
-		return withDefault(p.Cfg.CurrentState.TopicFanout, p.Cfg.CurrentState.TopicFanout == "warn")
 	case "currentState.maxTopicsPerPath":
 		return withDefault(strconv.Itoa(p.Cfg.CurrentState.EffectiveMaxTopicsPerPath()), p.Cfg.CurrentState == nil || p.Cfg.CurrentState.MaxTopicsPerPath == nil)
 	case "currentState.maxClaimsPerTopic":
@@ -220,7 +210,7 @@ func (p *Project) varState(key string) string {
 }
 
 // configReferenceData builds the four dedicated template collections. files
-// is the consumption input: RenderAll output plus the generated domain docs.
+// is the consumption input: the output plan's write files plus the generated domain docs.
 func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, error) {
 	var configKeys, sidecarFields []map[string]any
 	for _, e := range configspec.Keys() {
@@ -256,7 +246,7 @@ func (p *Project) configReferenceData(files []RenderedFile) (map[string]any, err
 	}
 
 	dataKeys, err := p.dataKeyRows()
-	if err != nil { // coverage-ignore: dataKeyRows re-reads sidecars RenderAll already read
+	if err != nil { // coverage-ignore: dataKeyRows re-reads sidecars the render pass in outputPlan already read
 		return nil, err
 	}
 	return map[string]any{
@@ -307,7 +297,7 @@ func (p *Project) dataKeyRows() ([]map[string]any, error) {
 				sidecarKind, sidecarName = "agents-doc", ""
 			}
 			sc, err := p.Cfg.Sidecar(sidecarKind, sidecarName)
-			if err != nil { // coverage-ignore: these sidecars were already read by RenderAll in the same pass
+			if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
 				return nil, err
 			}
 			if _, ok := sc.Data[d.Key]; ok {
@@ -368,11 +358,11 @@ func (p *Project) enableArray(kind string) []string {
 
 // generateConfigReference renders the always-on generated config reference
 // (ADR-class: generated index, no template/config hashes - drift is checked
-// by regeneration). files is the consumption input (RenderAll output plus
+// by regeneration). files is the consumption input (the plan write files plus
 // generated domain docs). The bool reports whether a reference was produced -
 // false when a local: sidecar opts out (the manifest.LoadOptional found-flag
 // idiom).
-func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, bool, error) {
+func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
 	sc, err := p.Cfg.Sidecar("config-reference", "")
 	if err != nil { // coverage-ignore: validation already read this sidecar at open
 		return nil, false, err
@@ -380,14 +370,14 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 	if sc.Local {
 		return nil, false, nil
 	}
-	data := p.data(sc)
+	data := p.data(sc, eff)
 	collections, err := p.configReferenceData(files)
 	if err != nil { // coverage-ignore: configReferenceData errors only on faults earlier passes already surfaced
 		return nil, false, err
 	}
 	data["data"] = collections
 	rf, err := p.renderTarget("config-reference", "", p.Cat.Docs["config-reference"].TID,
-		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel())
+		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel(), eff)
 	if err != nil { // reachable: an unreadable intro part fails the read here - this is its first render
 		return nil, false, err
 	}
@@ -402,13 +392,17 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 // (configKeys, varEntries, sidecarFields, dataKeys) with live project state -
 // the `awf config` command's data source, sharing the doc's builder.
 func (p *Project) ConfigReferenceModel() (map[string]any, error) {
-	files, err := p.RenderAll()
+	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}
-	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: RenderAll above already surfaced any malformed-ADR fault via project state
+	op, err := p.outputPlan(corpus, topics, eff)
+	if err != nil {
 		return nil, err
 	}
-	return p.configReferenceData(slices.Concat(files, dds))
+	dds, err := p.generateDomainDocs(topics, eff)
+	if err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
+		return nil, err
+	}
+	return p.configReferenceData(slices.Concat(op.writeFiles(), dds))
 }

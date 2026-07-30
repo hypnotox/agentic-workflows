@@ -3,7 +3,7 @@ format: current-state-v2
 status: Proposed
 date: 2026-07-30
 ---
-# ADR-0182: Git access through one semantic seam
+# ADR-0186: Git access through one semantic seam
 
 ## Context
 

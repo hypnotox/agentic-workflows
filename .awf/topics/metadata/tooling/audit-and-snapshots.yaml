@@ -3,4 +3,5 @@ summary: Workflow-conformance auditing and the immutable git snapshot layer.
 paths:
   - internal/audit/**
   - internal/git/**
+  - internal/severity/**
   - internal/snapshot/**

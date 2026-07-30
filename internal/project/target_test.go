@@ -167,7 +167,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if !strings.Contains(handoff, "registerHandoff(pi") || !strings.Contains(index, "registerSubagentTools(pi") {
 		t.Fatal("Pi extension entrypoints are not registered")
 	}
-	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export function createPreferenceStore", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
+	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export async function loadPreferenceState", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
 		if !strings.Contains(routing, owned) {
 			t.Errorf("model-routing module missing owned policy %q", owned)
 		}
@@ -343,7 +343,7 @@ func TestPiSubagentModelPreferencesRender(t *testing.T) {
 		`PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS]`,
 		`type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key"`,
 		`type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable"`,
-		"await preferences.reload()", "new WeakSet<object>()", "ctx.sessionManager",
+		"await loadPreferenceState(deps, ctx.modelRegistry)", "new WeakSet<object>()", "ctx.sessionManager",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi model preference render missing %q", want)
@@ -355,7 +355,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
 	for _, want := range []string{
 		`small: "openai-codex/gpt-5.6-luna"`, `standard: "openai-codex/gpt-5.6-terra"`, `large: "openai-codex/gpt-5.6-sol"`,
-		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "await preferences.reload()",
+		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "await loadPreferenceState(deps, ctx.modelRegistry)",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Pi model wizard render missing %q", want)

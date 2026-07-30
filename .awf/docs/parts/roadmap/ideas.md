@@ -5,9 +5,28 @@
   and patch-producing parallel workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
-- Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
-  `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR
-  revising `tooling/cli:topic-claim-budget-advisory` and an adopter-facing config key.
+- Let a global topic carry path selectors, so it can own specific paths as well as supply
+  global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
+  and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never
+  own a path and can never satisfy scoped coverage. That leaves a shared-pattern holder
+  with nowhere natural to live: a small package existing only to carry a cross-cutting
+  type belongs to the global topic describing that pattern, not to whichever scoped topic
+  happens to be closest. ADR-0183 hit this concretely and had to extend an unrelated
+  topic's selectors to keep a new package covered. Needs its own ADR: the coverage
+  semantics, whether a path-owning global topic satisfies scoped coverage or only
+  ownership, and what it does to the fan-out budget, which deliberately excludes global
+  topics today.
+- Pin what `internal/config`'s editors guarantee about an adopter's `config.yaml`. The `yaml.Node`
+  round-trip ADR-0026 chose preserves every key, value, and comment but canonicalizes layout: a
+  four-space block returns two-space, a sequence item under a surviving key re-indents, and blank
+  lines are dropped. No claim states this, so every migration that edits config inherits an unstated
+  contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
+  covering whether the property is claimed once for the package or restated per migration.
+- Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
+  rank now that ADR-0148 brought every topic under budget; needs its own small ADR
+  revising `tooling/cli:topic-claim-budget-advisory`. ADR-0183 forecloses the
+  configurable-severity and adopter-facing-config-key half of this idea: awf exposes no
+  severity setting, so the promotion is to a rank fixed in code or not at all.
 - Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three
@@ -41,3 +60,14 @@
   The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
   been dead prose since authoring; the fix plumbed the key, but nothing today prevents the
   next dead conditional (recorded as a rendering pitfall, 2026-07-23).
+- A mechanical check for over-broad current-state claim prose. The `claim-prose-no-broader-than-reality`
+  reviewer focus item exists and works: it caught all four over-broad claims in the 2026-07-30 severity
+  session. It prevented none of them, which is the signal to climb from a judgment rung to a
+  deterministic one. Two shapes look mechanizable without natural-language understanding: an absolute
+  quantifier in a claim sentence ("every", "always", "never", "no", "byte-identical") could require an
+  explicit justification marker, and a claim whose sentence is edited while its Origin ADR is frozen
+  could be flagged, since that is the exact case needing a successor `update` operation. Twice in that
+  session the false wording was INHERITED from an earlier record that the correcting pass never
+  re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
+  it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
+  expensive.

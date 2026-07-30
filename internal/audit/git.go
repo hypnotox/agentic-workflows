@@ -8,6 +8,7 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/object"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
@@ -28,7 +29,7 @@ func ruleUncommittedChanges(repoRoot string, in Inputs) ([]Finding, error) {
 		return nil, nil
 	}
 	return []Finding{{
-		Severity: Error,
+		Severity: severity.Error,
 		Rule:     "uncommitted-changes",
 		Detail: fmt.Sprintf("working tree not clean: %d tracked change(s), %d untracked file(s); commit or discard before concluding the implementation",
 			tracked, untracked),

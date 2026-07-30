@@ -30,12 +30,24 @@ Origin: ADR-0135
 Backing: unbacked
 Verify: A fixture with an Accepted update conflicting with its current claim keeps both clearly separated with the claim remaining current.
 
+### `invariant: merge-transition-ordered-aggregate`
+
+A merge transition is validated as an ordered aggregate rather than one authoring step: several application batches are legal when the global state-sequence stays contiguous, a claim's operations across the pair must form a legal ordered chain of at most one leading add, any number of updates, and at most one trailing remove, and an appended Status history must preserve the prior history as an exact prefix. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation per claim, and the fixed status-event shape.
+Origin: ADR-0182
+Backing: test
+
 ### `invariant: current-state-sole-active-authority`
 
 Normal context retrieval and invariant enforcement consume current-state topic claims, not Implemented historical ADR prose.
 Origin: ADR-0133
 Backing: unbacked
 Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf context emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf topic <claim-id> --history emits the provenance ADR.
+
+### `invariant: currentstate-handshake-findings-unranked`
+
+A current-state claim-handshake finding carries no rank: every provenance and transition finding the current-state checker produces is blocking, and the check path reports each by message with no severity field. The ranked coverage and fan-out findings the project report also carries are a separate concern and keep their ranks.
+Origin: ADR-0183
+Backing: test
 
 ### `invariant: historical-rationale-is-explicit`
 
@@ -85,7 +97,8 @@ Backing: test
 
 ### `invariant: update-requires-substance`
 
-An update preserves Origin and prior revision history, appends its ADR once, and changes a canonical claim field other than formatting or provenance alone.
+An update preserves Origin and prior revision history, appends its ADR once, and changes a canonical claim field other than formatting or provenance alone. Across a merge, where the intermediate claim states exist only in the branch's own commits and never in either compared universe, the substantive-change requirement is evaluated on the net effect of the claim's operation chain; per-step substance is enforced where it is verifiable, at the authored commits themselves.
 Origin: ADR-0135
+Revised-by: ADR-0182
 Backing: unbacked
 Verify: Staged fixtures with Origin edits, revision deletion or reordering, whitespace-only, provenance-only, and substantive prose, reference, or backing changes satisfy an update only in the prefix-preserving substantive cases.

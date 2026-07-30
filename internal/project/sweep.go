@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // claimedModel is the ADR-0086 Decision 1 allowlist: every path under .awf/
@@ -42,10 +43,10 @@ func (m *claimedModel) claimedDir(dir string) bool {
 }
 
 // buildClaimedModel computes the claimed-path model from config, catalog,
-// and the RenderAll output (whose .awf/-prefixed paths are exactly the
+// and the plan write files (whose .awf/-prefixed paths are exactly the
 // enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
-func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error) {
+func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (*claimedModel, error) {
 	m := &claimedModel{
 		files: map[string]bool{
 			config.DirName + "/config.yaml":                   true,
@@ -76,7 +77,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 			m.enabled[kind][name] = true
 			m.files[config.DirName+"/"+kind+"/"+name+".yaml"] = true
 			sc, err := p.Cfg.Sidecar(kind, name)
-			if err != nil { // coverage-ignore: RenderAll read this sidecar earlier in the same Check pass
+			if err != nil { // coverage-ignore: the render pass in outputPlan read this sidecar earlier in the same Check
 				return nil, err
 			}
 			// A local: true artifact renders nothing, so its parts are
@@ -96,7 +97,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 		m.files[config.DirName+"/"+kind+".yaml"] = true
 		m.singletons[kind] = true
 		sc, err := p.Cfg.Sidecar(kind, "")
-		if err != nil { // coverage-ignore: RenderAll read the singleton sidecars earlier in the same Check pass
+		if err != nil { // coverage-ignore: the render pass in outputPlan read the singleton sidecars earlier in the same Check
 			return nil, err
 		}
 		if sc.Local {
@@ -114,10 +115,6 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 	for _, domain := range p.Cfg.Domains {
 		m.dirs[config.DirName+"/topics/metadata/"+domain] = true
 		m.dirs[config.DirName+"/topics/parts/"+domain] = true
-	}
-	topics, err := p.Topics()
-	if err != nil { // coverage-ignore: Check builds a valid OutputPlan from the same cached topic corpus before sweeping
-		return nil, err
 	}
 	for _, t := range topics.All() {
 		metadataDir := config.DirName + "/topics/metadata/" + t.ID.Domain
@@ -183,8 +180,8 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 // are wholly exempt. It subsumes the pre-ADR-0086 orphan sweep: wrong-name
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error) {
-	m, err := p.buildClaimedModel(files)
+func (p *Project) sweepConfigTree(files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
+	m, err := p.buildClaimedModel(files, topics)
 	if err != nil { // coverage-ignore: see buildClaimedModel's sidecar coverage-ignores
 		return nil, err
 	}

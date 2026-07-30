@@ -161,12 +161,9 @@ export function effectivePreferenceState(global: PreferenceSourceState, project:
   const missing = PREFERENCE_FIELDS.filter((field) => effective[field] === undefined);
   return { global, project, effective, missing, invalid, blocked: invalid.length > 0, errors: invalid.map(invalidText) };
 }
-export function createPreferenceStore(deps: PreferenceStoreDependencies) {
+export async function loadPreferenceState(deps: PreferenceStoreDependencies, registry: ModelRegistryLike): Promise<EffectivePreferenceState> {
   const globalPath = join(deps.agentDir, GLOBAL_PREFERENCES_FILE);
   const projectPath = join(projectRoot(deps.extensionFile), deps.configDirName, LOCAL_PREFERENCES_FILE);
-  let global = emptyPreferenceSource("global", globalPath);
-  let project = emptyPreferenceSource("project", projectPath);
-  let registryInvalid: InvalidState[] = [];
   const read = async (scope: SourceScope, path: string): Promise<PreferenceSourceState> => {
     try { return parsePreferenceSource(scope, path, await deps.readFile(path, "utf8")); }
     catch (error) {
@@ -174,18 +171,10 @@ export function createPreferenceStore(deps: PreferenceStoreDependencies) {
       return { ...emptyPreferenceSource(scope, path), invalid: [{ kind: "source", scope, reason: "read-error" }] };
     }
   };
-  let ready: Promise<void> = Promise.resolve();
-  return {
-    ready(): Promise<void> { return ready; },
-    reload(): Promise<void> {
-      ready = (async () => { global = await read("global", globalPath); project = await read("project", projectPath); registryInvalid = []; })();
-      return ready;
-    },
-    validateAgainstRegistry(registry: ModelRegistryLike): void { registryInvalid = registryFailures(registry, [global, project]); },
-    state(): EffectivePreferenceState { return effectivePreferenceState(global, project, registryInvalid); },
-  };
+  const global = await read("global", globalPath);
+  const project = await read("project", projectPath);
+  return effectivePreferenceState(global, project, registryFailures(registry, [global, project]));
 }
-type PreferenceStore = ReturnType<typeof createPreferenceStore>;
 export function preferredReference(project: PreferenceSourceState, global: PreferenceSourceState, role: SubagentRole): { value: string; source: ModelSource } | undefined {
   const key = ROLE_PREFERENCE_KEYS[role];
   const candidates: Array<{ value: string | undefined; source: ModelSource }> = [
@@ -204,9 +193,8 @@ export function routingPreview(project: PreferenceSourceState, global: Preferenc
   const current = state ?? { missing: PREFERENCE_FIELDS.filter((field) => project.values[field] === undefined && global.values[field] === undefined), invalid: [...global.invalid, ...project.invalid] };
   return ["Role defaults:", ...roles, "Tier mappings:", ...tiers, `Missing: ${current.missing.length ? current.missing.join(", ") : "none"}`, `Invalid: ${current.invalid.length ? current.invalid.map(invalidText).join(", ") : "none"}`];
 }
-export function resolveChildModel(registry: ModelRegistryLike, parent: { provider: string; id: string } | undefined, role: SubagentRole, requested: string | undefined, store: PreferenceStore): { model: { provider: string; id: string }; requested: string | undefined; source: ModelSource } {
+export function resolveChildModel(registry: ModelRegistryLike, parent: { provider: string; id: string } | undefined, role: SubagentRole, requested: string | undefined, state: EffectivePreferenceState): { model: { provider: string; id: string }; requested: string | undefined; source: ModelSource } {
   if (requested !== undefined) return { model: requireExactModel(registry, requested), requested, source: "requested" };
-  const state = store.state();
   if (state.blocked) throw new Error(`${PREFERENCES_BLOCKED} ${state.errors.join("; ")}. ${PREFERENCES_REPAIR}`);
   const preferred = preferredReference(state.project, state.global, role);
   if (preferred) return { model: requireExactModel(registry, preferred.value), requested: undefined, source: preferred.source };

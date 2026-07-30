@@ -81,6 +81,9 @@ Apply all lenses to every plan:
 **dependency-order**: tasks are ordered so each builds only on already-completed work
 
 
+**terminal-state-reachable-at-its-position**: a task that declares a terminal state (a command reaching a clean verdict, a grep returning nothing) asserts that state is reachable AT THAT POINT IN THE ORDERING, not merely eventually. Check the position, not just the command. The 2026-07-30 state-ownership plan ordered its render-and-check task BEFORE the task appending the ADR's Applied batch, so its declared `awf check: clean` could not be reached: the four new claims' `Origin` and the updated claim's `Revised-by` are illegal until the batch exists, and the check failed on exactly that at execution time. The plan had ALREADY recorded "a post-check that cannot go green is worse than none, because it reads as verified" after its resync pass found three unrunnable greps, and shipped a fourth instance anyway one section away, which is why this is its own item rather than a clause in step-exactness. The sibling item demands a quoted command be rerun; this one demands it be rerun FROM THE STATE THE PRECEDING TASKS LEAVE, since a command that goes green at the end of the phase can be red where the plan actually places it
+
+
 **gate-clean-embedded**: plan-embedded Go, commit subjects, and rendered-doc snippets already satisfy the gate the executor will run; commit subjects ≤72 chars (check commit), constant-string `fmt.Errorf`→`errors.New` and number `fmt.Sprintf`→`strconv` (perfsprint), gofmt-aligned literals, and no literal `{{...}}` tokens in agent-guide-rendered prose (the renderGuide brace guard)
 
 
@@ -94,6 +97,9 @@ Apply all lenses to every plan:
 
 
 **dependency-composition-authority**: when a plan changes dependency selection, ownership, or wiring, consult code-design/dependency-composition and reject speculative capability or a capability without one concrete first consumer
+
+
+**state-ownership-authority**: when a plan changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
 
 
 

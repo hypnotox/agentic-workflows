@@ -58,14 +58,16 @@ func TestRunAuditWarningsExitZero(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Valid CC subject, but touches go.mod with no ADR -> dependency-adr warning only.
+	// Valid CC subject, but touches go.mod with no ADR -> dependency-adr warn only.
 	gitfixture.Commit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
 	var out bytes.Buffer
 	if err := runAudit(root, base.String(), &out); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "warning") {
-		t.Errorf("expected a warning in output, got: %q", out.String())
+	// Assert the rendered rank on the finding line, not the "%d warning(s)" verdict
+	// summary: the summary would satisfy a bare "warn" substring check on its own.
+	if !strings.Contains(out.String(), "warn    dependency-adr") {
+		t.Errorf("expected a warn-ranked dependency-adr finding, got: %q", out.String())
 	}
 }
 
@@ -77,7 +79,7 @@ func TestRunAuditErrorExitsNonZero(t *testing.T) {
 	}
 	gitfixture.Commit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
 	if err := runAudit(root, base.String(), out(t)); err == nil {
-		t.Fatal("an Error finding must make runAudit return non-nil")
+		t.Fatal("an error-ranked finding must make runAudit return non-nil")
 	}
 }
 
@@ -161,7 +163,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Warning path: touches go.mod with no ADR -> dependency-adr warning, exit zero.
+	// Warn path: touches go.mod with no ADR -> dependency-adr warn, exit zero.
 	gitfixture.Commit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
 	scope := "over 1 commit(s) in " + base.String() + "..HEAD"
 	var warnBuf bytes.Buffer
@@ -179,7 +181,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	gitfixture.Commit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
 	err = runAudit(root, base.String(), out(t))
 	if err == nil {
-		t.Fatal("an Error finding must make runAudit return non-nil")
+		t.Fatal("an error-ranked finding must make runAudit return non-nil")
 	}
 	if !strings.Contains(err.Error(), "over 2 commit(s) in "+base.String()+"..HEAD") {
 		t.Errorf("the error verdict must name its scope, got: %q", err)

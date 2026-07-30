@@ -102,6 +102,24 @@ func FrozenContentEqual(before, after ADR) bool {
 	return before.Status == statusProposed || ContentDigest(before.Sections) == ContentDigest(after.Sections)
 }
 
+// HistoryTransitionValidAggregate reports whether a merge's Status history is a
+// legal ordered append: the before history survives as an exact prefix of the
+// after history. The fixed one-or-two-event shape HistoryTransitionValid
+// enforces is deliberately not applied, because that shape encodes "one commit
+// is one authoring step", which a merge is not (ADR-0182 item 7).
+//
+// Prefix preservation is the whole obligation, and that is not a weakening.
+// validateV2History already replays every parsed record's complete history:
+// each transition must be legal in the state its predecessors produce, every
+// digest and sequence must be well-formed, and the terminal event must match the
+// frontmatter status. The appended events are therefore already proven a legal
+// ordered chain by parsing, and what a pair uniquely establishes is that nothing
+// preceding them was rewritten.
+func HistoryTransitionValidAggregate(before, after ADR) bool {
+	return len(after.History) >= len(before.History) &&
+		historiesEqual(before.History, after.History[:len(before.History)])
+}
+
 // HistoryTransitionValid reports whether a pair preserves append-only Status
 // history: equal histories at the same status, or an exact before prefix plus
 // one entry when the status follows a legal lifecycle edge.

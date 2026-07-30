@@ -122,7 +122,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := p.generateConfigReference(files)
+	cref, ok, err := p.generateConfigReference(files, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,8 +197,6 @@ currentState:
       marker: '#'
   testGlobs:
     - '**/*_test.md'
-  topicCoverage: off
-  topicFanout: error
   maxTopicsPerPath: 5
   maxClaimsPerTopic: 12
 proseGate:
@@ -228,8 +226,6 @@ memoryCite:
 		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",
-		"`currentState.topicCoverage` | severity (error, warn, or off) | error | off |",
-		"`currentState.topicFanout` | severity (error, warn, or off) | warn | error |",
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
 		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 12 |",
 	} {
@@ -256,7 +252,7 @@ memoryCite:
 
 // A part-read fault at the reference's intro (a directory where the part file
 // may sit) surfaces from every generation call site - the reference renders
-// outside RenderAll, so these branches are reachable, not theoretical.
+// outside renderAllBase, so these branches are reachable, not theoretical.
 func TestConfigReferencePartReadFault(t *testing.T) {
 	root, p := syncedProject(t, crefYAML, nil)
 	if err := os.MkdirAll(filepath.Join(root, ".awf/parts/config-reference/intro.md"), 0o755); err != nil {

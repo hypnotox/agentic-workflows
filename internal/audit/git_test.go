@@ -9,6 +9,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -315,7 +316,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	}
 
 	// Dirty tree - a modified tracked file (tracked count) plus an untracked file
-	// (untracked count): one Error finding.
+	// (untracked count): one error finding.
 	if err := os.WriteFile(filepath.Join(dir, "a.txt"), []byte("changed"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -324,7 +325,7 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	}
 	f := uncommittedFindings(t, dir, true)
 	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
-	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != Error || f[0].Commit != "" {
+	if len(f) != 1 || f[0].Rule != "uncommitted-changes" || f[0].Severity != severity.Error || f[0].Commit != "" {
 		t.Fatalf("dirty tree finding = %#v", f)
 	}
 	// The tracked/untracked tally is load-bearing in the Detail message; assert

@@ -75,6 +75,9 @@ Apply all lenses to every ADR:
 **dependency-composition-authority**: when the ADR changes dependency selection, ownership, or wiring, consult code-design/dependency-composition and flag a speculative capability or a capability without one concrete first consumer
 
 
+**state-ownership-authority**: when the ADR changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
+
+
 
 ## Doc-currency checklist
 

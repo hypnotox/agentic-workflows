@@ -1,5 +1,49 @@
 data:
   pitfalls:
+    - title: "An ADR citation in a Go comment survives a renumber, because nothing validates it"
+      domains: [adr-system]
+      tags: [adr-lifecycle, verification-discipline]
+      body: |
+        A branch that authors an ADR while main takes the same number renumbers it at integration.
+        Every rendered surface is covered: `checkDeadRefs` scans rendered files, and the ADR checks in
+        `internal/project/check.go` cover frontmatter tags and related arrays. A citation inside a Go
+        comment is covered by none of them, so a stale `ADR-NNNN` in production source stays green
+        forever while pointing at an unrelated decision.
+
+        Derive the site list with a grep at integration time rather than from a list written earlier.
+        An enumeration ages badly: the ADR-0183 effort enumerated four Go citations across three files
+        in its plan, and by the end of its review chain there were twelve across seven, two of them
+        added by the very commit that froze the plan. Its own review chain then produced a SECOND ADR,
+        which needed its own separately-derived number and which no grep in the plan mentioned.
+
+        So: grep for every ADR number the branch authored, not just the first one; do not assume two
+        such numbers end up consecutive; and include test files, since a citation there is equally
+        stale and equally unvalidated. The `Revised-by:` lines in claim parts are the one part that is
+        caught mechanically, because `internal/currentstate` rejects a `Revised-by` naming an ADR with
+        no matching applied update operation.
+    - title: "Dropping a config key needs a ConfigForCurrentSchema branch, or the staged check cannot parse HEAD"
+      domains: [config]
+      tags: [schema-migration, verification-discipline]
+      body: |
+        `migrate.ConfigForCurrentSchema` forward-ports a historical committed config so the current
+        strict parser can read it, and it does that through one explicit per-migration branch, not
+        by replaying the registry. A migration that removes a config key must add its own branch
+        there as well as its `apply` function. Miss it and `awf check --staged` fails to parse HEAD
+        the moment the key leaves the config model, because HEAD still carries it: the before side
+        of the transition handshake loads the committed config, not the index one.
+
+        This did not surface until ADR-0183, even though four drop-a-key migrations preceded it,
+        because none of those keys was actually set in this repo's own tree, so the before side
+        never had one to choke on. Reading those precedents is therefore not enough. The failure
+        appears at the phase-closing staged check, never in the migration's own test, which
+        operates on fixture bytes and passes regardless.
+
+        Two related traps in the same area. `RemoveMappingKey` drops the parent key when the
+        removal empties it, so removing the last children of a block deletes the block; when a
+        feature is gated on the block being present, that silently disables it. And
+        `SetMappingInteger` appends an absent parent at the end of the document, so repairing a
+        collapsed block afterwards relocates it: seed the surviving key before the removals
+        instead.
     - title: "The pi-extension container test races concurrent git activity"
       domains: [tooling]
       tags: [worktree-isolation, verification-discipline]
@@ -168,14 +212,31 @@ data:
       body: |
         A divergent managed-worktree merge presents the effort branch as one staged change against
         the target branch's first parent. If both branches independently consumed current-state
-        sequences, the effort's Applied events can collide with the target's sequence numbers, and
-        the merge endpoint can appear to append multiple application batches in one transition.
-        `awf check --staged` correctly rejects both conditions. Do not bypass the check or mutate
-        frozen ADR meaning. Abort the merge, replay the effort commits onto the current target in
-        their original transaction order, assign the next available sequence to each Applied event,
-        regenerate derived files, rerun the gate, and renew terminal review over the rewritten
-        combined history before fast-forward integration. ADR-0178 hit this when concurrent ADR-0177
-        consumed sequences 86 and 87, so ADR-0178 had to move to 88 and 89.
+        sequences, the effort's Applied events collide with the target's sequence numbers, and
+        `awf check --staged` correctly rejects the merge: the global state-sequence namespace must
+        stay contiguous, and that requirement is deliberately retained for a merge (ADR-0182). Do not
+        bypass the check or mutate frozen ADR meaning. Renumber the effort's Applied events to the
+        next available sequences, or replay the effort commits onto the current target in their
+        original transaction order, then regenerate derived files, rerun the gate, and renew terminal
+        review before integrating. ADR-0178 hit this when concurrent ADR-0177 consumed sequences 86
+        and 87, so ADR-0178 had to move to 88 and 89; the 2026-07-30 severity effort hit it again and
+        had to move five batches.
+
+        Carrying several application batches is NOT one of the rejected conditions. Before ADR-0182 a
+        merge was also refused for appending more than one batch to a single ADR and for targeting one
+        claim with more than one operation, which an incrementally-applied ADR and a follow-up ADR
+        revising an earlier claim both do legitimately. Those are now validated as an ordered
+        aggregate rather than refused, so a merge that only trips them needs no replay.
+
+        RENUMBER INSIDE THE MERGE, not on the branch beforehand. The branch's corpus does not contain
+        the sequences the target consumed, so numbering its batches to the next free values there fails
+        the contiguous-from-1 check instead of fixing anything; the collision is only resolvable where
+        both sides' sequences are present. The state-ownership effort (2026-07-30, third occurrence) hit
+        this after waiting for ADR-0182 to land: its batches were numbered 92 and 93 at authoring time
+        and 92 through 97 were consumed while it waited, so they moved to 98 and 99 during the merge
+        resolution. The renumber is safe for a frozen ADR because `digestSections` covers Context,
+        Decision, State changes, Consequences, and Alternatives Considered and never the Status history,
+        so the content digest is unaffected; confirm that by recomputation rather than assuming it.
     - title: "go-git status ignores the global and system gitignore"
       domains: [tooling]
       tags: [repo-open, context-query]
@@ -585,7 +646,54 @@ data:
         counted as covered. That the impl-review focus item still did not stop it at write time is the
         signal to climb a rung: a mechanical "a `coverage-ignore` line the coverage profile records as
         executed is a false ignore" check in `cmd/covercheck` would catch this whole ignored-but-covered
-        class deterministically (deferred follow-up).
+        class deterministically (deferred follow-up). A seventh recurrence (the 2026-07-30 merge-aggregate
+        effort) added a shape the earlier six do not cover: the ignore was not merely false, the guarded
+        call was a REGRESSION. A new `MERGE_HEAD` probe was added to the staged check with an ignore
+        claiming the containing-checkout walk could not fail, because the index read above had already
+        resolved the repository. go-git's index read follows a symlinked `.git`; the control-root rules
+        refuse one, so a layout that worked before the probe existed began erroring. The caller now
+        degrades to the stricter contract instead of propagating. The same function carried a second
+        false ignore in the same commit, that `lstat` reports only an inode or `os.ErrNotExist` absent a
+        fault: a gitdir pointer naming a regular file yields ENOTDIR with nothing racing. So when adding
+        a probe to an existing path, ask what the path tolerated before the probe, not only whether the
+        new branch is reachable; and enumerate a syscall's error surface rather than reasoning about it,
+        since two of this session's three wrong ignores were errno claims.
+
+        An eighth recurrence (the 2026-07-30 state-ownership conversion) is the one that should settle
+        the deferral above, because it finally measures its cost. Terminal review refuted five of that
+        session's justifications BY EXECUTION, and the verify pass then refuted a sixth that the fix
+        commit had itself introduced while removing the other five. Two shapes are worth naming. First,
+        three ignores asserted "tested elsewhere" rather than unreachability, which this entry and the
+        review focus item both already forbid in as many words, so prose failed at the exact sentence
+        that describes the mistake. Second, a refactor that moves a derivation EARLIER relocates every
+        fault it can raise in BOTH directions: three new ignores were needed because deriving at
+        operation entry pre-empted faults that used to surface deeper, while an inherited ignore became
+        reachable and had to go. Re-derive every ignore in the blast radius rather than assuming a
+        conversion only deletes them.
+
+        THE COST ESTIMATE THE DEFERRAL LACKED: a reviewer sweep for excluded-but-covered guarded bodies
+        found EIGHT in the repository, of which seven predate that session. So the `cmd/covercheck` rule
+        is implementable and would have caught the worst finding of that review automatically, but
+        landing it means fixing eight existing sites across several efforts' territory, which is why it
+        stays deferred rather than cheap. It is now carried as a roadmap item instead of only as this
+        sentence.
+    - title: "Two V2-ADR fixture traps in Go tests, each hit twice in one session"
+      domains: [adr-system, tooling]
+      tags: [adr-lifecycle, test-support]
+      body: |
+        Building a current-state-v2 ADR fixture in a Go test hits two parser rules that are easy to
+        miss because the failure names the rule rather than the fixture. First, a record left
+        `Implementing` needs BOTH applied and remaining operations, so a fixture that applies every
+        operation it declares fails with "implementing requires at least one applied and one remaining
+        operation"; declare one extra operation and leave it unapplied. Second, ADR numbering must be
+        contiguous from 1, so a fixture that jumps to ADR-0003 to avoid colliding with an existing
+        ADR-0001 fails with "ADR numbers are not contiguous from 1: missing [2]"; add a filler ADR at
+        the skipped number. Both bit twice in the 2026-07-30 merge-aggregate effort, in two different
+        packages, because the second author of a fixture rediscovers them from the error text.
+        Use `publicV2ADR` and `publicTopicClaims` in `internal/project` rather than hand-rolling the
+        markdown: they compute the `content-sha256` for you, which is the third trap in the same area.
+        The lifecycle rules these fixtures trip over are documented separately under the plan-authoring
+        entry on V2 batch choreography; this entry is about reproducing them in test data.
     - title: "An attribute-filtered pinned-set test exempts every other attribute value"
       domains: [tooling]
       tags: [pinned-set-tests, invariant-backing]

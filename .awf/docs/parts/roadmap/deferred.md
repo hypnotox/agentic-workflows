@@ -107,3 +107,55 @@ caught it afterwards. Candidate `awf audit` advisory rule: flag a status transit
 frozen state whose commit also changes the ADR's digest-covered section content relative to the
 parent snapshot. Deferred because audit rules ship behind their own decision; the pitfalls
 entry recording the occurrence is the interim memory.
+
+## Decomposing the `internal/project` god object
+
+`internal/project.Project` carries roughly ninety-five production methods across
+thirty production files, imports seventeen internal packages, and is imported by
+exactly two. Fourteen of those files touch no `Project` field at all, which is
+the clearest signal that several cohesive units are sharing one type.
+
+The split has been deferred repeatedly and, until now, was recorded only in
+ephemeral working memory under `.awf/efforts/`, so it vanished whenever an
+effort finished. This entry is the durable record.
+
+Two of its three prerequisites are settled. ADR-0178 established
+`code-design/dependency-composition`, so dependency direction and wiring have an
+authority to answer to. ADR-0180 established `code-design/state-ownership` and
+converted the three per-invocation derived fields, so the type no longer holds
+state written after construction and a future package boundary cannot inherit a
+hidden cache. The remaining prerequisite is a package-cohesion and boundary
+pattern, which is where the deferred `receiver-reads-owned-state` rule belongs:
+a method reads at least one receiver field, and behaviour that reads none takes
+parameters instead. Its evidence is already collected, the fourteen zero-field
+files and the four synthetic partial `Project` literals.
+
+Sequencing matters more than usual here. Half of "where does a package boundary
+go" is dependency direction, which `dependency-composition` already owns, so a
+cohesion pattern authored without reference to it would create dual authority.
+The decomposition itself should follow the pattern rather than accompany it.
+
+## A `coverage-ignore` the profile records as executed is a false ignore
+
+The `coverage-ignore-reachability` review item and the pitfalls entry behind it have now failed
+to prevent eight recurrences of a false exclusion. Both are rung-3 and rung-4 controls:
+probabilistic, and applied only when a reviewer runs. One whole subclass is mechanically
+decidable and needs no judgement at all: an exclusion sitting on a guarded body that the
+coverage profile records as EXECUTED is false by construction, because the branch it declares
+unreachable was just reached.
+
+`cmd/covercheck` already parses the profile and already applies the ignore filter, so it holds
+both halves of the comparison; the rule is to fail when a block is both ignored and counted.
+That turns the most common shape into a gate failure at write time rather than a finding a
+reviewer may or may not reach.
+
+What deferred it until now was an unmeasured cost, which the 2026-07-30 state-ownership review
+finally supplied: a sweep found EIGHT excluded-but-covered sites currently in the repository,
+seven of them predating that session. So the work is the rule plus its own tests at the 100%
+floor, plus resolving eight existing sites that span several efforts' territory, each needing
+its own judgement about whether to delete the exclusion or cover the branch. That is a bounded
+but real slice, and it should be one deliberate effort rather than a drive-by.
+
+Worth settling in the same decision: whether the rule is an error or a warning during the
+transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
+subsumed by it or kept as the complementary "touched, re-evaluate" signal.

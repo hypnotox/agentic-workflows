@@ -226,8 +226,7 @@ domains:
 contextIgnore:
   - .awf/**
 currentState:
-  topicCoverage: error
-  topicFanout: off
+  maxTopicsPerPath: 8
 `
 
 func uncoveredFiles() map[string]string {
@@ -245,6 +244,10 @@ func uncoveredFiles() map[string]string {
 // and, separately, the eligible paths owned by no domain (collapsed).
 // invariant: invariants/current-state-authority:uncovered-lists-unowned-unignored
 // invariant: tooling/context-and-topic:uncovered-collapses-directories
+// The selection clause is marked here because internal/topic's marker cannot
+// reach assembleUncovered: this is where "the uncovered report requests coverage
+// only" actually fails if the policy gains Fanout (ADR-0184 item 5).
+// invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks
 func TestUncovered(t *testing.T) {
 	cfg := strings.Replace(uncoveredConfig, "contextIgnore:\n  - .awf/**", "contextIgnore:\n  - .awf/**\n  - gen/skipped.md", 1)
 	files := uncoveredFiles()
@@ -280,7 +283,7 @@ func TestUncovered(t *testing.T) {
 // owns nothing present, no path seeds the repository root as covered, so a
 // whole-repo scan folds every unowned path up to ".".
 func TestUncoveredCollapsesToRoot(t *testing.T) {
-	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  topicCoverage: error\n  topicFanout: off\n"
+	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
 		"top.txt":                 "x\n",

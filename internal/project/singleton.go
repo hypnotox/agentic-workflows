@@ -5,7 +5,7 @@ import "github.com/hypnotox/agentic-workflows/internal/catalog"
 // singletonSpec is one plain (neutral, non-agents-doc) always-on singleton's
 // render/validate identity: a kind name, its embedded template id, and accessors
 // for its fixed output path and catalog sections. plainSingletons is the single
-// source of truth both RenderAll (via renderKind) and validateAgainstCatalog
+// source of truth both renderAllBase (via renderKind) and validateAgainstCatalog
 // range over.
 type singletonSpec struct {
 	kind     string

@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -25,9 +26,10 @@ const currentStateTransitionRule = "current-state-transition"
 
 // CurrentStateReport is the routed outcome of a current-state check over one
 // snapshot: the static ADR-to-claim handshake findings (all blocking) and the
-// coverage/fan-out findings (each carrying its configured severity, ADR-0134
-// item 11). Findings and Notes split the report into blocking lines and
-// non-failing note lines so the command layer never re-derives the routing.
+// coverage/fan-out findings, which carry ranks fixed in code rather than
+// configured - coverage at error, fan-out at warn (ADR-0183). Findings and Notes
+// split the report into blocking lines and non-failing note lines so the command
+// layer never re-derives the routing.
 type CurrentStateReport struct {
 	Static     []currentstate.Finding
 	Coverage   []topic.CoverageFinding
@@ -42,23 +44,23 @@ func (r CurrentStateReport) Findings() []string {
 		out = append(out, f.Message)
 	}
 	for _, c := range r.Coverage {
-		if c.Severity == topic.CoverageError {
+		if c.Severity == severity.Error {
 			out = append(out, coverageLine(c))
 		}
 	}
 	return out
 }
 
-// Notes returns the non-failing lines: coverage/fan-out findings at warn
-// severity. Off findings are never emitted by the evaluator, so they never
-// appear here.
+// Notes returns the non-failing lines: coverage/fan-out findings at warn. There
+// is no suppressing rank, so every finding the evaluator emits is routed here or
+// to Findings, never dropped.
 func (r CurrentStateReport) Notes() []string {
 	out := slices.Clone(r.Advisories)
 	if out == nil {
 		out = []string{}
 	}
 	for _, c := range r.Coverage {
-		if c.Severity == topic.CoverageWarn {
+		if c.Severity == severity.Warn {
 			out = append(out, coverageLine(c))
 		}
 	}
@@ -191,7 +193,24 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	if afterCfg == nil {
 		return CurrentStateReport{}, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe())}
+	// A merge integrates a branch whose commits were each validated as they were
+	// authored, so the pair carries several steps at once and takes the aggregate
+	// contract (ADR-0182). Provenance decides this, not the shape of the diff.
+	// A checkout whose control root cannot be safely resolved, a symlinked .git
+	// being the reachable case, is treated as not merging rather than failing the
+	// check. go-git's index read follows the symlink and succeeds, so propagating
+	// the refusal here would break a staged check that worked before merge
+	// detection existed. Falling back selects the stricter authored-commit
+	// contract, which can refuse a legitimate merge but can never wrongly accept.
+	merging, err := git.MergeInProgress(p.Root)
+	if err != nil {
+		merging = false
+	}
+	mode := currentstate.AuthoredCommit
+	if merging {
+		mode = currentstate.MergeAggregate
+	}
+	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), mode)}
 	if afterCfg.CurrentState != nil {
 		report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	}
@@ -401,12 +420,16 @@ func (p *Project) auditTransitions(base, head string) ([]audit.Finding, error) {
 	for _, c := range commits {
 		before, after, err := p.rangePairUniverses(c.Hash)
 		if err != nil {
-			out = append(out, audit.Finding{Severity: audit.Warning, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
+			out = append(out, audit.Finding{Severity: severity.Warn, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
 				Detail: "could not load the current-state universes for this commit: " + err.Error()})
 			continue
 		}
-		for _, f := range currentstate.CheckPair(before, after) {
-			out = append(out, audit.Finding{Severity: audit.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
+		mode := currentstate.AuthoredCommit
+		if c.IsMerge {
+			mode = currentstate.MergeAggregate
+		}
+		for _, f := range currentstate.CheckPair(before, after, mode) {
+			out = append(out, audit.Finding{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
 		}
 	}
 	return out, nil
@@ -442,12 +465,12 @@ func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Uni
 	return beforeLoaded.Universe(), afterLoaded.Universe(), nil
 }
 
-// coveragePolicy reads the coverage and fan-out severities and the fan-out
-// budget from a currentState config block.
+// coveragePolicy reads only the fan-out budget from a currentState config block.
+// Which checks run and the rank each reports at are fixed in code (ADR-0183).
 func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
 	return topic.CoveragePolicy{
-		Coverage:         topic.CoverageSeverity(cs.TopicCoverage),
-		Fanout:           topic.CoverageSeverity(cs.TopicFanout),
+		Coverage:         true,
+		Fanout:           true,
 		MaxTopicsPerPath: cs.EffectiveMaxTopicsPerPath(),
 	}
 }

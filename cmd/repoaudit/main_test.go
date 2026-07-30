@@ -34,12 +34,6 @@ func runFake(args []string, g fakeGit) (int, string) {
 	return code, out.String() + errOut.String()
 }
 
-func TestSeverityLabel(t *testing.T) {
-	if warning.label() != "warning" || errorSev.label() != "error" {
-		t.Fatalf("labels: %q %q", warning.label(), errorSev.label())
-	}
-}
-
 func TestGitErrorSurfacesStderr(t *testing.T) {
 	// .Output() captures stderr on *exec.ExitError, but %v prints only
 	// "exit status N" - the decoration is what makes a git-failure finding
@@ -117,8 +111,13 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	}
 }
 
-func TestWarningMissingEntry(t *testing.T) {
-	// Adopter-facing change, [Unreleased] identical across the range → advisory Warning,
+// The rendered rank column is asserted here, not only in internal/severity: that
+// test cannot reach this surface, because repoaudit's finding type is unexported
+// in package main. Without this marker the claim would name a surface no proof
+// reads.
+// invariant: tooling/audit-commands:severity-single-spelling
+func TestWarnMissingEntry(t *testing.T) {
+	// Adopter-facing change, [Unreleased] identical across the range -> advisory warn,
 	// exit 0 (ADR-0107): the conformance verdict no longer blocks, only informs.
 	same := changelog("\n")
 	g := fakeGit{
@@ -130,7 +129,7 @@ func TestWarningMissingEntry(t *testing.T) {
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	// invariant: tooling/changelog-and-release:changelog-rule-advisory
-	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
+	if code != 0 || !strings.Contains(out, "warn    changelog-unreleased") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 	if !strings.Contains(out, "adopter-facing paths in b..h: templates/x.tmpl") {
@@ -179,7 +178,7 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
+	if code != 0 || !strings.Contains(out, "warn    changelog-unreleased") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 }
@@ -199,7 +198,7 @@ func TestDivergedBaseJudgesFromMergeBase(t *testing.T) {
 		"show h:" + changelogPath: {out: same},
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 0 || !strings.Contains(out, "warning") || !strings.Contains(out, "[Unreleased] is unchanged") {
+	if code != 0 || !strings.Contains(out, "warn    changelog-unreleased") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
 	}
 	if !strings.Contains(out, "adopter-facing paths in m..h:") {
@@ -274,7 +273,7 @@ func TestNoUnreleasedSection(t *testing.T) {
 const testMarker = "//" + " coverage-ignore"
 
 func TestCoverageIgnoreAddedWarns(t *testing.T) {
-	// An added directive in a production file warns (exit stays 0 - Warning
+	// An added directive in a production file warns (exit stays 0 - a warn
 	// only); an added directive in a _test.go and a bare prose mention do not.
 	diff := "+++ b/internal/foo/foo.go\n" +
 		"+\tif err != nil { " + testMarker + ": impossible per X\n" +
@@ -290,10 +289,10 @@ func TestCoverageIgnoreAddedWarns(t *testing.T) {
 	}
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 0 {
-		t.Fatalf("warning-only run must exit 0, got %d: %q", code, out)
+		t.Fatalf("warn-only run must exit 0, got %d: %q", code, out)
 	}
-	if !strings.Contains(out, "warning") || !strings.Contains(out, "coverage-ignore-added") || !strings.Contains(out, "internal/foo/foo.go") {
-		t.Fatalf("missing warning finding: %q", out)
+	if !strings.Contains(out, "warn    coverage-ignore-added") || !strings.Contains(out, "internal/foo/foo.go") {
+		t.Fatalf("missing warn finding: %q", out)
 	}
 	if !strings.Contains(out, "genuinely untriggerable") {
 		t.Fatalf("missing re-evaluation prompt: %q", out)
@@ -305,7 +304,7 @@ func TestCoverageIgnoreAddedWarns(t *testing.T) {
 		t.Fatalf("prose mention or test file fired: %q", out)
 	}
 	if strings.Contains(out, "repoaudit: clean") || !strings.Contains(out, "1 warning(s), no errors") {
-		t.Fatalf("warning-only run must summarize warnings, not claim clean: %q", out)
+		t.Fatalf("warn-only run must summarize warnings, not claim clean: %q", out)
 	}
 }
 
