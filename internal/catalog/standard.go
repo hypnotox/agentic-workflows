@@ -97,7 +97,7 @@ var Standard = &Catalog{
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-resync", "notes",
 		}},
-		"reviewing-impl": {Core: true, RequiresAgent: "code-reviewer", RequiresSkills: []string{"executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
+		"reviewing-impl": {Core: true, RequiresAgent: "code-reviewer", RequiresSkills: []string{"adr-lifecycle", "executing-plans", "retrospective", "subagent-driven-development"}, Sections: []string{
 			"when-fires", "sha-range-detection", "docs-only-check", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},

@@ -13,7 +13,7 @@ Invoked as the independent review step of the implementation phase. It validates
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of sundial-executing-plans or sundial-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+**Skip independent review when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift. A docs-only skip still continues to the terminal hand-off and any deferred flip transaction.
 
 ## Procedure
 
@@ -25,7 +25,7 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
    - `planPath` auto-detection: `git log ${baseSha}..${headSha} --name-only --pretty=format: | grep -E '^docs/plans/[0-9]{4}-[0-9]{2}-[0-9]{2}-.*\.md$' | sort -u | tail -1`. Use if non-empty; otherwise `null`.
 
 <!-- awf:edit docs-only-check: default; create .awf/skills/parts/reviewing-impl/docs-only-check.md to override -->
-2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and return.
+2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and continue at step 8, treating the docs-only check as the applicable terminal review with zero findings.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
 3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes the following. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.
@@ -61,10 +61,12 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Route settled terminal review through optional worktree integration.** Repository sources and current-state documentation remain authoritative over checkpoint prose; standalone memory is forbidden.
-   - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, invoke `sundial-retrospective`.
+   - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, skip integration and continue to the deferred flip below.
    - If managed topology exists, change to the intended clean target checkout and run `awf effort integrate <slug>`. Integration never implies review, removal, retrospective, or finish.
    - An already-integrated or fast-forward result continues after confirming the settled review still covers the effort tip. A divergent merge runs `awf check --staged`, the project gate, and a merge commit, then invokes this terminal implementation review again over the combined target history. Conflicts remain visible until explicitly resolved or aborted.
-   - Only after the applicable terminal review has zero findings, land the deferred flip transaction: apply any final V2 batch with exactly its claim mutations and flip the linked ADR(s) and plan to `Implemented` per `sundial-adr-lifecycle`. Then run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent. Then invoke `sundial-retrospective`.
+   - Only after the applicable terminal review has zero findings, land the deferred flip transaction: apply any final V2 batch with exactly its claim mutations and flip the linked ADR(s) and plan to `Implemented` per `sundial-adr-lifecycle`.
+   - If managed topology exists, run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent.
+   - Invoke `sundial-retrospective`.
 
 **Routine checkpoint.** At this boundary:
 1. Classify the outcome, not the boundary. A minimal simple fix uses no effort, and reaching a checkpoint never creates one by itself. Once the work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; use `.awf/efforts/<slug>/memory.md` as its only working memory. If that need is first recognized here, create the effort before updating memory. Repository sources and current-state documentation remain authoritative over checkpoint prose.
@@ -76,5 +78,5 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; this skill does not alter lifecycle history.
+- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
