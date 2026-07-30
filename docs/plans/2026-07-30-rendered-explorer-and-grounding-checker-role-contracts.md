@@ -51,7 +51,7 @@ flips the frontmatter to `status: Implemented` and appends the second `Applied` 
 `Implementing`.
 
 Leaving one operation for batch two is not merely convenient: `OperationProgress`
-(`internal/adr/application.go:113`) requires an `Implementing` ADR to have both applied and remaining
+(`internal/adr/application.go:115`) requires an `Implementing` ADR to have both applied and remaining
 operations, so a five-of-six split is what makes the intermediate state legal at all.
 
 ## File structure
@@ -63,6 +63,7 @@ operations, so a five-of-six split is what makes the intermediate state legal at
   `templates/skills/exploring/SKILL.md.tmpl`, `templates/skills/brainstorming/SKILL.md.tmpl`,
   `internal/project/spine_test.go`, `internal/project/target_test.go`,
   `internal/project/render_tree_test.go`, `internal/project/skillrefs_test.go`,
+  `internal/project/unused_test.go`,
   `internal/project/context_artifacts_test.go`, `internal/project/project.go`,
   `internal/project/version_test.go`, `internal/migrate/migrate.go`,
   `internal/migrate/dropworkflowtelemetry_test.go`, `internal/migrate/workflowtelemetry_test.go`,
@@ -96,10 +97,12 @@ grounding dispatch.
   limiter sentence, so the existing pinned literals move rather than change. Do not add backticks around
   `targeted`, `bounded`, `broad`, `paths`, `summary`, or `analysis`: Task 1.9 moves the current
   unbackticked spellings into the explorer wants slice verbatim, so a backtick here silently breaks that
-  assertion. (This is not a tool-agnostic constraint;
-  `rendering/workflow-skill-templates:skill-prose-tool-agnostic` denies only backticked `write`, `edit`,
-  and `read`, per `internal/project/tool_agnostic_test.go:36-38`, none of which appear here.) Carry no
-  decision-record citation in any comment (`TestTemplateSourceResidue` forbids it). Exact content:
+  assertion. (This is not a tool-agnostic constraint:
+  `rendering/workflow-skill-templates:skill-prose-tool-agnostic` targets `write`, `edit`, and `read`
+  only, in three forms, backticked, "via <verb>", and "<verb> tool/call"
+  (`internal/project/tool_agnostic_test.go:36-38`), and none of those words appear in this body at all.)
+  Carry no decision-record citation in any comment (`TestTemplateSourceResidue` forbids it). Exact
+  content:
 
   ```
   # explorer
@@ -489,8 +492,8 @@ grounding dispatch.
   this same transaction:
   1. Change the frontmatter `status: Proposed` to `status: Implementing`. Without it `validateV2History`
      fails with "latest Status history status Implementing does not match frontmatter status Proposed"
-     (`internal/adr/format.go:359`) and `OperationProgress` fails with "status Proposed cannot have
-     applied operations" (`internal/adr/application.go:109`).
+     (`internal/adr/format.go:360`) and `OperationProgress` fails with "status Proposed cannot have
+     applied operations" (`internal/adr/application.go:110`).
   2. Append exactly two lines to `## Status history`: the `Implementing` status event, then ONE
      `Applied` event carrying all five batch-one operations comma-separated at a single sequence, in the
      ADR's declaration order. Five separate `Applied` lines are rejected by `pairOps` with "appends 5
@@ -571,12 +574,21 @@ pairing cannot land before the agents it names exist and are enabled.
   +agents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]
   ```
 
-  Exhaustive affected-site set, five edits: `internal/project/render_tree_test.go:115` and `:141` (both
+  Exhaustive affected-site set, eight edits: `internal/project/render_tree_test.go:115` and `:141` (both
   `[explorer]`), `internal/project/skillrefs_test.go:88` (`[explorer]`),
-  `internal/project/context_artifacts_test.go:260` (`[explorer]`), and
-  `internal/project/target_test.go:367` (both agents, per the edge above).
-  `internal/project/target_test.go:455` is already given `[explorer]` by Task 1.9, so it needs no further
-  edit here.
+  `internal/project/context_artifacts_test.go:260` (`[explorer]`),
+  `internal/project/unused_test.go:63` and `:175` (both `[explorer]`; each enables `exploring` and
+  `refactor-coupling-audit` with local sidecars only for `agents-doc` and `workflow`, so `exploring`
+  itself is a catalog skill and does require its agent), `internal/project/spine_test.go:1704`
+  (`[explorer]` only: its `brainstorming` carries a `local: true` sidecar and is therefore exempt, but the
+  `exploring` in the same list is not), and `internal/project/target_test.go:367` (both agents, per the
+  edge above). `internal/project/target_test.go:455` is already given `[explorer]` by Task 1.9, so it
+  needs no further edit here.
+
+  The distinguishing test for every candidate site is whether it reaches `Open` with a non-local
+  `exploring` or `brainstorming` in its enabled set. `checkNodeRequirements` only errors; unlike the
+  `applyCloseEnabledSet` migration path it does not self-heal. A site that upgrades instead of opening
+  (for example `cmd/awf/run_test.go:861`, which goes through `runUpgrade`) needs no edit for that reason.
 
   Three sites that look affected are deliberately excluded, each for a verified reason. Do not edit them:
   - `internal/project/project_test.go:1458` and `internal/project/skillrefs_test.go:102` both declare a
@@ -720,9 +732,9 @@ Checkbox tasks are ordered steps, not transaction boundaries.
 - [ ] **Task 3.3: Flip the ADR to `Implemented` and append batch two.** Two edits, both required in this
   same transaction:
   1. Change the frontmatter `status: Implementing` to `status: Implemented`. The same
-     lastStatus-versus-frontmatter check at `internal/adr/format.go:359` fails without it, and
+     lastStatus-versus-frontmatter check at `internal/adr/format.go:360` fails without it, and
      `OperationProgress` additionally rejects an `Implemented` ADR with any remaining operation
-     (`internal/adr/application.go:118`), which batch two is what satisfies.
+     (`internal/adr/application.go:120`), which batch two is what satisfies.
   2. Append exactly two lines to `## Status history`, the sixth operation's `Applied` line THEN the
      `Implemented` line, in that order. `HistoryTransitionValid` accepts only
      `[Applied, Status]` for `Implementing -> Implemented`, and `validateV2History` additionally
@@ -801,6 +813,14 @@ Whole-effort acceptance, beyond each phase's gate:
   third (`internal/migrate/closeenabledset_test.go:82`) never opens a project at all. Task 2.4a turns
   that third one into real backing for the new pairing edge instead of pre-seeding it, which would have
   suppressed the behaviour its test exists to prove. Plan review surfaced all three.
+- Task 2.4's site set was twice wrong before it settled, in both directions: the first version included
+  two exempt fixtures, and the corrected version still missed three genuinely affected ones
+  (`internal/project/unused_test.go:63` and `:175`, `internal/project/spine_test.go:1704`), all found by
+  the verify pass. The reliable discriminator is not "does the config enable the skill" but "does this
+  site reach `Open` with a non-local `exploring` or `brainstorming`", since `checkNodeRequirements` only
+  errors while the migration path self-heals. Executors should re-derive the set with that test rather
+  than trusting the enumeration, and expect `go test ./internal/project/ ./internal/migrate/` to name
+  anything still missing.
 - Out of scope and pre-existing: versions 0.23.0 through 0.27.0 have never been released
   (`changelog/CHANGELOG.md`'s newest release heading is 0.22.0), so `0.28.0` becomes the sixth
   unreleased floor. ADR-0179 item 7 records this as a release-cadence matter it does not address.
