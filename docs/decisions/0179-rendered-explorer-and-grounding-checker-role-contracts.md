@@ -159,16 +159,24 @@ to any function or message text, so it needed no claim operation of its own.
    gains `RequiresAgent: "grounding-checker"`. Two mechanical consequences land in the same commit.
    `nonReviewingDispatchers` (`internal/catalog/catalog_test.go:107-110`) is a closed allowlist and
    `TestReviewingSkillSpecsArePaired` errors at `:123` on any non-`reviewing-` skill carrying
-   `RequiresAgent`, so both new pairings fail until that map names them. Eight fixtures enable
+   `RequiresAgent`, so both new pairings fail until that map names them. Nine fixtures enable
    `exploring` or `brainstorming` without the paired agent and fail project open until they add it:
    `internal/project/render_tree_test.go:115` and `:141`,
-   `internal/project/skillrefs_test.go:88` and `:102`,
-   `internal/project/context_artifacts_test.go:260`, `internal/project/target_test.go:367` and `:455`,
-   and `internal/migrate/closeenabledset_test.go:82`. Seven of them carry a bare `agents: []`; the
-   exception is `explorationFixtureConfig` at `target_test.go:367`, whose list is populated but predates
-   both new agents. `internal/project/project_test.go:1458` is deliberately not in this list: it pairs
-   `brainstorming` with a `local: true` sidecar precisely to prove that a local artifact skips the
-   closure check, so it must keep passing untouched. The
+   `internal/project/skillrefs_test.go:88`, `internal/project/context_artifacts_test.go:260`,
+   `internal/project/unused_test.go:63` and `:175`, `internal/project/spine_test.go:1704`, and
+   `internal/project/target_test.go:367` and `:455`. Eight carry a bare `agents: []`; the exception is
+   `explorationFixtureConfig` at `target_test.go:367`, whose list is populated but predates both new
+   agents.
+
+   The discriminator is whether a site reaches `Open` with a non-local dispatching skill, not whether its
+   config names one, because `checkNodeRequirements` only errors while the `applyCloseEnabledSet`
+   migration path self-heals. Three sites that look affected are therefore not:
+   `internal/project/project_test.go:1458` and `internal/project/skillrefs_test.go:102` each pair
+   `brainstorming` with a `local: true` sidecar, which `checkKindAgainstCatalog` skips outright
+   (`internal/project/validate.go:105`), the first of them precisely to prove that exemption;
+   `internal/migrate/closeenabledset_test.go:82` never opens a project at all, since `closeFixture` only
+   writes config and sidecars. That last fixture instead gains an assertion that the migration closes the
+   new pairing edge, which its currently-empty positive-want loop asserts nothing about today. The
    `target_test.go:455` fixture must gain `agents: [explorer]` specifically, or item 8's revised
    `TestBoundedExplorationReporting` cannot render the body it asserts against. The `RequiresAgent`
    doc comment (`internal/catalog/catalog.go:57-61`) enumerates the field's users as reviewers plus
