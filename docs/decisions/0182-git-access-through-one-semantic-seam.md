@@ -81,11 +81,12 @@ The test lane splits the same way. Fourteen test files import go-git outside
 cannot express: unmerged index entries, submodule gitlinks, allow-empty commits, add-all
 staging, branch refs), and gitfixture's own signatures return go-git types
 (`*git.Repository`, `plumbing.Hash`), so no single-home claim over test fixtures is possible
-without reshaping its API. A further eight test files build git state by shelling out to
-git at thirteen sites (`internal/project/context_test.go`, `internal/project/topics_test.go`,
-`internal/worktree/manager_test.go`, `internal/effort/store_test.go`, `cmd/awf/topic_test.go`,
-`cmd/awf/context_test.go`, `cmd/awf/audit_test.go`, `internal/migrate/remove_workflow_residents_test.go`),
-including registered managed worktrees, a state go-git cannot express at all. gitfixture cannot consume the production seam:
+without reshaping its API. Further test files build git state by shelling out to git
+(`internal/project/context_test.go`, `internal/project/topics_test.go`,
+`internal/worktree/manager_test.go`, `internal/effort/store_test.go`,
+`cmd/awf/topic_test.go`, `cmd/awf/context_test.go`, `cmd/awf/effort_test.go`,
+`cmd/awf/run_test.go`, `internal/migrate/remove_workflow_residents_test.go`), including
+registered managed worktrees, a state go-git cannot express at all. gitfixture cannot consume the production seam:
 `tooling/quality-gates:testsupport-zero-internal-deps` forbids it importing any internal
 package and explicitly permits go-git within gitfixture, so its carve-out is mechanically
 forced, not stylistic.
@@ -142,10 +143,14 @@ exists under `internal/git/`, so the path transfer is marker-safe.
 
 3. The entrypoint inventory, grouped by consumer need: object and tree reads (staged-tree
    blobs, commit-tree blobs, range-pair blobs, working-tree paths with authoritative
-   ignore semantics, head existence and hash); the commit-range walk (revision resolution,
-   merge base, commit enumeration with metadata, per-file change stats, old and new blob
-   text), whose neutral `Commit`/`FileChange` types move from `internal/audit` into the
-   seam; repository topology (control roots, worktree registrations); the worktree
+   ignore semantics, head existence and hash, and changed paths across working, staged,
+   and range selections - today's exported `ChangedPaths`, which becomes a handle
+   method); the commit-range walk (revision resolution, merge base exposed as its own
+   entrypoint, commit enumeration with metadata, per-file change stats, changed paths
+   and unified diff text for a revision range, and old and new blob text - the last
+   three serving the repo-local audit tooling), whose neutral `Commit`/`FileChange`
+   types move from `internal/audit` into the seam; repository topology (control roots,
+   worktree registrations); the worktree
    lifecycle (add, remove, list, ancestor); effort operations (branch existence, ref-name
    validation); and exactly one cleanliness oracle (working-tree change counts) consumed
    by both the audit rule and worktree refusal. Which backend serves an entrypoint is
@@ -184,11 +189,17 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    deletes; its consumer-owned runner contract is satisfied by seam-backed wiring;
    `ancestor` becomes a seam entrypoint), `internal/effort` (`nativeGit`,
    `nativeBranchExists`, and the inline `check-ref-format` exec delete), `cmd/awf`
-   (composition wiring), and `cmd/repoaudit` (`realGit` and `gitError` convert; ADR-0073's
-   standalone posture governs coupling to `internal/audit`, not to `internal/git`, which
-   repoaudit already imports). `project.Open` and `Loader.Open` gain a context parameter,
-   so every gated command's entry path threads a deadlined context; this is the widest
-   single signature change in the conversion and is deliberate.
+   (composition wiring), and `cmd/repoaudit` (`realGit`, `gitError`, and the raw-argv
+   `gitFunc` contract convert: the tool's needs are met by a narrow consumer-owned
+   contract over the merge-base, range changed-paths, range diff-text, and file-text
+   entrypoints; ADR-0073's standalone posture governs coupling to `internal/audit`, not
+   to `internal/git`, which repoaudit already imports). `project.Open` and `Loader.Open`
+   gain a context parameter, so every gated command's entry path threads a deadlined
+   context; this is the widest single signature change in the conversion and is
+   deliberate. The handle itself is a construction-time dependency of the loader and
+   the project value it opens - selected at the composition root and written once at
+   construction, a dependency under `outer-composition` rather than operation-derived
+   state - while cancellation stays per-operation.
 
 7. The composition around the seam converts in the same effort under existing ADR-0178
    authority: `effort.Open` and `worktree.Open` take their volatile dependencies
@@ -223,9 +234,10 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     test files need (unmerged index entries, explicit filemodes including gitlinks,
     allow-empty commits, add-all staging, branch refs); a native-git lane expresses what
     go-git cannot (registered managed worktrees and their topology), converting the
-    eight test files that build git state by shelling out at thirteen sites. Exported
-    signatures reshape to neutral types so a consuming test needs neither a go-git
-    import nor a git subprocess; all twenty-two files convert. The `fixture-single-home`
+    test files that build git state by shelling out. Exported signatures reshape to
+    neutral types so a consuming test needs neither a go-git import nor a git
+    subprocess; every file either walker flags converts (twenty unique files at the
+    authoring census, indicative). The `fixture-single-home`
     walker covers both forms, flagging any test file outside its allowlist that imports
     go-git or constructs a git subprocess; the allowlist is gitfixture itself and
     `internal/git`'s own test files, which exercise the mechanism the seam owns.
@@ -298,9 +310,9 @@ thread a handle, roughly fifteen worktree/effort methods gain or lose parameters
 post-construction test writes are retired in favour of per-instance fakes, and converted
 packages become parallelisable except the isolation and missing-binary suites, which
 `t.Setenv` keeps serial by construction. The gitfixture reshape is the largest single work
-item, now spanning two construction lanes and twenty-two converted files; it is what the
-total fixture-single-home claim costs, and the user chose it deliberately over a staged
-posture, twice.
+item, now spanning two construction lanes and the whole converted fixture census; it is
+what the total fixture-single-home claim costs, and the user chose it deliberately over a
+staged posture, twice.
 
 A later backend migration, either direction, becomes a per-entrypoint decision guarded by
 that entrypoint's contract suite, which is the option value this seam buys. Nothing
