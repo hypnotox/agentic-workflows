@@ -95,7 +95,7 @@ type DocEntry struct {
 	TID         string
 	DocumentMap bool
 	AgentsDoc   bool
-	// Generated marks a Mandatory doc rendered outside RenderAll from computed
+	// Generated marks a Mandatory doc rendered outside the ordinary render pass from computed
 	// project state (the config reference): excluded from plainSingletons and
 	// hash checking, regeneration-checked like INDEX.md and topic navigation.
 	Generated bool

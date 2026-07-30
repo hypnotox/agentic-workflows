@@ -13,7 +13,7 @@ import {
   RECOMMENDED_PRESET,
   ROUTING_CARD_OVERFLOW_WARNING,
   buildRoutingCard,
-  createPreferenceStore,
+  loadPreferenceState,
   effectivePreferenceState,
   emptyPreferenceSource,
   invalidText,
@@ -230,21 +230,19 @@ test("routing policy covers sorting, preview, registry, store, and inherited sea
   const malformed = emptyPreferenceSource("global", "/g");
   malformed.values.default = "bad";
   assert.deepEqual(registryFailures(h.ctx.modelRegistry, [malformed]), [{ kind: "field", scope: "global", field: "default", reason: "malformed" }]);
-  const stateStore: any = { state: () => effectivePreferenceState(emptyPreferenceSource("global", "/g"), emptyPreferenceSource("project", "/p"), []) };
-  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, stateStore), {
+  const state = effectivePreferenceState(emptyPreferenceSource("global", "/g"), emptyPreferenceSource("project", "/p"), []);
+  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, state), {
     model: { provider: "test", id: "parent" }, requested: undefined, source: "inherited",
   });
-  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, undefined, "grounding", undefined, stateStore), /without an active parent model/);
-  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "ghost/model", stateStore), /unregistered/);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, undefined, "grounding", undefined, state), /without an active parent model/);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "ghost/model", state), /unregistered/);
   h.addModel("locked/model", false);
-  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "locked/model", stateStore), /unauthenticated/);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "locked/model", state), /unauthenticated/);
   h.addModel("gone/model", true, false);
-  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "gone/model", stateStore), /unavailable/);
+  assert.throws(() => resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", "gone/model", state), /unavailable/);
 
-  const primitiveFailure = createPreferenceStore({ ...h.deps, readFile: async () => { throw "primitive"; } });
-  await primitiveFailure.ready();
-  await primitiveFailure.reload();
-  assert.deepEqual(primitiveFailure.state().errors, ["global:source:read-error", "project:source:read-error"]);
+  const primitiveFailure = await loadPreferenceState({ ...h.deps, readFile: async () => { throw "primitive"; } }, h.ctx.modelRegistry);
+  assert.deepEqual(primitiveFailure.errors, ["global:source:read-error", "project:source:read-error"]);
 });
 
 test("before_agent_start injects current routing once with selectedTools precedence and active-tool fallback", async () => {
@@ -323,30 +321,47 @@ test("preference states are complete only after explicit project-over-global fie
     if (project !== undefined) files[PROJECT] = JSON.stringify(project);
     const h = harness({ files });
     registerObject(h, { ...(global as any), ...(project as any) });
-    const store = createPreferenceStore(h.deps);
-    await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
-    assert.deepEqual(store.state().missing, missing, label);
-    assert.equal(store.state().blocked, blocked, label);
+    const state = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+    assert.deepEqual(state.missing, missing, label);
+    assert.equal(state.blocked, blocked, label);
   }
 
   const global = complete("g");
   const project = { exploration: "p/exploration", small: "p/small" };
   const h = harness({ files: { [GLOBAL]: JSON.stringify(global), [PROJECT]: JSON.stringify(project) } });
   registerObject(h, { ...global, ...project });
-  const store = createPreferenceStore(h.deps);
-  await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
-  assert.deepEqual(store.state().effective.exploration, { reference: "p/exploration", scope: "project" });
-  assert.deepEqual(store.state().effective.small, { reference: "p/small", scope: "project" });
-  assert.equal(store.state().missing.length, 0);
+  const state = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+  assert.deepEqual(state.effective.exploration, { reference: "p/exploration", scope: "project" });
+  assert.deepEqual(state.effective.small, { reference: "p/small", scope: "project" });
+  assert.equal(state.missing.length, 0);
 });
 
 test("shared default routes but does not satisfy explicit role completeness", async () => {
   const h = harness({ files: { [GLOBAL]: JSON.stringify({ default: "p/model" }) } });
   const result = await call(h, "subagent_grounding", { task: "ground" });
   assert.equal(result.value.details.modelSource, "global-default");
-  const store = createPreferenceStore(h.deps);
-  await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
-  assert.ok(store.state().missing.includes("grounding"));
+  const state = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+  assert.ok(state.missing.includes("grounding"));
+});
+
+test("preference state is derived per call from its parameters rather than a mutable holder", async () => {
+  const values = complete("g");
+  const h = harness({ files: { [GLOBAL]: JSON.stringify(values) } });
+  registerObject(h, values);
+
+  const first = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+  const second = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+  assert.notStrictEqual(first, second, "each derivation returns its own value");
+  assert.deepEqual(second, first, "unchanged sources derive equal state");
+  assert.equal(first.blocked, false);
+
+  // The registry is a parameter, so the next derivation reflects a registry
+  // change with no reload or revalidate step on any longer-lived value.
+  h.available.delete(values.grounding);
+  const afterRegistryChange = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+  assert.equal(afterRegistryChange.blocked, true);
+  assert.deepEqual(afterRegistryChange.errors, ["global:grounding:unavailable"]);
+  assert.equal(first.blocked, false, "an earlier derived value is unaffected by a later derivation");
 });
 
 test("bounded source and field failures are deterministic, block implicit routing, and do not leak raw input", async () => {
@@ -361,10 +376,9 @@ test("bounded source and field failures are deterministic, block implicit routin
   ];
   for (const [label, source, expected] of cases) {
     const h = harness({ files: { [GLOBAL]: source } });
-    const store = createPreferenceStore(h.deps);
-    await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
-    assert.equal(store.state().errors[0], expected, label);
-    const serialized = JSON.stringify(store.state());
+    const state = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+    assert.equal(state.errors[0], expected, label);
+    const serialized = JSON.stringify(state);
     for (const raw of ["raw-secret", "secretUnknownKey", "raw disk secret"]) assert.equal(serialized.includes(raw), false, `${label} leaked ${raw}`);
     await assert.rejects(call(h, "subagent_grounding", { task: "x" }), /implicit routing is blocked/);
     const explicit = await call(h, "subagent_grounding", { task: "x", model: "p/model" });
@@ -375,9 +389,8 @@ test("bounded source and field failures are deterministic, block implicit routin
   h.addModel("locked/model", false, true);
   h.addModel("gone/model", true, false);
   h.addModel("later/model", true, false);
-  const store = createPreferenceStore(h.deps);
-  await store.reload(); store.validateAgainstRegistry(h.ctx.modelRegistry);
-  assert.deepEqual(store.state().errors, [
+  const state = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
+  assert.deepEqual(state.errors, [
     "global:default:unauthenticated", "global:grounding:unavailable", "project:small:unavailable", "project:large:malformed",
   ]);
 });

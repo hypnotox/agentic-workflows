@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [180]
-status: Proposed
+status: Implemented
 ---
 # Plan: State ownership pattern and its two conversions
 
@@ -564,6 +564,73 @@ Whole-effort acceptance, beyond the per-phase gates:
 
 ## Notes
 
+### Deviations surfaced during execution
+
+1. **Phase 1 task order 1.7/1.8 swapped.** Task 1.7's `./x render && ./x check` cannot reach its declared
+   `awf check: clean` terminal state before task 1.8, and it failed exactly that way on first run: the
+   four new claims' `Origin: ADR-0180` and the updated claim's `Revised-by: ADR-0180` are only legal once
+   the Applied batch exists, which task 1.8 lands. Task 1.8 already required its own re-render, so the ADR
+   edits ran first and the render and check then went clean. An ordering correction inside one phase
+   transaction, not a scope change.
+2. **Task 1.4's trigger noun adapted per sidecar.** The task gave one description opening "when the diff
+   changes ...". That wording is used verbatim in `code-reviewer.yaml`, while `adr-reviewer.yaml` reads
+   "when the ADR changes ..." and `plan-reviewer.yaml` "when a plan changes ...", matching each file's own
+   `dependency-composition-authority` entry. `git show a7c7eb95 -- .awf/agents/`, which the task itself
+   directs the executor to read, set that precedent. Everything after the trigger clause is verbatim.
+3. **Phase 2 had to touch `internal/project/target_test.go`,** which the File structure section never
+   named. Three Go tests pin the rendered TypeScript by substring and went red: `TestPiRuntimeTargetRender`
+   listed `export function createPreferenceStore` among six owned-policy symbols, and
+   `TestPiSubagentModelPreferencesRender` and `TestPiSubagentModelWizardRender` both pinned
+   `await preferences.reload()`. Each now asserts the same property against the new shape
+   (`export async function loadPreferenceState`, `await loadPreferenceState(deps, ctx.modelRegistry)`).
+   No assertion was weakened. The first test backs `rendering/pi-runtime:pi-extension-target-render`,
+   whose claim is about module ownership of preference policy; the new symbol occupies the old one's role,
+   so the claim stays true and its proof still exercises it.
+4. **`RenderAll` lost its last production caller** once `AdvisoryNotes` and `ConfigReferenceModel` derived
+   their own state and entered through `outputPlan`, so `./x gate`'s deadcode pass flagged it. The plan
+   foresaw this for `Corpus` and `Topics` but not for `RenderAll`. Deleting it outright would have churned
+   49 test call sites, so it moved to `internal/project/export_test.go` beside the existing test-only
+   `Sync`, this repository's established pattern for that situation (ADR-0063).
+5. **Six tests pinned faults through helpers that no longer derive.** A helper receiving its corpus can no
+   longer fail on a malformed ADR or an unassemblable topic corpus, so that fault now has exactly one
+   site. Those cases were retargeted onto the derivation
+   (`TestDeriveOperationStateSurfacesMalformedADR`, `TestDeriveOperationStateSurfacesTopicAssemblyError`),
+   and four duplicates asserting the same fault at the same site were removed. Each removed test pinned a
+   code path that no longer exists, the same reasoning task 3.5 applies to an exclusion whose branch is
+   gone.
+
+### What phase 3 built, where the plan left the shape to judgment
+
+One private `deriveOperationState() (adr.Corpus, topic.Corpus, map[string]bool, error)` on `*Project`,
+called once at each deriving entry (`Check`, `syncReport`, `AdvisoryNotes`, `ConfigReferenceModel`, and
+`OutputPlan` when entered directly). Exported `OutputPlan()` derives and delegates to a private
+`outputPlan(corpus, topics, eff)`; every nested operation enters there and receives. Threading the
+effective skill set reaches `data()` (10 call sites), `artifactConfigHash` (2), `renderTarget` (10), and
+`renderKind` (3), which is why `eff` sits before each variadic parameter.
+
+Task 3.5's outcome, stated as its terminal condition rather than a count, because ADR-0180 item 9's
+condition is a property of the surviving set and an earlier draft of this paragraph miscounted every
+category: after the conversion, `grep -rn "coverage-ignore" internal/project/ | grep -v _test` returns no
+justification that rests on the ADR corpus, the topic corpus, or the effective skill set being shared
+across a pass. Threading deleted several exclusions outright along with the error returns they guarded,
+including `checkADRRelatedLinks`' entire error return. Several survivors named a mechanism the conversion
+falsified and were re-derived. Several are new, because deriving at operation entry PRE-EMPTS faults that
+previously surfaced deeper, and one inherited exclusion was dropped because its branch became reachable.
+
+Terminal implementation review then refuted five of the new or rewritten justifications by execution and
+they were replaced with covering tests rather than better prose: `AdoptionBoundary` has two live error
+paths beyond the ADR parse (duplicate identity, brownfield marker); `checkPitfalls` and `pitfallTagEntries`
+read a `local: true` pitfalls sidecar that the render pass skips before its transform;
+`BuildOutputDeclarations` has two production callers that do not derive first; and the two
+derivation-forwarding branches in `AdvisoryNotes` and `ConfigReferenceModel` asserted "tested elsewhere",
+which is not an unreachability claim. LESSON: moving a derivation earlier relocates every fault it can
+raise, in both directions, and a justification of the form "an earlier pass already did this" must name
+the exact pass and be checked against every caller, not just the one in front of you.
+
+### Other notes
+
+- The Pi conversion's conformance rests on review plus the existing `tools/pi-extension-test` suite that
+  `./x gate` runs, not on an invariant claim of its own; ADR-0180 item 7 records why.
 - ADR-0180 item 7 records why the Pi conversion carries no `Backing: test` claim:
   `currentState.testGlobs` is `**/*_test.go`, so a proof marker cannot live in a TypeScript test. Its
   conformance rests on review plus the existing `tools/pi-extension-test` suite, which `./x gate` does

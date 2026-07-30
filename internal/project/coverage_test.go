@@ -263,7 +263,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := p.renderTarget("efforts", "", effortsTID, nil, sc, p.data(sc), ".awf/efforts/.gitignore", &renderOutputOptions{encode: func(string) (string, error) {
+	if _, err := p.renderTarget("efforts", "", effortsTID, nil, sc, p.data(sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
 		return "", errors.New("encode failure")
 	}}); err == nil {
 		t.Fatal("expected renderTarget to return the encoder error")
@@ -277,7 +277,7 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := p.renderTarget("skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, p.data(sc), ".claude/skills/example-ghost/SKILL.md"); err == nil {
+	if _, err := p.renderTarget("skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, p.data(sc, mustDeriveSkills(t, p)), ".claude/skills/example-ghost/SKILL.md", mustDeriveSkills(t, p)); err == nil {
 		t.Fatal("expected renderTarget to fail reading a nonexistent template")
 	}
 }
@@ -290,7 +290,7 @@ func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.artifactConfigHash("body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}); err == nil {
+	if _, err := p.artifactConfigHash("body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}, mustDeriveSkills(t, p)); err == nil {
 		t.Fatal("expected artifactConfigHash to fail reading a missing part file")
 	}
 }

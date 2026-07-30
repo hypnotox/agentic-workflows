@@ -18,3 +18,15 @@ func (p *Project) Sync() error {
 	_, _, _, err = p.SyncReport()
 	return err
 }
+
+// RenderAll renders only plan write nodes in deterministic path order - a
+// test-only convenience for the many in-package tests that assert over the
+// rendered set. Production operations derive their own state once and enter
+// through outputPlan, so no production caller remains (ADR-0063, ADR-0180).
+func (p *Project) RenderAll() ([]RenderedFile, error) {
+	op, err := p.OutputPlan()
+	if err != nil {
+		return nil, err
+	}
+	return op.writeFiles(), nil
+}

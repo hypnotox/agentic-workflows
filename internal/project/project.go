@@ -113,16 +113,6 @@ type Project struct {
 	Cat          *catalog.Catalog
 	Targets      []Target
 	standard     *catalog.Catalog
-	// effSkills is the effective rendered skill set (enabled minus doc-gate-
-	// suppressed, local kept), populated by RenderAll; templates read it as
-	// .skills and artifactConfigHash folds it in for .skills-referencing
-	// templates (ADR-0046).
-	effSkills map[string]bool
-	// corpus is the lazily-loaded parsed ADR view (ADR-0130 item 1), threaded
-	// to every consumer that needs an ADR fact instead of each one loading.
-	corpus *adr.Corpus
-	// topics is the lazily loaded current-state producer corpus for one invocation.
-	topics *topic.Corpus
 }
 
 // Open is the transitional compatibility entry point for callers not yet
@@ -235,7 +225,10 @@ func (p *Project) InitializeReport(seed InitAuthority) ([]Backup, []Change, []st
 }
 
 func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string, error) {
-	p.beginInvocation()
+	corpus, topics, eff, err := p.deriveOperationState()
+	if err != nil {
+		return nil, nil, nil, err
+	}
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	old, found, err := manifest.LoadOptional(p.lockPath())
@@ -265,7 +258,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	op, err := p.OutputPlan()
+	op, err := p.outputPlan(corpus, topics, eff)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -464,32 +457,32 @@ func (p *Project) outputPath(path string) string {
 	return filepath.Join(p.Root, filepath.FromSlash(path))
 }
 
-// beginInvocation drops any per-invocation cached state, so the operation that
-// follows observes the decisions directory as it is on disk now. Every public
-// operation that reads ADRs calls it before its first Corpus use.
-func (p *Project) beginInvocation() { p.corpus, p.topics = nil, nil }
-
-// Corpus returns the project's parsed ADR corpus, loading it on first use
-// within the current invocation and reusing it for the rest of that invocation
-// (ADR-0130 item 1). Threading one view is what collapses the eight-or-so
-// per-check parses a single awf check used to perform.
+// deriveOperationState derives the three values a lifecycle operation needs
+// from disk: the parsed ADR corpus, the current-state topic corpus built from
+// it, and the effective rendered skill set. The operation that calls this owns
+// the result and threads it to its consumers, so nothing derived here outlives
+// the call and no consumer re-derives it (ADR-0180).
 //
-// The cache is per-INVOCATION, not per-Project: every public operation that
-// reads ADRs calls beginInvocation first. A Project outlives a single call, and
-// Check's whole contract is to compare rendered output against the decisions
-// directory as it is on disk right now - so a corpus held across calls would
-// make a Check following a Sync miss an ADR written in between, silently
-// blinding the drift oracle rather than merely serving a stale read.
-func (p *Project) Corpus() (adr.Corpus, error) {
-	if p.corpus != nil {
-		return *p.corpus, nil
-	}
-	c, err := adr.LoadCorpus(p.decisionsDir())
+// Deriving per operation is what keeps Check's contract honest. Check compares
+// rendered output against the decisions directory as it is on disk right now,
+// so a corpus held on the Project across calls would make a Check following a
+// Sync miss an ADR written in between, silently blinding the drift oracle
+// rather than merely serving a stale read. A value that cannot outlive the
+// operation cannot go stale, so no caller has to remember to reset it.
+func (p *Project) deriveOperationState() (adr.Corpus, topic.Corpus, map[string]bool, error) {
+	corpus, err := adr.LoadCorpus(p.decisionsDir())
 	if err != nil {
-		return adr.Corpus{}, err
+		return adr.Corpus{}, topic.Corpus{}, nil, err
 	}
-	p.corpus = &c
-	return c, nil
+	topics, err := topic.LoadCorpus(p.Root, p.Cfg, corpus)
+	if err != nil {
+		return adr.Corpus{}, topic.Corpus{}, nil, err
+	}
+	eff, err := p.effectiveSkills()
+	if err != nil {
+		return adr.Corpus{}, topic.Corpus{}, nil, err
+	}
+	return corpus, topics, eff, nil
 }
 
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied

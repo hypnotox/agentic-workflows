@@ -5,8 +5,42 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+// mustDeriveCorpus derives the operation-owned ADR corpus the way a lifecycle
+// entry does, so a helper test exercises the same threaded value production
+// passes it (ADR-0180).
+func mustDeriveCorpus(t *testing.T, p *Project) adr.Corpus {
+	t.Helper()
+	corpus, _, _, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatalf("derive operation state: %v", err)
+	}
+	return corpus
+}
+
+// mustDeriveTopics derives the operation-owned topic corpus the same way.
+func mustDeriveTopics(t *testing.T, p *Project) topic.Corpus {
+	t.Helper()
+	_, topics, _, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatalf("derive operation state: %v", err)
+	}
+	return topics
+}
+
+// mustDeriveSkills derives the operation-owned effective skill set the same way.
+func mustDeriveSkills(t *testing.T, p *Project) map[string]bool {
+	t.Helper()
+	_, _, eff, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatalf("derive operation state: %v", err)
+	}
+	return eff
+}
 
 const pitfallsCheckCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: [rendering]\n"
 
@@ -18,7 +52,7 @@ func TestCheckPitfallsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkPitfalls()
+	drift, err := p.checkPitfalls(mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Errorf("disabled pitfalls must yield no drift, got %v / %v", drift, err)
 	}
@@ -42,7 +76,7 @@ func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkPitfalls()
+	drift, err := p.checkPitfalls(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkPitfalls: %v", err)
 	}
@@ -63,13 +97,13 @@ func TestCheckPitfallsStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkPitfalls(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := p.checkPitfalls(mustDeriveCorpus(t, p)); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected structural error, got %v", err)
 	}
 }
 
 // A malformed ADR aborts the check via adr.ParseDir.
-func TestCheckPitfallsADRParseError(t *testing.T) {
+func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: ok\n",
 	})
@@ -79,7 +113,7 @@ func TestCheckPitfallsADRParseError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkPitfalls(); err == nil {
+	if _, _, _, err := p.deriveOperationState(); err == nil {
 		t.Fatal("expected adr.ParseDir error for malformed frontmatter, got nil")
 	}
 }
@@ -101,7 +135,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary()
+	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkTagVocabulary: %v", err)
 	}
@@ -126,7 +160,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary()
+	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Fatalf("empty vocabulary must be inert, got %#v / %v", drift, err)
 	}
@@ -145,7 +179,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary()
+	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Fatalf("conforming ADR with pitfalls disabled must yield no drift, got %#v / %v", drift, err)
 	}
@@ -164,10 +198,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkADRRelatedLinks()
-	if err != nil {
-		t.Fatalf("checkADRRelatedLinks: %v", err)
-	}
+	drift := p.checkADRRelatedLinks(mustDeriveCorpus(t, p))
 	if len(drift) != 1 || drift[0].Kind != "adr-related-link" || !strings.Contains(drift[0].Detail, "0042") {
 		t.Fatalf("want one adr-related-link(0042) drift, got %#v", drift)
 	}
@@ -202,10 +233,7 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkADRRelatedLinks()
-	if err != nil {
-		t.Fatalf("checkADRRelatedLinks: %v", err)
-	}
+	drift := p.checkADRRelatedLinks(mustDeriveCorpus(t, p))
 	kinds := map[string][]string{}
 	for _, d := range drift {
 		kinds[d.Kind] = append(kinds[d.Kind], d.Detail)
@@ -248,35 +276,6 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 	}
 }
 
-// The two methods' adr.ParseDir branches are reachable via direct calls (they
-// are pre-empted only inside full Check() by checkPlans), so they are tested,
-// not coverage-ignored - mirroring TestCheckPitfallsADRParseError.
-func TestCheckTagVocabularyADRParseError(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  rendering: x\n", nil)
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.checkTagVocabulary(); err == nil {
-		t.Fatal("expected adr.ParseDir error, got nil")
-	}
-}
-
-func TestCheckADRRelatedLinksParseError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.checkADRRelatedLinks(); err == nil {
-		t.Fatal("expected adr.ParseDir error, got nil")
-	}
-}
-
 // checkTagVocabulary's pitfallTagEntries branch surfaces a malformed pitfalls
 // sidecar (valid ADRs so ParseDir succeeds first; non-empty vocabulary so the
 // method proceeds past the len==0 guard) - reachable, tested not ignored.
@@ -290,7 +289,7 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.checkTagVocabulary(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := p.checkTagVocabulary(mustDeriveCorpus(t, p)); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected pitfalls structural error, got %v", err)
 	}
 }
@@ -320,7 +319,7 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	write("2026-07-12-bad-status.md", "---\ndate: 2026-07-12\nadrs: [1]\nstatus: Draft\n---\n# Plan: Bad Status\n")
 	write("2026-06-24-legacy.md", "# Plan: Legacy\n\nNo frontmatter, grandfathered.\n")
 
-	drift, err := p.checkPlans()
+	drift, err := p.checkPlans(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkPlans: %v", err)
 	}
@@ -351,7 +350,7 @@ func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	if _, err := p.checkPlans(); err == nil {
+	if _, err := p.checkPlans(mustDeriveCorpus(t, p)); err == nil {
 		t.Fatal("expected plan.ParseDir error for malformed frontmatter, got nil")
 	}
 }
@@ -377,7 +376,7 @@ func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 	write("2026-07-14-scope.md", fm+"```commit\nfeat(nope): unknown scope\n```\n")
 	write("2026-07-14-ok.md", fm+"```commit\nfeat(awf): fine\n```\n")
 
-	drift, err := p.checkPlans()
+	drift, err := p.checkPlans(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkPlans: %v", err)
 	}
@@ -452,21 +451,6 @@ func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
 	}
 }
 
-// TestCheckPlansPropagatesADRParseError covers checkPlans' adr.ParseDir error
-// branch: a malformed ADR aborts the check.
-func TestCheckPlansPropagatesADRParseError(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	if _, err := p.checkPlans(); err == nil {
-		t.Fatal("expected adr.ParseDir error for malformed frontmatter, got nil")
-	}
-}
-
 // TestCheckPropagatesPlanError covers Check's propagation of a checkPlans error:
 // a synced, otherwise-clean project with a malformed plan makes full Check fail.
 func TestCheckPropagatesPlanError(t *testing.T) {
@@ -495,7 +479,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.checkTagVocabulary()
+	drift, err := p.checkTagVocabulary(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +499,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift2, err := p2.checkTagVocabulary()
+	drift2, err := p2.checkTagVocabulary(mustDeriveCorpus(t, p2))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,5 +507,66 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 		if d.Kind == "tag-domain-collision" {
 			t.Errorf("no collision expected with no domains; got %+v", drift2)
 		}
+	}
+}
+
+// A local: true pitfalls sidecar is skipped by the render pass before its
+// data.pitfalls transform runs, but checkPitfalls reads it regardless, so a
+// structurally invalid entry list reaches Check's wiring branch rather than
+// failing earlier in the render.
+func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\n",
+		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: B\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/pitfalls.yaml"), "local: true\ndata:\n  pitfalls: just a string\n")
+	reopened, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.Check(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected Check to propagate the local pitfalls structural error, got %v", err)
+	}
+}
+
+// AdvisoryNotes and ConfigReferenceModel both forward the operation
+// derivation's fault; a malformed ADR reaches each one's wiring branch.
+func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	if _, err := p.AdvisoryNotes(); err == nil {
+		t.Fatal("expected AdvisoryNotes to surface the malformed ADR, got nil")
+	}
+	if _, err := p.ConfigReferenceModel(); err == nil {
+		t.Fatal("expected ConfigReferenceModel to surface the malformed ADR, got nil")
+	}
+}
+
+// A first adoption whose decisions dir parses but carries two ADRs with the
+// same number fails authority sealing after the entry derivation succeeded.
+func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	for _, name := range []string{"0001-alpha.md", "0001-beta.md"} {
+		testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name),
+			testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+				testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
+	}
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err == nil ||
+		!strings.Contains(err.Error(), "seal first-adoption ADR authority") {
+		t.Fatalf("expected duplicate ADR identity to fail authority sealing, got %v", err)
 	}
 }

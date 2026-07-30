@@ -46,10 +46,11 @@ Verify: For each newly exported or shared composition symbol, trace its producti
 
 ### `invariant: dependency-composition-commit-classification`
 
-Dependency-composition and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
+Code-design authority and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
 Origin: ADR-0178
+Revised-by: ADR-0180
 Backing: unbacked
-Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check commit` against the planned dependency-composition subjects after the staged scope addition.
+Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check commit` against the planned code-design subjects.
 
 ### `invariant: sync-project-loader-wiring`
 

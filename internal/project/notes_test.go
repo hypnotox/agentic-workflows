@@ -349,7 +349,7 @@ func TestTagHealthNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes()
+	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes()
+	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -403,7 +403,7 @@ func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes()
+	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -422,7 +422,7 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes()
+	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -437,20 +437,6 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	}
 }
 
-// A malformed ADR surfaces as an error from tagHealthNotes' adr.ParseDir.
-func TestTagHealthNotesADRParseError(t *testing.T) {
-	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := p.tagHealthNotes(); err == nil {
-		t.Fatal("expected adr.ParseDir error, got nil")
-	}
-}
-
 // A malformed pitfalls sidecar surfaces as an error from tagHealthNotes'
 // pitfallTagEntries (only reached once the vocabulary is non-empty and the ADRs parse).
 func TestTagHealthNotesPitfallError(t *testing.T) {
@@ -461,7 +447,7 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.tagHealthNotes(); err == nil {
+	if _, err := p.tagHealthNotes(mustDeriveCorpus(t, p)); err == nil {
 		t.Fatal("expected pitfallTagEntries structural error, got nil")
 	}
 }
@@ -478,7 +464,7 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.tagHealthNotes()
+	notes, err := p.tagHealthNotes(mustDeriveCorpus(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
