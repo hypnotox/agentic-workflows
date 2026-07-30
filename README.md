@@ -247,7 +247,7 @@ The Pi extension is executable project code loaded behind Pi's project-trust pro
 files are drift-checked; use `awf render` to restore missing or modified copies.
 
 `awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
-`adr-lifecycle`, and `exploring`) and every catalog agent. The workflow, documentation, and agent-guide standards sit outside
+`adr-lifecycle`, and `exploring`) and the agents those skills dispatch. The workflow, documentation, and agent-guide standards sit outside
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
 

@@ -376,13 +376,18 @@ func TestExplorerAgent(t *testing.T) {
 	if !strings.Contains(out, "name: explorer") {
 		t.Errorf("expected 'name: explorer' in output:\n%s", out)
 	}
-	// One phrase per section, so a dropped section fails loudly.
+	// One literal per clause the claim enumerates, so a dropped section fails
+	// loudly and no clause of the claim outruns its proof.
 	for _, want := range []string{
+		"This is report-only: do not edit files or commit",
 		"Handle exactly one information need",
+		"Do not bundle unrelated questions and do not recursively delegate",
 		"refinement of an earlier result stays sequential",
 		"Breadth is ordered targeted < bounded < broad",
 		"paths < summary < analysis",
+		"independent of breadth",
 		"Ground every material claim with file:line evidence",
+		"Return only the relevant final report, never the search narrative or intermediate activity",
 		"Retain no search session or state",
 	} {
 		if !strings.Contains(out, want) {
@@ -412,12 +417,25 @@ func TestGroundingCheckerAgent(t *testing.T) {
 	for _, want := range []string{
 		"do not edit files or commit",
 		"Work only from the brief you were given",
+		"never edit it",
+		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
+		"Assess whether the effort needs a decision record",
+		"Check convention fit",
 		"advisory and single-pass",
 		"open-question | possible-issue",
+		"confidence: verified | interpreted | unverified",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
+		}
+	}
+
+	// The claim's closing clause quantifies over BOTH bodies, so the negative
+	// sweep has to hold here too, not only in TestExplorerAgent.
+	for _, banned := range []string{"Selected breadth maximum", "at most ten active exploration children"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("per-call or runtime-specific text %q leaked into the rendered body:\n%s", banned, out)
 		}
 	}
 }

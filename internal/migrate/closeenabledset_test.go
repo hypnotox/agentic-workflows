@@ -59,7 +59,10 @@ func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(before), "- "+tc.consumer) && !strings.Contains(string(before), "skills: ["+tc.consumer+"]") {
+			// The closure rewrites only the agents key, so every consumer's skills
+			// line must survive in its original flow style. Accepting block style
+			// here would let a silent reserialization slip past.
+			if !strings.Contains(string(before), "skills: ["+tc.consumer+"]") {
 				t.Errorf("config changed unexpectedly:\n%s", before)
 			}
 			var second bytes.Buffer

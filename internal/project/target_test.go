@@ -385,6 +385,7 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 }
 
 // invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch
+// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts
 func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 	if !catalog.Standard.Skills["exploring"].Core {
 		t.Fatal("exploring is not a core skill")

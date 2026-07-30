@@ -804,6 +804,10 @@ test("the exploration role loads its contract from the rendered agent and append
   assert.match(prompt, /Explore within the boundary\./);
   assert.match(prompt, /Selected breadth maximum: targeted/);
   assert.match(prompt, /Selected report detail: paths/);
+  // The shared loader prepends the role's authority line and strips frontmatter,
+  // so a per-role divergence from it is caught here and not only for implement.
+  assert.equal(prompt.startsWith("You are the governed exploration subagent."), true);
+  assert.equal(prompt.includes("name: explorer"), false);
 
   const absent = harness();
   withAgentDoc(absent, ".pi/agents/explorer.md", ENOENT());
@@ -825,7 +829,10 @@ test("the grounding role loads its contract from the rendered agent and fails cl
   withAgentDoc(present, ".pi/agents/grounding-checker.md", "---\nname: grounding-checker\ndescription: test\n---\nTest the premises.");
   const { value } = await call(present, "subagent_grounding", { task: "x" });
   assert.notEqual(value.details.state, "failed");
-  assert.match(present.requests[0].systemPrompt, /Test the premises\./);
+  const prompt = present.requests[0].systemPrompt;
+  assert.match(prompt, /Test the premises\./);
+  assert.equal(prompt.startsWith("You are the governed grounding-check subagent."), true);
+  assert.equal(prompt.includes("name: grounding-checker"), false);
 
   const absent = harness();
   withAgentDoc(absent, ".pi/agents/grounding-checker.md", ENOENT());
