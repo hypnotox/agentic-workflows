@@ -56,7 +56,12 @@ steps rather than risking deletion next to ambiguous state.
    `"worktree": null`, and the next action names the invoking checkout. `show` and `list`
    keep their current shapes: the worktree field is a creation outcome report, not stored
    state, and Git remains the topology authority for later inspection. `schemaVersion`
-   stays 2; the effort object itself is unchanged.
+   stays 2; the effort object's shape is unchanged. Effort command output expresses the
+   owned memory path resolvably: when the invoking checkout is not the primary root, the
+   `memoryPath` value and the text `memory=` fact are primary-root-qualified absolute
+   paths; from the primary root the repository-relative form remains. Guides and
+   checkpoint partials keep the literal `.awf/efforts/<slug>/memory.md` form and state
+   that it is primary-root-relative.
 3. Default creation preserves standalone Add base semantics: the new branch starts at the
    invoking checkout's `HEAD`. `awf effort new --base <ref>` exposes the same base
    selection as `worktree add --base` and is invalid combined with `--no-worktree`.
@@ -77,7 +82,13 @@ steps rather than risking deletion next to ambiguous state.
 8. No runtime-specific relocation is added (Pi included): agents own moving their
    operations to the reported worktree. Command success and failure protocols carry the
    worktree state, location, and actionable next steps so that relocation is always
-   instructed, never assumed.
+   instructed, never assumed. One pre-existing contract is repaired in the same change:
+   Pi's rendered handoff extension resolves its repository root from its own rendered
+   location, so memory validation fails outright from any managed worktree (the rendered
+   extension's root is the worktree, where the effort memory does not exist). The handoff
+   root resolution is changed to the primary control root so `validateMemoryPath` accepts
+   the effort memory from any managed worktree. This is root resolution, not relocation:
+   the session still moves itself.
 9. Workflow, guide, checkpoint, and architecture authority follow the new default: the
    workflow doc's working-memory home, the rendered guides, the shared checkpoint
    partials, and the architecture overview direct effort execution to the effort's managed
@@ -92,7 +103,8 @@ steps rather than risking deletion next to ambiguous state.
     effort package when the operation is Applied. Operation motivation: items 1 and 4
     drive the added claim and the `managed-worktree-lifecycle` update; items 4 and 6 drive
     the `effort-record-authority` update; items 2, 3, and 5 drive the
-    `effort-command-contract` update; item 9 drives the two rendering-claim updates.
+    `effort-command-contract` update; item 9 drives the guide and checkpoint rendering
+    updates; item 8 drives the `pi-session-handoff-public-contract` update.
 
 ## State changes
 
@@ -102,6 +114,7 @@ steps rather than risking deletion next to ambiguous state.
 - update `tooling/cli:effort-command-contract`
 - update `rendering/guide-and-doc-templates:working-memory-single-home`
 - update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
+- update `rendering/pi-workflows:pi-session-handoff-public-contract`
 
 ## Consequences
 
