@@ -445,8 +445,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
-      "configHash": "sha256:29ef31288a836b486099c8cb9732c46dbdeaa933ccc396d9bf4b33fafdab483d",
-      "outputHash": "sha256:a2d87aeea45deacec5c8a9aaf946d092c8245d19a9e95e6e330ed9fce3ce1ce1"
+      "configHash": "sha256:54c6992cf729355b954c14d67eb74461630e2c6db54a3b5901ae7cc38ecf3323",
+      "outputHash": "sha256:98443ba22229afa5b2748b637d67a4dceab1cfe038323bdeaf996b171e1d51c2"
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",
@@ -756,9 +756,9 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:6f12fbc31cf0245d40c1f291bb66df2de5aa5a254a555100598b10cb5021e30a",
+      "templateHash": "sha256:07186d804a76648dfb69444a52bf4e6c6ca3ea8e39e2d38221173ab82f4f510b",
       "configHash": "sha256:ecba3d34f40258861480bae519b21ab667c43ad9549920bfa39fc17f40a25778",
-      "outputHash": "sha256:ede2f4ddae1dbd2e73bd6caac138b28bba06ecdd80eb4010ba14b69390244a30"
+      "outputHash": "sha256:761688127394ec8b743a906948dd31b87f05e6b8f6d50b1ea60de018dc6f2f64"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
