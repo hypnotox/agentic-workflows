@@ -113,7 +113,9 @@ procedure section, so it must move in lockstep with the template default.
    `rendering/guide-and-doc-templates:working-memory-single-home`: its prose does not
    enumerate the skeleton sections, and the guide-level non-duplication rule it scopes is
    preserved; the backing test literals that pin the old section names
-   (`internal/project/spine_test.go`) move with the rename in the same commit.
+   (`internal/project/spine_test.go`, `internal/effort/store_test.go`, and any other test
+   asserting the literal old skeleton section names) move with the rename in the same
+   commit.
 10. Both added claims are invariants with `Backing: test`, their prose authored at Apply
     time: `memory-skeleton-purpose-partition` is proved on the skeleton test in
     `internal/effort/memory_test.go`; `memory-log-consumer-coverage` is proved on the
