@@ -98,14 +98,16 @@ only the final staged state must be green.
 
 - [ ] **Task 2.1: Drop the sequence from the event grammar (`internal/adr/history.go`).**
   - `appliedHeadRe` (line 40) becomes
-    `^- (\d{4}-\d{2}-\d{2}): Applied; operations: (.+)$`; the `parseHistory` Applied branch
-    (lines 69-80) loses its `strconv.Atoi` on the removed capture group; operation text moves from
-    capture group 3 to group 2.
-  - Delete `Sequence int` and `HasSequence bool` from `HistoryEvent` (lines 22-31).
-  - In `parseHistoryTail` (lines 147-181), delete the whole `state-sequence: ` case (164-173) and
-    the `seenSeq` variable; simplify the `content-sha256` ordering condition that referenced it
-    (line 156). A terminal or status tail that still contains `state-sequence:` must fall through
-    to the existing unrecognized-segment error path so a stale file fails loudly.
+    `^- (\d{4}-\d{2}-\d{2}): Applied; (?:state-sequence: [1-9][0-9]*; )?operations: (.+)$`: the
+    retired segment is tolerated and discarded (ADR-0189 item 1), so a pre-migration corpus still
+    loads; the `parseHistory` Applied branch (lines 69-80) loses its `strconv.Atoi`, and
+    operation text moves to capture group 2.
+  - Replace `Sequence int` and `HasSequence bool` on `HistoryEvent` (lines 22-31) with one flag,
+    `LegacySequence bool`, set true whenever a discarded segment was present (Applied head or
+    tail); it carries no value and exists only so the check layer can report the retired segment.
+  - In `parseHistoryTail` (lines 147-181), the `state-sequence: ` case (164-173) keeps its shape
+    validation but stores nothing except `LegacySequence = true`; the `seenSeq` duplicate
+    bookkeeping stays as-is so a duplicated segment still errors.
   - Field-read closure so the package compiles: every remaining `Sequence`/`HasSequence` read is
     dispositioned here. Delete the two mixed-mode guards as vacuous
     (`internal/adr/application.go:46-52`, the `mixes explicit Applied events with implicit
@@ -140,7 +142,12 @@ only the final staged state must be green.
   status-dependent; absence needs no check because the parser no longer produces the field.
 - [ ] **Task 2.5: Static checks: ADR-number order and the absorbing remove
   (`internal/currentstate/check.go`).**
-  - Delete `checkSequences` (106-135) and its call at line 48.
+  - Delete `checkSequences` (106-135) and its call at line 48. In its place add
+    `checkLegacySegments`, called from `Check()` at the same spot: for every history event with
+    `LegacySequence` true, emit the blocking finding
+    `"ADR-%s carries a retired state-sequence segment; run awf upgrade"`. Post-migration this
+    repository emits none; a pre-migration adopter corpus is loud at check time instead of
+    failing to parse.
   - Replace `seq int` in `operationAt` (26-30) with `adrNum int` (owner's number) and
     `batchIdx int` (the batch's index within its ADR's history); every sort previously on `seq`
     (in `checkOperationHistory` line 150 and `retiredTopicOperations` line 254) becomes
@@ -295,20 +302,26 @@ only the final staged state must be green.
   a fixture line `- 2026-07-20: Applied; state-sequence: 1; operations: add \`d/t:c\`` becomes
   `- 2026-07-20: Applied; operations: add \`d/t:c\``, and assertions on
   `[state-sequence: N]` suffixes, `stateSequence` JSON, or `StateSequence` fields are deleted with
-  their expectation text. Edge: `internal/adr/format_test.go` keeps exactly one negative fixture
-  asserting that a stale `- <date>: Applied; state-sequence: 1; operations: ...` line now fails to
-  parse (the deliberate retained literal); tests of deleted validations (duplicate sequence,
-  contiguity, expected-next, sequence-presence-by-status) are deleted, not rewritten.
+  their expectation text. Edge: `internal/adr/format_test.go` keeps exactly one legacy fixture
+  asserting that a stale `- <date>: Applied; state-sequence: 1; operations: ...` line parses with
+  `LegacySequence` true and no other effect (the deliberate retained literal); tests of deleted
+  validations (duplicate sequence across ADRs, contiguity, expected-next,
+  sequence-presence-by-status) are deleted, not rewritten, while the
+  duplicated-segment-within-one-tail error keeps its test.
   `TestCheckV2BatchSequences` is deleted with `checkSequences`;
   `TestMergeAggregateKeepsSequenceContiguity` is replaced by
   `TestMergeAggregateOrdersBatchesByADRNumber` proving cross-ADR batch order is ADR-number order.
   Post-check: `git grep -n "state-sequence\|StateSequence\|stateSequence" -- 'internal' 'cmd'`
-  returns only the one retained negative fixture in `internal/adr/format_test.go` and the
-  migration's own fixtures and rewrite logic in `internal/migrate/adrnumberprovenance*.go`.
+  returns only the retained legacy-parse fixture in `internal/adr/format_test.go`, the
+  `LegacySequence` flag with its parser, check, and test sites, the legacy-segment finding text
+  and its fixtures in `internal/currentstate`, and the migration's rewrite logic and fixtures in
+  `internal/migrate/adrnumberprovenance*.go`.
 - [ ] **Task 2.12: New behaviour tests with proof markers.** All in `internal/currentstate`:
   - `TestCheckBackwardOrdersRevisedByByADRNumber` (in `check_test.go`): ascending passes;
-    a descending pair fails with the new message; an entry equal to or below Origin fails. Carries
-    the marker `invariant: invariants/current-state-authority:provenance-ordered-by-adr-number`.
+    a descending pair fails with the new message; an entry equal to or below Origin fails; and a
+    fixture event carrying a legacy segment produces the
+    `carries a retired state-sequence segment` finding. Carries the marker
+    `invariant: invariants/current-state-authority:provenance-ordered-by-adr-number`.
   - `TestAppliedRemoveAbsorbsConcurrentUpdate` (in `transition_test.go`): two fixtures prove
     convergence: update applied then remove applied, and remove applied then a dominated update
     arriving in a merge aggregate; both end with the claim absent, the dominated batch retained in
