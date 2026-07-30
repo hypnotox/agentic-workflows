@@ -1,12 +1,18 @@
-// Package git centralises awf's go-git repository access: opening a repository
-// tolerantly (linked worktrees, submodules, a stray worktreeConfig extension)
-// so every awf command that reads git shares one open path. It reads only; it
-// never mutates a repository.
+// Package git is awf's one semantic git seam: every git capability the
+// application needs is an entrypoint here, and which backend answers an
+// entrypoint (in-process object reads, or native Git through the package
+// runner) is an implementation detail no consumer can observe. A handle opened
+// with Open or OpenContaining carries the read entrypoints as methods; the pure
+// range parser and the repository-topology entrypoints stay free functions
+// because they precede or do without an opened repository. No backend type,
+// sentinel, or error value crosses the seam surface in either direction.
+//
+// This file holds the go-git backend: the tolerant repository open and the
+// object, tree, and ignore reads the handle's methods are implemented with.
 package git
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -23,93 +29,11 @@ import (
 	"github.com/go-git/go-git/v5/plumbing/cache"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
-	"github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage"
 	"github.com/go-git/go-git/v5/storage/filesystem"
 	"github.com/go-git/go-git/v5/storage/filesystem/dotgit"
 )
-
-// ChangedPaths returns the sorted, unique repo-relative paths changed either in
-// the staged index (staged) or between the two revisions of rangeSpec ("a..b").
-// staged takes precedence; with neither selector the caller should not call
-// this. A malformed range or an unresolvable revision is a clear error. It
-// reads the repository only.
-func ChangedPaths(repoRoot string, staged bool, rangeSpec string) ([]string, error) {
-	repo, prefix, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("open repo: %w", err)
-	}
-	set := map[string]bool{}
-	if staged {
-		wt, err := repo.Worktree()
-		if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf's intended use
-			return nil, err
-		}
-		status, err := wt.Status()
-		if err != nil { // coverage-ignore: Status on a healthy worktree we just opened does not fail
-			return nil, err
-		}
-		for path, st := range status {
-			if path, ok := rerootPath(path, prefix); ok && st.Staging != gogit.Unmodified && st.Staging != gogit.Untracked {
-				set[path] = true
-			}
-		}
-	} else {
-		from, to, perr := ParseRange(rangeSpec, false)
-		if perr != nil {
-			return nil, perr
-		}
-		fromTree, err := treeAt(repo, from)
-		if err != nil {
-			return nil, err
-		}
-		toTree, err := treeAt(repo, to)
-		if err != nil {
-			return nil, err
-		}
-		changes, err := object.DiffTree(fromTree, toTree)
-		if err != nil { // coverage-ignore: diffing two resolved trees does not fail
-			return nil, err
-		}
-		for _, ch := range changes {
-			if path, ok := rerootPath(ch.From.Name, prefix); ok && ch.From.Name != "" {
-				set[path] = true
-			}
-			if path, ok := rerootPath(ch.To.Name, prefix); ok && ch.To.Name != "" {
-				set[path] = true
-			}
-		}
-	}
-	out := make([]string, 0, len(set))
-	for p := range set {
-		out = append(out, p)
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
-// HeadExists reports whether the repository has a born HEAD (at least one
-// commit). A fresh repository whose immediate symbolic HEAD target is absent
-// reports false without error. Missing refs deeper in a symbolic chain and
-// corrupt or cyclic chains are errors. It reads the repository only.
-func HeadExists(repoRoot string) (bool, error) {
-	repo, _, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return false, fmt.Errorf("open repo: %w", err)
-	}
-	head, err := resolveHead(repo)
-	if err != nil {
-		return false, err
-	}
-	if head.unborn {
-		return false, nil
-	}
-	if _, err := repo.CommitObject(head.ref.Hash()); err != nil {
-		return false, fmt.Errorf("resolve HEAD commit: %w", err)
-	}
-	return true, nil
-}
 
 type headResolution struct {
 	ref    *plumbing.Reference
@@ -122,7 +46,7 @@ type headResolution struct {
 // deeper in the chain, losing the distinction.
 func resolveHead(repo *gogit.Repository) (headResolution, error) {
 	ref, err := repo.Reference(plumbing.HEAD, false)
-	if err != nil { // coverage-ignore: OpenContainingRepo only returns after go-git has successfully read HEAD from the same storer
+	if err != nil { // coverage-ignore: a handle is only returned after go-git has successfully read HEAD from the same storer
 		return headResolution{}, fmt.Errorf("resolve HEAD: %w", err)
 	}
 	seen := map[plumbing.ReferenceName]bool{plumbing.HEAD: true}
@@ -142,36 +66,6 @@ func resolveHead(repo *gogit.Repository) (headResolution, error) {
 		ref = next
 	}
 	return headResolution{ref: ref}, nil
-}
-
-// HeadHash resolves the current HEAD commit hash without requiring a clean
-// working tree. The final current-state upgrade runs in an integration worktree
-// that carries the applied but uncommitted attestation patches, so it compares
-// HEAD identity against the sealed PreparedHead without a cleanliness check.
-func HeadHash(repoRoot string) (string, error) {
-	repo, _, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return "", fmt.Errorf("open repo: %w", err)
-	}
-	ref, err := repo.Head()
-	if err != nil {
-		return "", fmt.Errorf("resolve HEAD: %w", err)
-	}
-	return ref.Hash().String(), nil
-}
-
-// WorktreeChangeCounts returns native Git's tracked-change and nonignored
-// untracked-file counts for the worktree containing repoRoot. Native porcelain
-// is the cleanliness oracle because go-git's status traversal can re-include a
-// nested .gitignore below an ignored parent directory. It runs through the
-// package runner, so it inherits the isolated environment and reports a failure
-// with Git's own stderr.
-func WorktreeChangeCounts(ctx context.Context, repoRoot string) (tracked, untracked int, err error) {
-	out, err := newRunner(repoRoot).run(ctx, "--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all")
-	if err != nil {
-		return 0, 0, fmt.Errorf("read native Git worktree status: %w", err)
-	}
-	return parseWorktreeStatus(out)
 }
 
 func parseWorktreeStatus(out []byte) (tracked, untracked int, err error) {
@@ -204,7 +98,7 @@ func parseWorktreeStatus(out []byte) (tracked, untracked int, err error) {
 	return tracked, untracked, nil
 }
 
-// GlobalExcludePatterns returns the ignore patterns git applies from outside
+// globalExcludePatterns returns the ignore patterns git applies from outside
 // the repository: core.excludesfile from the system /etc/gitconfig and from
 // the user's ~/.gitconfig. go-git's worktree status consults only the repo's
 // own .gitignore chain and .git/info/exclude, so a status-based path universe
@@ -212,112 +106,30 @@ func parseWorktreeStatus(out []byte) (tracked, untracked int, err error) {
 // `git status`. Global patterns follow system patterns so the user's rules win
 // where they conflict, matching git's precedence; the ordering is exercised
 // only against the real root filesystem because LoadSystemPatterns hardcodes
-// /etc/gitconfig. One narrow divergence from git remains in go-git consumers
-// such as WorkingPaths: go-git composes Excludes after the repo's .gitignore
-// chain, so a repo-level negation cannot re-include a globally-ignored file.
-// Absent or unreadable sources contribute no patterns:
-// the callers read repository state, and a missing optional ignore source must
-// not fail them.
-func GlobalExcludePatterns() []gitignore.Pattern {
+// /etc/gitconfig. One narrow divergence from git remains: go-git composes
+// Excludes after the repo's .gitignore chain, so a repo-level negation cannot
+// re-include a globally-ignored file. Absent or unreadable sources contribute
+// no patterns: the callers read repository state, and a missing optional ignore
+// source must not fail them.
+func globalExcludePatterns() []gitignore.Pattern {
 	root := osfs.New("/")
 	system, _ := gitignore.LoadSystemPatterns(root)
 	global, _ := gitignore.LoadGlobalPatterns(root)
 	return append(system, global...)
 }
 
-// WorkingPaths returns tracked HEAD paths that still exist plus nonignored
-// untracked paths, rerooted to repoRoot. A specifically unborn HEAD supplies an
-// empty committed baseline; every other repository, reference, or object error
-// still fails. repoRoot may be an adopted project nested inside a containing
-// monorepo; paths outside that project are excluded. Deleted and
-// nested-repository files are excluded by go-git's worktree status semantics;
-// ignored files are excluded by those semantics plus the injected global and
-// system excludes (GlobalExcludePatterns).
-func WorkingPaths(repoRoot string) ([]string, error) {
-	repo, prefix, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("open repo: %w", err)
-	}
-	head, err := resolveHead(repo)
-	if err != nil {
-		return nil, err
-	}
-	set := map[string]bool{}
-	if !head.unborn {
-		commit, err := repo.CommitObject(head.ref.Hash())
-		if err != nil {
-			return nil, fmt.Errorf("resolve working paths HEAD commit %s: %w", head.ref.Hash(), err)
-		}
-		tree, err := commit.Tree()
-		if err != nil {
-			return nil, fmt.Errorf("resolve working paths HEAD tree %s: %w", commit.TreeHash, err)
-		}
-		if err := tree.Files().ForEach(func(f *object.File) error {
-			if path, ok := rerootPath(f.Name, prefix); ok {
-				set[path] = true
-			}
-			return nil
-		}); err != nil { // coverage-ignore: collector callback never errors
-			return nil, err
-		}
-	}
-	wt, err := repo.Worktree()
-	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
-		return nil, err
-	}
-	wt.Excludes = GlobalExcludePatterns()
-	status, err := wt.Status()
-	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
-		return nil, err
-	}
-	for path, state := range status {
-		path, ok := rerootPath(path, prefix)
-		if !ok {
-			continue
-		}
-		_, diskErr := os.Lstat(filepath.Join(repoRoot, filepath.FromSlash(path)))
-		switch {
-		case state.Worktree == gogit.Deleted || os.IsNotExist(diskErr):
-			delete(set, path)
-		case diskErr != nil: // coverage-ignore: status returned the path; only a concurrent filesystem fault can make Lstat fail otherwise
-			return nil, diskErr
-		default:
-			set[path] = true
-		}
-	}
-	out := make([]string, 0, len(set))
-	for path := range set {
-		out = append(out, path)
-	}
-	sort.Strings(out)
-	return out, nil
-}
-
 // OpenContainingRepo opens the Git repository containing projectRoot and
-// returns the repository-relative slash-separated prefix of projectRoot. The
-// prefix is empty when projectRoot itself is the repository root.
+// returns the repository-relative slash-separated prefix of projectRoot.
+//
+// It is the last go-git-typed export, retained only for internal/audit's
+// commit-range walk until that walk moves behind the seam; every other consumer
+// reads through a handle from Open or OpenContaining.
 func OpenContainingRepo(projectRoot string) (*gogit.Repository, string, error) {
-	projectRoot, err := filepath.Abs(projectRoot)
-	if err != nil { // coverage-ignore: Abs fails only when the process working directory is unavailable
+	repo, prefix, err := OpenContaining(projectRoot)
+	if err != nil {
 		return nil, "", err
 	}
-	for candidate := projectRoot; ; candidate = filepath.Dir(candidate) {
-		repo, openErr := OpenRepo(candidate)
-		if openErr == nil {
-			prefix, relErr := filepath.Rel(candidate, projectRoot)
-			if relErr != nil { // coverage-ignore: both paths are absolute and share the same volume
-				return nil, "", relErr
-			}
-			if prefix == "." {
-				prefix = ""
-			}
-			return repo, filepath.ToSlash(prefix), nil
-		}
-		parent := filepath.Dir(candidate)
-		if parent == candidate {
-			return nil, "", openErr
-		}
-	}
+	return repo.repo, prefix, nil
 }
 
 func rerootPath(path, prefix string) (string, bool) {
@@ -352,116 +164,38 @@ type IndexBlob struct {
 	Mode  BlobMode
 }
 
-// IndexBlobs returns sorted stage-0 ordinary and executable blobs from the
-// index. Symlinks and gitlinks have no regular-file content to scan and are
-// ignored. An unmerged or unreadable regular entry makes the snapshot unsafe.
-func IndexBlobs(repoRoot string) ([]IndexBlob, error) {
-	repo, prefix, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("open repo: %w", err)
+// blobModeOf maps the three git filemodes the seam preserves onto BlobMode.
+// Callers filter to those three before calling.
+func blobModeOf(mode filemode.FileMode) BlobMode {
+	switch mode {
+	case filemode.Executable:
+		return BlobExecutable
+	case filemode.Symlink:
+		return BlobSymlink
+	default:
+		return BlobRegular
 	}
-	idx, err := repo.Storer.Index()
-	if err != nil {
-		return nil, fmt.Errorf("read index: %w", err)
-	}
-	entries := append([]*index.Entry(nil), idx.Entries...)
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
-	out := make([]IndexBlob, 0, len(entries))
-	for _, e := range entries {
-		path, ok := rerootPath(e.Name, prefix)
-		if !ok {
-			continue
-		}
-		if e.Stage != 0 {
-			return nil, fmt.Errorf("%w: %s", ErrIndexUnmerged, e.Name)
-		}
-		if e.Mode != filemode.Regular && e.Mode != filemode.Executable && e.Mode != filemode.Symlink {
-			continue
-		}
-		blob, err := repo.BlobObject(e.Hash)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, err)
-		}
-		r, err := blob.Reader()
-		if err != nil { // coverage-ignore: a blob object successfully loaded from go-git's object store always supplies a reader
-			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, err)
-		}
-		b, readErr := io.ReadAll(r)
-		closeErr := r.Close()
-		if readErr != nil { // coverage-ignore: reads from an in-memory git blob reader do not fail
-			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, readErr)
-		}
-		if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
-			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, closeErr)
-		}
-		mode := BlobRegular
-		switch e.Mode {
-		case filemode.Regular:
-		case filemode.Executable:
-			mode = BlobExecutable
-		case filemode.Symlink:
-			mode = BlobSymlink
-		default: // coverage-ignore: the mode filter above admits exactly the three handled blob modes
-		}
-		out = append(out, IndexBlob{Path: path, Bytes: b, Mode: mode})
-	}
-	return out, nil
 }
 
-// CommitBlobs returns the sorted regular and executable blobs of the tree that
-// rev resolves to. Symlinks and gitlinks carry no regular-file content to scan
-// and are skipped. It reads the repository only.
-func CommitBlobs(repoRoot, rev string) ([]IndexBlob, error) {
-	repo, prefix, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return nil, fmt.Errorf("open repo: %w", err)
-	}
-	tree, err := treeAt(repo, rev)
+// readBlob reads one blob object's exact bytes from the object store.
+func readBlob(repo *gogit.Repository, hash plumbing.Hash) ([]byte, error) {
+	blob, err := repo.BlobObject(hash)
 	if err != nil {
 		return nil, err
 	}
-	return blobsOfTree(tree, prefix)
-}
-
-// RangeBlobs returns the before/after regular-blob sets for the transition into
-// the commit rev resolves to: after is that commit's tree, before is its
-// first-parent tree, or nil for a root commit. Merges follow the first parent
-// only, so an ADR status change committed on a branch and merged is still
-// observed at the merge. It reads the repository only.
-func RangeBlobs(repoRoot, rev string) (before, after []IndexBlob, err error) {
-	repo, prefix, err := OpenContainingRepo(repoRoot)
-	if err != nil {
-		return nil, nil, fmt.Errorf("open repo: %w", err)
+	r, err := blob.Reader()
+	if err != nil { // coverage-ignore: a blob object successfully loaded from go-git's object store always supplies a reader
+		return nil, err
 	}
-	h, err := repo.ResolveRevision(plumbing.Revision(rev))
-	if err != nil {
-		return nil, nil, fmt.Errorf("resolve %q: %w", rev, err)
+	data, readErr := io.ReadAll(r)
+	closeErr := r.Close()
+	if readErr != nil { // coverage-ignore: reads from an in-memory git blob reader do not fail
+		return nil, readErr
 	}
-	c, err := repo.CommitObject(*h)
-	if err != nil { // coverage-ignore: a hash ResolveRevision just returned points at a real object
-		return nil, nil, fmt.Errorf("commit %q: %w", rev, err)
+	if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
+		return nil, closeErr
 	}
-	curTree, err := c.Tree()
-	if err != nil { // coverage-ignore: a resolved commit always yields its tree
-		return nil, nil, err
-	}
-	if after, err = blobsOfTree(curTree, prefix); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
-		return nil, nil, err
-	}
-	if c.NumParents() > 0 {
-		parent, perr := c.Parent(0)
-		if perr != nil { // coverage-ignore: parent count was just checked > 0; the parent object exists
-			return nil, nil, perr
-		}
-		parentTree, perr := parent.Tree()
-		if perr != nil { // coverage-ignore: a valid parent commit's tree resolves
-			return nil, nil, perr
-		}
-		if before, perr = blobsOfTree(parentTree, prefix); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
-			return nil, nil, perr
-		}
-	}
-	return before, after, nil
+	return data, nil
 }
 
 // blobsOfTree collects the sorted regular and executable blobs of a resolved
@@ -485,16 +219,7 @@ func blobsOfTree(tree *object.Tree, prefix string) ([]IndexBlob, error) {
 		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
 			return closeErr
 		}
-		mode := BlobRegular
-		switch f.Mode {
-		case filemode.Regular:
-		case filemode.Executable:
-			mode = BlobExecutable
-		case filemode.Symlink:
-			mode = BlobSymlink
-		default: // coverage-ignore: the mode filter above admits exactly the three handled blob modes
-		}
-		out = append(out, IndexBlob{Path: path, Bytes: data, Mode: mode})
+		out = append(out, IndexBlob{Path: path, Bytes: data, Mode: blobModeOf(f.Mode)})
 		return nil
 	})
 	if err != nil { // coverage-ignore: the callback only returns the impossible blob-reader faults excluded above
@@ -517,7 +242,7 @@ func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 	return c.Tree()
 }
 
-// OpenRepo opens the repo at repoRoot like git.PlainOpen, but hides its
+// openTolerant opens the repo at repoRoot like git.PlainOpen, but hides its
 // [extensions] config section from go-git's own extension-support check
 // (repository_extensions.go verifyExtensions). That check has an upstream bug:
 // it lowercases the incoming extension name ("worktreeconfig") before comparing
@@ -535,7 +260,7 @@ func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 // commands work from a linked worktree. The manual storage construction (over
 // PlainOpenWithOptions) exists solely so the storer wrapper above can be
 // injected.
-func OpenRepo(repoRoot string) (*gogit.Repository, error) {
+func openTolerant(repoRoot string) (*gogit.Repository, error) {
 	dotFs, err := dotGitFs(repoRoot)
 	if err != nil {
 		return nil, err

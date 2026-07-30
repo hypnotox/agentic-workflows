@@ -22,7 +22,11 @@ func ruleUncommittedChanges(ctx context.Context, repoRoot string, in Inputs) ([]
 	if !in.UncommittedChanges {
 		return nil, nil
 	}
-	tracked, untracked, err := awfgit.WorktreeChangeCounts(ctx, repoRoot)
+	repo, _, err := awfgit.OpenContaining(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	tracked, untracked, err := repo.ChangeCounts(ctx)
 	if err != nil {
 		return nil, err
 	}

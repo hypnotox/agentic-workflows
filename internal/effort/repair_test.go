@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,7 +9,7 @@ import (
 
 func TestProtocol1AndMutableRepairShapesAreRejected(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{})
+	service, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}

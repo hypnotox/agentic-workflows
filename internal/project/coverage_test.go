@@ -23,7 +23,7 @@ func corruptSidecar(t *testing.T, root, rel string) {
 
 func TestOpenMissingConfigFails(t *testing.T) {
 	// A bare temp dir with no .awf/config.yaml: config.Load fails.
-	_, err := Open(t.TempDir())
+	_, err := Open(testContext(t), t.TempDir())
 	if err == nil {
 		t.Fatal("expected Open to fail with no config.yaml")
 	}
@@ -31,7 +31,7 @@ func TestOpenMissingConfigFails(t *testing.T) {
 
 func TestOpenRejectsEmptyPrefix(t *testing.T) {
 	root := scaffold(t, "prefix: \"\"\nskills: []\nagents: []\n")
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail validation on empty prefix")
 	}
@@ -44,7 +44,7 @@ func TestOpenRejectsMalformedSkillSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [tdd]\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "bogusUnknownField: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail on a malformed skill sidecar")
 	}
@@ -54,7 +54,7 @@ func TestOpenRejectsMalformedAgentsDocSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"agents-doc.yaml": "bogusUnknownField: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail on a malformed agents-doc sidecar")
 	}
@@ -64,7 +64,7 @@ func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"agents-doc.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to reject an undeclared agents-doc section")
 	}
@@ -77,7 +77,7 @@ func TestOpenRejectsMalformedAdrReadmeSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"adr-readme.yaml": "bogusUnknownField: true\n",
 	})
-	if _, err := Open(root); err == nil {
+	if _, err := Open(testContext(t), root); err == nil {
 		t.Fatal("expected Open to fail on a malformed adr-readme sidecar")
 	}
 }
@@ -86,7 +86,7 @@ func TestOpenRejectsUnknownAdrReadmeSection(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"adr-readme.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to reject an undeclared adr-readme section")
 	}
@@ -150,7 +150,7 @@ func TestLocalOutPaths(t *testing.T) {
 
 func TestDeclaredSections(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestRenderAllSkipsLocalAgent(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: [my-local-agent]\n", map[string]string{
 		"agents/my-local-agent.yaml": "local: true\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, tc.cfg)
-			p, err := Open(root)
+			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}
@@ -239,7 +239,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, tc.partDir), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Open(root)
+			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -258,7 +258,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 
 func TestRenderTargetEncoderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,7 +272,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 
 func TestRenderTargetMissingTemplate(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -286,7 +286,7 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 
 func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -299,7 +299,7 @@ func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 
 func TestResolvedDocsSurfacesMalformedSidecar(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: [architecture]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -315,7 +315,7 @@ func TestSyncFailsOnMalformedADR(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -331,7 +331,7 @@ func TestSyncMkdirAllErrorWhenParentIsFile(t *testing.T) {
 	// A regular file squatting on .claude/skills makes MkdirAll of the skill's
 	// output directory fail for every user (incl. root).
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills"), "i am a file, not a dir\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +346,7 @@ func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -359,18 +359,18 @@ func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 
 func TestCheckFailsWithoutLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(); err == nil {
+	if _, err := p.Check(testContext(t)); err == nil {
 		t.Fatal("expected Check to fail when no lock exists")
 	}
 }
 
 func TestCheckSurfacesRenderError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,14 +379,14 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 	}
 	// Corrupt a sidecar so the post-lock RenderAll inside Check fails.
 	corruptSidecar(t, root, "skills/tdd.yaml")
-	if _, err := p.Check(); err == nil {
+	if _, err := p.Check(testContext(t)); err == nil {
 		t.Fatal("expected Check to surface the RenderAll error")
 	}
 }
 
 func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "domains"), []byte("not a dir\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -413,7 +413,7 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 
 func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -426,11 +426,11 @@ func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
 	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -447,7 +447,7 @@ func TestCheckReportsLockEntryNoLongerProduced(t *testing.T) {
 
 func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -458,7 +458,7 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -477,7 +477,7 @@ func TestCheckReportsLocalFrontmatterDrift(t *testing.T) {
 	cfg := "prefix: example\nskills: [my-local]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"skills/my-local.yaml": "local: true\n"})
 	writeLocalSkill(t, root, ".claude/skills/example-my-local/SKILL.md")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,7 +488,7 @@ func TestCheckReportsLocalFrontmatterDrift(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, ".claude", "skills", "example-my-local", "SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -505,7 +505,7 @@ func TestCheckReportsLocalFrontmatterDrift(t *testing.T) {
 
 func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +515,7 @@ func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
 	// Introduce a malformed ADR; Check regenerates the index and fails.
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
-	if _, err := p.Check(); err == nil {
+	if _, err := p.Check(testContext(t)); err == nil {
 		t.Fatal("expected Check to fail regenerating the index from a malformed ADR")
 	}
 }
@@ -525,7 +525,7 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
 		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -536,7 +536,7 @@ func TestCheckReportsMissingActiveMD(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "docs", "decisions", "INDEX.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -564,14 +564,14 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -597,14 +597,14 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 		"parts/doc-standard/principles.md": "See [w](/docs/workflow.md) and [out](../../outside.md).\n",
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "..", "outside.md"), "outside\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -626,7 +626,7 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 
 func TestProjectNewADR(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

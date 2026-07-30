@@ -46,7 +46,7 @@ func TestIndexTree(t *testing.T) {
 	// A gitlink (submodule) index entry has no regular content.
 	stageSubmodule(t, repo, "submodule")
 
-	tree, err := snapshot.IndexTree(dir)
+	tree, err := snapshot.IndexTree(testContext(t), snapshotRepo(t, dir))
 	if err != nil {
 		t.Fatalf("IndexTree: %v", err)
 	}
@@ -94,14 +94,14 @@ func TestIndexTreeUnmerged(t *testing.T) {
 	if err := repo.Storer.SetIndex(idx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := snapshot.IndexTree(dir); !errors.Is(err, awfgit.ErrIndexUnmerged) {
+	if _, err := snapshot.IndexTree(testContext(t), snapshotRepo(t, dir)); !errors.Is(err, awfgit.ErrIndexUnmerged) {
 		t.Fatalf("unmerged index: got %v, want ErrIndexUnmerged", err)
 	}
 }
 
 // TestIndexTreeOutsideRepo wraps git.IndexBlobs' open-repo failure.
 func TestIndexTreeOutsideRepo(t *testing.T) {
-	if _, err := snapshot.IndexTree(t.TempDir()); err == nil || !errors.Is(err, gogit.ErrRepositoryNotExists) {
+	if _, err := awfgit.Open(t.TempDir()); err == nil || !errors.Is(err, awfgit.ErrNotARepository) {
 		t.Fatalf("outside repository: got %v", err)
 	}
 }
@@ -131,7 +131,7 @@ func TestIndexTreeLinkedWorktree(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	tree, err := snapshot.IndexTree(wtRoot)
+	tree, err := snapshot.IndexTree(testContext(t), snapshotRepo(t, wtRoot))
 	if err != nil {
 		t.Fatalf("IndexTree from linked worktree: %v", err)
 	}

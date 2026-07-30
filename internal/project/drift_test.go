@@ -19,7 +19,7 @@ import (
 // invariant: rendering/project-output-plan:output-policy-explicit
 func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 
 func configHashOf(t *testing.T, root, rel string) string {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestClaimBudgetDriftIsLimitedToConsumingGuidance(t *testing.T) {
 
 func renderedContentOf(t *testing.T, root, rel string) string {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,14 +169,14 @@ func TestPerTargetDriftProjection(t *testing.T) {
 		"skills/debugging.yaml":           "data:\n  k: v\n", // debugging not enabled
 		"skills/parts/orphan-target/x.md": "stray\n",         // orphan-target not enabled
 	})
-	p, err := Open(orphRoot)
+	p, err := Open(testContext(t), orphRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +206,7 @@ func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 		return "prefix: example\nskills:\n  - tdd\nagents:" + agents + "\n"
 	}
 	root := scaffold(t, cfg(" []"))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,11 +215,11 @@ func TestCheckFlagsEnabledButUnsyncedArtifact(t *testing.T) {
 	}
 	// Enable an agent by hand-editing config - the documented flow - without syncing.
 	testsupport.WriteAwfConfig(t, root, cfg("\n  - code-reviewer"))
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +238,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestSyncPruneSkipsEscapingLockPaths(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,14 +276,14 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 		"parts/loose.md":                 "not a kind dir\n",
 		"parts/workflow/notes.txt":       "not a part file\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,7 +310,7 @@ func sprintfVars(pitfalls string) string {
 // invariant: config/migrations-and-locks:schema-version-lock
 func TestSyncStampsSchemaVersion(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func chainClosureConfig(scope string) string {
 // invariant: rendering/sync-and-drift:scopes-in-confighash
 func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 	root := scaffold(t, chainClosureConfig("awf"))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,11 +385,11 @@ func TestScopesEditReflagsReferencingArtifacts(t *testing.T) {
 		t.Errorf("rendered prose does not quote audit.allowedScopes:\n%s", rendered)
 	}
 	testsupport.WriteAwfConfig(t, root, chainClosureConfig("core"))
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,7 +442,7 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:commitScopeTable}}\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -450,11 +450,11 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,11 +488,11 @@ func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
 		t.Fatal(err)
 	}
 	corruptProjectLock(t, root)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.SyncReport(); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want refusal with hint, got %v", err)
 	}
 	after, err := os.ReadFile(agents)
@@ -508,17 +508,17 @@ func TestCheckSplitsMissingVsCorrupt(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(); err == nil || strings.Contains(err.Error(), "no lock") || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := p.Check(testContext(t)); err == nil || strings.Contains(err.Error(), "no lock") || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("corrupt lock misreported: %v", err)
 	}
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(); err == nil || !strings.Contains(err.Error(), "no lock (run awf render)") {
+	if _, err := p.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "no lock (run awf render)") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }
@@ -527,13 +527,13 @@ func TestUninstallSplitsMissingVsCorrupt(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	if _, err := Uninstall(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, err := Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("corrupt lock must refuse uninstall with the hint, got %v", err)
 	}
 	if err := os.Remove(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Uninstall(root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
+	if _, err := Uninstall(testContext(t), root); err == nil || !strings.Contains(err.Error(), "nothing to uninstall") {
 		t.Fatalf("missing lock lost its message: %v", err)
 	}
 }
@@ -542,11 +542,11 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := p.Audit(t.Context(), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("Audit: %v", err)
 	}
 	if _, err := CollisionsAt(root, []string{"AGENTS.md"}); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
@@ -567,7 +567,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n<!-- awf:comment demo of {{=awf:commitScopeTable}} -->\nplain text\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -575,11 +575,11 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -593,12 +593,12 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/contracts.yaml"), "title: Changed\nsummary: Current Contracts contracts.\npaths: [\"internal/**\"]\n")
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

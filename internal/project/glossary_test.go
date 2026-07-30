@@ -12,7 +12,7 @@ const glossaryCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [g
 // renderGlossary opens root and returns the rendered glossary doc's content.
 func renderGlossary(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func TestGlossaryContentViolations(t *testing.T) {
 		"terms-not-a-map": {"data:\n  terms: just a string\n", "must be a mapping"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p, err := Open(scaffoldFiles(t, glossaryCfg, map[string]string{"docs/glossary.yaml": tc.yaml}))
+			p, err := Open(testContext(t), scaffoldFiles(t, glossaryCfg, map[string]string{"docs/glossary.yaml": tc.yaml}))
 			if err != nil {
 				t.Fatal(err)
 			}

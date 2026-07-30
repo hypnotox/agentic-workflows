@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -12,12 +13,12 @@ import (
 // proof-marker sites (ADR-0134). Authority is the typed claim set - the
 // test-backed proof and unbacked Verify contracts are enforced when the corpus
 // loads, so a violation surfaces as a load error here, not a reported finding.
-func runInvariants(root string, stdout io.Writer) error {
-	p, err := project.Open(root)
+func runInvariants(ctx context.Context, root string, stdout io.Writer) error {
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	invs, err := p.CurrentStateInvariants()
+	invs, err := p.CurrentStateInvariants(ctx)
 	if err != nil {
 		return err
 	}

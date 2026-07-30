@@ -16,7 +16,7 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 	// invariant: tooling/effort-management:effort-record-authority
 	root := initEffortRepo(t)
 	failDelete := true
-	service, err := Open(context.Background(), root, Options{
+	service, err := Open(testContext(t), root, Options{
 		Clock: func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) },
 		UUID:  func() (string, error) { return testIDA, nil },
 		Fault: func(stage string) error {
@@ -79,7 +79,7 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			root := initEffortRepo(t)
-			service, err := Open(context.Background(), root, Options{
+			service, err := Open(testContext(t), root, Options{
 				UUID: func() (string, error) { return testIDA, nil },
 				Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
 					return test.registrations, nil
@@ -105,7 +105,7 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 
 func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{
+	service, err := Open(testContext(t), root, Options{
 		UUID:         func() (string, error) { return testIDA, nil },
 		Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
 		BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
@@ -159,7 +159,7 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 	for _, stage := range []string{"finish.rename", "finish.root-fsync", "finish.delete"} {
 		t.Run(stage, func(t *testing.T) {
 			root := initEffortRepo(t)
-			service, err := Open(context.Background(), root, Options{
+			service, err := Open(testContext(t), root, Options{
 				UUID:         func() (string, error) { return testIDA, nil },
 				Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
 				BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
@@ -183,7 +183,7 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 	}
 
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{
+	service, err := Open(testContext(t), root, Options{
 		UUID: func() (string, error) { return testIDA, nil },
 		Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
 			return nil, errors.New("registration probe")
@@ -219,7 +219,7 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(root, ".awf", "worktrees")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(context.Background(), root, Options{}); err == nil {
+	if _, err := Open(testContext(t), root, Options{}); err == nil {
 		t.Fatal("symlinked worktrees root accepted")
 	}
 
@@ -247,7 +247,7 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 
 func TestFinishCleanupAndReservationBranches(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{
+	service, err := Open(testContext(t), root, Options{
 		UUID:         func() (string, error) { return testIDA, nil },
 		Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
 		BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
@@ -298,20 +298,20 @@ func TestFinishCleanupAndReservationBranches(t *testing.T) {
 
 func TestNativeEffortGitHelpers(t *testing.T) {
 	root := initEffortRepo(t)
-	if out, err := nativeGit(context.Background(), root, "rev-parse", "HEAD"); err != nil || strings.TrimSpace(string(out)) == "" {
+	if out, err := nativeGit(testContext(t), root, "rev-parse", "HEAD"); err != nil || strings.TrimSpace(string(out)) == "" {
 		t.Fatalf("native git output=%q err=%v", out, err)
 	}
-	if _, err := nativeGit(context.Background(), root, "not-a-command"); err == nil {
+	if _, err := nativeGit(testContext(t), root, "not-a-command"); err == nil {
 		t.Fatal("native Git error hidden")
 	}
-	if exists, err := nativeBranchExists(context.Background(), root, "missing"); err != nil || exists {
+	if exists, err := nativeBranchExists(testContext(t), root, "missing"); err != nil || exists {
 		t.Fatalf("missing branch exists=%v err=%v", exists, err)
 	}
 	branch := strings.TrimSpace(runEffortGitOutput(t, "-C", root, "branch", "--show-current"))
-	if exists, err := nativeBranchExists(context.Background(), root, branch); err != nil || !exists {
+	if exists, err := nativeBranchExists(testContext(t), root, branch); err != nil || !exists {
 		t.Fatalf("current branch exists=%v err=%v", exists, err)
 	}
-	if _, err := nativeBranchExists(context.Background(), filepath.Join(root, "missing"), "master"); err == nil {
+	if _, err := nativeBranchExists(testContext(t), filepath.Join(root, "missing"), "master"); err == nil {
 		t.Fatal("branch probe error hidden")
 	}
 }

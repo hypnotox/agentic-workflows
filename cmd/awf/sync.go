@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"path/filepath"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -12,30 +11,27 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func runSync(root string, stdout io.Writer) error {
-	loader := project.NewLoader(config.Load, catalog.Standard, resolveProjectResidentRoot)
-	return runSyncPrinting(loader, root, nil, stdout)
+// newProjectLoader composes the project-opening policy for one invocation: the
+// standard catalog, the seam's one resident-root resolution, and the Git handle
+// the opened project reads through. An absent handle means the tree carries no
+// repository, which awf renders and checks exactly as before.
+func newProjectLoader(root string) *project.Loader {
+	repo, _, _ := awfgit.OpenContaining(root)
+	return project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo)
 }
 
-func runSyncInitialized(root string, seed project.InitAuthority, stdout io.Writer) error {
-	loader := project.NewLoader(config.Load, catalog.Standard, resolveProjectResidentRoot)
-	return runSyncPrinting(loader, root, &seed, stdout)
+func runSync(ctx context.Context, root string, stdout io.Writer) error {
+	loader := newProjectLoader(root)
+	return runSyncPrinting(ctx, loader, root, nil, stdout)
 }
 
-func resolveProjectResidentRoot(root string) string {
-	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
-	if err != nil {
-		return root
-	}
-	primary, err := roots.ResidentRoot(awfgit.ResidentEfforts)
-	if err != nil {
-		return root
-	}
-	return filepath.Dir(filepath.Dir(primary))
+func runSyncInitialized(ctx context.Context, root string, seed project.InitAuthority, stdout io.Writer) error {
+	loader := newProjectLoader(root)
+	return runSyncPrinting(ctx, loader, root, &seed, stdout)
 }
 
-func runSyncPrinting(loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
-	p, err := loader.Open(root)
+func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, seed *project.InitAuthority, stdout io.Writer) error {
+	p, err := loader.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -43,9 +39,9 @@ func runSyncPrinting(loader *project.Loader, root string, seed *project.InitAuth
 	var changes []project.Change
 	var pruned []string
 	if seed == nil {
-		backups, changes, pruned, err = p.SyncReport()
+		backups, changes, pruned, err = p.SyncReport(ctx)
 	} else {
-		backups, changes, pruned, err = p.InitializeReport(*seed)
+		backups, changes, pruned, err = p.InitializeReport(ctx, *seed)
 	}
 	if err != nil {
 		return err

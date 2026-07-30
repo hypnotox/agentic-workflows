@@ -10,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
-func runAudit(root, rangeArg string, stdout io.Writer) error {
+func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) error {
 	// The range is required and has no default (ADR-0127 Decision 2): an audit
 	// that silently reports over nothing is worse than one that refuses.
 	if rangeArg == "" {
@@ -20,16 +20,12 @@ func runAudit(root, rangeArg string, stdout io.Writer) error {
 	if err != nil {
 		return &usageErr{"awf audit: " + err.Error()}
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	// The audit's live cleanliness rule shells out to git, so the handler sets a
-	// ceiling here at the command boundary rather than letting the run hang. The
-	// ceiling bounds the whole audit, the go-git commit walk included, not just
-	// the shell-out that motivates it.
-	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
-	defer cancel()
+	// The command boundary has already bounded the whole invocation, including
+	// the live cleanliness rule's native Git call and the object walk here.
 	findings, commits, err := p.Audit(ctx, base, head)
 	if err != nil {
 		return err

@@ -12,14 +12,14 @@ import (
 // checkDrift opens, syncs, and checks a scaffolded root, returning the drift.
 func checkDrift(t *testing.T, root string) []manifest.Drift {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func TestBareReferenceEscapes(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars:\n  bogusVar: set-but-dead\nskills:\n  - tdd\nagents: []\n", map[string]string{
 		"skills/tdd.yaml": "data:\n  dead: v\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

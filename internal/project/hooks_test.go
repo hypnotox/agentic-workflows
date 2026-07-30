@@ -10,7 +10,7 @@ import (
 func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

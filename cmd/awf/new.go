@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -20,29 +21,29 @@ import (
 // (ADR-0068). ADR takes a single joined title; skill/agent take a name and a
 // separate quoted description.
 // touches-state: tooling/cli:adr-new-version-gated - new-command version gate site; proof in gate_test.go
-func runNew(root, kind string, args []string, stdout io.Writer) error {
+func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	switch kind {
 	case "adr":
-		return newADR(root, args, stdout)
+		return newADR(ctx, root, args, stdout)
 	case "plan":
-		return newPlan(root, args, stdout)
+		return newPlan(ctx, root, args, stdout)
 	case "topic":
-		return newTopic(root, args, stdout)
+		return newTopic(ctx, root, args, stdout)
 	case "skill", "agent", "doc":
-		return newLocal(root, kind, args, stdout)
+		return newLocal(ctx, root, kind, args, stdout)
 	default:
 		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, skill, agent, doc)", kind)}
 	}
 }
 
-func newADR(root string, titleWords []string, stdout io.Writer) error {
+func newADR(ctx context.Context, root string, titleWords []string, stdout io.Writer) error {
 	if len(titleWords) == 0 {
 		return &usageErr{"usage: awf new adr <title>"}
 	}
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -54,14 +55,14 @@ func newADR(root string, titleWords []string, stdout io.Writer) error {
 	return nil
 }
 
-func newPlan(root string, titleWords []string, stdout io.Writer) error {
+func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Writer) error {
 	if len(titleWords) == 0 {
 		return &usageErr{"usage: awf new plan <title>"}
 	}
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -73,14 +74,14 @@ func newPlan(root string, titleWords []string, stdout io.Writer) error {
 	return nil
 }
 
-func newTopic(root string, args []string, stdout io.Writer) error {
+func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) error {
 	if len(args) < 2 {
 		return &usageErr{"usage: awf new topic <domain> <title>"}
 	}
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -206,7 +207,7 @@ var (
 // starter content part, enables the name in config (seeding a skill/agent's
 // referenced vars), and re-renders. The kind parameterizes the two differences:
 // the name validator + stub, and the doc-only title / no var-seeding.
-func newLocal(root, kind string, args []string, stdout io.Writer) error {
+func newLocal(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	if len(args) < 2 {
 		return &usageErr{fmt.Sprintf("usage: awf new %s <name> \"<description>\"", kind)}
 	}
@@ -223,10 +224,10 @@ func newLocal(root, kind string, args []string, stdout io.Writer) error {
 	} else if err := config.ValidateArtifactName(kind, name); err != nil {
 		return err
 	}
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -283,7 +284,7 @@ func newLocal(root, kind string, args []string, stdout io.Writer) error {
 	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil { // coverage-ignore: post-validation write; fails only on a permission fault a test cannot trigger
 		return err
 	}
-	return runSync(root, stdout)
+	return runSync(ctx, root, stdout)
 }
 
 // seedScaffoldVars seeds each of the scaffolded template's referenced vars as

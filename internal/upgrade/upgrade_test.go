@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -47,7 +46,7 @@ func sealedRepo(t *testing.T) (dir, head, digest string) {
 	}
 	gitfixture.Stage(t, repo, dir, files)
 	gitfixture.Merge(t, repo, "prepared")
-	head, err := git.HeadHash(dir)
+	head, err := headHash(t, dir)
 	if err != nil {
 		t.Fatalf("head: %v", err)
 	}
@@ -148,7 +147,7 @@ func TestCollectMarkerSourcesPropagatesGitBoundaryStatError(t *testing.T) {
 
 func TestVerifyAcceptsSeal(t *testing.T) {
 	dir, head, digest := sealedRepo(t)
-	if err := Verify(dir, sealedAtt(head, digest)); err != nil {
+	if err := Verify(testContext(t), dir, sealedAtt(head, digest)); err != nil {
 		t.Fatalf("verify: %v", err)
 	}
 }
@@ -165,7 +164,7 @@ func TestVerifyRejections(t *testing.T) {
 		{"digest", sealedAtt(head, "sha256:0000"), "digest"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			if err := Verify(dir, tc.att); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if err := Verify(testContext(t), dir, tc.att); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("want %q, got %v", tc.want, err)
 			}
 		})
@@ -173,8 +172,15 @@ func TestVerifyRejections(t *testing.T) {
 }
 
 func TestVerifyOutsideRepo(t *testing.T) {
-	if err := Verify(t.TempDir(), sealedAtt("x", "y")); err == nil {
+	if err := Verify(testContext(t), t.TempDir(), sealedAtt("x", "y")); err == nil {
 		t.Fatal("verify accepted a non-repo")
+	}
+}
+
+func TestVerifyRejectsUnbornHead(t *testing.T) {
+	_, root := gitfixture.InitRepo(t)
+	if err := Verify(testContext(t), root, sealedAtt("x", "y")); err == nil {
+		t.Fatal("verify accepted a repository with an unborn HEAD")
 	}
 }
 
@@ -202,7 +208,7 @@ func TestFinalUpgradeConsumesSeal(t *testing.T) {
 	dir, head, digest := sealedRepo(t)
 	lock := finalLock(t, dir, sealedAtt(head, digest))
 	var log bytes.Buffer
-	if err := FinalUpgrade(dir, lock, &log); err != nil {
+	if err := FinalUpgrade(testContext(t), dir, lock, &log); err != nil {
 		t.Fatalf("final upgrade: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, approvalPath)); !os.IsNotExist(err) {
@@ -234,11 +240,11 @@ func TestFinalUpgradeConsumesSeal(t *testing.T) {
 func TestFinalUpgradeRequiresAttestation(t *testing.T) {
 	dir, _, _ := sealedRepo(t)
 	lock := &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 15}
-	if err := FinalUpgrade(dir, lock, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "no current-state attestation") {
+	if err := FinalUpgrade(testContext(t), dir, lock, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "no current-state attestation") {
 		t.Fatalf("want no-attestation error, got %v", err)
 	}
 	invalid := &manifest.Lock{AWFVersion: "0.19.0", InitializedWithVersion: "0.19.0"}
-	if err := FinalUpgrade(dir, invalid, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "restore") {
+	if err := FinalUpgrade(testContext(t), dir, invalid, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "restore") {
 		t.Fatalf("want invalid-authority error, got %v", err)
 	}
 }
@@ -246,7 +252,7 @@ func TestFinalUpgradeRequiresAttestation(t *testing.T) {
 func TestFinalUpgradeRejectsInvalidSeal(t *testing.T) {
 	dir, head, _ := sealedRepo(t)
 	lock := finalLock(t, dir, sealedAtt(head, "sha256:bad"))
-	if err := FinalUpgrade(dir, lock, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "digest") {
+	if err := FinalUpgrade(testContext(t), dir, lock, bytes.NewBuffer(nil)); err == nil || !strings.Contains(err.Error(), "digest") {
 		t.Fatalf("want digest rejection, got %v", err)
 	}
 	// The tree is untouched: the approval file survives a refused upgrade.

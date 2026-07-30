@@ -46,7 +46,7 @@ func TestWorktreePorcelainParityFixtures(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := registrations(context.Background(), func(context.Context, string, ...string) ([]byte, error) { return []byte(tc.raw), nil }, ".")
+			_, err := registrations(testContext(t), func(context.Context, string, ...string) ([]byte, error) { return []byte(tc.raw), nil }, ".")
 			if tc.accepted && err != nil {
 				t.Fatal(err)
 			}
@@ -55,7 +55,7 @@ func TestWorktreePorcelainParityFixtures(t *testing.T) {
 			}
 		})
 	}
-	_, err := registrations(context.Background(), func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("runner") }, ".")
+	_, err := registrations(testContext(t), func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("runner") }, ".")
 	if err == nil {
 		t.Fatal("runner error was hidden")
 	}
@@ -75,13 +75,13 @@ func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 	runner := func(raw string) Runner {
 		return func(context.Context, string, ...string) ([]byte, error) { return []byte(raw), nil }
 	}
-	if err := exactRegistration(context.Background(), runner("worktree /other\x00HEAD abc\x00branch refs/heads/awf/wanted\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "elsewhere") {
+	if err := exactRegistration(testContext(t), runner("worktree /other\x00HEAD abc\x00branch refs/heads/awf/wanted\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "elsewhere") {
 		t.Fatalf("foreign branch error = %v", err)
 	}
-	if err := exactRegistration(context.Background(), runner("worktree /other\x00HEAD abc\x00branch refs/heads/main\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "uniquely") {
+	if err := exactRegistration(testContext(t), runner("worktree /other\x00HEAD abc\x00branch refs/heads/main\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "uniquely") {
 		t.Fatalf("missing registration error = %v", err)
 	}
-	if err := exactRegistration(context.Background(), runner("worktree /wanted\x00HEAD abc\x00detached\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "mismatch") {
+	if err := exactRegistration(testContext(t), runner("worktree /wanted\x00HEAD abc\x00detached\x00\x00"), ".", "/wanted", "refs/heads/awf/wanted"); err == nil || !strings.Contains(err.Error(), "mismatch") {
 		t.Fatalf("detached registration error = %v", err)
 	}
 

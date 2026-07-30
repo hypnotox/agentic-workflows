@@ -18,6 +18,8 @@ import (
 // The drift and state children each run alone on a clean tree and print their own
 // clean line, so neither borrows the bare form's verdict.
 func TestCheckChildrenCleanLines(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct{ sub, want string }{
 		{"drift", "awf check drift: clean"},
 		{"state", "awf check state: clean"},
@@ -43,6 +45,8 @@ func TestCheckChildrenCleanLines(t *testing.T) {
 // this handler-owned diagnostic is reachable; an undeclared flag would die in
 // parseArgs with a generic unknown-flag error instead.
 func TestCheckChildrenRejectStaged(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	spec, ok := clispec.Lookup("check")
 	if !ok {
 		t.Fatal("Lookup(check) missing")
@@ -69,9 +73,11 @@ func TestCheckChildrenRejectStaged(t *testing.T) {
 // exit 1 before the handler can produce the bare-form-only diagnostic. A git-backed
 // fixture cannot tell the two apart, which is why this one deliberately is not.
 func TestCheckChildStagedRejectionPrecedesStateGuard(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("render: %v", err)
 	}
 	var out, errb bytes.Buffer
@@ -88,6 +94,8 @@ func TestCheckChildStagedRejectionPrecedesStateGuard(t *testing.T) {
 // sees it as a child and it arrives as a positional. That earns the ordering
 // message, not the unknown-subcommand one.
 func TestCheckSubcommandAfterFlag(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// The staged gate runs before the handler, so the fixture needs a committed
 	// lock that satisfies it for the handler's diagnostic to be the one reached.
 	lock := &manifest.Lock{
@@ -118,6 +126,8 @@ func TestCheckSubcommandAfterFlag(t *testing.T) {
 // An unrecognized positional lists the valid subcommands. MaxPos is -1 so the
 // handler owns this message rather than a generic arity error.
 func TestCheckUnknownSubcommand(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out, errb bytes.Buffer
 	code := runAt(t, root, []string{"awf", "check", "bogus"}, &out, &errb)
@@ -160,6 +170,8 @@ func aheadSchemaGitProject(t *testing.T) string {
 // the driver owns; the clispec resolver's half is proved in that package.
 // invariant: tooling/cli:group-child-gating-honored
 func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, sub := range []string{"prose", "memory"} {
 		t.Run(sub, func(t *testing.T) {
 			root := aheadSchemaGitProject(t)
@@ -184,6 +196,8 @@ func TestCheckUngatedChildrenRunOnSchemaAheadProject(t *testing.T) {
 // validate a message mid-upgrade.
 // invariant: tooling/cli:group-child-project-guard-exemption
 func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	lockText := func(t *testing.T, attested bool) string {
 		t.Helper()
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
@@ -258,6 +272,8 @@ func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
 // The two new entry points surface their own failures: a drifted rendered file
 // and a current-state finding each exit non-zero with a count-naming error.
 func TestCheckChildrenReportFindings(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	t.Run("drift", func(t *testing.T) {
 		root := scaffoldProject(t)
 		// Hand-edit a rendered file so the drift oracle flags it.
@@ -305,12 +321,14 @@ func TestCheckChildrenReportFindings(t *testing.T) {
 // refuse most of these trees before the handler ran. Each fixture is the one the
 // equivalent runCheck path already uses.
 func TestCheckChildrenErrorPaths(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	t.Run("open error", func(t *testing.T) {
 		// No .awf/ at all, so project.Open fails in both entry points.
-		if err := runCheckDrift(t.TempDir(), io.Discard); err == nil {
+		if err := runCheckDrift(ctx, t.TempDir(), io.Discard); err == nil {
 			t.Error("expected an Open error from check drift")
 		}
-		if err := runCheckState(t.TempDir(), io.Discard); err == nil {
+		if err := runCheckState(ctx, t.TempDir(), io.Discard); err == nil {
 			t.Error("expected an Open error from check state")
 		}
 	})
@@ -322,7 +340,7 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [tdd]\nagents: []\n")
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
 			"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
-		if err := runCheckDrift(root, io.Discard); err == nil {
+		if err := runCheckDrift(ctx, root, io.Discard); err == nil {
 			t.Fatal("expected check drift to surface the render error from p.Check()")
 		}
 	})
@@ -332,10 +350,10 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		// CheckCurrentState.
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, checkYAML)
-		if err := initializeProject(root, io.Discard); err != nil {
+		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 			t.Fatalf("render: %v", err)
 		}
-		if err := runCheckState(root, io.Discard); err == nil {
+		if err := runCheckState(ctx, root, io.Discard); err == nil {
 			t.Fatal("expected a working-tree error from CheckCurrentState outside a git repository")
 		}
 	})
@@ -345,7 +363,7 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 		// command stays clean while still printing the note.
 		root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 		var out bytes.Buffer
-		if err := runCheckState(root, &out); err != nil {
+		if err := runCheckState(ctx, root, &out); err != nil {
 			t.Fatalf("a warn-ranked finding must not fail check state: %v", err)
 		}
 		if !strings.Contains(out.String(), "note: ") {
@@ -357,6 +375,8 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 // awf help lists the check group's six children, extending the group-child
 // assertion to the newly grouped command.
 func TestHelpListsCheckChildren(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out, errb bytes.Buffer
 	run([]string{"awf", "help"}, &out, &errb)
 	got := out.String()

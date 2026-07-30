@@ -21,7 +21,7 @@ func auditProject(t *testing.T) (string, plumbing.Hash) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
 	// Sync writes the lock so Project.Audit's generated-path set is populated.
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	repo, err := git.PlainInit(root, false)
@@ -61,7 +61,7 @@ func TestRunAuditWarningsExitZero(t *testing.T) {
 	// Valid CC subject, but touches go.mod with no ADR -> dependency-adr warn only.
 	gitfixture.Commit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
 	var out bytes.Buffer
-	if err := runAudit(root, base.String(), &out); err != nil {
+	if err := runAudit(testContext(t), root, base.String(), &out); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
 	// Assert the rendered rank on the finding line, not the "%d warning(s)" verdict
@@ -78,7 +78,7 @@ func TestRunAuditErrorExitsNonZero(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.Commit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
-	if err := runAudit(root, base.String(), out(t)); err == nil {
+	if err := runAudit(testContext(t), root, base.String(), out(t)); err == nil {
 		t.Fatal("an error-ranked finding must make runAudit return non-nil")
 	}
 }
@@ -94,7 +94,7 @@ func TestRunAuditBranchLevelFinding(t *testing.T) {
 	big := strings.Repeat("var n int\n", 500) // > default diffThreshold 400
 	gitfixture.Commit(t, repo, root, "feat(awf): big change", map[string]string{"big.go": "package x\n" + big})
 	var buf bytes.Buffer
-	if err := runAudit(root, base.String(), &buf); err != nil {
+	if err := runAudit(testContext(t), root, base.String(), &buf); err != nil {
 		t.Fatalf("branch-level warning should exit zero, got: %v", err)
 	}
 	if !strings.Contains(buf.String(), "branch") {
@@ -110,7 +110,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 	}
 	gitfixture.Commit(t, repo, root, "feat(awf): small clean change", map[string]string{"main.go": "package x\nvar z int\n"})
 	var buf bytes.Buffer
-	if err := runAudit(root, base.String(), &buf); err != nil {
+	if err := runAudit(testContext(t), root, base.String(), &buf); err != nil {
 		t.Fatalf("clean range should exit zero, got: %v", err)
 	}
 	if !strings.Contains(buf.String(), "awf audit: clean") {
@@ -123,7 +123,7 @@ func TestRunAuditCleanRange(t *testing.T) {
 // Decision 2).
 // invariant: tooling/audit-commands:audit-requires-explicit-range
 func TestRunAuditRequiresARange(t *testing.T) {
-	err := runAudit(t.TempDir(), "", out(t))
+	err := runAudit(testContext(t), t.TempDir(), "", out(t))
 	if err == nil {
 		t.Fatal("a missing range must be refused")
 	}
@@ -144,7 +144,7 @@ func TestRunAuditReportsEvaluatedScope(t *testing.T) {
 	}
 	gitfixture.Commit(t, repo, root, "feat(awf): small clean change", map[string]string{"main.go": "package x\nvar z int\n"})
 	var buf bytes.Buffer
-	if err := runAudit(root, base.String(), &buf); err != nil {
+	if err := runAudit(testContext(t), root, base.String(), &buf); err != nil {
 		t.Fatalf("clean range should exit zero, got: %v", err)
 	}
 	got := buf.String()
@@ -167,7 +167,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	gitfixture.Commit(t, repo, root, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
 	scope := "over 1 commit(s) in " + base.String() + "..HEAD"
 	var warnBuf bytes.Buffer
-	if err := runAudit(root, base.String(), &warnBuf); err != nil {
+	if err := runAudit(testContext(t), root, base.String(), &warnBuf); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
 	// Match the full verdict, not the bare scope: the scope substring alone also
@@ -179,7 +179,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 	// Error path: a malformed subject is an Error finding, so runAudit returns
 	// non-nil and the scope must ride on the error itself.
 	gitfixture.Commit(t, repo, root, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
-	err = runAudit(root, base.String(), out(t))
+	err = runAudit(testContext(t), root, base.String(), out(t))
 	if err == nil {
 		t.Fatal("an error-ranked finding must make runAudit return non-nil")
 	}
@@ -194,7 +194,7 @@ func TestRunAuditReportsScopeOnEveryVerdict(t *testing.T) {
 func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 	root, _ := auditProject(t)
 	var buf bytes.Buffer
-	if err := runAudit(root, "HEAD", &buf); err != nil {
+	if err := runAudit(testContext(t), root, "HEAD", &buf); err != nil {
 		t.Fatalf("an empty range still exits zero, got: %v", err)
 	}
 	got := buf.String()
@@ -208,7 +208,7 @@ func TestRunAuditAnnouncesEmptyRange(t *testing.T) {
 
 // A malformed range is refused by the shared parser before the project opens.
 func TestRunAuditRejectsMalformedRange(t *testing.T) {
-	err := runAudit(t.TempDir(), "a...b", out(t))
+	err := runAudit(testContext(t), t.TempDir(), "a...b", out(t))
 	if err == nil {
 		t.Fatal("a three-dot range must be refused")
 	}
@@ -220,7 +220,7 @@ func TestRunAuditRejectsMalformedRange(t *testing.T) {
 func TestRunAuditOpenError(t *testing.T) {
 	// A dir with no .awf/config.yaml -> project.Open fails. The range is valid,
 	// so this reaches Open rather than stopping at the refusal above.
-	if err := runAudit(t.TempDir(), "HEAD", out(t)); err == nil {
+	if err := runAudit(testContext(t), t.TempDir(), "HEAD", out(t)); err == nil {
 		t.Fatal("expected a project.Open error")
 	}
 }
@@ -228,7 +228,7 @@ func TestRunAuditOpenError(t *testing.T) {
 func TestRunAuditAuditError(t *testing.T) {
 	root, _ := auditProject(t)
 	// Unresolvable base ref -> p.Audit (Collect) errors after Open succeeds.
-	if err := runAudit(root, "no-such-ref", out(t)); err == nil {
+	if err := runAudit(testContext(t), root, "no-such-ref", out(t)); err == nil {
 		t.Fatal("expected a p.Audit error for an unresolvable base")
 	}
 }

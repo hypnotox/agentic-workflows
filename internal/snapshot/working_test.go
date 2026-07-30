@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	gogit "github.com/go-git/go-git/v5"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -53,7 +54,7 @@ func TestWorkingTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tree, err := snapshot.WorkingTree(dir)
+	tree, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir))
 	if err != nil {
 		t.Fatalf("WorkingTree: %v", err)
 	}
@@ -91,7 +92,7 @@ func TestWorkingTree(t *testing.T) {
 			t.Errorf("restore tracked.txt permissions: %v", err)
 		}
 	})
-	if _, err := snapshot.WorkingTree(dir); err == nil {
+	if _, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir)); err == nil {
 		t.Fatal("expected unreadable working file to fail the snapshot")
 	}
 }
@@ -113,7 +114,7 @@ func TestWorkingTreeExcludesIgnoredResidentDescendants(t *testing.T) {
 	if err := os.WriteFile(path, []byte("resident\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	tree, err := snapshot.WorkingTree(dir)
+	tree, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +133,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tree, err := snapshot.WorkingTree(dir)
+	tree, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir))
 	if err != nil {
 		t.Fatalf("WorkingTree on unborn HEAD: %v", err)
 	}
@@ -141,7 +142,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 	}
 
 	t.Run("outside-repository", func(t *testing.T) {
-		if _, err := snapshot.WorkingTree(t.TempDir()); err == nil {
+		if _, err := awfgit.Open(t.TempDir()); err == nil {
 			t.Fatal("expected an error outside a repository")
 		}
 	})
@@ -151,7 +152,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("not a reference\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := snapshot.WorkingTree(dir); err == nil {
+		if _, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir)); err == nil {
 			t.Fatal("corrupt HEAD accepted as unborn")
 		}
 	})
@@ -161,7 +162,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("0123456789012345678901234567890123456789\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := snapshot.WorkingTree(dir); err == nil {
+		if _, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir)); err == nil {
 			t.Fatal("dangling HEAD accepted as unborn")
 		}
 	})
@@ -177,7 +178,7 @@ func TestWorkingTreeUnborn(t *testing.T) {
 		if err := os.Remove(treeObject); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := snapshot.WorkingTree(dir); err == nil {
+		if _, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir)); err == nil {
 			t.Fatal("missing committed tree object accepted as unborn")
 		}
 	})

@@ -26,7 +26,7 @@ const localPartsDetail = "convention parts for a local-managed artifact (local: 
 
 func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ntargets: [claude]\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

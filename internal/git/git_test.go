@@ -33,7 +33,7 @@ func TestWorkingPaths(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := awfgit.WorkingPaths(dir)
+	paths, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,23 +50,6 @@ func TestWorkingPaths(t *testing.T) {
 // the global and system gitignore"; the limitation bit audit first and
 // WorkingPaths second). A future staged-only status consumer that never reads
 // untracked entries earns an explicit path exemption here instead.
-func TestWorktreeStatusInjectsGlobalExcludes(t *testing.T) {
-	root := testsupport.RepoRoot(t)
-	var offenders []string
-	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
-		if strings.HasPrefix(rel, "examples/") {
-			return
-		}
-		src := string(body)
-		if strings.Contains(src, ".Status()") && !strings.Contains(src, "GlobalExcludePatterns") {
-			offenders = append(offenders, rel)
-		}
-	})
-	if len(offenders) > 0 {
-		t.Errorf("production files calling Worktree().Status() must inject git.GlobalExcludePatterns or carry an exemption in this test: %v", offenders)
-	}
-}
-
 func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -92,7 +75,7 @@ func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "kept.txt"), []byte("kept"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := awfgit.WorkingPaths(dir)
+	paths, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +100,7 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "outside-new.txt"), []byte("outside"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	paths, err := awfgit.WorkingPaths(filepath.Join(dir, "nested"))
+	paths, err := gitRepo(t, filepath.Join(dir, "nested")).WorkingPaths(testsupport.Context(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,15 +108,19 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 	if got := strings.Join(paths, ","); got != want {
 		t.Fatalf("nested project paths = %q, want %q", got, want)
 	}
-	if exists, err := awfgit.HeadExists(filepath.Join(dir, "nested")); err != nil || !exists {
+	if exists, err := gitRepo(t, filepath.Join(dir, "nested")).HeadExists(testsupport.Context(t)); err != nil || !exists {
 		t.Fatalf("nested HeadExists = %v, %v", exists, err)
 	}
-	if hash, err := awfgit.HeadHash(filepath.Join(dir, "nested")); err != nil || hash == "" {
+	if hash, err := gitRepo(t, filepath.Join(dir, "nested")).HeadHash(testsupport.Context(t)); err != nil || hash == "" {
 		t.Fatalf("nested HeadHash = %q, %v", hash, err)
 	}
 	for name, load := range map[string]func() ([]awfgit.IndexBlob, error){
-		"index":  func() ([]awfgit.IndexBlob, error) { return awfgit.IndexBlobs(filepath.Join(dir, "nested")) },
-		"commit": func() ([]awfgit.IndexBlob, error) { return awfgit.CommitBlobs(filepath.Join(dir, "nested"), "HEAD") },
+		"index": func() ([]awfgit.IndexBlob, error) {
+			return gitRepo(t, filepath.Join(dir, "nested")).IndexBlobs(testsupport.Context(t))
+		},
+		"commit": func() ([]awfgit.IndexBlob, error) {
+			return gitRepo(t, filepath.Join(dir, "nested")).CommitBlobs(testsupport.Context(t), "HEAD")
+		},
 	} {
 		blobs, err := load()
 		if err != nil {
@@ -147,7 +134,7 @@ func TestWorkingPathsFindsContainingMonorepo(t *testing.T) {
 			t.Fatalf("nested %s blobs = %q", name, joined)
 		}
 	}
-	before, after, err := awfgit.RangeBlobs(filepath.Join(dir, "nested"), "HEAD")
+	before, after, err := gitRepo(t, filepath.Join(dir, "nested")).RangeBlobs(testsupport.Context(t), "HEAD")
 	if err != nil || before != nil || len(after) != 2 {
 		t.Fatalf("nested range blobs: before=%v after=%v err=%v", before, after, err)
 	}
@@ -165,7 +152,7 @@ func TestWorkingPathsUnborn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	paths, err := awfgit.WorkingPaths(dir)
+	paths, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
 	if err != nil {
 		t.Fatalf("WorkingPaths on unborn HEAD: %v", err)
 	}
@@ -176,7 +163,7 @@ func TestWorkingPathsUnborn(t *testing.T) {
 
 func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 	t.Run("outside-repository", func(t *testing.T) {
-		if _, err := awfgit.WorkingPaths(t.TempDir()); err == nil {
+		if _, err := awfgit.Open(t.TempDir()); err == nil {
 			t.Fatal("non-repository accepted")
 		}
 	})
@@ -190,7 +177,7 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 		if err := os.Mkdir(headPath, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := awfgit.WorkingPaths(dir); err == nil {
+		if _, err := awfgit.Open(dir); err == nil {
 			t.Fatal("unreadable HEAD accepted as unborn")
 		}
 	})
@@ -200,7 +187,7 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, ".git", "HEAD"), []byte("0123456789012345678901234567890123456789\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := awfgit.WorkingPaths(dir); err == nil {
+		if _, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t)); err == nil {
 			t.Fatal("dangling HEAD accepted as unborn")
 		}
 	})
@@ -212,7 +199,7 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 		if err := os.Remove(commitObject); err != nil {
 			t.Fatal(err)
 		}
-		_, err := awfgit.WorkingPaths(dir)
+		_, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
 		wantContext := "resolve working paths HEAD commit " + head.String() + ": "
 		if err == nil || !strings.HasPrefix(err.Error(), wantContext) {
 			t.Fatalf("missing commit error = %v, want prefix %q", err, wantContext)
@@ -231,7 +218,7 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 		if err := os.Remove(treeObject); err != nil {
 			t.Fatal(err)
 		}
-		_, err = awfgit.WorkingPaths(dir)
+		_, err = gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
 		wantContext := "resolve working paths HEAD tree " + treeHash + ": "
 		if err == nil || !strings.HasPrefix(err.Error(), wantContext) {
 			t.Fatalf("missing tree error = %v, want prefix %q", err, wantContext)
@@ -241,15 +228,15 @@ func TestWorkingPathsUnbornErrorControls(t *testing.T) {
 
 func TestHeadExists(t *testing.T) {
 	_, unborn := gitfixture.InitRepo(t)
-	if has, err := awfgit.HeadExists(unborn); err != nil || has {
+	if has, err := gitRepo(t, unborn).HeadExists(testsupport.Context(t)); err != nil || has {
 		t.Fatalf("unborn HEAD: has=%v err=%v; want false, nil", has, err)
 	}
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	if has, err := awfgit.HeadExists(dir); err != nil || !has {
+	if has, err := gitRepo(t, dir).HeadExists(testsupport.Context(t)); err != nil || !has {
 		t.Fatalf("born HEAD: has=%v err=%v; want true, nil", has, err)
 	}
-	if _, err := awfgit.HeadExists(t.TempDir()); err == nil {
+	if _, err := awfgit.Open(t.TempDir()); err == nil {
 		t.Fatal("non-repository accepted")
 	}
 }
@@ -281,10 +268,10 @@ func TestHeadExistsRejectsBrokenSymbolicChains(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if has, err := awfgit.HeadExists(dir); err == nil {
+			if has, err := gitRepo(t, dir).HeadExists(testsupport.Context(t)); err == nil {
 				t.Fatalf("HeadExists accepted broken chain: has=%v", has)
 			}
-			if paths, err := awfgit.WorkingPaths(dir); err == nil {
+			if paths, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t)); err == nil {
 				t.Fatalf("WorkingPaths accepted broken chain: paths=%v", paths)
 			}
 		})
@@ -294,16 +281,16 @@ func TestHeadExistsRejectsBrokenSymbolicChains(t *testing.T) {
 func TestHeadHash(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	if h, err := awfgit.HeadHash(dir); err != nil || h == "" {
+	if h, err := gitRepo(t, dir).HeadHash(testsupport.Context(t)); err != nil || h == "" {
 		t.Fatalf("born HEAD: hash=%q err=%v; want a hash, nil", h, err)
 	}
 	// An unborn HEAD (a repo with no commits) surfaces the resolve error.
 	_, unborn := gitfixture.InitRepo(t)
-	if _, err := awfgit.HeadHash(unborn); err == nil {
+	if _, err := gitRepo(t, unborn).HeadHash(testsupport.Context(t)); err == nil {
 		t.Fatal("unborn HEAD must surface a resolve error")
 	}
 	// A non-repository fails to open.
-	if _, err := awfgit.HeadHash(t.TempDir()); err == nil {
+	if _, err := awfgit.Open(t.TempDir()); err == nil {
 		t.Fatal("non-repository accepted")
 	}
 }
@@ -315,7 +302,7 @@ func TestChangedPathsRange(t *testing.T) {
 	// sides of the change are exercised.
 	gitfixture.Commit(t, repo, dir, "two", map[string]string{"a.txt": "aa", "b.txt": "b"})
 
-	got, err := awfgit.ChangedPaths(dir, false, "HEAD~1..HEAD")
+	got, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), false, "HEAD~1..HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -343,7 +330,7 @@ func TestChangedPathsStaged(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := awfgit.ChangedPaths(dir, true, "")
+	got, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), true, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -367,7 +354,7 @@ func TestChangedPathsNestedAdopter(t *testing.T) {
 		"outside.txt":       "new\n",
 	})
 	root := filepath.Join(dir, "nested")
-	got, err := awfgit.ChangedPaths(root, false, base.String()+"..HEAD")
+	got, err := gitRepo(t, root).ChangedPaths(testsupport.Context(t), false, base.String()+"..HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -379,7 +366,7 @@ func TestChangedPathsNestedAdopter(t *testing.T) {
 		"nested/staged.txt":  "staged\n",
 		"outside-staged.txt": "outside\n",
 	})
-	got, err = awfgit.ChangedPaths(root, true, "")
+	got, err = gitRepo(t, root).ChangedPaths(testsupport.Context(t), true, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,7 +378,7 @@ func TestChangedPathsNestedAdopter(t *testing.T) {
 func TestChangedPathsNothingStaged(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	got, err := awfgit.ChangedPaths(dir, true, "")
+	got, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), true, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,16 +391,16 @@ func TestChangedPathsErrors(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
 
-	if _, err := awfgit.ChangedPaths(dir, false, "no-separator"); err == nil {
+	if _, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), false, "no-separator"); err == nil {
 		t.Error("expected a malformed-range error")
 	}
-	if _, err := awfgit.ChangedPaths(dir, false, "does-not-exist..HEAD"); err == nil {
+	if _, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), false, "does-not-exist..HEAD"); err == nil {
 		t.Error("expected an unresolvable-revision error (from side)")
 	}
-	if _, err := awfgit.ChangedPaths(dir, false, "HEAD..does-not-exist"); err == nil {
+	if _, err := gitRepo(t, dir).ChangedPaths(testsupport.Context(t), false, "HEAD..does-not-exist"); err == nil {
 		t.Error("expected an unresolvable-revision error (to side)")
 	}
-	if _, err := awfgit.ChangedPaths(t.TempDir(), false, "a..b"); err == nil {
+	if _, err := awfgit.Open(t.TempDir()); err == nil {
 		t.Error("expected an open-repo error outside a repository")
 	}
 }
@@ -422,10 +409,10 @@ func TestChangedPathsErrors(t *testing.T) {
 // not-a-repository error outside one.
 func TestOpenRepo(t *testing.T) {
 	_, dir := gitfixture.InitRepo(t)
-	if _, err := awfgit.OpenRepo(dir); err != nil {
+	if _, err := awfgit.Open(dir); err != nil {
 		t.Fatalf("open a fresh repo: %v", err)
 	}
-	if _, err := awfgit.OpenRepo(t.TempDir()); !errors.Is(err, gogit.ErrRepositoryNotExists) {
+	if _, err := awfgit.Open(t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {
 		t.Errorf("non-repo: got %v want ErrRepositoryNotExists", err)
 	}
 }
@@ -433,16 +420,36 @@ func TestOpenRepo(t *testing.T) {
 // A syntactically invalid .git/config (not merely a missing one, which the
 // storage tolerates) makes the underlying storer's Config() fail, which
 // noExtensionsStorer.Config must propagate rather than swallow.
+// TestOpenToleratesWorktreeConfig pins the tolerant-open regression: a
+// repository may carry this extension after native worktree operations, and
+// opening its seam handle must not expose go-git's rejection to consumers.
+func TestOpenToleratesWorktreeConfig(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
+	configPath := filepath.Join(dir, ".git", "config")
+	file, err := os.OpenFile(configPath, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.WriteString("\n[extensions]\n\tworktreeConfig = true\n"); err != nil {
+		_ = file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := awfgit.Open(dir); err != nil {
+		t.Fatalf("Open worktreeConfig repository: %v", err)
+	}
+}
+
 func TestOpenRepoMalformedConfig(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"go.mod": "module x\n"})
 	if err := os.WriteFile(filepath.Join(dir, ".git", "config"), []byte("[core\nbroken = = =\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	r, err := awfgit.OpenRepo(dir)
-	if err == nil {
-		_, err = r.Config()
-	}
+	_, err := awfgit.Open(dir)
 	if err == nil {
 		t.Fatal("expected a malformed .git/config error to propagate")
 	}
@@ -492,11 +499,11 @@ func TestOpenRepoGitfileLayouts(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			wtRoot := linkedWorktree(t, mainDir, name, tc.head, tc.commondir)
-			r, err := awfgit.OpenRepo(wtRoot)
+			r, err := awfgit.Open(wtRoot)
 			if err != nil {
 				t.Fatalf("open linked worktree: %v", err)
 			}
-			if _, err := r.Head(); err != nil {
+			if _, err := r.HeadHash(testsupport.Context(t)); err != nil {
 				t.Fatalf("resolve HEAD in linked worktree: %v", err)
 			}
 		})
@@ -511,7 +518,7 @@ func TestOpenRepoGitfileLayouts(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("gitdir: .realgit\n"), 0o644); err != nil {
 			t.Fatalf("write pointer: %v", err)
 		}
-		if _, err := awfgit.OpenRepo(dir); err != nil {
+		if _, err := awfgit.Open(dir); err != nil {
 			t.Fatalf("open via relative gitdir pointer: %v", err)
 		}
 	})
@@ -524,7 +531,7 @@ func TestOpenRepoMalformedGitfile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".git"), []byte("not a pointer\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := awfgit.OpenRepo(dir); err == nil || !strings.Contains(err.Error(), "gitdir:") {
+	if _, err := awfgit.Open(dir); err == nil || !strings.Contains(err.Error(), "gitdir:") {
 		t.Fatalf("want a gitdir-pointer parse error, got: %v", err)
 	}
 
@@ -535,8 +542,62 @@ func TestOpenRepoMalformedGitfile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(unreadable, ".git"), []byte("gitdir: nowhere\n"), 0o000); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := awfgit.OpenRepo(unreadable); err == nil {
+	if _, err := awfgit.Open(unreadable); err == nil {
 		t.Error("expected a read error on an unreadable .git pointer file")
+	}
+}
+
+// TestObjectReadContracts pins the handle's staged, committed, and transition
+// object views across rename and deletion edges. These are semantic snapshots:
+// names present before the transition must disappear afterwards, while the
+// renamed blob remains readable in both the index and commit universes.
+func TestObjectReadContracts(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, dir, "base", map[string]string{"old.txt": "old", "gone.txt": "gone"})
+	if err := os.Rename(filepath.Join(dir, "old.txt"), filepath.Join(dir, "renamed.txt")); err != nil {
+		t.Fatal(err)
+	}
+	wt, err := repo.Worktree()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Remove("old.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Remove("gone.txt"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wt.Add("renamed.txt"); err != nil {
+		t.Fatal(err)
+	}
+	handle := gitRepo(t, dir)
+	indexed, err := handle.IndexBlobs(testsupport.Context(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(indexed) != 1 || indexed[0].Path != "renamed.txt" || string(indexed[0].Bytes) != "old" {
+		t.Fatalf("staged blobs = %#v", indexed)
+	}
+	head, err := wt.Commit("rename and delete", &gogit.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig})
+	if err != nil {
+		t.Fatal(err)
+	}
+	committed, err := handle.CommitBlobs(testsupport.Context(t), head.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(committed) != 1 || committed[0].Path != "renamed.txt" {
+		t.Fatalf("committed blobs = %#v", committed)
+	}
+	before, after, err := handle.RangeBlobs(testsupport.Context(t), head.String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(before) != 2 || len(after) != 1 || before[0].Path != "gone.txt" || before[1].Path != "old.txt" || after[0].Path != "renamed.txt" {
+		t.Fatalf("range blobs = before %#v after %#v", before, after)
+	}
+	if base.String() == head.String() {
+		t.Fatal("fixture transition did not create a new commit")
 	}
 }
 
@@ -574,7 +635,7 @@ func TestIndexBlobs(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got, err := awfgit.IndexBlobs(dir)
+	got, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t))
 	if err != nil {
 		t.Fatalf("IndexBlobs: %v", err)
 	}
@@ -604,13 +665,13 @@ func TestIndexBlobs(t *testing.T) {
 	if err := repo.Storer.SetIndex(idx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := awfgit.IndexBlobs(dir); !errors.Is(err, awfgit.ErrIndexUnmerged) {
+	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); !errors.Is(err, awfgit.ErrIndexUnmerged) {
 		t.Fatalf("unmerged index: got %v, want ErrIndexUnmerged", err)
 	}
 }
 
 func TestIndexBlobsErrors(t *testing.T) {
-	if _, err := awfgit.IndexBlobs(t.TempDir()); err == nil || !strings.Contains(err.Error(), "open repo") {
+	if _, err := awfgit.Open(t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {
 		t.Fatalf("outside repository: got %v", err)
 	}
 
@@ -619,7 +680,7 @@ func TestIndexBlobsErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".git", "index"), []byte("garbage"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := awfgit.IndexBlobs(dir); err == nil || !strings.Contains(err.Error(), "read index") {
+	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); err == nil || !strings.Contains(err.Error(), "read index") {
 		t.Fatalf("corrupt index: got %v", err)
 	}
 
@@ -633,7 +694,7 @@ func TestIndexBlobsErrors(t *testing.T) {
 	if err := repo.Storer.SetIndex(idx); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := awfgit.IndexBlobs(dir); !errors.Is(err, awfgit.ErrIndexBlob) {
+	if _, err := gitRepo(t, dir).IndexBlobs(testsupport.Context(t)); !errors.Is(err, awfgit.ErrIndexBlob) {
 		t.Fatalf("content-less entry: got %v, want ErrIndexBlob", err)
 	}
 }

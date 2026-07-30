@@ -39,6 +39,8 @@ func invFirstADR() string {
 // invariant claims: backing mode, an unbacked claim's Verify guidance, and a
 // test-backed claim's proof-marker site. Rule claims never appear.
 func TestRunInvariantsReportsClaims(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	dir := gitProjectFiles(t, invTopicYAML, map[string]string{
 		"docs/decisions/0001-first.md":                 invFirstADR(),
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
@@ -48,7 +50,7 @@ func TestRunInvariantsReportsClaims(t *testing.T) {
 		"internal/foo_test.go":                         "package foo\n// invariant: alpha/one:backed\n",
 	})
 	var buf bytes.Buffer
-	if err := runInvariants(dir, &buf); err != nil {
+	if err := runInvariants(ctx, dir, &buf); err != nil {
 		t.Fatalf("runInvariants: %v", err)
 	}
 	out := buf.String()
@@ -64,9 +66,11 @@ func TestRunInvariantsReportsClaims(t *testing.T) {
 
 // TestRunInvariantsEmpty proves a project with no invariant claims reports none.
 func TestRunInvariantsEmpty(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	dir := gitProjectFiles(t, "prefix: example\nskills: []\nagents: []\n", nil)
 	var buf bytes.Buffer
-	if err := runInvariants(dir, &buf); err != nil {
+	if err := runInvariants(ctx, dir, &buf); err != nil {
 		t.Fatalf("runInvariants: %v", err)
 	}
 	if !strings.Contains(buf.String(), "no invariant claims") {
@@ -78,6 +82,8 @@ func TestRunInvariantsEmpty(t *testing.T) {
 // error (a load error), not a reported entry: a test-backed invariant with no
 // proof marker.
 func TestRunInvariantsLoadError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	dir := gitProjectFiles(t, invTopicYAML, map[string]string{
 		"docs/decisions/0001-first.md":                 invFirstADR(),
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
@@ -85,7 +91,7 @@ func TestRunInvariantsLoadError(t *testing.T) {
 		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `invariant: backed`\nBacked.\nOrigin: ADR-0001\nBacking: test\n",
 		"internal/foo.go":                              "package foo\n",
 	})
-	if err := runInvariants(dir, io.Discard); err == nil {
+	if err := runInvariants(ctx, dir, io.Discard); err == nil {
 		t.Fatal("expected a load error for the test-backed invariant with no proof marker")
 	}
 }

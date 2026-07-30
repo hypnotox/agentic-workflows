@@ -94,14 +94,16 @@ func topicV1ADR(t *testing.T, number, title, operation string, sequence int) str
 }
 
 func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCmdFixture(t)
 	claimID := "schedule/contracts:removed"
-	if err := runTopic(root, claimID, false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runTopic(ctx, root, claimID, false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("default removed-claim query = %v", err)
 	}
 
 	var human bytes.Buffer
-	if err := runTopic(root, claimID, true, true, true, false, &human); err != nil {
+	if err := runTopic(ctx, root, claimID, true, true, true, false, &human); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
@@ -121,7 +123,7 @@ func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
 	}
 
 	var encoded bytes.Buffer
-	if err := runTopic(root, claimID, true, true, true, true, &encoded); err != nil {
+	if err := runTopic(ctx, root, claimID, true, true, true, true, &encoded); err != nil {
 		t.Fatal(err)
 	}
 	var result topic.QueryResult
@@ -144,9 +146,11 @@ func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
 }
 
 func TestRunTopicHumanJSONAndFlags(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCmdFixture(t)
 	var defaults bytes.Buffer
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, &defaults); err != nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, &defaults); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"topic schedule/contracts", "Title: Scheduling", "deterministic-order [rule] [backing: none]", "stable-output [invariant] [backing: test]"} {
@@ -171,7 +175,7 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			if err := runTopic(root, "schedule/contracts", tc.history, tc.references, tc.coverage, false, &out); err != nil {
+			if err := runTopic(ctx, root, "schedule/contracts", tc.history, tc.references, tc.coverage, false, &out); err != nil {
 				t.Fatal(err)
 			}
 			if !strings.Contains(out.String(), tc.want) {
@@ -180,11 +184,11 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 		})
 	}
 	var claim bytes.Buffer
-	if err := runTopic(root, "schedule/contracts:stable-output", false, false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
+	if err := runTopic(ctx, root, "schedule/contracts:stable-output", false, false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
 		t.Fatalf("claim output: %v\n%s", err, claim.String())
 	}
 	var encoded bytes.Buffer
-	if err := runTopic(root, "schedule/contracts", true, true, true, true, &encoded); err != nil {
+	if err := runTopic(ctx, root, "schedule/contracts", true, true, true, true, &encoded); err != nil {
 		t.Fatal(err)
 	}
 	var result topic.QueryResult
@@ -205,6 +209,8 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 }
 
 func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	result := topic.QueryResult{
 		Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{},
 		History: []topic.ClaimHistory{
@@ -233,8 +239,9 @@ func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
 
 func runTopicHuman(t *testing.T, root string) string {
 	t.Helper()
+	ctx := testContext(t)
 	var out bytes.Buffer
-	if err := runTopic(root, "schedule/contracts", true, true, true, false, &out); err != nil {
+	if err := runTopic(ctx, root, "schedule/contracts", true, true, true, false, &out); err != nil {
 		t.Fatal(err)
 	}
 	return out.String()
@@ -255,6 +262,8 @@ func (w *failOnWrite) Write(p []byte) (int, error) {
 }
 
 func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	sentinel := errors.New("writer failed")
 	base := topic.QueryResult{
 		Kind: "topic", ID: "schedule/contracts", Title: "Scheduling", Summary: "Summary.",
@@ -283,6 +292,8 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 }
 
 func TestPrintTopicOptionalHumanFields(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	result := topic.QueryResult{
 		Kind: "claim", ID: "schedule/global:stable", Claims: []topic.QueryClaim{{
 			ID: "schedule/global:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect output.",
@@ -303,12 +314,14 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 }
 
 func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
-	if err := runTopic(t.TempDir(), "bad", false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
+	ctx := testContext(t)
+	_ = ctx
+	if err := runTopic(ctx, t.TempDir(), "bad", false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
 		t.Fatalf("syntax error = %v", err)
 	}
 	for _, asJSON := range []bool{false, true} {
 		var out bytes.Buffer
-		if err := runTopic(t.TempDir(), "schedule/contracts", false, false, false, asJSON, &out); err != nil || !strings.Contains(out.String(), "static: not inside") {
+		if err := runTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, asJSON, &out); err != nil || !strings.Contains(out.String(), "static: not inside") {
 			t.Fatalf("static = %v, %s", err, out.String())
 		}
 	}
@@ -316,11 +329,11 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("file"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
 		t.Fatal("stat fault accepted")
 	}
 	root = gateFixture(t, "99.0.0", migrate.Current())
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
 		t.Fatal("version gate accepted ahead lock")
 	}
 	root = t.TempDir()
@@ -329,16 +342,18 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
 		t.Fatal("open error hidden")
 	}
 	root = topicCmdFixture(t)
-	if err := runTopic(root, "schedule/missing", true, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runTopic(ctx, root, "schedule/missing", true, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("missing topic = %v", err)
 	}
 }
 
 func TestRunTopicDispatchAndReadOnly(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct {
 		args []string
 		code int
@@ -371,7 +386,7 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 	beforeTree, beforeIndex := digestFiles(t, root), runGit(t, root, "write-tree")
 	for _, args := range [][]string{{"schedule/contracts"}, {"schedule/contracts:stable-output", "--json"}, {"schedule/contracts", "--history", "--references", "--coverage"}} {
 		var out bytes.Buffer
-		if err := runTopic(root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), strings.Contains(strings.Join(args, " "), "--json"), &out); err != nil {
+		if err := runTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), strings.Contains(strings.Join(args, " "), "--json"), &out); err != nil {
 			t.Fatal(err)
 		}
 	}

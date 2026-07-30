@@ -50,7 +50,7 @@ func TestWorktreeChangeCountsDoesNotRefreshIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tracked, untracked, err := WorktreeChangeCounts(t.Context(), dir)
+	tracked, untracked, err := statusRepo(t, dir).ChangeCounts(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,8 +66,46 @@ func TestWorktreeChangeCountsDoesNotRefreshIndex(t *testing.T) {
 	}
 }
 
+// TestChangeCountsHonorsGlobalExcludes pins the native cleanliness oracle to
+// Git's real ignore universe. The runner isolates all other ambient state, but
+// replays this one effective setting so an ignored global file is not reported
+// as untracked dirt.
+func TestChangeCountsHonorsGlobalExcludes(t *testing.T) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	excludes := filepath.Join(home, "global-ignore")
+	if err := os.WriteFile(excludes, []byte("globally-ignored.txt\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitconfig := filepath.Join(home, ".gitconfig")
+	if err := os.WriteFile(gitconfig, []byte("[core]\n\texcludesfile = "+excludes+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_ = os.Remove(gitconfig)
+		_ = os.Remove(excludes)
+	})
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	if err := os.WriteFile(filepath.Join(dir, "globally-ignored.txt"), []byte("ignored"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "kept.txt"), []byte("kept"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tracked, untracked, err := statusRepo(t, dir).ChangeCounts(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tracked != 0 || untracked != 1 {
+		t.Fatalf("counts with global excludesfile = (%d, %d), want (0, 1)", tracked, untracked)
+	}
+}
+
 func TestWorktreeChangeCountsRejectsNonRepository(t *testing.T) {
-	if _, _, err := WorktreeChangeCounts(t.Context(), t.TempDir()); err == nil {
+	if _, err := Open(t.TempDir()); err == nil {
 		t.Fatal("WorktreeChangeCounts unexpectedly succeeded outside a repository")
 	}
 }

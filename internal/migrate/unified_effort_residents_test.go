@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	gogit "github.com/go-git/go-git/v5"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -98,7 +97,7 @@ func TestClassifyLegacyResidentsKnownLeaves(t *testing.T) {
 	writeLeaf(t, root, legacyMemoryRel+"/notes.md", []byte("standalone"))
 	writeLeaf(t, root, legacyMemoryRel+"/nested/deeper.md", []byte("nested"))
 
-	result, err := ClassifyLegacyResidents(root)
+	result, err := ClassifyLegacyResidents(testContext(t), root)
 	if err != nil {
 		t.Fatalf("classify: %v", err)
 	}
@@ -148,7 +147,7 @@ func TestClassifyLegacyResidentsKnownLeaves(t *testing.T) {
 
 func TestClassifyLegacyResidentsAbsentAndEmptyRoots(t *testing.T) {
 	t.Run("no-resident-roots", func(t *testing.T) {
-		result, err := ClassifyLegacyResidents(t.TempDir())
+		result, err := ClassifyLegacyResidents(testContext(t), t.TempDir())
 		if err != nil {
 			t.Fatalf("classify: %v", err)
 		}
@@ -159,7 +158,7 @@ func TestClassifyLegacyResidentsAbsentAndEmptyRoots(t *testing.T) {
 	t.Run("empty-memory-root-is-still-owned", func(t *testing.T) {
 		// The root itself is the thing protocol 2 stops owning, so an empty one
 		// is still quarantined rather than left behind as an orphan directory.
-		result, err := ClassifyLegacyResidents(residentTree(t))
+		result, err := ClassifyLegacyResidents(testContext(t), residentTree(t))
 		if err != nil {
 			t.Fatalf("classify: %v", err)
 		}
@@ -197,7 +196,7 @@ func TestClassifyLegacyResidentsUnknownAndMalformedLeaves(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			root := residentTree(t)
 			path := writeLeaf(t, root, tc.rel, []byte(tc.content))
-			_, err := ClassifyLegacyResidents(root)
+			_, err := ClassifyLegacyResidents(testContext(t), root)
 			requireRefusal(t, err, tc.condition, preserveManually)
 			if _, err := os.Stat(path); err != nil {
 				t.Fatalf("refusal changed %s: %v", tc.rel, err)
@@ -215,7 +214,7 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 		if err := os.Symlink(target, link); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "unsafe resident", preserveManually)
 		if _, err := os.Lstat(link); err != nil {
 			t.Fatalf("refusal removed the symlink: %v", err)
@@ -230,7 +229,7 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 		}
 		// The same bytes are reachable from outside the resident root, so awf
 		// cannot prove discarding this copy is its own decision to make.
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "unsafe resident", preserveManually)
 	})
 	t.Run("symlinked-memory-root", func(t *testing.T) {
@@ -241,19 +240,19 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 		if err := os.Symlink(t.TempDir(), filepath.Join(root, filepath.FromSlash(legacyMemoryRel))); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "symlinked resident", preserveManually)
 	})
 	t.Run("memory-root-is-a-file", func(t *testing.T) {
 		root := t.TempDir()
 		writeLeaf(t, root, legacyMemoryRel, []byte("not a directory"))
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "is not a directory", preserveManually)
 	})
 	t.Run("efforts-root-is-a-file", func(t *testing.T) {
 		root := t.TempDir()
 		writeLeaf(t, root, legacyEffortsRel, []byte("not a directory"))
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "is not a directory", preserveManually)
 	})
 	t.Run("symlinked-memory-descendant", func(t *testing.T) {
@@ -263,7 +262,7 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 		if err := os.Symlink(target, link); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "unsafe standalone memory resident", preserveManually)
 		if _, err := os.Lstat(link); err != nil {
 			t.Fatalf("refusal removed the symlink: %v", err)
@@ -275,7 +274,7 @@ func TestClassifyLegacyResidentsUnsafeResidents(t *testing.T) {
 		if err := os.Symlink(t.TempDir(), link); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, "unsafe standalone memory resident", preserveManually)
 	})
 }
@@ -304,7 +303,7 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 	t.Run("registered-managed-worktree", func(t *testing.T) {
 		primary := newRepo(t)
 		git(t, "-C", primary, "worktree", "add", "-b", legacyBranchPrefix+legacyIDA, filepath.Join(primary, filepath.FromSlash(managedRel)), "HEAD")
-		_, err := ClassifyLegacyResidents(primary)
+		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed worktree path", legacyWorktreeNextAction(legacyIDA))
 		if _, err := os.Stat(filepath.Join(primary, filepath.FromSlash(legacyEffortsRel), legacyIDA+".json")); err != nil {
 			t.Fatalf("refusal changed the record: %v", err)
@@ -317,13 +316,13 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		if err := os.RemoveAll(managed); err != nil {
 			t.Fatal(err)
 		}
-		_, err := ClassifyLegacyResidents(primary)
+		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "is still registered with Git", legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("branch-only", func(t *testing.T) {
 		primary := newRepo(t)
 		git(t, "-C", primary, "branch", legacyBranchPrefix+legacyIDA)
-		_, err := ClassifyLegacyResidents(primary)
+		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed branch", legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("branch-with-no-surviving-record", func(t *testing.T) {
@@ -334,7 +333,7 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 			t.Fatal(err)
 		}
 		git(t, "-C", primary, "branch", legacyBranchPrefix+legacyIDB)
-		_, err := ClassifyLegacyResidents(primary)
+		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed branch "+legacyBranchPrefix+legacyIDB, legacyWorktreeNextAction(legacyIDB))
 	})
 	t.Run("managed-directory-without-git-facts", func(t *testing.T) {
@@ -342,7 +341,7 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		if err := os.MkdirAll(filepath.Join(primary, filepath.FromSlash(managedRel)), 0o700); err != nil {
 			t.Fatal(err)
 		}
-		_, err := ClassifyLegacyResidents(primary)
+		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "legacy managed worktree path", legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("deterministic-refusal-order", func(t *testing.T) {
@@ -351,8 +350,8 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		for _, id := range []string{legacyIDA, legacyIDB} {
 			git(t, "-C", primary, "branch", legacyBranchPrefix+id)
 		}
-		first, err := ClassifyLegacyResidents(primary)
-		second, secondErr := ClassifyLegacyResidents(primary)
+		first, err := ClassifyLegacyResidents(testContext(t), primary)
+		second, secondErr := ClassifyLegacyResidents(testContext(t), primary)
 		if len(first.Quarantine) != 0 || len(second.Quarantine) != 0 {
 			t.Fatal("a refused classification returned quarantine targets")
 		}
@@ -368,19 +367,19 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		primary := newRepo(t)
 		elsewhere := filepath.Join(filepath.Dir(primary), "elsewhere")
 		git(t, "-C", primary, "worktree", "add", "-b", legacyBranchPrefix+legacyIDA, elsewhere, "HEAD")
-		_, err := ClassifyLegacyResidents(primary)
+		_, err := ClassifyLegacyResidents(testContext(t), primary)
 		requireRefusal(t, err, "is checked out at "+elsewhere, legacyWorktreeNextAction(legacyIDA))
 	})
 	t.Run("unreadable-managed-root-propagates", func(t *testing.T) {
 		root := residentTree(t)
 		writeLeaf(t, root, legacyWorktreesRel, []byte("not a directory"))
-		if _, err := ClassifyLegacyResidents(root); err == nil || !strings.Contains(err.Error(), legacyWorktreesRel) {
+		if _, err := ClassifyLegacyResidents(testContext(t), root); err == nil || !strings.Contains(err.Error(), legacyWorktreesRel) {
 			t.Fatalf("want an inspection failure naming the managed root, got %v", err)
 		}
 	})
 	t.Run("clean-repository-classifies", func(t *testing.T) {
 		primary := newRepo(t)
-		result, err := ClassifyLegacyResidents(primary)
+		result, err := ClassifyLegacyResidents(testContext(t), primary)
 		if err != nil {
 			t.Fatalf("classify: %v", err)
 		}
@@ -395,7 +394,7 @@ func TestClassifyLegacyResidentsRefusesLiveWorktreeFacts(t *testing.T) {
 		primary := newRepo(t)
 		linked := filepath.Join(filepath.Dir(primary), "linked")
 		git(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
-		result, err := ClassifyLegacyResidents(linked)
+		result, err := ClassifyLegacyResidents(testContext(t), linked)
 		if err != nil {
 			t.Fatalf("classify from a linked checkout: %v", err)
 		}
@@ -420,7 +419,7 @@ func TestClassifyLegacyResidentsPartialEvidenceGitFacts(t *testing.T) {
 			t.Fatal(err)
 		}
 		rel := writeLegacyPartial(t, root, legacyIDA, "worktree", declared)
-		_, err := ClassifyLegacyResidents(root)
+		_, err := ClassifyLegacyResidents(testContext(t), root)
 		requireRefusal(t, err, declared, legacyWorktreeNextAction(legacyIDA))
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(rel))); err != nil {
 			t.Fatalf("refusal changed the evidence: %v", err)
@@ -433,7 +432,7 @@ func TestClassifyLegacyResidentsPartialEvidenceGitFacts(t *testing.T) {
 		root := residentTree(t)
 		declared := filepath.Join(t.TempDir(), "never-created")
 		rel := writeLegacyPartial(t, root, legacyIDA, "worktree", declared)
-		result, err := ClassifyLegacyResidents(root)
+		result, err := ClassifyLegacyResidents(testContext(t), root)
 		if err != nil {
 			t.Fatalf("classify: %v", err)
 		}
@@ -450,10 +449,10 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer\n"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := awfgit.OpenRepo(root); err == nil || errors.Is(err, gogit.ErrRepositoryNotExists) {
+		if _, err := awfgit.Open(root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
 			t.Fatalf("fixture did not produce a present broken Git error: %v", err)
 		}
-		if _, err := ClassifyLegacyResidents(root); err == nil {
+		if _, err := ClassifyLegacyResidents(testContext(t), root); err == nil {
 			t.Fatal("a broken checkout classified as a plain directory")
 		}
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(legacyEffortsRel), legacyIDA+".json")); err != nil {
@@ -467,7 +466,7 @@ func TestClassifyLegacyResidentsGitFailures(t *testing.T) {
 		if err := os.Symlink(primary, alias); err != nil {
 			t.Skipf("symlink unavailable: %v", err)
 		}
-		if _, err := ClassifyLegacyResidents(alias); err == nil {
+		if _, err := ClassifyLegacyResidents(testContext(t), alias); err == nil {
 			t.Fatal("an unsafe checkout classified")
 		}
 	})
@@ -482,7 +481,7 @@ func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 		root := residentTree(t)
 		path := writeLeaf(t, root, legacyEffortsRel+"/stray.txt", []byte("x"))
 		var out bytes.Buffer
-		requireRefusal(t, applyUnifiedEffortResidents(root, &out), "unknown resident leaf", preserveManually)
+		requireRefusal(t, applyUnifiedEffortResidents(testContext(t), root, &out), "unknown resident leaf", preserveManually)
 		if out.Len() != 0 {
 			t.Fatalf("a refused migration announced the reset: %q", out.String())
 		}
@@ -506,7 +505,7 @@ func TestApplyUnifiedEffortResidentsRefusals(t *testing.T) {
 		var out bytes.Buffer
 		// One journal spans one root, so the split is refused rather than
 		// half-applied across two checkouts.
-		requireRefusal(t, applyUnifiedEffortResidents(linked, &out), "belong to the primary checkout", "run `awf upgrade` from "+primary)
+		requireRefusal(t, applyUnifiedEffortResidents(testContext(t), linked, &out), "belong to the primary checkout", "run `awf upgrade` from "+primary)
 		if _, err := os.Stat(filepath.Join(primary, filepath.FromSlash(legacyMemoryRel))); err != nil {
 			t.Fatalf("refusal changed the resident root: %v", err)
 		}

@@ -19,7 +19,7 @@ func projectWithScopes(t *testing.T) *Project {
 		"audit:\n  allowedScopes:\n"+
 		"    - {name: adr, meaning: ADR docs}\n"+
 		"    - {name: rendering, meaning: the render engine}\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func projectWithScopes(t *testing.T) *Project {
 // scopes) and no gate vars - the scope keys and gate keys are all absent.
 func projectAcceptAny(t *testing.T) *Project {
 	t.Helper()
-	p, err := Open(scaffold(t, "prefix: bare\nvars: {}\nskills: []\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nvars: {}\nskills: []\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestPlaceholderValueTokenFree(t *testing.T) {
 	// A scope meaning carrying the token taints commitScopeTable's value.
 	root := scaffold(t, "prefix: awftest\nvars: {}\nskills: []\nagents: []\n"+
 		"audit:\n  allowedScopes:\n    - {name: adr, meaning: \"see {{=awf:commitScopeList}}\"}\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestPlaceholderSubstitutionInSync(t *testing.T) {
 	good := scaffoldFiles(t, cfg, map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:commitScopeTable}}\n",
 	})
-	p, err := Open(good)
+	p, err := Open(testContext(t), good)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestPlaceholderSubstitutionInSync(t *testing.T) {
 	bad := scaffoldFiles(t, cfg, map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:bogus}}\n",
 	})
-	bp, err := Open(bad)
+	bp, err := Open(testContext(t), bad)
 	if err != nil {
 		t.Fatal(err)
 	}

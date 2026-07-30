@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -8,7 +9,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // runMemoryGate scans the staged decision records for a citation of a specific
@@ -16,8 +16,8 @@ import (
 // is off, so a hook or a runner may invoke it unconditionally. The scanned
 // prefixes derive from the configured docs directory, so an adopter with a
 // custom docsDir gets their own decisions and plans directories.
-func runMemoryGate(root string, stdout io.Writer) error {
-	tree, err := snapshot.IndexTree(root)
+func runMemoryGate(ctx context.Context, root string, stdout io.Writer) error {
+	tree, err := stagedTree(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check memory: cannot read staged files: %w", err)
 	}

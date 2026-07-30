@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"go/ast"
@@ -18,6 +19,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -35,8 +37,8 @@ agents: []
 // scaffoldProject writes a minimal tree config under a git-backed root and syncs
 // it, leaving a drift-clean project. The base commit gives the working Tree a
 // HEAD, which the commands that read one (check, invariants) require.
-func initializeProject(root string, out io.Writer) error {
-	return runSyncInitialized(root, project.InitAuthority{InitializedWithVersion: project.Version}, out)
+func initializeProject(ctx context.Context, root string, out io.Writer) error {
+	return runSyncInitialized(ctx, root, project.InitAuthority{InitializedWithVersion: project.Version}, out)
 }
 
 func scaffoldProject(t *testing.T) string {
@@ -44,13 +46,24 @@ func scaffoldProject(t *testing.T) string {
 	repo, root := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("scaffold sync: %v", err)
 	}
 	return root
 }
 
+func mustOpenGit(t *testing.T, root string) *awfgit.Repo {
+	t.Helper()
+	repo, err := awfgit.Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return repo
+}
+
 func TestResolveProjectResidentRoot(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	repo, primary := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, primary, "base", map[string]string{"README.md": "base\n"})
 	linked := filepath.Join(t.TempDir(), "linked")
@@ -58,30 +71,36 @@ func TestResolveProjectResidentRoot(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git worktree add: %v\n%s", err, out)
 	}
-	if got := resolveProjectResidentRoot(linked); got != primary {
+	if got := awfgit.ProjectResidentRoot(ctx, linked); got != primary {
 		t.Fatalf("resident root = %q, want primary %q", got, primary)
 	}
 }
 
 func TestResolveProjectResidentRootFallsBackOutsideGit(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
-	if got := resolveProjectResidentRoot(root); got != root {
+	if got := awfgit.ProjectResidentRoot(ctx, root); got != root {
 		t.Fatalf("resident root = %q, want invoking root", got)
 	}
 }
 
 func TestResolveProjectResidentRootFallsBackOnUnsafeResident(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	_, root := gitfixture.InitRepo(t)
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
 	}
-	if got := resolveProjectResidentRoot(root); got != root {
+	if got := awfgit.ProjectResidentRoot(ctx, root); got != root {
 		t.Fatalf("resident root = %q, want invoking root", got)
 	}
 }
 
 func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	repo, root := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
@@ -92,8 +111,8 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	loader := project.NewLoader(func(path string) (*config.Config, error) {
 		loadPaths = append(loadPaths, path)
 		return config.Load(path)
-	}, catalog.Standard, func(got string) string { return got })
-	if err := runSyncPrinting(loader, root, &project.InitAuthority{InitializedWithVersion: project.Version}, io.Discard); err != nil {
+	}, catalog.Standard, func(_ context.Context, got string) string { return got }, mustOpenGit(t, root))
+	if err := runSyncPrinting(ctx, loader, root, &project.InitAuthority{InitializedWithVersion: project.Version}, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	want := config.RootDir(root)
@@ -104,6 +123,8 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 
 // invariant: code-design/dependency-composition:sync-project-loader-wiring
 func TestSyncCompositionAndCallers(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	paths, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +161,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 			name := ""
 			switch fun := ce.Fun.(type) {
 			case *ast.Ident:
-				if fun.Name == "runSync" || fun.Name == "runSyncInitialized" || fun.Name == "runSyncPrinting" {
+				if fun.Name == "runSync" || fun.Name == "runSyncInitialized" || fun.Name == "runSyncPrinting" || fun.Name == "newProjectLoader" {
 					name = fun.Name
 				}
 			case *ast.SelectorExpr:
@@ -159,11 +180,12 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 	}
 
 	want := map[call]int{
-		{file: "sync.go", owner: "runSync", name: "project.NewLoader"}:               1,
+		{file: "sync.go", owner: "runSync", name: "newProjectLoader"}:                1,
 		{file: "sync.go", owner: "runSync", name: "runSyncPrinting"}:                 1,
-		{file: "sync.go", owner: "runSyncInitialized", name: "project.NewLoader"}:    1,
+		{file: "sync.go", owner: "runSyncInitialized", name: "newProjectLoader"}:     1,
 		{file: "sync.go", owner: "runSyncInitialized", name: "runSyncPrinting"}:      1,
 		{file: "sync.go", owner: "runSyncPrinting", name: "loader.Open"}:             1,
+		{file: "sync.go", owner: "newProjectLoader", name: "project.NewLoader"}:      1,
 		{file: "dispatch.go", owner: "", name: "runSync"}:                            1,
 		{file: "init.go", owner: "runInit", name: "runSync"}:                         1,
 		{file: "init.go", owner: "runInit", name: "runSyncInitialized"}:              1,
@@ -210,6 +232,8 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 
 // invariant: tooling/upgrade-runtime:initial-adoption-version-immutable
 func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	repo, root := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	gitfixture.Stage(t, repo, root, map[string]string{"docs/decisions/0001-existing.md": testsupport.ADR("Accepted", testsupport.WithTitle("0001: Existing"))})
@@ -217,7 +241,7 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	// The gateCmd answer keeps the scaffold's enabled hooks singleton valid
 	// for the ordinary syncs below (ADR-0156 Decision 5).
-	if err := runInit(root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	initial, err := manifest.Load(config.LockPath(root))
@@ -234,15 +258,15 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 			t.Fatalf("%s changed authority: initial=%#v got=%#v", step, initial, got)
 		}
 	}
-	if err := runSync(root, io.Discard); err != nil {
+	if err := runSync(ctx, root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	assertAuthority("ordinary sync")
-	if err := runUpgrade(root, io.Discard); err != nil {
+	if err := runUpgrade(ctx, root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	assertAuthority("zero-migration upgrade")
-	if err := runInit(root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	assertAuthority("forced init")
@@ -281,7 +305,7 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 			if _, err := wt.Add(".awf/awf.lock"); err != nil {
 				t.Fatal(err)
 			}
-			if err := runCheck(root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.name) {
+			if err := runCheck(ctx, root, true, io.Discard); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.name) {
 				t.Fatalf("staged %s mutation error = %v", tc.name, err)
 			}
 			if err := initial.Save(config.LockPath(root)); err != nil {
@@ -295,9 +319,11 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 }
 
 func TestInitSeedsEmptyAuthority(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
-	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(config.LockPath(root))
@@ -310,6 +336,8 @@ func TestInitSeedsEmptyAuthority(t *testing.T) {
 }
 
 func TestInitSealsBrownfieldAuthority(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	one := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: One"))
@@ -318,7 +346,7 @@ func TestInitSealsBrownfieldAuthority(t *testing.T) {
 	threePath := filepath.Join(root, "docs/decisions/0003-three.md")
 	testsupport.WriteFile(t, onePath, one)
 	testsupport.WriteFile(t, threePath, three)
-	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(config.LockPath(root))
@@ -337,6 +365,8 @@ func TestInitSealsBrownfieldAuthority(t *testing.T) {
 }
 
 func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct {
 		name  string
 		files map[string]string
@@ -355,7 +385,7 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 			}
 			before := snapshotTree(t, root)
 			var out bytes.Buffer
-			if err := runInit(root, false, false, nil, "", &out); err == nil {
+			if err := runInit(ctx, root, false, false, nil, "", &out); err == nil {
 				t.Fatal("expected refusal")
 			}
 			if after := snapshotTree(t, root); after != before {
@@ -369,18 +399,20 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 }
 
 func TestInitForcePreservesAuthority(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	// A forced re-init over an existing config runs an ordinary sync, so the
 	// gateCmd answer keeps its enabled hooks singleton valid (ADR-0156).
-	if err := runInit(root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	before, err := manifest.Load(config.LockPath(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	after, err := manifest.Load(config.LockPath(root))
@@ -393,6 +425,8 @@ func TestInitForcePreservesAuthority(t *testing.T) {
 }
 
 func TestInitForceRefusesMissingAuthority(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct{ name, lock, want string }{
 		{"missing", "", "use the bridge release to attest"},
 		{"bridge", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"bridgeAttestation":{"version":1,"preparedHead":"x","treeDigest":"sha256:x","adrFormatV1From":1,"legacyADRGaps":[]}}`, "use the bridge release to attest"},
@@ -406,7 +440,7 @@ func TestInitForceRefusesMissingAuthority(t *testing.T) {
 			}
 			before := snapshotTree(t, root)
 			var out bytes.Buffer
-			err := runInit(root, true, false, nil, "", &out)
+			err := runInit(ctx, root, true, false, nil, "", &out)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error=%v, want %q", err, tc.want)
 			}
@@ -421,6 +455,7 @@ func TestInitForceRefusesMissingAuthority(t *testing.T) {
 }
 
 func testInitFirstADRChecksClean(t *testing.T) {
+	ctx := testContext(t)
 	for _, tc := range []struct {
 		name   string
 		legacy []string
@@ -439,7 +474,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 			// The gateCmd answer keeps the scaffold's enabled hooks singleton
 			// valid for the post-init syncs (ADR-0156 Decision 5).
-			if err := runInit(root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+			if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 				t.Fatal(err)
 			}
 			lock, err := manifest.Load(config.LockPath(root))
@@ -459,7 +494,7 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if _, err := wt.Commit("initialize", &git.CommitOptions{Author: gitfixture.Sig, Committer: gitfixture.Sig}); err != nil {
 				t.Fatal(err)
 			}
-			if err := runNew(root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
+			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
 				t.Fatal(err)
 			}
 			want := fmt.Sprintf("%04d-", tc.cutoff)
@@ -497,10 +532,10 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err := os.WriteFile(created, []byte(text), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if err := runSync(root, io.Discard); err != nil {
+			if err := runSync(ctx, root, io.Discard); err != nil {
 				t.Fatal(err)
 			}
-			if err := runCheck(root, false, io.Discard); err != nil {
+			if err := runCheck(ctx, root, false, io.Discard); err != nil {
 				t.Fatalf("check: %v", err)
 			}
 		})
@@ -508,11 +543,13 @@ func testInitFirstADRChecksClean(t *testing.T) {
 }
 
 func TestRunSyncPrintsPrunedFiles(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	// Disable the only skill; the re-sync prunes its rendered file and says so.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [tdd]", "skills: []", 1))
 	var out bytes.Buffer
-	if err := runSync(root, &out); err != nil {
+	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "awf render: pruned .claude/skills/example-tdd/SKILL.md\n") {
@@ -520,7 +557,7 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 	}
 	// A drift-clean re-sync prints no prune lines.
 	out.Reset()
-	if err := runSync(root, &out); err != nil {
+	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out.String(), "pruned") {
@@ -529,12 +566,14 @@ func TestRunSyncPrintsPrunedFiles(t *testing.T) {
 }
 
 func TestRunSyncPrintsChangedFiles(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	// A var edit moves the config hash of every artifact referencing it; the
 	// re-sync attributes the changed output to the project's own inputs.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1))
 	var out bytes.Buffer
-	if err := runSync(root, &out); err != nil {
+	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "awf render: changed .claude/skills/example-tdd/SKILL.md (config)\n") {
@@ -542,7 +581,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	}
 	// A drift-clean re-sync prints no change lines.
 	out.Reset()
-	if err := runSync(root, &out); err != nil {
+	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out.String(), "changed") || strings.Contains(out.String(), "added") {
@@ -551,7 +590,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	// Enabling an artifact reports its files as added.
 	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "gateCmd: make gate", "gateCmd: ./x gate", 1)+"docs: [pitfalls]\n")
 	out.Reset()
-	if err := runSync(root, &out); err != nil {
+	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "awf render: added docs/pitfalls.md\n") {
@@ -560,6 +599,8 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 }
 
 func TestRunNoArgs(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for no args, got %d", code)
@@ -570,6 +611,8 @@ func TestRunNoArgs(t *testing.T) {
 }
 
 func TestRunHelp(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, arg := range []string{"help", "--help", "-h"} {
 		var out, errb bytes.Buffer
 		if code := run([]string{"awf", arg}, &out, &errb); code != 0 {
@@ -582,6 +625,8 @@ func TestRunHelp(t *testing.T) {
 }
 
 func TestRunGetwdError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return "", errors.New("boom") })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "render"}, &out, &errb); code != 1 {
@@ -590,6 +635,8 @@ func TestRunGetwdError(t *testing.T) {
 }
 
 func TestRunUnknownCommand(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "bogus"}, &out, &errb); code != 2 {
@@ -601,6 +648,8 @@ func TestRunUnknownCommand(t *testing.T) {
 }
 
 func TestRunAddMissingSkillArg(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "enable"}, &out, &errb); code != 2 {
@@ -609,6 +658,8 @@ func TestRunAddMissingSkillArg(t *testing.T) {
 }
 
 func TestRunArgValidation(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	cases := []struct {
 		name string
@@ -633,6 +684,8 @@ func TestRunArgValidation(t *testing.T) {
 }
 
 func TestRunDispatchError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// render in a bare dir: project.Open fails -> handler error -> exit 1.
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
@@ -649,6 +702,8 @@ func TestRunDispatchError(t *testing.T) {
 // full argv because they are subcommands, not top-level names: a single-token
 // loop could no longer reach them.
 func TestRunDispatchArms(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct {
 		name string
 		args []string
@@ -681,7 +736,7 @@ func TestRunDispatchArms(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(cfg), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := initializeProject(root, io.Discard); err != nil {
+		if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 			t.Fatal(err)
 		}
 		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
@@ -702,40 +757,44 @@ func TestRunDispatchArms(t *testing.T) {
 
 // TestHandlersOnBareDirError covers each handler's project.Open error return.
 func TestHandlersOnBareDirError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	bare := func(t *testing.T) string { return t.TempDir() }
 	t.Run("check", func(t *testing.T) {
-		if err := runCheck(bare(t), false, io.Discard); err == nil {
+		if err := runCheck(ctx, bare(t), false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 	t.Run("invariants", func(t *testing.T) {
-		if err := runInvariants(bare(t), io.Discard); err == nil {
+		if err := runInvariants(ctx, bare(t), io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 	t.Run("list", func(t *testing.T) {
-		if err := runList(bare(t), "", io.Discard); err == nil {
+		if err := runList(ctx, bare(t), "", io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 	t.Run("new", func(t *testing.T) {
-		if err := runNew(bare(t), "adr", []string{"x"}, io.Discard); err == nil {
+		if err := runNew(ctx, bare(t), "adr", []string{"x"}, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 	t.Run("enable", func(t *testing.T) {
-		if err := runEnable(bare(t), "skill", "tdd", false, io.Discard); err == nil {
+		if err := runEnable(ctx, bare(t), "skill", "tdd", false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 	t.Run("disable", func(t *testing.T) {
-		if err := runDisable(bare(t), "skill", "tdd", false, false, io.Discard); err == nil {
+		if err := runDisable(ctx, bare(t), "skill", "tdd", false, false, io.Discard); err == nil {
 			t.Error("expected Open error")
 		}
 	})
 }
 
 func TestRunInvariantsLoadFault(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A malformed ADR makes the working-tree corpus load error out of runInvariants.
 	root := scaffoldProject(t)
 	adrDir := filepath.Join(root, "docs", "decisions")
@@ -745,12 +804,14 @@ func TestRunInvariantsLoadFault(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte("---\n: : bad yaml : :\n---\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInvariants(root, io.Discard); err == nil {
+	if err := runInvariants(ctx, root, io.Discard); err == nil {
 		t.Error("expected a corpus load error on a malformed ADR")
 	}
 }
 
 func TestRunCheckErrorPaths(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	t.Run("stale-schema", func(t *testing.T) {
 		root := t.TempDir()
 		claude := filepath.Join(root, ".claude")
@@ -776,13 +837,15 @@ func TestRunCheckErrorPaths(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte("---\n: : bad yaml : :\n---\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := runCheck(root, false, io.Discard); err == nil {
+		if err := runCheck(ctx, root, false, io.Discard); err == nil {
 			t.Error("expected check error on a malformed ADR")
 		}
 	})
 }
 
 func TestRunListSidecarError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A malformed sidecar for the enabled skill makes Sidecar() error.
 	root := scaffoldProject(t)
 	skillsDir := filepath.Join(root, ".awf", "skills")
@@ -792,12 +855,14 @@ func TestRunListSidecarError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(skillsDir, "tdd.yaml"), []byte("data: [not, a, map]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runList(root, "", io.Discard); err == nil {
+	if err := runList(ctx, root, "", io.Discard); err == nil {
 		t.Error("expected Sidecar parse error")
 	}
 }
 
 func TestRunSyncSyncError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A directory squatting on a rendered output path makes p.SyncReport() fail.
 	root := scaffoldProject(t)
 	out := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
@@ -807,12 +872,14 @@ func TestRunSyncSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil { // SKILL.md is now a directory
 		t.Fatal(err)
 	}
-	if err := runSync(root, io.Discard); err == nil {
+	if err := runSync(ctx, root, io.Discard); err == nil {
 		t.Error("expected Sync error when an output path is a directory")
 	}
 }
 
 func TestRunInitSyncError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// Config exists (skip scaffold); a squatting output dir makes the inner
 	// runSync fail, covering runInit's runSync error return.
 	root := scaffoldProject(t)
@@ -823,12 +890,14 @@ func TestRunInitSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
 	}
 }
 
 func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A legacy single-file project migrates to the tree layout, covering the
 	// applied-migrations loop and the terminal sync.
 	_, root := gitfixture.InitRepo(t)
@@ -844,7 +913,7 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if err := runUpgrade(root, &out); err != nil {
+	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade legacy: %v", err)
 	}
 	if !strings.Contains(out.String(), "applied") {
@@ -856,6 +925,8 @@ func TestRunUpgradeAppliesLegacyMigration(t *testing.T) {
 // awf upgrade: close-enabled-set closes the enabled set, then the terminal
 // sync opens it cleanly.
 func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	repo, root := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nvars: {}\nskills: [brainstorming]\nagents: []\n")
@@ -863,11 +934,11 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(root, false, io.Discard); err == nil {
+	if err := runCheck(ctx, root, false, io.Discard); err == nil {
 		t.Fatal("pre-upgrade check should refuse (schema gate)")
 	}
 	var out bytes.Buffer
-	if err := runUpgrade(root, &out); err != nil {
+	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
 	if strings.Contains(out.String(), `close-enabled-set: enabled skill`) {
@@ -878,6 +949,8 @@ func TestRunUpgradeRepairsUnclosedConfig(t *testing.T) {
 }
 
 func TestRunUpgradeMigrationError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A legacy config that fails to parse makes the migration error.
 	root := t.TempDir()
 	claude := filepath.Join(root, ".claude")
@@ -891,13 +964,15 @@ func TestRunUpgradeMigrationError(t *testing.T) {
 	if err := lock.Save(filepath.Join(claude, "awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runUpgrade(root, io.Discard); err == nil {
+	if err := runUpgrade(ctx, root, io.Discard); err == nil {
 		t.Error("expected migration error for a malformed legacy config")
 	}
 }
 
 // invariant: tooling/cli:single-os-exit
 func TestNoOsExitOutsideMain(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	files, err := filepath.Glob("*.go")
 	if err != nil {
 		t.Fatal(err)
@@ -924,6 +999,8 @@ func TestNoOsExitOutsideMain(t *testing.T) {
 }
 
 func TestGateRejectsStaleSchema(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A legacy single-file layout (.claude/awf.yaml, no tree config) reports
 	// generation 0 -> GateState "gate".
 	root := t.TempDir()
@@ -934,7 +1011,7 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(claude, "awf.yaml"), []byte("prefix: x\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := gate(root); err == nil {
+	if err := gate(ctx, root); err == nil {
 		t.Fatal("expected gate to reject stale schema")
 	}
 	// render is Gated: the driver surfaces the same gate error before the handler.
@@ -945,28 +1022,34 @@ func TestGateRejectsStaleSchema(t *testing.T) {
 }
 
 func TestProbeCollisionsOpenError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")
-	if _, err := probeCollisions(root); err == nil {
+	if _, err := probeCollisions(testContext(t), root); err == nil {
 		t.Fatal("expected config open error")
 	}
-	if err := runInit(root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
 		t.Fatal("expected init probe error")
 	}
 }
 
 func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
-	if err := runInit(root, false, false, nil, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
 	}
 }
 
 func TestRunInvariantsNoClaims(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runInvariants(root, &out); err != nil {
+	if err := runInvariants(ctx, root, &out); err != nil {
 		t.Fatalf("runInvariants: %v", err)
 	}
 	if !strings.Contains(out.String(), "no invariant claims") {
@@ -975,9 +1058,11 @@ func TestRunInvariantsNoClaims(t *testing.T) {
 }
 
 func TestRunListPrintsSkills(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runList(root, "", &out); err != nil {
+	if err := runList(ctx, root, "", &out); err != nil {
 		t.Fatalf("runList: %v", err)
 	}
 	if !strings.Contains(out.String(), "tdd") {
@@ -987,9 +1072,11 @@ func TestRunListPrintsSkills(t *testing.T) {
 
 // invariant: tooling/cli:upgrade-always-syncs
 func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runUpgrade(root, &out); err != nil {
+	if err := runUpgrade(ctx, root, &out); err != nil {
 		t.Fatalf("runUpgrade: %v", err)
 	}
 	if !strings.Contains(out.String(), "already at schema") {
@@ -1004,6 +1091,8 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 
 // invariant: tooling/init-and-enablement:init-collision-guard
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
@@ -1050,6 +1139,8 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 }
 
 func TestInitRollbackPreservesExistingAwf(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	// Pre-existing authored .awf/ content but no config.yaml -> init scaffolds config,
 	// then a collision (non-managed CLAUDE.md) forces a refusal + rollback.
@@ -1063,7 +1154,7 @@ func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
 		t.Fatal("expected init to refuse on collision")
 	}
 	// The scaffolded config.yaml is rolled back...
@@ -1077,6 +1168,8 @@ func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 }
 
 func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	// A colliding CLAUDE.md plus a pre-existing backup from an earlier --force.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("v2\n"), 0o644); err != nil {
@@ -1099,6 +1192,8 @@ func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 }
 
 func TestInitIdempotentReinitNoCollision(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -1115,6 +1210,8 @@ func TestInitIdempotentReinitNoCollision(t *testing.T) {
 }
 
 func TestInitCollisionsOpenError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	dir := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -1141,6 +1238,8 @@ func TestInitCollisionsOpenError(t *testing.T) {
 }
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	// An existing permanent project can still have a malformed ADR. --force skips
 	// the probe so runInit's own p.InitCollisions call forwards that deterministic
@@ -1164,6 +1263,8 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 }
 
 func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	awf := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awf, 0o755); err != nil {
@@ -1200,6 +1301,8 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 // interactive stdin, init exits without emitting a single prompt line and
 // without creating .awf/.
 func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
@@ -1227,6 +1330,8 @@ func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
 // refuses and rolls the scaffolded config back. (The leaves-only trim derives
 // zero agents under ADR-0081, so the selection is closure-valid.)
 func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	skillPath := filepath.Join(root, ".claude", "skills", filepath.Base(root)+"-tdd", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {

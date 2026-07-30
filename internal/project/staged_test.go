@@ -101,7 +101,7 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	// A different working lock must not contaminate the staged universe.
 	testsupport.WriteFile(t, lockFile(p.Root), "{not json")
 
-	report, err := p.CheckStaged()
+	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestCheckStagedRejectsPermanentAuthorityMutation(t *testing.T) {
 			staged := &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, InitializedWithVersion: "0.18.0"}
 			tc.mutate(staged)
 			writeLock(t, p, staged)
-			if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.field) {
+			if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "immutable") || !strings.Contains(err.Error(), tc.field) {
 				t.Fatalf("CheckStaged %s mutation error = %v", tc.field, err)
 			}
 		})
@@ -208,7 +208,7 @@ func TestCheckStagedRejectsPermanentLockOverCommittedConfigWithoutLock(t *testin
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
 
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "pre-tracking authority") {
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "pre-tracking authority") {
 		t.Fatalf("staged permanent lock over committed config error = %v", err)
 	}
 }
@@ -221,7 +221,7 @@ func TestCheckStagedAllowsSealedBridgePromotion(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "bridge", nil)
 	p := openStaged(t, dir)
 	writeLock(t, p, &manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}})
-	if _, err := p.CheckStaged(); err != nil {
+	if _, err := p.CheckStaged(testContext(t)); err != nil {
 		t.Fatalf("sealed promotion: %v", err)
 	}
 }
@@ -242,7 +242,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 		"docs/decisions/0002-boundary.md": boundaryADR(adr.V2FormatMarker, "V2 side"),
 	})
 	p := openStaged(t, dir)
-	beforeTree, beforeLock, err := p.headTreeAndLock()
+	beforeTree, beforeLock, err := p.headTreeAndLock(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 	if err != nil {
 		t.Fatalf("load staged before snapshot with its lock: %v", err)
 	}
-	afterTree, err := snapshot.IndexTree(dir)
+	afterTree, err := snapshot.IndexTree(testContext(t), p.repo)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -270,7 +270,7 @@ func TestCheckStagedRejectsBridgePromotionWithArbitraryV2Boundary(t *testing.T) 
 	if got, ok := findBoundaryADR(after.ADRs); !ok || !got.IsV2() {
 		t.Fatalf("staged after ADR-0002 = %#v, found=%v; want V2", got, ok)
 	}
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "adrFormatV2From") {
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "adrFormatV2From") {
 		t.Fatalf("arbitrary bridge V2 promotion error = %v", err)
 	}
 }
@@ -286,7 +286,7 @@ func TestCheckStagedTransitionFinding(t *testing.T) {
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
 
-	report, err := p.CheckStaged()
+	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
@@ -314,7 +314,7 @@ func TestCheckStagedNestedAdopter(t *testing.T) {
 		"examples/sundial/.awf/topics/parts/alpha/one/current-state.md": "Intro only.\n\n## Claims\n",
 	})
 	p := openStaged(t, filepath.Join(dir, "examples", "sundial"))
-	report, err := p.CheckStaged()
+	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("nested CheckStaged: %v", err)
 	}
@@ -338,7 +338,7 @@ func TestCheckStagedUnmergedIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); !errors.Is(err, awfgit.ErrIndexUnmerged) {
+	if _, err := p.CheckStaged(testContext(t)); !errors.Is(err, awfgit.ErrIndexUnmerged) {
 		t.Fatalf("CheckStaged unmerged index: got %v, want ErrIndexUnmerged", err)
 	}
 }
@@ -353,7 +353,7 @@ func TestCheckStagedNoHead(t *testing.T) {
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
 
-	report, err := p.CheckStaged()
+	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged: %v", err)
 	}
@@ -370,7 +370,7 @@ func TestCheckStagedNoStagedConfig(t *testing.T) {
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n")
 	gitfixture.Stage(t, repo, dir, map[string]string{"internal/x.go": "package x\n"})
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "no staged") {
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged") {
 		t.Fatalf("CheckStaged err = %v; want a no-staged-config error", err)
 	}
 }
@@ -403,7 +403,7 @@ func TestCheckStagedRequiresStagedLock(t *testing.T) {
 		}
 	}
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
 		t.Fatalf("CheckStaged err = %v; want required staged-lock diagnostic", err)
 	}
 }
@@ -415,7 +415,7 @@ func TestCheckStagedLockError(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	p := openStaged(t, dir)
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/awf.lock": "{not json"})
-	if _, err := p.CheckStaged(); err == nil {
+	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected a lock parse error")
 	}
 }
@@ -428,7 +428,7 @@ func TestCheckStagedRejectsCorruptHeadLock(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "snapshot lock") {
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "snapshot lock") {
 		t.Fatalf("corrupt HEAD lock error = %v", err)
 	}
 }
@@ -442,7 +442,7 @@ func TestCheckStagedHeadLoadError(t *testing.T) {
 	gitfixture.Stage(t, repo, dir, files)
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err == nil {
+	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected a HEAD-side corpus load error")
 	}
 }
@@ -454,7 +454,7 @@ func TestCheckStagedIndexConfigValidationError(t *testing.T) {
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/config.yaml": "prefix: \"\"\n"})
 	testsupport.WriteFile(t, filepath.Join(dir, ".awf/config.yaml"), csYAML)
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err == nil || !strings.Contains(err.Error(), "prefix") {
+	if _, err := p.CheckStaged(testContext(t)); err == nil || !strings.Contains(err.Error(), "prefix") {
 		t.Fatalf("validation error = %v", err)
 	}
 }
@@ -467,7 +467,7 @@ func TestCheckStagedIndexLoadError(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	gitfixture.Stage(t, repo, dir, map[string]string{"docs/decisions/0002-bad.md": "---\nstatus: [unterminated\n---\n# X\n"})
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err == nil {
+	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected an index-side corpus load error")
 	}
 }
@@ -476,11 +476,11 @@ func TestCheckStagedIndexLoadError(t *testing.T) {
 // scaffolded project that is not a git repository.
 func TestCheckStagedOutsideRepo(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n", nil)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.CheckStaged(); err == nil {
+	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected an error outside a git repository")
 	}
 }
@@ -500,7 +500,7 @@ func TestCheckStagedMigratesHistoricalWorkflowTelemetry(t *testing.T) {
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err != nil {
+	if _, err := p.CheckStaged(testContext(t)); err != nil {
 		t.Fatalf("CheckStaged historical migration: %v", err)
 	}
 }
@@ -525,7 +525,7 @@ func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentObsolet
 				".awf/awf.lock":    `{"schemaVersion":20,"files":{}}`,
 			})
 			p := &Project{Root: dir}
-			if _, err := p.CheckStaged(); err == nil {
+			if _, err := p.CheckStaged(testContext(t)); err == nil {
 				t.Fatal("CheckStaged accepted invalid config")
 			}
 		})
@@ -541,7 +541,7 @@ func TestCheckStagedHeadConfigParseError(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "head", nil)
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
 	p := openStaged(t, dir)
-	if _, err := p.CheckStaged(); err == nil {
+	if _, err := p.CheckStaged(testContext(t)); err == nil {
 		t.Fatal("expected a HEAD-side config parse error")
 	}
 }
@@ -553,23 +553,23 @@ func TestRangePairUniversesErrors(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
 	p := openStaged(t, dir)
-	if _, _, err := p.rangePairUniverses("does-not-exist"); err == nil {
+	if _, _, err := p.rangePairUniverses(testContext(t), "does-not-exist"); err == nil {
 		t.Fatal("expected an unresolvable-rev error")
 	}
 	// A child whose first-parent commit carries a malformed config.
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd\n"})
 	gitfixture.Commit(t, repo, dir, "bad parent", nil)
 	child := gitfixture.Commit(t, repo, dir, "child", map[string]string{"note.txt": "x"})
-	if _, _, err := p.rangePairUniverses(child.String()); err == nil {
+	if _, _, err := p.rangePairUniverses(testContext(t), child.String()); err == nil {
 		t.Fatal("expected a before-side load error from the malformed parent")
 	}
 	gitfixture.Commit(t, repo, dir, "restore config", map[string]string{".awf/config.yaml": "prefix: example\nskills: [tdd]\nagents: []\n"})
 	badLock := gitfixture.Commit(t, repo, dir, "bad lock", map[string]string{".awf/awf.lock": "{"})
-	if _, _, err := p.rangePairUniverses(badLock.String()); err == nil {
+	if _, _, err := p.rangePairUniverses(testContext(t), badLock.String()); err == nil {
 		t.Fatal("expected an after-side lock parse error")
 	}
 	lockChild := gitfixture.Commit(t, repo, dir, "bad lock child", map[string]string{"note.txt": "y"})
-	if _, _, err := p.rangePairUniverses(lockChild.String()); err == nil {
+	if _, _, err := p.rangePairUniverses(testContext(t), lockChild.String()); err == nil {
 		t.Fatal("expected a before-side lock parse error")
 	}
 }
@@ -578,7 +578,7 @@ func TestRangePairUniversesErrors(t *testing.T) {
 // failing the test on error.
 func openStaged(t *testing.T, dir string) *Project {
 	t.Helper()
-	p, err := Open(dir)
+	p, err := Open(testContext(t), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -601,7 +601,7 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	})
 	head := gitfixture.Commit(t, repo, dir, "v2 boundary", nil)
 	p := openStaged(t, dir)
-	before, after, err := p.rangePairUniverses(head.String())
+	before, after, err := p.rangePairUniverses(testContext(t), head.String())
 	if err != nil {
 		t.Fatalf("rangePairUniverses: %v", err)
 	}
@@ -611,7 +611,7 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	if got, ok := findBoundaryADR(after.ADRs); !ok || !got.IsV2() {
 		t.Fatalf("after ADR-0002 = %#v, found=%v; want V2", got, ok)
 	}
-	findings, err := p.auditTransitions(base.String(), head.String())
+	findings, err := p.auditTransitions(testContext(t), base.String(), head.String())
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -630,7 +630,7 @@ func TestAuditTransitionsClean(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "cutover", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(base.String(), "HEAD")
+	findings, err := p.auditTransitions(testContext(t), base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -650,7 +650,7 @@ func TestAuditTransitionsFinding(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "drop claim", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(base.String(), "HEAD")
+	findings, err := p.auditTransitions(testContext(t), base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -677,7 +677,7 @@ func TestAuditTransitionsWarning(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "bad adr", nil)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(base.String(), "HEAD")
+	findings, err := p.auditTransitions(testContext(t), base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -698,7 +698,7 @@ func TestAuditTransitionsCollectError(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\n")
 	p := openStaged(t, dir)
-	if _, err := p.auditTransitions("does-not-exist", "HEAD"); err == nil {
+	if _, err := p.auditTransitions(testContext(t), "does-not-exist", "HEAD"); err == nil {
 		t.Fatal("expected an unresolvable-range error")
 	}
 }
@@ -715,7 +715,7 @@ func TestCheckStagedIgnoresWorkingTree(t *testing.T) {
 	// Corrupt the topic part on disk only; the index and HEAD keep the valid one.
 	testsupport.WriteFile(t, filepath.Join(dir, ".awf/topics/parts/alpha/one/current-state.md"), "garbage, no Claims section\n")
 
-	report, err := p.CheckStaged()
+	report, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatalf("CheckStaged must ignore the dirty working tree, got: %v", err)
 	}
@@ -738,7 +738,7 @@ func TestAuditTransitionsMerge(t *testing.T) {
 	merge := gitfixture.Merge(t, repo, "merge", b0, f1)
 	p := openStaged(t, dir)
 
-	findings, err := p.auditTransitions(b0.String(), merge.String())
+	findings, err := p.auditTransitions(testContext(t), b0.String(), merge.String())
 	if err != nil {
 		t.Fatalf("auditTransitions: %v", err)
 	}
@@ -765,7 +765,7 @@ func TestAuditIncludesTransitions(t *testing.T) {
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
 
-	findings, _, err := p.Audit(t.Context(), base.String(), "HEAD")
+	findings, _, err := p.Audit(testContext(t), base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
 	}
@@ -796,7 +796,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	checkAndCommit := func(subject string, changes map[string]string) {
 		t.Helper()
 		gitfixture.Stage(t, repo, dir, changes)
-		report, err := p.CheckStaged()
+		report, err := p.CheckStaged(testContext(t))
 		if err != nil {
 			t.Fatalf("%s staged check: %v", subject, err)
 		}
@@ -869,7 +869,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 		"docs/decisions/0005-partial.md":               publicV2ADR(t, "0005", "Partial", "Proposed", ops5, ""),
 		".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "x"),
 	})
-	reversed, err := p.CheckStaged()
+	reversed, err := p.CheckStaged(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -890,7 +890,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "feat(invariants): record bad intermediate", nil)
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "q", "x", "y")})
 	head := gitfixture.Commit(t, repo, dir, "fix(invariants): repair endpoint", nil)
-	findings, _, err := p.Audit(t.Context(), base.String(), head.String())
+	findings, _, err := p.Audit(testContext(t), base.String(), head.String())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -453,15 +454,15 @@ func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targ
 // set at its own entry and threads them to every producer that needs one. An
 // operation that already derived them enters through outputPlan instead, so one
 // lifecycle call performs each derivation exactly once.
-func (p *Project) OutputPlan() (*OutputPlan, error) {
+func (p *Project) OutputPlan(ctx context.Context) (*OutputPlan, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}
-	return p.outputPlan(corpus, topics, eff)
+	return p.outputPlan(ctx, corpus, topics, eff)
 }
 
-func (p *Project) outputPlan(corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
 	outputDeclarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		return nil, err
@@ -509,7 +510,7 @@ func (p *Project) outputPlan(corpus adr.Corpus, topics topic.Corpus, eff map[str
 			return nil, err
 		}
 	}
-	topicFiles, topicDeps, err := p.generateTopicDocs(topics)
+	topicFiles, topicDeps, err := p.generateTopicDocs(ctx, topics)
 	if err != nil { // coverage-ignore: generateTopicDocs receives the already-derived topic corpus, so it can no longer fail on corpus assembly and its remaining render faults are individually unreachable
 		return nil, err
 	}
@@ -645,8 +646,8 @@ func difference(a, b []string) []string {
 }
 
 // PlannedOutputs returns plan write paths, excluding local reservations.
-func (p *Project) PlannedOutputs() ([]string, error) {
-	op, err := p.OutputPlan()
+func (p *Project) PlannedOutputs(ctx context.Context) ([]string, error) {
+	op, err := p.OutputPlan(ctx)
 	if err != nil {
 		return nil, err
 	}

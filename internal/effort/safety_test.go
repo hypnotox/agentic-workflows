@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,7 +13,7 @@ import (
 // diagnosis that the real-fixture test below can only reach under privilege.
 func TestEffortResidentsRefuseForeignOwnedBytesUnprivileged(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
+	service, err := Open(testContext(t), root, Options{UUID: func() (string, error) { return testIDA, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +54,7 @@ func TestEffortResidentsRefuseForeignOwnedBytes(t *testing.T) {
 		t.Skip("foreign ownership requires a privileged non-Windows test process")
 	}
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
+	service, err := Open(testContext(t), root, Options{UUID: func() (string, error) { return testIDA, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +86,7 @@ func TestEffortResidentsRejectSymlinksAndHardLinksWithoutDeletingTargets(t *test
 		if err := os.Symlink(outside, link); err != nil {
 			t.Fatal(err)
 		}
-		service, err := Open(context.Background(), root, Options{})
+		service, err := Open(testContext(t), root, Options{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -100,7 +99,7 @@ func TestEffortResidentsRejectSymlinksAndHardLinksWithoutDeletingTargets(t *test
 	})
 	t.Run("hard-linked memory", func(t *testing.T) {
 		root := initEffortRepo(t)
-		service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
+		service, err := Open(testContext(t), root, Options{UUID: func() (string, error) { return testIDA, nil }})
 		if err != nil {
 			t.Fatal(err)
 		}

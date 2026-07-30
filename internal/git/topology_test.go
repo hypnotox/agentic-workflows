@@ -93,7 +93,7 @@ func TestControlRootsAgreeWithRegisteredTopology(t *testing.T) {
 	runGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
 
 	for _, invoking := range []string{primary, linked} {
-		roots, err := awfgit.ResolveControlRoots(t.Context(), invoking)
+		roots, err := awfgit.ResolveControlRoots(testContext(t), invoking)
 		if err != nil {
 			t.Fatalf("resolve control roots from %q: %v", invoking, err)
 		}
@@ -118,7 +118,7 @@ func TestControlRootsAgreeWithRegisteredTopology(t *testing.T) {
 
 func registrationsByPath(t *testing.T, invoking string) map[string]awfgit.WorktreeRegistration {
 	t.Helper()
-	list, err := awfgit.ListWorktreeRegistrations(t.Context(), invoking)
+	list, err := awfgit.ListWorktreeRegistrations(testContext(t), invoking)
 	if err != nil {
 		t.Fatalf("list worktree registrations from %q: %v", invoking, err)
 	}

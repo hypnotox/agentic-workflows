@@ -75,7 +75,7 @@ func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 	files := ctxFiles()
 	files["internal/foo/x_test.go"] = "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
 	p := csRepo(t, ctxConfig, files)
-	res, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/x_test.go"}, ContextOptions{Selection: SelectionExplicit})
+	res, err := p.ContextForOptions(testContext(t), []string{"internal/foo", "internal/foo/x_test.go"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestContextDirectProjectionDeduplicatesMixedRequests(t *testing.T) {
 			t.Fatalf("claim sources=%#v", claim)
 		}
 	}
-	xResult, err := p.ContextForOptions([]string{"internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
+	xResult, err := p.ContextForOptions(testContext(t), []string{"internal/foo/x.go"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -146,7 +146,7 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 		return out
 	}
 	for _, selection := range []ContextSelection{SelectionExplicit, SelectionStaged, SelectionRange} {
-		res, err := p.ContextForOptions([]string{"internal/foo/x.go"}, ContextOptions{Selection: selection, Range: "a..b"})
+		res, err := p.ContextForOptions(testContext(t), []string{"internal/foo/x.go"}, ContextOptions{Selection: selection, Range: "a..b"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -161,14 +161,14 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 			t.Fatalf("%s counts=%#v", selection, alpha.Counts)
 		}
 	}
-	mixed, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit})
+	mixed, err := p.ContextForOptions(testContext(t), []string{"internal/foo", "internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := ids(find(mixed, "alpha/one").Direct); len(got) != 0 {
 		t.Fatalf("bare mixed promoted directory relationships: %v", got)
 	}
-	withRelationships, err := p.ContextForOptions([]string{"internal/foo", "internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"relationships", FacetEvidence, FacetReferences}})
+	withRelationships, err := p.ContextForOptions(testContext(t), []string{"internal/foo", "internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"relationships", FacetEvidence, FacetReferences}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +179,7 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	if len(alpha.Direct[0].Evidence) == 0 || !reflect.DeepEqual(ids(alpha.Referenced), []string{"core/g:everywhere"}) || len(alpha.Referenced[0].Evidence) != 0 || alpha.Referenced[0].Backing != "" || alpha.Referenced[0].Verify != "" {
 		t.Fatalf("enriched direct=%#v referenced=%#v", alpha.Direct, alpha.Referenced)
 	}
-	globalDedup, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules, FacetReferences}})
+	globalDedup, err := p.ContextForOptions(testContext(t), []string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules, FacetReferences}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,14 +194,14 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 	if referencedEverywhere != 1 {
 		t.Fatalf("globally deduplicated referenced target count=%d: %#v", referencedEverywhere, globalDedup.Topics)
 	}
-	invariants, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"invariants"}})
+	invariants, err := p.ContextForOptions(testContext(t), []string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{"invariants"}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := ids(find(invariants, "alpha/one").Invariants); !reflect.DeepEqual(got, []string{"alpha/one:stable", "alpha/one:tested"}) {
 		t.Fatalf("invariants=%v", got)
 	}
-	rules, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules}})
+	rules, err := p.ContextForOptions(testContext(t), []string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{FacetAllRules}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestContextRequestTiersAndAuthorityExpansion(t *testing.T) {
 		t.Fatalf("rules=%v", got)
 	}
 	for _, facet := range []ContextFacet{FacetEvidence, FacetReferences} {
-		res, err := p.ContextForOptions([]string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{facet}})
+		res, err := p.ContextForOptions(testContext(t), []string{"internal/foo/y.go"}, ContextOptions{Selection: SelectionExplicit, Facets: []ContextFacet{facet}})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -227,7 +227,7 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 	files["internal/foo/c_test.go"] = "package foo\n// invariant: alpha/one:tested\n"
 	files[".awf/topics/parts/alpha/one/current-state.md"] = "Intro.\n\n## Claims\n\n### `rule: order`\nOrder prose.\nSummary: Order summary.\nOrigin: ADR-0001\nReferences: core/g:everywhere\n\n### `invariant: tested`\nTests protect output.\nOrigin: ADR-0001\nBacking: test\n\n### `invariant: stable`\nOutput is stable.\nOrigin: ADR-0001\nBacking: unbacked\nVerify: by hand.\n"
 	p := csRepo(t, ctxConfig, files)
-	ws, err := p.workingCurrentState()
+	ws, err := p.workingCurrentState(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +235,7 @@ func TestContextFacetProjectionAndClosestCategory(t *testing.T) {
 		t.Fatal(got)
 	}
 	facets, _ := ParseContextFacets([]string{"invariants", "all-rules", "evidence", "selectors", "references", "pending"}, false)
-	res, err := p.ContextForOptions([]string{"internal/foo/x.go", "internal/foo/y_test.go"}, ContextOptions{Selection: SelectionExplicit, Facets: facets})
+	res, err := p.ContextForOptions(testContext(t), []string{"internal/foo/x.go", "internal/foo/y_test.go"}, ContextOptions{Selection: SelectionExplicit, Facets: facets})
 	if err != nil {
 		t.Fatal(err)
 	}

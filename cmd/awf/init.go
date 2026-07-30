@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,7 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func runInit(root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
+func runInit(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
 	cat := catalog.Standard
 	descs := initspec.CatalogVars(cat)
 	if describe {
@@ -56,7 +57,7 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	// as the accurate second line - a trim answer can enable non-core artifacts
 	// this curated-core probe set does not cover. --force skips the probe.
 	if !force {
-		collisions, err := probeCollisions(root)
+		collisions, err := probeCollisions(ctx, root)
 		if err != nil {
 			return err
 		}
@@ -118,11 +119,11 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 			fmt.Fprintf(stdout, "note: also enabled %s (required by your selection)\n", a)
 		}
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	collisions, err := p.InitCollisions()
+	collisions, err := p.InitCollisions(ctx)
 	if err != nil {
 		if scaffolded { // coverage-ignore: first adoption validated its ADR boundary and the generated scaffold before this second collision plan; only a concurrent tree mutation can make it fail
 			_ = os.Remove(cfgPath)
@@ -143,16 +144,16 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	// longer gates itself, so the two Ungated commands that chain it (init, upgrade)
 	// re-assert the gate here. A fresh scaffold is current-schema with no lock, so
 	// this passes.
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		return err
 	}
 	// Under --force, the selected sync path backs up every foreign file via the
 	// shared BackupFile mechanism (ADR-0035) - one backup path for init and sync alike.
 	var syncErr error
 	if !configExists && !lockExists {
-		syncErr = runSyncInitialized(root, project.InitAuthority{InitializedWithVersion: project.Version}, stdout)
+		syncErr = runSyncInitialized(ctx, root, project.InitAuthority{InitializedWithVersion: project.Version}, stdout)
 	} else {
-		syncErr = runSync(root, stdout)
+		syncErr = runSync(ctx, root, stdout)
 	}
 	if syncErr != nil {
 		if scaffolded { // coverage-ignore: the first-adoption boundary, scaffold, collision plan, and gate all succeeded; a failure now requires a concurrent mutation or filesystem fault
@@ -163,11 +164,11 @@ func runInit(root string, force, describe bool, sets []string, answersFile strin
 	}
 	// Post-init orientation: the same advisory notes awf check prints
 	// (ADR-0045, ADR-0070), then a fixed next-steps block.
-	np, err := project.Open(root)
+	np, err := project.Open(ctx, root)
 	if err != nil { // coverage-ignore: the chained runSync just opened this same tree
 		return err
 	}
-	notes, err := np.AdvisoryNotes()
+	notes, err := np.AdvisoryNotes(ctx)
 	if err != nil { // coverage-ignore: runSync just rendered this same tree and generated its domain docs - both AdvisoryNotes inputs succeeded moments ago
 		return err
 	}
@@ -189,13 +190,13 @@ func collisionRefusal(collisions []string) error {
 // existing config tree it asks the real project; otherwise it scaffolds a
 // default (curated-core) config into a throwaway temp dir, plans that
 // project's outputs, and tests the project-relative paths against root.
-func probeCollisions(root string) ([]string, error) {
+func probeCollisions(ctx context.Context, root string) ([]string, error) {
 	if _, err := os.Stat(config.ConfigPath(root)); err == nil {
-		p, err := project.Open(root)
+		p, err := project.Open(ctx, root)
 		if err != nil {
 			return nil, err
 		}
-		return p.InitCollisions()
+		return p.InitCollisions(ctx)
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
 	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably
@@ -213,11 +214,11 @@ func probeCollisions(root string) ([]string, error) {
 	if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice
 		return nil, err
 	}
-	tp, err := project.Open(tmp)
+	tp, err := project.Open(ctx, tmp)
 	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
 		return nil, err
 	}
-	planned, err := tp.PlannedOutputs()
+	planned, err := tp.PlannedOutputs(ctx)
 	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
 		return nil, err
 	}

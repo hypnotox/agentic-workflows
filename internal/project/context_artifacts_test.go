@@ -266,11 +266,11 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan()
+	plan, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -17,7 +18,7 @@ import (
 
 var deliverContext = contextdelivery.Deliver
 
-func runContext(cwd string, paths []string, staged bool, rng string, uncovered, full bool, shows []string, stdout io.Writer) error {
+func runContext(ctx context.Context, cwd string, paths []string, staged bool, rng string, uncovered, full bool, shows []string, stdout io.Writer) error {
 	facets, err := project.ParseContextFacets(shows, full)
 	if err != nil {
 		return &usageErr{"awf context: " + err.Error()}
@@ -26,7 +27,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, uncovered, 
 		return &usageErr{"awf context: --show and --full cannot be combined with --uncovered"}
 	}
 	if uncovered {
-		return runUncovered(cwd, paths, staged, rng, stdout)
+		return runUncovered(ctx, cwd, paths, staged, rng, stdout)
 	}
 	selection := project.SelectionExplicit
 	if staged {
@@ -38,7 +39,11 @@ func runContext(cwd string, paths []string, staged bool, rng string, uncovered, 
 		if !staged && rng == "" {
 			return &usageErr{"usage: awf context <path>... [--show <facet>] [--full] [--staged] [--range <a>..<b>]"}
 		}
-		resolved, e := awfgit.ChangedPaths(cwd, staged, rng)
+		repo, _, e := awfgit.OpenContaining(cwd)
+		if e != nil {
+			return e
+		}
+		resolved, e := repo.ChangedPaths(ctx, staged, rng)
 		if e != nil {
 			return e
 		}
@@ -51,10 +56,10 @@ func runContext(cwd string, paths []string, staged bool, rng string, uncovered, 
 	var result project.ContextResult
 	header := "context: live state for this project"
 	if staged {
-		if err := gateStaged(cwd); err != nil {
+		if err := gateStaged(ctx, cwd); err != nil {
 			return err
 		}
-		result, err = project.StagedContextRootOptions(cwd, paths, options)
+		result, err = project.StagedContextRootOptions(ctx, cwd, paths, options)
 		header = "context: staged state for this project"
 	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
 		if !errors.Is(statErr, fs.ErrNotExist) {
@@ -63,14 +68,14 @@ func runContext(cwd string, paths []string, staged bool, rng string, uncovered, 
 		result = project.ContextResult{Selection: selection, Range: rng, Requests: []project.ContextRequestReport{}, Topics: []project.TopicImpact{}}
 		header = "context (static: not inside an awf project; live classification and authority require an adopted project)"
 	} else {
-		if err := gate(cwd); err != nil {
+		if err := gate(ctx, cwd); err != nil {
 			return err
 		}
-		p, e := project.Open(cwd)
+		p, e := project.Open(ctx, cwd)
 		if e != nil { // coverage-ignore: gate just loaded the same config and project presence; failure requires a concurrent filesystem race
 			return e
 		}
-		result, err = p.ContextForOptions(paths, options)
+		result, err = p.ContextForOptions(ctx, paths, options)
 	}
 	if err != nil {
 		return err
@@ -80,7 +85,7 @@ func runContext(cwd string, paths []string, staged bool, rng string, uncovered, 
 	return deliverContext(out.Bytes(), cwd, stdout)
 }
 
-func runUncovered(cwd string, roots []string, staged bool, rng string, stdout io.Writer) error {
+func runUncovered(ctx context.Context, cwd string, roots []string, staged bool, rng string, stdout io.Writer) error {
 	if rng != "" {
 		return &usageErr{"awf context --uncovered takes optional scan-root paths, not --range"}
 	}
@@ -88,8 +93,8 @@ func runUncovered(cwd string, roots []string, staged bool, rng string, stdout io
 	var err error
 	header := "context --uncovered: coverage gaps for this project"
 	if staged {
-		if err = gateStaged(cwd); err == nil {
-			result, err = project.StagedUncoveredRoot(cwd, roots)
+		if err = gateStaged(ctx, cwd); err == nil {
+			result, err = project.StagedUncoveredRoot(ctx, cwd, roots)
 		}
 		header = "context --uncovered: staged coverage gaps for this project"
 	} else if _, statErr := os.Stat(config.ConfigPath(cwd)); statErr != nil {
@@ -99,11 +104,11 @@ func runUncovered(cwd string, roots []string, staged bool, rng string, stdout io
 		result = project.UncoveredResult{ScanRoots: project.NormalizeContextPaths(roots)}
 		header = "context --uncovered (static: not inside an awf project; live coverage appears inside one)"
 	} else {
-		if err = gate(cwd); err == nil {
+		if err = gate(ctx, cwd); err == nil {
 			var p *project.Project
-			p, err = project.Open(cwd)
+			p, err = project.Open(ctx, cwd)
 			if err == nil { // coverage-ignore: gate just loaded the same project; an Open failure requires a concurrent filesystem race
-				result, err = p.Uncovered(roots)
+				result, err = p.Uncovered(ctx, roots)
 			}
 		}
 	}

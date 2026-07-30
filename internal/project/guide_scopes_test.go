@@ -85,7 +85,7 @@ func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
 	enabled := slices.Sorted(maps.Keys(catalog.Standard.Skills))
 	agents := slices.Sorted(maps.Keys(catalog.Standard.Agents))
 	root := scaffold(t, "prefix: example\nskills: ["+strings.Join(enabled, ", ")+"]\nagents: ["+strings.Join(agents, ", ")+"]\ndocs: [roadmap]\ntargets: [pi]\n")
-	rendered, err := Open(root)
+	rendered, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

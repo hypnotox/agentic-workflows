@@ -38,11 +38,11 @@ func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "feat: churn tooling territory", map[string]string{
 		"cmd/x.go": "package main\n",
 	})
-	p, err := Open(dir)
+	p, err := Open(testContext(t), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
-	findings, _, err := p.Audit(t.Context(), base.String(), "HEAD")
+	findings, _, err := p.Audit(testContext(t), base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
 	}
@@ -60,18 +60,18 @@ func TestAuditBuildsDomainPathsFromSidecars(t *testing.T) {
 func TestAuditRejectsMalformedDomainPaths(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains:\n  - tooling\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "tooling.yaml"), "paths:\n  - '['\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := p.Audit(t.Context(), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), `domain "tooling" paths`) {
+	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), `domain "tooling" paths`) {
 		t.Fatalf("want malformed-pattern error naming the domain, got %v", err)
 	}
 }
 
 func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains:\n  - tooling\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestAuditPropagatesDomainSidecarReadError(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf", "domains", "tooling.yaml"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := p.Audit(t.Context(), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "sidecar") {
+	if _, _, err := p.Audit(testContext(t), "HEAD", "HEAD"); err == nil || !strings.Contains(err.Error(), "sidecar") {
 		t.Fatalf("want sidecar read error, got %v", err)
 	}
 }

@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -13,11 +14,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
-func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
+func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run(ctx, ) is unit-tested
 
 // gitCommandTimeout is the deadline every command boundary puts on the git work
 // it starts. It is a hang-prevention ceiling, not a latency budget: it is
@@ -91,6 +91,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
+	// One deadlined context per invocation is the command boundary the seam's
+	// native runner requires: every git operation this command starts is bounded
+	// by gitCommandTimeout, so a git blocked on a stale lock or a credential
+	// prompt fails timely instead of hanging awf. context.Background() is the
+	// process root and appears exactly here; no other production site creates a
+	// context of its own.
+	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
+	defer cancel()
 	cmd, top, sub, rest, ok := resolve(args[1:])
 	if !ok {
 		return dispatchErr(stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
@@ -106,7 +114,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// A committed current-state journal or attestation makes ordinary project
 	// commands non-operational; the guard refuses them before gating so no state
 	// is reachable without protection (Plan 2 Task 3.3).
-	if err := guardProjectState(cwd, cmd, top, sub, inv); err != nil {
+	if err := guardProjectState(ctx, cwd, cmd, top, sub, inv); err != nil {
 		return dispatchErr(stderr, err)
 	}
 	// The driver gates every Gated command before its handler; config/context/topic/new
@@ -122,14 +130,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if top.Name == "check" && sub == "" && inv.bools["--staged"] {
 			gateFn = gateStaged
 		}
-		if err := gateFn(cwd); err != nil {
+		if err := gateFn(ctx, cwd); err != nil {
 			return dispatchErr(stderr, err)
 		}
 	}
 	// The registry key is the top-level command name even when resolve returned a
 	// child spec - the child drives parse/help, the group's handler drives
 	// dispatch via sub.
-	if err := handlers[top.Name](&cmdCtx{root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
+	if err := handlers[top.Name](&cmdCtx{ctx: ctx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
 		return dispatchErr(stderr, err)
 	}
 	return 0
@@ -152,7 +160,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 //     consume-the-attestation diagnostic; a would-be recovery with no journal is
 //     refused;
 //   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
-func guardProjectState(root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
+func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
 	if cmd.StateExempt {
 		return nil
 	}
@@ -160,7 +168,7 @@ func guardProjectState(root string, cmd clispec.Command, top clispec.Command, su
 		return nil
 	}
 	staged := top.Name == "check" && sub == "" && inv.bools["--staged"]
-	present, journal, journalFound, lock, found, loadErr, err := projectGuardState(root, staged)
+	present, journal, journalFound, lock, found, loadErr, err := projectGuardState(ctx, root, staged)
 	if err != nil {
 		return err
 	}
@@ -221,14 +229,14 @@ func authorityLockPath(root string) string { return migrate.AuthorityLockPath(ro
 // projectGuardState captures the presence, journal, and lock used by the
 // command-state guard. A staged check derives all three from the index snapshot;
 // every other command derives all three from the working project.
-func projectGuardState(root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound bool, loadErr, err error) {
+func projectGuardState(ctx context.Context, root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound bool, loadErr, err error) {
 	if !staged {
 		present = migrate.ProjectPresent(root)
 		journalFound = upgrade.JournalPresent(root)
 		lock, lockFound, loadErr = manifest.LoadOptional(authorityLockPath(root))
 		return
 	}
-	tree, err := snapshot.IndexTree(root)
+	tree, err := stagedTree(ctx, root)
 	if err != nil {
 		return false, nil, false, nil, false, nil, err
 	}

@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -92,8 +93,8 @@ type workingState struct {
 // workingCurrentState loads the working-tree ADR/topic view plus the sealed
 // boundaries/gaps. Parse has already classified the lock: permanent authority owns
 // the fields directly, while a bridge attestation owns them until cutover.
-func (p *Project) workingCurrentState() (workingState, error) {
-	tree, err := snapshot.WorkingTree(p.Root)
+func (p *Project) workingCurrentState(ctx context.Context) (workingState, error) {
+	tree, err := p.workingTree(ctx)
 	if err != nil {
 		return workingState{}, err
 	}
@@ -134,8 +135,8 @@ func attestationBoundaries(lock *manifest.Lock) (adr.FormatBoundaries, []int) {
 // (ADR-0135, ADR-0134). It reads exactly one working Tree, so the two checks
 // never mix a working and an index universe. Coverage runs only when the project
 // configures a currentState policy.
-func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
-	ws, err := p.workingCurrentState()
+func (p *Project) CheckCurrentState(ctx context.Context) (CurrentStateReport, error) {
+	ws, err := p.workingCurrentState(ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -152,8 +153,12 @@ func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 // CheckStagedRoot validates the staged current-state transition without opening
 // working-tree project configuration. The staged command must remain operable
 // when a valid adopted index deliberately deletes or lacks the working config.
-func CheckStagedRoot(root string) (CurrentStateReport, error) {
-	return (&Project{Root: root}).CheckStaged()
+func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, error) {
+	p, err := openRootProject(root)
+	if err != nil {
+		return CurrentStateReport{}, err
+	}
+	return p.CheckStaged(ctx)
 }
 
 // CheckStaged loads the HEAD (before) and staged index (after) current-state
@@ -164,8 +169,8 @@ func CheckStagedRoot(root string) (CurrentStateReport, error) {
 // the after config, policy, and eligible paths all come from the index tree so
 // the staged check reads one universe. Coverage runs only when the staged config
 // declares a currentState policy.
-func (p *Project) CheckStaged() (CurrentStateReport, error) {
-	afterTree, err := snapshot.IndexTree(p.Root)
+func (p *Project) CheckStaged(ctx context.Context) (CurrentStateReport, error) {
+	afterTree, err := p.indexTree(ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -173,7 +178,7 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	beforeTree, beforeLock, err := p.headTreeAndLock()
+	beforeTree, beforeLock, err := p.headTreeAndLock(ctx)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
@@ -198,7 +203,7 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	// contract (ADR-0182). Provenance decides this, not the shape of the diff.
 	// A checkout whose control root cannot be safely resolved, a symlinked .git
 	// being the reachable case, is treated as not merging rather than failing the
-	// check. go-git's index read follows the symlink and succeeds, so propagating
+	// check. The seam's index read follows the symlink and succeeds, so propagating
 	// the refusal here would break a staged check that worked before merge
 	// detection existed. Falling back selects the stricter authored-commit
 	// contract, which can refuse a legitimate merge but can never wrongly accept.
@@ -235,8 +240,12 @@ func lockFromTree(tree *snapshot.Tree) (*manifest.Lock, error) {
 // headTreeAndLock loads HEAD and its own lock, or an empty tree and nil lock for
 // an unborn or pre-adoption repository. It never consults the working tree or
 // applies index lock authority to committed bytes.
-func (p *Project) headTreeAndLock() (*snapshot.Tree, *manifest.Lock, error) {
-	has, err := git.HeadExists(p.Root)
+func (p *Project) headTreeAndLock(ctx context.Context) (*snapshot.Tree, *manifest.Lock, error) {
+	repo, err := p.gitRepo()
+	if err != nil { // coverage-ignore: the staged read that precedes this already required the same handle
+		return nil, nil, err
+	}
+	has, err := repo.HeadExists(ctx)
 	if err != nil { // coverage-ignore: IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here
 		return nil, nil, err
 	}
@@ -244,7 +253,7 @@ func (p *Project) headTreeAndLock() (*snapshot.Tree, *manifest.Lock, error) {
 		tree, err := snapshot.NewTree(nil)
 		return tree, nil, err
 	}
-	tree, err := snapshot.CommitTree(p.Root, "HEAD")
+	tree, err := snapshot.CommitTree(ctx, repo, "HEAD")
 	if err != nil { // coverage-ignore: HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault
 		return nil, nil, err
 	}
@@ -411,14 +420,14 @@ func (r configSnapshotReader) Paths(prefix string) []string {
 // the rest of the audit: a pair whose universes cannot load is a warning rather
 // than a hard stop, and a genuine transition violation is an error. Each side
 // derives format boundaries from its own committed lock.
-func (p *Project) auditTransitions(base, head string) ([]audit.Finding, error) {
+func (p *Project) auditTransitions(ctx context.Context, base, head string) ([]audit.Finding, error) {
 	commits, err := audit.Collect(p.Root, base, head)
 	if err != nil {
 		return nil, err
 	}
 	var out []audit.Finding
 	for _, c := range commits {
-		before, after, err := p.rangePairUniverses(c.Hash)
+		before, after, err := p.rangePairUniverses(ctx, c.Hash)
 		if err != nil {
 			out = append(out, audit.Finding{Severity: severity.Warn, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
 				Detail: "could not load the current-state universes for this commit: " + err.Error()})
@@ -439,8 +448,12 @@ func (p *Project) auditTransitions(base, head string) ([]audit.Finding, error) {
 // current-state universes for the transition into rev. A tree carrying no awf
 // config yields the empty universe, so a pre-adoption or root pair produces no
 // findings rather than an error.
-func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Universe, err error) {
-	beforeTree, afterTree, err := snapshot.RangePair(p.Root, rev)
+func (p *Project) rangePairUniverses(ctx context.Context, rev string) (before, after currentstate.Universe, err error) {
+	repo, err := p.gitRepo()
+	if err != nil { // coverage-ignore: the audit range walk that reached here already required the same handle
+		return currentstate.Universe{}, currentstate.Universe{}, err
+	}
+	beforeTree, afterTree, err := snapshot.RangePair(ctx, repo, rev)
 	if err != nil {
 		return currentstate.Universe{}, currentstate.Universe{}, err
 	}
@@ -492,8 +505,8 @@ type InvariantReport struct {
 // corpus (ADR-0134). Authority is the topic claim set: test-backed proof and
 // unbacked Verify contracts are already enforced when the corpus loads, so this
 // reads only typed claims and their qualified proof markers - no ADR is consulted.
-func (p *Project) CurrentStateInvariants() ([]InvariantReport, error) {
-	ws, err := p.workingCurrentState()
+func (p *Project) CurrentStateInvariants(ctx context.Context) ([]InvariantReport, error) {
+	ws, err := p.workingCurrentState(ctx)
 	if err != nil {
 		return nil, err
 	}

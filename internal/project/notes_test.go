@@ -25,11 +25,11 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 		"absent":        {"prefix: example\nvars: {testCmd: go test ./...}\nskills: [tdd]\nagents: []\n", false},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p, err := Open(scaffold(t, tc.yaml))
+			p, err := Open(testContext(t), scaffold(t, tc.yaml))
 			if err != nil {
 				t.Fatal(err)
 			}
-			notes, err := p.AdvisoryNotes()
+			notes, err := p.AdvisoryNotes(testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -50,11 +50,11 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 // Adapter duplicates collapse: with two targets the same skill renders twice
 // under one template id and must produce a single note.
 func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {gateCmd: \"\", testCmd: \"\"}\ntargets: [claude, cursor]\nskills: [tdd]\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestUnsetVarNotesCollapsesAdapterDuplicates(t *testing.T) {
 // note itself, not the template id, or the second local artifact is silently
 // skipped.
 func TestUnsetVarNotesBaseSharedArtifactsReportIndependently(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nvars: {alpha: \"\", beta: \"\", gamma: \"\"}\nskills: []\nagents: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {alpha: \"\", beta: \"\", gamma: \"\"}\nskills: []\nagents: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,11 +107,11 @@ func TestUnsetVarNotesSurfacesRenderError(t *testing.T) {
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(); err == nil {
+	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the render error")
 	}
 }
@@ -123,11 +123,11 @@ func TestAdvisoryNotesSurfacesDomainDocError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-bad.md"),
 		"---\nstatus: {bad\n---\n# ADR-0001: Bad\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(); err == nil {
+	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the domain-doc generation error")
 	}
 }
@@ -140,11 +140,11 @@ func TestStubNotesPathKeyedAcrossTargets(t *testing.T) {
 		map[string]string{
 			"skills/parts/tdd/notes.md": "<!-- awf:stub -->\nstarter notes\n",
 		})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,11 +192,11 @@ func TestStubNotesDefaultsClauseUnit(t *testing.T) {
 // the parts clause.
 func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	cfg := "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [development]\n"
-	p, err := Open(scaffold(t, cfg))
+	p, err := Open(testContext(t), scaffold(t, cfg))
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -204,13 +204,13 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 	if joined := strings.Join(notes, "\n"); !strings.Contains(joined, want) {
 		t.Errorf("missing defaults note %q, got:\n%s", want, joined)
 	}
-	p2, err := Open(scaffoldFiles(t, cfg, map[string]string{
+	p2, err := Open(testContext(t), scaffoldFiles(t, cfg, map[string]string{
 		"docs/parts/development/setup.md": "<!-- awf:stub -->\nstarter setup\n",
 	}))
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err = p2.AdvisoryNotes()
+	notes, err = p2.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -223,11 +223,11 @@ func TestStubNotesReportsDefaultsAndParts(t *testing.T) {
 // Domain docs render outside RenderAll; their stub current-state default must
 // still reach the advisory.
 func TestStubNotesDomainDocs(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndomains: [config]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -246,11 +246,11 @@ func TestMarkerNotesPartKeyedAndDeduplicated(t *testing.T) {
 		map[string]string{
 			"skills/parts/tdd/notes.md": "some prose\n<!-- awf:section bogus -->\nmore prose\n",
 		})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,11 +275,11 @@ func TestMarkerNotesInlineAndFencedSilent(t *testing.T) {
 	root := scaffoldFiles(t, sampleYAML, map[string]string{
 		"skills/parts/tdd/notes.md": "the `<!-- awf:section x -->` form opens a section\n```\n<!-- awf:section demo -->\nbody\n<!-- awf:end -->\n```\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -297,11 +297,11 @@ func TestMarkerNotesDomainDocParts(t *testing.T) {
 		map[string]string{
 			"domains/parts/config/current-state.md": "state prose\n<!-- awf:end -->\n",
 		})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -312,11 +312,11 @@ func TestMarkerNotesDomainDocParts(t *testing.T) {
 }
 
 func TestUnsetVarNotesFullySetIsSilent(t *testing.T) {
-	p, err := Open(scaffold(t, sampleYAML))
+	p, err := Open(testContext(t), scaffold(t, sampleYAML))
 	if err != nil {
 		t.Fatal(err)
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +345,7 @@ func TestTagHealthNotes(t *testing.T) {
 	// but contributes to neither the numerator nor the denominator - proving the
 	// denominator counts only vocabulary-tag-bearing artifacts (alpha stays 2/4).
 	writeADR(t, root, "0006-f.md", testsupport.ADR("Implemented", testsupport.WithTitle("0006: F"), testsupport.WithTags("bogus")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 	governedBody := "status: Proposed\ndate: 2026-07-20\n---\n# ADR-%s: A\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-20: Proposed\n"
 	writeADR(t, root, "0001-a.md", "---\nformat: current-state-v1\n"+fmt.Sprintf(governedBody, "0001"))
 	writeADR(t, root, "0002-b.md", "---\nformat: current-state-v2\n"+fmt.Sprintf(governedBody, "0002"))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -399,7 +399,7 @@ func TestTagHealthNotesSkipGovernedADRs(t *testing.T) {
 func TestTagHealthNotesEmptyVocabInert(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -418,7 +418,7 @@ func TestTagHealthNotesEmptyDenominator(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A")))
 	writeADR(t, root, "0002-b.md", testsupport.ADR("Implemented", testsupport.WithTitle("0002: B")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +443,7 @@ func TestTagHealthNotesPitfallError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\ntags:\n  alpha: A\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n"})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -460,7 +460,7 @@ func TestTagHealthNotesPitfalls(t *testing.T) {
 			"    - title: Tagged\n      tags: [alpha]\n      body: ok\n" +
 			"    - title: Untagged\n      body: ok\n"})
 	writeADR(t, root, "0001-a.md", testsupport.ADR("Implemented", testsupport.WithTitle("0001: A"), testsupport.WithTags("alpha")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -485,11 +485,11 @@ func TestAdvisoryNotesSurfacesTagHealthError(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\ntags:\n  alpha: A\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(); err == nil {
+	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the tag-health ADR parse error")
 	}
 }

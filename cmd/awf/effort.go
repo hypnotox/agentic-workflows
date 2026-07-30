@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +15,7 @@ func runEffort(c *cmdCtx) error {
 	if err := validateEffortGrammar(c); err != nil {
 		return err
 	}
-	service, err := effort.Open(context.Background(), c.root, effort.Options{})
+	service, err := effort.Open(c.ctx, c.root, effort.Options{})
 	if err != nil {
 		return err
 	}
@@ -59,7 +58,7 @@ func runEffort(c *cmdCtx) error {
 		_, err = fmt.Fprintf(c.stdout, "effort %s finished; changed active rename: %s; changed cleanup: %s; next action: continue without this finished effort\n", slug, yesNo(result.Renamed), yesNo(result.Cleaned))
 		return err
 	case "worktree":
-		manager, err := openWorktreeManager(context.Background(), c.root, worktree.Options{})
+		manager, err := openWorktreeManager(c.ctx, c.root, worktree.Options{})
 		if err != nil {
 			return err
 		}
@@ -75,7 +74,7 @@ func runEffort(c *cmdCtx) error {
 		}
 		return writeWorktreeResult(c.stdout, result, err)
 	case "integrate":
-		manager, err := openWorktreeManager(context.Background(), c.root, worktree.Options{})
+		manager, err := openWorktreeManager(c.ctx, c.root, worktree.Options{})
 		if err != nil {
 			return err
 		}

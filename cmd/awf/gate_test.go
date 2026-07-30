@@ -32,37 +32,43 @@ func gateFixture(t *testing.T, awfVersion string, schema int) string {
 }
 
 func TestGateStagedLoadErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	nonRepo := t.TempDir()
-	if err := gateStaged(nonRepo); err == nil {
+	if err := gateStaged(ctx, nonRepo); err == nil {
 		t.Fatal("gateStaged accepted a non-repository")
 	}
-	if _, _, _, err := checkLockVsBinary(nonRepo, true); err == nil {
+	if _, _, _, err := checkLockVsBinary(testContext(t), nonRepo, true); err == nil {
 		t.Fatal("staged ahead-note loader accepted a non-repository")
 	}
 	repo, dir := gitfixture.InitRepo(t)
-	if _, err := stagedLock(dir); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
+	if _, err := stagedLock(ctx, dir); err == nil || !strings.Contains(err.Error(), "no staged .awf/awf.lock") {
 		t.Fatalf("missing staged lock error = %v", err)
 	}
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/awf.lock": "{not json"})
-	if err := gateStaged(dir); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
+	if err := gateStaged(ctx, dir); err == nil || !strings.Contains(err.Error(), "parse staged lock") {
 		t.Fatalf("gateStaged malformed lock error = %v", err)
 	}
 }
 
 func TestGateCorruptLockError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := gateFixture(t, "0.4.0", migrate.Current())
 	if err := os.WriteFile(config.LockPath(root), []byte("{bad"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := gate(root); err == nil {
+	if err := gate(ctx, root); err == nil {
 		t.Fatal("expected gate lock error")
 	}
 }
 
 // invariant: tooling/cli:version-compat-gate
 func TestGateAheadSchemaErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
-	err := gate(root)
+	err := gate(ctx, root)
 	if err == nil {
 		t.Fatal("expected gate error on ahead schema")
 	}
@@ -72,10 +78,12 @@ func TestGateAheadSchemaErrors(t *testing.T) {
 }
 
 func TestGateBehindVersionErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A lock far above any real release is unambiguously newer than the test
 	// binary (project.Version), so this stays correct across version bumps.
 	root := gateFixture(t, "99.0.0", migrate.Current())
-	err := gate(root)
+	err := gate(ctx, root)
 	// invariant: tooling/cli:version-compat-gate
 	if err == nil {
 		t.Fatal("expected gate error on behind version")
@@ -87,37 +95,47 @@ func TestGateBehindVersionErrors(t *testing.T) {
 
 // invariant: tooling/cli:version-compat-gate
 func TestGateAtOrAheadVersionPermitted(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// project.Version is the equal boundary; "0.0.1" is below any real release.
 	for _, v := range []string{project.Version, "0.0.1"} {
 		root := gateFixture(t, v, migrate.Current())
-		if err := gate(root); err != nil {
-			t.Errorf("gate(%s) = %v, want nil", v, err)
+		if err := gate(ctx, root); err != nil {
+			t.Errorf("gate(ctx, %s) = %v, want nil", v, err)
 		}
 	}
 }
 
 func TestGateSkipNoLock(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := gateFixture(t, "", -1)
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		t.Errorf("gate (no lock) = %v, want nil", err)
 	}
 }
 
 func TestGateSkipEmptyVersion(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := gateFixture(t, "", migrate.Current())
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		t.Errorf("gate (empty version) = %v, want nil", err)
 	}
 }
 
 func TestGateSkipUnparseableVersion(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := gateFixture(t, "garbage", migrate.Current())
-	if err := gate(root); err != nil {
+	if err := gate(ctx, root); err != nil {
 		t.Errorf("gate (unparseable version) = %v, want nil", err)
 	}
 }
 
 func TestNormalizeSemver(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, in := range []string{"v0.4.0", "0.4.0"} {
 		got, ok := normalizeSemver(in)
 		if !ok || got != "v0.4.0" {
@@ -132,25 +150,27 @@ func TestNormalizeSemver(t *testing.T) {
 // TestNewGatesInHandler confirms runNew (GatedInHandler) surfaces the gate error
 // itself - after name validation, not via the driver - on an ahead-schema project.
 func TestNewGatesInHandler(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	var out bytes.Buffer
 	// invariant: tooling/cli:adr-new-version-gated
-	if err := runNew(root, "adr", []string{"x"}, &out); err == nil {
+	if err := runNew(ctx, root, "adr", []string{"x"}, &out); err == nil {
 		t.Error("runNew: expected gate error on ahead schema")
 	}
-	if err := runNew(root, "plan", []string{"x"}, &out); err == nil {
+	if err := runNew(ctx, root, "plan", []string{"x"}, &out); err == nil {
 		t.Error("runNew plan: expected gate error on ahead schema")
 	}
-	if err := runNew(root, "topic", []string{"rendering", "x"}, &out); err == nil {
+	if err := runNew(ctx, root, "topic", []string{"rendering", "x"}, &out); err == nil {
 		t.Error("runNew topic: expected gate error on ahead schema")
 	}
-	if err := runNew(root, "topic", []string{"rendering"}, &out); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
+	if err := runNew(ctx, root, "topic", []string{"rendering"}, &out); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
 		t.Errorf("runNew topic must validate usage before gating, got %v", err)
 	}
-	if err := runNew(root, "skill", []string{"x", "desc"}, &out); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"x", "desc"}, &out); err == nil {
 		t.Error("runNew skill: expected gate error on ahead schema")
 	}
-	if err := runNew(root, "doc", []string{"x", "desc"}, &out); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"x", "desc"}, &out); err == nil {
 		t.Error("runNew doc: expected gate error on ahead schema")
 	}
 }
@@ -160,6 +180,8 @@ func TestNewGatesInHandler(t *testing.T) {
 // the parse-once refactor): a tree whose lock awfVersion is newer than the binary
 // refuses rather than silently re-stamping a downgraded version.
 func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, cmd := range []string{"init", "upgrade"} {
 		t.Run(cmd, func(t *testing.T) {
 			root := scaffoldProject(t)
@@ -195,6 +217,8 @@ func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
 // pins the gate-before-config-write guarantee: the handler never runs, so no
 // half-mutated config is stranded.
 func TestDriverGatesGatedCommands(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct {
 		cmd  string
 		args []string

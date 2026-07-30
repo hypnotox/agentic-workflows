@@ -276,14 +276,14 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}

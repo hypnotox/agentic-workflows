@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -27,7 +28,7 @@ outgoing claim IDs; --coverage adds scope plus configured marker sites.
 // runTopic validates the selector before inspecting project state, then mirrors
 // config/context's static-fallback and in-handler version-gate boundary. It has
 // no writer dependency.
-func runTopic(cwd, selector string, history, references, coverage, asJSON bool, stdout io.Writer) error {
+func runTopic(ctx context.Context, cwd, selector string, history, references, coverage, asJSON bool, stdout io.Writer) error {
 	if _, _, err := topic.ParseSelector(selector); err != nil {
 		return &usageErr{err.Error()}
 	}
@@ -38,14 +39,14 @@ func runTopic(cwd, selector string, history, references, coverage, asJSON bool, 
 		_, err = io.WriteString(stdout, topicStaticReference)
 		return err
 	}
-	if err := gate(cwd); err != nil {
+	if err := gate(ctx, cwd); err != nil {
 		return err
 	}
-	p, err := project.Open(cwd)
+	p, err := project.Open(ctx, cwd)
 	if err != nil {
 		return err
 	}
-	result, err := p.QueryTopic(selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
+	result, err := p.QueryTopic(ctx, selector, topic.QueryOptions{History: history, References: references, Coverage: coverage})
 	if err != nil {
 		return err
 	}

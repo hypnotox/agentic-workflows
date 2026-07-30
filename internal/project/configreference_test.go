@@ -24,7 +24,7 @@ agents:
 func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Project) {
 	t.Helper()
 	root := scaffoldFiles(t, configYAML, files)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 	}
 	assertDrift := func(kind, detail string) {
 		t.Helper()
-		drift, err := p.Check()
+		drift, err := p.Check(testContext(t))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,11 +93,11 @@ func TestConfigReferenceRegenDrift(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf/config-reference.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldFiles(t, crefYAML, map[string]string{"config-reference.yaml": tc.sidecar})
-			if _, err := Open(root); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+			if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Errorf("Open = %v, want error containing %q", err, tc.wantErr)
 			}
 		})
@@ -239,7 +239,7 @@ memoryCite:
 	if _, err := os.Stat(filepath.Join(root2, "docs/config-reference.md")); err == nil {
 		t.Error("local: config reference must not render")
 	}
-	drift, err := p2.Check()
+	drift, err := p2.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,16 +258,16 @@ func TestConfigReferencePartReadFault(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf/parts/config-reference/intro.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.Check(); err == nil {
+	if _, err := p.Check(testContext(t)); err == nil {
 		t.Error("Check should surface the part-read fault")
 	}
 	if err := p.Sync(); err == nil {
 		t.Error("Sync should surface the part-read fault")
 	}
-	if _, err := p.AdvisoryNotes(); err == nil {
+	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Error("AdvisoryNotes should surface the part-read fault")
 	}
-	if _, err := p.PlannedOutputs(); err == nil {
+	if _, err := p.PlannedOutputs(testContext(t)); err == nil {
 		t.Error("PlannedOutputs should surface the part-read fault")
 	}
 }
@@ -275,7 +275,7 @@ func TestConfigReferencePartReadFault(t *testing.T) {
 // A malformed config-reference sidecar fails at open like any other sidecar.
 func TestConfigReferenceSidecarParseError(t *testing.T) {
 	root := scaffoldFiles(t, crefYAML, map[string]string{"config-reference.yaml": "data: [unclosed\n"})
-	if _, err := Open(root); err == nil || !strings.Contains(err.Error(), "config-reference.yaml") {
+	if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), "config-reference.yaml") {
 		t.Errorf("Open = %v, want a parse error naming the sidecar", err)
 	}
 }
@@ -308,7 +308,7 @@ func TestConfigReferenceSurfacesSynthesizedLocalDataKeys(t *testing.T) {
 		"docs/my-doc.yaml":                 "data:\n  title: My Doc\n  description: d.\n",
 		"docs/parts/my-doc/content.md":     "b\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -333,7 +333,7 @@ func TestConfigReferenceOmitsBaseRowsWithoutSynthesizedLocal(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - hand\n", map[string]string{
 		"skills/hand.yaml": "local: true\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

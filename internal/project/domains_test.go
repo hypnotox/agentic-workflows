@@ -42,7 +42,7 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 	// effect on the domain doc.
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -67,20 +67,20 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 // invariant: rendering/doc-outputs:domain-doc-regenerated
 func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 	root := topicProject(t)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	if drift, _ := p.Check(); len(drift) != 0 {
+	if drift, _ := p.Check(testContext(t)); len(drift) != 0 {
 		t.Fatalf("expected clean after sync, got: %#v", drift)
 	}
 	// Add a NEW topic to the rendering domain without re-syncing: the domain
 	// doc's topic navigation now differs from the on-disk copy.
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -92,14 +92,14 @@ func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 func TestDomainDocMissingWhenDeleted(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
 	if err := os.Remove(filepath.Join(root, "docs", "domains", "rendering.md")); err != nil {
 		t.Fatal(err)
 	}
-	drift, _ := p.Check()
+	drift, _ := p.Check(testContext(t))
 	if !hasDrift(drift, "docs/domains/rendering.md", "missing") {
 		t.Errorf("expected rendering.md missing after delete, got: %#v", drift)
 	}
@@ -108,7 +108,7 @@ func TestDomainDocMissingWhenDeleted(t *testing.T) {
 func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
@@ -116,11 +116,11 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: []\nagents: []\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	drift, _ := p2.Check()
+	drift, _ := p2.Check(testContext(t))
 	if !hasDrift(drift, "docs/domains/rendering.md", "orphaned") {
 		t.Errorf("expected rendering.md orphaned after domain removal, got: %#v", drift)
 	}
@@ -135,7 +135,7 @@ func TestDeriveOperationStateSurfacesTopicAssemblyError(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
 		"topics/parts/rendering/orphan/current-state.md": "Intro.\n\n## Claims\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -153,11 +153,11 @@ func TestDomainPartOrphan(t *testing.T) {
 		// A part dir for a domain not in the enable list.
 		"domains/parts/other/current-state.md": "stray\n",
 	})
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestDomainDocSectionParity(t *testing.T) {
 func TestDomainDocRendersTopicNavigation(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/git"
@@ -11,8 +12,8 @@ import (
 // HEAD universe is reproducible regardless of local edits. Ordinary and
 // executable, and symlink files are included with their mode preserved;
 // symlink bytes are inert targets and gitlinks are skipped.
-func CommitTree(repoRoot, rev string) (*Tree, error) {
-	blobs, err := git.CommitBlobs(repoRoot, rev)
+func CommitTree(ctx context.Context, repo *git.Repo, rev string) (*Tree, error) {
+	blobs, err := repo.CommitBlobs(ctx, rev)
 	if err != nil {
 		return nil, fmt.Errorf("snapshot commit: %w", err)
 	}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -15,7 +16,7 @@ func TestRangePairRoot(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	root := gitfixture.Commit(t, repo, dir, "root", map[string]string{"a.txt": "a"})
 
-	before, after, err := snapshot.RangePair(dir, root.String())
+	before, after, err := snapshot.RangePair(testContext(t), snapshotRepo(t, dir), root.String())
 	if err != nil {
 		t.Fatalf("RangePair: %v", err)
 	}
@@ -33,7 +34,7 @@ func TestRangePairChild(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "root", map[string]string{"a.txt": "one"})
 	child := gitfixture.Commit(t, repo, dir, "child", map[string]string{"a.txt": "two", "b.txt": "new"})
 
-	before, after, err := snapshot.RangePair(dir, child.String())
+	before, after, err := snapshot.RangePair(testContext(t), snapshotRepo(t, dir), child.String())
 	if err != nil {
 		t.Fatalf("RangePair: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestRangePairMergeFirstParent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	before, after, err := snapshot.RangePair(dir, mh.String())
+	before, after, err := snapshot.RangePair(testContext(t), snapshotRepo(t, dir), mh.String())
 	if err != nil {
 		t.Fatalf("RangePair: %v", err)
 	}
@@ -92,7 +93,7 @@ func TestRangePairMergeFirstParent(t *testing.T) {
 
 // TestRangePairOutsideRepo wraps git.RangeBlobs' open-repo failure.
 func TestRangePairOutsideRepo(t *testing.T) {
-	if _, _, err := snapshot.RangePair(t.TempDir(), "HEAD"); err == nil {
+	if _, err := awfgit.Open(t.TempDir()); err == nil {
 		t.Fatal("expected an error outside a repository")
 	}
 }
@@ -101,7 +102,7 @@ func TestRangePairOutsideRepo(t *testing.T) {
 func TestRangePairBadRevision(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	if _, _, err := snapshot.RangePair(dir, "does-not-exist"); err == nil {
+	if _, _, err := snapshot.RangePair(testContext(t), snapshotRepo(t, dir), "does-not-exist"); err == nil {
 		t.Fatal("expected an error for an unresolvable revision")
 	}
 }

@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -25,7 +24,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	root := initEffortRepo(t)
 	now := time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC)
 	ids := []string{testIDA, testIDB}
-	service, err := Open(context.Background(), root, Options{
+	service, err := Open(testContext(t), root, Options{
 		Clock: func() time.Time { return now },
 		UUID: func() (string, error) {
 			if len(ids) == 0 {
@@ -106,7 +105,7 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 		t.Run(failStage, func(t *testing.T) {
 			root := initEffortRepo(t)
 			var seen []string
-			service, err := Open(context.Background(), root, Options{
+			service, err := Open(testContext(t), root, Options{
 				Clock: func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) },
 				UUID:  func() (string, error) { return testIDA, nil },
 				Fault: func(stage string) error {
@@ -164,7 +163,7 @@ func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
 		wg.Add(1)
 		go func(id string) {
 			defer wg.Done()
-			service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return id, nil }})
+			service, err := Open(testContext(t), root, Options{UUID: func() (string, error) { return id, nil }})
 			if err == nil {
 				_, err = service.New("One winner")
 			}
@@ -219,7 +218,7 @@ func TestEnumerationPreservesAndDiagnosesForeignResidents(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := initEffortRepo(t)
 			setup(t, root)
-			service, err := Open(context.Background(), root, Options{})
+			service, err := Open(testContext(t), root, Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -294,7 +293,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		if err := os.RemoveAll(filepath.Join(root, ".awf", "efforts")); err != nil {
 			t.Fatal(err)
 		}
-		service, err := Open(context.Background(), root, Options{})
+		service, err := Open(testContext(t), root, Options{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -339,7 +338,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			root := initEffortRepo(t)
 			setup(t, root)
-			service, err := Open(context.Background(), root, Options{})
+			service, err := Open(testContext(t), root, Options{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -506,7 +505,7 @@ func assertNoEffortTemporaries(t *testing.T, dir string) {
 
 func openEffortService(t *testing.T, root string, now time.Time) *Service {
 	t.Helper()
-	service, err := Open(context.Background(), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return testIDA, nil }})
+	service, err := Open(testContext(t), root, Options{Clock: func() time.Time { return now }, UUID: func() (string, error) { return testIDA, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -51,13 +51,13 @@ func TestNativeGitFailuresRetainWrappedCauseAndContext(t *testing.T) {
 	if err := os.Mkdir(nonRepository, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	_, err := ResolveControlRoots(t.Context(), nonRepository)
+	_, err := ResolveControlRoots(testContext(t), nonRepository)
 	var exit *exec.ExitError
 	if !errors.As(err, &exit) || !strings.Contains(err.Error(), "inspect bare-repository state") || !strings.Contains(err.Error(), nonRepository) {
 		t.Fatalf("non-repository error lost exit cause or context: %T %v", err, err)
 	}
 
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
 	_, err = newRunner(t.TempDir()).run(ctx, "version")
 	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "git -C") {
@@ -65,7 +65,7 @@ func TestNativeGitFailuresRetainWrappedCauseAndContext(t *testing.T) {
 	}
 
 	t.Setenv("PATH", t.TempDir())
-	_, err = newRunner(t.TempDir()).run(t.Context(), "version")
+	_, err = newRunner(t.TempDir()).run(testContext(t), "version")
 	if !errors.Is(err, exec.ErrNotFound) || !strings.Contains(err.Error(), "git -C") {
 		t.Fatalf("failed Git execution lost cause or context: %T %v", err, err)
 	}
@@ -84,7 +84,7 @@ func TestControlRootRejectsUnexpectedBareScalarFromFixedArguments(t *testing.T) 
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 
-	_, err := ResolveControlRoots(t.Context(), root)
+	_, err := ResolveControlRoots(testContext(t), root)
 	var hard *HardSafetyError
 	if !errors.As(err, &hard) || hard.Category != "repository-identity" || hard.Forceable() {
 		t.Fatalf("unexpected scalar error = %T %v", err, err)
@@ -120,7 +120,7 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 				t.Fatal(err)
 			}
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-			_, err := ResolveControlRoots(t.Context(), root)
+			_, err := ResolveControlRoots(testContext(t), root)
 			var exit *exec.ExitError
 			if !errors.As(err, &exit) || !strings.Contains(err.Error(), root) {
 				t.Fatalf("%s-stage error lost exit cause or path context: %T %v", stage, err, err)
@@ -135,7 +135,7 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		if _, err := runGitPathWith(t.Context(), newRunner(t.TempDir()), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
+		if _, err := runGitPathWith(testContext(t), newRunner(t.TempDir()), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
 			t.Fatalf("multiline Git path accepted: %v", err)
 		}
 	})
@@ -147,12 +147,12 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		if _, err := runGitTextWith(t.Context(), newRunner(t.TempDir()), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
+		if _, err := runGitTextWith(testContext(t), newRunner(t.TempDir()), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
 			t.Fatalf("space-padded Git scalar accepted: %v", err)
 		}
 	})
 
-	ctx, cancel := context.WithCancel(t.Context())
+	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
 	if _, err := runGitPathWith(ctx, newRunner(t.TempDir()), "path"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("path command error lost cancellation cause: %v", err)
@@ -167,7 +167,7 @@ func shellStageResult(current, target, success string) string {
 }
 
 func TestListWorktreeRegistrationsErrors(t *testing.T) {
-	if _, err := ListWorktreeRegistrations(t.Context(), filepath.Join(t.TempDir(), "not-a-repository")); err == nil {
+	if _, err := ListWorktreeRegistrations(testContext(t), filepath.Join(t.TempDir(), "not-a-repository")); err == nil {
 		t.Fatal("non-repository registration list succeeded")
 	}
 	bin := t.TempDir()
@@ -176,13 +176,13 @@ func TestListWorktreeRegistrationsErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-	if _, err := ListWorktreeRegistrations(t.Context(), t.TempDir()); err == nil {
+	if _, err := ListWorktreeRegistrations(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("malformed registration topology accepted")
 	}
 	if err := os.WriteFile(script, []byte("#!/bin/sh\nprintf 'worktree relative\\000HEAD abc\\000branch refs/heads/main\\000\\000'\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ListWorktreeRegistrations(t.Context(), t.TempDir()); err == nil {
+	if _, err := ListWorktreeRegistrations(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("relative registration path accepted")
 	}
 }

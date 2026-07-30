@@ -15,6 +15,8 @@ import (
 )
 
 func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// invariant: tooling/cli:effort-command-contract
 	// invariant: tooling/effort-management:effort-record-authority
 	primary := filepath.Join(t.TempDir(), "primary with spaces")
@@ -76,6 +78,8 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 }
 
 func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := commandRepo(t)
 	for _, test := range []struct {
 		sub string
@@ -85,7 +89,7 @@ func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
 		{sub: "show", pos: []string{"missing-effort"}},
 	} {
 		var stdout bytes.Buffer
-		err := runEffort(&cmdCtx{root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout})
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout})
 		if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), "next action") {
 			t.Fatalf("%s error=%v stdout=%q", test.sub, err, stdout.String())
 		}
@@ -102,7 +106,7 @@ func TestEffortJSONFailuresWriteNoStdoutAndRejectProtocol1(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout bytes.Buffer
-	err := runEffort(&cmdCtx{root: root, sub: "show", inv: invocation{positionals: []string{"legacy-effort"}, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout})
+	err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "show", inv: invocation{positionals: []string{"legacy-effort"}, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &stdout})
 	if err == nil || stdout.Len() != 0 || !strings.Contains(err.Error(), "unsupported schemaVersion 1") {
 		t.Fatalf("protocol-1 error=%v stdout=%q", err, stdout.String())
 	}
@@ -113,11 +117,13 @@ type effortErrorWriter struct{}
 func (effortErrorWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
 
 func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := commandRepo(t)
-	if err := runEffort(&cmdCtx{root: filepath.Join(root, "missing"), sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: filepath.Join(root, "missing"), sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
 		t.Fatal("invalid repository accepted")
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
 		t.Fatal("blank title accepted")
 	}
 	runEffortCommand(t, root, "new", []string{"Output errors"}, nil)
@@ -136,12 +142,12 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 		if test.bools == nil {
 			test.bools = map[string]bool{}
 		}
-		err := runEffort(&cmdCtx{root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: test.bools, values: map[string]string{}}, stdout: effortErrorWriter{}})
+		err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: test.sub, inv: invocation{positionals: test.pos, bools: test.bools, values: map[string]string{}}, stdout: effortErrorWriter{}})
 		if err == nil {
 			t.Errorf("%s output error ignored", test.sub)
 		}
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "finish", inv: invocation{positionals: []string{"output-errors"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: effortErrorWriter{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "finish", inv: invocation{positionals: []string{"output-errors"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: effortErrorWriter{}}); err == nil {
 		t.Fatal("finish output error ignored")
 	}
 	if err := writeWorktreeResult(&bytes.Buffer{}, worktree.Result{}, os.ErrInvalid); !errors.Is(err, os.ErrInvalid) {
@@ -169,17 +175,17 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(corruptRoot, ".awf", "efforts", "foreign"), nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runEffort(&cmdCtx{root: corruptRoot, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: corruptRoot, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
 		t.Fatal("corrupt list accepted")
 	}
 	emptyRoot := commandRepo(t)
 	if output := runEffortCommand(t, emptyRoot, "list", nil, nil); output != "" {
 		t.Fatalf("empty text list = %q", output)
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "finish", inv: invocation{positionals: []string{"missing-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "finish", inv: invocation{positionals: []string{"missing-effort"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
 		t.Fatal("missing finish accepted")
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "unknown", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "unknown", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
 		t.Fatal("unknown effort child accepted")
 	}
 }
@@ -190,7 +196,7 @@ func runEffortCommand(t *testing.T, root, sub string, positionals []string, bool
 		bools = map[string]bool{}
 	}
 	var out bytes.Buffer
-	ctx := &cmdCtx{root: root, sub: sub, inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
+	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: positionals, bools: bools, values: map[string]string{}}, stdout: &out}
 	if err := runEffort(ctx); err != nil {
 		t.Fatalf("awf effort %s: %v", sub, err)
 	}

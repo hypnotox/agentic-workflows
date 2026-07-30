@@ -11,13 +11,15 @@ import (
 )
 
 func TestRunInitScaffoldsAndSyncs(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	// Rename tempdir base via a child dir so prefix is predictable.
 	proj := filepath.Join(root, "acme")
 	if err := os.MkdirAll(proj, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(proj, false, false, nil, "", io.Discard); err != nil {
+	if err := runInit(ctx, proj, false, false, nil, "", io.Discard); err != nil {
 		t.Fatalf("runInit: %v", err)
 	}
 	cfg, err := os.ReadFile(filepath.Join(proj, ".awf", "config.yaml"))
@@ -45,6 +47,8 @@ func containsLine(s, line string) bool {
 // name exactly the same top-level commands - no command without a handler, no
 // handler without a command. Group children (new/adr...) are not separate keys.
 func TestHandlerRegistryParity(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, c := range clispec.Commands {
 		if _, ok := handlers[c.Name]; !ok {
 			t.Errorf("clispec command %q has no handler", c.Name)
@@ -62,6 +66,8 @@ func TestHandlerRegistryParity(t *testing.T) {
 // and has both nodes available for clispec.ResolvedGating, which reads the
 // child's gating and falls back to the parent's.
 func TestResolveReturnsTopLevel(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	cmd, top, sub, rest, ok := resolve([]string{"new", "adr", "A Title"})
 	if !ok || cmd.Name != "adr" || top.Name != "new" || sub != "adr" {
 		t.Fatalf("resolve(new adr) = cmd=%q top=%q sub=%q ok=%v", cmd.Name, top.Name, sub, ok)
@@ -82,6 +88,8 @@ func TestResolveReturnsTopLevel(t *testing.T) {
 // repeatable flag collects into multi, non-flag tokens are positionals, and an
 // unknown flag / missing value / out-of-range arity is a usage error.
 func TestParseArgs(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	cmd := clispec.Command{
 		Name: "x", BoolFlags: []string{"--flag"}, ValueFlags: []string{"--val", "--set"},
 		Repeatable: []string{"--set"}, MinPos: 1, MaxPos: 2,

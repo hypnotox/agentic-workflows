@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	gogit "github.com/go-git/go-git/v5"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -37,7 +38,7 @@ func TestCommitTree(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tree, err := snapshot.CommitTree(dir, head.String())
+	tree, err := snapshot.CommitTree(testContext(t), snapshotRepo(t, dir), head.String())
 	if err != nil {
 		t.Fatalf("CommitTree: %v", err)
 	}
@@ -70,7 +71,7 @@ func TestCommitTree(t *testing.T) {
 
 // TestCommitTreeOutsideRepo wraps git.CommitBlobs' open-repo failure.
 func TestCommitTreeOutsideRepo(t *testing.T) {
-	if _, err := snapshot.CommitTree(t.TempDir(), "HEAD"); err == nil {
+	if _, err := awfgit.Open(t.TempDir()); err == nil {
 		t.Fatal("expected an error outside a repository")
 	}
 }
@@ -79,7 +80,7 @@ func TestCommitTreeOutsideRepo(t *testing.T) {
 func TestCommitTreeBadRevision(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.txt": "a"})
-	if _, err := snapshot.CommitTree(dir, "does-not-exist"); err == nil {
+	if _, err := snapshot.CommitTree(testContext(t), snapshotRepo(t, dir), "does-not-exist"); err == nil {
 		t.Fatal("expected an error for an unresolvable revision")
 	} else if errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("unexpected error kind: %v", err)

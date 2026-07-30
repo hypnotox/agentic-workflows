@@ -18,7 +18,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 	// invariant: tooling/effort-management:managed-worktree-lifecycle
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Managed result")
-	manager, err := Open(context.Background(), root, Options{})
+	manager, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 func TestDivergentIntegrationStopsBeforeCommit(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Divergent result")
-	manager, err := Open(context.Background(), root, Options{})
+	manager, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +107,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 	t.Run("conflict", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
 		createEffort(t, root, "Conflict result")
-		manager, err := Open(context.Background(), root, Options{})
+		manager, err := Open(testContext(t), root, Options{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,7 +132,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 	t.Run("unrelated", func(t *testing.T) {
 		root := initWorktreeRepo(t, "sha1")
 		createEffort(t, root, "Unrelated result")
-		manager, err := Open(context.Background(), root, Options{})
+		manager, err := Open(testContext(t), root, Options{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,7 +160,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 func TestRemovalRefusesDirtyAndUnmergedWithoutForce(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Guard removal")
-	manager, err := Open(context.Background(), root, Options{})
+	manager, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +201,7 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 		}
 		return out, err
 	}
-	manager, err := Open(context.Background(), root, Options{Runner: runner})
+	manager, err := Open(testContext(t), root, Options{Runner: runner})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +209,7 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "changed topology: yes") || !strings.Contains(err.Error(), "actual Git topology") {
 		t.Fatalf("add failure = %v", err)
 	}
-	service, err := effort.Open(context.Background(), root, effort.Options{})
+	service, err := effort.Open(testContext(t), root, effort.Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestResolveAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
 	for _, format := range []string{"sha1", "sha256"} {
 		t.Run(format, func(t *testing.T) {
 			root := initWorktreeRepo(t, format)
-			id, err := resolve(context.Background(), nativeRunner, root, "HEAD")
+			id, err := resolve(testContext(t), nativeRunner, root, "HEAD")
 			if err != nil {
 				if format == "sha256" && strings.Contains(err.Error(), "unknown value") {
 					t.Skip("installed Git lacks SHA-256 repositories")
@@ -242,36 +242,36 @@ func TestResolveAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
 
 func TestGitHelperErrorAndCleanlinessBranches(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
 	if _, err := nativeRunner(ctx, root, "status"); err == nil {
 		t.Fatal("cancelled native runner succeeded")
 	}
 	failed := func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("runner") }
-	if _, err := resolve(context.Background(), failed, ".", "HEAD"); err == nil {
+	if _, err := resolve(testContext(t), failed, ".", "HEAD"); err == nil {
 		t.Fatal("resolve runner error hidden")
 	}
 	invalidID := func(context.Context, string, ...string) ([]byte, error) { return []byte("short\n"), nil }
-	if _, err := resolve(context.Background(), invalidID, ".", "HEAD"); err == nil {
+	if _, err := resolve(testContext(t), invalidID, ".", "HEAD"); err == nil {
 		t.Fatal("invalid object ID accepted")
 	}
-	if err := status(context.Background(), failed, "."); err == nil {
+	if err := status(testContext(t), failed, "."); err == nil {
 		t.Fatal("status runner error hidden")
 	}
 	cleanResident := func(context.Context, string, ...string) ([]byte, error) {
 		return []byte("?? .awf/efforts/x/state.json\x00"), nil
 	}
-	if err := status(context.Background(), cleanResident, "."); err != nil {
+	if err := status(testContext(t), cleanResident, "."); err != nil {
 		t.Fatalf("owned resident treated as dirt: %v", err)
 	}
 	dirty := func(context.Context, string, ...string) ([]byte, error) { return []byte("?? foreign\x00"), nil }
-	if err := status(context.Background(), dirty, "."); err == nil {
+	if err := status(testContext(t), dirty, "."); err == nil {
 		t.Fatal("foreign dirt accepted")
 	}
-	if exists, err := branchExists(context.Background(), failed, ".", "x"); err == nil || exists {
+	if exists, err := branchExists(testContext(t), failed, ".", "x"); err == nil || exists {
 		t.Fatalf("branch runner result exists=%v err=%v", exists, err)
 	}
-	if related, err := ancestor(context.Background(), failed, ".", "a", "b"); err == nil || related {
+	if related, err := ancestor(testContext(t), failed, ".", "a", "b"); err == nil || related {
 		t.Fatalf("ancestor runner result related=%v err=%v", related, err)
 	}
 }
@@ -279,7 +279,7 @@ func TestGitHelperErrorAndCleanlinessBranches(t *testing.T) {
 func TestManagerValidationAndOperationRefusals(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Validation result")
-	manager, err := Open(context.Background(), root, Options{})
+	manager, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func failedRunner(context.Context, string, ...string) ([]byte, error) {
 }
 
 func TestManagerAuthorityErrorBranches(t *testing.T) {
-	if _, err := Open(context.Background(), filepath.Join(t.TempDir(), "missing"), Options{}); err == nil {
+	if _, err := Open(testContext(t), filepath.Join(t.TempDir(), "missing"), Options{}); err == nil {
 		t.Fatal("missing repository accepted")
 	}
 	m, _ := newManagerWithEffort(t, "Authority errors")
@@ -988,7 +988,7 @@ func TestPreMutationRefusalInvokesNoDestructiveCommand(t *testing.T) {
 
 func freshWorktreeManager(t *testing.T, root string) *Manager {
 	t.Helper()
-	manager, err := Open(context.Background(), root, Options{})
+	manager, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1011,7 +1011,7 @@ func newManagerWithEffort(t *testing.T, title string) (*Manager, string) {
 	t.Helper()
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, title)
-	manager, err := Open(context.Background(), root, Options{})
+	manager, err := Open(testContext(t), root, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1029,7 +1029,7 @@ func runnerFailingPrefix(base Runner, prefix string) Runner {
 
 func createEffort(t *testing.T, root, title string) {
 	t.Helper()
-	service, err := effort.Open(context.Background(), root, effort.Options{UUID: func() (string, error) { return worktreeTestID, nil }})
+	service, err := effort.Open(testContext(t), root, effort.Options{UUID: func() (string, error) { return worktreeTestID, nil }})
 	if err != nil {
 		t.Fatal(err)
 	}

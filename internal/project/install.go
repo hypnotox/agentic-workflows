@@ -19,8 +19,8 @@ import (
 // InitCollisions returns planned output paths that already exist on disk and are
 // not recorded in the prior lock (i.e. not awf-managed). An awf-managed path that
 // already exists is not a collision - re-init is idempotent.
-func (p *Project) InitCollisions() ([]string, error) {
-	planned, err := p.PlannedOutputs()
+func (p *Project) InitCollisions(ctx context.Context) ([]string, error) {
+	planned, err := p.PlannedOutputs(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -169,14 +169,9 @@ func preserveResidentRemoval(path string, preserved []string) bool {
 // Uninstall removes awf's generated footprint while preserving dynamic resident
 // state. It is a free function so a broken config does not block it.
 // touches-state: rendering/sync-and-drift:uninstall-removes-lock-entries - lock-tracked file removal; proof in install_test.go
-func Uninstall(root string) (UninstallReport, error) {
+func Uninstall(ctx context.Context, root string) (UninstallReport, error) {
 	lockPath := config.LockPath(root)
-	residentRoot := root
-	if roots, resolveErr := awfgit.ResolveControlRoots(context.Background(), root); resolveErr == nil {
-		if effortRoot, residentErr := roots.ResidentRoot(awfgit.ResidentEfforts); residentErr == nil {
-			residentRoot = filepath.Dir(filepath.Dir(effortRoot))
-		}
-	}
+	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
 	lock, found, err := manifest.LoadOptional(lockPath)
 	if err != nil {
 		return UninstallReport{}, err

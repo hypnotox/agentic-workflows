@@ -70,14 +70,14 @@ func TestSectionOrphanDetection(t *testing.T) {
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
 		"docs/parts/architecture/" + orphan + ".md": "## Bogus\n\nstray\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -183,7 +183,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	}
 
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

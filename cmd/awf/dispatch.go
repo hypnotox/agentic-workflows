@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"slices"
@@ -19,9 +20,13 @@ type invocation struct {
 	multi       map[string][]string // every declared Repeatable flag → all values
 }
 
-// cmdCtx bundles what a handler needs: the working dir, the parsed args, the
-// resolved subcommand token (for a group command; "" otherwise), and the I/O.
+// cmdCtx bundles what a handler needs: the invocation's deadlined context, the
+// working dir, the parsed args, the resolved subcommand token (for a group
+// command; "" otherwise), and the I/O.
 type cmdCtx struct {
+	// ctx is the invocation's deadlined context, created once at the command
+	// boundary in run and read by every handler that reaches git.
+	ctx    context.Context
 	root   string
 	sub    string
 	inv    invocation
@@ -67,24 +72,24 @@ func runCheckGroup(c *cmdCtx) error {
 			}
 			return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", pos, checkSubcommands())}
 		}
-		return runCheck(c.root, c.inv.bools["--staged"], c.stdout)
+		return runCheck(c.ctx, c.root, c.inv.bools["--staged"], c.stdout)
 	}
 	if c.inv.bools["--staged"] {
 		return &usageErr{fmt.Sprintf("awf check %s: --staged applies to the bare form only: awf check --staged", c.sub)}
 	}
 	switch c.sub {
 	case "drift":
-		return runCheckDrift(c.root, c.stdout)
+		return runCheckDrift(c.ctx, c.root, c.stdout)
 	case "state":
-		return runCheckState(c.root, c.stdout)
+		return runCheckState(c.ctx, c.root, c.stdout)
 	case "invariants":
-		return runInvariants(c.root, c.stdout)
+		return runInvariants(c.ctx, c.root, c.stdout)
 	case "prose":
-		return runProseGate(c.root, c.stdout)
+		return runProseGate(c.ctx, c.root, c.stdout)
 	case "memory":
-		return runMemoryGate(c.root, c.stdout)
+		return runMemoryGate(c.ctx, c.root, c.stdout)
 	case "commit":
-		return runCommitGate(c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
+		return runCommitGate(c.ctx, c.root, firstPos(c.inv.positionals), c.stdin, c.stdout)
 	default: // coverage-ignore: resolve admits only a declared child, so an unhandled name means a new clispec entry shipped without a dispatch arm
 		return &usageErr{fmt.Sprintf("awf check: unknown subcommand %q: expected one of %s", c.sub, checkSubcommands())}
 	}
@@ -95,19 +100,19 @@ func runCheckGroup(c *cmdCtx) error {
 // TestHandlerRegistryParity asserts these keys match the clispec top-level names.
 var handlers = map[string]handler{
 	"init": func(c *cmdCtx) error {
-		return runInit(c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
+		return runInit(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout)
 	},
-	"render": func(c *cmdCtx) error { return runSync(c.root, c.stdout) },
+	"render": func(c *cmdCtx) error { return runSync(c.ctx, c.root, c.stdout) },
 	"check":  runCheckGroup,
-	"audit":  func(c *cmdCtx) error { return runAudit(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"audit":  func(c *cmdCtx) error { return runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
 	"effort": runEffort,
-	"list":   func(c *cmdCtx) error { return runList(c.root, firstPos(c.inv.positionals), c.stdout) },
-	"config": func(c *cmdCtx) error { return runConfig(c.root, firstPos(c.inv.positionals), c.stdout) },
+	"list":   func(c *cmdCtx) error { return runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
+	"config": func(c *cmdCtx) error { return runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout) },
 	"context": func(c *cmdCtx) error {
-		return runContext(c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout)
+		return runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout)
 	},
 	"topic": func(c *cmdCtx) error {
-		return runTopic(c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.inv.bools["--json"], c.stdout)
+		return runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.inv.bools["--json"], c.stdout)
 	},
 	"new": func(c *cmdCtx) error {
 		// For a recognized child, sub is the kind and positionals are the child's
@@ -118,26 +123,26 @@ var handlers = map[string]handler{
 		if kind == "" && len(args) > 0 {
 			kind, args = args[0], args[1:]
 		}
-		return runNew(c.root, kind, args, c.stdout)
+		return runNew(c.ctx, c.root, kind, args, c.stdout)
 	},
 	"enable": func(c *cmdCtx) error {
 		kind, name, err := enableDisableArgs(c.inv.positionals, true)
 		if err != nil {
 			return err
 		}
-		return runEnable(c.root, kind, name, c.inv.bools["--dry-run"], c.stdout)
+		return runEnable(c.ctx, c.root, kind, name, c.inv.bools["--dry-run"], c.stdout)
 	},
 	"disable": func(c *cmdCtx) error {
 		kind, name, err := enableDisableArgs(c.inv.positionals, false)
 		if err != nil {
 			return err
 		}
-		return runDisable(c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout)
+		return runDisable(c.ctx, c.root, kind, name, c.inv.bools["--with-dependents"], c.inv.bools["--dry-run"], c.stdout)
 	},
 	"upgrade": func(c *cmdCtx) error {
-		return runUpgradeFlags(c.root, c.inv.bools["--recover"], c.stdout)
+		return runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], c.stdout)
 	},
-	"uninstall": func(c *cmdCtx) error { return runUninstall(c.root, c.stdout) },
+	"uninstall": func(c *cmdCtx) error { return runUninstall(c.ctx, c.root, c.stdout) },
 	"changelog": func(c *cmdCtx) error {
 		return runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout)
 	},

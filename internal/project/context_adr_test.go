@@ -41,7 +41,7 @@ None.
 - 2026-07-27: Proposed
 `
 	p := csRepo(t, ctxConfig, files)
-	ws, err := p.workingCurrentState()
+	ws, err := p.workingCurrentState(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

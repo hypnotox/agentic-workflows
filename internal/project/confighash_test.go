@@ -8,7 +8,7 @@ import (
 
 func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

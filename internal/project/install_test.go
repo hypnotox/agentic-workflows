@@ -29,7 +29,7 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	report, err := Uninstall(root)
+	report, err := Uninstall(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Uninstall: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestUninstallSkipsEscapingLockPaths(t *testing.T) {
 
 func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,14 +63,14 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.SyncReport(); err != nil {
+	if _, _, _, err := p.SyncReport(testContext(t)); err != nil {
 		t.Fatalf("resident-root prune path failed: %v", err)
 	}
 }
 
 func TestUninstallPreservesResidentState(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	report, err := Uninstall(root)
+	report, err := Uninstall(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,14 +106,14 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 
 func TestUninstallRemovesEmptyResidentRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	report, err := Uninstall(root)
+	report, err := Uninstall(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 	for _, kind := range []string{"file", "symlink", "unreadable"} {
 		t.Run(kind, func(t *testing.T) {
 			root := scaffold(t, sampleYAML)
-			p, err := Open(root)
+			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -157,7 +157,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 				}
 				t.Cleanup(func() { _ = os.Chmod(efforts, 0o700) })
 			}
-			if _, err := Uninstall(root); err == nil {
+			if _, err := Uninstall(testContext(t), root); err == nil {
 				t.Fatalf("unsafe %s efforts root accepted", kind)
 			}
 			if _, err := os.Stat(lockFile(root)); err != nil {
@@ -201,11 +201,11 @@ func TestInitCollisionsSurfacesPlannedOutputsError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dd, "0099-bad.md"), []byte("---\nstatus: [unclosed\n---\n# Bad\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.InitCollisions(); err == nil {
+	if _, err := p.InitCollisions(testContext(t)); err == nil {
 		t.Fatal("expected InitCollisions to surface the PlannedOutputs error")
 	}
 }
