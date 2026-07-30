@@ -36,14 +36,18 @@ type gitReader interface {
 }
 
 func main() { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	_, _, code := parseArgs(os.Args, os.Stderr)
+	if code != 0 { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+		os.Exit(code)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 	repo, err := awfgit.Open(".")
 	if err != nil { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 		fmt.Fprintln(os.Stderr, "repoaudit:", err)
 		cancel()
 		os.Exit(1)
 	}
-	code := runWith(ctx, os.Args, os.Stdout, os.Stderr, repo) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	code = runWith(ctx, os.Args, os.Stdout, os.Stderr, repo) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 	cancel()
 	os.Exit(code) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 } // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
@@ -66,18 +70,30 @@ var rules = []func(ctx context.Context, git gitReader, base, head string, log io
 }
 
 func runWith(ctx context.Context, args []string, stdout, stderr io.Writer, git gitReader) int {
+	base, head, code := parseArgs(args, stderr)
+	if code != 0 {
+		return code
+	}
+	return runRange(ctx, base, head, stdout, git)
+}
+
+func parseArgs(args []string, stderr io.Writer) (base, head string, code int) {
 	// No default range (ADR-0127 Decision 11): a no-argument call would report
 	// over commits nobody named, which is the guess-the-base defect in
 	// repo-local clothing.
 	if len(args) < 2 {
 		fmt.Fprintln(stderr, "usage: repoaudit <base>..<head>")
-		return 2
+		return "", "", 2
 	}
-	base, head, perr := awfgit.ParseRange(args[1], false)
-	if perr != nil {
-		fmt.Fprintf(stderr, "repoaudit: %v\n", perr)
-		return 2
+	base, head, err := awfgit.ParseRange(args[1], false)
+	if err != nil {
+		fmt.Fprintf(stderr, "repoaudit: %v\n", err)
+		return "", "", 2
 	}
+	return base, head, 0
+}
+
+func runRange(ctx context.Context, base, head string, stdout io.Writer, git gitReader) int {
 	errs, warns := 0, 0
 	for _, rule := range rules {
 		for _, f := range rule(ctx, git, base, head, stdout) {

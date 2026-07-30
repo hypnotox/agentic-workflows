@@ -70,9 +70,12 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 	}
 	seen := map[plumbing.Hash]bool{}
 	if err := object.NewCommitPreorderIter(baseCommit, nil, nil).ForEach(func(c *object.Commit) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		seen[c.Hash] = true
 		return nil
-	}); err != nil { // coverage-ignore: the callback never errors and walking a valid graph does not fail
+	}); err != nil {
 		return nil, opaqueError(err)
 	}
 	if seen[headCommit.Hash] {
@@ -80,6 +83,9 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 	}
 	var commits []Commit
 	err = object.NewCommitPreorderIter(headCommit, seen, nil).ForEach(func(c *object.Commit) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		nc, err := toCommit(c, r.prefix)
 		if err != nil { // coverage-ignore: toCommit fails only on a corrupt object (see its own ignored branches)
 			return err
@@ -89,7 +95,7 @@ func (r *Repo) RangeCommits(ctx context.Context, base, head string) ([]Commit, e
 		}
 		return nil
 	})
-	if err != nil { // coverage-ignore: mirrors the toCommit failure above; unreachable for valid commits
+	if err != nil {
 		return nil, opaqueError(err)
 	}
 	return commits, nil

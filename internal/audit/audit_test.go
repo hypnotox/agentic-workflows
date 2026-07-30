@@ -559,8 +559,30 @@ func TestRuleUncommittedChanges(t *testing.T) {
 	}
 	findings, err := ruleUncommittedChanges(testContext(t), handle, Inputs{Settings: Settings{UncommittedChanges: true}})
 	// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
-	if err != nil || len(findings) != 1 || findings[0].Rule != "uncommitted-changes" || findings[0].Severity != severity.Error {
+	if err != nil || len(findings) != 1 || findings[0].Rule != "uncommitted-changes" || findings[0].Severity != severity.Error || findings[0].Commit != "" {
 		t.Fatalf("dirty = %#v, %v", findings, err)
+	}
+	wantDetail := "working tree not clean: 1 tracked change(s), 1 untracked file(s); commit or discard before concluding the implementation"
+	if findings[0].Detail != wantDetail {
+		t.Errorf("Detail mismatch:\n got %q\nwant %q", findings[0].Detail, wantDetail)
+	}
+	if disabled, err := ruleUncommittedChanges(testContext(t), handle, Inputs{}); err != nil || disabled != nil {
+		t.Fatalf("disabled dirty = %#v, %v", disabled, err)
+	}
+}
+
+func TestRunIncludesUncommittedChanges(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
+	if err := os.WriteFile(filepath.Join(dir, "uncommitted.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	findings, _, err := Run(testContext(t), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(findings) != 1 || findings[0].Rule != "uncommitted-changes" || findings[0].Commit != "" {
+		t.Fatalf("Run findings = %#v", findings)
 	}
 }
 

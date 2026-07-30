@@ -227,6 +227,7 @@ func TestRangeCommitsUnrelatedHistoryAndWorktreeConfig(t *testing.T) {
 func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "base", map[string]string{"a.go": "package a\n"})
+	gitfixture.Commit(t, repo, dir, "head", map[string]string{"a.go": "package a\n\nvar x int\n"})
 	handle := walkRepo(t, dir)
 	ctx, cancel := context.WithCancel(testContext(t))
 	cancel()
@@ -235,6 +236,14 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	}
 	if _, _, err := handle.FileText(ctx, "HEAD", "a.go"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("FileText cancellation = %v", err)
+	}
+	for name, cancelAt := range map[string]int{"base walk": 2, "head walk": 3} {
+		t.Run(name, func(t *testing.T) {
+			midWalk := &cancelAfterContext{Context: testContext(t), remaining: cancelAt}
+			if _, err := handle.RangeCommits(midWalk, "HEAD~1", "HEAD"); !errors.Is(err, context.Canceled) {
+				t.Fatalf("mid-walk cancellation = %v", err)
+			}
+		})
 	}
 	t.Setenv("PATH", t.TempDir())
 	for name, call := range map[string]func() error{
@@ -274,6 +283,19 @@ func TestSplitWalkMessage(t *testing.T) {
 	if subject, body := splitMessage("subject"); subject != "subject" || body != "" {
 		t.Fatalf("single line = %q / %q", subject, body)
 	}
+}
+
+type cancelAfterContext struct {
+	context.Context
+	remaining int
+}
+
+func (c *cancelAfterContext) Err() error {
+	c.remaining--
+	if c.remaining <= 0 {
+		return context.Canceled
+	}
+	return c.Context.Err()
 }
 
 func storeOrphan(t *testing.T, repo *gogit.Repository) plumbing.Hash {

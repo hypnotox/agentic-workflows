@@ -53,7 +53,7 @@ type Inputs struct {
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
 // (ADR-0025). It reads live worktree state from native Git porcelain so the
 // audit uses Git's own repository, global, and system ignore semantics.
-// touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
+// touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in audit_test.go
 func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo, in Inputs) ([]Finding, error) {
 	if !in.UncommittedChanges {
 		return nil, nil
