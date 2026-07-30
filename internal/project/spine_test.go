@@ -1445,7 +1445,11 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 		for _, want := range []string{
 			"## Consensus adherence",
 			"user-decision",
+			"`location` cites the deviating",
+			"`issue` names the deviation",
+			"`suggested_fix` carries the escalation phrasing",
 			"we decided X; during <phase> we found Z; recommend Y, approve?",
+			"A brief without consensus entries leaves this check idle.",
 		} {
 			if !strings.Contains(out, want) {
 				t.Errorf("%s missing consensus-adherence phrase %q:\n%s", agent, want, out)
@@ -1464,7 +1468,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 		t.Errorf("reviewing-plan-resync must keep its narrowed contract:\n%s", out)
 	}
 	retrospective := renderSkillGolden(t, "retrospective", data)
-	for _, want := range []string{"as primary input", "across the effort's sessions"} {
+	for _, want := range []string{"`## Observations`", "`## Decision log`", "as primary input", "across the effort's sessions"} {
 		if !strings.Contains(retrospective, want) {
 			t.Errorf("retrospective missing memory-log phrase %q:\n%s", want, retrospective)
 		}

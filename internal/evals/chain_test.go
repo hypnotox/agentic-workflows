@@ -300,7 +300,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"Effort: <slug>",
 		"one user-managed writer",
 		"never edits it",
-		"any observation hit since the last boundary",
+		"append any decision settled and any observation hit since the last boundary",
 		"continuity notice",
 	}
 	for _, target := range []string{"pi", "claude"} {
@@ -440,7 +440,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"Effort: <slug>",
 		"one user-managed writer",
 		"never edits the shared memory",
-		"any observation hit since the last boundary",
+		"append any decision settled and any observation hit since the last boundary",
 		"explicitly request approval",
 		"end the turn",
 		"Stop even when there is no concern to raise",
