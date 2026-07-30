@@ -25,9 +25,9 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Every managed context-calling skill consumes the exact spill notice, verifies the declared byte length, and best-effort deletes the temporary packet after successful or failed use. Brainstorming, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill contract.
+Every managed context-calling skill consumes the exact spill notice, verifies the declared byte length, and best-effort deletes the temporary packet after successful or failed use. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill contract.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174
+Revised-by: ADR-0165, ADR-0174, ADR-0187
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
@@ -46,8 +46,9 @@ Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
-Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, exact slug/path continuity, repository-authority precedence, standalone-memory ban, and one-writer/report-only-child contract. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
+Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, exact slug/path continuity, repository-authority precedence, standalone-memory ban, and one-writer/report-only-child contract. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
 Origin: ADR-0175
+Revised-by: ADR-0187
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
@@ -133,6 +134,7 @@ Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`
 
-The rendered explorer body defines its report-only identity, one information need with no bundling or recursive delegation, concurrent independent needs with sequential refinement, breadth ordered targeted < bounded < broad as an adaptive maximum with its project search universe, report detail ordered paths < summary < analysis independent of breadth, file:line grounding, the distinction between not-found, inconclusive, and unverified outcomes with the exact not-found opening, final-report-only output, and statelessness across calls. The rendered grounding-checker body defines its report-only identity, that it works only from its brief and never edits the working memory that brief may name, its verification obligations across factual premises, unstated assumptions, altitude, and convention fit, and a closed finding schema whose confidence field distinguishes verified, interpreted, and unverified. The exploring and brainstorming skills each name their dispatched agent in the branch that dispatches a target-native subagent, and neither rendered body carries per-call or runtime-specific text.
+The rendered explorer body defines its report-only identity, one information need with no bundling or recursive delegation, concurrent independent needs with sequential refinement, breadth ordered targeted < bounded < broad as an adaptive maximum with its project search universe, report detail ordered paths < summary < analysis independent of breadth, file:line grounding, the distinction between not-found, inconclusive, and unverified outcomes with the exact not-found opening, final-report-only output, and statelessness across calls. The rendered grounding-checker body defines its report-only identity, that it works only from its brief and never edits the working memory that brief may name, its verification obligations across factual premises, unstated assumptions, altitude, and convention fit, and a closed finding schema whose confidence field distinguishes verified, interpreted, and unverified. The exploring and brainstorming skills each name their dispatched agent in the branch that dispatches a target-native subagent, and neither rendered body carries per-call or runtime-specific text. The grounding-checker body grounds guide-first through the shared orientation ladder partial.
 Origin: ADR-0179
+Revised-by: ADR-0187
 Backing: test

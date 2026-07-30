@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-30
 ---
 # ADR-0187: Add the orienting support skill as the single home of orientation
@@ -59,3 +59,5 @@ User constraints, verbatim: "It shouldn't be a chain skill like brainstorming. I
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-31: Implementing; content-sha256: 3e6cc64794f7fe75ba47dbd9c445c22bed9abde6db5e094503b5aabc06f9fa58
+- 2026-07-31: Applied; state-sequence: 102; operations: update `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`, update `rendering/guide-and-doc-templates:working-memory-single-home`, add `config/migrations-and-locks:orienting-skill-backfill`

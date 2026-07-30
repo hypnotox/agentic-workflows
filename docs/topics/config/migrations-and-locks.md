@@ -72,6 +72,12 @@ Origin: ADR-0010
 Revised-by: ADR-0159
 Backing: test
 
+### `invariant: orienting-skill-backfill`
+
+The schema-26 migration enables the orienting skill in any config that has brainstorming enabled, as a bespoke idempotent atomic edit announced per addition; configs without brainstorming are untouched, and the closure primitive is not used because no structural edge reaches orienting.
+Origin: ADR-0187
+Backing: test
+
 ### `invariant: schema-min-version`
 
 Every config-schema generation is paired with a minimum binary version in a lookup table, and the current schema generation always has an entry. The binary's own version is never below the minimum recorded for the current schema generation.
