@@ -20,6 +20,7 @@ Per `{{ .layout.workflowRef }}`: load-bearing decisions only, one ADR per decisi
 {{ with .data.adrTriggers }}Load-bearing triggers include:
 {{ range . }}- {{ . }}
 {{ end }}{{ end }}
+When grounding is stale - the ADR will cite repository facts not verified in the current session - invoke `{{ .prefix }}-orienting` before writing.
 <!-- awf:end -->
 
 ## Conventions enforced

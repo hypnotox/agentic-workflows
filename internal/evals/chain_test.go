@@ -60,11 +60,16 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
-	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+	// Orienting replaced brainstorming as the exploring consumer: brainstorming
+	// now reaches exploration only by invoking orienting.
+	for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
 		if !strings.Contains(body, "exploring") {
 			t.Errorf("Pi consumer %q does not route through exploring", consumer)
 		}
+	}
+	if body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-brainstorming", "SKILL.md")); !strings.Contains(body, "orienting") {
+		t.Error("Pi brainstorming skill does not route through orienting")
 	}
 	exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
 	if !namesOnInvocationLine(exploring, "subagent_explore") {

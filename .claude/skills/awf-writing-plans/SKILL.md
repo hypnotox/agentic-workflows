@@ -55,7 +55,7 @@ Per `docs/workflow.md`: complex ADR-driven work (multi-commit implementation) an
 Complex planning is a concrete non-minimal outcome. Create or resume exactly one immutable slugged effort before authoring, carry its slug and exact `.awf/efforts/<slug>/memory.md` path, and confirm it always owns that memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The plan reviewer receives slug/path as read-only context and never edits memory.
 
 <!-- awf:edit procedure-confirm-scope: default; create .awf/skills/parts/writing-plans/procedure-confirm-scope.md to override -->
-1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan.
+1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan. If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `awf-orienting` first.
 
 <!-- awf:edit plan-template-ref: default; create .awf/skills/parts/writing-plans/plan-template-ref.md to override -->
 Start from the canonical skeleton rather than a blank file: run `awf new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `docs/plans/template.md`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the three canonical header sections, a phase skeleton, and the optional Verification/Notes tails.

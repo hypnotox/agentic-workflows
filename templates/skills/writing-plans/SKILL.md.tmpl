@@ -49,7 +49,7 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 Complex planning is a concrete non-minimal outcome. Create or resume exactly one immutable slugged effort before authoring, carry its slug and exact `.awf/efforts/<slug>/memory.md` path, and confirm it always owns that memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The plan reviewer receives slug/path as read-only context and never edits memory.
 
 <!-- awf:section procedure-confirm-scope -->
-1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan.
+1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan. If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `{{ .prefix }}-orienting` first.
 <!-- awf:end -->
 
 <!-- awf:section plan-template-ref -->
