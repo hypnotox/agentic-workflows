@@ -11,16 +11,22 @@ The awf binary owns lightweight repository-local effort records and their option
 
 ### `invariant: effort-record-authority`
 
-The awf binary derives an immutable 1-63 byte ASCII slug from each outcome, allocates an internal lowercase UUIDv4, and durably publishes schema-2 `.awf/efforts/<slug>/state.json` only after its always-owned `memory.md`. Directory presence is the active-effort fact; listing ignores unpublished incomplete directories and preserves malformed or foreign residents, while restartable finish renames to a slug-and-UUID-matched tombstone and deletes only proven bytes after managed topology is absent. Efforts have no lifecycle ledger, coordination lock, Pi-session assignment, standalone memory, or stored worktree state, and Git-tracked project truth remains authoritative.
+The awf binary derives an immutable 1-63 byte ASCII slug from each outcome, allocates an internal lowercase UUIDv4, and durably publishes schema-2 `.awf/efforts/<slug>/state.json` only after its always-owned `memory.md`. Directory presence is the active-effort fact; listing ignores unpublished incomplete directories and preserves malformed or foreign residents, while restartable finish renames to a slug-and-UUID-matched tombstone, deletes only proven bytes after managed topology is absent, and classifies its managed-topology refusal structurally for rollback callers. Efforts have no lifecycle ledger, coordination lock, Pi-session assignment, standalone memory, or stored worktree state, and Git-tracked project truth remains authoritative.
 Origin: ADR-0164
-Revised-by: ADR-0167, ADR-0175
+Revised-by: ADR-0167, ADR-0175, ADR-0189
 Backing: test
 
 ### `invariant: managed-worktree-lifecycle`
 
-Managed effort worktrees are stateless native-Git utilities at `.awf/worktrees/<slug>/` on `awf/<slug>`. Add is separate from effort creation and leaves the complete effort unchanged on failure. Integration revalidates clean target, registration, repository identity, branch, operation state, and ancestry immediately before mutation; it reports already-contained history, fast-forwards, or starts a divergent `--no-commit` merge, never tests, reviews, commits, pushes, resolves, removes, records disposition, or finishes. Remove independently inspects path, registration, and branch on every retry, requires cleanliness and target ancestry, and uses no awf force-discard path; intentional discard stays explicit native Git.
+Managed effort worktrees are stateless native-Git utilities at `.awf/worktrees/<slug>/` on `awf/<slug>`. Standalone Add leaves the complete effort unchanged on failure; default effort creation orchestrates this same Add machinery after resident publication, and the shared result carries structured path and branch facts. Integration revalidates clean target, registration, repository identity, branch, operation state, and ancestry immediately before mutation; it reports already-contained history, fast-forwards, or starts a divergent `--no-commit` merge, never tests, reviews, commits, pushes, resolves, removes, records disposition, or finishes. Remove independently inspects path, registration, and branch on every retry, requires cleanliness and target ancestry, and uses no awf force-discard path; intentional discard stays explicit native Git.
 Origin: ADR-0164
-Revised-by: ADR-0175
+Revised-by: ADR-0175, ADR-0189
+Backing: test
+
+### `invariant: default-worktree-creation`
+
+`awf effort new` without `--no-worktree` publishes the effort residents, then creates the managed worktree through the same standalone Add machinery at `.awf/worktrees/<slug>/` on `awf/<slug>`, based on the invoking checkout's `HEAD` unless `--base <ref>` selects another base; `--base` is invalid with `--no-worktree`. On worktree failure the orchestration rolls back through restartable finish, removing the effort only when the finish flow proves managed topology absent and otherwise retaining or tombstone-reporting it with reported recovery steps; it branches on the structured finish outcome and managed-topology classification, never on error prose. Success reports the worktree path and branch and directs continuation there; `--no-worktree` reports explicit absence and keeps execution in the invoking checkout.
+Origin: ADR-0189
 Backing: test
 
 ### `invariant: memory-skeleton-purpose-partition`

@@ -373,7 +373,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:44ddff33b87064c4debbdfa45bbfc60423c2ad583e58db10a96d5372c3a0ff12",
+      "outputHash": "sha256:f9b437cc2f7a58745494f141b06a07e3f8a77e5d824f53d09a0ee44760b05b7a",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -703,8 +703,8 @@
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:7391986003774f7fe306566ffd3c59fc9959728579c68aa69e7ed63a3659b1e1",
-      "outputHash": "sha256:6cb73064646b8f1c369beb269f2c98cc89bcbeba2171ce66c20af024c43f18e7"
+      "configHash": "sha256:6c73584a265c64f1ba66ab33926e6c9a9cc0268dfc71066d76fbd70dbe0d15e7",
+      "outputHash": "sha256:4768058cf0c265a349a7b8ef32a03dfddfa2f4e62d2da6a1889cb6726d669d52"
     },
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -715,8 +715,8 @@
     "docs/topics/tooling/effort-management.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:8e3028e3ca4d9156c64ba7094ed33215ea478b209797dc1f7be8bc821353538a",
-      "outputHash": "sha256:93e4d494a7e37c0cecbe2453e85440ef8ee146cbf4cb2c80c225e36ffc5206c0"
+      "configHash": "sha256:e8915b87f6cc3edd37ca8cd095a12dc5f9a5faaf6cfa47f5419bba539fcb919b",
+      "outputHash": "sha256:06ed1fb2ff91e970fe11f47a148d3492ffc69e11c957802c620c240f3cc6cfec"
     },
     "docs/topics/tooling/evaluations.md": {
       "templateId": "topics/topic.md.tmpl",

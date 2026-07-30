@@ -224,6 +224,7 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	}
 }
 
+// invariant: tooling/effort-management:default-worktree-creation
 func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	manager, err := Open(context.Background(), root, Options{})

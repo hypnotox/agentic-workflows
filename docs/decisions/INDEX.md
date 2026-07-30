@@ -3,7 +3,7 @@
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
 - [ADR-0187: Add the orienting support skill as the single home of orientation](0187-add-the-orienting-support-skill-as-the-single-home-of-orientation.md) (Proposed)
-- [ADR-0189: Managed worktrees as the default effort execution location](0189-managed-worktrees-as-the-default-effort-execution-location.md) (Proposed)
+- [ADR-0189: Managed worktrees as the default effort execution location](0189-managed-worktrees-as-the-default-effort-execution-location.md) (Implementing)
 
 ## History
 
