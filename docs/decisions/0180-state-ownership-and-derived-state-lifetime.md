@@ -45,6 +45,20 @@ that passes the field without rendering first would report no dead skill referen
 same silent-blinding failure mode as the corpus case, one function-signature step further along, with the
 ordering obligation recorded nowhere but the call sequence.
 
+The same three shapes appear together, and more sharply, in rendered adopter-facing code. The Pi
+subagent extension's preference store (`templates/pi/awf-subagents/model-routing.ts.tmpl:163-186`) holds
+`global`, `project`, `registryInvalid`, and `ready` as closure-mutable slots that `reload` and
+`validateAgainstRegistry` write after construction. Its correctness depends on a remembered protocol
+rather than a lifetime: `index.ts.tmpl:465-466` constructs the store and must then call `reload`, and
+`:467-471` must call `reload`, then `validateAgainstRegistry`, then `state`, in that order, before the
+result means anything. And `resolveChildModel` takes the whole store and re-derives from it
+(`model-routing.ts.tmpl:206-208` `const state = store.state()`) although its caller at
+`index.ts.tmpl:483` sits in a closure where the already-derived state is available and `:470` has just
+returned it. The pure derivation this all routes around already exists and is exported:
+`effectivePreferenceState(global, project, registryInvalid)`. This instance matters more than the
+internal ones because it renders into every adopter's extension rather than staying inside awf's own
+binary.
+
 Removing these caches costs nothing that ADR-0130 was protecting. ADR-0130 item 1 introduced the shared
 corpus view and chose the field deliberately: "they already share a `*Project` receiver, so the threading
 is a field, not a new parameter on every signature." But its Consequences state the goal plainly, "The
@@ -83,7 +97,7 @@ assembles the corpus, builds the marker index from it, and then writes `c.Marker
 (`internal/topic/corpus.go:102-111`; the snapshot loader does the same at
 `internal/topic/tree.go:66-75`), because `BuildMarkerIndex` needs the assembled corpus to resolve claim
 ids. Since `topic.Corpus` is one of the values this decision threads, an immutability claim phrased as
-"no field written after construction" would condemn the first consumer's own dependency. The claim must
+"no field written after construction" would condemn a converted consumer's own dependency. The claim must
 permit completing construction inside the constructing function.
 
 Discoverability needs deliberate handling, because every surface ADR-0178 built names its topic by id
@@ -110,7 +124,8 @@ dependency composition, and this decision's conversion is entirely inside `inter
 genuinely cross-package, reaching `cmd/awf` and `internal/project` together, so the mismatch did not
 surface there.
 
-This decision establishes the pattern and converts one type. Package-level cohesion, including whether a
+This decision establishes the pattern and converts two consumers. Package-level cohesion, including
+whether a
 method that reads no receiver field should be a function and whether `internal/project` should be split,
 is a separate later decision; the fourteen production files in the package that touch no `Project` field
 and the four synthetic partial `Project` literals (`currentstate.go:154`, `context.go:340`,
@@ -142,7 +157,8 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
    than re-deriving it. The rule counts productions per value per operation, not producers per type, so a
    type that several unrelated operations legitimately construct is not a counterexample.
 
-6. Convert the three cached derivations on `internal/project.Project` as the concrete first consumer:
+6. Convert two concrete consumers, this one and the Pi preference store in item 12. Take the three
+   cached derivations on `internal/project.Project` first:
    `corpus`, `topics`, and `effSkills`. Derive each in the operation that needs it and thread it to its
    consumers; delete `beginInvocation`; and delete or unexport `Corpus` and `Topics`, whose production
    callers all become threaded parameters.
@@ -169,6 +185,14 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
    `*Project` field outside the function that constructs that value. The assertion covers package
    functions as well as methods, because `StagedContextRootOptions` is a function. The other four claims
    are reasoned contracts carrying `Backing: unbacked` and a `Verify:` instruction, with no proof marker.
+
+   The item 12 conversion is covered by the existing TypeScript suite in `tools/pi-extension-test`,
+   which `./x gate` already runs, and gains no `Backing: test` claim of its own. `currentState.testGlobs`
+   is `**/*_test.go`, so a proof marker cannot live in a TypeScript test; backing a claim on that
+   conversion would require either widening `testGlobs` to scan TypeScript, which is its own decision
+   about what current-state authority covers, or a Go-side assertion string-matching rendered TypeScript,
+   which is exactly the brittleness this project rejects elsewhere. The four reasoned claims govern that
+   conversion, and its behaviour is proven where the code lives.
 
    Do not use a behavioural "`Check` after `Sync`" assertion as the proof: that property already holds,
    because `Check` calls `beginInvocation` for exactly that reason, so such a test passes before the
@@ -216,6 +240,19 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
     commits then use `code-design` rather than the owning domain's `rendering`, because their subject is
     the code-design authority they apply.
 
+12. Convert the Pi preference store as the second concrete consumer, in
+    `templates/pi/awf-subagents/model-routing.ts.tmpl` and `index.ts.tmpl`. Make `resolveChildModel` take
+    the already-derived `EffectivePreferenceState` instead of the store, so it stops re-deriving at
+    `model-routing.ts.tmpl:208` what its caller already holds; its one production call site is
+    `index.ts.tmpl:483`, inside a closure where that state is in scope. Replace the closure-mutable
+    `global`, `project`, `registryInvalid`, and `ready` slots with a load step that returns an immutable
+    value, so reading preferences becomes one derivation rather than a construct-then-`reload`-then-
+    `validateAgainstRegistry` sequence a caller must remember. Update the five `resolveChildModel` call
+    sites in `tools/pi-extension-test/tests/index.test.ts` to pass a state.
+
+    This conversion changes rendered adopter-facing output, so it lands with its regenerated artifacts
+    like any other template change, and the example adopter's rendered diff is part of the review.
+
 ## State changes
 
 - add `code-design/state-ownership:construction-immutable-state`
@@ -237,6 +274,14 @@ And the drift oracle stops depending on every future public operation rememberin
 sixth operation that reads a corpus cannot introduce the staleness the current comment predicts, because
 there is no cache to go stale. Threading also tends to delete error returns, since a parameter cannot
 fail, which should retire several coverage exclusions rather than merely re-justify them.
+
+Taking two consumers rather than one costs a wider transaction but buys a much better test of the
+claims. The two are genuinely different: one is Go inside awf's own binary, the other is TypeScript that
+renders into every adopter's extension, and the Pi store exhibits all four reasoned claims at once where
+`internal/project` splits them across three fields. A pattern that reads well against only the code it
+was derived from is worth less than one that survives a second, unlike consumer. The cost is that the
+adopter-facing half has no mechanical anchor, for the `testGlobs` reason in item 7, so its conformance
+rests on review rather than on a gate.
 
 The cost is visible parameters. Roughly ten method signatures across six production files grow a corpus
 or skill-set parameter, and about thirty-three test call sites move with them. `Corpus` and `Topics` must
@@ -294,6 +339,8 @@ whose fields are all construction inputs is far easier to split than one carryin
 | Prove the claim with an approved-call-set test, as ADR-0130 did for `ParseDir` | It governs where a corpus is constructed rather than whether a value keeps it, which is not what the claim states. |
 | Fold these rules into `code-design/dependency-composition` | Dependency selection and state lifetime are separate subjects; merging them would make one topic's claims answer two questions and blur which authority a reviewer is applying. |
 | Leave the `code-design` scope meaning alone and commit the conversion as `rendering` | The scope's documented meaning would still cover no authority commit, and a conversion's code-design character would be invisible in its subject line. |
+| Convert only `internal/project` and leave the Pi preference store to a follow-on | It is the strongest instance of this decision's own anti-pattern, it exhibits all four reasoned claims at once, and it ships to adopters, so establishing the rule while leaving it in place would weaken both the rule and the record. |
+| Widen `currentState.testGlobs` to scan TypeScript so the Pi conversion can carry a proof marker | That decides what current-state authority covers, which is a separate question from state ownership and should not ride along inside this decision. |
 | Add a generic section on immutability to `docs/maintainable-code-design.md` instead | That document's sections are a fixed list and its value is generic guidance. The whole point of a topic is being specific and mechanically reviewable where the guide cannot be. |
 | Derive eagerly at the entry of every public operation | `QueryTopic` derives from the snapshot path and touches neither field, so a blanket rule would add a repository walk to the one operation that currently avoids it; and deriving at a nested entry as well as its caller's would multiply the walk rather than share it. |
 
