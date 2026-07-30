@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0180: State ownership and derived state lifetime
@@ -349,3 +349,5 @@ whose fields are all construction inputs is far easier to split than one carryin
 - 2026-07-30: Proposed
 - 2026-07-30: Implementing; content-sha256: c0d35a88e9e7b0778184de45b27931f7be17fb74ee7ea4f3afc914ca9134b12c
 - 2026-07-30: Applied; state-sequence: 92; operations: add `code-design/state-ownership:construction-immutable-state`, add `code-design/state-ownership:operation-owned-derivation`, add `code-design/state-ownership:no-remembered-invalidation`, add `code-design/state-ownership:single-derivation-producer`, update `code-design/dependency-composition:dependency-composition-commit-classification`
+- 2026-07-30: Applied; state-sequence: 93; operations: add `code-design/state-ownership:project-derived-state-ownership`
+- 2026-07-30: Implemented; content-sha256: c0d35a88e9e7b0778184de45b27931f7be17fb74ee7ea4f3afc914ca9134b12c

@@ -29,3 +29,9 @@ Within one operation, a new or deliberately converted derived value is produced 
 Origin: ADR-0180
 Backing: unbacked
 Verify: For each changed derived value, enumerate its production sites within one operation and confirm exactly one, with every other consumer receiving the value.
+
+### `invariant: project-derived-state-ownership`
+
+No production function in `internal/project` writes a `*Project` field outside the function that constructs that value: the ADR corpus, topic corpus, and effective skill set are derived by the operation that needs them and threaded to their consumers, and `beginInvocation` no longer exists.
+Origin: ADR-0180
+Backing: test
