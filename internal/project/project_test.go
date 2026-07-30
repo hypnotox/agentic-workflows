@@ -1329,14 +1329,11 @@ func TestRegenCheckedAttribute(t *testing.T) {
 		t.Fatal(err)
 	}
 	// invariant: rendering/sync-and-drift:regeneration-checked-attribute
-	amd, err := p.generateIndexMD()
-	if err != nil {
-		t.Fatal(err)
-	}
+	amd := p.generateIndexMD(mustDeriveCorpus(t, p))
 	if !amd.RegenChecked {
 		t.Errorf("INDEX.md must be regeneration-checked")
 	}
-	dds, err := p.generateDomainDocs()
+	dds, err := p.generateDomainDocs(mustDeriveTopics(t, p), mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1352,7 +1349,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds))
+	cref, ok, err := p.generateConfigReference(slices.Concat(files, dds), mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}

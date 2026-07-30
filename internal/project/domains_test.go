@@ -127,11 +127,11 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 }
 
 // TestGenerateDomainDocsPropagatesTopicError exercises generateDomainDocs's
-// topic-corpus error arm directly. Through Sync/Check this arm is unreachable
-// (generateTopicDocs assembles the same corpus and fails first), so the method
-// is called directly here. An orphan topic part (no matching metadata) fails
-// corpus assembly.
-func TestGenerateDomainDocsPropagatesTopicError(t *testing.T) {
+// topic-corpus assembly error. generateDomainDocs now receives the corpus its
+// operation derived (ADR-0180), so the fault surfaces at the one derivation
+// site rather than inside the producer. An orphan topic part (no matching
+// metadata) fails corpus assembly.
+func TestDeriveOperationStateSurfacesTopicAssemblyError(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
 		"topics/parts/rendering/orphan/current-state.md": "Intro.\n\n## Claims\n",
 	})
@@ -139,8 +139,8 @@ func TestGenerateDomainDocsPropagatesTopicError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
-	if _, err := p.generateDomainDocs(); err == nil {
-		t.Error("expected generateDomainDocs to propagate the topic-corpus assembly error")
+	if _, _, _, err := p.deriveOperationState(); err == nil {
+		t.Error("expected the operation derivation to surface the topic-corpus assembly error")
 	}
 }
 

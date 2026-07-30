@@ -23,7 +23,6 @@ import (
 // cutoff-aware working snapshot. Active state and v1 operation history therefore
 // cannot come from different worktree universes.
 func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
-	p.beginInvocation()
 	ws, err := p.workingCurrentState()
 	if err != nil {
 		return topic.QueryResult{}, err
@@ -39,27 +38,7 @@ func (p *Project) QueryTopic(selector string, opts topic.QueryOptions) (topic.Qu
 	return topic.Query(ws.Loaded.Topics, adr.NewCorpus(ws.Loaded.ADRs), selector, opts, safelyMatchablePaths(ws.Tree))
 }
 
-func (p *Project) Topics() (topic.Corpus, error) {
-	if p.topics != nil {
-		return *p.topics, nil
-	}
-	adrs, err := p.Corpus()
-	if err != nil {
-		return topic.Corpus{}, err
-	}
-	c, err := topic.LoadCorpus(p.Root, p.Cfg, adrs)
-	if err != nil {
-		return topic.Corpus{}, err
-	}
-	p.topics = &c
-	return c, nil
-}
-
-func (p *Project) generateTopicDocs() (files []RenderedFile, deps map[string][]string, err error) {
-	corpus, err := p.Topics()
-	if err != nil {
-		return nil, nil, err
-	}
+func (p *Project) generateTopicDocs(corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
 	topicTemplate, err := fs.ReadFile(templates.FS, "topics/topic.md.tmpl")
 	if err != nil { // coverage-ignore: the topic template is compile-time embedded

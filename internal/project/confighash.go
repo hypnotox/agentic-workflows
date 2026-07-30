@@ -28,7 +28,7 @@ func (p *Project) consumedParts(kind, artifact string, plan map[string]render.Se
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, targets ...Target) (string, error) {
+func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPaths []string, eff map[string]bool, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
 		"prefix": p.Cfg.Prefix,
@@ -57,7 +57,7 @@ func (p *Project) artifactConfigHash(assembled string, sc config.Sidecar, partPa
 		// A template that reads .skills re-renders when the enable array
 		// changes; folding the effective set in flags it stale (ADR-0046).
 		// touches-state: rendering/sync-and-drift:skills-set-in-confighash - folds the effective skills set into ConfigHash; proof in drift_test.go
-		proj["skills"] = slices.Sorted(maps.Keys(p.effSkills))
+		proj["skills"] = slices.Sorted(maps.Keys(eff))
 	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).

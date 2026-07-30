@@ -372,7 +372,7 @@ func (p *Project) enableArray(kind string) []string {
 // generated domain docs). The bool reports whether a reference was produced -
 // false when a local: sidecar opts out (the manifest.LoadOptional found-flag
 // idiom).
-func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, bool, error) {
+func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
 	sc, err := p.Cfg.Sidecar("config-reference", "")
 	if err != nil { // coverage-ignore: validation already read this sidecar at open
 		return nil, false, err
@@ -380,14 +380,14 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 	if sc.Local {
 		return nil, false, nil
 	}
-	data := p.data(sc)
+	data := p.data(sc, eff)
 	collections, err := p.configReferenceData(files)
 	if err != nil { // coverage-ignore: configReferenceData errors only on faults earlier passes already surfaced
 		return nil, false, err
 	}
 	data["data"] = collections
 	rf, err := p.renderTarget("config-reference", "", p.Cat.Docs["config-reference"].TID,
-		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel())
+		p.Cat.Docs["config-reference"].Sections, sc, data, p.crefRel(), eff)
 	if err != nil { // reachable: an unreadable intro part fails the read here - this is its first render
 		return nil, false, err
 	}
@@ -402,13 +402,17 @@ func (p *Project) generateConfigReference(files []RenderedFile) (*RenderedFile, 
 // (configKeys, varEntries, sidecarFields, dataKeys) with live project state -
 // the `awf config` command's data source, sharing the doc's builder.
 func (p *Project) ConfigReferenceModel() (map[string]any, error) {
-	files, err := p.RenderAll()
+	corpus, topics, eff, err := p.deriveOperationState()
+	if err != nil { // coverage-ignore: this forwards the operation derivation's fault unchanged; its own branches are exercised directly at deriveOperationState
+		return nil, err
+	}
+	op, err := p.outputPlan(corpus, topics, eff)
 	if err != nil {
 		return nil, err
 	}
-	dds, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: RenderAll above already surfaced any malformed-ADR fault via project state
+	dds, err := p.generateDomainDocs(topics, eff)
+	if err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
 		return nil, err
 	}
-	return p.configReferenceData(slices.Concat(files, dds))
+	return p.configReferenceData(slices.Concat(op.writeFiles(), dds))
 }

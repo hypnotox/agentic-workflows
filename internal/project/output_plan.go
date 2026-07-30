@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -142,7 +143,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	for _, t := range targets {
 		for _, name := range cfg.Skills {
 			sc, err := cfg.Sidecar("skills", name)
-			if err != nil {
+			if err != nil { // coverage-ignore: the lifecycle entry derives the effective skill set from these same sidecars before reaching declarations, so an unreadable skill sidecar fails there first
 				return nil, err
 			}
 			tid := "skills/" + name + "/SKILL.md.tmpl"
@@ -400,12 +401,7 @@ type targetOutputDeclaration struct {
 
 // targetOutputDeclarations reads recipe inputs but never executes a template.
 // Thus a collision is reported before any producer renders its output.
-func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration, error) {
-	eff, err := p.effectiveSkills()
-	if err != nil { // coverage-ignore: OutputPlan's declaration-first pass just parsed every enabled skill sidecar
-		return nil, err
-	}
-	p.effSkills = eff
+func (p *Project) targetOutputDeclarations(eff map[string]bool) (map[string]targetOutputDeclaration, error) {
 	out := map[string]targetOutputDeclaration{}
 	for _, t := range p.Targets {
 		if err := t.validate(); err != nil {
@@ -424,7 +420,7 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 			if err != nil { // coverage-ignore: embedded target-output templates have well-formed authoring comments; render package tests malformed input
 				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
 			}
-			configHash, err := p.artifactConfigHash(stripped, config.Sidecar{}, nil, t)
+			configHash, err := p.artifactConfigHash(stripped, config.Sidecar{}, nil, eff, t)
 			if err != nil { // coverage-ignore: no target output has parts and its descriptor projection is marshalable
 				return nil, err
 			}
@@ -453,21 +449,28 @@ func (p *Project) targetOutputDeclarations() (map[string]targetOutputDeclaration
 // OutputPlan compiles all output producers. Generated nodes are constructed in
 // dependency order; config reference observes ordinary/domain metadata but is
 // deliberately excluded from its own input.
+// OutputPlan derives the ADR corpus, the topic corpus, and the effective skill
+// set at its own entry and threads them to every producer that needs one. An
+// operation that already derived them enters through outputPlan instead, so one
+// lifecycle call performs each derivation exactly once.
 func (p *Project) OutputPlan() (*OutputPlan, error) {
-	p.beginInvocation()
-	corpus, err := p.Corpus()
+	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}
+	return p.outputPlan(corpus, topics, eff)
+}
+
+func (p *Project) outputPlan(corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
 	outputDeclarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
 	if err != nil {
 		return nil, err
 	}
-	declarations, err := p.targetOutputDeclarations()
+	declarations, err := p.targetOutputDeclarations(eff)
 	if err != nil {
 		return nil, err
 	}
-	base, err := p.renderAllBase(declarations)
+	base, err := p.renderAllBase(declarations, eff)
 	if err != nil {
 		return nil, err
 	}
@@ -506,8 +509,8 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 			return nil, err
 		}
 	}
-	topicFiles, topicDeps, err := p.generateTopicDocs()
-	if err != nil {
+	topicFiles, topicDeps, err := p.generateTopicDocs(topics)
+	if err != nil { // coverage-ignore: generateTopicDocs receives the already-derived topic corpus, so it can no longer fail on corpus assembly and its remaining render faults are individually unreachable
 		return nil, err
 	}
 	localDocs := map[string]bool{}
@@ -528,16 +531,13 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 			return nil, err
 		}
 	}
-	index, err := p.generateIndexMD()
-	if err != nil { // coverage-ignore: topic generation loaded the same ADR corpus first
-		return nil, err
-	}
+	index := p.generateIndexMD(corpus)
 	// coverage-ignore: generated INDEX.md has a reserved unique path.
 	if err := add(index, "generated-index"); err != nil {
 		return nil, err
 	}
-	domains, err := p.generateDomainDocs()
-	if err != nil { // coverage-ignore: INDEX.md parses the same ADR directory first and reports malformed input
+	domains, err := p.generateDomainDocs(topics, eff)
+	if err != nil { // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded
 		return nil, err
 	}
 	for _, f := range domains {
@@ -547,7 +547,7 @@ func (p *Project) OutputPlan() (*OutputPlan, error) {
 		}
 	}
 	inputs := slices.Concat(base, domains, topicFiles)
-	if cref, ok, err := p.generateConfigReference(inputs); err != nil {
+	if cref, ok, err := p.generateConfigReference(inputs, eff); err != nil {
 		return nil, err
 	} else if ok {
 		deps := make([]string, 0, len(inputs))
@@ -642,15 +642,6 @@ func difference(a, b []string) []string {
 		}
 	}
 	return out
-}
-
-// RenderAll renders only plan write nodes in deterministic path order.
-func (p *Project) RenderAll() ([]RenderedFile, error) {
-	op, err := p.OutputPlan()
-	if err != nil {
-		return nil, err
-	}
-	return op.writeFiles(), nil
 }
 
 // PlannedOutputs returns plan write paths, excluding local reservations.

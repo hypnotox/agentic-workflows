@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // claimedModel is the ADR-0086 Decision 1 allowlist: every path under .awf/
@@ -45,7 +46,7 @@ func (m *claimedModel) claimedDir(dir string) bool {
 // and the RenderAll output (whose .awf/-prefixed paths are exactly the
 // enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
-func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error) {
+func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (*claimedModel, error) {
 	m := &claimedModel{
 		files: map[string]bool{
 			config.DirName + "/config.yaml":                   true,
@@ -115,10 +116,6 @@ func (p *Project) buildClaimedModel(files []RenderedFile) (*claimedModel, error)
 		m.dirs[config.DirName+"/topics/metadata/"+domain] = true
 		m.dirs[config.DirName+"/topics/parts/"+domain] = true
 	}
-	topics, err := p.Topics()
-	if err != nil { // coverage-ignore: Check builds a valid OutputPlan from the same cached topic corpus before sweeping
-		return nil, err
-	}
 	for _, t := range topics.All() {
 		metadataDir := config.DirName + "/topics/metadata/" + t.ID.Domain
 		partsDomain := config.DirName + "/topics/parts/" + t.ID.Domain
@@ -183,8 +180,8 @@ func (m *claimedModel) classify(rel string, isDir bool) manifest.Drift {
 // are wholly exempt. It subsumes the pre-ADR-0086 orphan sweep: wrong-name
 // sidecars/parts and undeclared sections keep their detail strings
 // (inv: drift-source-set; ADR-0011 section-orphan-flagged).
-func (p *Project) sweepConfigTree(files []RenderedFile) ([]manifest.Drift, error) {
-	m, err := p.buildClaimedModel(files)
+func (p *Project) sweepConfigTree(files []RenderedFile, topics topic.Corpus) ([]manifest.Drift, error) {
+	m, err := p.buildClaimedModel(files, topics)
 	if err != nil { // coverage-ignore: see buildClaimedModel's sidecar coverage-ignores
 		return nil, err
 	}

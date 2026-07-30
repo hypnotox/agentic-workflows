@@ -12,11 +12,11 @@ func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil)
+	before, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil)
+	after, err := p.artifactConfigHash("{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
