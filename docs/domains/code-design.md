@@ -10,4 +10,5 @@ The code-design domain owns cross-package structure guidance that does not belon
 [All topics](../topics/code-design/index.md)
 
 - [Dependency composition](../topics/code-design/dependency-composition.md): How awf selects, owns, and wires volatile dependencies without speculative abstraction.
+- [State ownership](../topics/code-design/state-ownership.md): What a value owns, and where state derived during one operation lives.
 

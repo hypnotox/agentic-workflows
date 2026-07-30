@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0179: Rendered explorer and grounding-checker role contracts](0179-rendered-explorer-and-grounding-checker-role-contracts.md) (Proposed)
+- [ADR-0180: State ownership and derived state lifetime](0180-state-ownership-and-derived-state-lifetime.md) (Proposed)
 
 ## History
 
