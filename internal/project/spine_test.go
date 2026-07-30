@@ -1423,13 +1423,55 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("%s retains standalone memory path", label)
 		}
 	}
-	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decisions`", "`## Handoff log`", "awf effort finish <slug>"} {
+	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
 		if !strings.Contains(workflow, detailed) {
 			t.Errorf("workflow protocol missing %q", detailed)
 		}
 	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
 		t.Error("guide or routine skill duplicated the workflow document's detailed skeleton")
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage
+func TestMemoryLogConsumerCoverage(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{},
+		"skills": map[string]bool{},
+	}
+	for _, agent := range []string{"adr-reviewer", "plan-reviewer", "code-reviewer"} {
+		out := renderAgentGolden(t, agent, data)
+		for _, want := range []string{
+			"## Consensus adherence",
+			"user-decision",
+			"`location` cites the deviating",
+			"`issue` names the deviation",
+			"`suggested_fix` carries the escalation phrasing",
+			"we decided X; during <phase> we found Z; recommend Y, approve?",
+			"A brief without consensus entries leaves this check idle.",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing consensus-adherence phrase %q:\n%s", agent, want, out)
+			}
+		}
+	}
+	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
+		out := renderSkillGolden(t, skill, data)
+		for _, want := range []string{"pasted verbatim", "`Record:` blocks included"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing decision-log paste phrase %q:\n%s", skill, want, out)
+			}
+		}
+	}
+	if out := renderSkillGolden(t, "reviewing-plan-resync", data); strings.Contains(out, "pasted verbatim") {
+		t.Errorf("reviewing-plan-resync must keep its narrowed contract:\n%s", out)
+	}
+	retrospective := renderSkillGolden(t, "retrospective", data)
+	for _, want := range []string{"`## Observations`", "`## Decision log`", "as primary input", "across the effort's sessions"} {
+		if !strings.Contains(retrospective, want) {
+			t.Errorf("retrospective missing memory-log phrase %q:\n%s", want, retrospective)
+		}
 	}
 }
 

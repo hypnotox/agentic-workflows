@@ -363,6 +363,7 @@ query a single version or a range.
   reintroduced `.awf/current-state-migration.yaml` is reported as unclaimed drift after cutover.
 
 ### Others
+- Purpose-partition the effort memory skeleton into consumer-named sections: `## Brief` with durable-artifact pointers, an append-only ordinal `## Decision log` (the effort-spanning consensus record with verbatim `Record:` evidence blocks on user entries), a new at-occurrence `## Observations` log, and `## Handoff log`. Checkpoint guidance gains a backstop append for unrecorded decisions and observations, the full-review dispatch briefs paste user-provenance entries verbatim, the shared review spine gains a consensus-adherence check that routes any deviation from a user entry as a user-decision finding, and the retrospective reads both logs as primary input with recurrence tracked across an effort's sessions. Pre-existing memory files migrate on first write by appending the missing headings.
 - Split three overloaded invariant claims (version-compat gate, metrics/doctor command contract,
   context authority packet) into six focused single-obligation claims (ADR-0153); no behavior
   change.

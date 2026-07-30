@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0186: Effort memory as consensus and observation channel
@@ -174,3 +174,4 @@ procedure section, so it must move in lockstep with the template default.
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-30: Implemented; content-sha256: dea7fd3ebce4d78f983b5c47c503b1829c43163a6418b5757ec1d476e68a259a; state-sequence: 100

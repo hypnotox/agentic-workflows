@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
-- [ADR-0186: Effort memory as consensus and observation channel](0186-effort-memory-as-consensus-and-observation-channel.md) (Proposed)
 - [ADR-0187: Add the orienting support skill as the single home of orientation](0187-add-the-orienting-support-skill-as-the-single-home-of-orientation.md) (Proposed)
 
 ## History
@@ -191,3 +190,4 @@
 - [ADR-0183: Drop configurable severity and unify the finding rank](0183-drop-configurable-severity-and-unify-the-finding-rank.md) (Implemented)
 - [ADR-0184: Preserve the currentState block and correct three severity claim scopes](0184-preserve-the-current-state-block-and-correct-three-severity-claim-scopes.md) (Implemented)
 - [ADR-0185: Severity-key removal preserves values, not bytes](0185-severity-key-removal-preserves-values-not-bytes.md) (Implemented)
+- [ADR-0186: Effort memory as consensus and observation channel](0186-effort-memory-as-consensus-and-observation-channel.md) (Implemented)

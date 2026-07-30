@@ -20,9 +20,9 @@ Terminal step of the implementation phase, after `sundial-reviewing-impl` has co
 
 1. **Validate closure context.** Carry the exact effort slug and `.awf/efforts/<slug>/memory.md`, confirm `Effort: <slug>`, and remain the one user-managed writer. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden.
 
-2. **Reflect and record worthy observations.** Gather implementation and terminal-review findings plus friction. Record a first occurrence at the appropriate durable rung; never treat ephemeral memory as the next retrospective's authority.
+2. **Reflect and record worthy observations.** Read the effort memory's `## Observations` and `## Decision log` as primary input alongside this session's implementation and terminal-review findings and friction, and confirm every user-provenance decision either landed in a durable artifact or was explicitly re-decided. Record a first occurrence at the appropriate durable rung; recording observations in memory during the effort is the expected path, and a lesson must land at a durable rung before finish deletes the file.
 
-3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting and land any warranted durable lesson or changelog correction before finish.
+3. **Promote recurring, codifiable observations** to the strongest justified rung. Verify recurrence before promoting (within this session or across the effort's sessions as recorded in the observation log) and land any warranted durable lesson or changelog correction before finish.
 
 4. **Verify managed topology is absent.** Require no `.awf/worktrees/<slug>` path, native Git registration, or `awf/<slug>` branch. Retrospective never integrates or discards Git resources.
 
@@ -31,7 +31,7 @@ Terminal step of the implementation phase, after `sundial-reviewing-impl` has co
 <!-- awf:edit recurrence-signal: default; create .awf/skills/parts/retrospective/recurrence-signal.md to override -->
 ## Recurrence signal
 
-An observation is a **promotion candidate** when the main thread saw it recur within this session, or when it matches something already recorded (`docs/pitfalls.md` or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
+An observation is a **promotion candidate** when the main thread saw it recur within this session, when the effort's observation log shows it recurring across sessions, or when it matches something already recorded (`docs/pitfalls.md` or the code-review agent's project-focus list) and *still happened*: prose memory recorded it and did not prevent it, which is the signal to climb to a deterministic rung. A genuine one-off is recorded, never promoted.
 
 <!-- awf:edit promotion-ladder: default; create .awf/skills/parts/retrospective/promotion-ladder.md to override -->
 ## The promotion ladder

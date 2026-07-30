@@ -15,3 +15,9 @@ Managed effort worktrees are stateless native-Git utilities at `.awf/worktrees/<
 Origin: ADR-0164
 Revised-by: ADR-0175
 Backing: test
+
+### `invariant: memory-skeleton-purpose-partition`
+
+The binary-scaffolded memory skeleton partitions working memory into consumer-named sections: the resume header lines, `## Brief` with durable-artifact pointers, the append-only ordinal `## Decision log` whose placeholder names reviewers as consumers of user entries and defers full rules to the workflow doc, the append-only `## Observations` log naming the retrospective as consumer, and `## Handoff log`. Each placeholder states its section's contract and consumer, and no production code parses section headings.
+Origin: ADR-0186
+Backing: test
