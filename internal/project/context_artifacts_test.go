@@ -257,7 +257,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 }
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\n"+debuggingVars+"skills: [debugging, exploring]\nagents: []\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})

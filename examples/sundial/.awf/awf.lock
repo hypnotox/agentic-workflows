@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.27.0",
-  "schemaVersion": 23,
+  "awfVersion": "0.28.0",
+  "schemaVersion": 24,
   "files": {
     ".agents/skills/sundial-adr-lifecycle/SKILL.md": {
       "templateId": "skills/adr-lifecycle/SKILL.md.tmpl",
@@ -114,7 +114,7 @@
       "templateId": "bootstrap/awf-bootstrap.sh.tmpl",
       "templateHash": "sha256:a3518158b12fba6a3da725f28365e3ac329ddb4a9a100506f093b7b1228f70d2",
       "configHash": "sha256:e9cccb10c8b4cfc2366399a4a9c552b0ce8f1475c8235bd7d4d7a674f04c4c04",
-      "outputHash": "sha256:63c0d4bb1682561f299b1835cfa16025c83a1f7605dced61e683db7287807a29"
+      "outputHash": "sha256:87f491ed4a3f034ea8b55667add6a3b95d802100e4e87c9180649d503e838b77"
     },
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",

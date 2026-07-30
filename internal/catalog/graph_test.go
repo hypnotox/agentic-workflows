@@ -46,9 +46,12 @@ func TestClosureIsCycleSafe(t *testing.T) {
 }
 
 // Advisory profile neighbors are deliberately absent from structural closure.
+// brainstorming's dispatched agent is a structural edge and does close, which is
+// what separates the two: its six advisory RequiresSkills must still not appear.
 func TestWorkflowProfileNeighborsDoNotCloseRequirements(t *testing.T) {
 	got := Closure(Standard, []Node{{Kind: "skill", Name: "brainstorming"}})
-	if !reflect.DeepEqual(got, []Node{{Kind: "skill", Name: "brainstorming"}}) {
-		t.Errorf("brainstorming closure = %v, want no advisory neighbors", got)
+	want := []Node{{Kind: "skill", Name: "brainstorming"}, {Kind: "agent", Name: "grounding-checker"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("brainstorming closure = %v, want %v", got, want)
 	}
 }

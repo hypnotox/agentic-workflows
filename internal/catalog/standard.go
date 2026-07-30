@@ -7,7 +7,7 @@ package catalog
 // produced - so the per-file ConfigHash stays byte-identical.
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Core: true, RequiresSkills: []string{"exploring", "executing-direct", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
+		"brainstorming": {Core: true, RequiresAgent: "grounding-checker", RequiresSkills: []string{"exploring", "executing-direct", "proposing-adr", "reviewing-adr", "reviewing-impl", "writing-plans"}, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
 			"design-sections", "no-spec-rule", "grounding-check-output-format",
 			"grounding-check-dispatch-template", "terminal-step", "definitions", "anti-patterns",
@@ -46,7 +46,7 @@ var Standard = &Catalog{
 			"symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant",
 			"devdb-note", "red-flags", "memory-checkpoint",
 		}},
-		"exploring": {Core: true, Sections: []string{
+		"exploring": {Core: true, RequiresAgent: "explorer", Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
 		"proposing-adr": {

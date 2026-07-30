@@ -1756,7 +1756,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	// brainstorming carries a local sidecar: the guide's chain sentence needs a
 	// chain skill in the effective set, but a non-local one would demand its
 	// ADR-0081 closure (including adr-lifecycle, banned below) at open.
-	root := scaffoldFiles(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - exploring\n  - refactor-coupling-audit\nagents: []\n",
+	root := scaffoldFiles(t, "prefix: example\nskills:\n  - brainstorming\n  - bugfix\n  - exploring\n  - refactor-coupling-audit\nagents: [explorer]\n",
 		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
 	localSkill := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(localSkill), 0o755); err != nil {

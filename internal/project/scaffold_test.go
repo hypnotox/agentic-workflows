@@ -93,7 +93,13 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if err != nil {
 		t.Fatalf("config.Load: %v", err)
 	}
-	wantNodes := []catalog.Node{{Kind: "skill", Name: "tdd"}, {Kind: "skill", Name: "brainstorming"}}
+	// brainstorming's paired agent is a structural edge and must be scaffolded, or
+	// the trimmed config would fail project open. Its advisory RequiresSkills are
+	// what must stay out, and the wantSkills comparison below is what proves that.
+	wantNodes := []catalog.Node{
+		{Kind: "skill", Name: "tdd"}, {Kind: "skill", Name: "brainstorming"},
+		{Kind: "agent", Name: "grounding-checker"},
+	}
 	wantSkills, wantAdded := map[string]bool{}, map[string]bool{}
 	selected := map[string]bool{"tdd": true, "brainstorming": true}
 	for _, node := range wantNodes {
@@ -113,8 +119,8 @@ func TestScaffoldCatalogTrim(t *testing.T) {
 	if got := sliceSet(added); !maps.Equal(got, wantAdded) {
 		t.Errorf("closure additions = %v, want %v", slices.Sorted(maps.Keys(got)), slices.Sorted(maps.Keys(wantAdded)))
 	}
-	if len(cfg.Agents) != 0 || len(added) != 0 {
-		t.Errorf("advisory trim added structural artifacts: agents=%v additions=%v", cfg.Agents, added)
+	if got := sliceSet(cfg.Agents); !maps.Equal(got, map[string]bool{"grounding-checker": true}) {
+		t.Errorf("advisory trim scaffolded agents=%v, want exactly the structurally required grounding-checker", cfg.Agents)
 	}
 	if len(cfg.Docs) != 0 {
 		t.Errorf("nil docs trim should yield no docs (no core docs remain), got %v", cfg.Docs)

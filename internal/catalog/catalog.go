@@ -55,9 +55,8 @@ type AgentSpec struct {
 // RequiresDoc is *suppression* (ADR-0013): a non-empty value gates the skill on
 // that doc being enabled - with the doc off, the skill silently drops out of
 // the effective render set. RequiresAgent is *hard validation* (ADR-0050): a
-// non-empty value names the agent the skill dispatches - a reviewer for the
-// reviewing skills, the implementer for the plan-execution skills (ADR-0177) -
-// and enabling the skill without that agent fails every gated command at
+// non-empty value names the agent each dispatching skill sends work to, and
+// enabling the skill without that agent fails every gated command at
 // project open, since a silently-dropped dispatching skill would sever the
 // workflow chain, so the pairing must be loud. Core marks a skill as part of
 // the workflow-core set awf init scaffolds by default (ADR-0022). Data carries

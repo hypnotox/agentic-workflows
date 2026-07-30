@@ -112,7 +112,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 }
 
 func TestConventionPartPrecedence(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: []\n"
+	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
 	const part = "skills/parts/debugging/debugging-surfaces.md"
 
 	// (1) A convention part present replaces the section body.
@@ -138,7 +138,7 @@ func TestConventionPartPrecedence(t *testing.T) {
 
 // invariant: rendering/render-engine:sidecar-optional
 func TestSidecarAbsentRendersDefault(t *testing.T) {
-	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: []\n"
+	cfg := "prefix: example\n" + debuggingVars + "skills: [debugging, exploring]\nagents: [explorer]\n"
 	root := scaffold(t, cfg) // no sidecar, no parts
 	out := syncAndReadDebugging(t, root)
 	if strings.Contains(out, "<no value>") {

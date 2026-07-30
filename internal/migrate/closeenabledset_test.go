@@ -35,21 +35,31 @@ func closeFixture(t *testing.T, cfg string, files map[string]string) string {
 }
 
 func TestCloseEnabledSetAddsExploringFromShippedCatalog(t *testing.T) {
-	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
-		t.Run(consumer, func(t *testing.T) {
-			root := closeFixture(t, "prefix: ex\nskills: ["+consumer+"]\nagents: []\ndocs: [roadmap]\n", nil)
+	// The advisory exploring edge closes for none of the three consumers. What
+	// does close is brainstorming's paired agent, which is a structural
+	// requirement, so each consumer pins its exact expected output.
+	for _, tc := range []struct{ consumer, wantOutput string }{
+		{"brainstorming", "close-enabled-set: enabled agent \"grounding-checker\" (required by \"brainstorming\")\n"},
+		{"debugging", ""},
+		{"refactor-coupling-audit", ""},
+	} {
+		t.Run(tc.consumer, func(t *testing.T) {
+			root := closeFixture(t, "prefix: ex\nskills: ["+tc.consumer+"]\nagents: []\ndocs: [roadmap]\n", nil)
 			var out bytes.Buffer
 			if err := applyCloseEnabledSet(root, &out); err != nil {
 				t.Fatalf("applyCloseEnabledSet: %v", err)
 			}
-			if out.Len() != 0 {
+			if out.String() != tc.wantOutput {
+				t.Errorf("close output = %q, want %q", out.String(), tc.wantOutput)
+			}
+			if strings.Contains(out.String(), "enabled skill") {
 				t.Errorf("advisory catalog must not close workflow requirements: %q", out.String())
 			}
 			before, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(string(before), "skills: ["+consumer+"]") {
+			if !strings.Contains(string(before), "- "+tc.consumer) && !strings.Contains(string(before), "skills: ["+tc.consumer+"]") {
 				t.Errorf("config changed unexpectedly:\n%s", before)
 			}
 			var second bytes.Buffer
@@ -96,7 +106,9 @@ func TestCloseEnabledSetDropsDormantAndCloses(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{} {
+	// The fixture deliberately starts at `agents: []`: pre-seeding the agent would
+	// make the closure a no-op and suppress the behaviour this test proves.
+	for _, want := range []string{"- grounding-checker"} {
 		if !strings.Contains(string(cfg), want) {
 			t.Errorf("closed config missing %q:\n%s", want, cfg)
 		}

@@ -105,7 +105,9 @@ func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 // than admitted by a blanket exemption, which would let any future skill gain an
 // unpaired agent reference silently.
 var nonReviewingDispatchers = map[string]string{
+	"brainstorming":               "grounding-checker",
 	"executing-plans":             "implementer",
+	"exploring":                   "explorer",
 	"subagent-driven-development": "implementer",
 }
 

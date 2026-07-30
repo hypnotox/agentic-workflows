@@ -68,6 +68,20 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- Add the `explorer` and `grounding-checker` agents: the child-facing contracts for dispatched
+  exploration and grounding-check work, rendered per runtime like the review and implementer agents.
+  The explorer body carries the one-information-need rule, the ordered breadth and report-detail
+  scales with their project search universe, `file:line` grounding, and the not-found, inconclusive,
+  and unverified outcome distinction; the grounding-checker body carries its verification obligations
+  and its closed finding schema. Both are report-only. Schema generation 24
+  (`explorer-grounding-closure`) pairs `exploring` with `explorer` and `brainstorming` with
+  `grounding-checker`, so `awf upgrade` enables the paired agent for any tree that already enables
+  either skill; a tree that enables one of those skills without its agent fails at project open.
+  In Pi, `subagent_explore` and `subagent_grounding` now load their contracts from
+  `.pi/agents/explorer.md` and `.pi/agents/grounding-checker.md` and fail closed with an
+  enable-and-render repair when the file is missing or bodyless, the same way `subagent_implement`
+  already did. Pi's selected breadth and report detail and its ten-child FIFO limiter remain per-call
+  text the extension appends, so the rendered bodies stay runtime-neutral.
 - Add repository-wide dependency-composition authority and a `code-design` commit scope, preserve reviewer defaults while teaching reviewers to reject speculative capabilities, and introduce the three-dependency `project.Loader` foundation composed by the `runSync` command family. Existing callers retain `project.Open` as a compatibility wrapper; this does not convert other filesystem, process, or package-global seams.
 - Add the `implementer` agent: the child-facing contract for dispatched implementation work, rendered
   per runtime like the review agents. It states the two authority modes (commit-capable phase owner and

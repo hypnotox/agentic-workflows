@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.27.0",
-  "schemaVersion": 23,
+  "awfVersion": "0.28.0",
+  "schemaVersion": 24,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",

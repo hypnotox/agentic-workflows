@@ -55,6 +55,7 @@ var registry = []Migration{
 	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
 	{To: 22, Name: "unified-effort-residents", Apply: applyUnifiedEffortResidents, OwnsSchemaStamp: true},
 	{To: 23, Name: "implementer-agent-closure", Apply: applyCloseEnabledSet},
+	{To: 24, Name: "explorer-grounding-closure", Apply: applyCloseEnabledSet},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
