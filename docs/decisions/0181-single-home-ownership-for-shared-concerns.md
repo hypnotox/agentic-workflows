@@ -115,7 +115,7 @@ defaults wholesale, so additions must compare and backfill.
    authority (from the audit: the duplicated native runner, two branch-existence probes,
    two cleanliness oracles, and three stderr-enrichment copies; from this effort's
    grounding pass: the duplicated resident-root resolution at
-   `internal/project/project.go:130-141` beside `cmd/awf/sync.go:24-34`, and the
+   `internal/project/project.go:130-141` beside `cmd/awf/sync.go:25-35`, and the
    fixture-construction lane split across fourteen test files outside
    `internal/testsupport/gitfixture`). This ADR converts nothing itself.
 
