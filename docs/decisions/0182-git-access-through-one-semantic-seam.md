@@ -29,8 +29,8 @@ sets a deadline, so a git blocked on a stale `index.lock` hangs awf indefinitely
 inside the pre-commit hook; the `project.go:131` feed sits inside `project.Open`, which every
 gated command reaches.
 
-The library side leaks. Five packages import go-git (`internal/git`, `internal/audit`,
-`internal/migrate`, `internal/testsupport`, `internal/testsupport/gitfixture`). Three exported
+The library side leaks. Four packages import go-git (`internal/git`, `internal/audit`,
+`internal/migrate`, `internal/testsupport/gitfixture`). Three exported
 `internal/git` signatures expose go-git types (`OpenRepo`, `OpenContainingRepo` at
 `git.go:537,298` returning `*gogit.Repository`; `GlobalExcludePatterns` at `git.go:220`, which
 has no external production caller). Production code in `internal/migrate` matches the go-git
@@ -97,7 +97,11 @@ the policy packages it serves); and consumers keep their own narrow contracts
 binds, so no consumer depends on a broad facade. The backend-agnostic contract suites are
 not anticipated reuse under `concrete-first-consumer`: their first consumer is this
 conversion itself, which needs pinned semantics to prove behaviour preservation while
-seven call shapes collapse into one.
+seven call shapes collapse into one. And moving `Commit`/`FileChange` into the seam does
+not invert audit's ownership: they are the walk's output representation, the values the
+mechanism yields, exactly as `WorktreeRegistration` is already an `internal/git`-owned
+value consumed by effort policy; audit's policy is its rules over those values, and its
+narrow consumer-owned walk contract survives, expressed against seam-owned types.
 
 Topic mechanics, verified during grounding: proof markers are constrained by
 `currentState.testGlobs`, not topic paths, so repo-walking proofs may live anywhere; claim
@@ -110,12 +114,19 @@ exists under `internal/git/`, so the path transfer is marker-safe.
 
 ## Decision
 
-1. Add `tooling/git-access` with paths `internal/git/**`. In the same applied transaction,
-   narrow `tooling/audit-and-snapshots` to `internal/audit/**` and `internal/snapshot/**`,
-   and move the two ADR-0127 range-parser claims into the new topic as remove-plus-add
+1. Add `tooling/git-access` with paths `internal/git/**` and
+   `internal/testsupport/gitfixture/**`; the second selector is deliberate, so that the
+   `fixture-single-home` claim is visible to an agent editing gitfixture (topic path
+   overlap is already tolerated, and `tooling/test-infrastructure` keeps its broader
+   ownership of `internal/testsupport/**`). In the same applied transaction, narrow
+   `tooling/audit-and-snapshots` to `internal/audit/**` and `internal/snapshot/**`, and
+   move the two ADR-0127 range-parser claims into the new topic as remove-plus-add
    operations whose re-added prose preserves ADR-0127's provenance by reference. The two
    proof markers at `internal/git/parserange_test.go:11,69` are rewritten to the new
-   qualified ids in the same commit.
+   qualified ids in the same commit. All ten operations apply in exactly one batch on a
+   direct Proposed-to-Implemented transition: because item 11 authors every claim as
+   completed reality, no partition into Applied and Remaining subsets is coherent, and
+   the remove-plus-add pairs in particular are indivisible.
 
 2. `internal/git`'s package root becomes the seam: semantic entrypoints only, with both
    backends as unexported implementation files inside the package (seam-in-place; no
@@ -142,13 +153,17 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    error, and translates a non-zero exit into a `CommandError` carrying the arguments,
    exit code, and captured stderr. The exit-code-1-as-answer idiom lives once, inside the
    runner, surfacing as `(bool, error)` probes. Deadline values are chosen at the command
-   boundary in `cmd/awf`; the implementation plan names the magnitude, and all nine
-   `context.Background()` feeds convert.
+   boundary in `cmd/awf`; the implementation plan names the magnitude, chosen as a
+   hang-prevention ceiling generous enough that no observed-normal local operation
+   (including full-tree status on a large working tree) approaches it, not as a latency
+   budget; and all nine `context.Background()` feeds convert.
 
-5. The seam owns an `errors.Is`/`errors.As`-matchable vocabulary: `CommandError`, a
+5. The seam owns an `errors.Is`/`errors.As`-matchable vocabulary: `CommandError`, and a
    not-a-repository identity replacing the leaked go-git sentinel matches in
-   `internal/migrate`, and a ref-missing identity. `HardSafetyError` is retained exactly
-   as is. Mechanism errors are translated at the boundary and never cross it.
+   `internal/migrate`. `HardSafetyError` is retained exactly as is. Ref absence is
+   answered by the `(bool, error)` probes of item 4 and gains no identity of its own until
+   a consumer needs to distinguish it (`concrete-first-consumer`). Mechanism errors are
+   translated at the boundary and never cross it.
 
 6. The conversion is whole within the area; no production carve-out. Every consumer
    converts: `internal/snapshot` (its four constructors take the handle; ten call sites in
@@ -156,13 +171,18 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    commit-range walk), `internal/migrate` (three files drop go-git and the sentinel
    matches), `internal/upgrade` (`HeadHash`) and `internal/project` (`HeadExists`; and the
    duplicated resident-root resolution at `internal/project/project.go:130-141` and
-   `cmd/awf/sync.go:25-35` collapses to one home), `internal/worktree` (its `git.go`
+   `cmd/awf/sync.go:25-35` collapses to one home: the outer `cmd/awf` helper survives
+   and the transitional `project.Open` delegates to it, keeping
+   `outer-composition` intact, and `sync-project-loader-wiring`'s canonical text
+   survives unchanged so no operation is owed against it), `internal/worktree` (its `git.go`
    deletes; its consumer-owned runner contract is satisfied by seam-backed wiring;
    `ancestor` becomes a seam entrypoint), `internal/effort` (`nativeGit`,
    `nativeBranchExists`, and the inline `check-ref-format` exec delete), `cmd/awf`
    (composition wiring), and `cmd/repoaudit` (`realGit` and `gitError` convert; ADR-0073's
    standalone posture governs coupling to `internal/audit`, not to `internal/git`, which
-   repoaudit already imports).
+   repoaudit already imports). `project.Open` and `Loader.Open` gain a context parameter,
+   so every gated command's entry path threads a deadlined context; this is the widest
+   single signature change in the conversion and is deliberate.
 
 7. The composition around the seam converts in the same effort under existing ADR-0178
    authority: `effort.Open` and `worktree.Open` take their volatile dependencies
@@ -183,8 +203,12 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    and the deadline refusal, with the three pitfall incidents (global-gitignore scope,
    ignored-worktree-root exposure, `worktreeConfig` open) as named regression cases. The
    suites are what make a later backend swap safe: swapping an entrypoint's implementation
-   must leave its suite green or fail visibly. A mutation-testing pass over `internal/git`
-   is an advisory post-implementation option, not a gate.
+   must leave its suite green or fail visibly. The existing repo-walking guard
+   `TestWorktreeStatusInjectsGlobalExcludes` (`internal/git/git_test.go:46-68`) is retired
+   in the same pass: its substring check goes vacuous once ignore semantics live inside
+   the seam, and the working-tree-paths contract suite pins the same property directly.
+   A mutation-testing pass over `internal/git` is an advisory post-implementation option,
+   not a gate.
 
 10. The test fixture lane converges on the same rule: `internal/testsupport/gitfixture`
     becomes the only constructor of git fixtures, gains the capabilities the fourteen
@@ -197,19 +221,33 @@ exists under `internal/git/`, so the path transfer is marker-safe.
 
 11. Claim backing: `all-access-via-seam` (production repo-walker; its allowlist is
     `internal/git/**` plus the gitfixture carve-out), `fixture-single-home` (test-file
-    repo-walker), `pinned-entrypoint-semantics` (the contract suites), and
-    `isolated-deadlined-native` (direct runner tests: polluted-environment isolation,
-    deadline refusal, stderr-carrying errors) are `Backing: test`.
+    repo-walker), `pinned-entrypoint-semantics` (the entrypoint inventory is pinned in
+    one table-driven test that fails when a named entrypoint lacks a passing suite, so
+    the claim asserts exactly what that table proves), and `isolated-deadlined-native`
+    (direct runner tests: polluted-environment isolation, deadline refusal,
+    stderr-carrying errors) are `Backing: test`.
     `one-implementation-per-entrypoint` and `single-cleanliness-oracle` are reasoned
     contracts with `Verify:` instructions. The moved range-parser claims keep their
     existing test backing. Because the conversion is whole, every claim is authored as a
     statement of completed reality with no new-or-converted qualifier.
 
 12. Application sequences after the two in-flight transactions that touch adjacent
-    surfaces integrate: the severity-unification chain also edits
-    `tooling/audit-and-snapshots`, and ADR-0180's plan owns `internal/project/project.go`
-    and `internal/project/topics.go`, both of which item 6 also touches. ADR-0181's
-    application (which this decision cites as authority) is part of the same ordering.
+    surfaces integrate: the severity-unification chain (branch
+    `awf/drop-severity-settings-and-unify-the-rank`; its ADR numbers pin at integration)
+    also edits `tooling/audit-and-snapshots`, and ADR-0180's plan owns
+    `internal/project/project.go` and `internal/project/topics.go`, both of which item 6
+    also touches. ADR-0181's application (which this decision cites as authority) is part
+    of the same ordering.
+
+13. Documentation travels with the conversion, in the same commits: the three
+    docs/pitfalls.md entries that mandate the current API route (`OpenRepo` at the repo
+    opens entry, the `GlobalExcludePatterns` injection instruction, and the gitfile
+    resolution heading) are rewritten to name the seam entrypoints while their underlying
+    incidents stay recorded as the contract suites' named regression cases;
+    docs/architecture.md's package-ownership bullets (`internal/worktree` native-git
+    ownership, per-package control-root resolution) and its go-git dependency note are
+    updated to the seam shape; and docs/testing.md gains the contract-suite category and
+    the serial-by-construction exception for the isolation and missing-binary suites.
 
 ## State changes
 
@@ -231,7 +269,12 @@ one cleanliness oracle, one stderr translation, one resident-root resolution, on
 constructor. Environment isolation and deadlines become structural rather than per-site
 accidents, which changes observable behaviour deliberately: a git invocation that today
 hangs on a credential prompt or a stale lock becomes a timely error, and effort operations
-gain isolation they currently lack. Error messages change shape where `CombinedOutput`
+gain isolation they currently lack. The deadline refusal carries two named costs: it is a
+runtime failure, not a compile-time one, so a wiring site that forgets a deadline fails at
+execution (including on the pre-commit path, which is why the refusal is itself
+test-backed and every feed converts in this effort); and a fixed magnitude could abort a
+legitimately slow operation, which item 4's hang-prevention-ceiling framing exists to
+prevent. Error messages change shape where `CombinedOutput`
 gave way to captured stderr, and converted-area tests move from message substrings to
 `errors.Is`/`errors.As`; the repo-wide error-identity decision remains open and untouched.
 
@@ -270,6 +313,7 @@ when packages do.
 | Alternative | Why not chosen |
 |---|---|
 | Free-function entrypoints taking a root string | Repeats the root-as-ambient-dependency shape at 64 audited sites; a handle validates the root once, makes construction the composition point, and gives the contract suites their object. |
+| One exported Git interface at the seam | `direct-injection-first` introduces an interface only for a cohesive multi-operation contract owned by its consumer; a seam-wide interface would be a provider-owned facade nobody consumes whole. Consumers keep their narrow contracts and the concrete handle is the provider their wiring binds. |
 | Backend subpackages (`internal/git/native`, `internal/git/gogit`) | Physically visible swap points, but performs part of the package split this decision deliberately leaves to the decomposition ADR, and parent-only imports need their own guard. |
 | A new facade package over the existing `internal/git` | Pure indirection; every importer renames for no ownership gain, against the posture doc's abstraction-must-earn-its-cost rule. |
 | Switch to native-only git now | The migration becomes cheap per entrypoint once suites pin semantics; coupling it to the organise pass would put a snapshot-layer rewrite inside an already-wide transaction for no immediate gain. |
