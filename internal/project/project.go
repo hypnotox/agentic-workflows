@@ -146,7 +146,7 @@ func (l *Loader) Open(root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := catalog.ValidateWorkflowProfiles(catalog.Standard); err != nil { // coverage-ignore: compile-time Standard is exhaustively validated by catalog tests; this keeps production fail-closed
+	if err := catalog.ValidateWorkflowProfiles(l.standard); err != nil {
 		return nil, err
 	}
 	targets, err := resolveTargets(cfg.Targets)
