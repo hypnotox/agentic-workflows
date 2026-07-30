@@ -274,6 +274,19 @@ the transaction's own verifier.
     is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its
     encoding)" with "its meaning freezes at a terminal status, every earlier amendment recorded as
     an Amended history event (a meaning-preserving schema retrofit may migrate its encoding)".
+  - Three plan-freeze surfaces (added to ADR-0186 item 9 by amendment): in
+    `templates/skills/writing-plans/SKILL.md.tmpl` `plan-lifecycle` section, replace "flipped in
+    the implementation's final commit (the same flip for ADR-driven and non-ADR plans). In
+    {{ .prefix }}'s usual flow a plan and its ADR(s) co-flip in that final commit, but" with
+    "flipped in the deferred flip transaction after the applicable terminal review settles (the
+    same flip for ADR-driven and non-ADR plans). In {{ .prefix }}'s usual flow a plan and its
+    ADR(s) co-flip in that transaction, but"; in `templates/plans-readme/README.md.tmpl`, replace
+    "flipped in the implementation's final commit." (wraps as "...flipped in the\nimplementation's
+    final commit."; match across the line break) with "flipped in the deferred flip transaction
+    after the applicable terminal review settles."; in `templates/plans-template/template.md.tmpl`,
+    replace "The `status: Implemented` flip in the final commit records these" with "The
+    `status: Implemented` flip in the deferred post-review transaction records these".
+    Post-check: `grep -rn "implementation's final commit" templates/` returns no output.
 - [ ] **Task 2.5: re-render and reconcile.** Run `./x render` (re-renders this repo and
   `examples/sundial`), stage all regenerated files, run `./x check` (expected: clean). If the gate
   surfaces template-coupled test failures (catalog spine, rendered-output, or eval fixtures),
