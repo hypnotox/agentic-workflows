@@ -62,7 +62,10 @@ so that topic describes a design rather than a mess. Working notes for the effor
    `severity` in `cmd/repoaudit/main.go` all resolve to it. Item 5 retires the fourth encoding rather than
    unifying it. No finding rank renders as "warning": today only `internal/audit/audit.go:34` and
    `cmd/repoaudit/main.go:35` emit that token as a rank, and other unrelated uses of the word are out of
-   scope.
+   scope. `cmd/repoaudit` adopts the shared type despite its file header placing it outside the shipped
+   standard: its comment at `main.go:22` justifying the duplication because "repoaudit is standalone repo
+   tooling" is already false, since its production code imports `internal/git`, and no current-state claim
+   pins its isolation.
 
 4. The shared rank type lands in a new leaf package that owns no other concern. `internal/audit` and
    `internal/topic` import each other in neither direction today, so housing the rank in either one would
@@ -74,16 +77,19 @@ so that topic describes a design rather than a mess. Working notes for the effor
 
 5. Claim-handshake findings carry no rank. `internal/currentstate.Severity` and the `Severity` field on
    `internal/currentstate.Finding` are removed rather than wired up: every finding that package produces is
-   an error, which is what `internal/project/currentstate.go:409` already does. This is scoped to the
+   an error, which is what `internal/project/currentstate.go:409` and `:41` already do: the audit path
+   forces `audit.Error` and the check path reads only `f.Message`. This is scoped to the
    provenance and transition findings `internal/currentstate` produces. The ranked coverage and fan-out
    findings that `internal/project.CurrentStateReport` also carries, and the `audit.Warning` finding
    constructed at `internal/project/currentstate.go:404`, keep their ranks and are out of scope.
 
 6. Advance the schema generation and add a migration that removes both keys from a config tree wherever
    they appear, following the established drop-a-key migrations `internal/migrate/dropauditbase.go`,
-   `drophooks.go`, `dropreplacewith.go`, and `dropworkflowtelemetry.go`. The migration scope includes the
-   in-repo adopter tree: `examples/sundial/.awf/config.yaml` sets both keys and must land at the new
-   generation with them removed, with its tree and lock re-rendered in the same commit.
+   `drophooks.go`, `dropreplacewith.go`, and `dropworkflowtelemetry.go`. The migration scope includes both
+   in-repo trees: the root `.awf/config.yaml` at lines 53 and 54, and
+   `examples/sundial/.awf/config.yaml`, each set both keys and must land at the new generation with them
+   removed, with both trees and locks re-rendered in the same commit. awf is its own first adopter, so
+   omitting the root tree would leave the project failing its own strict `currentState` validation.
 
 7. Update the affected documentation in the same implementation, since this change falsifies or stales
    authored and generated prose: the `topic coverage` entry in `.awf/docs/glossary.yaml`, which currently
@@ -92,14 +98,21 @@ so that topic describes a design rather than a mess. Working notes for the effor
    configurable severity with an adopter-facing config key, which this decision forecloses; a Breaking
    changes entry in `changelog/CHANGELOG.md` under `[Unreleased]`, since removing config-schema keys is
    adopter-facing; and the regenerated `docs/config-reference.md` and `docs/glossary.md` in both the root and
-   `examples/sundial` trees. Every status transition commits the regenerated `docs/decisions/INDEX.md` and
-   lock from `./x render`.
+   `examples/sundial` trees. The same obligation covers the production doc comments this falsifies, at
+   `internal/project/currentstate.go:26-28` and `:51-52`, `internal/topic/coverage.go:53-55`,
+   `internal/project/context.go:361-363`, and `cmd/repoaudit/main.go:22-23`. Every status transition commits
+   the regenerated `docs/decisions/INDEX.md` and lock from `./x render`.
+
+8. Replace `topic.CoveragePolicy`'s per-check severity with an explicit selection of which checks to
+   evaluate. A caller that does not want fan-out findings does not ask for them, rather than asking and
+   suppressing the result with a rank value. The uncovered report reached from
+   `internal/project/context.go` selects coverage only, preserving its current output.
 
 ## State changes
 
 - add `config/configuration:severity-not-configurable`
 - add `config/migrations-and-locks:severity-keys-dropped`
-- add `tooling/cli:severity-single-spelling`
+- add `tooling/audit-commands:severity-single-spelling`
 - add `invariants/topics-and-markers:coverage-evaluation-selects-checks`
 - add `invariants/current-state-authority:currentstate-handshake-findings-unranked`
 
@@ -116,12 +129,12 @@ mechanism. An ADR is history rather than active authority, so narrowing what an 
 expressed by the claim this decision adds, not by an operation against ADR-0134.
 
 No existing claim requires an update, and that conclusion rests on a complete survey rather than a sample.
-At least seven claims name a rank by the token this decision abolishes:
-`tooling/audit-and-snapshots:audit-dependency-warn`, and the domain-code-staleness, domain-doc-staleness,
-plain-punctuation and `audit-plan-threshold-warn` claims in the same topic; the `tooling/audit-commands`
-claims describing clean, warning, and error outcomes, including
-`tooling/audit-commands:audit-warn-exit-zero`; `tooling/audit-and-snapshots:repo-audit-error-exit`; and a
-`tooling/changelog-and-release` claim distinguishing a Warning from an Error. Each names a rank CLASS whose
+Ten claims across three topics name a rank by the token this decision abolishes. Seven are in
+`tooling/audit-and-snapshots`: `audit-dependency-warn`, `audit-domain-code-staleness`,
+`audit-domain-doc-staleness`, `audit-plain-punctuation`, `audit-plan-threshold-warn`,
+`audit-undocumented-domain`, and `repo-audit-error-exit`. Two are in `tooling/audit-commands`:
+`audit-reports-evaluated-scope` and `audit-warn-exit-zero`. One is in `tooling/changelog-and-release`,
+distinguishing a Warning with a zero exit code from an Error. Each names a rank CLASS whose
 behaviour is unchanged, not a rendered token, so each stays true after the token changes. An update
 carrying only a renamed severity word would in any case fail
 `invariants/current-state-authority:update-requires-substance`.
@@ -130,15 +143,25 @@ unowned rather than the coverage evaluation path, so the `CoveragePolicy` split 
 
 Adopters lose the ability to silence topic-coverage findings. That capability is being withdrawn rather
 than migrated, and the migration removes the keys unconditionally, so a tree that had set `off` starts
-seeing findings after upgrading. This is accepted deliberately: always-active is the intent. Per the
-maintainer's confirmed knowledge of external adopter state, no external tree sits near the current
-generation, so the practical exposure is the in-repo `examples/sundial` tree, which item 6 migrates.
+seeing findings after upgrading. This is accepted deliberately: always-active is the intent. The practical
+exposure is nil: per the maintainer's confirmed knowledge of external adopter state no external tree sits
+near the current generation, and both in-repo trees set `error` and `warn`, matching the schema defaults, so
+the migration is behaviour-neutral everywhere. Their only cost is the key removal and lock re-render item 6
+covers. No tree in the repository sets `off`, so the withdrawn suppression has zero live instances.
 
-The test corpus pays a migration cost beyond golden output. Fixtures currently use `off` to suppress
-coverage entirely at `cmd/awf/check_test.go:115`, `:164`, `:244` and `internal/config/edit_test.go:123`;
-once `off` is gone each must either supply real scoped topic coverage or assert the findings it now
-produces. The key-validation tests at `internal/config/config_test.go:478-624` retire with the keys, and
-audit and repo-audit golden output changes from "warning" to "warn" in the same commit.
+The test corpus pays a migration cost beyond golden output, and the sites differ from one another.
+`cmd/awf/check_test.go:115` hard-codes `topicFanout: off` inside the shared `coverageYAML` helper while
+parameterizing `topicCoverage`, so that helper's severity parameter becomes dead and its four callers may
+gain fan-out lines they do not assert. `cmd/awf/check_test.go:164` and `:244` set `topicCoverage: off` to
+suppress coverage entirely, so each must supply real scoped topic coverage or assert the findings it now
+produces. `internal/config/edit_test.go:123` is different again: it anchors a comment-preservation case on
+`topicCoverage` purely as a YAML child and must be re-anchored on a surviving `currentState` key.
+`TestCurrentStateSeverityValidation` at `internal/config/config_test.go:477` retires with the keys, while
+the `topicCoverage` and `topicFanout` sub-cases inside `TestCurrentStateStrictValidation` (`:507`),
+`TestCurrentStateRejectsNonStringScalars` (`:591`), and `TestCurrentStateRejectsWrongValueTypes` (`:620`)
+drop without retiring those tests, whose `sources`, `testGlobs`, `maxTopicsPerPath`, and
+`maxClaimsPerTopic` cases all survive. Audit and repo-audit golden output changes from "warning" to "warn"
+in the same commit.
 
 Fan-out stays advisory. Promoting it to error was considered and rejected below; keeping it at warn
 preserves ADR-0134's posture and avoids a gate failure the next time a path accumulates enough scoped
@@ -149,7 +172,11 @@ The new leaf package in item 4 is a small structural cost paid to avoid an accid
 package domain ownership and a scoped topic. The `coverage-evaluation-selects-checks` claim lands in
 `invariants/topics-and-markers` because coverage evaluation is `internal/topic` code and that topic's
 selectors are the only ones matching it; its metadata summary needs widening in the same commit to cover
-coverage evaluation policy alongside parsing and resolution.
+coverage evaluation policy alongside parsing and resolution. `severity-single-spelling` lands in
+`tooling/audit-commands` rather than `tooling/cli`: four tooling topics share the identical selector set, so
+selector uniqueness cannot choose between them, and the rank tokens are emitted by the advisory audit
+surfaces that topic already governs, alongside the two claims this one is nearest,
+`audit-warn-exit-zero` and `audit-reports-evaluated-scope`.
 
 The schema generation advances, so the binary-version gate refuses an older binary against a migrated tree
 until the release ships, per ADR-0039.
