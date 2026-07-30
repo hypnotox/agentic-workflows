@@ -31,7 +31,9 @@ func MergeInProgress(projectRoot string) (bool, error) {
 		return true, nil
 	case errors.Is(err, os.ErrNotExist):
 		return false, nil
-	default: // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+	default:
+		// Reachable without a fault: a gitdir pointer naming a regular file makes
+		// the MERGE_HEAD lstat report ENOTDIR rather than os.ErrNotExist.
 		return false, err
 	}
 }

@@ -121,3 +121,18 @@ func TestMergeInProgressSymlinkedDotGitRefuses(t *testing.T) {
 		t.Fatal("a symlinked .git must surface the control-root refusal")
 	}
 }
+
+// A gitdir pointer naming a regular file makes the MERGE_HEAD lstat report
+// ENOTDIR, which is neither an inode nor os.ErrNotExist, so the probe must
+// surface it rather than reporting a bare false.
+func TestMergeInProgressPointerToRegularFile(t *testing.T) {
+	root := t.TempDir()
+	notADir := filepath.Join(root, "regular")
+	testsupport.WriteFile(t, notADir, "not a directory\n")
+	checkout := filepath.Join(root, "checkout")
+	testsupport.WriteFile(t, filepath.Join(checkout, ".git"), "gitdir: "+notADir+"\n")
+
+	if _, err := git.MergeInProgress(checkout); err == nil {
+		t.Fatal("a gitdir pointing at a regular file must surface its lstat error")
+	}
+}

@@ -130,13 +130,7 @@ type pairOp struct {
 // classified once, so an operation with no mutation and a mutation with no
 // operation are both surfaced.
 func checkMutations(before, after Universe, mode TransitionMode) []Finding {
-	ops, dups, batchFindings := pairOps(before.ADRs, after.ADRs, mode)
-	rejected := map[string]bool{}
-	for _, f := range batchFindings {
-		if id, ok := chainRejectID(f.Message); ok {
-			rejected[id] = true
-		}
-	}
+	ops, dups, rejected, batchFindings := pairOps(before.ADRs, after.ADRs, mode)
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
 
@@ -189,7 +183,7 @@ type appendedBatch struct {
 
 // pairOps derives only newly appended batches. It validates one batch per ADR,
 // cross-batch target uniqueness, and next-consecutive global sequencing.
-func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, []string, []Finding) {
+func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, []string, map[string]bool, []Finding) {
 	beforeByNum := byNumber(before)
 	var batches []appendedBatch
 	var findings []Finding
@@ -257,6 +251,10 @@ func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, [
 	sort.Strings(order)
 	ops := map[string]pairOp{}
 	dups := []string{}
+	// rejected carries every ID already diagnosed by this function, so
+	// checkMutations does not add a contradictory unmatched-mutation finding on
+	// top of a chain rejection or a duplicate-target report.
+	rejected := map[string]bool{}
 	for _, id := range order {
 		chain := chains[id]
 		if len(chain) == 1 {
@@ -265,16 +263,18 @@ func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, [
 		}
 		if mode == AuthoredCommit {
 			dups = append(dups, id)
+			rejected[id] = true
 			continue
 		}
 		net, reason := foldChain(chain)
 		if reason != "" {
 			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s has an illegal operation chain in this transition: %s", id, reason)})
+			rejected[id] = true
 			continue
 		}
 		ops[id] = net
 	}
-	return ops, dups, findings
+	return ops, dups, rejected, findings
 }
 
 // historyTransitionValid applies the Status-history contract the mode selects:
@@ -286,17 +286,6 @@ func historyTransitionValid(before, after adr.ADR, mode TransitionMode) bool {
 		return adr.HistoryTransitionValidAggregate(before, after)
 	}
 	return adr.HistoryTransitionValid(before, after)
-}
-
-// chainRejectID recovers the claim ID from a fold rejection so checkMutations can
-// suppress the contradictory unmatched-mutation classification for it.
-func chainRejectID(message string) (string, bool) {
-	const prefix = "claim "
-	const marker = " has an illegal operation chain"
-	if !strings.HasPrefix(message, prefix) || !strings.Contains(message, marker) {
-		return "", false
-	}
-	return message[len(prefix):strings.Index(message, marker)], true
 }
 
 // foldChain reduces a claim's ordered operation chain to the net effect the pair

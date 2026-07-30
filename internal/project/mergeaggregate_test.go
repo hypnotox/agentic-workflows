@@ -110,7 +110,9 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 // index read follows a symlinked .git, so the staged check must keep working
 // there. It falls back to the stricter authored-commit contract rather than
 // failing, which is exactly what it did before merge detection existed.
-// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+// It carries no claim marker: detection selects which contract applies and sits
+// outside the claim's scope (ADR-0182 item 11), and a touches-state marker is
+// only legal inside the topic's own selectors, which internal/project is not in.
 func TestCheckStagedToleratesUnresolvableControlRoot(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Stage(t, repo, dir, stagedHeadFiles())

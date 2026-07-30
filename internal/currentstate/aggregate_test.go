@@ -82,6 +82,9 @@ func TestMergeAggregateFoldsClaimChains(t *testing.T) {
 		if !strings.Contains(got, "target of more than one operation") {
 			t.Fatalf("one operation per claim must still hold for an authored commit:\n%s", got)
 		}
+		if strings.Contains(got, "with no ADR add operation") {
+			t.Fatalf("the duplicate report must not be joined by a contradictory one:\n%s", got)
+		}
 	})
 
 	t.Run("update then remove is a net remove", func(t *testing.T) {
@@ -115,6 +118,11 @@ func TestMergeAggregateFoldsClaimChains(t *testing.T) {
 		got := messages(pair(op(adr.OpAdd, "d/t:c"), op(adr.OpAdd, "d/t:c"), claim("d/t:c", "0141")))
 		if !strings.Contains(got, "illegal operation chain") || !strings.Contains(got, "an add must be the first operation") {
 			t.Fatalf("a repeated add must stay illegal:\n%s", got)
+		}
+		// The chain diagnosis must not be joined by a contradictory
+		// unmatched-mutation finding denying the operations exist.
+		if strings.Contains(got, "was added with no ADR add operation") {
+			t.Fatalf("a rejected chain must not also be reported as an unmatched mutation:\n%s", got)
 		}
 	})
 
