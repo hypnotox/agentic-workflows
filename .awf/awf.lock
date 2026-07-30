@@ -112,9 +112,9 @@
     },
     ".claude/skills/awf-proposing-adr/SKILL.md": {
       "templateId": "skills/proposing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:ec9e2d26854806d512a3df5057cfd27eff1ceb92734236effceed0af44ec55e1",
+      "templateHash": "sha256:e4d273f2998804ea195ae4fe23640a8c86293091805e674696f46f28f1dd6f52",
       "configHash": "sha256:64c62a98f33afb458c016245a9ab0646cac71823346810a1e99b177de95b6666",
-      "outputHash": "sha256:629ab8a25d38ba886ada5e990e112019a2d7d70c6fc92aa0d2f9756e40ea41a3"
+      "outputHash": "sha256:d881cb9720d164f2065d7fd4495f367d9280a300254d048891fd7c1bfb15ecc1"
     },
     ".claude/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
@@ -130,9 +130,9 @@
     },
     ".claude/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:2c358cb60a38320c6ab6d42f07ebbdda54e90d77f501f4e4cd2fdd5621c65f9b",
+      "templateHash": "sha256:a4a064375e3b43641b1a86b4a959e11781feb9c37bcb27184019dcceb112f1aa",
       "configHash": "sha256:de73f8cfc898bb96e36b5668ebab48d6723cb70d5ccb4e8d7c9f550f5e8ee5be",
-      "outputHash": "sha256:5cfadbc4899630a06e62ed83965036681b98a49aed9283b043f94d95b9134135"
+      "outputHash": "sha256:f5eff1edd067326601507f5f98f71cc1884f8f8c95842bcf56460c339aa1e617"
     },
     ".claude/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
@@ -274,9 +274,9 @@
     },
     ".pi/skills/awf-proposing-adr/SKILL.md": {
       "templateId": "skills/proposing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:ec9e2d26854806d512a3df5057cfd27eff1ceb92734236effceed0af44ec55e1",
+      "templateHash": "sha256:e4d273f2998804ea195ae4fe23640a8c86293091805e674696f46f28f1dd6f52",
       "configHash": "sha256:78ac9f14b0f958679763d8627e9009530d246239bc6d7e5b63835b2df31016c9",
-      "outputHash": "sha256:dc25daba0745a7e425dfbd55a41b8918a6cdaeabfb96409ad982139902a7fa41"
+      "outputHash": "sha256:2af714bcb2997cdc384bef23e26882356266698566d2c83296a5605594b6fda1"
     },
     ".pi/skills/awf-refactor-coupling-audit/SKILL.md": {
       "templateId": "skills/refactor-coupling-audit/SKILL.md.tmpl",
@@ -292,9 +292,9 @@
     },
     ".pi/skills/awf-reviewing-adr/SKILL.md": {
       "templateId": "skills/reviewing-adr/SKILL.md.tmpl",
-      "templateHash": "sha256:2c358cb60a38320c6ab6d42f07ebbdda54e90d77f501f4e4cd2fdd5621c65f9b",
+      "templateHash": "sha256:a4a064375e3b43641b1a86b4a959e11781feb9c37bcb27184019dcceb112f1aa",
       "configHash": "sha256:6914aef76fbfbcac77a296a1621a7b57a764ac15857b21b0587a2861492a1c79",
-      "outputHash": "sha256:df9cb8bb951863ab2a8724731ca12ea1c8b4918941d3f1cbe28169e876354ced"
+      "outputHash": "sha256:c925834473e9e38ace83ed9a6207326dd6763d9db2e4eb0797d882cfe19cdea5"
     },
     ".pi/skills/awf-reviewing-impl/SKILL.md": {
       "templateId": "skills/reviewing-impl/SKILL.md.tmpl",
