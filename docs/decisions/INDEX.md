@@ -2,6 +2,7 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
+- [ADR-0186: ADR content amendable until Implemented via Amended events](0186-adr-content-amendable-until-implemented-via-amended-events.md) (Proposed)
 
 ## History
 
