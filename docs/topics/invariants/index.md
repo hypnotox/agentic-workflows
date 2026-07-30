@@ -2,4 +2,4 @@
 # invariants topics
 
 - [Current-state authority](current-state-authority.md): How current-state claims are loaded, checked, and transitioned as the sole active authority.
-- [Topics and markers](topics-and-markers.md): How topic inputs, claims, and their relevance and proof markers are parsed and resolved.
+- [Topics and markers](topics-and-markers.md): How topic inputs, claims, and their relevance and proof markers are parsed and resolved, and how coverage evaluation selects its checks.

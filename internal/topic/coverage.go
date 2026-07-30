@@ -5,6 +5,8 @@ import (
 	"maps"
 	"slices"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // TopicApplicability is honest, concrete applicability evidence. DomainPaths
@@ -50,20 +52,6 @@ func ApplicabilityForTopic(t Topic, domainPaths []string, markers MarkerIndex, c
 	return out
 }
 
-// CoverageSeverity is the configured strictness for a coverage or fan-out
-// finding: CoverageError fails a gated command, CoverageWarn reports without
-// failing, and CoverageOff suppresses the finding entirely (ADR-0134 item 11).
-type CoverageSeverity string
-
-const (
-	// CoverageError makes a consuming command exit nonzero.
-	CoverageError CoverageSeverity = "error"
-	// CoverageWarn reports the finding without changing the exit code.
-	CoverageWarn CoverageSeverity = "warn"
-	// CoverageOff suppresses the finding so the evaluator never emits it.
-	CoverageOff CoverageSeverity = "off"
-)
-
 // CoverageKind distinguishes a missing-scoped-topic finding from a fan-out one.
 type CoverageKind string
 
@@ -79,17 +67,18 @@ const (
 // emitted once per path across owners; Topics carries a Fanout finding's
 // matching count.
 type CoverageFinding struct {
-	Path     string           `json:"path"`
-	Domain   string           `json:"domain,omitempty"`
-	Kind     CoverageKind     `json:"kind"`
-	Severity CoverageSeverity `json:"severity"`
-	Topics   int              `json:"topics,omitempty"`
+	Path     string       `json:"path"`
+	Domain   string       `json:"domain,omitempty"`
+	Kind     CoverageKind `json:"kind"`
+	Severity severity.Rank
+	Topics   int `json:"topics,omitempty"`
 }
 
-// CoveragePolicy carries the configured coverage/fan-out severities and the
-// per-path fan-out budget.
+// CoveragePolicy carries which coverage checks a caller wants evaluated and the
+// per-path fan-out budget. A caller that does not want a finding class does not
+// request it; no value suppresses a requested check (ADR-0179 items 2 and 8).
 type CoveragePolicy struct {
-	Coverage, Fanout CoverageSeverity
+	Coverage, Fanout bool
 	MaxTopicsPerPath int
 }
 
@@ -112,13 +101,13 @@ func ClaimBudgetNotes(c Corpus, maxClaimsPerTopic int) []string {
 // EvaluateCoverage returns the sorted coverage and fan-out findings for the
 // eligible paths (ADR-0134 item 11). Every domain owning a path is evaluated
 // independently: a domain with no claim-bearing, path-scoped topic covering the
-// path yields one Uncovered finding at the coverage severity, so a topic from
-// one owner never satisfies another owner's gap. Global and claimless topics
-// never satisfy scoped coverage. Across all owners the distinct path-scoped
-// topics matching a path are counted once; exceeding the budget yields a single
-// Fanout finding at the fan-out severity. Globals are excluded from the count,
-// and a CoverageOff severity suppresses its findings. Unowned paths are the
-// context ownership concern and produce no finding here.
+// path yields one Uncovered finding at error, so a topic from one owner never
+// satisfies another owner's gap. Global and claimless topics never satisfy
+// scoped coverage. Across all owners the distinct path-scoped topics matching a
+// path are counted once; exceeding the budget yields a single Fanout finding at
+// warn. Globals are excluded from the count. The caller selects which checks run
+// through the policy, and no value suppresses a requested check. Unowned paths
+// are the context ownership concern and produce no finding here.
 func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []CoverageFinding {
 	domains := slices.Sorted(maps.Keys(c.DomainPaths))
 	findings := []CoverageFinding{}
@@ -132,16 +121,16 @@ func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []Coverag
 		if len(owners) == 0 {
 			continue
 		}
-		if policy.Coverage != CoverageOff {
+		if policy.Coverage {
 			for _, d := range owners {
 				if !coveredByDomain(c, d, path) {
-					findings = append(findings, CoverageFinding{Path: path, Domain: d, Kind: Uncovered, Severity: policy.Coverage})
+					findings = append(findings, CoverageFinding{Path: path, Domain: d, Kind: Uncovered, Severity: severity.Error})
 				}
 			}
 		}
-		if policy.Fanout != CoverageOff {
+		if policy.Fanout {
 			if count := matchingScopedTopics(c, path); count > policy.MaxTopicsPerPath {
-				findings = append(findings, CoverageFinding{Path: path, Kind: Fanout, Severity: policy.Fanout, Topics: count})
+				findings = append(findings, CoverageFinding{Path: path, Kind: Fanout, Severity: severity.Warn, Topics: count})
 			}
 		}
 	}

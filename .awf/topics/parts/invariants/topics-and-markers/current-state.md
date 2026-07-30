@@ -15,6 +15,12 @@ Origin: ADR-0134
 Backing: unbacked
 Verify: Topic corpus tests exercise duplicate local slugs across different and identical topics plus valid and dangling claim and ADR references.
 
+### `invariant: coverage-evaluation-selects-checks`
+
+A coverage evaluation caller selects which checks run: coverage and fan-out are requested independently, no rank value suppresses a requested finding, and the uncovered report requests coverage only.
+Origin: ADR-0179
+Backing: test
+
 ### `invariant: invariant-marker-close-token`
 
 When a current-state marker source declares a close token, the payload extractor strips exactly one trailing close token from a matched marker line before the slug and any touches note are parsed, and rejects a marker line that is missing the declared close token.

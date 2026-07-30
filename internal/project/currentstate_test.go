@@ -9,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -90,8 +91,8 @@ func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
 		Static: []currentstate.Finding{{Severity: currentstate.Error, Message: "handshake broke"}},
 		Coverage: []topic.CoverageFinding{
-			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: topic.CoverageError},
-			{Path: "internal/b.go", Kind: topic.Fanout, Severity: topic.CoverageWarn, Topics: 3},
+			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
+			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
 		},
 	}
 	findings := r.Findings()

@@ -215,3 +215,4 @@ from five claims to two.
 - 2026-07-30: Proposed
 - 2026-07-30: Implementing; content-sha256: a0c621987223c8d720be545d5224fc1d70fb4f0df5614879a3379a40406fb760
 - 2026-07-30: Applied; state-sequence: 90; operations: add `config/configuration:severity-not-configurable`, add `config/migrations-and-locks:severity-keys-dropped`
+- 2026-07-30: Applied; state-sequence: 91; operations: add `tooling/audit-commands:severity-single-spelling`, add `invariants/topics-and-markers:coverage-evaluation-selects-checks`

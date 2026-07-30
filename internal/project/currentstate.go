@@ -44,23 +44,23 @@ func (r CurrentStateReport) Findings() []string {
 		out = append(out, f.Message)
 	}
 	for _, c := range r.Coverage {
-		if c.Severity == topic.CoverageError {
+		if c.Severity == severity.Error {
 			out = append(out, coverageLine(c))
 		}
 	}
 	return out
 }
 
-// Notes returns the non-failing lines: coverage/fan-out findings at warn
-// severity. Off findings are never emitted by the evaluator, so they never
-// appear here.
+// Notes returns the non-failing lines: coverage/fan-out findings at warn. There
+// is no suppressing rank, so every finding the evaluator emits is routed here or
+// to Findings, never dropped.
 func (r CurrentStateReport) Notes() []string {
 	out := slices.Clone(r.Advisories)
 	if out == nil {
 		out = []string{}
 	}
 	for _, c := range r.Coverage {
-		if c.Severity == topic.CoverageWarn {
+		if c.Severity == severity.Warn {
 			out = append(out, coverageLine(c))
 		}
 	}
@@ -448,8 +448,8 @@ func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Uni
 // Which checks run and the rank each reports at are fixed in code (ADR-0179).
 func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
 	return topic.CoveragePolicy{
-		Coverage:         topic.CoverageError,
-		Fanout:           topic.CoverageWarn,
+		Coverage:         true,
+		Fanout:           true,
 		MaxTopicsPerPath: cs.EffectiveMaxTopicsPerPath(),
 	}
 }
