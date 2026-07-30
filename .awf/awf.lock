@@ -445,8 +445,8 @@
     "docs/glossary.md": {
       "templateId": "docs/glossary.md.tmpl",
       "templateHash": "sha256:c3fbdf37282efd67e147416cd72900eec9cf7c93b24e8e74a465d67b79051da2",
-      "configHash": "sha256:4385867886ab543e5cb32573a992df864ffb548e42b2384db4c0b9be16c9d062",
-      "outputHash": "sha256:cedefe19eb222991174b4f5b75b9649d25f98b6ed1033e764780a5acc7120f05"
+      "configHash": "sha256:31c3f22a2fce5008ae31d252042816259ed05d545985f0c9f9358f53969cb643",
+      "outputHash": "sha256:367e3a36f5bf1ba2a612c0a6387e7bcd4acb5f431cdcbb3895295b275a84bf21"
     },
     "docs/maintainable-code-design.md": {
       "templateId": "docs/maintainable-code-design.md.tmpl",

@@ -143,7 +143,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	for _, t := range targets {
 		for _, name := range cfg.Skills {
 			sc, err := cfg.Sidecar("skills", name)
-			if err != nil { // coverage-ignore: the lifecycle entry derives the effective skill set from these same sidecars before reaching declarations, so an unreadable skill sidecar fails there first
+			if err != nil {
 				return nil, err
 			}
 			tid := "skills/" + name + "/SKILL.md.tmpl"

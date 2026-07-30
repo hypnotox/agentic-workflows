@@ -68,6 +68,19 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- Establish `code-design/state-ownership`, the second code-design authority, with four reasoned claims
+  (construction-immutable state, operation-owned derivation, no remembered invalidation, and a single
+  derivation producer) plus one test-backed claim over `internal/project`. The `code-design` commit
+  scope now means "code-design authority and cross-package code structure" rather than dependency
+  composition alone, so the rendered scope tables and the reviewer sidecars change with it. ADR-0180
+
+- Change the rendered Pi subagent extension's preference API: `model-routing.ts` no longer exports
+  `createPreferenceStore`, exports `async loadPreferenceState(deps, registry)` returning an immutable
+  `EffectivePreferenceState` instead, and `resolveChildModel`'s last parameter is that derived state
+  rather than the store. Adopters regenerating `.pi/extensions/awf-subagents/` see the store's
+  `ready`/`reload`/`validateAgainstRegistry`/`state` protocol replaced by one load call; behaviour,
+  including the ENOENT and read-error paths and registry validation, is unchanged. ADR-0180
+
 - Add the `explorer` and `grounding-checker` agents: the child-facing contracts for dispatched
   exploration and grounding-check work, rendered per runtime like the review and implementer agents.
   The explorer body carries the one-information-need rule, the ordered breadth and report-detail

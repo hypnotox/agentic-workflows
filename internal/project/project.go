@@ -241,7 +241,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 			return nil, nil, nil, errors.New("first-adoption initialization requires an absent lock")
 		}
 		initCutoff, initGaps, err = adr.AdoptionBoundary(p.decisionsDir())
-		if err != nil { // coverage-ignore: AdoptionBoundary re-runs the same adr.LoadCorpus over the same directory the entry derivation above already loaded, so its only other error path is the number parse ParseDir has already constrained
+		if err != nil {
 			return nil, nil, nil, fmt.Errorf("seal first-adoption ADR authority: %w", err)
 		}
 	} else {

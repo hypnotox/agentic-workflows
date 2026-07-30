@@ -74,7 +74,7 @@ func descriptorByPlural(kind string) (kindDescriptor, bool) {
 }
 
 // mustDescriptor returns the descriptor for a plural kind known to exist at the
-// call site (static kind literals in RenderAll).
+// call site (static kind literals in renderAllBase).
 func mustDescriptor(kind string) kindDescriptor {
 	d, _ := descriptorByPlural(kind)
 	return d

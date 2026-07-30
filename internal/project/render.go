@@ -552,7 +552,7 @@ func (p *Project) renderAllBase(targetOutputs map[string]targetOutputDeclaration
 		ad = withDefaultData(ad, p.Cat.Docs["agents-doc"].Data)
 		data := p.data(ad, eff)
 		docs, err := p.resolvedDocs()
-		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which RenderAll's docs loop already surfaces earlier
+		if err != nil { // coverage-ignore: resolvedDocs only errors on a docs-sidecar read failure, which renderAllBase's docs loop already surfaces earlier
 			return nil, err
 		}
 		data["docs"] = docs
@@ -673,11 +673,11 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
 	expanded, err := render.ExpandIncludes(string(src), templates.FS)
-	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through RenderAll; its error branches are unit-tested in internal/render
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stripped, err := render.StripAuthoringComments(expanded)
-	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through RenderAll; its error branch is unit-tested in internal/render
+	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	segs := render.ParseSections(stripped)
@@ -694,7 +694,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	assembled, parts := render.Assemble(segs, plan, style)
-	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through RenderAll; its error branch is unit-tested in internal/render
+	if err := render.CheckResidualMarkers(assembled); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branch is unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
@@ -706,7 +706,7 @@ func (p *Project) renderTarget(kind, artifact, tid string, declared []string, sc
 		partVarRefs = append(partVarRefs, plan[name].PartVarRefs...)
 	}
 	content, err := render.Execute(assembled, data, parts, tid)
-	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through RenderAll; its own parse/execute error branches are unit-tested in internal/render
+	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if options != nil && options.encode != nil {

@@ -43,7 +43,7 @@ func (m *claimedModel) claimedDir(dir string) bool {
 }
 
 // buildClaimedModel computes the claimed-path model from config, catalog,
-// and the RenderAll output (whose .awf/-prefixed paths are exactly the
+// and the plan write files (whose .awf/-prefixed paths are exactly the
 // enabled config-tree render units - the model derives from the same code
 // path that writes them, per the ADR's dual-bookkeeping consequence).
 func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (*claimedModel, error) {
@@ -77,7 +77,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 			m.enabled[kind][name] = true
 			m.files[config.DirName+"/"+kind+"/"+name+".yaml"] = true
 			sc, err := p.Cfg.Sidecar(kind, name)
-			if err != nil { // coverage-ignore: RenderAll read this sidecar earlier in the same Check pass
+			if err != nil { // coverage-ignore: the render pass in outputPlan read this sidecar earlier in the same Check
 				return nil, err
 			}
 			// A local: true artifact renders nothing, so its parts are
@@ -97,7 +97,7 @@ func (p *Project) buildClaimedModel(files []RenderedFile, topics topic.Corpus) (
 		m.files[config.DirName+"/"+kind+".yaml"] = true
 		m.singletons[kind] = true
 		sc, err := p.Cfg.Sidecar(kind, "")
-		if err != nil { // coverage-ignore: RenderAll read the singleton sidecars earlier in the same Check pass
+		if err != nil { // coverage-ignore: the render pass in outputPlan read the singleton sidecars earlier in the same Check
 			return nil, err
 		}
 		if sc.Local {

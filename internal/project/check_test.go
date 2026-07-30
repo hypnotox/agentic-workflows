@@ -509,3 +509,64 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 		}
 	}
 }
+
+// A local: true pitfalls sidecar is skipped by the render pass before its
+// data.pitfalls transform runs, but checkPitfalls reads it regardless, so a
+// structurally invalid entry list reaches Check's wiring branch rather than
+// failing earlier in the render.
+func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\n",
+		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: B\n"})
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/pitfalls.yaml"), "local: true\ndata:\n  pitfalls: just a string\n")
+	reopened, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.Check(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected Check to propagate the local pitfalls structural error, got %v", err)
+	}
+}
+
+// AdvisoryNotes and ConfigReferenceModel both forward the operation
+// derivation's fault; a malformed ADR reaches each one's wiring branch.
+func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
+		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
+	if _, err := p.AdvisoryNotes(); err == nil {
+		t.Fatal("expected AdvisoryNotes to surface the malformed ADR, got nil")
+	}
+	if _, err := p.ConfigReferenceModel(); err == nil {
+		t.Fatal("expected ConfigReferenceModel to surface the malformed ADR, got nil")
+	}
+}
+
+// A first adoption whose decisions dir parses but carries two ADRs with the
+// same number fails authority sealing after the entry derivation succeeded.
+func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	for _, name := range []string{"0001-alpha.md", "0001-beta.md"} {
+		testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name),
+			testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
+				testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
+	}
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err == nil ||
+		!strings.Contains(err.Error(), "seal first-adoption ADR authority") {
+		t.Fatalf("expected duplicate ADR identity to fail authority sealing, got %v", err)
+	}
+}

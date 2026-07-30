@@ -608,13 +608,24 @@ called once at each deriving entry (`Check`, `syncReport`, `AdvisoryNotes`, `Con
 effective skill set reaches `data()` (10 call sites), `artifactConfigHash` (2), `renderTarget` (10), and
 `renderKind` (3), which is why `eff` sits before each variadic parameter.
 
-Task 3.5's outcome was better than predicted: five exclusions were deleted with their branches
-(`sweep.go`'s `Topics` derive, `generateIndexMD`'s derive and its call site, `renderAllBase`'s
-`effectiveSkills`, and `checkADRRelatedLinks`' entire error return). Two carried a clause the conversion
-made false and were rewritten. Three new exclusions were required because deriving at operation entry
-pre-empts faults that previously surfaced deeper, and one inherited exclusion was removed because its
-branch became reachable and covered. Moving a derivation earlier relocates every fault it can raise, in
-both directions.
+Task 3.5's outcome, stated as its terminal condition rather than a count, because ADR-0180 item 9's
+condition is a property of the surviving set and an earlier draft of this paragraph miscounted every
+category: after the conversion, `grep -rn "coverage-ignore" internal/project/ | grep -v _test` returns no
+justification that rests on the ADR corpus, the topic corpus, or the effective skill set being shared
+across a pass. Threading deleted several exclusions outright along with the error returns they guarded,
+including `checkADRRelatedLinks`' entire error return. Several survivors named a mechanism the conversion
+falsified and were re-derived. Several are new, because deriving at operation entry PRE-EMPTS faults that
+previously surfaced deeper, and one inherited exclusion was dropped because its branch became reachable.
+
+Terminal implementation review then refuted five of the new or rewritten justifications by execution and
+they were replaced with covering tests rather than better prose: `AdoptionBoundary` has two live error
+paths beyond the ADR parse (duplicate identity, brownfield marker); `checkPitfalls` and `pitfallTagEntries`
+read a `local: true` pitfalls sidecar that the render pass skips before its transform;
+`BuildOutputDeclarations` has two production callers that do not derive first; and the two
+derivation-forwarding branches in `AdvisoryNotes` and `ConfigReferenceModel` asserted "tested elsewhere",
+which is not an unreachability claim. LESSON: moving a derivation earlier relocates every fault it can
+raise, in both directions, and a justification of the form "an earlier pass already did this" must name
+the exact pass and be checked against every caller, not just the one in front of you.
 
 ### Other notes
 

@@ -153,28 +153,43 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 					continue
 				}
 				built := constructedInFunc(pkg.TypesInfo, funcDecl)
-				ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
-					assign, ok := n.(*ast.AssignStmt)
-					if !ok {
-						return true
+				report := func(sel *ast.SelectorExpr, how string) {
+					if !isProjectValue(pkg.TypesInfo, sel.X) {
+						return
 					}
-					for _, lhs := range assign.Lhs {
-						sel, ok := lhs.(*ast.SelectorExpr)
-						if !ok || !isProjectValue(pkg.TypesInfo, sel.X) {
-							continue
+					root := selectorRoot(sel.X)
+					if root == nil {
+						return
+					}
+					if obj := pkg.TypesInfo.ObjectOf(root); obj != nil && built[obj] {
+						return
+					}
+					pos := pkg.Fset.Position(sel.Pos())
+					findings = append(findings, funcDecl.Name.Name+" "+how+" "+
+						root.Name+"."+sel.Sel.Name+" at "+
+						filepath.ToSlash(filepath.Base(pos.Filename))+":"+
+						strconv.Itoa(pos.Line))
+				}
+				ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
+					switch node := n.(type) {
+					case *ast.AssignStmt:
+						for _, lhs := range node.Lhs {
+							if sel, ok := lhs.(*ast.SelectorExpr); ok {
+								report(sel, "writes")
+							}
 						}
-						root := selectorRoot(sel.X)
-						if root == nil {
-							continue
+					case *ast.IncDecStmt:
+						// x.field++ writes the field without an assignment.
+						if sel, ok := node.X.(*ast.SelectorExpr); ok {
+							report(sel, "writes")
 						}
-						if obj := pkg.TypesInfo.ObjectOf(root); obj != nil && built[obj] {
-							continue
+					case *ast.UnaryExpr:
+						// &x.field hands the field out to be written elsewhere.
+						if node.Op == token.AND {
+							if sel, ok := node.X.(*ast.SelectorExpr); ok {
+								report(sel, "takes the address of")
+							}
 						}
-						pos := pkg.Fset.Position(sel.Pos())
-						findings = append(findings, funcDecl.Name.Name+" writes "+
-							root.Name+"."+sel.Sel.Name+" at "+
-							filepath.ToSlash(filepath.Base(pos.Filename))+":"+
-							strconv.Itoa(pos.Line))
 					}
 					return true
 				})
@@ -183,6 +198,50 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 	}
 	sort.Strings(findings)
 	return findings
+}
+
+// derivingEntries collects, per enclosing function name, the production call
+// sites of deriveOperationState. Clause 2 of the claim says the operation that
+// needs the state derives it and threads it, so exactly the deriving entries
+// may call it and nothing nested may re-derive.
+func derivingEntries(pkgs []*packages.Package) map[string]int {
+	callers := map[string]int{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				funcDecl, ok := decl.(*ast.FuncDecl)
+				if !ok || funcDecl.Body == nil {
+					continue
+				}
+				ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
+					call, ok := n.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "deriveOperationState" {
+						callers[funcDecl.Name.Name]++
+					}
+					return true
+				})
+			}
+		}
+	}
+	return callers
+}
+
+// declaredFuncNames lists every production function and method name.
+func declaredFuncNames(pkgs []*packages.Package) map[string]bool {
+	names := map[string]bool{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				if funcDecl, ok := decl.(*ast.FuncDecl); ok {
+					names[funcDecl.Name.Name] = true
+				}
+			}
+		}
+	}
+	return names
 }
 
 // TestProjectDerivedStateOwnership proves that no production function in
@@ -195,9 +254,38 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 // StagedContextRootOptions is a function rather than a method.
 // invariant: code-design/state-ownership:project-derived-state-ownership
 func TestProjectDerivedStateOwnership(t *testing.T) {
-	if findings := projectFieldWriteFindings(loadProjectPackage(t, nil)); len(findings) != 0 {
+	production := loadProjectPackage(t, nil)
+	if findings := projectFieldWriteFindings(production); len(findings) != 0 {
 		t.Errorf("*Project fields are written outside the function that constructs the value:\n\t%s",
 			strings.Join(findings, "\n\t"))
+	}
+
+	// Clause 3: beginInvocation no longer exists. A field-write scan alone
+	// cannot see a per-invocation reset that clears state held anywhere else,
+	// so the claim's own words are asserted directly.
+	if declaredFuncNames(production)["beginInvocation"] {
+		t.Error("beginInvocation is declared again; the claim says it no longer exists")
+	}
+
+	// Clause 2: the operation that needs the state derives it and threads it.
+	// Exactly the deriving entries call deriveOperationState, each once, so a
+	// nested re-derivation is a failure rather than an invisible regression.
+	wantEntries := map[string]bool{
+		"Check": true, "syncReport": true, "AdvisoryNotes": true,
+		"ConfigReferenceModel": true, "OutputPlan": true,
+	}
+	entries := derivingEntries(production)
+	for name, count := range entries {
+		if !wantEntries[name] {
+			t.Errorf("%s derives operation state; only a deriving entry may, everything nested receives", name)
+		} else if count != 1 {
+			t.Errorf("%s derives operation state %d times; a deriving entry derives exactly once", name, count)
+		}
+	}
+	for name := range wantEntries {
+		if entries[name] == 0 {
+			t.Errorf("%s no longer derives operation state at its own entry", name)
+		}
 	}
 
 	// Committed negative case: a method mutating its receiver must be flagged,
@@ -239,5 +327,36 @@ func mutationConstructsLocally(rootDir string) *Project {
 		if strings.HasPrefix(f, "mutationConstructsLocally") {
 			t.Fatalf("a write to a locally constructed value was flagged: %q", f)
 		}
+	}
+
+	// The detector must also see a field handed out by address, which is how a
+	// post-construction write escapes an assignment-only scan.
+	byAddress := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+
+func writeThrough(target *string, value string) { *target = value }
+
+func (p *Project) mutationWritesViaPointer() {
+	writeThrough(&p.Root, "mutated")
+}
+`)})
+	var addressFlagged bool
+	for _, f := range projectFieldWriteFindings(byAddress) {
+		if strings.HasPrefix(f, "mutationWritesViaPointer takes the address of p.Root") {
+			addressFlagged = true
+		}
+	}
+	if !addressFlagged {
+		t.Error("a *Project field handed out by address escaped the detector")
+	}
+
+	// A nested re-derivation is the regression the whole conversion prevents.
+	nested := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+
+func (p *Project) mutationRederivesNested() {
+	_, _, _, _ = p.deriveOperationState()
+}
+`)})
+	if derivingEntries(nested)["mutationRederivesNested"] != 1 {
+		t.Error("a nested deriveOperationState call escaped the deriving-entry scan")
 	}
 }

@@ -23,15 +23,15 @@ import (
 
 // AdvisoryNotes returns the non-failing render advisories in print order - the
 // ADR-0045 unset-var notes, the ADR-0070 stub notes, then the ADR-0083 part-
-// marker notes - computed from one RenderAll pass plus the domain-doc
+// marker notes - computed from one output-plan render plus the domain-doc
 // generation, which renders outside it.
 func (p *Project) AdvisoryNotes() ([]string, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
-	if err != nil { // coverage-ignore: this forwards the operation derivation's fault unchanged; its own branches are exercised directly at deriveOperationState
+	if err != nil {
 		return nil, err
 	}
 	op, err := p.outputPlan(corpus, topics, eff)
-	if err != nil { // coverage-ignore: AdvisoryNotes callers exercise render failures through RenderAll directly
+	if err != nil { // coverage-ignore: outputPlan renders every producer this operation reads, so a render fault fails at the call above rather than here
 		return nil, err
 	}
 	files := op.writeFiles()
@@ -221,7 +221,7 @@ func markerNotes(files []RenderedFile) []string {
 }
 
 // unusedVarDrift reports each non-empty vars: key referenced by no rendered
-// artifact - neither a .vars.X reference in any assembled source (RenderAll
+// artifact - neither a .vars.X reference in any assembled source (the render pass
 // output and the generated domain docs, passed concatenated) nor a
 // gateCmd/checkCmd part placeholder (ADR-0086 Decision 3). Empty values are
 // exempt: they are the ADR-0022 seeded open-to-do state, which the unset-var
@@ -281,7 +281,7 @@ func (p *Project) unusedDataDrift(files []RenderedFile) ([]manifest.Drift, error
 	var drift []manifest.Drift
 	check := func(kind, name, sidecarRel string) error {
 		sc, err := p.Cfg.Sidecar(kind, name)
-		if err != nil { // coverage-ignore: this sidecar was already read by RenderAll (or validation) in the same Check pass
+		if err != nil { // coverage-ignore: this sidecar was already read by the render pass in outputPlan (or by validation) in the same Check
 			return err
 		}
 		if len(sc.Data) == 0 {
@@ -424,7 +424,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	})
 	// Closed-tree sweep: orphans, strays, backups (ADR-0086 Decision 1).
 	od, err := p.sweepConfigTree(files, topics)
-	if err != nil { // coverage-ignore: the sweep errors only on faults RenderAll above would have surfaced first (see its coverage-ignores)
+	if err != nil { // coverage-ignore: the sweep errors only on faults the outputPlan render above would have surfaced first (see its coverage-ignores)
 		return nil, err
 	}
 	drift = append(drift, od...)
@@ -433,7 +433,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	// do not regenerate a second, duplicate node set in Check.
 	drift = append(drift, p.unusedVarDrift(files)...)
 	ud, err := p.unusedDataDrift(files)
-	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars RenderAll already read
+	if err != nil { // coverage-ignore: unusedDataDrift re-reads sidecars the render pass in outputPlan already read
 		return nil, err
 	}
 	drift = append(drift, ud...)
@@ -447,12 +447,12 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	}
 	drift = append(drift, planDrift...)
 	pitfallDrift, err := p.checkPitfalls(corpus)
-	if err != nil { // coverage-ignore: checkPitfalls now fails only on the pitfalls sidecar, which the render pass above reads through its data.pitfalls transform and fails on first, so this wiring branch is unreachable
+	if err != nil {
 		return nil, err
 	}
 	drift = append(drift, pitfallDrift...)
 	tagDrift, err := p.checkTagVocabulary(corpus)
-	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, whose sidecar the render pass above reads and fails on first
+	if err != nil { // coverage-ignore: checkTagVocabulary now fails only through pitfallTagEntries, which reads the same data.pitfalls that checkPitfalls above already read and failed on
 		return nil, err
 	}
 	drift = append(drift, tagDrift...)
