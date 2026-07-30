@@ -101,9 +101,11 @@ chore(tooling): merge integrated main into the git-seam branch
   non-zero exit into `*CommandError`. The deadline hard-error is NOT added in this
   phase: it activates in Task 3.4 together with the nine feed conversions it gates
   (two of those feeds swallow errors into a silent resident-root fallback, so
-  enforcement and feed conversion must land in one transaction). A probe helper wraps
-  run for exit-code-1-as-answer: exit 0 -> `(true, nil)`, exit 1 -> `(false, nil)`,
-  otherwise `(false, *CommandError)`. The existing injection seam `nativeGitRunner`
+  enforcement and feed conversion must land in one transaction). The
+  exit-code-1-as-answer probe helper does NOT land here: the dead-code gate rejects it
+  with no consumer, and its first consumers (branch existence, ancestor) are Phase 5
+  scope - it lands in Task 5.1 with its three-outcome test. The existing injection
+  seam `nativeGitRunner`
   (`controlroot.go`) is superseded: `resolveControlRoots`, `runGitPathWith`, and
   `runGitTextWith` rebind to the new runner type, and no second runner abstraction
   survives the phase.
@@ -292,7 +294,10 @@ refactor(code-design): commit-range walk behind the seam
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
-- [ ] **Task 5.1: Seam gains the lifecycle and effort operations.** `Repo` methods with
+- [ ] **Task 5.1: Seam gains the lifecycle and effort operations.** The
+  exit-code-1-as-answer probe helper lands here with its first consumers (exit 0 ->
+  `(true, nil)`, exit 1 -> `(false, nil)`, otherwise `(false, *CommandError)`) plus its
+  three-outcome test in the runner suite. `Repo` methods with
   bodies moved from `internal/worktree/git.go` and `internal/effort/service.go`:
   `WorktreeAdd(ctx, path, branch, base)`, `WorktreeRemove(ctx, path)`,
   `WorktreeList(ctx)`, `Ancestor(ctx, base, head) (bool, error)`,
@@ -484,3 +489,11 @@ refactor(code-design): apply single-home and git-access authority
   lifecycle.
 - The severity chain and this branch both touched `tooling/audit-and-snapshots`;
   Phase 1's merge is where that reconciles.
+- Implementation-surfaced (Phase 2): the probe helper deferred to Task 5.1 (dead-code
+  gate, no consumer before Phase 5); `resolveControlRoots` folded into
+  `ResolveControlRoots` (the unexported wrapper lost its injection purpose once the
+  runner is constructed from the validated root inside the function), with its fake-
+  runner test converted to the PATH-script pattern its neighbours use (now skips on
+  Windows); three pre-existing coverage escapes found claiming unreachability on
+  covered blocks were removed; ladder escapes 39 to 21, all 21 empirically confirmed
+  uncovered.
