@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [0186]
-status: Proposed
+status: Implemented
 ---
 # Plan: ADR content amendable until terminal
 

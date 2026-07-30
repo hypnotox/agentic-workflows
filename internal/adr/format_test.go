@@ -336,6 +336,7 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 // the preceding stamp or establishes the first, and the latest stamp must equal
 // the computed content digest (ADR-0186).
 // invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+// invariant: adr-system/adr-lifecycle:adr-amendable-until-terminal
 func TestParseV2StampChain(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`"
 	wide := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
