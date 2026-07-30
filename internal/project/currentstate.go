@@ -194,9 +194,15 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	// A merge integrates a branch whose commits were each validated as they were
 	// authored, so the pair carries several steps at once and takes the aggregate
 	// contract (ADR-0182). Provenance decides this, not the shape of the diff.
+	// A checkout whose control root cannot be safely resolved, a symlinked .git
+	// being the reachable case, is treated as not merging rather than failing the
+	// check. go-git's index read follows the symlink and succeeds, so propagating
+	// the refusal here would break a staged check that worked before merge
+	// detection existed. Falling back selects the stricter authored-commit
+	// contract, which can refuse a legitimate merge but can never wrongly accept.
 	merging, err := git.MergeInProgress(p.Root)
-	if err != nil { // coverage-ignore: IndexTree above already resolved this root's repository, so the checkout walk cannot fail here
-		return CurrentStateReport{}, err
+	if err != nil {
+		merging = false
 	}
 	mode := currentstate.AuthoredCommit
 	if merging {

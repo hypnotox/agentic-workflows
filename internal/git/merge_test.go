@@ -102,3 +102,22 @@ func TestMergeInProgressMalformedPointer(t *testing.T) {
 		t.Fatal("a malformed .git pointer must surface, not be masked by walking upward")
 	}
 }
+
+// A symlinked .git is refused by the control-root safety rules while go-git's
+// index read follows it, so the error must stay visible here and be degraded by
+// the caller rather than silently swallowed in the helper.
+func TestMergeInProgressSymlinkedDotGitRefuses(t *testing.T) {
+	root := t.TempDir()
+	gitdir := filepath.Join(root, "realgit")
+	testsupport.WriteFile(t, filepath.Join(gitdir, "HEAD"), "ref: refs/heads/main\n")
+	checkout := filepath.Join(root, "checkout")
+	if err := os.MkdirAll(checkout, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(gitdir, filepath.Join(checkout, ".git")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := git.MergeInProgress(checkout); err == nil {
+		t.Fatal("a symlinked .git must surface the control-root refusal")
+	}
+}

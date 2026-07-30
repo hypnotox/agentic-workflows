@@ -70,6 +70,20 @@ func TestMergeAggregateFoldsClaimChains(t *testing.T) {
 		}
 	})
 
+	t.Run("an authored commit still refuses a two-operation chain", func(t *testing.T) {
+		a := v2rec("0141", "Implemented", []adr.Operation{op(adr.OpAdd, "d/t:c")},
+			v2status("Proposed"), v2status("Implementing"), v2batch(2, op(adr.OpAdd, "d/t:c")), v2status("Implemented"))
+		b := v2rec("0142", "Implemented", []adr.Operation{op(adr.OpUpdate, "d/t:c")},
+			v2status("Proposed"), v2status("Implementing"), v2batch(3, op(adr.OpUpdate, "d/t:c")), v2status("Implemented"))
+		got := messages(currentstate.CheckPair(
+			uni([]adr.ADR{base}, baseClaim),
+			uni([]adr.ADR{base, a, b}, baseClaim, prosed(claim("d/t:c", "0141", "0142"), "revised")),
+			currentstate.AuthoredCommit))
+		if !strings.Contains(got, "target of more than one operation") {
+			t.Fatalf("one operation per claim must still hold for an authored commit:\n%s", got)
+		}
+	})
+
 	t.Run("update then remove is a net remove", func(t *testing.T) {
 		// The claim exists before and is gone after, so the chain's net effect is
 		// the remove. baseClaim must not survive into the after universe here.
@@ -210,5 +224,27 @@ func TestMergeAggregateKeepsSequenceContiguity(t *testing.T) {
 		currentstate.MergeAggregate))
 	if !strings.Contains(got, "expected next sequence 2") {
 		t.Fatalf("a merge must still require contiguous sequences:\n%s", got)
+	}
+}
+
+// TestMergeAggregateNetNoopMustLeaveTheClaimAbsent covers the fold's one
+// explicitly-checked net effect: a chain that both adds and removes a claim must
+// leave it absent on both sides, reported in the chain's own terms rather than as
+// an unmatched mutation that would deny the operations exist.
+// invariant: invariants/current-state-authority:merge-transition-ordered-aggregate
+func TestMergeAggregateNetNoopMustLeaveTheClaimAbsent(t *testing.T) {
+	base := rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:base"))
+	a := v2rec("0141", "Implemented", []adr.Operation{op(adr.OpAdd, "d/t:c")},
+		v2status("Proposed"), v2status("Implementing"), v2batch(2, op(adr.OpAdd, "d/t:c")), v2status("Implemented"))
+	b := v2rec("0142", "Implemented", []adr.Operation{op(adr.OpRemove, "d/t:c")},
+		v2status("Proposed"), v2status("Implementing"), v2batch(3, op(adr.OpRemove, "d/t:c")), v2status("Implemented"))
+
+	got := messages(currentstate.CheckPair(
+		uni([]adr.ADR{base}, claim("d/t:base", "0137")),
+		// The claim survives into the after universe, contradicting the net no-op.
+		uni([]adr.ADR{base, a, b}, claim("d/t:base", "0137"), claim("d/t:c", "0141")),
+		currentstate.MergeAggregate))
+	if !strings.Contains(got, "added and removed within this transition") {
+		t.Fatalf("a surviving net-noop claim must be reported in the chain's terms:\n%s", got)
 	}
 }

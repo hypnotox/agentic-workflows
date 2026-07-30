@@ -115,11 +115,6 @@ func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
 
 // pairOp is one operation an ADR reaching Implemented across the pair declares
 // over a claim, tagged with the implementing ADR number.
-// opNetNoop is the net effect of a chain that both adds and removes a claim
-// within one aggregate: the claim must be absent on both sides. It is internal
-// to the fold and never appears in an ADR.
-const opNetNoop adr.OpVerb = "net-noop"
-
 type pairOp struct {
 	verb adr.OpVerb
 	adr  string
@@ -136,6 +131,12 @@ type pairOp struct {
 // operation are both surfaced.
 func checkMutations(before, after Universe, mode TransitionMode) []Finding {
 	ops, dups, batchFindings := pairOps(before.ADRs, after.ADRs, mode)
+	rejected := map[string]bool{}
+	for _, f := range batchFindings {
+		if id, ok := chainRejectID(f.Message); ok {
+			rejected[id] = true
+		}
+	}
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
 
@@ -158,12 +159,27 @@ func checkMutations(before, after Universe, mode TransitionMode) []Finding {
 			}
 		case hasOp && op.verb == adr.OpUpdate:
 			findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter, op.updaters...)...)
+		case hasOp && op.verb == opNetNoop:
+			// The chain both added and removed the claim, so the pair must show
+			// it absent on both sides rather than reporting it as an unmatched
+			// mutation, whose add/remove wording would deny the operations exist.
+			if hasBefore || hasAfter {
+				findings = append(findings, Finding{Error, fmt.Sprintf("claim %s is added and removed within this transition, so it must be absent on both sides", id)})
+			}
+		case rejected[id]:
+			// Its chain already produced a diagnosis; a second, contradictory
+			// unmatched-mutation finding would only obscure it.
 		default:
 			findings = append(findings, checkUnmatchedMutation(after.ADRs, id, bcl, acl, hasBefore, hasAfter)...)
 		}
 	}
 	return findings
 }
+
+// opNetNoop is the net effect of a chain that both adds and removes a claim
+// within one aggregate: the claim must be absent on both sides. It is internal
+// to the fold and never appears in an ADR.
+const opNetNoop adr.OpVerb = "net-noop"
 
 type appendedBatch struct {
 	adr      string
@@ -272,6 +288,17 @@ func historyTransitionValid(before, after adr.ADR, mode TransitionMode) bool {
 	return adr.HistoryTransitionValid(before, after)
 }
 
+// chainRejectID recovers the claim ID from a fold rejection so checkMutations can
+// suppress the contradictory unmatched-mutation classification for it.
+func chainRejectID(message string) (string, bool) {
+	const prefix = "claim "
+	const marker = " has an illegal operation chain"
+	if !strings.HasPrefix(message, prefix) || !strings.Contains(message, marker) {
+		return "", false
+	}
+	return message[len(prefix):strings.Index(message, marker)], true
+}
+
 // foldChain reduces a claim's ordered operation chain to the net effect the pair
 // must show, or names why the chain is illegal. Taken in sequence order a legal
 // chain admits at most one add, which must be first, at most one remove, which
@@ -355,8 +382,6 @@ func checkUnmatchedMutation(records []adr.ADR, id string, before, after topic.Cl
 	return nil
 }
 
-// revisedByExtension reports whether after.RevisedBy is before.RevisedBy with
-// exactly the updating ADR appended, returning the reason it is not otherwise.
 // revisedByExtension validates that Revised-by grew by exactly the updating ADRs
 // with the prior list preserved as an exact prefix. A folded aggregate chain
 // carries several updaters in sequence order; an authored commit carries one, and
