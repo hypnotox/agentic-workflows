@@ -98,26 +98,18 @@ only the final staged state must be green.
 
 - [ ] **Task 2.1: Drop the sequence from the event grammar (`internal/adr/history.go`).**
   - `appliedHeadRe` (line 40) becomes
-    `^- (\d{4}-\d{2}-\d{2}): Applied; (?:state-sequence: [1-9][0-9]*; )?operations: (.+)$`: the
+    `^- (\d{4}-\d{2}-\d{2}): Applied; (state-sequence: [1-9][0-9]*; )?operations: (.+)$`: the
     retired segment is tolerated and discarded (ADR-0189 item 1), so a pre-migration corpus still
-    loads; the `parseHistory` Applied branch (lines 69-80) loses its `strconv.Atoi`, and
-    operation text moves to capture group 2.
+    loads; the `parseHistory` Applied branch (lines 69-80) loses its `strconv.Atoi`, sets
+    `LegacySequence: m[2] != ""`, and reads operation text from capture group 3 as today.
   - Replace `Sequence int` and `HasSequence bool` on `HistoryEvent` (lines 22-31) with one flag,
     `LegacySequence bool`, set true whenever a discarded segment was present (Applied head or
     tail); it carries no value and exists only so the check layer can report the retired segment.
   - In `parseHistoryTail` (lines 147-181), the `state-sequence: ` case (164-173) keeps its shape
     validation but stores nothing except `LegacySequence = true`; the `seenSeq` duplicate
     bookkeeping stays as-is so a duplicated segment still errors.
-  - Field-read closure so the package compiles: every remaining `Sequence`/`HasSequence` read is
-    dispositioned here. Delete the two mixed-mode guards as vacuous
-    (`internal/adr/application.go:46-52`, the `mixes explicit Applied events with implicit
-    terminal sequencing` error, and `internal/adr/format.go:402-405`, its V2 twin); drop the
-    `x.Sequence`/`x.HasSequence` comparisons from `historiesEqual` (`format.go` around line 182);
-    drop only the `HasSequence` conjunct, keeping the rationale and digest halves, from the
-    first-entry Proposed-scaffold checks (`format.go:314` and `:342`) and from the
-    accepted/implementing status-entry checks (`format.go:448` and `:474`). Confirm closure with
-    `grep -n "HasSequence\|\.Sequence" internal/adr/*.go` (excluding tests) returning no
-    production hit.
+  - The remaining `Sequence`/`HasSequence` reads in `internal/adr` are dispositioned in task 2.4;
+    this task only removes the fields and the parser writes to them.
 - [ ] **Task 2.2: Sequence-free batches (`internal/adr/application.go`).** Delete `Sequence` from
   `ApplicationBatch` (lines 10-14) and from `AppliedOperation` (lines 17-20). In
   `ApplicationBatches()` (30-68): explicit batches keep their `HistoryApplied` event order; the
@@ -135,11 +127,26 @@ only the final staged state must be green.
   where `numOf` is `strconv.Atoi` ignoring the error (numbers are validated four-digit at parse);
   records from one ADR keep event order via the stable sort. Update the `Raw` doc comment
   (183-193): three enumerated consumers, naming the new migration.
-- [ ] **Task 2.4: Drop the six sequence-presence validators (`internal/adr/format.go`).** In
-  `validateV2History` delete the implicit-terminal requirements at lines 420 and 423; in
-  `validateV2StatusEntry` delete line 457; in `validateHistoryEntry` (V1) delete lines 482, 485,
-  and 489. V1 and V2 events alike carry no sequence after the migration, so presence is no longer
-  status-dependent; absence needs no check because the parser no longer produces the field.
+- [ ] **Task 2.4: Field-read closure in `internal/adr` (`format.go`, `application.go`).** Every
+  remaining `Sequence`/`HasSequence` read is dispositioned here; each deletion removes the full
+  enclosing if-statement, never just its return line, so braces stay balanced and no condition
+  references a deleted field:
+  - Delete the two mixed-mode guards as vacuous: `internal/adr/application.go:46-52` (the
+    `mixes explicit Applied events with implicit terminal sequencing` error) and its V2 twin
+    inside `validateV2History`, `format.go:403-405` only, keeping the outer
+    `if event.Status == statusImplemented && explicit {` at 402 and the still-needed check at
+    406-409.
+  - Delete the whole if-statements around the six presence validators: in `validateV2History`
+    the implicit-terminal requirements whose returns sit at lines 420 and 423; in
+    `validateV2StatusEntry` the one at 457; in `validateHistoryEntry` (V1) the three at 482, 485,
+    and 489. Presence is no longer status-dependent.
+  - Drop the `x.Sequence`/`x.HasSequence` comparisons from `historiesEqual` (`format.go` around
+    line 182); drop only the `HasSequence` conjunct, keeping the rationale and digest halves,
+    from the first-entry Proposed-scaffold checks (`format.go:314` and `:342`) and from the
+    accepted/implementing status-entry checks (`format.go:448` and `:474`).
+  - Closure check, reachable here: `grep -n "HasSequence\|\.Sequence" internal/adr/*.go`
+    (excluding `_test.go`) returns no production hit (`LegacySequence` does not match either
+    pattern).
 - [ ] **Task 2.5: Static checks: ADR-number order and the absorbing remove
   (`internal/currentstate/check.go`).**
   - Delete `checkSequences` (106-135) and its call at line 48. In its place add
@@ -174,9 +181,10 @@ only the final staged state must be green.
   (`internal/currentstate/transition.go`).**
   - `appendedBatch` (178-182): replace `sequence int` with `adrNum int` and `batchIdx int`. In
     `pairOps` (184-278): delete the `maxBefore` scan (190-204) and the expected-next validation
-    (233-237) with its finding; the cross-ADR batch sort (232) becomes `(adrNum, batchIdx)`
-    ascending; chain building (241-250) follows that order. The `AuthoredCommit` one-new-batch cap
-    and duplicate-target rejection are unchanged.
+    loop with its finding (233-238, the closing brace of the loop opened at 233 included); the
+    cross-ADR batch sort (232) becomes `(adrNum, batchIdx)` ascending; chain building (241-250)
+    follows that order. The `AuthoredCommit` one-new-batch cap and duplicate-target rejection are
+    unchanged.
   - `foldChain` (297-330): after a remove, further updates are legal and classified dominated
     (they join no `updaters` list and do not alter net effect); an add after a remove stays
     illegal. When the fold sees the remove it captures that step's ADR and returns it for the
@@ -241,10 +249,12 @@ only the final staged state must be green.
   stage `examples/sundial/.awf/awf.lock` and, if the upgrade or the later render changes
   `examples/sundial/.awf/bootstrap.sh` or other sundial files, stage those too as `git status`
   reports them. Post-check, reachable at this position:
-  `git grep -n "state-sequence" -- 'docs/decisions/[0-9]*.md' 'examples/sundial/docs/decisions'`
+  `git grep -n "state-sequence" -- 'docs/decisions/[0-9]*.md' 'examples/sundial/docs/decisions/[0-9]*.md'`
   returns no line starting with a status-history event (no hit whose matched line begins
   `- <date>:`); the surviving hits are ADR Decision and Context prose (0135, 0143, 0182, 0183,
-  0189 bodies) and INDEX.md's permanent hit inside ADR-0189's own filename.
+  0189 bodies). The rendered decisions README and template (root and sundial) and INDEX.md's
+  permanent hit inside ADR-0189's own filename are out of this check's pathspec and are covered
+  by task 2.10's render and the Verification section.
 - [ ] **Task 2.10: Documentation-source sweep.** Edit the sources, never rendered outputs:
   - `templates/skills/adr-lifecycle/SKILL.md.tmpl:53`: grammar becomes
     `- YYYY-MM-DD: Applied; operations: <operation-list>`; delete
