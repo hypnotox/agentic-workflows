@@ -170,6 +170,7 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Divergent effort-integration guidance now derives the project gate command from `vars.gateCmd` and uses generic project-gate prose when that value is unavailable.
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.
 - Managed effort worktrees now support current-user-owned checkouts beneath system-owned filesystem ancestors while retaining ancestor symlink, resident ownership, and repository-identity protections.
 
