@@ -51,7 +51,8 @@ obligated docs, and flips both ADRs and this plan.
   carries its two selectors from the proposal commit; no change owed),
   `.awf/topics/parts/tooling/{git-access,audit-and-snapshots}/current-state.md`,
   `.awf/topics/parts/code-design/single-home/current-state.md`,
-  `internal/git/parserange_test.go`, `docs/pitfalls.md` sources, `docs/decisions/0181-*.md`,
+  `internal/git/parserange_test.go`, `docs/pitfalls.md` sources, `changelog/CHANGELOG.md`,
+  `docs/decisions/0181-*.md`,
   `docs/decisions/0186-*.md`, this plan, and every rendered output of the above.
 - **Deleted:** `internal/worktree/git.go`, `internal/audit/git.go`,
   `internal/git/git_test.go`'s `TestWorktreeStatusInjectsGlobalExcludes` (function, not file).
@@ -131,9 +132,9 @@ chore(tooling): merge integrated main into the git-seam branch
   `internal/git`: runner suite proving (a) a polluted environment (`GIT_DIR`,
   `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_CONFIG_GLOBAL` set via `t.Setenv` to hostile
   values) does not affect an isolated invocation; (b) a failing invocation's error
-  `errors.As`-matches `*CommandError` and carries stderr; (c) the probe helper's three
-  outcomes. (The deadline-refusal test moves to Task 3.4 with the enforcement it
-  proves.) Topology suite pins
+  `errors.As`-matches `*CommandError` and carries stderr. (The deadline-refusal test
+  moves to Task 3.4 with the enforcement it proves; the probe helper's three-outcome
+  test moved to Task 5.1 with the helper.) Topology suite pins
   `ResolveControlRoots`/`ListWorktreeRegistrations` semantics on fixture repos with
   registered worktrees (use the existing native fixtures until Phase 6 converts them).
   These suites are serial (`t.Setenv`).
@@ -148,6 +149,18 @@ refactor(code-design): one isolated native git runner
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
+- [ ] **Task 3.0: Real-git ignore semantics for isolated native status (user decision,
+  Phase 2 review).** The isolated environment strips the user/system git config, which
+  narrowed the cleanliness oracle's ignore universe (a Phase 2 regression the review
+  caught empirically). Restore real-git semantics: before building the isolated
+  environment, resolve the effective `core.excludesFile` with an ambient-environment
+  `git config --get core.excludesFile` read (user and system scopes), and when set,
+  pass `-c core.excludesfile=<resolved>` on native status invocations, keeping every
+  other isolation property (credential, prompt, repo-selection). Pin the behaviour in
+  the runner/status tests now and again in the Task 3.5 suite with the
+  global-gitignore pitfall as the named regression case; the pitfalls prepend sentence
+  ("Git itself owns repository, global, and system ignore semantics") thereby stays
+  true and needs no rewrite.
 - [ ] **Task 3.1: `internal/git/handle.go`.** `func Open(root string) (*Repo, error)`
   absorbs the tolerant `worktreeConfig` open (current `OpenRepo` body) and validates the
   root once; `type Repo` holds the root, the opened go-git repository (unexported), and
@@ -198,7 +211,13 @@ refactor(code-design): one isolated native git runner
 - [ ] **Task 3.4: The open/deadline path and resident-root single home.** Activate the
   runner's deadline hard-error here (before spawning, when `ctx.Deadline()` is absent,
   with a message naming the missing deadline), together with its refusal test in the
-  runner suite - enforcement and the feed conversions below are one transaction. Every
+  runner suite - enforcement and the feed conversions below are one transaction. The
+  same transaction converts every TEST feed that reaches the runner: add a shared
+  deadlined-context test helper and adopt it at the `t.Context()` and
+  `context.Background()` test call sites that reach git across `internal/git`,
+  `internal/audit`, `internal/project`, `internal/migrate`, and `cmd/awf` (enumerate
+  by grep at execution time; the enforcement turns every missed one red, so the gate
+  is the completeness check). Every
   `cmd/awf` handler that reaches git derives
   `ctx, cancel := context.WithTimeout(..., gitCommandTimeout)`
   at its boundary (the constant exists from Task 2.2). `project.Open` and `Loader.Open`
@@ -444,7 +463,10 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `.awf/docs/parts/architecture/components.md` (the `internal/worktree` bullet);
   `.awf/docs/parts/architecture/dependencies.md` (the go-git note);
   `.awf/docs/parts/testing/tiers.md` and `.awf/docs/parts/testing/layout.md` (the
-  contract-suite category and the serial-by-construction exception).
+  contract-suite category and the serial-by-construction exception). Also add the
+  `changelog/CHANGELOG.md` `[Unreleased]` entry covering the adopter-visible changes:
+  the isolated cleanliness-oracle semantics, the git deadline ceiling and its refusal
+  failure mode, and the `CommandError` error-shape change.
 - [ ] **Task 7.5: Flip and freeze.** Apply the direct Proposed-to-Implemented transition
   to both ADRs per the `awf-adr-lifecycle` skill: each ADR appends one batch (ADR-0181's
   two adds; the git-seam ADR's ten operations), the two batches taking the next two
@@ -497,3 +519,9 @@ refactor(code-design): apply single-home and git-access authority
   Windows); three pre-existing coverage escapes found claiming unreachability on
   covered blocks were removed; ladder escapes 39 to 21, all 21 empirically confirmed
   uncovered.
+- Phase 2 review settlement: mid-run context expiry now preserves its context cause
+  through `errors.Join` inside `CommandError`; two more "requires an OS race" escapes
+  proved deterministically reachable and covered (symlinked registered worktree;
+  bare record from a linked checkout); ctx-first reorder on the two runner helpers;
+  comment corrections. User decision: the isolated oracle keeps real-git ignore
+  semantics (Task 3.0).
