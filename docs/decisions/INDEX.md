@@ -191,3 +191,4 @@
 - [ADR-0184: Preserve the currentState block and correct three severity claim scopes](0184-preserve-the-current-state-block-and-correct-three-severity-claim-scopes.md) (Implemented)
 - [ADR-0185: Severity-key removal preserves values, not bytes](0185-severity-key-removal-preserves-values-not-bytes.md) (Implemented)
 - [ADR-0186: Effort memory as consensus and observation channel](0186-effort-memory-as-consensus-and-observation-channel.md) (Implemented)
+- [ADR-0188: ADR content amendable until Implemented via Amended events](0188-adr-content-amendable-until-implemented-via-amended-events.md) (Implemented)

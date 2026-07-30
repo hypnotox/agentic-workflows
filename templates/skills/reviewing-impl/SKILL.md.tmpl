@@ -12,7 +12,7 @@ Invoked as the independent review step of the implementation phase. It validates
 <!-- awf:section when-fires -->
 Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `{{ .layout.adrDir }}/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+**Skip independent review when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `{{ .layout.adrDir }}/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift. A docs-only skip still continues to the terminal hand-off and any deferred flip transaction.
 <!-- awf:end -->
 
 ## Procedure
@@ -26,7 +26,7 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section docs-only-check -->
-2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `{{ .layout.adrDir }}/` changes always proceed. If every changed file is docs-only (outside `{{ .layout.adrDir }}/`), surface a `Skipped (docs-only)` note and return.
+2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `{{ .layout.adrDir }}/` changes always proceed. If every changed file is docs-only (outside `{{ .layout.adrDir }}/`), surface a `Skipped (docs-only)` note and continue at step 8, treating the docs-only check as the applicable terminal review with zero findings.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
@@ -70,10 +70,12 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 
 <!-- awf:section hand-off -->
 8. **Route settled terminal review through optional worktree integration.** Repository sources and current-state documentation remain authoritative over checkpoint prose; standalone memory is forbidden.
-   - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, invoke `{{ .prefix }}-retrospective`.
+   - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, skip integration and continue to the deferred flip below.
    - If managed topology exists, change to the intended clean target checkout and run `awf effort integrate <slug>`. Integration never implies review, removal, retrospective, or finish.
    - An already-integrated or fast-forward result continues after confirming the settled review still covers the effort tip. A divergent merge runs `awf check --staged`, the project gate, and a merge commit, then invokes this terminal implementation review again over the combined target history. Conflicts remain visible until explicitly resolved or aborted.
-   - Only after the applicable terminal review has zero findings run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent. Then invoke `{{ .prefix }}-retrospective`.
+   - Only after the applicable terminal review has zero findings, land the deferred flip transaction: apply any final V2 batch with exactly its claim mutations and flip the linked ADR(s) and plan to `Implemented` per `{{ .prefix }}-adr-lifecycle`.
+   - If managed topology exists, run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent.
+   - Invoke `{{ .prefix }}-retrospective`.
 
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
@@ -82,6 +84,6 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 
 <!-- awf:section notes -->
 - This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; this skill does not alter lifecycle history.
+- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
 <!-- awf:end -->

@@ -54,7 +54,7 @@ Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memor
 <!-- awf:end -->
 
 <!-- awf:section status-flip -->
-7. **Do not flip the ADR status here.** The ADR stays `Proposed` through the implementation sequence; the flip to `Accepted`/`Implemented` is owned by the implementation step's final commit (`{{ .prefix }}-executing-plans` / `{{ .prefix }}-subagent-driven-development`, or `{{ .prefix }}-adr-lifecycle` for the no-plan direct-implementation case). "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
+7. **Do not flip the ADR status here.** The ADR stays `Proposed` through review. A later implementation step owns any `Accepted` or `Implementing` transition that begins incremental work, while the flip to `Implemented` is owned by the terminal-review flow: after the applicable terminal review settles, `{{ .prefix }}-reviewing-impl` lands the final Applied batch and the status flip immediately before managed-worktree removal and retrospective, with `{{ .prefix }}-adr-lifecycle` supplying the mechanics. "Reviewed to a settled state" means the design is review-converged, not that the status changed. After the review settles (no structural findings, or user decisions resolved), proceed to hand-off.
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-resync -->

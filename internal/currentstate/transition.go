@@ -93,7 +93,7 @@ func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
 			continue
 		}
 		if !adr.FrozenContentEqual(b, a) {
-			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after Proposed", a.Number)})
+			findings = append(findings, Finding{fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after the record froze", a.Number)})
 		}
 		if !historyTransitionValid(b, a, mode) {
 			shape := "Status history must remain equal at the same status or append exactly one entry for a legal transition"

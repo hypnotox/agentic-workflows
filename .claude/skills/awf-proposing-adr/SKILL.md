@@ -78,7 +78,7 @@ Carry the one verified effort slug and exact `.awf/efforts/<slug>/memory.md` pat
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/proposing-adr/notes.md to override -->
-- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `awf-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.
+- The ADR stays `status: Proposed` through review. A later implementation step owns any nonterminal `Accepted` or `Implementing` transition for incremental work; the terminal-review flow owns the direct or final `Implemented` transition. Those transitions use `awf-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.
 - `docs/decisions/INDEX.md` is never hand-edited; it is always regenerated via `./x render`.
 - The `State changes` operations, not any frontmatter relation, are how a later ADR changes what an earlier one established: it updates or removes the affected claim directly.
 - For the full ADR lifecycle, see `docs/workflow.md`.

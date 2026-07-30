@@ -16,6 +16,17 @@ Origin: ADR-0139
 Revised-by: ADR-0143
 Backing: test
 
+### `invariant: adr-amendable-until-terminal`
+
+A current-state-v2 ADR's digest-covered content is amendable while Proposed, Accepted, or
+Implementing and freezes permanently at a terminal status. Post-Accepted amendment is
+recorded as a stamp chain: only an Amended event introduces a new digest, which must differ
+from the preceding stamp; a status event repeats the preceding stamp or establishes the
+first; the latest stamp must equal the computed content digest; and an amendment never
+alters or removes an operation already referenced by an Applied event.
+Origin: ADR-0188
+Backing: test
+
 ### `invariant: adr-new-heading-matches-file`
 
 A file created by awf new adr carries a # ADR-NNNN: <title> heading whose number matches the NNNN prefix of its own filename, and the literal Title placeholder never survives into the written file.
@@ -61,9 +72,9 @@ Backing: test
 
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by the two immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 recognizes Proposed, Accepted, Implementing, Implemented, and Abandoned and accepts only the format-specific status, history-event, digest, and application-cardinality transitions.
+Every governed ADR is routed by the two immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 recognizes Proposed, Accepted, Implementing, Implemented, and Abandoned, recognizes status, Applied, and Amended history events, and accepts only the format-specific status, history-event, digest-chain, and application-cardinality transitions.
 Origin: ADR-0135
-Revised-by: ADR-0143
+Revised-by: ADR-0143, ADR-0188
 Backing: test
 
 ### `invariant: applied-history-events-append-only`

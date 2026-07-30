@@ -1418,8 +1418,11 @@ data:
         transaction" family: prose memory did not prevent it. Land a mid-implementation amendment
         as its own docs(adr) commit, re-dispatch the ADR reviewer over the amended section when
         the change is load-bearing, and only then stage the freeze transaction. A deterministic
-        catch is deferred to the roadmap: an audit rule flagging a frozen-state status flip whose
-        commit also mutates the ADR's digest-covered sections (ADR-0154; 2026-07-23).
+        catch is deferred to the roadmap: an audit rule flagging a direct status flip out of
+        Proposed whose commit also mutates the ADR's digest-covered sections. Since ADR-0188 the
+        amendment window extends to any non-terminal status and each post-Accepted amendment
+        appends its own Amended event, so the reviewer re-dispatch travels with the amendment
+        commit rather than racing a freeze (ADR-0154, ADR-0188; 2026-07-23, 2026-07-30).
     - title: "A consumer of a filtered shared map can depend on the filter's accidents"
       domains: [tooling]
       tags: [verification-discipline, subagent-dispatch]

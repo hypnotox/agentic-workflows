@@ -50,5 +50,6 @@ where the date is the day the plan is written (ISO-8601). Example:
 
 A plan carries its own two-state lifecycle, independent of any linked ADR: it is mutable while
 `status: Proposed` (through review and implementation, where findings are noted as they surface)
-and freezes at `status: Implemented`, flipped in the implementation's final commit. Plans stay in the
-repository permanently as the historical record of how a change rolled out.
+and freezes at `status: Implemented`, flipped in the deferred flip transaction after the applicable
+terminal review settles. Plans stay in the repository permanently as the historical record of how a
+change rolled out.

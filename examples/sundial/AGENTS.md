@@ -33,7 +33,7 @@ and a `main`) so the workflow artifacts around it stay legible.
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
+- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning freezes at a terminal status, every post-Accepted amendment recorded as an Amended history event (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
 - **Clamped latitude.** `almanac.Sun` clamps latitude to [-90, 90] before the day-length model; out-of-range input degrades to the pole, never to a domain error. (ADR-0001)

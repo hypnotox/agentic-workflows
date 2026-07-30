@@ -71,13 +71,13 @@ var Standard = &Catalog{
 			Core: true, Sections: []string{
 				"states", "transitions", "state-changes",
 				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
-				"procedure-regen", "procedure-gate", "commit-templates", "amendment-while-proposed", "notes",
+				"procedure-regen", "procedure-gate", "commit-templates", "amendment-until-terminal", "notes",
 			},
 			Data: map[string]any{
 				"adrStates": []any{
 					map[string]any{"name": "Proposed", "meaning": "ADR is written and under review; content is freely mutable", "mutability": "Freely mutable; body and status may both change"},
-					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet started", "mutability": "Status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
-					map[string]any{"name": "Implementing", "meaning": "Design is frozen; a nonempty strict subset of declared operations is applied", "mutability": "Status and append-only Status history only; Applied events may append while operations remain"},
+					map[string]any{"name": "Accepted", "meaning": "Design is finalised; implementation authorised but not yet started", "mutability": "Status and append-only Status history; the body stays amendable, each amendment appending an Amended event; a schema retrofit may migrate the encoding"},
+					map[string]any{"name": "Implementing", "meaning": "A nonempty strict subset of declared operations is applied", "mutability": "Status and append-only Status history; Applied events append while operations remain, and the body stays amendable via Amended events"},
 					map[string]any{"name": "Implemented", "meaning": "All declared claim operations are applied", "mutability": "Terminal; status and append-only Status history only; the body is frozen; a schema retrofit may migrate the encoding"},
 					map[string]any{"name": "Abandoned", "meaning": "Execution stopped; applied operations remain historical and unapplied operations are canceled", "mutability": "Terminal; status and append-only Status history only; the final entry carries a rationale; the body is frozen"},
 				},

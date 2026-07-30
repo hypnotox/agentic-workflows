@@ -341,11 +341,16 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			return skillPath(root, name)
 		}
 		impl := read(t, pathFor("reviewing-impl"))
+		assertOrderedBody(t, target+"/reviewing-impl docs-only", impl, []string{
+			"Skipped (docs-only)", "continue at step 8", "Route settled terminal review",
+		})
 		assertOrderedBody(t, target+"/reviewing-impl integration", impl, []string{
-			"Route settled terminal review", "If no managed", "awf effort integrate <slug>",
+			"Route settled terminal review", "If no managed", "continue to the deferred flip",
+			"awf effort integrate <slug>",
 			"Integration never implies review, removal, retrospective, or finish",
 			"divergent merge", "awf check --staged", "project gate", "merge commit",
-			"terminal implementation review again", "awf effort worktree remove <slug>", "retrospective",
+			"terminal implementation review again", "deferred flip transaction",
+			"If managed topology exists", "awf effort worktree remove <slug>", "retrospective",
 		})
 		retro := read(t, pathFor("retrospective"))
 		assertOrderedBody(t, target+"/retrospective finish", retro, []string{
