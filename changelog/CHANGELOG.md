@@ -68,6 +68,7 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- Add repository-wide dependency-composition authority and a `code-design` commit scope, preserve reviewer defaults while teaching reviewers to reject speculative capabilities, and introduce the three-dependency `project.Loader` foundation composed by the `runSync` command family. Existing callers retain `project.Open` as a compatibility wrapper; this does not convert other filesystem, process, or package-global seams.
 - Add the `implementer` agent: the child-facing contract for dispatched implementation work, rendered
   per runtime like the review agents. It states the two authority modes (commit-capable phase owner and
   commit-disabled path-confined helper), that the dispatched task is the complete scope, that the agent
