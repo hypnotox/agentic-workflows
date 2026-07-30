@@ -9,7 +9,7 @@
 
 `awf` renders an opinionated agentic-development workflow into your repo: a chain of
 skills that walk an agent from brainstorm through ADR, plan, implementation, review, and
-retrospective; independent review agents that read each artifact with fresh context; a
+retrospective; dispatched agents that read or implement with fresh context, reviewers among them; a
 contract for dispatched implementation work; and the project docs they all rely on. All of it
 is generated from a small `.awf/` config tree
 you commit, rendered into the native layout of every coding-agent runtime you enable, and
@@ -43,9 +43,10 @@ instead of rotting.
   retrospective that promotes recurring findings toward deterministic checks. Task
   skills are opt-in (TDD, bugfix, debugging, a refactor coupling audit, a
   roadmap-graduation pass), except `adr-lifecycle`, which is scaffolded on with the chain.
-- **Agents**, likewise per runtime. Three review agents (`adr-reviewer`, `plan-reviewer`,
+- **Agents**, likewise per runtime. The review agents (`adr-reviewer`, `plan-reviewer`,
   `code-reviewer`) are each dispatched with fresh context, so the author never grades
-  its own work, and are report-only. One `implementer` agent carries the contract for
+  its own work, and are report-only. The `explorer` and `grounding-checker` agents are
+  report-only too. The `implementer` agent carries the contract for
   dispatched implementation work, as either a commit-capable phase owner or a
   commit-disabled path-confined helper. Agents are format-neutral: each runtime gets
   them in its own dialect (frontmatter Markdown for most, a TOML profile for Codex).
@@ -246,7 +247,7 @@ The Pi extension is executable project code loaded behind Pi's project-trust pro
 files are drift-checked; use `awf render` to restore missing or modified copies.
 
 `awf init` enables a curated core by default: twelve core skills (the ten-step workflow chain,
-`adr-lifecycle`, and `exploring`) and four agents. The workflow, documentation, and agent-guide standards sit outside
+`adr-lifecycle`, and `exploring`) and every catalog agent. The workflow, documentation, and agent-guide standards sit outside
 the toggleable catalog and always render. Everything else is opt-in via
 `awf enable <kind> <name>`, and `awf disable` opts back out.
 

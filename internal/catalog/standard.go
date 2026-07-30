@@ -193,6 +193,16 @@ var Standard = &Catalog{
 				},
 			},
 		},
+		"explorer": {
+			Name:        "explorer",
+			Description: "Fresh-context exploration subagent for {{ .prefix }} repository questions, handling one information need under a selected breadth and report detail.\nReturns a grounded report only.",
+			Sections:    []string{"identity", "single-need", "breadth", "report-detail", "grounding-and-outcomes", "report-discipline"},
+		},
+		"grounding-checker": {
+			Name:        "grounding-checker",
+			Description: "Fresh-context grounding-check subagent for {{ .prefix }} designs, testing factual premises, assumptions, altitude, and convention fit against the repository.\nReturns advisory findings only.",
+			Sections:    []string{"identity", "verification-scope", "return-schema"},
+		},
 	},
 	DomainDoc: TargetSpec{Sections: []string{"current-state"}},
 	Docs: map[string]DocEntry{

@@ -44,12 +44,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
    Synthesise, in the subagent's prompt: the problem, the agreed approach, the concrete design decisions, the touched files/packages plus their owning domains and the applicable current-state claims (paste the output of `awf context <touched paths>` rather than reconstructing it), the assumptions made (flag anything asserted from memory rather than verified against code), and the chosen testing approach. Quote key user constraints verbatim.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
-   Ask the subagent specifically to:
-   - Verify the brainstorm's factual premises against the codebase: do the named types/functions/packages exist? does the approach fit the project's architecture as described?
-   - Surface unstated assumptions and edge cases the brainstorm glossed over.
-   - Flag altitude/scope concerns: load-bearing enough for an ADR? complex enough for a plan? too large for one effort?
-   - Check convention fit: does it contradict a current-state claim (a rule or invariant), an Accepted ADR's pending change, or an invariant in `AGENTS.md`?
-   - Return findings as a list of `{kind: open-question | possible-issue, topic, detail, grounding (file:line), confidence: verified | interpreted | unverified}`. `confidence` is load-bearing: `verified` = factual claim mechanically confirmed against source; `interpreted` = reading requires judgment; `unverified` = claim could not be confirmed.
+   The child's rendered contract carries its verification obligations and return schema; the brief supplies only the design to test.
 
    Surface findings to the user: `interpreted`-confidence findings go back into the brainstorm as open questions, not settled facts; `verified` findings can be folded in; `unverified` findings are flagged for user triage.
 

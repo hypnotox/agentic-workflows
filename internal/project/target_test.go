@@ -427,7 +427,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					}
 				}
 			} else {
-				for _, want := range []string{"target-native fresh-context exploration subagent", "task", "breadth", "detail"} {
+				for _, want := range []string{"target-native fresh-context exploration subagent", "`explorer` agent", "task", "breadth", "detail"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("%s exploring skill missing %q", target, want)
 					}
@@ -436,6 +436,10 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					if strings.Contains(exploring, absent) {
 						t.Errorf("%s exploring skill leaks Pi guidance %q", target, absent)
 					}
+				}
+				// The target-native grounding branch names its agent the same way.
+				if brainstorming := skillBody("brainstorming"); !strings.Contains(brainstorming, "`grounding-checker` agent") {
+					t.Errorf("%s brainstorming skill does not name the grounding-checker agent", target)
 				}
 			}
 			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
@@ -452,9 +456,12 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 
 // invariant: rendering/workflow-skill-templates:bounded-exploration-reporting
 func TestBoundedExplorationReporting(t *testing.T) {
-	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: []\ntargets: [pi]\n")
+	files := explorationRenderedByPath(t, "prefix: example\nskills: [exploring]\nagents: [explorer]\ntargets: [pi]\n")
 	guidance := files[".pi/skills/example-exploring/SKILL.md"]
 	prompt := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	explorer := renderAgentGolden(t, "explorer", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+	})
 	contracts := map[string]struct {
 		body  string
 		wants []string
@@ -468,8 +475,12 @@ func TestBoundedExplorationReporting(t *testing.T) {
 			"Ground every material claim with file/line evidence", "Not found within <breadth> boundary: <what was searched>", "successful execution", "one concise next refinement", "broad absence report must name the project search universe and searched surfaces", "Distinguish inconclusive and unverified outcomes from absence",
 			"new fresh-context call to correct the task, change report detail, or widen breadth",
 		}},
-		"Pi fixed prompt": {prompt, []string{
-			"independent information needs concurrently", "refinement of an earlier result stays sequential", "at most ten active exploration children", "queues the rest FIFO with abort-aware removal",
+		"Pi per-call suffix": {prompt, []string{
+			"at most ten active exploration children", "queues the rest FIFO with abort-aware removal",
+			"Selected breadth maximum:", "Selected report detail:",
+		}},
+		"explorer agent": {explorer, []string{
+			"independent information needs concurrently", "refinement of an earlier result stays sequential",
 			"Breadth is ordered targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
 			"adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
 			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
@@ -784,5 +795,30 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	// the loader while leaving the old string in place fails here.
 	if strings.Contains(src, "You are a fresh-context implementation subagent") {
 		t.Error("the literal implement role prose survived the loader cutover")
+	}
+}
+
+// invariant: rendering/pi-workflows:pi-role-contract-loader
+func TestPiRoleContractLoader(t *testing.T) {
+	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
+	for _, want := range []string{
+		"loadExplorer", "loadGroundingChecker",
+		".pi/agents/explorer.md", ".pi/agents/grounding-checker.md",
+		"Enable the explorer agent and run awf render.",
+		"Enable the grounding-checker agent and run awf render.",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("Pi extension missing loader element %q", want)
+		}
+	}
+	// The opening clause of each body as it lived in the old inline prompt, so a
+	// branch left behind fails loudly rather than silently duplicating a contract.
+	for _, banned := range []string{
+		"You are a fresh-context exploration subagent. Read files",
+		"You are a fresh-context grounding-check subagent. Read and run",
+	} {
+		if strings.Contains(body, banned) {
+			t.Errorf("role prose survived inline in the extension: %q", banned)
+		}
 	}
 }

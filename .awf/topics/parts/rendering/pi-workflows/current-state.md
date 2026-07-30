@@ -82,8 +82,9 @@ Backing: test
 
 ### `invariant: pi-implement-role-artifact`
 
-The generated Pi extension builds the implementation child's role prompt by loading the rendered implementer agent from its `.pi/agents/` path, stripping frontmatter, prepending the commit-authority role line, and failing with an actionable enable-and-render repair on a missing file or an empty instruction body; no implementation role prose remains inline in the extension. The before-and-after git snapshot fails a commit-capable implementation call whose HEAD is unchanged, naming the required stopped inventory, and retains the existing commit-forbidden violation, its message, cancellation, cleanup, and bounded-diagnostic reporting.
+The generated Pi extension builds the implementation child's role prompt from the rendered implementer agent at its `.pi/agents/` path, prepending the commit-authority role line for the call's mode. The before-and-after git snapshot fails a commit-capable implementation call whose HEAD is unchanged, naming the required stopped inventory, and retains the existing commit-forbidden violation, its message, cancellation, cleanup, and bounded-diagnostic reporting.
 Origin: ADR-0177
+Revised-by: ADR-0179
 Backing: test
 
 ### `invariant: pi-subagent-progress-bounds`
@@ -102,4 +103,10 @@ Backing: test
 
 In the generated Pi extension, every public subagent tool's collapsed view renders status, recent bounded activity, omission state, and available usage, and its expanded view additionally renders the task, retained activity, the final report, present diagnostics, and available usage from the same structured details without changing execution.
 Origin: ADR-0148
+Backing: test
+
+### `invariant: pi-role-contract-loader`
+
+The generated Pi extension loads every dispatched role's contract from its rendered agent artifact through one shared loader that reads the file, strips frontmatter, prepends the role's per-call authority line, and fails with an actionable enable-and-render repair naming that role on a missing file or an empty instruction body. No dispatched role's prose remains inline in the extension.
+Origin: ADR-0179
 Backing: test

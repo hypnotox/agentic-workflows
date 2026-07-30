@@ -367,6 +367,61 @@ func TestImplementerAgent(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts
+func TestExplorerAgent(t *testing.T) {
+	out := renderAgentGolden(t, "explorer", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+	})
+
+	if !strings.Contains(out, "name: explorer") {
+		t.Errorf("expected 'name: explorer' in output:\n%s", out)
+	}
+	// One phrase per section, so a dropped section fails loudly.
+	for _, want := range []string{
+		"Handle exactly one information need",
+		"refinement of an earlier result stays sequential",
+		"Breadth is ordered targeted < bounded < broad",
+		"paths < summary < analysis",
+		"Ground every material claim with file:line evidence",
+		"Retain no search session or state",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
+		}
+	}
+
+	// The rendered body carries no per-call or runtime-specific text: the
+	// selected breadth and detail and Pi's limiter are per-call suffixes the
+	// extension appends, not contract prose.
+	for _, banned := range []string{"Selected breadth maximum", "at most ten active exploration children"} {
+		if strings.Contains(out, banned) {
+			t.Errorf("per-call or runtime-specific text %q leaked into the rendered body:\n%s", banned, out)
+		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts
+func TestGroundingCheckerAgent(t *testing.T) {
+	out := renderAgentGolden(t, "grounding-checker", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+	})
+
+	if !strings.Contains(out, "name: grounding-checker") {
+		t.Errorf("expected 'name: grounding-checker' in output:\n%s", out)
+	}
+	for _, want := range []string{
+		"do not edit files or commit",
+		"Work only from the brief you were given",
+		"Surface unstated assumptions",
+		"advisory and single-pass",
+		"open-question | possible-issue",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("expected contract phrase %q in output:\n%s", want, out)
+		}
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses
 func TestMaintainableCodeReviewLenses(t *testing.T) {
 	outputs := map[string]string{

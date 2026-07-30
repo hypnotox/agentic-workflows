@@ -4,14 +4,16 @@ Workflow-chain and task-skill template contracts: chain ordering, exploration an
 
 ### `invariant: bounded-exploration-reporting`
 
-The rendered exploration guidance and Pi's fixed prompt define adaptive breadth and grounded reporting, keep refinement sequential, permit independent information needs to run concurrently, and make Pi queue above ten active children in FIFO and abort-aware order.
+The rendered exploration guidance and the rendered explorer agent define adaptive breadth and grounded reporting, keep refinement sequential, and permit independent information needs to run concurrently, while Pi's per-call suffix supplies the selected breadth and report detail and makes Pi queue above ten active children in FIFO and abort-aware order.
 Origin: ADR-0148
+Revised-by: ADR-0179
 Backing: test
 
 ### `invariant: cross-runtime-exploration-dispatch`
 
-The core exploring skill renders for every target with one semantic breadth-and-detail protocol; the Pi target uses its awf-owned subagent_explore tool while non-Pi targets are directed to a generic target-native fresh-context exploration subagent, with no Pi tool name leaking into their output.
+The core exploring skill renders for every target with one semantic breadth-and-detail protocol; the Pi target uses its awf-owned subagent_explore tool while non-Pi targets are directed to the named explorer agent as a generic target-native fresh-context exploration subagent, with no Pi tool name leaking into their output.
 Origin: ADR-0148
+Revised-by: ADR-0179
 Backing: test
 
 ### `invariant: implementer-context-grounding`
@@ -113,4 +115,10 @@ Backing: test
 
 Plan review checks that structural choices and necessary enabling refactors are explicit, ordered, bounded, approved or durably dispositioned when larger, and verifiable; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, and settled-design conformance; ADR review applies the same structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract. All reviewer agents remain report-only.
 Origin: ADR-0168
+Backing: test
+
+### `invariant: explorer-and-grounding-role-contracts`
+
+The rendered explorer body defines its report-only identity, one information need with no bundling or recursive delegation, concurrent independent needs with sequential refinement, breadth ordered targeted < bounded < broad as an adaptive maximum with its project search universe, report detail ordered paths < summary < analysis independent of breadth, file:line grounding, the distinction between not-found, inconclusive, and unverified outcomes with the exact not-found opening, final-report-only output, and statelessness across calls. The rendered grounding-checker body defines its report-only identity, that it works only from its brief and never edits the working memory that brief may name, its verification obligations across factual premises, unstated assumptions, altitude, and convention fit, and a closed finding schema whose confidence field distinguishes verified, interpreted, and unverified. The exploring and brainstorming skills each name their dispatched agent in the branch that dispatches a target-native subagent, and neither rendered body carries per-call or runtime-specific text.
+Origin: ADR-0179
 Backing: test

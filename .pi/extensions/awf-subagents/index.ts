@@ -97,6 +97,8 @@ export const REVIEWER_PATHS = {
   code: ".pi/agents/code-reviewer.md",
 } as const;
 export const IMPLEMENTER_PATH = ".pi/agents/implementer.md";
+export const EXPLORER_PATH = ".pi/agents/explorer.md";
+export const GROUNDING_CHECKER_PATH = ".pi/agents/grounding-checker.md";
 
 const preferenceNotices = new WeakSet<object>();
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review", "subagent_implement"]);
@@ -107,8 +109,6 @@ const MAX_FALLBACK_BYTES = 2 * 1024;
 const TASK_TRUNCATION = "[task truncated]";
 const DISPLAY_TRUNCATION = "[display truncated]";
 type ReviewKind = keyof typeof REVIEWER_PATHS;
-type ExplorationBreadth = "targeted" | "bounded" | "broad";
-type ExplorationDetail = "paths" | "summary" | "analysis";
 interface GitSnapshot { available: boolean; head?: string; status?: string; }
 export type SubagentState = "queued" | "running" | "completed" | "failed" | "aborted";
 export interface ExecutionMetadata extends Record<string, unknown> {
@@ -205,35 +205,6 @@ export function createLimiter(limit: number) {
   };
 }
 
-function rolePrompt(role: "grounding" | "explore", options: { breadth?: ExplorationBreadth; detail?: ExplorationDetail } = {}): string {
-  if (role === "grounding") {
-    return [
-      "You are a fresh-context grounding-check subagent. Read and run evidence-producing commands, but do not edit files or commit.",
-      "Verify the supplied design's factual premises against source and architecture. Surface unstated assumptions and edge cases. Assess whether the effort needs an ADR, a plan, or narrower scope. Check Accepted or Implemented ADR and invariant fit.",
-      "Return findings only as {kind: open-question | possible-issue, topic, detail, grounding, confidence: verified | interpreted | unverified}.",
-      "verified means mechanically confirmed against source; interpreted means the reading requires judgment; unverified means the claim could not be confirmed.",
-    ].join("\n");
-  }
-  // The exploration prose is the trailing unconditional return: the implement
-  // role loads its contract from the rendered agent instead, and a guarded final
-  // branch would leave this function without an ending return.
-  return [
-    "You are a fresh-context exploration subagent. Read files and run evidence-producing commands only. This is report-only: do not edit files or commit.",
-    "Handle exactly one information need. Do not bundle unrelated questions and do not recursively delegate.",
-    "The parent may run independent information needs concurrently as separate calls, but refinement of an earlier result stays sequential. Pi admits at most ten active exploration children and queues the rest FIFO with abort-aware removal.",
-    `Selected breadth maximum: ${options.breadth}`,
-    "Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.",
-    "Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.",
-    "For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.",
-    `Selected report detail: ${options.detail}`,
-    "Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.",
-    "Ground every material claim with file:line evidence.",
-    "Distinguish not-found, inconclusive, and unverified outcomes. Not-found is successful execution and begins exactly: Not found within <breadth> boundary: <what was searched>. A broad absence report must name the project search universe and searched surfaces. A not-found result may suggest one concise next refinement. An inconclusive or unverified result is not an absence claim.",
-    "Return only the relevant final report, never the search narrative or intermediate activity.",
-    "After a not-found, inconclusive, unverified, or insufficient report, the parent may issue a new fresh-context call that corrects the task, changes report detail, or widens breadth. Retain no search session or state.",
-  ].join("\n");
-}
-
 // A dispatched role's contract is a rendered agent artifact rather than a literal
 // string here, so the durable prose is reviewable and drift-checked. Three
 // behaviours are shared by every role that loads one: the missing-file error
@@ -279,6 +250,24 @@ function loadImplementer(deps: ExtensionDependencies, root: string, allowCommits
     noun: "implementer",
     repair: "Enable the implementer agent and run awf render.",
     prepend: `You are the governed implementation subagent. ${authority}`,
+  });
+}
+
+function loadExplorer(deps: ExtensionDependencies, root: string): Promise<string> {
+  return loadAgentContract(deps, root, {
+    relative: EXPLORER_PATH,
+    noun: "explorer",
+    repair: "Enable the explorer agent and run awf render.",
+    prepend: "You are the governed exploration subagent. You are report-only: never edit or commit.",
+  });
+}
+
+function loadGroundingChecker(deps: ExtensionDependencies, root: string): Promise<string> {
+  return loadAgentContract(deps, root, {
+    relative: GROUNDING_CHECKER_PATH,
+    noun: "grounding-checker",
+    repair: "Enable the grounding-checker agent and run awf render.",
+    prepend: "You are the governed grounding-check subagent. You are report-only: never edit or commit.",
   });
 }
 
@@ -726,7 +715,8 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       const selected = await refreshAndResolve(ctx, "grounding", params.model);
       const metadata = executionMetadata(selected, thinkingLevel);
       const queuedAt = now();
-      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, rolePrompt("grounding"), selected.model, metadata, signal, onUpdate, queuedAt), metadata);
+      const contract = await loadGroundingChecker(deps, root);
+      return toolResult("grounding", params.task, await run("grounding", params.task, GROUNDING_TOOLS, contract, selected.model, metadata, signal, onUpdate, queuedAt), metadata);
     },
     ...renderers("grounding"),
   });
@@ -754,7 +744,13 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
       try {
         const finalSelected = await refreshAndResolve(ctx, "explore", params.model);
         const finalMetadata = executionMetadata(finalSelected, thinkingLevel, { breadth: params.breadth, detail: params.detail });
-        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, rolePrompt("explore", { breadth: params.breadth, detail: params.detail }), finalSelected.model, finalMetadata, signal, onUpdate, queuedAt), finalMetadata);
+        const contract = [
+          await loadExplorer(deps, root),
+          `Selected breadth maximum: ${params.breadth}`,
+          `Selected report detail: ${params.detail}`,
+          "Pi admits at most ten active exploration children and queues the rest FIFO with abort-aware removal.",
+        ].join("\n");
+        return toolResult("explore", params.task, await run("explore", params.task, EXPLORE_TOOLS, contract, finalSelected.model, finalMetadata, signal, onUpdate, queuedAt), finalMetadata);
       } finally {
         release();
       }

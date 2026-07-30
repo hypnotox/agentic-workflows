@@ -754,16 +754,22 @@ test("a commit-disabled implementation that changed nothing is not a no-commit f
   assert.notEqual(value.details.state, "failed");
 });
 
-// Override only the implementer path; every other read (the preference sources
-// among them) must still reach the harness stub, or routing blocks first.
-function withImplementerDoc(h: ReturnType<typeof harness>, doc: string | Error) {
+// Override only the one agent path under test; every other read (the preference
+// sources among them) must still reach the harness stub, or routing blocks first.
+function withAgentDoc(h: ReturnType<typeof harness>, relative: string, doc: string | Error) {
   const original = h.deps.readFile;
   h.deps.readFile = async (path: string, encoding: "utf8") => {
-    if (path !== "/repo/.pi/agents/implementer.md") return original(path, encoding);
+    if (path !== `/repo/${relative}`) return original(path, encoding);
     if (doc instanceof Error) throw doc;
     return doc;
   };
 }
+
+function withImplementerDoc(h: ReturnType<typeof harness>, doc: string | Error) {
+  withAgentDoc(h, ".pi/agents/implementer.md", doc);
+}
+
+const ENOENT = () => Object.assign(new Error("missing"), { code: "ENOENT" });
 
 test("the implementation role loads its contract from the rendered agent and fails closed without it", async () => {
   const present = harness();
@@ -782,6 +788,56 @@ test("the implementation role loads its contract from the rendered agent and fai
   withImplementerDoc(bodyless, "---\nname: implementer\ndescription: test\n---\n   \n");
   await assert.rejects(
     call(bodyless, "subagent_implement", { task: "x", allowCommits: false }),
+    /has no instruction body; run awf render\./,
+  );
+});
+
+test("the exploration role loads its contract from the rendered agent and appends the per-call suffix", async () => {
+  const explore = { task: "x", breadth: "targeted" as const, detail: "paths" as const };
+
+  const present = harness();
+  withAgentDoc(present, ".pi/agents/explorer.md", "---\nname: explorer\ndescription: test\n---\nExplore within the boundary.");
+  const { value } = await call(present, "subagent_explore", explore);
+  assert.notEqual(value.details.state, "failed");
+  // The suffix is appended to the contract, never a replacement for it.
+  const prompt = present.requests[0].systemPrompt;
+  assert.match(prompt, /Explore within the boundary\./);
+  assert.match(prompt, /Selected breadth maximum: targeted/);
+  assert.match(prompt, /Selected report detail: paths/);
+
+  const absent = harness();
+  withAgentDoc(absent, ".pi/agents/explorer.md", ENOENT());
+  await assert.rejects(
+    call(absent, "subagent_explore", explore),
+    /Missing Pi explorer \.pi\/agents\/explorer\.md\. Enable the explorer agent and run awf render\./,
+  );
+
+  const bodyless = harness();
+  withAgentDoc(bodyless, ".pi/agents/explorer.md", "---\nname: explorer\ndescription: test\n---\n   \n");
+  await assert.rejects(
+    call(bodyless, "subagent_explore", explore),
+    /has no instruction body; run awf render\./,
+  );
+});
+
+test("the grounding role loads its contract from the rendered agent and fails closed without it", async () => {
+  const present = harness();
+  withAgentDoc(present, ".pi/agents/grounding-checker.md", "---\nname: grounding-checker\ndescription: test\n---\nTest the premises.");
+  const { value } = await call(present, "subagent_grounding", { task: "x" });
+  assert.notEqual(value.details.state, "failed");
+  assert.match(present.requests[0].systemPrompt, /Test the premises\./);
+
+  const absent = harness();
+  withAgentDoc(absent, ".pi/agents/grounding-checker.md", ENOENT());
+  await assert.rejects(
+    call(absent, "subagent_grounding", { task: "x" }),
+    /Missing Pi grounding-checker \.pi\/agents\/grounding-checker\.md\. Enable the grounding-checker agent and run awf render\./,
+  );
+
+  const bodyless = harness();
+  withAgentDoc(bodyless, ".pi/agents/grounding-checker.md", "---\nname: grounding-checker\ndescription: test\n---\n   \n");
+  await assert.rejects(
+    call(bodyless, "subagent_grounding", { task: "x" }),
     /has no instruction body; run awf render\./,
   );
 });
