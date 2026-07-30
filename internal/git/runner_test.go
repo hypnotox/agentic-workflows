@@ -16,6 +16,21 @@ import (
 // pinned here rather than through any one entrypoint that happens to use it.
 // These cases are serial: they rewrite the process environment with t.Setenv.
 
+func TestOpaqueErrorPreservesOnlyContextIdentity(t *testing.T) {
+	if err := opaqueError(context.Canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled identity = %v", err)
+	}
+	if err := opaqueError(context.DeadlineExceeded); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("deadline identity = %v", err)
+	}
+	if err := opaqueWrap("operation", context.Canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("wrapped canceled identity = %v", err)
+	}
+	if err := opaqueWrap("operation", context.DeadlineExceeded); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("wrapped deadline identity = %v", err)
+	}
+}
+
 // TestRunnerIgnoresInheritedRepositorySelection proves the isolation is
 // unconditional: an ambient GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE, or
 // GIT_CONFIG_GLOBAL pointing anywhere hostile cannot redirect an invocation away
@@ -59,6 +74,33 @@ func TestRunnerRefusesDeadlineLessContext(t *testing.T) {
 	_, err := newRunner(t.TempDir()).run(context.Background(), "status")
 	if err == nil || !strings.Contains(err.Error(), "without a context deadline") {
 		t.Fatalf("deadline-less runner error = %v", err)
+	}
+}
+
+func TestRunnerExcludesLookupIgnoresHostileGitEnvironmentButHonorsHomeConfig(t *testing.T) {
+	root := t.TempDir()
+	initNativeRepoForRunner(t, root)
+	home := t.TempDir()
+	excludes := filepath.Join(home, "global-ignore")
+	if err := os.WriteFile(excludes, []byte("ignored\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, ".gitconfig"), []byte("[core]\n\texcludesfile = "+excludes+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	hostile := filepath.Join(t.TempDir(), "hostile-config")
+	if err := os.WriteFile(hostile, []byte("[core]\n\texcludesfile = /hostile\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("GIT_DIR", filepath.Join(t.TempDir(), "foreign.git"))
+	t.Setenv("GIT_WORK_TREE", t.TempDir())
+	t.Setenv("GIT_INDEX_FILE", filepath.Join(t.TempDir(), "index"))
+	t.Setenv("GIT_CONFIG_GLOBAL", hostile)
+	got := newRunner(root).excludesFileArgs(testContext(t))
+	want := []string{"-c", "core.excludesfile=" + excludes}
+	if strings.Join(got, "\x00") != strings.Join(want, "\x00") {
+		t.Fatalf("ambient excludes lookup = %#v, want %#v", got, want)
 	}
 }
 

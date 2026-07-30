@@ -98,6 +98,22 @@ func hasDeadline(ctx context.Context) bool {
 	return ok
 }
 
+// ambientConfigEnvironment retains normal system and user config discovery for
+// the excludes lookup while removing environment controls that can redirect Git
+// to another repository, config file, or credential helper.
+func ambientConfigEnvironment(inherited []string) []string {
+	filtered := make([]string, 0, len(inherited))
+	for _, entry := range inherited {
+		key, _, _ := strings.Cut(entry, "=")
+		upper := strings.ToUpper(key)
+		if strings.HasPrefix(upper, "GIT_") || upper == "GCM_INTERACTIVE" || upper == "SSH_ASKPASS" {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	return filtered
+}
+
 // excludesFileArgs replays the effective core.excludesFile as a per-invocation
 // -c override. The isolated environment deliberately strips the user and system
 // config, which also strips the ignore rules real Git would apply, and a
@@ -113,7 +129,10 @@ func (r runner) excludesFileArgs(ctx context.Context) []string {
 		return nil
 	}
 	cmd := exec.CommandContext(ctx, "git", "-C", r.root, "config", "--get", "core.excludesFile")
-	cmd.Env = os.Environ()
+	// This lookup intentionally keeps HOME/XDG-derived user and system config,
+	// but must not let inherited repository or credential controls select a
+	// different config source than the pinned checkout.
+	cmd.Env = ambientConfigEnvironment(os.Environ())
 	out, err := cmd.Output()
 	if err != nil {
 		return nil

@@ -98,6 +98,26 @@ func TestResolveProjectResidentRootFallsBackOnUnsafeResident(t *testing.T) {
 	}
 }
 
+func TestRunSyncEntryPointsRejectMalformedRepository(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ctx := testContext(t)
+	for name, run := range map[string]func() error{
+		"sync": func() error { return runSync(ctx, root, io.Discard) },
+		"initialized": func() error {
+			return runSyncInitialized(ctx, root, project.InitAuthority{}, io.Discard)
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := run(); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+				t.Fatalf("malformed repository error = %v", err)
+			}
+		})
+	}
+}
+
 func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

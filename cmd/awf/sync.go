@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -13,20 +14,32 @@ import (
 
 // newProjectLoader composes the project-opening policy for one invocation: the
 // standard catalog, the seam's one resident-root resolution, and the Git handle
-// the opened project reads through. An absent handle means the tree carries no
-// repository, which awf renders and checks exactly as before.
-func newProjectLoader(root string) *project.Loader {
-	repo, _, _ := awfgit.OpenContaining(root)
-	return project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo)
+// the opened project reads through. A fresh non-repository tree takes the
+// explicit no-repository constructor; malformed repositories are returned.
+func newProjectLoader(root string) (*project.Loader, error) {
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil {
+		if !errors.Is(err, awfgit.ErrNotARepository) {
+			return nil, err
+		}
+		return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot), nil
+	}
+	return project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo), nil
 }
 
 func runSync(ctx context.Context, root string, stdout io.Writer) error {
-	loader := newProjectLoader(root)
+	loader, err := newProjectLoader(root)
+	if err != nil {
+		return err
+	}
 	return runSyncPrinting(ctx, loader, root, nil, stdout)
 }
 
 func runSyncInitialized(ctx context.Context, root string, seed project.InitAuthority, stdout io.Writer) error {
-	loader := newProjectLoader(root)
+	loader, err := newProjectLoader(root)
+	if err != nil {
+		return err
+	}
 	return runSyncPrinting(ctx, loader, root, &seed, stdout)
 }
 

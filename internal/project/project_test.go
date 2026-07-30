@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -609,6 +611,16 @@ func TestOpenRejectsUnknownSkill(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "no-such-skill") {
 		t.Errorf("error should mention the offending skill name, got: %v", err)
+	}
+}
+
+func TestOpenRejectsMalformedRepository(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(testContext(t), root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("malformed repository error = %v", err)
 	}
 }
 

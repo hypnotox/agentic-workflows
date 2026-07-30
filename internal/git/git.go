@@ -13,6 +13,7 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -200,9 +201,12 @@ func readBlob(repo *gogit.Repository, hash plumbing.Hash) ([]byte, error) {
 
 // blobsOfTree collects the sorted regular and executable blobs of a resolved
 // tree. Symlinks and gitlinks are skipped; the executable mode is preserved.
-func blobsOfTree(tree *object.Tree, prefix string) ([]IndexBlob, error) {
+func blobsOfTree(ctx context.Context, tree *object.Tree, prefix string) ([]IndexBlob, error) {
 	var out []IndexBlob
 	err := tree.Files().ForEach(func(f *object.File) error {
+		if err := checkContext(ctx); err != nil {
+			return err
+		}
 		path, ok := rerootPath(f.Name, prefix)
 		if !ok || f.Mode != filemode.Regular && f.Mode != filemode.Executable && f.Mode != filemode.Symlink {
 			return nil

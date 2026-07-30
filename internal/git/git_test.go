@@ -1,8 +1,10 @@
 package git_test
 
 import (
+	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -17,6 +19,89 @@ import (
 )
 
 func TestMain(m *testing.M) { os.Exit(testsupport.RunIsolated(m, "awf-git-test-home")) }
+
+func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	ctx, cancel := context.WithCancel(testsupport.Context(t))
+	cancel()
+	for name, call := range map[string]func() error{
+		"changed":  func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
+		"head":     func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
+		"hash":     func() error { _, err := gitRepo(t, dir).HeadHash(ctx); return err },
+		"branches": func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
+		"working":  func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
+		"index":    func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
+		"commit":   func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
+		"range":    func() error { _, _, err := gitRepo(t, dir).RangeBlobs(ctx, "HEAD"); return err },
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := call(); !errors.Is(err, context.Canceled) {
+				t.Fatalf("pre-cancelled error = %v, want context.Canceled", err)
+			}
+		})
+	}
+}
+
+type cancelOnErrCall struct {
+	context.Context
+	remaining int
+}
+
+func (c *cancelOnErrCall) Err() error {
+	c.remaining--
+	if c.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
+}
+
+func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
+	fixture, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, fixture, dir, "base", map[string]string{"tracked.txt": "base"})
+	gitfixture.Commit(t, fixture, dir, "changed", map[string]string{"tracked.txt": "changed"})
+	gitfixture.Stage(t, fixture, dir, map[string]string{"staged.txt": "staged"})
+	if err := os.WriteFile(filepath.Join(dir, "untracked.txt"), []byte("untracked"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	assertCanceled := func(name string, errCall int, call func(context.Context) error) {
+		t.Helper()
+		ctx := &cancelOnErrCall{Context: testsupport.Context(t), remaining: errCall}
+		if err := call(ctx); !errors.Is(err, context.Canceled) {
+			t.Errorf("%s cancellation = %v, want context.Canceled", name, err)
+		}
+	}
+	repo := gitRepo(t, dir)
+	assertCanceled("staged changes", 2, func(ctx context.Context) error {
+		_, err := repo.ChangedPaths(ctx, true, "")
+		return err
+	})
+	assertCanceled("range changes", 2, func(ctx context.Context) error {
+		_, err := repo.ChangedPaths(ctx, false, "HEAD~1..HEAD")
+		return err
+	})
+	assertCanceled("branches", 2, func(ctx context.Context) error {
+		_, err := repo.Branches(ctx)
+		return err
+	})
+	assertCanceled("working tree", 2, func(ctx context.Context) error {
+		_, err := repo.WorkingPaths(ctx)
+		return err
+	})
+	assertCanceled("working status", 3, func(ctx context.Context) error {
+		_, err := repo.WorkingPaths(ctx)
+		return err
+	})
+	assertCanceled("index", 2, func(ctx context.Context) error {
+		_, err := repo.IndexBlobs(ctx)
+		return err
+	})
+	assertCanceled("commit blobs", 2, func(ctx context.Context) error {
+		_, err := repo.CommitBlobs(ctx, "HEAD")
+		return err
+	})
+}
 
 func TestWorkingPaths(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
@@ -50,6 +135,23 @@ func TestWorkingPaths(t *testing.T) {
 // the global and system gitignore"; the limitation bit audit first and
 // WorkingPaths second). A future staged-only status consumer that never reads
 // untracked entries earns an explicit path exemption here instead.
+func TestWorkingPathsExcludesNestedFileBelowIgnoredManagedWorktreeRoot(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{".gitignore": ".awf/worktrees/\n", "tracked.txt": "tracked"})
+	managed := filepath.Join(dir, ".awf", "worktrees", "managed")
+	cmd := exec.CommandContext(testsupport.Context(t), "git", "-C", dir, "worktree", "add", "-b", "managed", managed, "HEAD")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("add managed worktree: %v: %s", err, out)
+	}
+	paths, err := gitRepo(t, dir).WorkingPaths(testsupport.Context(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(paths, ","); got != ".gitignore,tracked.txt" {
+		t.Fatalf("working paths below ignored managed root = %q, want committed paths only", got)
+	}
+}
+
 func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -81,6 +183,27 @@ func TestWorkingPathsHonorsGlobalExcludes(t *testing.T) {
 	}
 	if got := strings.Join(paths, ","); got != "kept.txt,tracked.txt" {
 		t.Fatalf("working paths with global excludesfile = %q, want %q", got, "kept.txt,tracked.txt")
+	}
+}
+
+func TestOpenContainingStopsAtMalformedCandidateAndHidesBackendErrors(t *testing.T) {
+	root := t.TempDir()
+	for _, start := range []string{root, filepath.Join(root, "nested")} {
+		t.Run(filepath.Base(start), func(t *testing.T) {
+			if err := os.MkdirAll(start, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			_, _, err := awfgit.OpenContaining(start)
+			if err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+				t.Fatalf("malformed open = %v, want malformed error", err)
+			}
+			if errors.Is(err, gogit.ErrRepositoryNotExists) {
+				t.Fatalf("malformed open leaked go-git sentinel: %v", err)
+			}
+		})
 	}
 }
 
@@ -288,6 +411,8 @@ func TestHeadHash(t *testing.T) {
 	_, unborn := gitfixture.InitRepo(t)
 	if _, err := gitRepo(t, unborn).HeadHash(testsupport.Context(t)); err == nil {
 		t.Fatal("unborn HEAD must surface a resolve error")
+	} else if errors.Is(err, plumbing.ErrReferenceNotFound) {
+		t.Fatalf("HeadHash leaked go-git reference identity: %v", err)
 	}
 	// A non-repository fails to open.
 	if _, err := awfgit.Open(t.TempDir()); err == nil {

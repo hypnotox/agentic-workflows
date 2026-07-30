@@ -91,14 +91,6 @@ func run(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "awf:", err)
 		return 1
 	}
-	// One deadlined context per invocation is the command boundary the seam's
-	// native runner requires: every git operation this command starts is bounded
-	// by gitCommandTimeout, so a git blocked on a stale lock or a credential
-	// prompt fails timely instead of hanging awf. context.Background() is the
-	// process root and appears exactly here; no other production site creates a
-	// context of its own.
-	ctx, cancel := context.WithTimeout(context.Background(), gitCommandTimeout)
-	defer cancel()
 	cmd, top, sub, rest, ok := resolve(args[1:])
 	if !ok {
 		return dispatchErr(stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
@@ -114,9 +106,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// A committed current-state journal or attestation makes ordinary project
 	// commands non-operational; the guard refuses them before gating so no state
 	// is reachable without protection (Plan 2 Task 3.3).
-	if err := guardProjectState(ctx, cwd, cmd, top, sub, inv); err != nil {
+	guardCtx, cancel := newGitCommandContext()
+	if err := guardProjectState(guardCtx, cwd, cmd, top, sub, inv); err != nil {
+		cancel()
 		return dispatchErr(stderr, err)
 	}
+	cancel()
 	// The driver gates every Gated command before its handler; config/context/topic/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
 	// Gating resolves from the child, falling back to the parent: a child that
@@ -130,17 +125,29 @@ func run(args []string, stdout, stderr io.Writer) int {
 		if top.Name == "check" && sub == "" && inv.bools["--staged"] {
 			gateFn = gateStaged
 		}
-		if err := gateFn(ctx, cwd); err != nil {
+		gateCtx, cancel := newGitCommandContext()
+		if err := gateFn(gateCtx, cwd); err != nil {
+			cancel()
 			return dispatchErr(stderr, err)
 		}
+		cancel()
 	}
 	// The registry key is the top-level command name even when resolve returned a
 	// child spec - the child drives parse/help, the group's handler drives
 	// dispatch via sub.
-	if err := handlers[top.Name](&cmdCtx{ctx: ctx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
+	handlerCtx, cancel := newGitCommandContext()
+	defer cancel()
+	if err := handlers[top.Name](&cmdCtx{ctx: handlerCtx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin}); err != nil {
 		return dispatchErr(stderr, err)
 	}
 	return 0
+}
+
+// newGitCommandContext gives each process-command stage its own full timeout.
+// Guard and gate work must not consume the handler's hang-prevention ceiling.
+// It is the sole production context root.
+func newGitCommandContext() (context.Context, context.CancelFunc) {
+	return context.WithTimeout(context.Background(), gitCommandTimeout)
 }
 
 // guardProjectState enforces the current-state upgrade command-state matrix.

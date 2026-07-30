@@ -7,8 +7,29 @@ import (
 	"testing"
 	"time"
 
+	gogit "github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+func TestVisibleWorkingStatusDropsOnlyIgnoredUntrackedPaths(t *testing.T) {
+	matcher := gitignore.NewMatcher([]gitignore.Pattern{gitignore.ParsePattern(".awf/worktrees/", nil)})
+	status := gogit.Status{
+		".awf/worktrees/managed/.gitignore": {Worktree: gogit.Untracked},
+		"tracked.txt":                       {Worktree: gogit.Modified},
+		"untracked.txt":                     {Worktree: gogit.Untracked},
+	}
+	visible := visibleWorkingStatus(status, matcher)
+	if _, ok := visible[".awf/worktrees/managed/.gitignore"]; ok {
+		t.Fatal("ignored untracked descendant remained visible")
+	}
+	if _, ok := visible["tracked.txt"]; !ok {
+		t.Fatal("tracked modification was suppressed")
+	}
+	if _, ok := visible["untracked.txt"]; !ok {
+		t.Fatal("ordinary untracked path was suppressed")
+	}
+}
 
 func TestParseWorktreeStatus(t *testing.T) {
 	tracked, untracked, err := parseWorktreeStatus([]byte("\x00? loose.txt\x001 tracked.txt\x00u conflicted.txt\x002 renamed.txt\x00old.txt\x00"))

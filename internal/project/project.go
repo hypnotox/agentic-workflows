@@ -92,16 +92,23 @@ type Loader struct {
 	repo                *awfgit.Repo
 }
 
-// NewLoader constructs project-opening policy from required dependencies plus
-// the composed Git handle every project the loader opens reads through.
-//
-// The handle is the one dependency whose absence is meaningful rather than a
-// wiring mistake: awf renders and checks trees that carry no repository at all
-// (a fresh adoption, an isolated fixture), and those projects must open and
-// render exactly as they do today. A nil handle therefore means "this tree is
-// not a repository", and every read that needs Git reports that instead of
-// reaching for a repository that is not there.
+// NewLoader constructs project-opening policy with its required composed Git
+// handle. A nil handle is always a composition error.
 func NewLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot, repo *awfgit.Repo) *Loader {
+	loader := newLoader(loadConfigTree, standard, resolveResidentRoot, repo)
+	if repo == nil {
+		panic("project Loader: missing git repository dependency")
+	}
+	return loader
+}
+
+// NewLoaderWithoutRepository is the explicit fresh-adoption path for a tree
+// known not to be a repository.
+func NewLoaderWithoutRepository(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot) *Loader {
+	return newLoader(loadConfigTree, standard, resolveResidentRoot, nil)
+}
+
+func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot, repo *awfgit.Repo) *Loader {
 	if loadConfigTree == nil {
 		panic("project Loader: missing load config tree dependency")
 	}
@@ -142,7 +149,13 @@ func (p *Project) gitRepo() (*awfgit.Repo, error) {
 // Open is the transitional compatibility entry point for callers not yet
 // migrated to outer composition. New code composes a Loader explicitly.
 func Open(ctx context.Context, root string) (*Project, error) {
-	repo, _, _ := awfgit.OpenContaining(root)
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
+		return nil, err
+	}
+	if repo == nil {
+		return NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Open(ctx, root)
+	}
 	return NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Open(ctx, root)
 }
 

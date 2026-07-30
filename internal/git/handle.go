@@ -7,10 +7,12 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/filemode"
+	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
 	"github.com/go-git/go-git/v5/plumbing/format/index"
 	"github.com/go-git/go-git/v5/plumbing/object"
 )
@@ -77,20 +79,47 @@ func OpenContaining(start string) (*Repo, string, error) {
 			prefix = filepath.ToSlash(prefix)
 			return &Repo{root: absolute, prefix: prefix, repo: repo, runner: newRunner(absolute)}, prefix, nil
 		}
+		if !errors.Is(openErr, gogit.ErrRepositoryNotExists) {
+			return nil, "", translateOpenError(openErr)
+		}
 		parent := filepath.Dir(candidate)
 		if parent == candidate {
-			return nil, "", translateOpenError(openErr)
+			return nil, "", ErrNotARepository
 		}
 	}
 }
 
-// translateOpenError replaces the backend's canonical not-a-repository sentinel
-// with the seam's own identity and leaves every other failure intact.
+// translateOpenError replaces backend identities with seam-owned errors. Backend
+// text remains useful for diagnosis, but callers cannot couple to go-git.
 func translateOpenError(err error) error {
 	if errors.Is(err, gogit.ErrRepositoryNotExists) {
 		return ErrNotARepository
 	}
-	return err
+	return opaqueError(err)
+}
+
+func opaqueError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, context.Canceled) {
+		return context.Canceled
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return context.DeadlineExceeded
+	}
+	return errors.New(err.Error())
+}
+
+func opaqueWrap(message string, err error) error {
+	if contextErr := opaqueError(err); errors.Is(contextErr, context.Canceled) || errors.Is(contextErr, context.DeadlineExceeded) {
+		return contextErr
+	}
+	return errors.New(message + ": " + err.Error())
+}
+
+func checkContext(ctx context.Context) error {
+	return ctx.Err()
 }
 
 // Root is the path the handle is anchored at: the directory whose subtree the
@@ -103,18 +132,24 @@ func (r *Repo) Root() string { return r.root }
 // staged takes precedence; with neither selector the caller should not call
 // this. A malformed range or an unresolvable revision is a clear error. It
 // reads the repository only.
-func (r *Repo) ChangedPaths(_ context.Context, staged bool, rangeSpec string) ([]string, error) {
+func (r *Repo) ChangedPaths(ctx context.Context, staged bool, rangeSpec string) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
 	set := map[string]bool{}
 	if staged {
 		wt, err := r.repo.Worktree()
 		if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf's intended use
-			return nil, err
+			return nil, opaqueError(err)
 		}
 		status, err := wt.Status()
 		if err != nil { // coverage-ignore: Status on a healthy worktree we just opened does not fail
-			return nil, err
+			return nil, opaqueError(err)
 		}
 		for path, st := range status {
+			if err := checkContext(ctx); err != nil {
+				return nil, err
+			}
 			if path, ok := rerootPath(path, r.prefix); ok && st.Staging != gogit.Unmodified && st.Staging != gogit.Untracked {
 				set[path] = true
 			}
@@ -126,17 +161,20 @@ func (r *Repo) ChangedPaths(_ context.Context, staged bool, rangeSpec string) ([
 		}
 		fromTree, err := treeAt(r.repo, from)
 		if err != nil {
-			return nil, err
+			return nil, opaqueError(err)
 		}
 		toTree, err := treeAt(r.repo, to)
 		if err != nil {
-			return nil, err
+			return nil, opaqueError(err)
 		}
 		changes, err := object.DiffTree(fromTree, toTree)
 		if err != nil { // coverage-ignore: diffing two resolved trees does not fail
-			return nil, err
+			return nil, opaqueError(err)
 		}
 		for _, ch := range changes {
+			if err := checkContext(ctx); err != nil {
+				return nil, err
+			}
 			if path, ok := rerootPath(ch.From.Name, r.prefix); ok && ch.From.Name != "" {
 				set[path] = true
 			}
@@ -152,16 +190,19 @@ func (r *Repo) ChangedPaths(_ context.Context, staged bool, rangeSpec string) ([
 // commit). A fresh repository whose immediate symbolic HEAD target is absent
 // reports false without error. Missing refs deeper in a symbolic chain and
 // corrupt or cyclic chains are errors. It reads the repository only.
-func (r *Repo) HeadExists(_ context.Context) (bool, error) {
+func (r *Repo) HeadExists(ctx context.Context) (bool, error) {
+	if err := checkContext(ctx); err != nil {
+		return false, err
+	}
 	head, err := resolveHead(r.repo)
 	if err != nil {
-		return false, err
+		return false, opaqueError(err)
 	}
 	if head.unborn {
 		return false, nil
 	}
 	if _, err := r.repo.CommitObject(head.ref.Hash()); err != nil {
-		return false, fmt.Errorf("resolve HEAD commit: %w", err)
+		return false, opaqueWrap("resolve HEAD commit", err)
 	}
 	return true, nil
 }
@@ -170,27 +211,36 @@ func (r *Repo) HeadExists(_ context.Context) (bool, error) {
 // working tree. The final current-state upgrade runs in an integration worktree
 // that carries the applied but uncommitted attestation patches, so it compares
 // HEAD identity against the sealed PreparedHead without a cleanliness check.
-func (r *Repo) HeadHash(_ context.Context) (string, error) {
+func (r *Repo) HeadHash(ctx context.Context) (string, error) {
+	if err := checkContext(ctx); err != nil {
+		return "", err
+	}
 	ref, err := r.repo.Head()
 	if err != nil {
-		return "", fmt.Errorf("resolve HEAD: %w", err)
+		return "", opaqueWrap("resolve HEAD", err)
 	}
 	return ref.Hash().String(), nil
 }
 
 // Branches returns the repository's local branch short names.
-func (r *Repo) Branches(_ context.Context) (map[string]bool, error) {
+func (r *Repo) Branches(ctx context.Context) (map[string]bool, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
 	iter, err := r.repo.Branches()
 	if err != nil { // coverage-ignore: go-git returns an iterator over the validated reference storer without a reachable failure
-		return nil, err
+		return nil, opaqueError(err)
 	}
 	defer iter.Close()
 	branches := map[string]bool{}
 	err = iter.ForEach(func(ref *plumbing.Reference) error {
+		if err := checkContext(ctx); err != nil {
+			return err
+		}
 		branches[ref.Name().Short()] = true
 		return nil
 	})
-	return branches, err
+	return branches, opaqueError(err)
 }
 
 // ChangeCounts returns native Git's tracked-change and nonignored untracked-file
@@ -218,40 +268,55 @@ func (r *Repo) ChangeCounts(ctx context.Context) (tracked, untracked int, err er
 // nested-repository files are excluded by go-git's worktree status semantics;
 // ignored files are excluded by those semantics plus the injected global and
 // system excludes (globalExcludePatterns).
-func (r *Repo) WorkingPaths(_ context.Context) ([]string, error) {
+func (r *Repo) WorkingPaths(ctx context.Context) ([]string, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
 	head, err := resolveHead(r.repo)
 	if err != nil {
-		return nil, err
+		return nil, opaqueError(err)
 	}
 	set := map[string]bool{}
 	if !head.unborn {
 		commit, err := r.repo.CommitObject(head.ref.Hash())
 		if err != nil {
-			return nil, fmt.Errorf("resolve working paths HEAD commit %s: %w", head.ref.Hash(), err)
+			return nil, opaqueWrap(fmt.Sprintf("resolve working paths HEAD commit %s", head.ref.Hash()), err)
 		}
 		tree, err := commit.Tree()
 		if err != nil {
-			return nil, fmt.Errorf("resolve working paths HEAD tree %s: %w", commit.TreeHash, err)
+			return nil, opaqueWrap(fmt.Sprintf("resolve working paths HEAD tree %s", commit.TreeHash), err)
 		}
 		if err := tree.Files().ForEach(func(f *object.File) error {
+			if err := checkContext(ctx); err != nil {
+				return err
+			}
 			if path, ok := rerootPath(f.Name, r.prefix); ok {
 				set[path] = true
 			}
 			return nil
-		}); err != nil { // coverage-ignore: collector callback never errors
-			return nil, err
+		}); err != nil {
+			return nil, opaqueError(err)
 		}
 	}
 	wt, err := r.repo.Worktree()
 	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
-		return nil, err
+		return nil, opaqueError(err)
 	}
 	wt.Excludes = globalExcludePatterns()
 	status, err := wt.Status()
 	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
-		return nil, err
+		return nil, opaqueError(err)
 	}
+	patterns, err := gitignore.ReadPatterns(wt.Filesystem, nil)
+	if err != nil { // coverage-ignore: Status read the same worktree immediately above; failure requires a concurrent filesystem fault
+		return nil, opaqueError(err)
+	}
+	patterns = append(globalExcludePatterns(), patterns...)
+	status = visibleWorkingStatus(status, gitignore.NewMatcher(patterns))
 	for path, state := range status {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
 		path, ok := rerootPath(path, r.prefix)
 		if !ok {
 			continue
@@ -269,18 +334,38 @@ func (r *Repo) WorkingPaths(_ context.Context) ([]string, error) {
 	return sortedPaths(set), nil
 }
 
+// visibleWorkingStatus closes go-git's ignored-parent gap without suppressing
+// tracked modifications or deletions: only untracked entries that the complete
+// repository/system/global matcher rejects are removed.
+func visibleWorkingStatus(status gogit.Status, ignored gitignore.Matcher) gogit.Status {
+	visible := make(gogit.Status, len(status))
+	for path, state := range status {
+		if state.Worktree == gogit.Untracked && ignored.Match(strings.Split(filepath.ToSlash(path), "/"), false) {
+			continue
+		}
+		visible[path] = state
+	}
+	return visible
+}
+
 // IndexBlobs returns sorted stage-0 ordinary and executable blobs from the
 // index. Symlinks and gitlinks have no regular-file content to scan and are
 // ignored. An unmerged or unreadable regular entry makes the snapshot unsafe.
-func (r *Repo) IndexBlobs(_ context.Context) ([]IndexBlob, error) {
+func (r *Repo) IndexBlobs(ctx context.Context) ([]IndexBlob, error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, err
+	}
 	idx, err := r.repo.Storer.Index()
 	if err != nil {
-		return nil, fmt.Errorf("read index: %w", err)
+		return nil, opaqueWrap("read index", err)
 	}
 	entries := append([]*index.Entry(nil), idx.Entries...)
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	out := make([]IndexBlob, 0, len(entries))
 	for _, e := range entries {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
 		path, ok := rerootPath(e.Name, r.prefix)
 		if !ok {
 			continue
@@ -293,7 +378,7 @@ func (r *Repo) IndexBlobs(_ context.Context) ([]IndexBlob, error) {
 		}
 		blob, err := readBlob(r.repo, e.Hash)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s: %w", ErrIndexBlob, e.Name, err)
+			return nil, fmt.Errorf("%w: %s: %s", ErrIndexBlob, e.Name, err.Error())
 		}
 		out = append(out, IndexBlob{Path: path, Bytes: blob, Mode: blobModeOf(e.Mode)})
 	}
@@ -303,12 +388,16 @@ func (r *Repo) IndexBlobs(_ context.Context) ([]IndexBlob, error) {
 // CommitBlobs returns the sorted regular and executable blobs of the tree that
 // rev resolves to. Symlinks and gitlinks carry no regular-file content to scan
 // and are skipped. It reads the repository only.
-func (r *Repo) CommitBlobs(_ context.Context, rev string) ([]IndexBlob, error) {
-	tree, err := treeAt(r.repo, rev)
-	if err != nil {
+func (r *Repo) CommitBlobs(ctx context.Context, rev string) ([]IndexBlob, error) {
+	if err := checkContext(ctx); err != nil {
 		return nil, err
 	}
-	return blobsOfTree(tree, r.prefix)
+	tree, err := treeAt(r.repo, rev)
+	if err != nil {
+		return nil, opaqueError(err)
+	}
+	blobs, err := blobsOfTree(ctx, tree, r.prefix)
+	return blobs, opaqueError(err)
 }
 
 // RangeBlobs returns the before/after regular-blob sets for the transition into
@@ -316,33 +405,36 @@ func (r *Repo) CommitBlobs(_ context.Context, rev string) ([]IndexBlob, error) {
 // first-parent tree, or nil for a root commit. Merges follow the first parent
 // only, so an ADR status change committed on a branch and merged is still
 // observed at the merge. It reads the repository only.
-func (r *Repo) RangeBlobs(_ context.Context, rev string) (before, after []IndexBlob, err error) {
+func (r *Repo) RangeBlobs(ctx context.Context, rev string) (before, after []IndexBlob, err error) {
+	if err := checkContext(ctx); err != nil {
+		return nil, nil, err
+	}
 	h, err := r.repo.ResolveRevision(plumbing.Revision(rev))
 	if err != nil {
-		return nil, nil, fmt.Errorf("resolve %q: %w", rev, err)
+		return nil, nil, opaqueWrap(fmt.Sprintf("resolve %q", rev), err)
 	}
 	c, err := r.repo.CommitObject(*h)
 	if err != nil { // coverage-ignore: a hash ResolveRevision just returned points at a real object
-		return nil, nil, fmt.Errorf("commit %q: %w", rev, err)
+		return nil, nil, opaqueWrap(fmt.Sprintf("commit %q", rev), err)
 	}
 	curTree, err := c.Tree()
 	if err != nil { // coverage-ignore: a resolved commit always yields its tree
-		return nil, nil, err
+		return nil, nil, opaqueError(err)
 	}
-	if after, err = blobsOfTree(curTree, r.prefix); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
-		return nil, nil, err
+	if after, err = blobsOfTree(ctx, curTree, r.prefix); err != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+		return nil, nil, opaqueError(err)
 	}
 	if c.NumParents() > 0 {
 		parent, perr := c.Parent(0)
 		if perr != nil { // coverage-ignore: parent count was just checked > 0; the parent object exists
-			return nil, nil, perr
+			return nil, nil, opaqueError(perr)
 		}
 		parentTree, perr := parent.Tree()
 		if perr != nil { // coverage-ignore: a valid parent commit's tree resolves
-			return nil, nil, perr
+			return nil, nil, opaqueError(perr)
 		}
-		if before, perr = blobsOfTree(parentTree, r.prefix); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
-			return nil, nil, perr
+		if before, perr = blobsOfTree(ctx, parentTree, r.prefix); perr != nil { // coverage-ignore: reading in-memory blobs from a resolved tree does not fail
+			return nil, nil, opaqueError(perr)
 		}
 	}
 	return before, after, nil
