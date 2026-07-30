@@ -300,5 +300,5 @@ docs(adr): apply 0187 state changes and flip to Implemented
 ## Notes
 
 - Out of scope, tracked elsewhere: the reviewing-plan-resync merge candidate, roadmap-graduation's disabled state in this repo, cutting and publishing the 0.30.0 release (docs/releasing.md), and the reviewer-spine dedup.
-- The `rendering/workflow-skill-templates` topic reaches the twenty-claim advisory ceiling with `orienting-single-home` (ADR-0187 Consequences); the next claim added there needs a split or a new topic.
+- After ADR-0186, `orienting-single-home` is the twenty-first `rendering/workflow-skill-templates` claim, exceeding the twenty-claim advisory limit. The user approved this exception for the cohesive topic; the existing `maxClaimsPerTopic` behavior is advisory, and any budget redesign remains future cleanup.
 - Indicative only: the batch tasks' known-candidate lists were surveyed at authoring time; the affected-site sets are defined by their greps and post-checks, not by those lists.
