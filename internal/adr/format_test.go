@@ -29,6 +29,9 @@ func TestFrozenContentEqual(t *testing.T) {
 	record := func(status, decision string) adr.ADR {
 		return adr.ADR{Status: status, Sections: map[string]string{"Decision": decision}}
 	}
+	v2 := func(status, decision string) adr.ADR {
+		return adr.ADR{Format: adr.CurrentStateV2, Status: status, Sections: map[string]string{"Decision": decision}}
+	}
 	cases := []struct {
 		name          string
 		before, after adr.ADR
@@ -39,6 +42,12 @@ func TestFrozenContentEqual(t *testing.T) {
 		{"Accepted rewrite", record("Accepted", "old"), record("Accepted", "new"), false},
 		{"Implemented rewrite", record("Implemented", "old"), record("Implemented", "new"), false},
 		{"Abandoned rewrite", record("Abandoned", "old"), record("Abandoned", "new"), false},
+		{"V2 Proposed rewrite", v2("Proposed", "old"), v2("Proposed", "new"), true},
+		{"V2 Accepted rewrite", v2("Accepted", "old"), v2("Accepted", "new"), true},
+		{"V2 Implementing rewrite", v2("Implementing", "old"), v2("Implementing", "new"), true},
+		{"V2 Implemented unchanged", v2("Implemented", "same"), v2("Implemented", "same"), true},
+		{"V2 Implemented rewrite", v2("Implemented", "old"), v2("Implemented", "new"), false},
+		{"V2 Abandoned rewrite", v2("Abandoned", "old"), v2("Abandoned", "new"), false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -301,8 +310,8 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 		{"fully applied abandoned", "Abandoned", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-23: Abandoned; content-sha256: " + digest + "; rationale: stopped", "canceled"},
 		{"descending applied date", "Implementing", changes, p + "\n" + i + "\n- 2026-07-19: Applied; state-sequence: 1; operations: add `a/b:first`", "must not descend"},
 		{"digest mismatch", "Accepted", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64), "does not match"},
-		{"earlier accepted digest mismatch", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64) + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 2", "does not match"},
-		{"earlier implementing digest mismatch", "Implemented", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + strings.Repeat("a", 64) + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + digest, "does not match"},
+		{"implemented breaks accepted stamp chain", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64) + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 2", "does not repeat the preceding stamp"},
+		{"implemented breaks implementing stamp chain", "Implemented", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + strings.Repeat("a", 64) + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + digest, "does not repeat the preceding stamp"},
 		{"latest status mismatch", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + digest, "does not match frontmatter"},
 	}
 	for _, tc := range cases {
@@ -313,6 +322,66 @@ func TestParseV2RejectsInvalidHistory(t *testing.T) {
 				tc.want = "invalid status"
 			} else {
 				_, err = adr.ParseV2("0137-test.md", []byte(buildV2(tc.status, tc.changes, tc.history)))
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("err = %v, want containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+// TestParseV2StampChain covers the Amended event grammar and the digest stamp
+// chain: only an Amended event introduces a new digest, a status event repeats
+// the preceding stamp or establishes the first, and the latest stamp must equal
+// the computed content digest (ADR-0186).
+// invariant: adr-system/adr-lifecycle:adr-status-enum-and-matrix
+func TestParseV2StampChain(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`"
+	wide := "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"
+	d := v2DigestFor(t, changes)
+	dWide := v2DigestFor(t, wide)
+	old := strings.Repeat("b", 64)
+	other := strings.Repeat("c", 64)
+	p := "- 2026-07-20: Proposed"
+	amend := func(date, digest string) string { return "- " + date + ": Amended; content-sha256: " + digest }
+	cases := []struct{ name, status, changes, history, want string }{
+		{"amended while accepted", "Accepted", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", d), ""},
+		{"amended while implementing", "Implementing", changes,
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`\n" + amend("2026-07-22", d), ""},
+		{"amended between batches", "Implementing", wide,
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`\n" + amend("2026-07-22", dWide) + "\n- 2026-07-23: Applied; state-sequence: 2; operations: update `a/b:second`", ""},
+		{"amended then implemented", "Implemented", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d + "; state-sequence: 2", ""},
+		{"two amendments", "Accepted", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", other) + "\n" + amend("2026-07-23", d), ""},
+		{"malformed amended digest", "Accepted", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + d + "\n- 2026-07-22: Amended; content-sha256: zzz", "malformed Status history"},
+		{"amended while proposed", "Proposed", changes,
+			p + "\n" + amend("2026-07-21", d), "only while Accepted or Implementing"},
+		{"amended after terminal", "Implemented", changes,
+			p + "\n- 2026-07-21: Implemented; content-sha256: " + d + "; state-sequence: 2\n" + amend("2026-07-22", old), "only while Accepted or Implementing"},
+		{"amended repeats stamp", "Accepted", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + d + "\n" + amend("2026-07-22", d), "digest different from the preceding stamp"},
+		{"amended before first applied", "Implementing", changes,
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Applied; state-sequence: 1; operations: add `a/b:first`", "followed by the first Applied"},
+		{"amended before explicit implemented", "Implemented", changes,
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n" + amend("2026-07-23", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d, "final Applied event immediately before it"},
+		{"latest stamp mismatch", "Accepted", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", other), "does not match the computed digest"},
+		{"status event missing stamp", "Accepted", changes,
+			p + "\n- 2026-07-21: Accepted", "must carry a content-sha256"},
+		{"status event introduces a digest", "Implemented", changes,
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n- 2026-07-22: Implemented; content-sha256: " + d + "; state-sequence: 2", "does not repeat the preceding stamp"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := adr.ParseV2("0137-test.md", []byte(buildV2(tc.status, tc.changes, tc.history)))
+			if tc.want == "" {
+				if err != nil {
+					t.Fatalf("ParseV2: %v", err)
+				}
+				return
 			}
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("err = %v, want containing %q", err, tc.want)
@@ -357,6 +426,7 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
 	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 1, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:c", Slug: "c"}}}
 	appliedNext := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 2, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: "a/b:d", Slug: "d"}}}
+	amended := adr.HistoryEvent{Kind: adr.HistoryAmended, Digest: "new-digest"}
 	record := func(front string, events ...adr.HistoryEvent) adr.ADR {
 		return adr.ADR{Format: adr.CurrentStateV2, Status: front, History: events}
 	}
@@ -378,6 +448,13 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 		{"prefix mutation", record("Implementing", p, i, applied), record("Abandoned", status("Accepted"), i, applied, abandoned), false},
 		{"same non-implementing append", record("Accepted", p, accepted), record("Accepted", p, accepted, applied), false},
 		{"illegal status edge", record("Accepted", p, accepted), record("Proposed", p, accepted, p), false},
+		{"amend while accepted", record("Accepted", p, accepted), record("Accepted", p, accepted, amended), true},
+		{"amend while implementing", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended), true},
+		{"amend plus second event", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended, appliedNext), false},
+		{"amend while proposed", record("Proposed", p), record("Proposed", p, amended), false},
+		{"amend after terminal", record("Implemented", p, accepted, done), record("Implemented", p, accepted, done, amended), false},
+		{"amend riding a flip", record("Accepted", p, accepted), record("Implemented", p, accepted, amended, done), false},
+		{"same-status extra status event", record("Accepted", p, accepted), record("Accepted", p, accepted, status("Accepted")), false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := adr.HistoryTransitionValid(tc.before, tc.after); got != tc.want {

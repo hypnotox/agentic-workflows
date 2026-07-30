@@ -96,9 +96,13 @@ func parseGoverned(name string, data []byte, format Format) (ADR, error) {
 }
 
 // FrozenContentEqual reports whether a pair preserves canonical ADR content.
-// Proposed records remain editable; every later status freezes the five
-// content-sha256 sections at their before-state digest.
+// A V1 record is editable only while Proposed; a V2 record is editable until it
+// reaches a terminal status. Past its freeze point a record's five
+// content-sha256 sections are locked at their before-state digest (ADR-0186).
 func FrozenContentEqual(before, after ADR) bool {
+	if before.Format == CurrentStateV2 {
+		return !terminalStatus(before.Status) || ContentDigest(before.Sections) == ContentDigest(after.Sections)
+	}
 	return before.Status == statusProposed || ContentDigest(before.Sections) == ContentDigest(after.Sections)
 }
 
@@ -121,8 +125,10 @@ func HistoryTransitionValidAggregate(before, after ADR) bool {
 }
 
 // HistoryTransitionValid reports whether a pair preserves append-only Status
-// history: equal histories at the same status, or an exact before prefix plus
-// one entry when the status follows a legal lifecycle edge.
+// history: equal histories at the same status, one same-status Applied batch
+// while Implementing, one same-status Amended event while Accepted or
+// Implementing (ADR-0186), or an exact before prefix plus the required event
+// shape when the status follows a legal lifecycle edge.
 func HistoryTransitionValid(before, after ADR) bool {
 	if after.Format != CurrentStateV2 {
 		if before.Status == after.Status {
@@ -140,7 +146,17 @@ func HistoryTransitionValid(before, after ADR) bool {
 		if len(added) == 0 {
 			return true
 		}
-		return before.Status == statusImplementing && len(added) == 1 && added[0].Kind == HistoryApplied
+		if len(added) != 1 {
+			return false
+		}
+		switch added[0].Kind {
+		case HistoryApplied:
+			return before.Status == statusImplementing
+		case HistoryAmended:
+			return before.Status == statusAccepted || before.Status == statusImplementing
+		default:
+			return false
+		}
 	}
 	if !v2TransitionLegal(before.Status, after.Status) {
 		return false
@@ -330,6 +346,7 @@ func validateV2History(a ADR) error {
 	current := ""
 	explicit := false
 	lastStatus := ""
+	lastStamp := ""
 	for i, event := range h {
 		if i > 0 && event.Date < h[i-1].Date {
 			return fmt.Errorf("status history dates must not descend: %s after %s", event.Date, h[i-1].Date)
@@ -347,14 +364,31 @@ func validateV2History(a ADR) error {
 			}
 			continue
 		}
-		if event.Kind != HistoryStatus { // coverage-ignore: the parser constructs only the two closed event kinds
+		if event.Kind == HistoryAmended {
+			if current != statusAccepted && current != statusImplementing {
+				return errors.New("amended event is allowed only while Accepted or Implementing")
+			}
+			if event.Digest == lastStamp {
+				return errors.New("amended event must record a digest different from the preceding stamp")
+			}
+			lastStamp = event.Digest
+			continue
+		}
+		if event.Kind != HistoryStatus { // coverage-ignore: the parser constructs only the three closed event kinds
 			return errors.New("Status history contains an unknown event kind")
 		}
 		if i > 0 && !v2TransitionLegal(current, event.Status) {
 			return fmt.Errorf("illegal Status history transition %s -> %s", current, event.Status)
 		}
-		if err := validateV2StatusEntry(event, digest); err != nil {
+		if err := validateV2StatusEntry(event); err != nil {
 			return err
+		}
+		if event.Status != statusProposed {
+			if lastStamp == "" {
+				lastStamp = event.Digest
+			} else if event.Digest != lastStamp {
+				return fmt.Errorf("%s entry content-sha256 %q does not repeat the preceding stamp %q", event.Status, event.Digest, lastStamp)
+			}
 		}
 		current, lastStatus = event.Status, event.Status
 		if event.Status == statusImplementing {
@@ -369,13 +403,16 @@ func validateV2History(a ADR) error {
 			if event.HasSequence {
 				return errors.New("V2 ADR cannot mix explicit Applied events with implicit terminal sequencing")
 			}
-			if i == 0 || h[i-1].Kind != HistoryApplied { // coverage-ignore: legal lifecycle ordering leaves no intervening status after Implementing
+			if i == 0 || h[i-1].Kind != HistoryApplied {
 				return errors.New("explicit Implemented transition requires a final Applied event immediately before it")
 			}
 		}
 	}
 	if lastStatus != a.Status {
 		return fmt.Errorf("latest Status history status %s does not match frontmatter status %s", lastStatus, a.Status)
+	}
+	if lastStamp != "" && lastStamp != digest {
+		return fmt.Errorf("latest stamped content-sha256 %q does not match the computed digest %q", lastStamp, digest)
 	}
 	if !explicit && a.Status == statusImplemented {
 		terminal := h[len(h)-1]
@@ -403,7 +440,7 @@ func validateV2History(a ADR) error {
 	return nil
 }
 
-func validateV2StatusEntry(e HistoryEvent, digest string) error {
+func validateV2StatusEntry(e HistoryEvent) error {
 	switch e.Status {
 	case statusProposed:
 		return nil // the first-entry scaffold check owns Proposed metadata
@@ -423,8 +460,8 @@ func validateV2StatusEntry(e HistoryEvent, digest string) error {
 			return errors.New("abandoned entry must end with a nonempty rationale")
 		}
 	}
-	if e.Digest != digest {
-		return fmt.Errorf("%s entry content-sha256 %q does not match the computed digest %q", e.Status, e.Digest, digest)
+	if e.Digest == "" {
+		return fmt.Errorf("%s entry must carry a content-sha256", e.Status)
 	}
 	return nil
 }

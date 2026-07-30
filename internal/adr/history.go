@@ -15,6 +15,7 @@ type HistoryEventKind uint8
 const (
 	HistoryStatus HistoryEventKind = iota + 1
 	HistoryApplied
+	HistoryAmended
 )
 
 // HistoryEvent is one parsed `## Status history` line.
@@ -37,6 +38,7 @@ var (
 	v1HistoryHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): (Proposed|Accepted|Implemented|Abandoned)(;.*)?$`)
 	v2HistoryHeadRe = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): (Proposed|Accepted|Implementing|Implemented|Abandoned)(;.*)?$`)
 	appliedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Applied; state-sequence: ([1-9][0-9]*); operations: (.+)$`)
+	amendedHeadRe   = regexp.MustCompile(`^- (\d{4}-\d{2}-\d{2}): Amended; content-sha256: ([0-9a-f]{64})$`)
 	appliedOpRe     = regexp.MustCompile("^(add|update|remove) `(" + slugPart + "/" + slugPart + ":" + slugPart + ")`$")
 )
 
@@ -74,6 +76,10 @@ func parseHistory(body string, format Format, declared []Operation) ([]HistoryEv
 					return nil, fmt.Errorf("Status history entry %q: %w", line, err)
 				}
 				entries = append(entries, HistoryEvent{Kind: HistoryApplied, Date: m[1], Sequence: sequence, HasSequence: true, Operations: ops})
+				continue
+			}
+			if m := amendedHeadRe.FindStringSubmatch(line); m != nil {
+				entries = append(entries, HistoryEvent{Kind: HistoryAmended, Date: m[1], Digest: m[2]})
 				continue
 			}
 		}

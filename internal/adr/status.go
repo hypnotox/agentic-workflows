@@ -20,6 +20,10 @@ const (
 // IsAbandoned reports the current-state-v1 terminal Abandoned state.
 func (a ADR) IsAbandoned() bool { return a.Status == statusAbandoned }
 
+// terminalStatus reports whether a status permanently freezes a record's
+// content: Implemented and Abandoned close a lifecycle in both formats.
+func terminalStatus(s string) bool { return s == statusImplemented || s == statusAbandoned }
+
 // v1Statuses is the closed current-state-v1 status enum (ADR-0135 item 1);
 // Superseded is deliberately absent.
 var v1Statuses = map[string]bool{
