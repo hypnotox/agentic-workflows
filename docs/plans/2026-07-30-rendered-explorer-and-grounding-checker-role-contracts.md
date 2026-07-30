@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [179]
-status: Proposed
+status: Implemented
 ---
 # Plan: Rendered explorer and grounding-checker role contracts
 
@@ -792,6 +792,30 @@ Whole-effort acceptance, beyond each phase's gate:
 
 ## Notes
 
+- **Execution finding, task ordering:** Phase 1's render is blocked until the ADR applies its batch.
+  `awf render` refuses a claim citing an ADR with no applied operation, so Task 1.12 must run before
+  Task 1.14 rather than after it as the numbering implies. `awf check` also reports that
+  claim-provenance error ahead of any drift, so the digest and sequence probes only become reachable
+  once the batch line exists. The plan's placeholder sequence collided with ADR-0137; the duplicate
+  error named 90, and Phase 3 took 91.
+- **Execution finding, three unlisted structural assertions.** Task 2.4's site set was derived from
+  `Open` failures and was again incomplete, but in a category the discriminator did not cover: three
+  assertions fail not because a fixture cannot open, but because a pairing is a structural closure
+  edge. `internal/catalog/graph_test.go:52` asserts brainstorming's closure has no neighbours,
+  `internal/project/scaffold_test.go:114` asserts an advisory trim adds no agents, and
+  `internal/migrate/closeenabledset_test.go:46` asserts the advisory catalog closes nothing. All
+  three are legitimately falsified: `RequiresAgent` closes where `RequiresSkills` does not. Each was
+  re-expressed to expect the agent while still proving the advisory edges stay out, rather than
+  relaxed. `internal/project/subagent_model_selection_test.go:90` also failed but needed no edit of
+  its own, since it shares `explorationFixtureConfig`. The reliable discriminator for a future
+  pairing is therefore two questions, not one: does the site reach `Open` with the skill, and does
+  the site assert over a closure or trim result.
+- **Execution finding, generation-file precedent.** `internal/migrate/explorergroundingclosure.go`
+  is a doc-comment-only file. Generations 8, 13, and 23 also reuse `applyCloseEnabledSet` and carry
+  no such file, so this is a documentation choice the plan made rather than an established pattern.
+- The gate suppresses per-test output from the Pi extension container, so a green gate alone does not
+  prove a newly added TypeScript test executes. Task 1.10's seam was verified by breaking one
+  assertion with a sentinel, observing 59 tests with 1 failure, and restoring it.
 - **Finding to carry into the ADR resync:** ADR-0179 item 5's wording ("Both dispatching skills name
   their agent, symmetrically") is broader than what the item's own mechanics produce. The name is added
   only in each skill's non-Pi `{{ else }}` branch, because the Pi branch names the Pi tool instead. This
