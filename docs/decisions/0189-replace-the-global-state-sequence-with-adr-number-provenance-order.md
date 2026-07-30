@@ -47,8 +47,11 @@ order, is the authority readers consume.
 ## Decision
 
 1. The repository-global state-sequence namespace is removed. No status-history event carries a
-   `state-sequence:` segment, the Applied and terminal-event grammars drop it, and no uniqueness,
-   contiguity, or expected-next-sequence validation exists anywhere.
+   `state-sequence:` segment, and no uniqueness, contiguity, or expected-next-sequence validation
+   exists anywhere. The parser tolerates and discards the retired segment rather than rejecting
+   it, so a pre-migration corpus still loads, and `awf check` reports every surviving segment as
+   a blocking finding directing to `awf upgrade`: loudness moves from parse time to check time,
+   and nothing silently passes.
 
 2. Per-claim provenance order is ascending final ADR number. A claim's canonical chain is its
    Origin ADR followed by its `Revised-by` ADRs sorted ascending and duplicate-free, and every
@@ -106,7 +109,9 @@ order, is the authority readers consume.
    keeps its date, status, digest, and operations, and only the retired ordering encoding is
    dropped, its meaning carried forward by ADR number. The migration rewrites raw ADR bytes and so
    becomes the third enumerated raw-bytes migration seam, extending the enumeration that
-   `adr-system/adr-lifecycle:corpus-raw-access-enumerated` pins.
+   `adr-system/adr-lifecycle:corpus-raw-access-enumerated` pins. Item 1's tolerant parse is what
+   lets the migration load the corpus whose segments it strips; a strict parse here would refuse
+   the very files the retrofit exists to fix.
 
 10. Both added claims land as `Backing: test`, with proof markers on `internal/currentstate` tests:
     the provenance-order claim on fixtures proving ascending, duplicate-free, Origin-minimal
