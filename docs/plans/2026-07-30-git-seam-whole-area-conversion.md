@@ -147,8 +147,10 @@ refactor(code-design): one isolated deadlined native git runner
   absorbs the tolerant `worktreeConfig` open (current `OpenRepo` body) and validates the
   root once; `type Repo` holds the root, the opened go-git repository (unexported), and
   the runner. Methods (all `ctx context.Context` first): `IndexBlobs`, `CommitBlobs(rev)`,
-  `RangeBlobs(base, head)`, `WorkingPaths`, `HeadExists`, `HeadHash`, `ChangeCounts` -
-  bodies move from the existing package functions; go-git-backed methods keep their
+  `RangeBlobs(base, head)`, `WorkingPaths`, `HeadExists`, `HeadHash`, `ChangeCounts`,
+  and `ChangedPaths(staged bool, rangeSpec string)` (the existing exported function
+  becomes a method per the ADR's amended item 3; its consumer in `cmd/awf/context.go`
+  converts in Task 3.4) - bodies move from the existing package functions; go-git-backed methods keep their
   current semantics including the global-excludes injection inside `WorkingPaths`. A
   not-a-repository sentinel `ErrNotARepository` is returned from `Open` where go-git
   reports `ErrRepositoryNotExists`; no go-git or go-billy type or sentinel appears in any
@@ -165,9 +167,13 @@ refactor(code-design): one isolated deadlined native git runner
   instead of `repoRoot string`. Representative: `snapshot.IndexTree(root)` in
   `cmd/awf/memorygate.go` (`runMemoryGate`) becomes `snapshot.IndexTree(ctx, repo)`
   where `repo, err := git.Open(root)` is composed at the handler boundary with the
-  Task 3.4 deadline. Edge: `internal/project/currentstate.go`'s uses inside
-  `workingCurrentState` and the staged-check path receive the handle through their
-  callers (post-state-ownership shapes; thread, do not re-open per call). Exhaustive
+  Task 3.4 deadline. Per the ADR's amended item 6, the handle is a construction-time
+  dependency: `Loader` receives the composed `*git.Repo` as a required constructor
+  dependency (panic-on-nil, `NewLoader` model) and the `Project` it opens carries it as
+  a field written once at construction; methods read the field and take only `ctx`.
+  Edge: `internal/project/currentstate.go`'s uses inside `workingCurrentState` and the
+  staged-check path read the `Project` field (post-state-ownership shapes; no re-open
+  per call, no per-method repo parameter). Exhaustive
   affected-site set: the callers of those four snapshot functions in `cmd/awf/gate.go`,
   `cmd/awf/main.go`, `cmd/awf/memorygate.go`, `cmd/awf/prosegate.go`,
   `internal/project/context.go`, `internal/project/currentstate.go`,
@@ -199,7 +205,8 @@ refactor(code-design): one isolated deadlined native git runner
   `ResolveControlRoots` -> `ResidentRoot(ResidentEfforts)` -> parent-of-parent of the
   primary; on any error at either step it returns `invocationPath`, matching both
   current copies' fallback-to-root behaviour exactly); `cmd/awf/sync.go`'s
-  `resolveProjectResidentRoot` and `project.Open`'s closure both delegate to it.
+  `resolveProjectResidentRoot` and `project.Open`'s closure both delegate to it. The
+  `ChangedPaths` consumer in `cmd/awf/context.go` converts to the handle method here.
   Post-check: `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test`
   returns no output.
 - [ ] **Task 3.5: Object-read contract suite.** Pin per entrypoint on fixture repos:
@@ -225,8 +232,13 @@ refactor(code-design): git handle, object reads, deadlined open
   currently declared in `internal/audit/git.go`) into `internal/git`; add `Repo` methods
   `RangeCommits(ctx, base, head) ([]Commit, error)` (revision resolution, merge-base,
   preorder iteration, per-commit `FileChange` stats via tree diff - bodies move from
-  `internal/audit/git.go`'s `Collect`, `toCommit`, `toFileChange`, `scopedPath`) and
-  `FileText(ctx, rev, path) (string, bool, error)` (body from `fileText`).
+  `internal/audit/git.go`'s `Collect`, `toCommit`, `toFileChange`, `scopedPath`),
+  `FileText(ctx, rev, path) (string, bool, error)` (body from `fileText`), and - per
+  the ADR's amended item 3, first consumers repoaudit in Task 4.3 -
+  `MergeBase(ctx, a, b) (string, error)`,
+  `RangeChangedPaths(ctx, base, head) ([]string, error)` (diff --name-only semantics),
+  and `RangeDiffText(ctx, base, head) (string, error)` (unified diff text with the
+  prefix options repoaudit's parser expects, runner-backed).
 - [ ] **Task 4.2: Audit converts, `internal/audit/git.go` deletes.** `audit.Run`'s
   collection path takes the walk results through its existing narrow inputs; the package
   drops its go-git import entirely, and callers of the moved types in
@@ -444,8 +456,7 @@ refactor(code-design): apply single-home and git-access authority
   for the entrypoint table: `ResolveControlRoots`, `ListWorktreeRegistrations`,
   `ProjectResidentRoot`, `ParseRange`. (`ListWorktreeRegistrations` qualifies because
   it inspects registration topology across roots before any single repo is the
-  subject.) The disposition of `ChangedPaths` follows the git-seam ADR's amended
-  item 3.
+  subject.) `ChangedPaths` is a `Repo` method per the ADR's amended item 3.
 - Integration after this plan completes: `awf effort integrate
   single-home-and-git-seam-decisions` from a clean main checkout, then renewed review
   per `awf-reviewing-impl`, then worktree removal and retrospective per the effort
