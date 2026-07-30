@@ -237,14 +237,18 @@ func TestWalkMethodsRespectCanceledContextAndNativeErrors(t *testing.T) {
 	if _, _, err := handle.FileText(ctx, "HEAD", "a.go"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("FileText cancellation = %v", err)
 	}
-	for name, cancelAt := range map[string]int{"base walk": 2, "head walk": 3} {
-		t.Run(name, func(t *testing.T) {
-			midWalk := &cancelAfterContext{Context: testContext(t), remaining: cancelAt}
-			if _, err := handle.RangeCommits(midWalk, "HEAD~1", "HEAD"); !errors.Is(err, context.Canceled) {
-				t.Fatalf("mid-walk cancellation = %v", err)
-			}
-		})
-	}
+	t.Run("base walk", func(t *testing.T) {
+		midWalk := &cancelAfterContext{Context: testContext(t), remaining: 2}
+		if _, err := handle.RangeCommits(midWalk, "HEAD", "HEAD"); !errors.Is(err, context.Canceled) {
+			t.Fatalf("base-walk cancellation = %v", err)
+		}
+	})
+	t.Run("head walk", func(t *testing.T) {
+		midWalk := &cancelAfterContext{Context: testContext(t), remaining: 3}
+		if _, err := handle.RangeCommits(midWalk, "HEAD~1", "HEAD"); !errors.Is(err, context.Canceled) {
+			t.Fatalf("head-walk cancellation = %v", err)
+		}
+	})
 	t.Setenv("PATH", t.TempDir())
 	for name, call := range map[string]func() error{
 		"merge-base": func() error { _, err := handle.MergeBase(testContext(t), "HEAD", "HEAD"); return err },

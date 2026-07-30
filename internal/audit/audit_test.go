@@ -586,7 +586,6 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
 func TestRuleUncommittedChangesDisabled(t *testing.T) {
 	if findings, err := ruleUncommittedChanges(testContext(t), nil, Inputs{}); err != nil || findings != nil {
 		t.Fatalf("disabled = %#v, %v", findings, err)
@@ -644,6 +643,7 @@ func TestRunPropagatesUncommittedStatusError(t *testing.T) {
 	}
 }
 
+// invariant: tooling/audit-and-snapshots:audit-uncommitted-changes
 func TestRuleUncommittedChangesIgnoresManagedWorktreeResidents(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "init", map[string]string{".gitignore": ".awf/worktrees/\n", "a.txt": "a"})

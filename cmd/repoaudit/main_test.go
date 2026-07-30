@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -51,7 +53,6 @@ func runFake(args []string, g fakeGit) (int, string) {
 	return code, out.String() + errOut.String()
 }
 
-// invariant: tooling/audit-commands:repoaudit-requires-explicit-range
 func TestUnreleasedSectionMissingFile(t *testing.T) {
 	if _, err := unreleasedSection(context.Background(), missingFileGit{}, "head"); err == nil || !strings.Contains(err.Error(), changelogPath+" not found") {
 		t.Fatalf("missing changelog error = %v", err)
@@ -64,6 +65,7 @@ func (missingFileGit) FileText(context.Context, string, string) (string, bool, e
 	return "", false, nil
 }
 
+// invariant: tooling/audit-commands:repoaudit-requires-explicit-range
 func TestUsageError(t *testing.T) {
 	// No argument at all: there is no default range (ADR-0127 Decision 11), so
 	// this is a refusal with the usage line rather than a report over
@@ -77,6 +79,32 @@ func TestUsageError(t *testing.T) {
 	code, out = runFake([]string{"repoaudit", "no-range-here"}, fakeGit{})
 	if code != 2 || !strings.Contains(out, "must be <a>..<b>") {
 		t.Fatalf("bare base: code=%d out=%q", code, out)
+	}
+}
+
+func TestMainValidatesRangeBeforeOpeningRepository(t *testing.T) {
+	exe := filepath.Join(t.TempDir(), "repoaudit")
+	build := exec.CommandContext(t.Context(), "go", "build", "-o", exe, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build repoaudit: %v\n%s", err, out)
+	}
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{name: "missing", want: "usage: repoaudit <base>..<head>"},
+		{name: "malformed", args: []string{"no-range-here"}, want: "must be <a>..<b>"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.CommandContext(t.Context(), exe, tc.args...)
+			cmd.Dir = t.TempDir()
+			out, err := cmd.CombinedOutput()
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 2 || !strings.Contains(string(out), tc.want) {
+				t.Fatalf("code/output = %v, %q; want exit 2 containing %q", err, out, tc.want)
+			}
+		})
 	}
 }
 
