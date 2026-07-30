@@ -24,6 +24,7 @@ Load-bearing triggers include:
 - Adopting a new external dependency
 - Changing the manifest / lock file format
 
+When grounding is stale - the ADR will cite repository facts not verified in the current session - invoke `awf-orienting` before writing.
 
 ## Conventions enforced
 

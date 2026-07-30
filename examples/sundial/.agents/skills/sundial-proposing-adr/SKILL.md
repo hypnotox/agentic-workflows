@@ -24,6 +24,7 @@ Load-bearing triggers include:
 - Changing the development workflow's rules
 - Any decision a future maintainer would need to know the "why" for
 
+When grounding is stale - the ADR will cite repository facts not verified in the current session - invoke `sundial-orienting` before writing.
 
 ## Conventions enforced
 

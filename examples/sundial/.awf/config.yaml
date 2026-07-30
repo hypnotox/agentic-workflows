@@ -23,6 +23,7 @@ skills:
   - tdd
   - writing-plans
   - exploring
+  - orienting
 agents:
   - adr-reviewer
   - code-reviewer

@@ -61,7 +61,7 @@ func TestWorkflowTelemetryMigrationIsHistoricalInputForGeneration20(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, want := strings.Join(applied, ","), "workflow-telemetry,enable-runner,rename-retired-commands,drop-workflow-telemetry,remove-workflow-residents,unified-effort-residents,implementer-agent-closure,explorer-grounding-closure,drop-severity-settings"; got != want {
+	if got, want := strings.Join(applied, ","), "workflow-telemetry,enable-runner,rename-retired-commands,drop-workflow-telemetry,remove-workflow-residents,unified-effort-residents,implementer-agent-closure,explorer-grounding-closure,drop-severity-settings,orienting-skill-backfill"; got != want {
 		t.Fatalf("applied = %q, want %q", got, want)
 	}
 	body, err := os.ReadFile(config.ConfigPath(registryRoot))

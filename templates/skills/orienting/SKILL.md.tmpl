@@ -1,0 +1,46 @@
+---
+name: {{ .prefix }}-orienting
+description: Use when taking up a topic - before brainstorming fresh non-trivial work, when resuming an effort, when taking over a handoff, or when the working set widens mid-chain. Grounds the session in repository truth; single-pass, never a chain gate.
+---
+
+# {{ .prefix }}-orienting
+
+<!-- awf:section when-to-invoke -->
+## When to invoke
+
+Four moments call for orientation:
+
+1. **Fresh work:** before brainstorming any non-trivial outcome.
+2. **Effort resume:** taking up an in-progress effort in a new session, after context summarization, or on re-entering a managed worktree.
+3. **Handoff takeover:** receiving work another session checkpointed.
+4. **Mid-chain re-orientation:** the working set widens into unexamined files or domains, or a durable artifact (an ADR's Context or State changes, a plan's tasks) is about to cite repository facts not verified in the current session.
+
+This is a support skill: single-pass and advisory, never a chain gate or prerequisite. It never creates an effort, never commits, and never edits shared working memory unless this session is the effort's one user-managed writer. Repository sources and current-state documentation remain authoritative over checkpoint prose, and standalone memory is forbidden.
+<!-- awf:end -->
+
+<!-- awf:section guide-ladder -->
+## Grounding ladder
+
+<!-- awf:include orientation-ladder -->
+
+When a needed fact's location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` and dispatch one or more exploration subagents as fitting: each carries exactly one information need with a chosen breadth and report detail, independent needs may run in parallel, and every child is report-only. Keep an exact-known-file read or genuinely trivial lookup inline.
+<!-- awf:end -->
+
+<!-- awf:section context-command -->
+## Managed context
+
+Once candidate files are identified, run `awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
+<!-- awf:include context-spill -->
+<!-- awf:end -->
+
+<!-- awf:section resume-revalidation -->
+## Resume revalidation
+
+When resuming an effort or taking over a handoff, read the effort's memory file at `.awf/efforts/<slug>/memory.md`: its header (`Effort:`, `Phase:`, `Next:`, `Updated:`) and its handoff log. Then verify every load-bearing claim against repository truth before acting on it: commits landed since the checkpoint (`git log` since `Updated:`), worktree topology versus what memory describes (`git worktree list`), cited decision-record statuses against the decision index, and cited plan and file existence. A discrepancy resolves in favor of the repository. Only the effort's one user-managed writer corrects the stale checkpoint before continuing; a dispatched child never edits it.
+<!-- awf:end -->
+
+<!-- awf:section hand-off -->
+## Hand-off
+
+Orientation produces understanding, never commits. Route onward to whichever enabled skill fits the work: brainstorming for fresh design, debugging for a defect, plan execution to continue an accepted plan, plan or ADR writing when a durable artifact is next.
+<!-- awf:end -->

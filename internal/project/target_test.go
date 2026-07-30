@@ -364,7 +364,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -443,13 +443,24 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					t.Errorf("%s brainstorming skill does not name the grounding-checker agent", target)
 				}
 			}
-			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+			// Orienting owns the dispatch conditions brainstorming used to carry
+			// inline; brainstorming now reaches them only by invoking orienting.
+			for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 				body := skillBody(consumer)
 				for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {
 					if !strings.Contains(body, want) {
 						t.Errorf("%s/%s missing dispatch condition %q", target, consumer, want)
 					}
 				}
+			}
+			// The dispatch route names the target-prefixed exploring skill, and
+			// brainstorming's shrunk step routes to orienting rather than
+			// duplicating the conditions.
+			if orienting := skillBody("orienting"); !strings.Contains(orienting, "`example-exploring`") {
+				t.Errorf("%s orienting skill does not name the prefixed exploring skill", target)
+			}
+			if brainstorming := skillBody("brainstorming"); !strings.Contains(brainstorming, "`example-orienting`") {
+				t.Errorf("%s brainstorming skill does not invoke the prefixed orienting skill", target)
 			}
 		})
 	}

@@ -12,8 +12,8 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 			t.Errorf("schema %d at minimum %s: %v", schema, minimum, err)
 		}
 	}
-	if got := minVersionBySchema[25]; got != Version {
-		t.Fatalf("generation-25 minimum version = %q, want %s", got, Version)
+	if got := minVersionBySchema[26]; got != Version {
+		t.Fatalf("generation-26 minimum version = %q, want %s", got, Version)
 	}
 	if got := minVersionBySchema[20]; got != "0.24.0" {
 		t.Fatalf("generation-20 minimum version = %q, want 0.24.0", got)
@@ -26,7 +26,7 @@ func TestSchemaMinimumVersionAuthority(t *testing.T) {
 	if err := ValidateSchemaMinimumVersion(22, "0.25.0"); err == nil || !strings.Contains(err.Error(), "requires awf 0.26.0") {
 		t.Fatalf("generation-22 older binary error = %v", err)
 	}
-	if err := ValidateSchemaMinimumVersion(26, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
+	if err := ValidateSchemaMinimumVersion(27, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
 		t.Fatalf("unmapped schema error = %v", err)
 	}
 }

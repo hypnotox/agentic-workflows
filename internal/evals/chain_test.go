@@ -60,11 +60,16 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
-	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+	// Orienting replaced brainstorming as the exploring consumer: brainstorming
+	// now reaches exploration only by invoking orienting.
+	for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
 		if !strings.Contains(body, "exploring") {
 			t.Errorf("Pi consumer %q does not route through exploring", consumer)
 		}
+	}
+	if body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-brainstorming", "SKILL.md")); !strings.Contains(body, "orienting") {
+		t.Error("Pi brainstorming skill does not route through orienting")
 	}
 	exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
 	if !namesOnInvocationLine(exploring, "subagent_explore") {
@@ -278,7 +283,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
 		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
 		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
-		"roadmap-graduation": "conditional-creation",
+		"orienting": "report", "roadmap-graduation": "conditional-creation",
 	}
 	if len(roles) != len(cat.Skills) {
 		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
@@ -290,7 +295,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	}
 
 	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
-	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true}
+	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
 		"A minimal simple fix uses no effort",
