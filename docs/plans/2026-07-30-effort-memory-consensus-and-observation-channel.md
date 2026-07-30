@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [186]
-status: Proposed
+status: Implemented
 ---
 # Plan: Effort memory consensus and observation channel
 

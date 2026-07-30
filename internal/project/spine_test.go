@@ -1433,6 +1433,44 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage
+func TestMemoryLogConsumerCoverage(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{},
+		"skills": map[string]bool{},
+	}
+	for _, agent := range []string{"adr-reviewer", "plan-reviewer", "code-reviewer"} {
+		out := renderAgentGolden(t, agent, data)
+		for _, want := range []string{
+			"## Consensus adherence",
+			"user-decision",
+			"we decided X; during <phase> we found Z; recommend Y, approve?",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing consensus-adherence phrase %q:\n%s", agent, want, out)
+			}
+		}
+	}
+	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
+		out := renderSkillGolden(t, skill, data)
+		for _, want := range []string{"pasted verbatim", "`Record:` blocks included"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing decision-log paste phrase %q:\n%s", skill, want, out)
+			}
+		}
+	}
+	if out := renderSkillGolden(t, "reviewing-plan-resync", data); strings.Contains(out, "pasted verbatim") {
+		t.Errorf("reviewing-plan-resync must keep its narrowed contract:\n%s", out)
+	}
+	retrospective := renderSkillGolden(t, "retrospective", data)
+	for _, want := range []string{"as primary input", "across the effort's sessions"} {
+		if !strings.Contains(retrospective, want) {
+			t.Errorf("retrospective missing memory-log phrase %q:\n%s", want, retrospective)
+		}
+	}
+}
+
 func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

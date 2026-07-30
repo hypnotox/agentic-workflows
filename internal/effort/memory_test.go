@@ -5,6 +5,7 @@ import (
 	"testing"
 )
 
+// invariant: tooling/effort-management:memory-skeleton-purpose-partition
 func TestOwnedMemorySkeletonIsCoherentAndSlugged(t *testing.T) {
 	raw := string(memorySkeleton("coherent-effort"))
 	phrases := []string{
