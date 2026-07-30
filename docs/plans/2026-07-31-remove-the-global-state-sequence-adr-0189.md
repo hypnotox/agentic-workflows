@@ -51,7 +51,8 @@ markers, and ADR events.
   - `internal/migrate/migrate.go` (registry entry)
   - `templates/skills/adr-lifecycle/SKILL.md.tmpl`, `templates/adr-readme/README.md.tmpl`,
     `templates/adr-template/template.md.tmpl`, `templates/agents/plan-reviewer.md.tmpl`,
-    `templates/agents/adr-reviewer.md.tmpl`, `templates/skills/reviewing-plan/SKILL.md.tmpl`,
+    `templates/agents/adr-reviewer.md.tmpl`, `templates/agents/code-reviewer.md.tmpl`,
+    `templates/skills/reviewing-plan/SKILL.md.tmpl`,
     `templates/skills/reviewing-impl/SKILL.md.tmpl`,
     `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`, `.awf/docs/glossary.yaml` (rendered
     `docs/glossary.md` and the reviewer agent and skill outputs follow via `./x render`)
@@ -306,8 +307,12 @@ only the final staged state must be green.
     `templates/agents/plan-reviewer.md.tmpl:18` drops its `sequences are consecutive` clause and
     restates batch ordering as ascending ADR number and intra-ADR history position;
     `templates/agents/adr-reviewer.md.tmpl:22` drops `and global sequence order`, restating the
-    same way; `templates/skills/reviewing-plan/SKILL.md.tmpl:75` drops `and global sequence
-    order` from its V2 notes bullet; `templates/skills/reviewing-impl/SKILL.md.tmpl:87` and
+    same way; `templates/agents/code-reviewer.md.tmpl:20` rewords `consecutive sequences` in its
+    application-pair-correctness lens to the same ADR-number and intra-ADR position phrasing;
+    `templates/adr-readme/README.md.tmpl:105-106` rewrites `Multiple ADR batches may share a
+    pair only for distinct claim IDs and consecutive sequences` to `Multiple ADR batches may
+    share a pair only for distinct claim IDs`; `templates/skills/reviewing-plan/SKILL.md.tmpl:75`
+    drops `and global sequence order` from its V2 notes bullet; `templates/skills/reviewing-impl/SKILL.md.tmpl:87` and
     `templates/skills/reviewing-plan-resync/SKILL.md.tmpl:64` reword their softer `sequence
     order`/`sequence ordering` phrases to `ADR-number and intra-ADR position order` so no
     reviewer note is left reading through the old model. In `.awf/docs/glossary.yaml`, the
