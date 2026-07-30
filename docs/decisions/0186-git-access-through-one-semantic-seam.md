@@ -157,9 +157,12 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    internal, invisible to consumers, and swappable per entrypoint.
 
 4. One native runner, unexported: it pins the repository with the validated root, applies
-   the isolated environment unconditionally (`IsolatedGitEnvironment` becomes unexported;
-   grounding confirmed no other consumer), refuses a context without a deadline as a hard
-   error, and translates a non-zero exit into a `CommandError` carrying the arguments,
+   the isolated environment unconditionally (`IsolatedGitEnvironment` becomes unexported
+   in the same transaction that deletes its one remaining consumer, the duplicated
+   `internal/worktree` runner), refuses a context without a deadline as a hard
+   error (activated in the same transaction that converts every production feed, since
+   two feeds swallow errors into a silent resident-root fallback and must change shape
+   with the enforcement), and translates a non-zero exit into a `CommandError` carrying the arguments,
    exit code, and captured stderr. The exit-code-1-as-answer idiom lives once, inside the
    runner, surfacing as `(bool, error)` probes. Deadline values are chosen at the command
    boundary in `cmd/awf`; the implementation plan names the magnitude, chosen as a

@@ -94,18 +94,19 @@ chore(tooling): merge integrated main into the git-seam branch
   type plus exported error: `type CommandError struct { Args []string; ExitCode int;
   Stderr string; Err error }` with `Error()` (formats args, exit code, stderr) and
   `Unwrap()`. Runner behaviour: constructor takes the validated repository root; its run
-  method takes `ctx context.Context` and argv, returns stdout bytes. It hard-errors
-  (before spawning) when `ctx.Deadline()` is absent, with a message naming the missing
-  deadline; pins the repo via `-C <root>`; builds env from
-  `isolatedGitEnvironment(os.Environ())` unconditionally; captures stderr; translates a
-  non-zero exit into `*CommandError`. A probe helper wraps run for
-  exit-code-1-as-answer: exit 0 -> `(true, nil)`, exit 1 -> `(false, nil)`, otherwise
-  `(false, *CommandError)`. The existing injection seam `nativeGitRunner`
+  method takes `ctx context.Context` and argv, returns stdout bytes. It pins the repo
+  via `-C <root>`; builds env from `IsolatedGitEnvironment(os.Environ())`
+  unconditionally (the symbol stays exported until Phase 5 deletes its one remaining
+  consumer in `internal/worktree/git.go`); captures stderr; translates a
+  non-zero exit into `*CommandError`. The deadline hard-error is NOT added in this
+  phase: it activates in Task 3.4 together with the nine feed conversions it gates
+  (two of those feeds swallow errors into a silent resident-root fallback, so
+  enforcement and feed conversion must land in one transaction). A probe helper wraps
+  run for exit-code-1-as-answer: exit 0 -> `(true, nil)`, exit 1 -> `(false, nil)`,
+  otherwise `(false, *CommandError)`. The existing injection seam `nativeGitRunner`
   (`controlroot.go`) is superseded: `resolveControlRoots`, `runGitPathWith`, and
   `runGitTextWith` rebind to the new runner type, and no second runner abstraction
-  survives the phase. Unexport `IsolatedGitEnvironment` (rename to
-  `isolatedGitEnvironment`; grounding confirmed no external consumer; its end-to-end
-  tests keep working via `ResolveControlRoots`).
+  survives the phase.
 - [ ] **Task 2.2: Convert `internal/git`'s own subprocess sites.** `runGitBytes` in
   `controlroot.go` and the inline exec in `WorktreeChangeCounts` (`git.go`) route through
   the runner. `WorktreeChangeCounts` keeps porcelain v2 semantics and gains isolation,
@@ -127,16 +128,17 @@ chore(tooling): merge integrated main into the git-seam branch
 - [ ] **Task 2.4: Runner and topology contract suites.** New test files in
   `internal/git`: runner suite proving (a) a polluted environment (`GIT_DIR`,
   `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_CONFIG_GLOBAL` set via `t.Setenv` to hostile
-  values) does not affect an isolated invocation; (b) a deadline-less context is refused
-  without spawning; (c) a failing invocation's error `errors.As`-matches `*CommandError`
-  and carries stderr; (d) the probe helper's three outcomes. Topology suite pins
+  values) does not affect an isolated invocation; (b) a failing invocation's error
+  `errors.As`-matches `*CommandError` and carries stderr; (c) the probe helper's three
+  outcomes. (The deadline-refusal test moves to Task 3.4 with the enforcement it
+  proves.) Topology suite pins
   `ResolveControlRoots`/`ListWorktreeRegistrations` semantics on fixture repos with
   registered worktrees (use the existing native fixtures until Phase 6 converts them).
   These suites are serial (`t.Setenv`).
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
-refactor(code-design): one isolated deadlined native git runner
+refactor(code-design): one isolated native git runner
 ```
 
 ## Phase 3: Handle, object reads, and the open path
@@ -191,8 +193,12 @@ refactor(code-design): one isolated deadlined native git runner
   Post-check:
   `grep -rln "go-git" internal/migrate internal/upgrade internal/project --include=*.go | grep -v _test`
   returns no output.
-- [ ] **Task 3.4: The open/deadline path and resident-root single home.** Every `cmd/awf`
-  handler that reaches git derives `ctx, cancel := context.WithTimeout(..., gitCommandTimeout)`
+- [ ] **Task 3.4: The open/deadline path and resident-root single home.** Activate the
+  runner's deadline hard-error here (before spawning, when `ctx.Deadline()` is absent,
+  with a message naming the missing deadline), together with its refusal test in the
+  runner suite - enforcement and the feed conversions below are one transaction. Every
+  `cmd/awf` handler that reaches git derives
+  `ctx, cancel := context.WithTimeout(..., gitCommandTimeout)`
   at its boundary (the constant exists from Task 2.2). `project.Open` and `Loader.Open`
   gain a leading `ctx context.Context` parameter, and the loader's injected
   `project.ResolveResidentRoot` contract type changes from `func(string) string` to
@@ -294,7 +300,10 @@ refactor(code-design): commit-range walk behind the seam
   in the worktree runner's callers, and `ValidateRefName(ctx, name) (bool, error)` (body
   from `internal/effort/store.go`'s `check-ref-format` exec). All native calls go
   through the Phase 2 runner; probes use the probe helper.
-- [ ] **Task 5.2: Delete `internal/worktree/git.go`; convert the Manager.** The `Runner`
+- [ ] **Task 5.2: Delete `internal/worktree/git.go`; convert the Manager.** With the
+  file's deletion, unexport `IsolatedGitEnvironment` (rename to
+  `isolatedGitEnvironment`) - this was its one remaining consumer, and the end-to-end
+  isolation tests keep working via `ResolveControlRoots`. The `Runner`
   contract stays consumer-owned in `internal/worktree` (narrow, as currently consumed);
   production wiring in `cmd/awf` binds `Repo` methods to it. `worktree.Open` takes its
   dependencies explicitly (no nil defaults, panic-on-nil per the `project.NewLoader`
