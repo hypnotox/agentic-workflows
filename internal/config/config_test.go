@@ -459,7 +459,7 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	if cfg.CurrentState.TopicCoverage != "error" || cfg.CurrentState.TopicFanout != "warn" || cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.MaxClaimsPerTopic != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 || cfg.CurrentState.EffectiveMaxClaimsPerTopic() != 20 {
+	if cfg.CurrentState.MaxTopicsPerPath != nil || cfg.CurrentState.MaxClaimsPerTopic != nil || cfg.CurrentState.EffectiveMaxTopicsPerPath() != 8 || cfg.CurrentState.EffectiveMaxClaimsPerTopic() != 20 {
 		t.Errorf("defaults = %#v, effective topic max = %d, effective claim max = %d", cfg.CurrentState, cfg.CurrentState.EffectiveMaxTopicsPerPath(), cfg.CurrentState.EffectiveMaxClaimsPerTopic())
 	}
 
@@ -474,36 +474,8 @@ func TestCurrentStateDefaultsAndPresence(t *testing.T) {
 	}
 }
 
-func TestCurrentStateSeverityValidation(t *testing.T) {
-	for _, field := range []string{"topicCoverage", "topicFanout"} {
-		for _, value := range []string{"error", "warn", "off"} {
-			t.Run(field+"_"+value, func(t *testing.T) {
-				body := "prefix: x\ncurrentState:\n  " + field + ": " + value + "\n"
-				cfg, err := Parse("staged/.awf", []byte(body))
-				if err != nil {
-					t.Fatal(err)
-				}
-				if err := cfg.Validate(); err != nil {
-					t.Errorf("legal severity rejected: %v", err)
-				}
-			})
-		}
-	}
-	for _, tc := range []struct{ field, value string }{{"topicCoverage", "fatal"}, {"topicFanout", "quiet"}, {"topicCoverage", "''"}, {"topicFanout", "''"}} {
-		t.Run(tc.field+"_invalid", func(t *testing.T) {
-			body := "prefix: x\ncurrentState:\n  " + tc.field + ": " + tc.value + "\n"
-			cfg, err := Parse("staged/.awf", []byte(body))
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), tc.field) {
-				t.Errorf("Validate = %v", err)
-			}
-		})
-	}
-}
-
 // invariant: config/validation:testglobs-anchored-validated
+// invariant: config/configuration:severity-not-configurable
 func TestCurrentStateStrictValidation(t *testing.T) {
 	valid := `prefix: x
 currentState:
@@ -553,8 +525,11 @@ currentState:
 
 	for _, tc := range []struct{ body, want string }{
 		{"prefix: x\ncurrentState:\n  unknown: true\n", "unknown"},
+		// ADR-0179 removed both severity keys, so a tree still carrying either is
+		// rejected by the unknown-field path rather than honoured.
+		{"prefix: x\ncurrentState:\n  topicCoverage: error\n", "topicCoverage"},
+		{"prefix: x\ncurrentState:\n  topicFanout: warn\n", "topicFanout"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      unknown: true\n", "unknown"},
-		{"prefix: x\ncurrentState:\n  topicCoverage: warn\n  topicCoverage: error\n", "already set"},
 		{"prefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n  maxClaimsPerTopic: 21\n", "already set"},
 		{"prefix: x\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: '//'\n      marker: '#'\n", "already set"},
 	} {
@@ -596,8 +571,6 @@ func TestCurrentStateRejectsNonStringScalars(t *testing.T) {
 		{"marker", "  sources:\n    - marker: %s\n", "currentState source.marker must be a string scalar"},
 		{"close", "  sources:\n    - close: %s\n", "currentState source.close must be a string scalar"},
 		{"test_glob", "  testGlobs: [%s]\n", "currentState.testGlobs[0] must be a string scalar"},
-		{"topic_coverage", "  topicCoverage: %s\n", "currentState.topicCoverage must be a string scalar"},
-		{"topic_fanout", "  topicFanout: %s\n", "currentState.topicFanout must be a string scalar"},
 	}
 	values := []struct{ name, yaml string }{
 		{"numeric", "123"},
@@ -620,8 +593,6 @@ func TestCurrentStateRejectsNonStringScalars(t *testing.T) {
 func TestCurrentStateRejectsWrongValueTypes(t *testing.T) {
 	for _, body := range []string{
 		"prefix: x\ncurrentState:\n  testGlobs: {}\n",
-		"prefix: x\ncurrentState:\n  topicCoverage: []\n",
-		"prefix: x\ncurrentState:\n  topicFanout: []\n",
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: null\n",
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: nope\n",
 		"prefix: x\ncurrentState:\n  maxTopicsPerPath: true\n",

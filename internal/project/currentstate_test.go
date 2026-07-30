@@ -114,8 +114,7 @@ domains:
 contextIgnore:
   - internal/skip.go
 currentState:
-  topicCoverage: error
-  topicFanout: warn
+  maxTopicsPerPath: 8
 `
 
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.

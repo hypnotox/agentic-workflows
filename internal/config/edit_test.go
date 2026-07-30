@@ -120,7 +120,7 @@ func TestSetMappingInteger(t *testing.T) {
 		wantErr         bool
 	}{
 		{"creates mapping", "# top\nprefix: x\n", "# top\nprefix: x\ncurrentState:\n  maxClaimsPerTopic: 20\n", false},
-		{"adds child preserving comment", "currentState:\n  topicCoverage: warn # keep\n", "currentState:\n  topicCoverage: warn # keep\n  maxClaimsPerTopic: 20\n", false},
+		{"adds child preserving comment", "currentState:\n  maxTopicsPerPath: 8 # keep\n", "currentState:\n  maxTopicsPerPath: 8 # keep\n  maxClaimsPerTopic: 20\n", false},
 		{"preserves existing integer", "currentState:\n  maxClaimsPerTopic: 7 # explicit\n", "currentState:\n  maxClaimsPerTopic: 7 # explicit\n", false},
 		{"rejects non-mapping", "currentState: nope\n", "", true},
 		{"rejects wrong existing kind", "currentState:\n  maxClaimsPerTopic: nope\n", "", true},

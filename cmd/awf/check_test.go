@@ -109,18 +109,41 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	}
 }
 
-// coverageYAML owns internal/** with a coverage severity the test parameterizes.
-func coverageYAML(severity string) string {
+// coverageYAML owns internal/** with the fan-out budget the warn fixtures need.
+// The currentState block must stay non-empty: coverage is only evaluated when the
+// config declares one, and a bare "currentState:" key is a hard parse error.
+func coverageYAML() string {
 	return "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
-		"currentState:\n  topicCoverage: " + severity + "\n  topicFanout: off\n"
+		"currentState:\n  maxTopicsPerPath: 1\n"
 }
 
 // coverageFiles owns internal/** but declares no scoped topic, so internal/bar.go
-// is a coverage gap surfaced by CheckCurrentState through runCheck.
+// is a coverage gap surfaced by CheckCurrentState through runCheck. It matches no
+// scoped topic, so its fan-out count is 0 and the shared budget of 1 is never
+// exceeded: the only finding is the error-ranked Uncovered one.
 func coverageFiles() map[string]string {
 	return map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - internal/**\n",
 		"internal/bar.go":         "package internalx\n",
+	}
+}
+
+// fanoutFiles gives internal/bar.go two path-scoped claim-bearing topics, so the
+// path is covered but its topic count exceeds coverageYAML's budget of 1. Fan-out
+// is the one warn-ranked coverage class that survives ADR-0179, so the note-channel
+// fixtures ride it rather than a suppressed coverage severity. Both parts carry a
+// rule: claim, not an invariant: claim - an invariant would additionally demand a
+// Backing: line and a proof marker in a testGlobs file the fixture cannot supply.
+func fanoutFiles() map[string]string {
+	const part = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"
+	return map[string]string{
+		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
+		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",
+		".awf/topics/parts/alpha/one/current-state.md": part,
+		".awf/topics/metadata/alpha/two.yaml":          "title: Two\nsummary: T.\npaths:\n  - internal/**\n",
+		".awf/topics/parts/alpha/two/current-state.md": part,
+		"docs/decisions/0001-one.md":                   testsupport.ADR("Implemented", testsupport.WithTitle("0001: One")),
+		"internal/bar.go":                              "package internalx\n",
 	}
 }
 
@@ -129,7 +152,7 @@ func coverageFiles() map[string]string {
 // an error-severity coverage finding, which must fail runCheck.
 // invariant: tooling/cli:invariants-in-check
 func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
-	root := syncedGitProjectFiles(t, coverageYAML("error"), coverageFiles())
+	root := syncedGitProjectFiles(t, coverageYAML(), coverageFiles())
 	var out bytes.Buffer
 	err := runCheck(root, false, &out)
 	if err == nil {
@@ -144,15 +167,15 @@ func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
 }
 
 // TestRunCheckCurrentStateWarnNote covers the note: channel in runCheck: a
-// warn-severity coverage finding prints a note without failing the check.
+// warn-ranked fan-out finding prints a note without failing the check.
 func TestRunCheckCurrentStateWarnNote(t *testing.T) {
-	root := syncedGitProjectFiles(t, coverageYAML("warn"), coverageFiles())
+	root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 	var out bytes.Buffer
 	if err := runCheck(root, false, &out); err != nil {
-		t.Fatalf("warn coverage must not fail runCheck, got: %v", err)
+		t.Fatalf("a warn-ranked finding must not fail runCheck, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a coverage warn note, got: %q", out.String())
+		t.Errorf("expected a fan-out warn note, got: %q", out.String())
 	}
 	if !strings.Contains(out.String(), "awf check: clean") {
 		t.Errorf("expected clean status alongside the note, got: %q", out.String())
@@ -161,7 +184,7 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 
 // invariant: tooling/cli:topic-claim-budget-advisory
 func TestRunCheckClaimBudgetNote(t *testing.T) {
-	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  topicCoverage: off\n  topicFanout: off\n  maxClaimsPerTopic: 1\n"
+	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
 	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
 	root := syncedGitProjectFiles(t, cfg, map[string]string{
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
@@ -210,7 +233,7 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 // error-severity index coverage finding prints the finding line and fails.
 func TestRunCheckStagedSurfacesFinding(t *testing.T) {
 	root := stagedCheckProject(t,
-		map[string]string{".awf/config.yaml": coverageYAML("error"), ".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"},
+		map[string]string{".awf/config.yaml": coverageYAML(), ".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"},
 		map[string]string{"internal/bar.go": "package internalx\n"})
 	var out bytes.Buffer
 	err := runCheck(root, true, &out)
@@ -223,17 +246,19 @@ func TestRunCheckStagedSurfacesFinding(t *testing.T) {
 }
 
 // TestRunCheckStagedWarnNote covers the staged note channel and clean status: a
-// warn-severity index coverage finding prints a note without failing.
+// warn-ranked index fan-out finding prints a note without failing.
 func TestRunCheckStagedWarnNote(t *testing.T) {
-	root := stagedCheckProject(t,
-		map[string]string{".awf/config.yaml": coverageYAML("warn"), ".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"},
-		map[string]string{"internal/bar.go": "package internalx\n"})
+	staged := fanoutFiles()
+	work := map[string]string{"internal/bar.go": staged["internal/bar.go"]}
+	delete(staged, "internal/bar.go")
+	staged[".awf/config.yaml"] = coverageYAML()
+	root := stagedCheckProject(t, staged, work)
 	var out bytes.Buffer
 	if err := runCheck(root, true, &out); err != nil {
-		t.Fatalf("warn coverage must not fail the staged check, got: %v", err)
+		t.Fatalf("a warn-ranked finding must not fail the staged check, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
-		t.Errorf("expected a coverage warn note, got: %q", out.String())
+		t.Errorf("expected a fan-out warn note, got: %q", out.String())
 	}
 	if !strings.Contains(out.String(), "awf check --staged: clean") {
 		t.Errorf("expected the clean staged status, got: %q", out.String())
@@ -241,7 +266,7 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 }
 
 func TestRunCheckStagedSuppressesClaimBudgetNote(t *testing.T) {
-	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  topicCoverage: off\n  topicFanout: off\n  maxClaimsPerTopic: 1\n"
+	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
 	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
 	root := stagedCheckProject(t, map[string]string{
 		".awf/config.yaml":                             cfg,

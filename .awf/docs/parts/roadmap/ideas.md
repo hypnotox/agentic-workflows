@@ -16,9 +16,11 @@
   semantics, whether a path-owning global topic satisfies scoped coverage or only
   ownership, and what it does to the fan-out budget, which deliberately excludes global
   topics today.
-- Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
-  `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR
-  revising `tooling/cli:topic-claim-budget-advisory` and an adopter-facing config key.
+- Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
+  rank now that ADR-0148 brought every topic under budget; needs its own small ADR
+  revising `tooling/cli:topic-claim-budget-advisory`. ADR-0179 forecloses the
+  configurable-severity and adopter-facing-config-key half of this idea: awf exposes no
+  severity setting, so the promotion is to a rank fixed in code or not at all.
 - Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three

@@ -8,7 +8,7 @@ import (
 
 // invariant: config/migrations-and-locks:workflow-telemetry-config-migration
 func TestDropWorkflowTelemetryRegistered(t *testing.T) {
-	if Current() != 23 {
+	if Current() != 24 {
 		t.Fatal(Current())
 	}
 }

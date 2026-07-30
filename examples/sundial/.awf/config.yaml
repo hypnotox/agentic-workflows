@@ -65,7 +65,5 @@ currentState:
       marker: //
   testGlobs:
     - "**/*_test.go"
-  topicCoverage: error
-  topicFanout: warn
   maxTopicsPerPath: 8
   maxClaimsPerTopic: 20

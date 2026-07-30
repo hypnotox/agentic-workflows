@@ -55,6 +55,7 @@ var registry = []Migration{
 	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
 	{To: 22, Name: "unified-effort-residents", Apply: applyUnifiedEffortResidents, OwnsSchemaStamp: true},
 	{To: 23, Name: "implementer-agent-closure", Apply: applyCloseEnabledSet},
+	{To: 24, Name: "drop-severity-settings", Apply: applyDropSeveritySettings},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -101,6 +102,15 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 			out, err = config.RemoveKey(out, "workflowTelemetry")
 			if err != nil {
 				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+			}
+		}
+		if migration.To == 24 {
+			for _, key := range []string{"topicCoverage", "topicFanout"} {
+				var err error
+				out, err = config.RemoveMappingKey(out, "currentState", key)
+				if err != nil {
+					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+				}
 			}
 		}
 	}

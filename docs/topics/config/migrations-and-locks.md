@@ -84,6 +84,12 @@ The lock file carries an integer schemaVersion, and a lock written by sync stamp
 Origin: ADR-0010
 Backing: test
 
+### `invariant: severity-keys-dropped`
+
+Schema generation 24 removes currentState.topicCoverage and currentState.topicFanout from a config tree, announcing each removal it performs, and leaves every other configured key byte-identical.
+Origin: ADR-0179
+Backing: test
+
 ### `invariant: singleton-doc-migration-relocates-parts`
 
 The singleton-standard-docs migration relocates each promoted standard doc's sidecar file and its convention-part directory from under `.awf/docs/` to the `.awf/` singleton locations, not only stripping the doc's `docs:` array entry.

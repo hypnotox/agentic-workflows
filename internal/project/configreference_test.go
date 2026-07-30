@@ -197,8 +197,6 @@ currentState:
       marker: '#'
   testGlobs:
     - '**/*_test.md'
-  topicCoverage: off
-  topicFanout: error
   maxTopicsPerPath: 5
   maxClaimsPerTopic: 12
 proseGate:
@@ -228,8 +226,6 @@ memoryCite:
 		"`memoryCite.exemptions` | list of {path, count} mappings | empty (nothing is exempt) | 1 entries |",
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",
-		"`currentState.topicCoverage` | severity (error, warn, or off) | error | off |",
-		"`currentState.topicFanout` | severity (error, warn, or off) | warn | error |",
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
 		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 12 |",
 	} {

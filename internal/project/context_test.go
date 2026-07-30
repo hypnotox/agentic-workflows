@@ -226,8 +226,7 @@ domains:
 contextIgnore:
   - .awf/**
 currentState:
-  topicCoverage: error
-  topicFanout: off
+  maxTopicsPerPath: 8
 `
 
 func uncoveredFiles() map[string]string {
@@ -280,7 +279,7 @@ func TestUncovered(t *testing.T) {
 // owns nothing present, no path seeds the repository root as covered, so a
 // whole-repo scan folds every unowned path up to ".".
 func TestUncoveredCollapsesToRoot(t *testing.T) {
-	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  topicCoverage: error\n  topicFanout: off\n"
+	cfg := "prefix: example\ndomains:\n  - alpha\ncontextIgnore:\n  - .awf/**\ncurrentState:\n  maxTopicsPerPath: 8\n"
 	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - nonexistent/**\n",
 		"top.txt":                 "x\n",

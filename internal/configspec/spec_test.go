@@ -149,8 +149,6 @@ func TestCurrentStateKeysPublished(t *testing.T) {
 		"currentState.sources[].marker",
 		"currentState.sources[].close",
 		"currentState.testGlobs",
-		"currentState.topicCoverage",
-		"currentState.topicFanout",
 		"currentState.maxTopicsPerPath",
 		"currentState.maxClaimsPerTopic",
 	} {

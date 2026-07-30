@@ -26,9 +26,10 @@ const currentStateTransitionRule = "current-state-transition"
 
 // CurrentStateReport is the routed outcome of a current-state check over one
 // snapshot: the static ADR-to-claim handshake findings (all blocking) and the
-// coverage/fan-out findings (each carrying its configured severity, ADR-0134
-// item 11). Findings and Notes split the report into blocking lines and
-// non-failing note lines so the command layer never re-derives the routing.
+// coverage/fan-out findings, which carry ranks fixed in code rather than
+// configured - coverage at error, fan-out at warn (ADR-0179). Findings and Notes
+// split the report into blocking lines and non-failing note lines so the command
+// layer never re-derives the routing.
 type CurrentStateReport struct {
 	Static     []currentstate.Finding
 	Coverage   []topic.CoverageFinding
@@ -443,12 +444,12 @@ func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Uni
 	return beforeLoaded.Universe(), afterLoaded.Universe(), nil
 }
 
-// coveragePolicy reads the coverage and fan-out severities and the fan-out
-// budget from a currentState config block.
+// coveragePolicy reads only the fan-out budget from a currentState config block.
+// Which checks run and the rank each reports at are fixed in code (ADR-0179).
 func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
 	return topic.CoveragePolicy{
-		Coverage:         topic.CoverageSeverity(cs.TopicCoverage),
-		Fanout:           topic.CoverageSeverity(cs.TopicFanout),
+		Coverage:         topic.CoverageError,
+		Fanout:           topic.CoverageWarn,
 		MaxTopicsPerPath: cs.EffectiveMaxTopicsPerPath(),
 	}
 }

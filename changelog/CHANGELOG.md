@@ -10,6 +10,16 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
+  the `off` value with them. Topic coverage and fan-out now always evaluate, at ranks fixed in
+  code: coverage reports at error and fan-out at warn. A caller that does not want a finding
+  class no longer suppresses it with a rank, it does not request the check. Every finding rank
+  awf reports is now one shared two-member rank spelled `error` or `warn`; the audit surfaces
+  that previously printed `warning` for a rank print `warn`, while the `%d warning(s)` verdict
+  summaries are unchanged. Schema generation 24 removes both keys from a config tree, announcing
+  each removal; run `awf upgrade`. `config.yaml` is strict-parsed, so a surviving key hard-fails
+  on the new binary rather than warning.
+
 - Replace effort JSON protocol 1 and mutable UUID lifecycle commands with protocol 2 immutable slug residents. `awf effort` now exposes only new/list/show/finish, separate worktree add/remove, and stateless integrate; standalone memory, rename, complete, abandon, reopen, repair, combined creation, manual integration, and every awf force-discard flag are removed. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`, list sorts the same objects by slug, and JSON failures write no stdout.
 
 - Schema generation 22 resets protocol-1 effort residents and standalone memory rather than

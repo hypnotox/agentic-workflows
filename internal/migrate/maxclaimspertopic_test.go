@@ -15,7 +15,7 @@ func TestApplyTopicClaimBudget(t *testing.T) {
 		name, source, want string
 	}{
 		{"creates currentState", "# keep\nprefix: example\n", "currentState:\n  maxClaimsPerTopic: 20"},
-		{"adds to currentState", "prefix: example\ncurrentState:\n  topicCoverage: warn # keep\n", "  maxClaimsPerTopic: 20"},
+		{"adds to currentState", "prefix: example\ncurrentState:\n  maxTopicsPerPath: 8 # keep\n", "  maxClaimsPerTopic: 20"},
 		{"preserves explicit", "prefix: example\ncurrentState:\n  maxClaimsPerTopic: 7\n", "  maxClaimsPerTopic: 7"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
