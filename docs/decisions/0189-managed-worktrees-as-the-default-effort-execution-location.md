@@ -49,22 +49,29 @@ steps rather than risking deletion next to ambiguous state.
    the effort residents it invokes the same standalone `Manager.Add` machinery to create
    `.awf/worktrees/<slug>/` on `awf/<slug>`; the orchestration lives in the existing
    worktree lifecycle manager and duplicates no Git worktree behavior.
-2. `--no-worktree` is the explicit exception and keeps execution in the invoking checkout.
-   Its output reports explicit absence: text uses `worktree=none`, JSON uses
-   `"worktree": null`, and the next action names the invoking checkout.
+2. The `new` reply carries the worktree outcome alongside the unchanged effort object:
+   successful default creation reports `"worktree": {"path": <path>, "branch": <branch>}`
+   in JSON. `--no-worktree` is the explicit exception and keeps execution in the invoking
+   checkout; its output reports explicit absence: text uses `worktree=none`, JSON uses
+   `"worktree": null`, and the next action names the invoking checkout. `show` and `list`
+   keep their current shapes: the worktree field is a creation outcome report, not stored
+   state, and Git remains the topology authority for later inspection. `schemaVersion`
+   stays 2; the effort object itself is unchanged.
 3. Default creation preserves standalone Add base semantics: the new branch starts at the
    invoking checkout's `HEAD`. `awf effort new --base <ref>` exposes the same base
    selection as `worktree add --base` and is invalid combined with `--no-worktree`.
-4. Failure of the worktree step is handled safety-constrained transactionally: the
-   just-created effort is removed only when managed topology is proven absent; otherwise
-   the effort is retained and the output reports the actual state and concrete recovery
-   steps. Successful creation reports the worktree path and explicitly directs the caller
-   to continue the effort there.
+4. Failure of the worktree step is handled safety-constrained transactionally: rollback
+   invokes the existing restartable finish path, whose managed-topology guard already
+   refuses removal unless topology is proven absent, so the just-created effort is removed
+   only in that proven case; otherwise the effort is retained and the output reports the
+   actual state and concrete recovery steps. Successful creation reports the worktree path
+   and explicitly directs the caller to continue the effort there.
 5. The shared worktree result gains structured path and branch facts so standalone Add and
-   combined creation consume one result type; the line-oriented mutation protocol remains
-   the text surface.
+   combined creation consume one result type; the `new` reply's worktree field (item 2) is
+   their first consumer, and the line-oriented mutation protocol remains the text surface.
 6. Effort finish gains a narrow structured outcome and error classification sufficient for
-   rollback reporting; the orchestration never parses error prose.
+   rollback reporting; it exists to distinguish the finish path's managed-topology refusal
+   (item 4) from other failures, and the orchestration never parses error prose.
 7. Parallelism stays one worktree per effort. Same-effort mutations remain serialized by
    the explicit one-writer workflow contract; no binary coordination lock is added.
 8. No runtime-specific relocation is added (Pi included): agents own moving their
@@ -74,7 +81,18 @@ steps rather than risking deletion next to ambiguous state.
 9. Workflow, guide, checkpoint, and architecture authority follow the new default: the
    workflow doc's working-memory home, the rendered guides, the shared checkpoint
    partials, and the architecture overview direct effort execution to the effort's managed
-   worktree unless the effort was created with `--no-worktree`.
+   worktree unless the effort was created with `--no-worktree`. Two homes state the
+   current separation most directly and move in lockstep with this change: the standard
+   template `templates/docs/working-with-awf.md.tmpl` and this project's local override
+   `.awf/parts/working-with-awf/commands.md` (both currently describe creation and
+   `worktree add` as separate operations), plus the glossary's "Managed effort worktree"
+   entry (currently "Optional"), which is reworded to default-with-`--no-worktree`-exception.
+10. The added claim `tooling/effort-management:default-worktree-creation` is an invariant
+    with `Backing: test`; its proof lands on the combined-creation test in the worktree or
+    effort package when the operation is Applied. Operation motivation: items 1 and 4
+    drive the added claim and the `managed-worktree-lifecycle` update; items 4 and 6 drive
+    the `effort-record-authority` update; items 2, 3, and 5 drive the
+    `effort-command-contract` update; item 9 drives the two rendering-claim updates.
 
 ## State changes
 
@@ -104,12 +122,22 @@ steps rather than risking deletion next to ambiguous state.
 - Agents receive relocation as instructions in command output rather than as harness
   behavior; a runtime that ignores the reported next action will keep working in the
   invoking checkout, which the output makes visible but cannot prevent.
+- Base selection inherits the invoking checkout: an agent that starts effort B while
+  sitting in effort A's managed worktree branches `awf/<B>` off A's unmerged tip, and the
+  worktree default turns that from a rare edge case into a reachable everyday one.
+  `--base <ref>` is the escape; the reported branch and path make the result inspectable.
+- This changes the default behavior of a shipped command for every adopter: an existing
+  `awf effort new` invocation now performs a Git mutation and inherits `Manager.Add`'s
+  refusal surface (for example an in-progress rebase or merge in the invoking checkout).
+  The change lands with an `[Unreleased]` changelog entry naming the new default and the
+  `--no-worktree` escape.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
 | Keep worktrees opt-in (status quo) | The collision-prone shared checkout stays the default; the isolation step keeps being forgotten. |
+| Guidance-layer default (skills always run `worktree add` after `effort new`) | Rendered prose is advisory and unenforced; the diagnosed failure mode is exactly agents skipping instructed steps, and the binary's own success protocol still could not report worktree state. |
 | Unconditional rollback on worktree failure | Deleting the effort next to ambiguous or partially created topology risks destroying user state; safety-constrained removal only on proven-absent topology. |
 | A binary coordination lock for same-effort writers | The one-writer workflow contract already serializes same-effort mutations; a lock adds stored state and stuck-lock failure modes for no new guarantee. |
 | Runtime-specific relocation (e.g. Pi session move) | Couples the binary to harness internals; reporting the path and next action keeps relocation portable across runtimes. |
