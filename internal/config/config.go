@@ -93,16 +93,12 @@ func (c *Config) Source() []byte { return c.raw }
 type CurrentStateConfig struct {
 	Sources           []CurrentStateSource `yaml:"sources"`
 	TestGlobs         []string             `yaml:"testGlobs"`
-	TopicCoverage     string               `yaml:"topicCoverage"`
-	TopicFanout       string               `yaml:"topicFanout"`
 	MaxTopicsPerPath  *int                 `yaml:"maxTopicsPerPath"`
 	MaxClaimsPerTopic *int                 `yaml:"maxClaimsPerTopic"`
-	coverageSet       bool
-	fanoutSet         bool
 }
 
-// UnmarshalYAML retains severity presence while preserving strict nested field
-// validation for the custom-decoded current-state mapping.
+// UnmarshalYAML preserves strict nested field validation for the custom-decoded
+// current-state mapping.
 func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 	if node.Kind != yaml.MappingNode {
 		return errors.New("currentState must be a mapping")
@@ -121,16 +117,6 @@ func (c *CurrentStateConfig) UnmarshalYAML(node *yaml.Node) error {
 			}
 		case "testGlobs":
 			if err := decodeStringScalars(value, &c.TestGlobs, "currentState.testGlobs"); err != nil {
-				return err
-			}
-		case "topicCoverage":
-			c.coverageSet = true
-			if err := decodeStringScalar(value, &c.TopicCoverage, "currentState.topicCoverage"); err != nil {
-				return err
-			}
-		case "topicFanout":
-			c.fanoutSet = true
-			if err := decodeStringScalar(value, &c.TopicFanout, "currentState.topicFanout"); err != nil {
 				return err
 			}
 		case "maxTopicsPerPath":
@@ -539,21 +525,6 @@ func (c *Config) Validate() error {
 		}
 	}
 	if c.CurrentState != nil {
-		if !c.CurrentState.coverageSet {
-			c.CurrentState.TopicCoverage = "error"
-		}
-		if !c.CurrentState.fanoutSet {
-			c.CurrentState.TopicFanout = "warn"
-		}
-		for _, setting := range []struct{ name, severity string }{
-			{"topicCoverage", c.CurrentState.TopicCoverage},
-			{"topicFanout", c.CurrentState.TopicFanout},
-		} {
-			name, severity := setting.name, setting.severity
-			if severity != "error" && severity != "warn" && severity != "off" {
-				return fmt.Errorf("currentState.%s must be error, warn, or off; got %q", name, severity)
-			}
-		}
 		for _, maximum := range []struct {
 			name  string
 			value *int

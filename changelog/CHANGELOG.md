@@ -10,6 +10,22 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
+  the `off` value with them. A tree that declares a `currentState` block now always evaluates both
+  topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
+  Where the two keys were a present block's only children the migration seeds and announces
+  `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped, since an
+  absent block stops both checks evaluating. That is the one case where `awf upgrade` adds a line to
+  your `config.yaml` instead of only removing one; it materializes the budget that was already in
+  force by default, and the regenerated `docs/config-reference.md` prints that row as `8` rather than
+  `8 (default)`. A caller that does not want a finding
+  class no longer suppresses it with a rank, it does not request the check. Every finding rank
+  awf reports is now one shared two-member rank spelled `error` or `warn`; the audit surfaces
+  that previously printed `warning` for a rank print `warn`, while the `%d warning(s)` verdict
+  summaries are unchanged. Schema generation 25 removes both keys from a config tree, announcing
+  each removal; run `awf upgrade`. `config.yaml` is strict-parsed, so a surviving key hard-fails
+  on the new binary rather than warning.
+
 - Replace effort JSON protocol 1 and mutable UUID lifecycle commands with protocol 2 immutable slug residents. `awf effort` now exposes only new/list/show/finish, separate worktree add/remove, and stateless integrate; standalone memory, rename, complete, abandon, reopen, repair, combined creation, manual integration, and every awf force-discard flag are removed. New/show return `{schemaVersion:2,effort:{id,slug,title,createdAt,memoryPath}}`, list sorts the same objects by slug, and JSON failures write no stdout.
 
 - Schema generation 22 resets protocol-1 effort residents and standalone memory rather than

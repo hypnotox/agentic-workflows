@@ -60,6 +60,7 @@ var registry = []Migration{
 	// applyCloseEnabledSet already does, so an adopter who enables either skill
 	// gains its paired agent on upgrade instead of failing at project open.
 	{To: 24, Name: "explorer-grounding-closure", Apply: applyCloseEnabledSet},
+	{To: 25, Name: "drop-severity-settings", Apply: applyDropSeveritySettings},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -106,6 +107,21 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 			out, err = config.RemoveKey(out, "workflowTelemetry")
 			if err != nil {
 				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+			}
+		}
+		// Deliberately a pure removal, unlike applyDropSeveritySettings, which also
+		// seeds a default budget when the removals would empty the block. This
+		// function exists so a historical config PARSES under the current strict
+		// decoder; coverage is never evaluated from a before-side config, so
+		// materializing a key the committed bytes never had would put a value into
+		// a historical universe rather than fix a parse.
+		if migration.To == 25 {
+			for _, key := range []string{"topicCoverage", "topicFanout"} {
+				var err error
+				out, err = config.RemoveMappingKey(out, "currentState", key)
+				if err != nil {
+					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
+				}
 			}
 		}
 	}

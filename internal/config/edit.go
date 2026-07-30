@@ -272,6 +272,22 @@ func RemoveMappingKey(src []byte, key, child string) ([]byte, error) {
 	return src, nil
 }
 
+// HasMapping reports whether src carries a top-level key whose value is a
+// mapping node, so a caller can distinguish an absent block from an empty one
+// without parsing config.yaml itself (ADR-0026 keeps that knowledge here). A
+// migration needs it because RemoveMappingKey drops a parent it empties: only
+// the caller that knew a block was present can tell a deliberate absence from
+// one its own removals just created. A key present with a non-mapping value
+// reports false, matching every editor above that declines a foreign shape.
+func HasMapping(src []byte, key string) (bool, error) {
+	_, root, err := parseMapping(src)
+	if err != nil {
+		return false, err
+	}
+	val, _ := mapValue(root, key)
+	return val != nil && val.Kind == yaml.MappingNode, nil
+}
+
 func boolScalar(v string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: v}
 }

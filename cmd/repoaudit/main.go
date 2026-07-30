@@ -1,11 +1,12 @@
 // Command repoaudit runs repo-specific conformance checks over a git commit range,
-// mirroring awf audit's finding contract (Warning/Error severity; non-zero exit only
-// on an Error finding) but deliberately NOT part of the shipped awf standard: it is
-// repo-local dev tooling wired as `./x audit-local` and invoked by awf-reviewing-impl
-// (ADR-0073). It never runs the gate. Two rules: changelog conformance - an
-// adopter-facing change in the range with no CHANGELOG [Unreleased] entry is an
-// Error - and coverage-ignore re-evaluation - an added or touched coverage-ignore
-// directive in a production Go file is a Warning prompting a reachability re-check.
+// sharing awf audit's finding contract: it reports the same warn/error rank from
+// internal/severity, and exits non-zero only on an error finding. It is deliberately
+// NOT part of the shipped awf standard: it is repo-local dev tooling wired as
+// `./x audit-local` and invoked by awf-reviewing-impl (ADR-0073). It never runs the
+// gate. Two rules: changelog conformance - an adopter-facing change in the range with
+// no CHANGELOG [Unreleased] entry is an error - and coverage-ignore re-evaluation - an
+// added or touched coverage-ignore directive in a production Go file is a warn
+// prompting a reachability re-check.
 package main
 
 import (
@@ -17,26 +18,11 @@ import (
 	"strings"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
-
-// severity mirrors internal/audit's contract (Warning=0, Error=1) without importing
-// it - repoaudit is standalone repo tooling.
-type severity int
-
-const (
-	warning severity = iota
-	errorSev
-)
-
-func (s severity) label() string {
-	if s == errorSev {
-		return "error"
-	}
-	return "warning"
-}
 
 type finding struct {
-	sev    severity
+	sev    severity.Rank
 	rule   string
 	detail string
 }
@@ -100,8 +86,8 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 	errs, warns := 0, 0
 	for _, rule := range rules {
 		for _, f := range rule(git, base, head, stdout) {
-			fmt.Fprintf(stdout, "%-7s %-22s %s\n", f.sev.label(), f.rule, f.detail)
-			if f.sev == errorSev {
+			fmt.Fprintf(stdout, "%-7s %-22s %s\n", f.sev.String(), f.rule, f.detail)
+			if f.sev == severity.Error {
 				errs++
 			} else {
 				warns++
@@ -121,22 +107,22 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 
 // changelogRule flags an adopter-facing change in base..head that lacks a CHANGELOG
 // [Unreleased] entry. It logs the adopter-facing files it considered. The conformance
-// verdict is an advisory Warning (ADR-0107) - the path heuristic cannot tell a benign
+// verdict is an advisory warn (ADR-0107) - the path heuristic cannot tell a benign
 // change from a behavioral one, so it informs rather than blocks. A git or parse failure
-// is an Error - it cannot verify conformance, so it fails loud.
+// is an error - it cannot verify conformance, so it fails loud.
 func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	// Judge from the merge base, not the base tip: once base moves past the fork
 	// point, endpoint semantics would blame upstream files on the effort (false
-	// Error) and an upstream [Unreleased] edit would mask the effort's own missing
+	// error) and an upstream [Unreleased] edit would mask the effort's own missing
 	// entry (false pass). Both the diff and the section comparison must use it.
 	mb, err := git("merge-base", base, head)
 	if err != nil {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
+		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
 	}
 	from := strings.TrimSpace(mb)
 	diff, err := git("diff", "--name-only", from, head)
 	if err != nil {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
+		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
 	var touched []string
 	for _, f := range strings.Split(strings.TrimSpace(diff), "\n") {
@@ -156,18 +142,18 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 	fmt.Fprintf(log, "repoaudit: adopter-facing paths in %s..%s: %s\n", from, head, strings.Join(touched, ", "))
 	baseBody, err := unreleasedSection(git, from)
 	if err != nil {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, from, err)}}
+		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, from, err)}}
 	}
 	headBody, err := unreleasedSection(git, head)
 	if err != nil {
-		return []finding{{errorSev, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, head, err)}}
+		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, head, err)}}
 	}
 	if baseBody == headBody {
 		// Advisory, not blocking (ADR-0107): the path heuristic cannot tell a benign
 		// change (a refactor, a comment/marker relocation) from a behavioral one, so a
-		// blocking Error over-fires. A git/read failure above stays an Error - that means
+		// blocking error over-fires. A git/read failure above stays an error - that means
 		// the rule cannot verify conformance and must fail loud.
-		return []finding{{warning, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged: add an entry", base, head, changelogPath)}}
+		return []finding{{severity.Warn, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged: add an entry", base, head, changelogPath)}}
 	}
 	return nil
 }
@@ -177,16 +163,16 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 // uses for its directive constant).
 const coverageIgnoreMarker = "//" + " coverage-ignore"
 
-// coverageIgnoreRule emits one Warning per added-or-touched coverage-ignore
+// coverageIgnoreRule emits one warn per added-or-touched coverage-ignore
 // directive in a non-test Go file over the range: every ignore states a
 // reachability claim, and three factually false claims surfaced on 2026-07-08
 // alone, so each new one gets a deterministic re-evaluation prompt at review
-// time. Warnings never affect the exit code; a git failure is an Error - the
+// time. A warn never affects the exit code; a git failure is an error - the
 // rule cannot verify, so it fails loud like the changelog rule.
 func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding {
 	mb, err := git("merge-base", base, head)
 	if err != nil {
-		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
+		return []finding{{severity.Error, "coverage-ignore-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
 	}
 	from := strings.TrimSpace(mb)
 	// Pin the header format against user git config: diff.noprefix /
@@ -195,7 +181,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 	diff, err := git("-c", "diff.noprefix=false", "-c", "diff.mnemonicprefix=false",
 		"-c", "diff.dstPrefix=b/", "diff", "--no-ext-diff", "-U0", from, head, "--", "*.go")
 	if err != nil {
-		return []finding{{errorSev, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
+		return []finding{{severity.Error, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
 	var out []finding
 	file := "" // current +++ target; "" while in a skipped (test/deleted) file
@@ -215,7 +201,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 			continue
 		}
 		if strings.Contains(ln, coverageIgnoreMarker) {
-			out = append(out, finding{warning, "coverage-ignore-added",
+			out = append(out, finding{severity.Warn, "coverage-ignore-added",
 				file + ": added or touched coverage-ignore; re-evaluate: is this branch genuinely untriggerable? Try to stage the state it declares impossible"})
 		}
 	}

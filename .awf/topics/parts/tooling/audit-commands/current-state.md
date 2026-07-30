@@ -43,3 +43,9 @@ Backing: test
 The repoaudit command invoked with no range argument exits non-zero with its usage line and evaluates no rule; a supplied bare base is also rejected because repoaudit does not opt into the parser's bare-base form.
 Origin: ADR-0148
 Backing: test
+
+### `invariant: severity-single-spelling`
+
+Every finding rank awf reports renders as exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no finding rank renders as warning.
+Origin: ADR-0183
+Backing: test

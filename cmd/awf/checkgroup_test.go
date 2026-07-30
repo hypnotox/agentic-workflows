@@ -289,7 +289,7 @@ func TestCheckChildrenReportFindings(t *testing.T) {
 
 	t.Run("state", func(t *testing.T) {
 		// An owned path with no scoped topic is an error-severity coverage finding.
-		root := syncedGitProjectFiles(t, coverageYAML("error"), coverageFiles())
+		root := syncedGitProjectFiles(t, coverageYAML(), coverageFiles())
 		var out, errb bytes.Buffer
 		code := runAt(t, root, []string{"awf", "check", "state"}, &out, &errb)
 		if code != 1 {
@@ -341,12 +341,12 @@ func TestCheckChildrenErrorPaths(t *testing.T) {
 	})
 
 	t.Run("state prints warn notes", func(t *testing.T) {
-		// A warn-severity coverage gap rides the non-failing note: channel, so the
+		// A warn-ranked fan-out finding rides the non-failing note: channel, so the
 		// command stays clean while still printing the note.
-		root := syncedGitProjectFiles(t, coverageYAML("warn"), coverageFiles())
+		root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 		var out bytes.Buffer
 		if err := runCheckState(root, &out); err != nil {
-			t.Fatalf("warn severity must not fail check state: %v", err)
+			t.Fatalf("a warn-ranked finding must not fail check state: %v", err)
 		}
 		if !strings.Contains(out.String(), "note: ") {
 			t.Errorf("expected a warn note on stdout:\n%s", out.String())

@@ -7,20 +7,12 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-func TestSeverityString(t *testing.T) {
-	if Error.String() != "error" {
-		t.Errorf("Error.String() = %q", Error.String())
-	}
-	if Warning.String() != "warning" {
-		t.Errorf("Warning.String() = %q", Warning.String())
-	}
-}
-
-// countRule returns how many findings of a given rule+severity evaluate emits.
-func countRule(findings []Finding, rule string, sev Severity) int {
+// countRule returns how many findings of a given rule+rank evaluate emits.
+func countRule(findings []Finding, rule string, sev severity.Rank) int {
 	n := 0
 	for _, f := range findings {
 		if f.Rule == rule && f.Severity == sev {
@@ -48,7 +40,7 @@ func TestRuleConventionalCommits(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(ruleConventionalCommits([]Commit{tc.commit}, in), "conventional-commits", Error)
+			got := countRule(ruleConventionalCommits([]Commit{tc.commit}, in), "conventional-commits", severity.Error)
 			if got != tc.wantErr {
 				t.Errorf("got %d errors, want %d", got, tc.wantErr)
 			}
@@ -86,19 +78,19 @@ func TestCheckPlannedSubject(t *testing.T) {
 		AllowedScopes:    []config.ScopeSpec{{Name: "awf"}},
 		SubjectMaxLength: 20,
 	}
-	// A disallowed scope is a Warning at plan time (a plan may add the scope).
-	if got := CheckPlannedSubject("feat(newscope): x", s); len(got) != 1 || got[0].Severity != Warning {
-		t.Fatalf("scope: want 1 Warning, got %#v", got)
+	// A disallowed scope is a warn at plan time (a plan may add the scope).
+	if got := CheckPlannedSubject("feat(newscope): x", s); len(got) != 1 || got[0].Severity != severity.Warn {
+		t.Fatalf("scope: want 1 warn, got %#v", got)
 	}
-	// Length, disallowed type, and malformed shape stay Error.
-	if got := CheckPlannedSubject("feat(awf): this one is definitely over twenty", s); len(got) != 1 || got[0].Severity != Error {
-		t.Fatalf("length: want 1 Error, got %#v", got)
+	// Length, disallowed type, and malformed shape stay error.
+	if got := CheckPlannedSubject("feat(awf): this one is definitely over twenty", s); len(got) != 1 || got[0].Severity != severity.Error {
+		t.Fatalf("length: want 1 error, got %#v", got)
 	}
-	if got := CheckPlannedSubject("chore(awf): x", s); len(got) != 1 || got[0].Severity != Error {
-		t.Fatalf("type: want 1 Error, got %#v", got)
+	if got := CheckPlannedSubject("chore(awf): x", s); len(got) != 1 || got[0].Severity != severity.Error {
+		t.Fatalf("type: want 1 error, got %#v", got)
 	}
-	if got := CheckPlannedSubject("not conventional", s); len(got) != 1 || got[0].Severity != Error {
-		t.Fatalf("malformed: want 1 Error, got %#v", got)
+	if got := CheckPlannedSubject("not conventional", s); len(got) != 1 || got[0].Severity != severity.Error {
+		t.Fatalf("malformed: want 1 error, got %#v", got)
 	}
 	// A fully valid subject yields nothing.
 	if got := CheckPlannedSubject("feat(awf): ok", s); len(got) != 0 {
@@ -154,7 +146,7 @@ func TestRuleADRStatusCochange(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(ruleADRStatusCochange([]Commit{tc.commit}, in), "adr-status-cochange", Error)
+			got := countRule(ruleADRStatusCochange([]Commit{tc.commit}, in), "adr-status-cochange", severity.Error)
 			if got != tc.wantErr {
 				t.Errorf("got %d errors, want %d", got, tc.wantErr)
 			}
@@ -172,16 +164,16 @@ func TestRuleADRFrontmatterUnparseable(t *testing.T) {
 
 	newBad := Commit{Changes: []FileChange{{Path: adr, Action: Modified, OldText: proposedADR, NewText: bad}}}
 	fs := evaluate([]Commit{newBad}, in)
-	if got := countRule(fs, "adr-frontmatter", Warning); got != 1 {
+	if got := countRule(fs, "adr-frontmatter", severity.Warn); got != 1 {
 		t.Errorf("unparseable new frontmatter: got %d adr-frontmatter warnings, want 1 (%v)", got, fs)
 	}
-	if got := countRule(fs, "adr-status-cochange", Error); got != 0 {
+	if got := countRule(fs, "adr-status-cochange", severity.Error); got != 0 {
 		t.Errorf("unparseable new frontmatter must not fire cochange: %v", fs)
 	}
 
 	oldBad := Commit{Changes: []FileChange{{Path: adr, Action: Modified, OldText: bad, NewText: proposedADR}}}
 	fs = evaluate([]Commit{oldBad}, in)
-	if got := countRule(fs, "adr-status-cochange", Error); got != 0 {
+	if got := countRule(fs, "adr-status-cochange", severity.Error); got != 0 {
 		t.Errorf("unparseable old frontmatter must not read as a status change: %v", fs)
 	}
 }
@@ -206,12 +198,12 @@ func TestRuleDependencyADR(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(ruleDependencyADR(tc.commits, tc.in), "dependency-adr", Warning)
+			got := countRule(ruleDependencyADR(tc.commits, tc.in), "dependency-adr", severity.Warn)
 			if got != tc.wantWarn {
 				t.Errorf("got %d warnings, want %d", got, tc.wantWarn)
 			}
-			if countRule(ruleDependencyADR(tc.commits, tc.in), "dependency-adr", Error) != 0 {
-				t.Error("dependency-adr must never emit an Error")
+			if countRule(ruleDependencyADR(tc.commits, tc.in), "dependency-adr", severity.Error) != 0 {
+				t.Error("dependency-adr must never emit an error rank")
 			}
 		})
 	}
@@ -238,7 +230,7 @@ func TestRulePlanForLargeChange(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(rulePlanForLargeChange(tc.commits, tc.in), "plan-for-large-change", Warning)
+			got := countRule(rulePlanForLargeChange(tc.commits, tc.in), "plan-for-large-change", severity.Warn)
 			if got != tc.wantWarn {
 				t.Errorf("got %d warnings, want %d", got, tc.wantWarn)
 			}
@@ -252,10 +244,10 @@ func TestEvaluateAggregates(t *testing.T) {
 		{Subject: "bad subject", Changes: []FileChange{{Path: "go.mod", Action: Modified}}},
 	}
 	got := evaluate(commits, in)
-	if countRule(got, "conventional-commits", Error) != 1 {
+	if countRule(got, "conventional-commits", severity.Error) != 1 {
 		t.Error("expected a conventional-commits error")
 	}
-	if countRule(got, "dependency-adr", Warning) != 1 {
+	if countRule(got, "dependency-adr", severity.Warn) != 1 {
 		t.Error("expected a dependency-adr warning")
 	}
 }
@@ -410,9 +402,9 @@ func TestRuleDomainCodeStaleness(t *testing.T) {
 	churn := FileChange{Path: "cmd/awf/main.go", Action: Modified}
 	part := FileChange{Path: ".awf/domains/parts/tooling/current-state.md", Action: Modified}
 
-	// Territory churned, narrative not refreshed -> one branch-level Warning.
+	// Territory churned, narrative not refreshed -> one branch-level warn.
 	got := ruleDomainCodeStaleness([]Commit{{Changes: []FileChange{churn}}}, in)
-	if len(got) != 1 || got[0].Rule != "domain-code-staleness" || got[0].Severity != Warning || got[0].Commit != "" {
+	if len(got) != 1 || got[0].Rule != "domain-code-staleness" || got[0].Severity != severity.Warn || got[0].Commit != "" {
 		t.Fatalf("want 1 branch-level warning, got %v", got)
 	}
 
@@ -467,7 +459,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 	// A rising count warns, naming the file, the codepoint, and the commit.
 	got := rulePlainPunctuation(change("docs/decisions/0001-x.md", "plain", "an "+dash+" dash"), in)
 	// invariant: tooling/audit-and-snapshots:audit-plain-punctuation
-	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != Warning ||
+	if len(got) != 1 || got[0].Rule != "plain-punctuation" || got[0].Severity != severity.Warn ||
 		got[0].Commit != "abc1234" || !strings.Contains(got[0].Detail, "em-dash (U+2014)") ||
 		!strings.Contains(got[0].Detail, "docs/decisions/0001-x.md") {
 		t.Fatalf("want 1 warning naming the file and the em-dash, got %v", got)

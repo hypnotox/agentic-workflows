@@ -3,6 +3,8 @@ package topic
 import (
 	"reflect"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // coverageCorpus builds a corpus exercising every EvaluateCoverage branch:
@@ -30,53 +32,57 @@ func coverageCorpus() Corpus {
 	return c
 }
 
+// invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks
 func TestEvaluateCoverage(t *testing.T) {
 	c := coverageCorpus()
 	paths := []string{"internal/app/y.go", "internal/lib/x.go", "bare/z.go", "shared/a.go", "README.md"}
 
 	// internal/lib/x.go is both uncovered (only claimless topics) and over the
 	// fan-out budget, so its two findings exercise the kind tie-break in the sort.
-	got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: CoverageError, Fanout: CoverageWarn, MaxTopicsPerPath: 1})
+	got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: true, MaxTopicsPerPath: 1})
 	want := []CoverageFinding{
-		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: CoverageError},
-		{Path: "internal/app/y.go", Kind: Fanout, Severity: CoverageWarn, Topics: 2},
-		{Path: "internal/lib/x.go", Kind: Fanout, Severity: CoverageWarn, Topics: 2},
-		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: CoverageError},
-		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: CoverageError},
-		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: CoverageError},
+		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: severity.Error},
+		{Path: "internal/app/y.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
+		{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
+		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
+		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: severity.Error},
+		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: severity.Error},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("full policy:\n got %#v\nwant %#v", got, want)
 	}
 
-	// Coverage off suppresses every Uncovered finding; fan-out survives.
-	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: CoverageOff, Fanout: CoverageWarn, MaxTopicsPerPath: 1})
+	// Requesting fan-out only produces no Uncovered finding, even though four
+	// paths are uncovered: an unrequested check does not run.
+	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: true, MaxTopicsPerPath: 1})
 	want = []CoverageFinding{
-		{Path: "internal/app/y.go", Kind: Fanout, Severity: CoverageWarn, Topics: 2},
-		{Path: "internal/lib/x.go", Kind: Fanout, Severity: CoverageWarn, Topics: 2},
+		{Path: "internal/app/y.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
+		{Path: "internal/lib/x.go", Kind: Fanout, Severity: severity.Warn, Topics: 2},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("coverage off:\n got %#v\nwant %#v", got, want)
+		t.Fatalf("fan-out only:\n got %#v\nwant %#v", got, want)
 	}
 
-	// Fan-out off suppresses the fan-out finding; Uncovered survives.
-	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: CoverageError, Fanout: CoverageOff, MaxTopicsPerPath: 1})
+	// Requesting coverage only produces no Fanout finding, even though two paths
+	// exceed the budget of 1.
+	got = EvaluateCoverage(c, paths, CoveragePolicy{Coverage: true, Fanout: false, MaxTopicsPerPath: 1})
 	want = []CoverageFinding{
-		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: CoverageError},
-		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: CoverageError},
-		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: CoverageError},
-		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: CoverageError},
+		{Path: "bare/z.go", Domain: "bare", Kind: Uncovered, Severity: severity.Error},
+		{Path: "internal/lib/x.go", Domain: "core", Kind: Uncovered, Severity: severity.Error},
+		{Path: "shared/a.go", Domain: "d1", Kind: Uncovered, Severity: severity.Error},
+		{Path: "shared/a.go", Domain: "d2", Kind: Uncovered, Severity: severity.Error},
 	}
 	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("fan-out off:\n got %#v\nwant %#v", got, want)
+		t.Fatalf("coverage only:\n got %#v\nwant %#v", got, want)
 	}
 
-	// A generous budget leaves no fan-out finding; both off yields nothing.
-	if got := EvaluateCoverage(c, []string{"internal/app/y.go"}, CoveragePolicy{Coverage: CoverageError, Fanout: CoverageWarn, MaxTopicsPerPath: 8}); len(got) != 0 {
+	// A generous budget leaves no fan-out finding; requesting neither check
+	// yields nothing at all.
+	if got := EvaluateCoverage(c, []string{"internal/app/y.go"}, CoveragePolicy{Coverage: true, Fanout: true, MaxTopicsPerPath: 8}); len(got) != 0 {
 		t.Fatalf("generous budget: %#v", got)
 	}
-	if got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: CoverageOff, Fanout: CoverageOff, MaxTopicsPerPath: 1}); len(got) != 0 {
-		t.Fatalf("both off: %#v", got)
+	if got := EvaluateCoverage(c, paths, CoveragePolicy{Coverage: false, Fanout: false, MaxTopicsPerPath: 1}); len(got) != 0 {
+		t.Fatalf("neither check requested: %#v", got)
 	}
 }
 

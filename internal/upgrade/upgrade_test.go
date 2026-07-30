@@ -21,7 +21,7 @@ const sealedConfig = `prefix: example
 domains:
   - alpha
 currentState:
-  topicCoverage: error
+  maxTopicsPerPath: 8
 `
 
 // sealedRepo builds a prepared-tree fixture: a git repo whose committed HEAD
@@ -97,7 +97,7 @@ func TestTreeDigestBranches(t *testing.T) {
 	// project exercises the marker-source match and the nested-project skip.
 	full := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(full, ".awf/config.yaml"),
-		"prefix: example\ndomains:\n  - alpha\ncurrentState:\n  topicCoverage: error\n  sources:\n    - globs:\n        - \"internal/**\"\n      marker: //\n")
+		"prefix: example\ndomains:\n  - alpha\ncurrentState:\n  sources:\n    - globs:\n        - \"internal/**\"\n      marker: //\n")
 	testsupport.WriteFile(t, filepath.Join(full, "internal/x.go"), "package x\n")
 	testsupport.WriteFile(t, filepath.Join(full, "sub/.awf/config.yaml"), "prefix: nested\n")
 	testsupport.WriteFile(t, filepath.Join(full, "sub/internal/y.go"), "package y\n")

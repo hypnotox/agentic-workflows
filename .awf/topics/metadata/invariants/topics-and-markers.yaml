@@ -1,4 +1,4 @@
 title: Topics and markers
-summary: How topic inputs, claims, and their relevance and proof markers are parsed and resolved.
+summary: How topic inputs, claims, and their relevance and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
 paths:
   - internal/topic/**

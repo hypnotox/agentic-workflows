@@ -17,22 +17,8 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
-
-// Severity ranks a finding. Only Error findings make the command exit non-zero.
-type Severity int
-
-const (
-	Warning Severity = iota
-	Error
-)
-
-func (s Severity) String() string {
-	if s == Error {
-		return "error"
-	}
-	return "warning"
-}
 
 // Action is how a file changed in a commit.
 type Action int
@@ -64,7 +50,7 @@ type Commit struct {
 
 // Finding is one reported conformance issue.
 type Finding struct {
-	Severity Severity
+	Severity severity.Rank
 	Rule     string
 	Commit   string // short hash, "" for a branch-level finding
 	Subject  string
@@ -146,36 +132,36 @@ func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 // allow-lists, or the subject-length limit. Merge commits are exempt.
 // touches-state: tooling/audit-and-snapshots:commit-gate-shared-rule - shared conventional-commit rule consumed by check commit; proof in commitgate_test.go
 func CheckConventionalCommit(c Commit, s Settings) []Finding {
-	return checkConventionalCommit(c, s, Error)
+	return checkConventionalCommit(c, s, severity.Error)
 }
 
 // CheckPlannedSubject validates a commit subject a plan proposes (not yet
-// committed) against the same rule, but relaxes a disallowed scope to a Warning: a
+// committed) against the same rule, but relaxes a disallowed scope to a warn rank: a
 // plan may be the change that adds the scope (ADR-0111), so scope conformance is
-// advisory at plan time while length, type, and malformed shape stay hard (Error).
+// advisory at plan time while length, type, and malformed shape stay hard (error).
 func CheckPlannedSubject(subject string, s Settings) []Finding {
-	return checkConventionalCommit(Commit{Subject: subject}, s, Warning)
+	return checkConventionalCommit(Commit{Subject: subject}, s, severity.Warn)
 }
 
-// checkConventionalCommit is the shared core. scopeSeverity is the severity of a
-// disallowed-scope finding: Error for the commit-time callers, Warning at plan time.
-func checkConventionalCommit(c Commit, s Settings, scopeSeverity Severity) []Finding {
+// checkConventionalCommit is the shared core. scopeSeverity is the rank of a
+// disallowed-scope finding: error for the commit-time callers, warn at plan time.
+func checkConventionalCommit(c Commit, s Settings, scopeSeverity severity.Rank) []Finding {
 	if c.IsMerge { // merges exempt (ADR-0017 constraint 2)
 		return nil
 	}
 	m := ccRe.FindStringSubmatch(c.Subject)
 	if m == nil {
-		return []Finding{finding(Error, "conventional-commits", c, "subject is not Conventional Commits (type(scope)?: subject)")}
+		return []Finding{finding(severity.Error, "conventional-commits", c, "subject is not Conventional Commits (type(scope)?: subject)")}
 	}
 	var out []Finding
 	if len(s.AllowedTypes) > 0 && !containsFold(s.AllowedTypes, m[1]) {
-		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("disallowed type %q", m[1])))
+		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("disallowed type %q", m[1])))
 	}
 	if scope := m[3]; scope != "" && len(s.AllowedScopes) > 0 && !containsFold(s.ScopeNames(), scope) {
 		out = append(out, finding(scopeSeverity, "conventional-commits", c, fmt.Sprintf("disallowed scope %q", scope)))
 	}
 	if n := utf8.RuneCountInString(c.Subject); s.SubjectMaxLength > 0 && n > s.SubjectMaxLength {
-		out = append(out, finding(Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, s.SubjectMaxLength)))
+		out = append(out, finding(severity.Error, "conventional-commits", c, fmt.Sprintf("subject %d chars > %d", n, s.SubjectMaxLength)))
 	}
 	return out
 }
@@ -191,7 +177,7 @@ func ruleADRFrontmatter(commits []Commit, in Inputs) []Finding {
 				continue
 			}
 			if _, ok := adrRecordOf(ch.Path, ch.NewText); !ok {
-				out = append(out, finding(Warning, "adr-frontmatter", c,
+				out = append(out, finding(severity.Warn, "adr-frontmatter", c,
 					filepath.Base(ch.Path)+" frontmatter does not parse; ADR status rules skipped for it"))
 			}
 		}
@@ -221,7 +207,7 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 			oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText)
 			if ch.Action == Added || (oldOK && oldRec.Status != rec.Status) {
 				if !indexTouched {
-					out = append(out, finding(Error, "adr-status-cochange", c,
+					out = append(out, finding(severity.Error, "adr-status-cochange", c,
 						filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
 				}
 			}
@@ -247,7 +233,7 @@ func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
 		}
 	}
 	if manifestCommit != nil && !adrTouched {
-		return []Finding{finding(Warning, "dependency-adr", *manifestCommit,
+		return []Finding{finding(severity.Warn, "dependency-adr", *manifestCommit,
 			"dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")}
 	}
 	return nil
@@ -270,7 +256,7 @@ func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
 		}
 	}
 	if total > in.DiffThreshold && !planTouched {
-		return []Finding{{Severity: Warning, Rule: "plan-for-large-change",
+		return []Finding{{Severity: severity.Warn, Rule: "plan-for-large-change",
 			Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", total, in.DiffThreshold, in.PlansDir)}}
 	}
 	return nil
@@ -308,7 +294,7 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, d := range slices.Sorted(maps.Keys(flagged)) {
 		if !refreshed[d] {
-			out = append(out, Finding{Severity: Warning, Rule: "domain-doc-staleness",
+			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-doc-staleness",
 				Detail: fmt.Sprintf("an ADR in domain %q reached Implemented but %s/%s/current-state.md was not refreshed in this range", d, in.DomainsPartsDir, d)})
 		}
 	}
@@ -339,7 +325,7 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	}
 	var out []Finding
 	for _, d := range slices.Sorted(maps.Keys(flagged)) {
-		out = append(out, Finding{Severity: Warning, Rule: "undocumented-domain",
+		out = append(out, Finding{Severity: severity.Warn, Rule: "undocumented-domain",
 			Detail: fmt.Sprintf("an ADR is tagged with domain %q, which has no domain doc: add it to config.Domains and author its current-state narrative, or drop the tag", d)})
 	}
 	return out
@@ -369,7 +355,7 @@ func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, d := range slices.Sorted(maps.Keys(churned)) {
 		if !refreshed[d] {
-			out = append(out, Finding{Severity: Warning, Rule: "domain-code-staleness",
+			out = append(out, Finding{Severity: severity.Warn, Rule: "domain-code-staleness",
 				Detail: fmt.Sprintf("files in domain %q changed but %s/%s/current-state.md was not refreshed in this range: if anything meaningful changed, document it", d, in.DomainsPartsDir, d)})
 		}
 	}
@@ -436,7 +422,7 @@ func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
 				continue
 			}
 			slices.Sort(risen)
-			out = append(out, finding(Warning, "plain-punctuation", c,
+			out = append(out, finding(severity.Warn, "plain-punctuation", c,
 				fmt.Sprintf("%s adds typographic punctuation: %s; authored prose uses plain punctuation (a colon, semicolon, comma, or parentheses; an ASCII hyphen for a range; three periods for elision)",
 					ch.Path, strings.Join(risen, ", "))))
 		}
@@ -444,7 +430,7 @@ func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-func finding(s Severity, rule string, c Commit, detail string) Finding {
+func finding(s severity.Rank, rule string, c Commit, detail string) Finding {
 	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: c.Subject, Detail: detail}
 }
 

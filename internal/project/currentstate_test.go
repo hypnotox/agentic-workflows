@@ -9,6 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -86,12 +87,15 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // (every static handshake message plus each error-severity coverage line) and
 // non-failing notes (warn-severity coverage lines), rendering both coverage
 // kinds.
+// The claim's routing clause is marked here rather than named in prose from
+// internal/currentstate, which cannot see CurrentStateReport.
+// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
-		Static: []currentstate.Finding{{Severity: currentstate.Error, Message: "handshake broke"}},
+		Static: []currentstate.Finding{{Message: "handshake broke"}},
 		Coverage: []topic.CoverageFinding{
-			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: topic.CoverageError},
-			{Path: "internal/b.go", Kind: topic.Fanout, Severity: topic.CoverageWarn, Topics: 3},
+			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
+			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
 		},
 	}
 	findings := r.Findings()
@@ -114,8 +118,7 @@ domains:
 contextIgnore:
   - internal/skip.go
 currentState:
-  topicCoverage: error
-  topicFanout: warn
+  maxTopicsPerPath: 8
 `
 
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
@@ -215,6 +218,9 @@ func TestCheckCurrentStateClaimBudgetAdvisory(t *testing.T) {
 
 // TestCheckCurrentStateNoPolicy proves coverage is skipped when the project
 // configures no currentState policy: the report carries static findings only.
+// This is the site backing the claim's "a tree that declares no currentState
+// block requests neither" clause; internal/config's marker cannot reach the gate.
+// invariant: config/configuration:severity-not-configurable
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
 	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
 	p := csRepo(t, cfg, map[string]string{

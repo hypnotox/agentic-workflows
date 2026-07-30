@@ -186,3 +186,6 @@
 - [ADR-0178: Explicit dependency composition architecture](0178-explicit-dependency-composition-architecture.md) (Implemented)
 - [ADR-0179: Rendered explorer and grounding-checker role contracts](0179-rendered-explorer-and-grounding-checker-role-contracts.md) (Implemented)
 - [ADR-0182: Validate a merge transition as an ordered aggregate](0182-validate-a-merge-transition-as-an-ordered-aggregate.md) (Implemented)
+- [ADR-0183: Drop configurable severity and unify the finding rank](0183-drop-configurable-severity-and-unify-the-finding-rank.md) (Implemented)
+- [ADR-0184: Preserve the currentState block and correct three severity claim scopes](0184-preserve-the-current-state-block-and-correct-three-severity-claim-scopes.md) (Implemented)
+- [ADR-0185: Severity-key removal preserves values, not bytes](0185-severity-key-removal-preserves-values-not-bytes.md) (Implemented)
