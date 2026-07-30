@@ -749,15 +749,34 @@ point. `./x gate` cannot arbitrate this, so the choice is stated rather than lef
   comment at `:26` if it describes a rank the handshake findings no longer carry.
 
 - [ ] **Task 4.4: Retire the dead test and place the proof marker.** `TestSeverityString` at
-  `internal/currentstate/check_test.go:480` was the only consumer of `Warn` and retires with the type. Add
-  or extend a test asserting that every finding the package produces is reported without a rank and that
-  the check path treats each as blocking, and place:
+  `internal/currentstate/check_test.go:480` was the only consumer of `Warn` and retires with the type.
+
+  The claim describes a structural property, so a behavioural assertion cannot back it: once the field is
+  gone, no ordinary test fails if someone adds it back, and a proof marker on such a test would stay green
+  through the exact regression it is supposed to catch. Back it by reflection instead, which does fail. Add
+  to `internal/currentstate/check_test.go`:
 
   ```go
   // invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked
+  func TestFindingCarriesOnlyMessage(t *testing.T) {
+  	typ := reflect.TypeFor[currentstate.Finding]()
+  	if typ.NumField() != 1 {
+  		t.Fatalf("Finding has %d fields, want exactly 1: a handshake finding carries no rank", typ.NumField())
+  	}
+  	if name := typ.Field(0).Name; name != "Message" {
+  		t.Fatalf("Finding field 0 is %q, want %q", name, "Message")
+  	}
+  }
   ```
 
-  Post-check: `go test ./internal/currentstate/... ./internal/project/...` passes.
+  Add `"reflect"` to that file's imports. Also extend an existing behavioural test, or add one, asserting
+  the check path treats every handshake finding as blocking, so the claim's second clause is exercised too;
+  that assertion is not the marker site.
+
+  Post-check: `go test ./internal/currentstate/... ./internal/project/...` passes, and re-adding a
+  `Severity` field to `Finding` makes `TestFindingCarriesOnlyMessage` fail. Verify that second half by
+  actually adding the field, running the test, and reverting: a proof marker that cannot fail is worse than
+  none.
 
 - [ ] **Task 4.5: Author the final claim.** In
   `.awf/topics/parts/invariants/current-state-authority/current-state.md`, insert immediately after the
@@ -806,6 +825,27 @@ Beyond each phase's `awf check --staged` and `./x gate`:
   operations exactly once each, in declaration order.
 
 ## Notes
+
+**The ADR number is already taken on main and must be renumbered at integration.** This branch forked from
+main at `65c4e967`, where 0178 was the tip. Main has since advanced and now carries
+`docs/decisions/0179-rendered-explorer-and-grounding-checker-role-contracts.md`, so the number this ADR and
+plan use collides.
+
+The renumber cannot be done on this branch. `awf check` enforces contiguous ADR numbering, and this branch
+does not contain main's 0179, so renaming to 0180 here fails with `ADR numbers are not contiguous from 1:
+missing [179]`. Verified by attempting it. The renumber therefore belongs to the integration transaction,
+once main's ADRs are present, which is the ADR-0151-to-0153 precedent: author on the branch, renumber
+mechanically at merge time.
+
+At integration: build the merge with main's side as HEAD (the staged-check transition handshake validates
+HEAD-to-index as one transition, so merging main INTO this branch fails structurally), then re-derive the
+next free number rather than assuming 0180, since main may have moved again. Rename the ADR file, update its
+H1, this plan's `adrs:` frontmatter and every `ADR-NNNN` reference in both files, the `Origin:` line in each
+of the five claim blocks, and the roadmap idea in `.awf/docs/parts/roadmap/ideas.md` that cites it. The
+`state-sequence` values need no pre-assignment: every phase takes the next value reported at execution time.
+
+Checked at authoring: main's 0179 declares only `rendering/*` operations, so none of this plan's five claim
+operations collides with it.
 
 Out of scope, recorded during authoring:
 
