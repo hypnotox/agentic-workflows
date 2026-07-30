@@ -37,6 +37,10 @@ Classify by what acting on the finding requires, not by severity:
 
 Severity is informational only; the dispatching skill routes by classification kind.
 
+## Consensus adherence
+
+When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the plan against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating plan passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+
 ## Universal lenses
 
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
