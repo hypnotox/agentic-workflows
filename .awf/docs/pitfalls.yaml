@@ -636,7 +636,35 @@ data:
         counted as covered. That the impl-review focus item still did not stop it at write time is the
         signal to climb a rung: a mechanical "a `coverage-ignore` line the coverage profile records as
         executed is a false ignore" check in `cmd/covercheck` would catch this whole ignored-but-covered
-        class deterministically (deferred follow-up).
+        class deterministically (deferred follow-up). A seventh recurrence (the 2026-07-30 merge-aggregate
+        effort) added a shape the earlier six do not cover: the ignore was not merely false, the guarded
+        call was a REGRESSION. A new `MERGE_HEAD` probe was added to the staged check with an ignore
+        claiming the containing-checkout walk could not fail, because the index read above had already
+        resolved the repository. go-git's index read follows a symlinked `.git`; the control-root rules
+        refuse one, so a layout that worked before the probe existed began erroring. The caller now
+        degrades to the stricter contract instead of propagating. The same function carried a second
+        false ignore in the same commit, that `lstat` reports only an inode or `os.ErrNotExist` absent a
+        fault: a gitdir pointer naming a regular file yields ENOTDIR with nothing racing. So when adding
+        a probe to an existing path, ask what the path tolerated before the probe, not only whether the
+        new branch is reachable; and enumerate a syscall's error surface rather than reasoning about it,
+        since two of this session's three wrong ignores were errno claims.
+    - title: "Two V2-ADR fixture traps in Go tests, each hit twice in one session"
+      domains: [adr-system, tooling]
+      tags: [adr-lifecycle, test-support]
+      body: |
+        Building a current-state-v2 ADR fixture in a Go test hits two parser rules that are easy to
+        miss because the failure names the rule rather than the fixture. First, a record left
+        `Implementing` needs BOTH applied and remaining operations, so a fixture that applies every
+        operation it declares fails with "implementing requires at least one applied and one remaining
+        operation"; declare one extra operation and leave it unapplied. Second, ADR numbering must be
+        contiguous from 1, so a fixture that jumps to ADR-0003 to avoid colliding with an existing
+        ADR-0001 fails with "ADR numbers are not contiguous from 1: missing [2]"; add a filler ADR at
+        the skipped number. Both bit twice in the 2026-07-30 merge-aggregate effort, in two different
+        packages, because the second author of a fixture rediscovers them from the error text.
+        Use `publicV2ADR` and `publicTopicClaims` in `internal/project` rather than hand-rolling the
+        markdown: they compute the `content-sha256` for you, which is the third trap in the same area.
+        The lifecycle rules these fixtures trip over are documented separately under the plan-authoring
+        entry on V2 batch choreography; this entry is about reproducing them in test data.
     - title: "An attribute-filtered pinned-set test exempts every other attribute value"
       domains: [tooling]
       tags: [pinned-set-tests, invariant-backing]

@@ -64,6 +64,17 @@
   The 0157 effort found every `targetSessionHandoff` branch in the singleton templates had
   been dead prose since authoring; the fix plumbed the key, but nothing today prevents the
   next dead conditional (recorded as a rendering pitfall, 2026-07-23).
+- A mechanical check for over-broad current-state claim prose. The `claim-prose-no-broader-than-reality`
+  reviewer focus item exists and works: it caught all four over-broad claims in the 2026-07-30 severity
+  session. It prevented none of them, which is the signal to climb from a judgment rung to a
+  deterministic one. Two shapes look mechanizable without natural-language understanding: an absolute
+  quantifier in a claim sentence ("every", "always", "never", "no", "byte-identical") could require an
+  explicit justification marker, and a claim whose sentence is edited while its Origin ADR is frozen
+  could be flagged, since that is the exact case needing a successor `update` operation. Twice in that
+  session the false wording was INHERITED from an earlier record that the correcting pass never
+  re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
+  it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
+  expensive.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
