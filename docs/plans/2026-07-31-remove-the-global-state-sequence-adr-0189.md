@@ -50,7 +50,11 @@ markers, and ADR events.
     `cmd/awf/initrender_test.go`
   - `internal/migrate/migrate.go` (registry entry)
   - `templates/skills/adr-lifecycle/SKILL.md.tmpl`, `templates/adr-readme/README.md.tmpl`,
-    `templates/adr-template/template.md.tmpl`
+    `templates/adr-template/template.md.tmpl`, `templates/agents/plan-reviewer.md.tmpl`,
+    `templates/agents/adr-reviewer.md.tmpl`, `templates/skills/reviewing-plan/SKILL.md.tmpl`,
+    `templates/skills/reviewing-impl/SKILL.md.tmpl`,
+    `templates/skills/reviewing-plan-resync/SKILL.md.tmpl`, `.awf/docs/glossary.yaml` (rendered
+    `docs/glossary.md` and the reviewer agent and skill outputs follow via `./x render`)
   - `.awf/agents/plan-reviewer.yaml`, `.awf/domains/parts/adr-system/current-state.md`,
     `.awf/docs/pitfalls.yaml`
   - `.awf/topics/parts/invariants/current-state-authority/current-state.md`,
@@ -81,10 +85,12 @@ markers, and ADR events.
   change frontmatter `status: Proposed` to `status: Accepted` and append to `## Status history`:
   `- <today>: Accepted; content-sha256: <stamp>`. The stamp establishes the first digest: write 64
   zeros, run `./awf check state`, copy the computed digest from the finding, and fix the line
-  (this probe remains the documented method for digests). Expected terminal state:
-  `./awf check` reports clean.
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the ADR file; run
-  `awf check --staged` then `./x gate`; commit:
+  (this probe remains the documented method for digests). Run `./x render` so
+  `docs/decisions/INDEX.md` reflects the flip. Expected terminal state: `./awf check` reports
+  clean.
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the ADR file,
+  `docs/decisions/INDEX.md`, and `.awf/awf.lock`; run `awf check --staged` then `./x gate`;
+  commit:
 
 ```commit
 docs(adr): accept 0189 ADR-number provenance order
@@ -296,6 +302,17 @@ only the final staged state must be green.
     and the \`stateSequence\` field leaves the \`awf topic --json\` contract. Schema generation 26
     strips the segments from every governed ADR and canonicalizes every \`Revised-by\` list to
     ascending ADR number; run \`awf upgrade\`. (ADR-0189)`
+  - Review-catalog and glossary sources that say the concept without the hyphenated term:
+    `templates/agents/plan-reviewer.md.tmpl:18` drops its `sequences are consecutive` clause and
+    restates batch ordering as ascending ADR number and intra-ADR history position;
+    `templates/agents/adr-reviewer.md.tmpl:22` drops `and global sequence order`, restating the
+    same way; `templates/skills/reviewing-plan/SKILL.md.tmpl:75` drops `and global sequence
+    order` from its V2 notes bullet; `templates/skills/reviewing-impl/SKILL.md.tmpl:87` and
+    `templates/skills/reviewing-plan-resync/SKILL.md.tmpl:64` reword their softer `sequence
+    order`/`sequence ordering` phrases to `ADR-number and intra-ADR position order` so no
+    reviewer note is left reading through the old model. In `.awf/docs/glossary.yaml`, the
+    `application batch` entry replaces `a contiguous global sequence` and batch-sequence
+    inheritance with batch identity by position in the ADR's history.
   - Run `./x render`; every rendered output listed in File structure follows.
 - [ ] **Task 2.11: Test sweep (batch task).** Affected set: every `_test.go` hit of
   `git grep -ln "state-sequence\|StateSequence\|stateSequence\|HasSequence\|Sequence:" -- '*_test.go'`,
