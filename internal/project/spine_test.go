@@ -660,6 +660,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		"bugfix":                      "",
 		"debugging":                   "",
 		"executing-plans":             "",
+		"orienting":                   "",
 		"refactor-coupling-audit":     "",
 		"reviewing-impl":              "--show invariants --show all-rules --show evidence --show pending",
 		"reviewing-plan":              "--show invariants --show all-rules --show evidence --show pending",
@@ -1011,6 +1012,55 @@ func TestExploringTemplate(t *testing.T) {
 	}
 	if !strings.Contains(fallback, "target-native fresh-context exploration subagent") || strings.Contains(fallback, "subagent_explore") {
 		t.Errorf("fallback exploring dispatch is not generic:\n%s", fallback)
+	}
+}
+
+func TestOrientingTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "orienting", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
+	})
+	if !strings.Contains(out, "name: example-orienting") {
+		t.Errorf("expected 'name: example-orienting' in output:\n%s", out)
+	}
+	for _, want := range []string{"Four moments call for orientation", "Ground guide-first, in order", "`example-exploring`", "A discrepancy resolves in favor of the repository"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("orienting render missing %q:\n%s", want, out)
+		}
+	}
+}
+
+func TestOrientingSkillContract(t *testing.T) {
+	if !catalog.Standard.Skills["orienting"].Core {
+		t.Fatal("orienting is not a core skill")
+	}
+	config := func(target string) string {
+		return "prefix: example\nskills: [exploring, orienting]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
+	}
+	for _, target := range KnownTargets() {
+		t.Run(target, func(t *testing.T) {
+			files := explorationRenderedByPath(t, config(target))
+			adapter := targetRegistry[target]
+			body := files[adapter.SkillPath("example", "orienting")]
+			if body == "" {
+				t.Fatalf("missing rendered orienting skill for %s", target)
+			}
+			for _, want := range []string{
+				"Four moments call for orientation", "Ground guide-first, in order", "one or more exploration subagents",
+				"one information need", "location is unknown", "and inline search would pollute the parent context",
+				"exact-known-file", "genuinely trivial", "`example-exploring`", "A discrepancy resolves in favor of the repository",
+				"never creates an effort, never commits", "never prescribe `--full`",
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("%s orienting skill missing %q", target, want)
+				}
+			}
+			agent := files[adapter.AgentPath("grounding-checker")]
+			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, start bare", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
+				if !strings.Contains(agent, want) {
+					t.Errorf("%s grounding-checker missing %q", target, want)
+				}
+			}
+		})
 	}
 }
 
@@ -1532,6 +1582,10 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/exploring/SKILL.md.tmpl",
 		want: []string{"target-native fresh-context exploration subagent"},
 		ban:  []string{"subagent_explore"},
+	},
+	{
+		tmpl: "skills/orienting/SKILL.md.tmpl",
+		want: []string{"Ground guide-first, in order", "`example-exploring`"},
 	},
 	{
 		tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",

@@ -29,6 +29,13 @@ Assess whether the effort needs a decision record, a plan, or narrower scope.
 
 Check convention fit: does the design contradict a current-state claim, an Accepted or Implemented decision record, or an invariant in the project's agent guide?
 
+Ground guide-first before verifying:
+
+Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs, then the recent history of the touched paths (`git log --oneline -20 <path>`).
+
+For managed context calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
+If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
+
 <!-- awf:edit return-schema: default; create .awf/agents/parts/grounding-checker/return-schema.md to override -->
 ## What to return
 

@@ -172,9 +172,9 @@
     },
     ".claude/agents/grounding-checker.md": {
       "templateId": "agents/grounding-checker.md.tmpl",
-      "templateHash": "sha256:ed0469e824dfce17a67e2f6cefe8481ec634f2f9fe557f85e9a77f1176bc0c67",
+      "templateHash": "sha256:53de2b6e05ce1bbd848d06882d1442b735d37cd4aef9728a5b5a9223ebf0d87a",
       "configHash": "sha256:f7766453ae2c9dc4063856b50b60ff9de3707f5d218c471b33963b79033d016d",
-      "outputHash": "sha256:c5168cc00adaaa7287b4503f6dbd57549ee5584f40aea7af358663d447c4959a"
+      "outputHash": "sha256:30cd3e13f43f7b763b0f3e4ac0e7ae5e1406ec9d1995c06e49fc771818eb9837"
     },
     ".claude/agents/implementer.md": {
       "templateId": "agents/implementer.md.tmpl",
@@ -316,9 +316,9 @@
     },
     ".codex/agents/grounding-checker.toml": {
       "templateId": "agents/grounding-checker.md.tmpl",
-      "templateHash": "sha256:ed0469e824dfce17a67e2f6cefe8481ec634f2f9fe557f85e9a77f1176bc0c67",
+      "templateHash": "sha256:53de2b6e05ce1bbd848d06882d1442b735d37cd4aef9728a5b5a9223ebf0d87a",
       "configHash": "sha256:2f05d64044de84b4fdf585ba0170896585331084355c1683c91bb76de6e11e3c",
-      "outputHash": "sha256:402fee44396bf355ef5c733ed0aa9016b30482d15b8ba4ec1a9bbdb9522abc72"
+      "outputHash": "sha256:7e735679ce4d5b101bcb6876cf566e2026e9b5e17780103fd888178f8e2f89bc"
     },
     ".codex/agents/implementer.toml": {
       "templateId": "agents/implementer.md.tmpl",
@@ -352,9 +352,9 @@
     },
     ".cursor/agents/grounding-checker.md": {
       "templateId": "agents/grounding-checker.md.tmpl",
-      "templateHash": "sha256:ed0469e824dfce17a67e2f6cefe8481ec634f2f9fe557f85e9a77f1176bc0c67",
+      "templateHash": "sha256:53de2b6e05ce1bbd848d06882d1442b735d37cd4aef9728a5b5a9223ebf0d87a",
       "configHash": "sha256:3dc1aff21da3c09a2d056c1b56d45dcb37ab19f85fa7e19086062a4f178688a9",
-      "outputHash": "sha256:c5168cc00adaaa7287b4503f6dbd57549ee5584f40aea7af358663d447c4959a"
+      "outputHash": "sha256:30cd3e13f43f7b763b0f3e4ac0e7ae5e1406ec9d1995c06e49fc771818eb9837"
     },
     ".cursor/agents/implementer.md": {
       "templateId": "agents/implementer.md.tmpl",
@@ -496,9 +496,9 @@
     },
     ".gemini/agents/grounding-checker.md": {
       "templateId": "agents/grounding-checker.md.tmpl",
-      "templateHash": "sha256:ed0469e824dfce17a67e2f6cefe8481ec634f2f9fe557f85e9a77f1176bc0c67",
+      "templateHash": "sha256:53de2b6e05ce1bbd848d06882d1442b735d37cd4aef9728a5b5a9223ebf0d87a",
       "configHash": "sha256:6d06bc59c04e9c8f8efe1e87f4c027edb524fe52986c0278e3204e0f29377903",
-      "outputHash": "sha256:c5168cc00adaaa7287b4503f6dbd57549ee5584f40aea7af358663d447c4959a"
+      "outputHash": "sha256:30cd3e13f43f7b763b0f3e4ac0e7ae5e1406ec9d1995c06e49fc771818eb9837"
     },
     ".gemini/agents/implementer.md": {
       "templateId": "agents/implementer.md.tmpl",
@@ -640,9 +640,9 @@
     },
     ".github/agents/grounding-checker.agent.md": {
       "templateId": "agents/grounding-checker.md.tmpl",
-      "templateHash": "sha256:ed0469e824dfce17a67e2f6cefe8481ec634f2f9fe557f85e9a77f1176bc0c67",
+      "templateHash": "sha256:53de2b6e05ce1bbd848d06882d1442b735d37cd4aef9728a5b5a9223ebf0d87a",
       "configHash": "sha256:9a3d4f0c923b5fde5122090aeccb00fbb89f92e65fd59f4d49cb1a21210bdc51",
-      "outputHash": "sha256:c5168cc00adaaa7287b4503f6dbd57549ee5584f40aea7af358663d447c4959a"
+      "outputHash": "sha256:30cd3e13f43f7b763b0f3e4ac0e7ae5e1406ec9d1995c06e49fc771818eb9837"
     },
     ".github/agents/implementer.agent.md": {
       "templateId": "agents/implementer.md.tmpl",
@@ -784,9 +784,9 @@
     },
     ".pi/agents/grounding-checker.md": {
       "templateId": "agents/grounding-checker.md.tmpl",
-      "templateHash": "sha256:ed0469e824dfce17a67e2f6cefe8481ec634f2f9fe557f85e9a77f1176bc0c67",
+      "templateHash": "sha256:53de2b6e05ce1bbd848d06882d1442b735d37cd4aef9728a5b5a9223ebf0d87a",
       "configHash": "sha256:c2d0c5389c6bf2322256199fd881e0d05730cd408b50c9816f2300e133b247db",
-      "outputHash": "sha256:c5168cc00adaaa7287b4503f6dbd57549ee5584f40aea7af358663d447c4959a"
+      "outputHash": "sha256:30cd3e13f43f7b763b0f3e4ac0e7ae5e1406ec9d1995c06e49fc771818eb9837"
     },
     ".pi/agents/implementer.md": {
       "templateId": "agents/implementer.md.tmpl",

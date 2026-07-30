@@ -278,7 +278,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
 		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
 		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
-		"roadmap-graduation": "conditional-creation",
+		"orienting": "report", "roadmap-graduation": "conditional-creation",
 	}
 	if len(roles) != len(cat.Skills) {
 		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
