@@ -227,8 +227,8 @@ ADR-0179 stays `Proposed` through this phase. Start from a clean working tree on
 - [ ] **Task 1.8: Give the new package domain ownership and scoped topic coverage.** Without both, the
   commit introducing the package emits an Uncovered finding, which is at error severity. In
   `.awf/domains/tooling.yaml`, insert `  - internal/severity/**` immediately after `  - internal/audit/**`.
-  That list is not sorted and the rendered domain doc reproduces file order, so an exact anchor is required
-  for a deterministic committed result. Add the same selector to the `paths:`
+  Rendered selector lists are sorted, so the insertion point affects no rendered byte; the exact anchor is an
+  authoring convenience that keeps the source file readable. Add the same selector to the `paths:`
   list in `.awf/topics/metadata/tooling/audit-and-snapshots.yaml`:
 
   ```yaml
@@ -511,8 +511,12 @@ in declaration order. The three remaining operations stay pending, so the Implem
     "tune the severities". Rewrite so only `maxTopicsPerPath` remains, described as a budget rather than a
     severity, and state that coverage always evaluates at error and fan-out at warn.
   - `.awf/docs/parts/roadmap/ideas.md`: the idea proposing to promote the topic-claim-budget advisory to a
-    configurable severity with an adopter-facing config key is now foreclosed. Withdraw the severity half
-    and keep only what survives, namely that the budget threshold itself remains configurable.
+    configurable severity with an adopter-facing config key is now foreclosed in part. Withdraw the
+    configurable-severity and adopter-facing-config-key half. What survives is promoting the advisory from a
+    non-failing note to a FIXED blocking rank, still needing its own small ADR revising
+    `tooling/cli:topic-claim-budget-advisory`. Do not rewrite the residue as "the budget threshold remains
+    configurable": that is already shipped behaviour under
+    `config/configuration:topic-claim-budget-configured`, so recording it as a future idea would be wrong.
   - `changelog/CHANGELOG.md`, under `## [Unreleased]` `### Breaking changes`: add an entry naming both
     removed keys, the fixed ranks, the removal of `off`, and schema generation 24 with `awf upgrade` as the
     migration path. Match the surrounding entries' voice and line width.
@@ -697,7 +701,9 @@ the single-spelling claim only becomes true here, not in Phase 1.
   summary: How topic inputs, claims, and their relevance and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
   ```
 
-  Then run `./x render` and stage the regenerated topic documents.
+  Then run `./x render` and stage every regenerated file it reports. A topic summary renders beyond its own
+  topic document: it also reaches `docs/domains/invariants.md` and `docs/topics/invariants/index.md`, so
+  staging only the topic document would leave the phase red at close.
 
 - [ ] **Task 3.7: Author the two claims and record the application.** In
   `.awf/topics/parts/tooling/audit-commands/current-state.md`, insert immediately after the
@@ -733,6 +739,9 @@ the single-spelling claim only becomes true here, not in Phase 1.
   exactly `add tooling/audit-commands:severity-single-spelling` and
   `add invariants/topics-and-markers:coverage-evaluation-selects-checks`, in declaration order. Do not
   hardcode or predict the sequence. The ADR stays `Implementing`; one operation remains.
+
+  Then run `./x render` and stage every regenerated file it reports. `INDEX.md` is unaffected here, since
+  this phase appends an Applied event without a status change, but the two topic documents are not.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run
   `awf check --staged` then `./x gate`; create the one phase-closing commit:
@@ -885,10 +894,21 @@ mechanically at merge time.
 
 At integration: build the merge with main's side as HEAD (the staged-check transition handshake validates
 HEAD-to-index as one transition, so merging main INTO this branch fails structurally), then re-derive the
-next free number rather than assuming 0180, since main may have moved again. Rename the ADR file, update its
-H1, this plan's `adrs:` frontmatter and every `ADR-NNNN` reference in both files, the `Origin:` line in each
-of the five claim blocks, and the roadmap idea in `.awf/docs/parts/roadmap/ideas.md` that cites it. The
-`state-sequence` values need no pre-assignment: every phase takes the next value reported at execution time.
+next free number rather than assuming 0180, since main may have moved again. Rename the ADR file and update
+its H1, this plan's `adrs:` frontmatter and every `ADR-NNNN` reference in both files, the `Origin:` line in
+each of the five claim blocks, the roadmap idea in `.awf/docs/parts/roadmap/ideas.md`, and the changelog entry
+from Task 2.10 if it carries the number.
+
+The renumber must also reach the ADR citations this plan writes into PRODUCTION GO SOURCE, which nothing
+validates: `checkDeadRefs` scans rendered files, and the ADR checks in `internal/project/check.go` cover
+frontmatter tags and related arrays only, so a stale citation in a Go comment stays green while pointing at
+an unrelated ADR. The sites are `internal/severity/severity.go` (two citations, Task 1.1),
+`internal/migrate/dropseveritysettings.go` (one, Task 2.4), and `internal/topic/coverage.go` (one, Task 3.2).
+Close the integration step with `grep -rn 'ADR-0179' --include='*.go' internal cmd` returning no output,
+substituting whatever number this ADR carried.
+
+The `state-sequence` values need no pre-assignment: every phase takes the next value reported at execution
+time.
 
 Checked at authoring: main's 0179 declares only `rendering/*` operations, so none of this plan's five claim
 operations collides with it.
