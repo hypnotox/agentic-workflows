@@ -164,18 +164,31 @@ commit-scope widening ADR-0180 item 11 requires. No production Go changes.
   `docs/glossary.md`, the three agent files under the target directories, and `.awf/awf.lock`. If
   `./x check` reports drift, re-run `./x render` and re-stage rather than hand-editing any rendered file.
 
-- [ ] **Task 1.8: Append the ADR's Implementing and first Applied events.** In
-  `docs/decisions/0180-state-ownership-and-derived-state-lifetime.md`, append to `## Status history`,
-  in this order, leaving `status: Proposed` in the frontmatter unchanged:
+- [ ] **Task 1.8: Flip the ADR to Implementing and append its first Applied batch.** In
+  `docs/decisions/0180-state-ownership-and-derived-state-lifetime.md`, change the frontmatter `status`
+  from `Proposed` to `Implementing` AND append exactly these two events to `## Status history`, in this
+  order:
 
   ```
-  - 2026-07-30: Implementing; content-sha256: <the digest awf reports>
-  - 2026-07-30: Applied; state-sequence: <the next sequence awf reports>; operations: add `code-design/state-ownership:construction-immutable-state`, add `code-design/state-ownership:operation-owned-derivation`, add `code-design/state-ownership:no-remembered-invalidation`, add `code-design/state-ownership:single-derivation-producer`, update `code-design/dependency-composition:dependency-composition-commit-classification`
+  - <today>: Implementing; content-sha256: <the digest awf reports>
+  - <today>: Applied; state-sequence: <the next sequence awf reports>; operations: add `code-design/state-ownership:construction-immutable-state`, add `code-design/state-ownership:operation-owned-derivation`, add `code-design/state-ownership:no-remembered-invalidation`, add `code-design/state-ownership:single-derivation-producer`, update `code-design/dependency-composition:dependency-composition-commit-classification`
   ```
+
+  The frontmatter flip is REQUIRED, not optional. Two independent checks reject a `Proposed` ADR that
+  carries applied operations: `internal/adr/format.go`'s `validateV2History` rejects a latest history
+  status that disagrees with the frontmatter, and `internal/adr/application.go`'s `OperationProgress`
+  rejects applied operations under `Proposed` outright. `HistoryTransitionValid` requires EXACTLY these
+  two added entries for a `Proposed` to `Implementing` transition, a status event followed by an applied
+  event, so add no third event and do not insert an `Accepted` event; `Proposed` to `Implementing` is a
+  legal direct edge in `internal/adr/status.go`'s `v2Transitions`.
+
+  CONSEQUENCE FOR LATER PHASES: this freezes ADR-0180's content sections. No prose in Context, Decision,
+  State changes, Consequences, or Alternatives may change in phases 2 through 4, or the frozen-content
+  digest check fails.
 
   Do NOT write a literal state sequence from this plan. Read the next value awf reports when the batch
-  is checked; the corpus moves as sibling ADRs apply. Use today's date if it differs from the plan date.
-  Re-run `./x render` after this edit so `docs/decisions/INDEX.md` regenerates.
+  is checked; the corpus moves as sibling ADRs apply. Re-run `./x render` after this edit so
+  `docs/decisions/INDEX.md` regenerates.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run
   `awf check --staged` (expected: `awf check --staged: clean`) then `./x gate` (expected: 100% coverage,
@@ -196,9 +209,9 @@ and their test suite. No claim mutation: ADR-0180 item 7 records why this conver
   `templates/pi/awf-subagents/model-routing.ts.tmpl`, change `resolveChildModel`'s last parameter from
   `store: PreferenceStore` to `state: EffectivePreferenceState`, and delete the
   `const state = store.state();` line from its body. The rest of the body already reads only `state`, so
-  no other change is needed inside the function. If the `PreferenceStore` type alias
-  (`type PreferenceStore = ReturnType<typeof createPreferenceStore>;`) has no remaining referent after
-  task 2.2, delete it; if it still has one, leave it.
+  no other change is needed inside the function. Delete the `PreferenceStore` type alias
+  (`type PreferenceStore = ReturnType<typeof createPreferenceStore>;`) unconditionally: task 2.2 deletes
+  `createPreferenceStore`, so the alias cannot survive regardless of referents.
 
 - [ ] **Task 2.2: Replace the store's closure-mutable slots with one load step.** In the same file,
   replace `createPreferenceStore` with a function that performs the read and returns an immutable
@@ -208,12 +221,18 @@ and their test suite. No claim mutation: ADR-0180 item 7 records why this conver
 
   - Keep `read(scope, path)` exactly as it is today, including its `errorCode(error) === "ENOENT"`
     to `emptyPreferenceSource` mapping and its `read-error` invalid state.
-  - Export one async function that takes the same `deps` plus the model registry, computes
-    `globalPath` and `projectPath` as today, awaits both `read` calls, computes
-    `registryFailures(registry, [global, project])`, and returns
+  - Export exactly one new function, named `loadPreferenceState`, with this signature:
+
+    ```ts
+    export async function loadPreferenceState(deps: PreferenceStoreDependencies, registry: ModelRegistryLike): Promise<EffectivePreferenceState>
+    ```
+
+    It computes `globalPath` and `projectPath` as `createPreferenceStore` does today, awaits both `read`
+    calls, computes `registryFailures(registry, [global, project])`, and returns
     `effectivePreferenceState(global, project, registryInvalid)`.
-  - The returned value is the derivation. There is no `ready`, no `reload`, no
-    `validateAgainstRegistry`, and no `state` accessor, because the value IS the state.
+  - DELETE `createPreferenceStore` and the `PreferenceStore` type alias. The returned value is the
+    derivation: there is no `ready`, no `reload`, no `validateAgainstRegistry`, and no `state`
+    accessor, because the value IS the state.
   - Preserve the existing exported `effectivePreferenceState`, `preferredReference`, `routingPreview`,
     and `registryFailures` unchanged; they are already pure.
 
@@ -221,36 +240,75 @@ and their test suite. No claim mutation: ADR-0180 item 7 records why this conver
   Nothing outside these two templates and the test file consumes this API.
 
 - [ ] **Task 2.3: Thread the state at the call sites.** In `templates/pi/awf-subagents/index.ts.tmpl`:
-  - Replace the `createPreferenceStore(deps)` construction and its immediately following `reload()` call
-    with a single derivation obtained from the task 2.2 function.
-  - Rewrite `reloadState` so it performs one derivation and returns it, rather than calling `reload`,
-    then `validateAgainstRegistry`, then `state`.
-  - Change the `resolveChildModel(...)` call to pass the already-derived state rather than the store.
-  - Update the two other `.state()` reads in this file to use the derived value directly.
-  - Update the import list at the top of the file to match the symbols task 2.2 leaves exported.
+  - DELETE the activation-time lines `const preferences = createPreferenceStore(deps);` and
+    `preferences.reload();` (currently `:465-466`) outright, adding no replacement. This is a deliberate
+    decision, not an omission: those lines run inside `registerSubagentTools`, where no `ctx` and
+    therefore no `ctx.modelRegistry` is in scope, so no `loadPreferenceState` call can stand in for
+    them. The `reload()` is a fire-and-forget warm-up whose result every reader supersedes, because
+    every read path (`session_start`, `before_agent_start`, `refreshAndResolve`, and the
+    `/awf-subagent-models` handler) derives per-`ctx`. Dropping the warm-up loses nothing observable.
+  - Rewrite `reloadState(ctx)` to `return loadPreferenceState(deps, ctx.modelRegistry);` in place of its
+    `reload`, `validateAgainstRegistry`, `state` sequence.
+  - In `refreshAndResolve`, change the `resolveChildModel(...)` call's last argument from `preferences`
+    to the `state` constant that the line above it already derives.
+  - Rewrite the second remembered-protocol site in the `/awf-subagent-models` save handler, currently
+    `:599-601` (`await preferences.reload();` / `preferences.validateAgainstRegistry(ctx.modelRegistry);`
+    / `const saved = preferences.state();`), to the single line
+    `const saved = await loadPreferenceState(deps, ctx.modelRegistry);`. This must still run AFTER the
+    file write, so it observes the file just saved; do not hoist it.
+  - Update the import list at the top of the file: remove `createPreferenceStore`, add
+    `loadPreferenceState`.
+
+  Post-check: `grep -n "preferences\." templates/pi/awf-subagents/index.ts.tmpl` returns no output.
 
   Behaviour that must not change: the notice text and severity in `notifyPreferenceState`, the
   `preferenceNotices` WeakSet dedupe keyed on `ctx.sessionManager`, the blocked-state error thrown by
   `resolveChildModel`, and the `/awf-subagent-models` command's save and confirm flow.
 
-- [ ] **Task 2.4: Update the TypeScript tests.** In `tools/pi-extension-test/tests/index.test.ts`,
-  update the five `resolveChildModel` call sites to pass a derived `EffectivePreferenceState` in place of
-  the `stateStore` argument, and update the import list. Representative transformation, from the first
-  site:
+- [ ] **Task 2.4: Update the five `resolveChildModel` test call sites.** In
+  `tools/pi-extension-test/tests/index.test.ts`, `stateStore` is an inline object literal
+  (`{ state: () => effectivePreferenceState(...) }`, currently `:233`), not a helper-built store.
+  Replace that literal with a plain derived state and pass it directly. Representative transformation:
+
+  ```ts
+  // before (line 233 and its first consumer)
+  const stateStore = { state: () => effectivePreferenceState(/* existing arguments, unchanged */) };
+  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, stateStore), {
+  // after
+  const state = effectivePreferenceState(/* the same existing arguments, unchanged */);
+  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, state), {
+  ```
+
+  Apply the same last-argument substitution at the other four sites, currently `:237`, `:238`, `:240`,
+  and `:242`. Edge case that must keep its exact assertion: the blocked-preferences path, which asserts
+  the thrown message matches the `PREFERENCES_BLOCKED` prefix. Affected-site set: every
+  `resolveChildModel` occurrence in this file other than the import. Post-check:
+  `grep -n "stateStore" tools/pi-extension-test/tests/index.test.ts` returns no output.
+
+- [ ] **Task 2.4b: Rewrite the six `createPreferenceStore` test sites.** The same file constructs a
+  store at six places, currently `:244`, `:326`, `:336`, `:347`, `:364`, and `:378`, each exercising the
+  `reload` / `validateAgainstRegistry` / `state` protocol that task 2.2 deletes. Re-verify with
+  `grep -n "createPreferenceStore" tools/pi-extension-test/tests/index.test.ts` before editing.
+  Representative transformation, the common shape at `:326`, `:336`, `:347`, `:364`, and `:378`:
 
   ```ts
   // before
-  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, stateStore), {
+  const store = createPreferenceStore(h.deps);
+  await store.reload();
+  store.validateAgainstRegistry(h.ctx.modelRegistry);
+  const state = store.state();
   // after
-  assert.deepEqual(resolveChildModel(h.ctx.modelRegistry, h.ctx.model, "grounding", undefined, stateStore.state()), {
+  const state = await loadPreferenceState(h.deps, h.ctx.modelRegistry);
   ```
 
-  where `stateStore.state()` is replaced by whatever the test helper now produces directly; if the helper
-  builds a store, change the helper to build the state instead, so no test constructs a store. Edge case
-  that must keep its exact assertion: the blocked-preferences path, which asserts the thrown message
-  matches the `PREFERENCES_BLOCKED` prefix. Affected sites are every `resolveChildModel` occurrence in
-  this file other than the import. Post-check: `grep -n "stateStore\|createPreferenceStore" tools/pi-extension-test/tests/index.test.ts`
-  returns no output.
+  Edge case, `:244`, which differs: it constructs with a throwing `readFile`
+  (`createPreferenceStore({ ...h.deps, readFile: async () => { throw "primitive"; } })`) and asserts on
+  the `ready()` path. Rewrite it as
+  `const state = await loadPreferenceState({ ...h.deps, readFile: async () => { throw "primitive"; } }, h.ctx.modelRegistry);`
+  and assert the same `read-error` invalid state on the returned value; there is no `ready()` to await
+  because the function is itself the await point. Update the import list: remove
+  `createPreferenceStore`, add `loadPreferenceState`. Post-check:
+  `grep -n "createPreferenceStore" tools/pi-extension-test/tests/index.test.ts` returns no output.
 
 - [ ] **Task 2.5: Add a test for the derivation contract.** In the same test file, add one test
   asserting that two successive derivations from unchanged sources produce equal state, and that the
@@ -283,16 +341,18 @@ unchanged.
   that needs it. The eight production `p.Corpus()` sites and their owners today are:
   `check.go:75` (`tagHealthNotes`), `check.go:606` (`checkPlans`), `check.go:686` (`checkPitfalls`),
   `check.go:732` (`checkTagVocabulary`), `check.go:777` (`checkADRRelatedLinks`),
-  `output_plan.go:458` (`OutputPlan`), `render.go:812` (`generateDomainDocs`), and `topics.go:46`
-  (inside `Topics`). Re-verify these locations with
-  `grep -n "p\.Corpus()" internal/project/*.go | grep -v _test` before editing; the shared checkout
-  moves line numbers.
+  `output_plan.go:458` (`OutputPlan`), `render.go:812` (`generateIndexMD`, NOT `generateDomainDocs`,
+  which begins at `render.go:831` and whose corpus-family call is `p.Topics()`), and `topics.go:46`
+  (inside `Topics`). Re-verify each site AND its enclosing function with
+  `grep -n "p\.Corpus()" internal/project/*.go | grep -v _test` plus a read of the surrounding function
+  header before editing; the shared checkout moves line numbers.
 
   Deriving entries, per ADR-0180 item 6: `Check`, `syncReport`, `AdvisoryNotes`, and
   `ConfigReferenceModel` derive at their own entry. `OutputPlan` and `RenderAll` derive only when
-  entered directly and otherwise receive. The five `check.go` helpers, `generateDomainDocs`, and
-  `sweepConfigTree` receive. Forbidden: deriving inside a callee that an outer operation already
-  derived for, which is the regression this whole phase exists to prevent.
+  entered directly and otherwise receive. The five `check.go` helpers, `generateIndexMD`,
+  `generateDomainDocs`, and `sweepConfigTree` receive; `generateIndexMD` is threaded from `OutputPlan`,
+  its production caller. Forbidden: deriving inside a callee that an outer operation already derived
+  for, which is the regression this whole phase exists to prevent.
 
 - [ ] **Task 3.2: Thread the topic corpus the same way.** Delete the `topics` field and the exported
   `Topics` method (`internal/project/topics.go`). The three production `p.Topics()` sites are
@@ -325,14 +385,27 @@ unchanged.
   `check.go:451`, `check.go:456`, `configreference.go:410`, and `render.go:474`. For each: if threading
   removed the error return, delete the exclusion with the dead branch. Otherwise write a justification
   that does not name a cache or a prior derivation. Treat that list as known rather than exhaustive.
-  Post-check: `grep -rn "coverage-ignore" internal/project/ | grep -Ei "cache|already (loaded|resolved|generated|parsed)|pre-empted"`
-  returns no output.
 
-- [ ] **Task 3.6: Update the tests that named the removed symbols.** `internal/project/topics_test.go`
-  has four `.Topics()` call sites (`:36`, `:105`, `:115`, `:528`); rework each to derive through the new
-  path. No test sets `corpus`, `topics`, or `effSkills` directly, and the existing `Project{...}`
-  literals in tests do not set them, so no literal needs a new field. Re-verify with
-  `grep -rn "\.Topics()\|\.Corpus()" internal/project/*_test.go` before editing. Expected terminal state
+  Post-check is a READ, not a regex. Run `grep -rn "coverage-ignore" internal/project/ | grep -v _test`,
+  read every line it returns, and confirm none justifies unreachability by the ADR corpus, the topic
+  corpus, or the effective skill set. Do NOT substitute a keyword pattern: a pattern narrow enough to
+  avoid `check.go:675`, `render.go:695`, `context.go:54`, and `context.go:76` (sidecar and snapshot
+  re-read justifications this plan does not own, which survive the conversion) also misses
+  `render.go:813`, `output_plan.go:532`, and `configreference.go:410`, whose wording names a prior pass
+  rather than a cache. Those three are in the list above and must be rewritten even though no keyword
+  pattern finds them.
+
+- [ ] **Task 3.6: Update the tests that named the removed symbols.** Two files:
+  - `internal/project/topics_test.go` has four `.Topics()` call sites (`:36`, `:105`, `:115`, `:528`);
+    rework each to derive through the new path.
+  - `internal/project/skillrefs_test.go:20` READS the deleted field:
+    `for _, d := range p.checkDeadSkillRefs(rendered, p.effSkills)`. Construct the effective set locally
+    in the test and pass it, so the test exercises the same seam production now uses.
+
+  No test WRITES `corpus`, `topics`, or `effSkills`, and the existing `Project{...}` literals in tests do
+  not set them, so no literal needs a new field. Re-verify the full affected set with
+  `grep -rn "\.Topics()\|\.Corpus()\|effSkills" internal/project/*_test.go` before editing; the narrower
+  grep over only `.Topics()` and `.Corpus()` misses the `skillrefs_test.go` site. Expected terminal state
   after this task: `go test ./internal/project/ -count=1` reports `ok`.
 
 - [ ] **Task 3.7: Confirm the dead-code and coverage gates.** Run `./x gate`. `Corpus` and `Topics` are
@@ -360,17 +433,26 @@ proof marker at all times, so the claim text, the test, and the Applied line lan
   field outside the function that constructs that value. Model it on
   `internal/adr/corpus_test.go`'s `TestCorpusParsedOnce` and its `loadProductionPackages` helper, which
   already does production-package AST loading in this repo. The assertion must cover package functions
-  as well as methods, because `StagedContextRootOptions` is a function. It must PERMIT the three
-  stepwise constructions ADR-0180 item 10 names as conforming: `Loader.Open`, `ContextForOptions`, and
-  `StagedContextRootOptions`, each of which writes fields of a value it constructs in the same function.
+  as well as methods, because `StagedContextRootOptions` is a function.
+
+  THE DETECTION RULE, which is the design choice and must not be left to the executor: flag an
+  assignment whose left-hand side is a selector expression on a value of type `*project.Project`, UNLESS
+  within the same `*ast.FuncDecl` that expression's root identifier is assigned from a `&Project{...}`
+  composite literal. That rule admits the three stepwise constructions ADR-0180 item 10 names as
+  conforming, `Loader.Open`, `ContextForOptions`, and `StagedContextRootOptions`, each of which writes
+  fields of a value whose literal appears in the same function; and it rejects a method mutating its
+  receiver, which is the shape this phase removed.
+
   Give the test the proof marker on its own line immediately above the test function:
 
   ```go
   // invariant: code-design/state-ownership:project-derived-state-ownership
   ```
 
-  Acceptance: the test fails if a field write is reintroduced outside a constructing function. Verify
-  that by temporarily adding such a write, observing the failure, and removing it before staging.
+  Acceptance is a COMMITTED negative case, not a manual experiment: follow the model test's
+  `loadMutationPackage` discipline (`internal/adr/corpus_test.go`) so the test loads a synthetic package
+  containing a receiver-mutating method and asserts the detector flags it. A temporary hand-edit leaves
+  no evidence and cannot regress-protect the detector itself.
 
 - [ ] **Task 4.2: Author the test-backed claim.** Append to `.awf/topics/parts/code-design/state-ownership/current-state.md`,
   after the four reasoned claims:
@@ -387,11 +469,21 @@ proof marker at all times, so the claim text, the test, and the Applied line lan
 
 - [ ] **Task 4.3: Append the final Applied event and flip both statuses.** In
   `docs/decisions/0180-state-ownership-and-derived-state-lifetime.md`, change the frontmatter `status`
-  to `Implemented` and append to `## Status history`:
+  from `Implementing` to `Implemented` AND append exactly these two events to `## Status history`, in
+  this order:
 
   ```
   - <today>: Applied; state-sequence: <the next sequence awf reports>; operations: add `code-design/state-ownership:project-derived-state-ownership`
   ```
+  ```
+  - <today>: Implemented; content-sha256: <the digest awf reports>
+  ```
+
+  Both lines are required and their order is fixed: `HistoryTransitionValid` requires EXACTLY two added
+  entries for an `Implementing` to `Implemented` transition, an applied event followed by a status
+  event. The `Implemented` entry carries a content digest and NO `state-sequence`, because this ADR
+  applied its operations explicitly. Compare the finished shape in
+  `docs/decisions/0178-explicit-dependency-composition-architecture.md`.
 
   Read the sequence awf reports; do not carry a literal from this plan. In this plan file, change the
   frontmatter `status` to `Implemented` and record any deviations in Notes before flipping.
@@ -414,12 +506,16 @@ Whole-effort acceptance, beyond the per-phase gates:
 
 - `grep -rn "beginInvocation" internal/ cmd/` returns no output.
 - `grep -rn "p\.Corpus()\|p\.Topics()\|p\.effSkills" internal/ cmd/` returns no output.
-- `grep -n "createPreferenceStore" templates/ tools/ -r | grep -v node_modules` returns no output, or
-  only the definition if task 2.2 kept the name for the load step.
-- `./awf topic code-design/state-ownership` lists five claims, four `unbacked` and one `test` with a
-  resolved proof marker.
-- `./awf topic code-design/dependency-composition` shows the classification claim carrying
-  `Revised-by: ADR-0180`.
+- `grep -rn "createPreferenceStore\|PreferenceStore" templates/ tools/ | grep -v node_modules` returns
+  no output.
+- `./awf topic code-design/state-ownership` lists five claims, four printing `[backing: unbacked]` and
+  one printing `[backing: test]`.
+- `./x check` is clean with the `Backing: test` claim present. That is the check that actually enforces
+  the proof marker (`internal/topic/markers.go` rejects a test-backed invariant with no marker); do not
+  assert a marker site through `--coverage`, because this pathless global topic's coverage view is empty
+  by design, as ADR-0180's Consequences record.
+- `./awf topic code-design/dependency-composition:dependency-composition-commit-classification --history`
+  shows `Revised-by: ADR-0180`. The bare command does not print provenance.
 - `./x gate` is green with 100% statement coverage.
 - `docs/workflow.md`'s scope table shows the widened `code-design` meaning.
 
