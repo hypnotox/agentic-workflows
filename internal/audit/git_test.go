@@ -215,7 +215,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 		t.Fatalf("empty range should be nil, got %d commits", len(commits))
 	}
 	// Drive Run for the empty range: clean, no error.
-	findings, _, err := Run(dir, head.String(), "HEAD", Inputs{})
+	findings, _, err := Run(t.Context(), dir, head.String(), "HEAD", Inputs{})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -227,7 +227,7 @@ func TestCollectEmptyRangeIsClean(t *testing.T) {
 func TestRunPropagatesCollectError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, dir, "feat(awf): base", map[string]string{"go.mod": "module x\n"})
-	if _, _, err := Run(dir, "no-such-ref", "HEAD", Inputs{}); err == nil {
+	if _, _, err := Run(t.Context(), dir, "no-such-ref", "HEAD", Inputs{}); err == nil {
 		t.Fatal("expected Run to propagate an unresolvable-base error")
 	}
 }
@@ -299,7 +299,7 @@ func TestToCommitRootAndFileText(t *testing.T) {
 
 func uncommittedFindings(t *testing.T, dir string, enabled bool) []Finding {
 	t.Helper()
-	findings, err := ruleUncommittedChanges(dir, Inputs{Settings: Settings{UncommittedChanges: enabled}})
+	findings, err := ruleUncommittedChanges(t.Context(), dir, Inputs{Settings: Settings{UncommittedChanges: enabled}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +370,7 @@ func TestRunIncludesUncommittedChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Empty range (base == HEAD) so only the live-state rule can fire.
-	findings, _, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
+	findings, _, err := Run(t.Context(), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}})
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -390,7 +390,7 @@ func TestRunPropagatesNativeStatusError(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 	t.Setenv("PATH", t.TempDir())
 
-	if _, _, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}}); err == nil {
+	if _, _, err := Run(t.Context(), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: true}}); err == nil {
 		t.Fatal("Run unexpectedly accepted unavailable native Git status")
 	}
 }
@@ -400,7 +400,7 @@ func TestRunDisabledUncommittedRuleNeedsNoNativeGit(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "init", map[string]string{"a.txt": "a"})
 	t.Setenv("PATH", t.TempDir())
 
-	findings, _, err := Run(dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: false}})
+	findings, _, err := Run(t.Context(), dir, "HEAD", "HEAD", Inputs{Settings: Settings{UncommittedChanges: false}})
 	if err != nil {
 		t.Fatalf("Run with disabled uncommitted rule: %v", err)
 	}

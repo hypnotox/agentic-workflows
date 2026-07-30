@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -60,33 +59,43 @@ func TestNativeGitFailuresRetainWrappedCauseAndContext(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	_, err = runGitBytes(ctx, t.TempDir(), "version")
+	_, err = newRunner(t.TempDir()).run(ctx, "version")
 	if !errors.Is(err, context.Canceled) || !strings.Contains(err.Error(), "git -C") {
 		t.Fatalf("canceled Git error lost cause or context: %T %v", err, err)
 	}
 
 	t.Setenv("PATH", t.TempDir())
-	_, err = runGitBytes(t.Context(), t.TempDir(), "version")
+	_, err = newRunner(t.TempDir()).run(t.Context(), "version")
 	if !errors.Is(err, exec.ErrNotFound) || !strings.Contains(err.Error(), "git -C") {
 		t.Fatalf("failed Git execution lost cause or context: %T %v", err, err)
 	}
 }
 
-func TestControlRootRejectsUnexpectedBareScalarThroughFixedArgumentRunner(t *testing.T) {
-	root := t.TempDir()
-	var calls [][]string
-	runner := func(_ context.Context, gotRoot string, args ...string) ([]byte, error) {
-		calls = append(calls, append([]string{gotRoot}, args...))
-		return []byte("not-boolean\n"), nil
+func TestControlRootRejectsUnexpectedBareScalarFromFixedArguments(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fake native Git fixture requires a POSIX script")
 	}
-	_, err := resolveControlRoots(t.Context(), root, runner)
+	root := t.TempDir()
+	bin := t.TempDir()
+	calls := filepath.Join(t.TempDir(), "calls")
+	body := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '" + calls + "'\nprintf 'not-boolean\\n'\n"
+	if err := os.WriteFile(filepath.Join(bin, "git"), []byte(body), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	_, err := ResolveControlRoots(t.Context(), root)
 	var hard *HardSafetyError
 	if !errors.As(err, &hard) || hard.Category != "repository-identity" || hard.Forceable() {
 		t.Fatalf("unexpected scalar error = %T %v", err, err)
 	}
-	want := [][]string{{root, "rev-parse", "--is-bare-repository"}}
-	if !reflect.DeepEqual(calls, want) {
-		t.Fatalf("native Git calls = %#v, want fixed arguments %#v", calls, want)
+	recorded, err := os.ReadFile(calls)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "-C " + root + " rev-parse --is-bare-repository\n"
+	if string(recorded) != want {
+		t.Fatalf("native Git calls = %q, want the single fixed invocation %q", recorded, want)
 	}
 }
 
@@ -126,7 +135,7 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		if _, err := runGitPathWith(runGitBytes, t.Context(), t.TempDir(), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
+		if _, err := runGitPathWith(newRunner(t.TempDir()), t.Context(), "path"); err == nil || !strings.Contains(err.Error(), "invalid path response") {
 			t.Fatalf("multiline Git path accepted: %v", err)
 		}
 	})
@@ -138,14 +147,14 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
-		if _, err := runGitTextWith(runGitBytes, t.Context(), t.TempDir(), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
+		if _, err := runGitTextWith(newRunner(t.TempDir()), t.Context(), "scalar"); err == nil || !strings.Contains(err.Error(), "invalid scalar response") {
 			t.Fatalf("space-padded Git scalar accepted: %v", err)
 		}
 	})
 
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if _, err := runGitPathWith(runGitBytes, ctx, t.TempDir(), "path"); !errors.Is(err, context.Canceled) {
+	if _, err := runGitPathWith(newRunner(t.TempDir()), ctx, "path"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("path command error lost cancellation cause: %v", err)
 	}
 }

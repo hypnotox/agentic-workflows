@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -64,12 +63,6 @@ func (*HardSafetyError) Forceable() bool { return false }
 // roots using native Git. Native Git is used only for topology discovery;
 // OpenRepo remains the package's read-only go-git boundary.
 func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error) {
-	return resolveControlRoots(ctx, root, runGitBytes)
-}
-
-type nativeGitRunner func(context.Context, string, ...string) ([]byte, error)
-
-func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunner) (ControlRoots, error) {
 	originalRoot, err := cleanAbsolute(root)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, fmt.Errorf("resolve invoking root: %w", err)
@@ -77,8 +70,9 @@ func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunne
 	if err := lstatComponents(originalRoot); err != nil {
 		return ControlRoots{}, err
 	}
+	native := newRunner(originalRoot)
 
-	bare, err := runGitTextWith(runner, ctx, originalRoot, "rev-parse", "--is-bare-repository")
+	bare, err := runGitTextWith(native, ctx, "rev-parse", "--is-bare-repository")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("inspect bare-repository state from %s: %w", originalRoot, err)
 	}
@@ -88,60 +82,40 @@ func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunne
 	if bare == "true" {
 		return ControlRoots{}, &HardSafetyError{Category: "bare-repository", Path: originalRoot}
 	}
-	invokingRoot, err := runGitPathWith(runner, ctx, originalRoot, "rev-parse", "--show-toplevel")
+	invokingRoot, err := runGitPathWith(native, ctx, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve invoking checkout from %s: %w", originalRoot, err)
 	}
-	commonDir, err := runGitPathWith(runner, ctx, originalRoot, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	commonDir, err := runGitPathWith(native, ctx, "rev-parse", "--path-format=absolute", "--git-common-dir")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve common Git directory from %s: %w", originalRoot, err)
 	}
 
-	for _, path := range []string{invokingRoot, commonDir} {
-		if err := lstatComponents(path); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return ControlRoots{}, err
-		}
-	}
-	originalIdentity, err := filepath.EvalSymlinks(originalRoot)
+	originalIdentity, err := stableIdentity(originalRoot)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, fmt.Errorf("resolve invoking-root identity: %w", err)
 	}
-	if err := lstatComponents(originalRoot); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
-	}
-	invokingIdentity, err := filepath.EvalSymlinks(invokingRoot)
+	invokingIdentity, err := stableIdentity(invokingRoot)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, fmt.Errorf("resolve checkout identity: %w", err)
-	}
-	if err := lstatComponents(invokingRoot); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
 	}
 	if !lexicallyContained(invokingIdentity, originalIdentity) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: originalRoot, Err: errors.New("git resolved a checkout outside the invoking path")}
 	}
-	commonIdentity, err := filepath.EvalSymlinks(commonDir)
+	commonIdentity, err := stableIdentity(commonDir)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: commonDir, Err: err}
 	}
-	if err := lstatComponents(commonDir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, err
-	}
-	invokingGitDir, err := worktreeGitDir(invokingRoot)
+	invokingGitDir, err := resolveValidated(invokingRoot, worktreeGitDir)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, identityError(invokingRoot, err)
 	}
-	if err := lstatComponents(invokingGitDir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, identityError(invokingRoot, err)
-	}
-	invokingGitDirIdentity, err := filepath.EvalSymlinks(invokingGitDir)
+	invokingGitDirIdentity, err := stableIdentity(invokingGitDir)
 	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: invokingRoot, Err: err}
-	}
-	if err := lstatComponents(invokingGitDir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 
-	porcelain, err := runner(ctx, originalRoot, "worktree", "list", "--porcelain", "-z")
+	porcelain, err := native.run(ctx, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return ControlRoots{}, fmt.Errorf("list worktree topology from %s: %w", originalRoot, err)
 	}
@@ -157,24 +131,12 @@ func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunne
 		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 			return ControlRoots{}, &HardSafetyError{Category: "unconfined", Path: record.path, Err: err}
 		}
-		if err := lstatComponents(worktree); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			if record.prunable && os.IsNotExist(unwrappedError(err)) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		worktreeIdentity, err := stableIdentity(worktree)
+		if err != nil {
+			if record.prunable && os.IsNotExist(unwrappedError(err)) {
 				continue
 			}
-			return ControlRoots{}, err // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		}
-		worktreeIdentity, err := filepath.EvalSymlinks(worktree)
-		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			if record.prunable && os.IsNotExist(err) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-				continue
-			}
-			return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: worktree, Err: err} // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-		}
-		if err := lstatComponents(worktree); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			if record.prunable && os.IsNotExist(unwrappedError(err)) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-				continue
-			}
-			return ControlRoots{}, err // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+			return ControlRoots{}, identityError(worktree, err) // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
 		}
 		if !record.bare && (sameCleanPath(worktreeIdentity, invokingIdentity) || sameCleanPath(worktreeIdentity, invokingGitDirIdentity)) {
 			invokingListed++
@@ -192,21 +154,15 @@ func resolveControlRoots(ctx context.Context, root string, runner nativeGitRunne
 			}
 			continue
 		}
-		gitdir, err := worktreeGitDir(worktree)
+		gitdir, err := resolveValidated(worktree, worktreeGitDir)
 		if err != nil {
-			if record.prunable && os.IsNotExist(err) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+			if record.prunable && os.IsNotExist(unwrappedError(err)) {
 				continue
 			}
 			return ControlRoots{}, identityError(worktree, err)
 		}
-		if err := lstatComponents(gitdir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return ControlRoots{}, identityError(worktree, err)
-		}
-		gitdirIdentity, err := filepath.EvalSymlinks(gitdir)
-		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
-			return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: worktree, Err: err}
-		}
-		if err := lstatComponents(gitdir); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		gitdirIdentity, err := stableIdentity(gitdir)
+		if err != nil {
 			return ControlRoots{}, identityError(worktree, err)
 		}
 		if sameCleanPath(gitdirIdentity, commonIdentity) {
@@ -272,7 +228,7 @@ type WorktreeRegistration struct {
 // ListWorktreeRegistrations returns the repository's native-Git registrations
 // without consulting or scanning filesystem ancestors.
 func ListWorktreeRegistrations(ctx context.Context, invokingRoot string) ([]WorktreeRegistration, error) {
-	output, err := runGitBytes(ctx, invokingRoot, "worktree", "list", "--porcelain", "-z")
+	output, err := newRunner(invokingRoot).run(ctx, "worktree", "list", "--porcelain", "-z")
 	if err != nil {
 		return nil, fmt.Errorf("list Git worktrees from %s: %w", invokingRoot, err)
 	}
@@ -420,8 +376,8 @@ func worktreeGitDir(worktree string) (string, error) {
 	return filepath.Clean(pointer), nil
 }
 
-func runGitPathWith(runner nativeGitRunner, ctx context.Context, root string, args ...string) (string, error) {
-	output, err := runner(ctx, root, args...)
+func runGitPathWith(native runner, ctx context.Context, args ...string) (string, error) {
+	output, err := native.run(ctx, args...)
 	if err != nil {
 		return "", err
 	}
@@ -432,8 +388,8 @@ func runGitPathWith(runner nativeGitRunner, ctx context.Context, root string, ar
 	return cleanAbsolute(value)
 }
 
-func runGitTextWith(runner nativeGitRunner, ctx context.Context, root string, args ...string) (string, error) {
-	output, err := runner(ctx, root, args...)
+func runGitTextWith(native runner, ctx context.Context, args ...string) (string, error) {
+	output, err := native.run(ctx, args...)
 	if err != nil {
 		return "", err
 	}
@@ -452,19 +408,28 @@ func removeGitLineDelimiter(value string) string {
 	return value
 }
 
-func runGitBytes(ctx context.Context, root string, args ...string) ([]byte, error) {
-	fixed := append([]string{"-C", root}, args...)
-	cmd := exec.CommandContext(ctx, "git", fixed...)
-	cmd.Env = IsolatedGitEnvironment(os.Environ())
-	output, err := cmd.Output()
-	if err != nil {
-		var exit *exec.ExitError
-		if errors.As(err, &exit) {
-			return nil, fmt.Errorf("git %s: %w: %s", strings.Join(fixed, " "), err, strings.TrimSpace(string(exit.Stderr)))
-		}
-		return nil, fmt.Errorf("git %s: %w", strings.Join(fixed, " "), err)
+// resolveValidated is the check-act-recheck identity ladder: it proves every
+// component of path before resolve reads it and again afterwards, so a path
+// whose shape changes around the resolution is refused rather than trusted.
+func resolveValidated(path string, resolve func(string) (string, error)) (string, error) {
+	if err := lstatComponents(path); err != nil {
+		return "", err
 	}
-	return output, nil
+	resolved, err := resolve(path)
+	if err != nil {
+		return "", err
+	}
+	if err := lstatComponents(path); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		return "", err
+	}
+	return resolved, nil
+}
+
+// stableIdentity resolves path's symlink-free identity through the ladder, so
+// the identity two paths are compared by is only accepted when the path held
+// its shape across the resolution.
+func stableIdentity(path string) (string, error) {
+	return resolveValidated(path, filepath.EvalSymlinks)
 }
 
 // IsolatedGitEnvironment removes inherited repository selection, config, and
@@ -575,6 +540,6 @@ func unwrappedError(err error) error {
 		if next == nil {
 			return err
 		}
-		err = next // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		err = next
 	}
 }

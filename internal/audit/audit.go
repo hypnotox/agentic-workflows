@@ -7,6 +7,7 @@
 package audit
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -81,7 +82,7 @@ type Inputs struct {
 // supplies it (ADR-0127 Decision 3).
 // It also returns the number of commits the range resolved to, so the caller can
 // report the scope it evaluated rather than a bare verdict (ADR-0127 Decision 9).
-func Run(repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
+func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
 	commits, err := Collect(repoRoot, base, head)
 	if err != nil {
 		return nil, 0, err
@@ -89,7 +90,7 @@ func Run(repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
 	findings := evaluate(commits, in)
 	// The clean-working-tree rule reads live state, so it runs here (with the repo
 	// root) rather than in the commit-only evaluate.
-	liveFindings, err := ruleUncommittedChanges(repoRoot, in)
+	liveFindings, err := ruleUncommittedChanges(ctx, repoRoot, in)
 	if err != nil {
 		return nil, 0, err
 	}

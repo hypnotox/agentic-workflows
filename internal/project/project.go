@@ -488,7 +488,7 @@ func (p *Project) deriveOperationState() (adr.Corpus, topic.Corpus, map[string]b
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
-func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
+func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding, int, error) {
 	s := audit.Resolve(p.Cfg.Audit)
 	lay := p.layout()
 	generated := map[string]bool{}
@@ -516,7 +516,7 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 			domainPaths[d] = sc.Paths
 		}
 	}
-	findings, commits, err := audit.Run(p.Root, base, head, audit.Inputs{
+	findings, commits, err := audit.Run(ctx, p.Root, base, head, audit.Inputs{
 		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,

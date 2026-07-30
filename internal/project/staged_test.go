@@ -765,7 +765,7 @@ func TestAuditIncludesTransitions(t *testing.T) {
 	p := openStaged(t, dir)
 	writeLock(t, p, attestedLock())
 
-	findings, _, err := p.Audit(base.String(), "HEAD")
+	findings, _, err := p.Audit(t.Context(), base.String(), "HEAD")
 	if err != nil {
 		t.Fatalf("Audit: %v", err)
 	}
@@ -890,7 +890,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	gitfixture.Commit(t, repo, dir, "feat(invariants): record bad intermediate", nil)
 	gitfixture.Stage(t, repo, dir, map[string]string{".awf/topics/parts/alpha/one/current-state.md": publicTopicClaims("v1", "a", "b", "c", "q", "x", "y")})
 	head := gitfixture.Commit(t, repo, dir, "fix(invariants): repair endpoint", nil)
-	findings, _, err := p.Audit(base.String(), head.String())
+	findings, _, err := p.Audit(t.Context(), base.String(), head.String())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -17,11 +18,11 @@ import (
 // evaluates it (it holds the repo root); it is range-independent, unlike the
 // commit-history rules in evaluate.
 // touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
-func ruleUncommittedChanges(repoRoot string, in Inputs) ([]Finding, error) {
+func ruleUncommittedChanges(ctx context.Context, repoRoot string, in Inputs) ([]Finding, error) {
 	if !in.UncommittedChanges {
 		return nil, nil
 	}
-	tracked, untracked, err := awfgit.WorktreeChangeCounts(repoRoot)
+	tracked, untracked, err := awfgit.WorktreeChangeCounts(ctx, repoRoot)
 	if err != nil {
 		return nil, err
 	}

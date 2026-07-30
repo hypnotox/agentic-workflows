@@ -50,7 +50,7 @@ func TestWorktreeChangeCountsDoesNotRefreshIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	tracked, untracked, err := WorktreeChangeCounts(dir)
+	tracked, untracked, err := WorktreeChangeCounts(t.Context(), dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestWorktreeChangeCountsDoesNotRefreshIndex(t *testing.T) {
 }
 
 func TestWorktreeChangeCountsRejectsNonRepository(t *testing.T) {
-	if _, _, err := WorktreeChangeCounts(t.TempDir()); err == nil {
+	if _, _, err := WorktreeChangeCounts(t.Context(), t.TempDir()); err == nil {
 		t.Fatal("WorktreeChangeCounts unexpectedly succeeded outside a repository")
 	}
 }

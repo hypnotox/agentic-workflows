@@ -6,11 +6,11 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -163,10 +163,11 @@ func HeadHash(repoRoot string) (string, error) {
 // WorktreeChangeCounts returns native Git's tracked-change and nonignored
 // untracked-file counts for the worktree containing repoRoot. Native porcelain
 // is the cleanliness oracle because go-git's status traversal can re-include a
-// nested .gitignore below an ignored parent directory.
-func WorktreeChangeCounts(repoRoot string) (tracked, untracked int, err error) {
-	cmd := exec.Command("git", "--no-optional-locks", "-C", repoRoot, "status", "--porcelain=v2", "-z", "--untracked-files=all")
-	out, err := cmd.Output()
+// nested .gitignore below an ignored parent directory. It runs through the
+// package runner, so it inherits the isolated environment and reports a failure
+// with Git's own stderr.
+func WorktreeChangeCounts(ctx context.Context, repoRoot string) (tracked, untracked int, err error) {
+	out, err := newRunner(repoRoot).run(ctx, "--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all")
 	if err != nil {
 		return 0, 0, fmt.Errorf("read native Git worktree status: %w", err)
 	}

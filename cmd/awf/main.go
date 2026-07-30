@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -17,6 +18,13 @@ import (
 )
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
+
+// gitCommandTimeout is the deadline every command boundary puts on the git work
+// it starts. It is a hang-prevention ceiling, not a latency budget: it is
+// generous enough that no observed-normal local operation (a full-tree status on
+// a large working tree included) approaches it, so a command that reaches it has
+// stalled rather than merely taken a while.
+const gitCommandTimeout = 2 * time.Minute
 
 var getwd = os.Getwd
 
