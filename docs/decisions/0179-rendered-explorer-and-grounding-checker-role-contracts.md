@@ -200,8 +200,10 @@ to any function or message text, so it needed no claim operation of its own.
    (`changelog/CHANGELOG.md`'s newest release heading is 0.22.0) is a pre-existing release-cadence
    matter this ADR does not address.
 
-8. Seven test-edit obligations land with the change rather than being discovered by a red gate. Three
-   follow from the moved prose: `TestBoundedExplorationReporting` is revised so its second body is the
+8. The test-edit obligations land with the change rather than being discovered by a red gate. They fall
+   into three groups: the moved prose, item 6's pairing fallout (the fixture set and the migration
+   fixture's new assertion, both inventoried in that item), and item 7's generation bump. Three follow
+   from the moved prose: `TestBoundedExplorationReporting` is revised so its second body is the
    rendered explorer agent, its label no longer claims a Pi fixed prompt, and its single Pi `wants`
    slice splits three ways into an explorer-body list, a retained Pi-body list for the limiter and the
    per-call breadth and detail lines, and the existing skill-body list which keeps its own spellings;
@@ -300,8 +302,9 @@ claims, so seventeen) instead, where it belongs on subject matter anyway, since 
 behaviour across every disk-loaded role rather than template content.
 
 The pairing is cheap to declare and not cheap to land. Item 6's two field assignments force an
-allowlist edit, nine fixture edits, and a doc-comment rewording; that fallout is inventoried rather
-than discovered, but it is the bulk of the diff's file count.
+allowlist edit, a fixture edit at every site that opens a project with a non-local dispatching skill, a
+new assertion on the migration fixture, and a doc-comment rewording; that fallout is inventoried in item
+6 rather than discovered, but it is the bulk of the diff's file count.
 
 The `debugging` and `refactor-coupling-audit` pairing gap stays open. Enabling either without
 `exploring` still yields a skill that instructs a dispatch whose agent may be absent. Closing it needs
