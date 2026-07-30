@@ -158,3 +158,30 @@ frozen state whose commit also changes the ADR's digest-covered section content 
 parent snapshot. Deferred because audit rules ship behind their own decision; the pitfalls
 entry recording the occurrence is the interim memory.
 
+## Decomposing the `internal/project` god object
+
+`internal/project.Project` carries roughly ninety-five production methods across
+thirty production files, imports seventeen internal packages, and is imported by
+exactly two. Fourteen of those files touch no `Project` field at all, which is
+the clearest signal that several cohesive units are sharing one type.
+
+The split has been deferred repeatedly and, until now, was recorded only in
+ephemeral working memory under `.awf/efforts/`, so it vanished whenever an
+effort finished. This entry is the durable record.
+
+Two of its three prerequisites are settled. ADR-0178 established
+`code-design/dependency-composition`, so dependency direction and wiring have an
+authority to answer to. ADR-0180 established `code-design/state-ownership` and
+converted the three per-invocation derived fields, so the type no longer holds
+state written after construction and a future package boundary cannot inherit a
+hidden cache. The remaining prerequisite is a package-cohesion and boundary
+pattern, which is where the deferred `receiver-reads-owned-state` rule belongs:
+a method reads at least one receiver field, and behaviour that reads none takes
+parameters instead. Its evidence is already collected, the fourteen zero-field
+files and the four synthetic partial `Project` literals.
+
+Sequencing matters more than usual here. Half of "where does a package boundary
+go" is dependency direction, which `dependency-composition` already owns, so a
+cohesion pattern authored without reference to it would create dual authority.
+The decomposition itself should follow the pattern rather than accompany it.
+
