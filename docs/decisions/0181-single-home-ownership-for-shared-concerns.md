@@ -71,44 +71,61 @@ defaults wholesale, so additions must compare and backfill.
 
 2. A policy or mechanism consumed from more than one package has exactly one
    implementation, living in the package that owns the concern, and every consumer uses
-   it. The scope is the whole module: `cmd/` executables, test-support packages, and
-   rendered runtime sources included. A second implementation is a defect, not a variant,
-   and a narrow consumer configures the shared implementation rather than reimplementing
-   a reduced copy.
+   it. The scope is this repository's authored sources: `internal/` and `cmd/` packages,
+   test-support packages, and the runtime template sources under `templates/` are all
+   inside it; generated output and the example adopter's rendered tree are outside,
+   because their duplication is by construction. A second implementation is a defect,
+   not a variant, and a narrow consumer configures the shared implementation rather than
+   reimplementing a reduced copy. Where ownership of a concern is contested, the
+   decision performing the conversion settles the home, with
+   `code-design/dependency-composition:consumer-owned-contracts` as the tie-break.
 
 3. Two implementations of similar-looking behaviour are permitted only when they answer
    materially different contracts from distinct sources, and that reasoning is recorded in
    a durable decision and referenced at the site. ADR-0073's unreleased-section extractor
    beside `internal/changelog`'s release parser is the model. Undocumented similarity is
-   treated as a fork until reasoned otherwise.
+   treated as a fork until reasoned otherwise. A coupling obstacle in the existing
+   implementation is a reason to fix that implementation under item 2, never a reason to
+   fork; and distinct sources qualify a materially different contract rather than
+   substituting for one.
 
 4. A shared implementation is never forked, narrowed, or degraded to avoid an uncovered
    branch or reduce a coverage-escape count. A branch a narrow consumer cannot exercise
    takes a reasoned `// coverage-ignore` or is exercised through the owning package's
    tests. Escape count is an outcome of design, never a design input.
 
-5. Both claims are reasoned contracts (`Backing: unbacked` with `Verify:` instructions).
-   Where a converted concern has a mechanical signature (an import, a call pattern, a
-   literal), its conversion may add a repo-walking test in the ADR-0127 style; such a test
-   backs a concern-specific claim in the topic that owns that concern, not these global
-   claims.
+5. `single-implementation` encodes items 2 and 3, with item 3's reasoned-divergence
+   exception a clause of that claim rather than a separate one; `no-coverage-fork`
+   encodes item 4. Both claims are reasoned contracts (`Backing: unbacked` with
+   `Verify:` instructions). Where a converted concern has a mechanical signature (an
+   import, a call pattern, a literal), its conversion may add a repo-walking test in the
+   ADR-0127 style; such a test backs a concern-specific claim in the topic that owns
+   that concern, not these global claims.
 
 6. Add one reviewer focus item naming `code-design/single-home` to
    `.awf/agents/adr-reviewer.yaml`, `.awf/agents/code-reviewer.yaml`, and
    `.awf/agents/plan-reviewer.yaml`, comparing against and backfilling the catalog
-   defaults each list replaces.
+   defaults each list replaces; extend the workflow-chain part
+   (`.awf/parts/workflow/chain.md`) to name this topic beside its two siblings, so the
+   authority has a design-time anchor and not only review-time ones; and add a glossary
+   entry for the single-home vocabulary.
 
 7. The concrete first consumer is the git-access conversion, decided by its own ADR next
    in this effort and executed by its plan: it converts the git area's forks under this
-   authority (the duplicated native runner, two branch-existence probes, two cleanliness
-   oracles, three stderr-enrichment copies, the duplicated resident-root resolution, and
-   the split fixture-construction lane). This ADR converts nothing itself.
+   authority (from the audit: the duplicated native runner, two branch-existence probes,
+   two cleanliness oracles, and three stderr-enrichment copies; from this effort's
+   grounding pass: the duplicated resident-root resolution at
+   `internal/project/project.go:130-141` beside `cmd/awf/sync.go:24-34`, and the
+   fixture-construction lane split across fourteen test files outside
+   `internal/testsupport/gitfixture`). This ADR converts nothing itself.
 
-8. The remaining audit-named forks are bounded future candidates under item 1, recorded
-   here for discoverability and not converted by this decision: markdown block-structure
-   recognition (whose conversion must re-decide the ADR-0111 fidelity split under item 4),
-   durable-write tiering, the context-spill notice format constant, template-identifier
-   resolution, owner-validated no-follow file I/O, and YAML frontmatter emission.
+8. The forks in the audit's single-home backlog (its Tier 2 item 5) are bounded future
+   candidates under item 1, recorded here for discoverability and not converted by this
+   decision: markdown block-structure recognition (whose conversion must re-decide the
+   ADR-0111 fidelity split under item 4), durable-write tiering, the context-spill notice
+   format constant, template-identifier resolution, owner-validated no-follow file I/O,
+   and YAML frontmatter emission. Other forks the audit names elsewhere fall under item 1
+   the same way without being enumerated here.
 
 ## State changes
 
@@ -122,6 +139,18 @@ where a dependency comes from or what a value keeps, but how many implementation
 concern may have. Future conversions cite the topic instead of re-litigating the principle,
 and the audit's fork backlog becomes a conversion queue with a standing rule behind it.
 
+The authority deliberately lands ahead of its first conversion: the git-access decision
+follows immediately in the same effort, and sequencing the rule first lets that ADR cite
+standing authority instead of restating it. The exposure while the gap lasts is real, two
+global reasoned claims tested against no converted code, and it is bounded by the effort's
+next step being exactly that conversion.
+
+Item 4 accepts a higher coverage-escape count by design and moves the burden to
+escape-justification review, a surface the code-reviewer sidecar's reachability item and
+the audit's escape-hygiene finding already load. The audit's remedy composes rather than
+conflicts: a verbatim-repeated justification signals a missing extraction, and item 2's
+configure-rather-than-reimplement clause is that extraction's rule.
+
 Both claims are reasoned rather than test-backed, so their enforcement is reviewer focus
 items and `Verify:` instructions, the same posture and the same noise risk as ADR-0178 and
 ADR-0180 accepted. The claims stay narrow through the new-or-deliberately-converted
@@ -133,14 +162,19 @@ Item 4 removes the incentive that produced at least one recorded fork. ADR-0111'
 rationale for dropping tilde fences stops describing current preference the moment this
 decision is accepted; the ADR remains accurate history, and the markdown-scanner conversion
 under item 8 is where the fidelity split is actually re-decided. A reader of ADR-0111 needs
-this ADR for why its trade-off is no longer made.
+this ADR for why its trade-off is no longer made. The comment at
+`internal/plan/plan.go:82-83` restating that rationale in production source is deliberately
+left untouched until that conversion re-decides the split, so the pointer and the code move
+together.
 
-The sidecar edit in item 6 lands in files that two in-flight chains also touch: the
-severity-unification chain and the state-ownership plan (both in managed worktrees, their
-ADR numbers pinned only at integration) edit the three agent sidecars or adjacent
-current-state parts. Application of this decision
-sequences after those transactions integrate, which is an ordering cost, not a conflict of
-substance.
+Application of this decision sequences after two in-flight transactions integrate. The
+severity-unification chain (in a managed worktree, its ADR numbers pinned only at
+integration) and ADR-0180's plan (that ADR is already on main; its plan executes in a
+managed worktree) both edit the three agent sidecars or adjacent current-state parts.
+ADR-0180 item 11 additionally widens the `code-design` commit scope from dependency
+composition to code-design authority generally; until that lands, this ADR's own
+authority commit has no correct scope, so the dependency is load-bearing rather than a
+mere ordering cost.
 
 The rule has a judgement burden by design. "Same policy" has no mechanical oracle, so
 review carries the load where no walker exists; item 5 keeps the mechanical option open
@@ -158,6 +192,7 @@ only caller is a coverage-satisfying test.
 | Keep deciding single-homing per concern in each ADR | The audit measured the result: every claimed concern clean, every unclaimed comparable concern forked, four with behavioural divergence. |
 | A mechanical duplication gate | No reliable oracle distinguishes shared policy from coincidental similarity; per-concern walkers remain available under item 5 where a mechanical signature exists. |
 | State the coverage-gate rule as prose in docs/testing.md or the design doc | Generic guidance is not review-anchored; a topic claim is specific and reviewable, the same argument ADR-0180 made against a doc section. |
+| The read-universe/tree-reader collapse as first consumer | The audit's own suggestion, and smaller; git-access was chosen because three of nine audit passes ranked it top-3 by risk reduction, this effort had already designed it end to end through a grounding check, and its evidence (a byte-for-byte duplicated runner) is the least ambiguous. |
 
 ## Status history
 
