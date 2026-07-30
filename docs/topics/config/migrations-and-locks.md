@@ -86,9 +86,9 @@ Backing: test
 
 ### `invariant: severity-keys-dropped`
 
-Schema generation 24 removes currentState.topicCoverage and currentState.topicFanout from a config tree, announcing each removal it performs, and leaves every other configured key byte-identical. Where the two were the block's only children it seeds and announces the default maxTopicsPerPath instead of letting the emptied currentState block be dropped, because an absent block would stop coverage and fan-out evaluating.
+Schema generation 24 removes currentState.topicCoverage and currentState.topicFanout from a config tree, announcing each removal it performs, and leaves every other configured key and its value intact. Where the two were the block's only children it seeds and announces the default maxTopicsPerPath instead of letting the emptied currentState block be dropped, because an absent block would stop coverage and fan-out evaluating.
 Origin: ADR-0179
-Revised-by: ADR-0180
+Revised-by: ADR-0180, ADR-0181
 Backing: test
 
 ### `invariant: singleton-doc-migration-relocates-parts`

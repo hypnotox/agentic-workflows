@@ -185,3 +185,4 @@ _No decisions are in flight._
 - [ADR-0178: Explicit dependency composition architecture](0178-explicit-dependency-composition-architecture.md) (Implemented)
 - [ADR-0179: Drop configurable severity and unify the finding rank](0179-drop-configurable-severity-and-unify-the-finding-rank.md) (Implemented)
 - [ADR-0180: Preserve the currentState block and correct three severity claim scopes](0180-preserve-the-current-state-block-and-correct-three-severity-claim-scopes.md) (Implemented)
+- [ADR-0181: Severity-key removal preserves values, not bytes](0181-severity-key-removal-preserves-values-not-bytes.md) (Implemented)

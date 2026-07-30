@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -117,6 +118,45 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 				t.Errorf("replay re-announced: %q", second.String())
 			}
 		})
+	}
+}
+
+// A non-canonically-formatted source: the round-trip re-indents surviving keys,
+// so the claim promises value preservation rather than byte preservation
+// (ADR-0181). Asserting the surviving keys and values by content rather than by
+// exact bytes is what makes that clause falsifiable: a migration that dropped or
+// altered a sibling value would fail here, while a pure re-indent does not.
+// invariant: config/migrations-and-locks:severity-keys-dropped
+func TestApplyDropSeveritySettingsPreservesValuesNotLayout(t *testing.T) {
+	root := t.TempDir()
+	p := filepath.Join(root, ".awf", "config.yaml")
+	testsupport.WriteFile(t, p, "prefix: ex\ncurrentState:\n    topicCoverage: error\n"+
+		"    testGlobs: ['**/*_test.go']\n    maxTopicsPerPath:   8\n    maxClaimsPerTopic: 20\n")
+	if err := applyDropSeveritySettings(root, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(p)
+	if err != nil { // coverage-ignore: the migration just wrote this path
+		t.Fatal(err)
+	}
+	cfg, err := config.Parse(filepath.Join(root, ".awf"), got)
+	if err != nil {
+		t.Fatalf("migrated config must parse: %v", err)
+	}
+	if cfg.CurrentState == nil {
+		t.Fatal("currentState block must survive: three siblings remain")
+	}
+	if n := len(cfg.CurrentState.TestGlobs); n != 1 || cfg.CurrentState.TestGlobs[0] != "**/*_test.go" {
+		t.Errorf("testGlobs = %#v, want the configured value intact", cfg.CurrentState.TestGlobs)
+	}
+	if cfg.CurrentState.MaxTopicsPerPath == nil || *cfg.CurrentState.MaxTopicsPerPath != 8 {
+		t.Errorf("maxTopicsPerPath = %v, want the configured 8 intact", cfg.CurrentState.MaxTopicsPerPath)
+	}
+	if cfg.CurrentState.MaxClaimsPerTopic == nil || *cfg.CurrentState.MaxClaimsPerTopic != 20 {
+		t.Errorf("maxClaimsPerTopic = %v, want the configured 20 intact", cfg.CurrentState.MaxClaimsPerTopic)
+	}
+	if cfg.Prefix != "ex" {
+		t.Errorf("prefix = %q, want the configured value intact", cfg.Prefix)
 	}
 }
 

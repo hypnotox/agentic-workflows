@@ -20,6 +20,12 @@
   semantics, whether a path-owning global topic satisfies scoped coverage or only
   ownership, and what it does to the fan-out budget, which deliberately excludes global
   topics today.
+- Pin what `internal/config`'s editors guarantee about an adopter's `config.yaml`. The `yaml.Node`
+  round-trip ADR-0026 chose preserves every key, value, and comment but canonicalizes layout: a
+  four-space block returns two-space, a sequence item under a surviving key re-indents, and blank
+  lines are dropped. No claim states this, so every migration that edits config inherits an unstated
+  contract and ADR-0181 had to narrow one claim that had guessed at it. Needs its own small ADR
+  covering whether the property is claimed once for the package or restated per migration.
 - Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
   rank now that ADR-0148 brought every topic under budget; needs its own small ADR
   revising `tooling/cli:topic-claim-budget-advisory`. ADR-0179 forecloses the
