@@ -242,9 +242,8 @@ The cost is visible parameters. Roughly ten method signatures across six product
 or skill-set parameter, and about thirty-three test call sites move with them. `Corpus` and `Topics` must
 be deleted or unexported in the same transaction, because the dead-code gate flags an exported method
 whose production callers have become parameters, and that breaks the four `Topics` call sites in
-`internal/project/topics_test.go`. Test-side risk is otherwise smaller than the package's 17912 lines of
-test code suggests: no test sets `corpus` or `topics`, and the existing `Project` literals in tests never
-set them.
+`internal/project/topics_test.go`. Test-side risk is otherwise smaller than the package's test volume
+suggests: no test sets `corpus` or `topics`, and the existing `Project` literals in tests never set them.
 
 This decision changes the mechanism ADR-0130 item 1 chose. That reversal is deliberate and completes
 ADR-0130's own stated preference for explicit threading over a cache, but it is worth recording that no
