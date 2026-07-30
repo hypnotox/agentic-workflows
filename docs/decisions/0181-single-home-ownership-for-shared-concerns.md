@@ -79,6 +79,9 @@ defaults wholesale, so additions must compare and backfill.
    reimplementing a reduced copy. Where ownership of a concern is contested, the
    decision performing the conversion settles the home, with
    `code-design/dependency-composition:consumer-owned-contracts` as the tie-break.
+   A new consumer of an already-forked concern adopts one of the existing
+   implementations and never adds another; converging the remaining forks stays a
+   deliberate choice under item 1, not the new consumer's obligation.
 
 3. Two implementations of similar-looking behaviour are permitted only when they answer
    materially different contracts from distinct sources, and that reasoning is recorded in
