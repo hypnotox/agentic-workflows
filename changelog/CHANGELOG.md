@@ -84,6 +84,10 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
+  each post-Accepted content digest, status events repeat the latest stamp, and terminal review now
+  owns the final Implemented flip after findings settle. Existing records remain valid unchanged;
+  this requires no migration or schema-generation bump.
 - `awf check --staged` and `awf audit` now validate a merge as an ordered aggregate rather than
   refusing it. A merge is one Git commit but the aggregate of a branch's commits, so an ADR may
   contribute several application batches, a claim's operations across the pair may form an ordered

@@ -47,6 +47,7 @@ func TestFrozenContentEqual(t *testing.T) {
 		{"V2 Implementing rewrite", v2("Implementing", "old"), v2("Implementing", "new"), true},
 		{"V2 Implemented unchanged", v2("Implemented", "same"), v2("Implemented", "same"), true},
 		{"V2 Implemented rewrite", v2("Implemented", "old"), v2("Implemented", "new"), false},
+		{"V2 Abandoned unchanged", v2("Abandoned", "same"), v2("Abandoned", "same"), true},
 		{"V2 Abandoned rewrite", v2("Abandoned", "old"), v2("Abandoned", "new"), false},
 	}
 	for _, tc := range cases {
@@ -452,7 +453,8 @@ func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 		{"amend while implementing", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended), true},
 		{"amend plus second event", record("Implementing", p, i, applied), record("Implementing", p, i, applied, amended, appliedNext), false},
 		{"amend while proposed", record("Proposed", p), record("Proposed", p, amended), false},
-		{"amend after terminal", record("Implemented", p, accepted, done), record("Implemented", p, accepted, done, amended), false},
+		{"amend after implemented", record("Implemented", p, accepted, done), record("Implemented", p, accepted, done, amended), false},
+		{"amend after abandoned", record("Abandoned", p, accepted, abandoned), record("Abandoned", p, accepted, abandoned, amended), false},
 		{"amend riding a flip", record("Accepted", p, accepted), record("Implemented", p, accepted, amended, done), false},
 		{"same-status extra status event", record("Accepted", p, accepted), record("Accepted", p, accepted, status("Accepted")), false},
 	} {
