@@ -10,11 +10,19 @@ query a single version or a range.
 
 ### Breaking changes
 
-- Add the `orienting` support skill: the single home of the orientation procedure (guide-first
-  grounding ladder, managed `awf context` discipline, and effort-resume revalidation against
-  repository truth), shared with the grounding-checker contract via a template partial. Schema
-  generation 26 enables it in any config that has `brainstorming` enabled, since the shrunk
-  brainstorming template now invokes it by name; configs without `brainstorming` are untouched.
+- Add the `orienting` support skill: the single home of the orientation procedure. Its grounding
+  ladder is current-state first (agent guide, document-map docs, domain docs), and consults recent
+  path history only when current state leaves the situation unexplained; it carries the managed
+  `awf context` discipline, report-only exploration dispatch, and effort-resume revalidation that
+  reads the working-memory file whole, decision log included, and resolves any discrepancy in
+  favour of the repository. The ladder is shared with the grounding-checker contract through a
+  template partial, so the two stop drifting apart. Brainstorming's first step now invokes the
+  skill instead of carrying its own copy, and `proposing-adr` and `writing-plans` gain an advisory
+  pointer for stale grounding. Schema generation 26 enables it in any config that has
+  `brainstorming` enabled, since the shrunk brainstorming template now invokes it by name; configs
+  without `brainstorming` are untouched. Disabling `orienting` afterwards while `brainstorming`
+  stays enabled fails `awf check` with dead-skill-reference drift until you re-enable it or
+  override the three consumer sections.
 
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
   the `off` value with them. A tree that declares a `currentState` block now always evaluates both

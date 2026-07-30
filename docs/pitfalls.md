@@ -1652,5 +1652,51 @@ the old generation: a `Current() != N` assertion, the joined applied-migration l
 case. Run `./x gate` early rather than at the phase close, since these fail fast and cost a
 round trip each.
 
+## A long-lived branch's prose goes stale against the other side with no merge conflict
+
+_Domains: rendering, adr-system_
+
+_Related: ADR-0186, ADR-0187_
+
+A branch that predates a contract change keeps describing the shape in force at its base,
+and git merges that description cleanly because the other side edited different lines. Both
+halves of ADR-0187 hit this after 32 commits of divergence. The orienting skill's
+resume-revalidation told a resuming session to read the effort memory's header and handoff
+log, which was the whole skeleton at the branch point; main had meanwhile added the decision
+log carrying verbatim user `Record:` blocks, so the merged instruction steered every
+resuming session straight past the consensus record it exists to honour. Separately the
+plan's phase 4 still prescribed a one-transaction Implemented flip that the narrowed
+executing-plans contract had replaced, and since a plan is the standing instruction for
+whatever work remains, that was a live trap rather than stale prose. Neither was visible to
+`awf check`, the gate, or a per-phase review: every artifact was internally consistent and
+derived from its own template. Only reading both sides of the merge found them. After
+integrating a long-lived branch, re-read its authored prose against what the other side
+changed underneath it, especially any passage that ENUMERATES a structure (file sections,
+status events, required steps) rather than referring to it by name, because an enumeration
+silently becomes exhaustive-and-wrong while a reference stays correct. Expect to find more
+than one instance: correcting the plan's Goal, Architecture summary, Task 4.3, and Notes
+still left the phase header contradicting the task directly below it.
+
+## An Implemented flip cannot be walked back; two guards force a history rewrite
+
+_Domains: adr-system_
+
+_Related: ADR-0186, ADR-0187_
+
+`Implemented` and `Abandoned` are terminal, and ADR-0186 freezes a V2 body's meaning there,
+so flipping early forecloses the amendment window exactly when a late design question wants
+it. Correcting forward is not available. Two independent guards see to that: the staged
+check refuses a claim that disappears without a matching `remove` operation, so the applied
+claims cannot be withdrawn, and `Implementing` requires at least one operation to remain
+pending, so there is no all-applied non-terminal state to retreat into. The only mechanism
+left is rewriting history, which is acceptable only while the flip is unpublished. ADR-0187
+needed exactly that: its tip was rewritten back to the pre-flip phase, and Phase 4 re-ran
+after integration as two batches, five operations moving it to `Implementing` and the sixth
+landing with the flip once terminal review settled. Treat the flip as the last thing that
+happens, after terminal review, and prefer an incremental batch whenever any question about
+the decision's content is still open. Note also that a terminal event carrying explicit
+`Applied` events must NOT repeat a `state-sequence`; mixing explicit batches with implicit
+terminal sequencing is rejected outright.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
