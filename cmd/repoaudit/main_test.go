@@ -1,61 +1,69 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os/exec"
 	"strings"
 	"testing"
 )
 
-// fakeGit returns canned stdout/err keyed by the joined args; a key mapped to a
-// non-nil error simulates a git failure.
+// fakeGit supplies the repoaudit consumer contract.
 type fakeGit map[string]struct {
 	out string
 	err error
 }
 
-func (f fakeGit) run(args ...string) (string, error) {
-	key := strings.Join(args, " ")
+func (f fakeGit) result(key string) (string, error) {
 	if r, ok := f[key]; ok {
 		return r.out, r.err
 	}
 	return "", fmt.Errorf("unexpected git call: %s", key)
+}
+func (f fakeGit) MergeBase(_ context.Context, a, b string) (string, error) {
+	return f.result("merge-base " + a + " " + b)
+}
+func (f fakeGit) RangeChangedPaths(_ context.Context, a, b string) ([]string, error) {
+	out, err := f.result("diff --name-only " + a + " " + b)
+	if err != nil {
+		return nil, err
+	}
+	if out == "" {
+		return nil, nil
+	}
+	return strings.Fields(out), nil
+}
+func (f fakeGit) RangeDiffText(_ context.Context, a, b string) (string, error) {
+	return f.result("-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 " + a + " " + b + " -- *.go")
+}
+func (f fakeGit) FileText(_ context.Context, rev, path string) (string, bool, error) {
+	out, err := f.result("show " + rev + ":" + path)
+	return out, err == nil, err
 }
 
 func changelog(unreleased string) string {
 	return "# Changelog\n\n## [Unreleased]\n" + unreleased + "## [0.1.0] - 2026-01-01\n### Others\n- x\n"
 }
 
-// runFake runs runWith with a fake git and returns exit code + combined stdout.
 func runFake(args []string, g fakeGit) (int, string) {
 	var out, errOut strings.Builder
-	code := runWith(args, &out, &errOut, g.run)
+	code := runWith(context.Background(), args, &out, &errOut, g)
 	return code, out.String() + errOut.String()
 }
 
-func TestGitErrorSurfacesStderr(t *testing.T) {
-	// .Output() captures stderr on *exec.ExitError, but %v prints only
-	// "exit status N" - the decoration is what makes a git-failure finding
-	// diagnosable (e.g. "unknown revision 'origin/main'").
-	_, err := exec.Command("sh", "-c", "echo bad rev >&2; exit 3").Output()
-	if got := gitError(err); got == nil || !strings.Contains(got.Error(), "bad rev") {
-		t.Fatalf("stderr not surfaced: %v", got)
-	}
-	if gitError(nil) != nil {
-		t.Fatal("nil must stay nil")
-	}
-	plain := errors.New("boom")
-	if got := gitError(plain); !errors.Is(got, plain) || got.Error() != plain.Error() {
-		t.Fatalf("non-exec error must pass through undecorated, got %v", got)
-	}
-	_, err = exec.Command("sh", "-c", "exit 3").Output()
-	if got := gitError(err); !errors.Is(got, err) || got.Error() != err.Error() {
-		t.Fatalf("empty stderr must pass through undecorated, got %v", got)
+// invariant: tooling/audit-commands:repoaudit-requires-explicit-range
+func TestUnreleasedSectionMissingFile(t *testing.T) {
+	if _, err := unreleasedSection(context.Background(), missingFileGit{}, "head"); err == nil || !strings.Contains(err.Error(), changelogPath+" not found") {
+		t.Fatalf("missing changelog error = %v", err)
 	}
 }
 
-// invariant: tooling/audit-commands:repoaudit-requires-explicit-range
+type missingFileGit struct{ fakeGit }
+
+func (missingFileGit) FileText(context.Context, string, string) (string, bool, error) {
+	return "", false, nil
+}
+
 func TestUsageError(t *testing.T) {
 	// No argument at all: there is no default range (ADR-0127 Decision 11), so
 	// this is a refusal with the usage line rather than a report over

@@ -692,6 +692,13 @@ func TestAuditTransitionsWarning(t *testing.T) {
 	}
 }
 
+func TestAuditTransitionsRequiresComposedRepository(t *testing.T) {
+	p := &Project{Root: t.TempDir()}
+	if _, err := p.auditTransitions(testContext(t), "base", "HEAD"); err == nil {
+		t.Fatal("project without a composed repository accepted an audit range")
+	}
+}
+
 // TestAuditTransitionsCollectError propagates an unresolvable range.
 func TestAuditTransitionsCollectError(t *testing.T) {
 	repo, dir := gitfixture.InitRepo(t)

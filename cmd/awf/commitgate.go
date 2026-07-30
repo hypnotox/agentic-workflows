@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
+	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/memorycite"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -62,7 +63,7 @@ func runCommitGate(ctx context.Context, root, msgPath string, stdin io.Reader, s
 		return nil
 	}
 	findings := audit.CheckConventionalCommit(
-		audit.Commit{Subject: subject}, audit.Resolve(p.Cfg.Audit))
+		git.Commit{Subject: subject}, audit.Resolve(p.Cfg.Audit))
 	if len(findings) == 0 {
 		return nil
 	}

@@ -421,7 +421,11 @@ func (r configSnapshotReader) Paths(prefix string) []string {
 // than a hard stop, and a genuine transition violation is an error. Each side
 // derives format boundaries from its own committed lock.
 func (p *Project) auditTransitions(ctx context.Context, base, head string) ([]audit.Finding, error) {
-	commits, err := audit.Collect(p.Root, base, head)
+	repo, err := p.gitRepo()
+	if err != nil {
+		return nil, err
+	}
+	commits, err := repo.RangeCommits(ctx, base, head)
 	if err != nil {
 		return nil, err
 	}

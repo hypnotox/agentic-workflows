@@ -119,20 +119,6 @@ func globalExcludePatterns() []gitignore.Pattern {
 	return append(system, global...)
 }
 
-// OpenContainingRepo opens the Git repository containing projectRoot and
-// returns the repository-relative slash-separated prefix of projectRoot.
-//
-// It is the last go-git-typed export, retained only for internal/audit's
-// commit-range walk until that walk moves behind the seam; every other consumer
-// reads through a handle from Open or OpenContaining.
-func OpenContainingRepo(projectRoot string) (*gogit.Repository, string, error) {
-	repo, prefix, err := OpenContaining(projectRoot)
-	if err != nil {
-		return nil, "", err
-	}
-	return repo.repo, prefix, nil
-}
-
 func rerootPath(path, prefix string) (string, bool) {
 	if prefix == "" {
 		return path, true

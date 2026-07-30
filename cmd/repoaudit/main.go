@@ -10,12 +10,12 @@
 package main
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"strings"
+	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -27,31 +27,26 @@ type finding struct {
 	detail string
 }
 
-// gitFunc runs git and returns stdout - the seam that keeps runWith testable.
-type gitFunc func(args ...string) (string, error)
-
-func realGit(args ...string) (string, error) { // coverage-ignore: os/exec boundary; runWith is tested with a fake gitFunc
-	// Single-block body: the trailing coverage-ignore drops the block whose start
-	// line is this signature line. A multi-line body with an `if err` branch would
-	// leave the branch and final-return blocks (later start lines) UNignored and
-	// uncovered - realGit runs no test - failing the 100% gate. Callers check err
-	// before using the string, so returning it unconditionally is equivalent.
-	out, err := exec.Command("git", args...).Output()
-	return string(out), gitError(err)
+// gitReader is this consumer's narrow view of the semantic git seam.
+type gitReader interface {
+	MergeBase(context.Context, string, string) (string, error)
+	RangeChangedPaths(context.Context, string, string) ([]string, error)
+	RangeDiffText(context.Context, string, string) (string, error)
+	FileText(context.Context, string, string) (string, bool, error)
 }
 
-// gitError appends git's captured stderr to an *exec.ExitError: .Output() stores
-// it, but %v prints only "exit status N", leaving a git-failure finding
-// undiagnosable (e.g. no hint of "unknown revision 'origin/main'").
-func gitError(err error) error {
-	var ee *exec.ExitError
-	if errors.As(err, &ee) && len(ee.Stderr) > 0 {
-		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(ee.Stderr)))
+func main() { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	repo, err := awfgit.Open(".")
+	if err != nil { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+		fmt.Fprintln(os.Stderr, "repoaudit:", err)
+		cancel()
+		os.Exit(1)
 	}
-	return err
-}
-
-func main() { os.Exit(runWith(os.Args, os.Stdout, os.Stderr, realGit)) } // coverage-ignore: os.Exit + real-git boundary; runWith is unit-tested
+	code := runWith(ctx, os.Args, os.Stdout, os.Stderr, repo) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	cancel()
+	os.Exit(code) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+} // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
 
 const changelogPath = "changelog/CHANGELOG.md"
 
@@ -65,12 +60,12 @@ var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/
 // rules is the repo-local audit's rule registry (ADR-0073 Decision 1): each rule
 // reports findings over the range, and another repo-local rule is a new function
 // appended here plus nothing else.
-var rules = []func(git gitFunc, base, head string, log io.Writer) []finding{
+var rules = []func(ctx context.Context, git gitReader, base, head string, log io.Writer) []finding{
 	changelogRule,
 	coverageIgnoreRule,
 }
 
-func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
+func runWith(ctx context.Context, args []string, stdout, stderr io.Writer, git gitReader) int {
 	// No default range (ADR-0127 Decision 11): a no-argument call would report
 	// over commits nobody named, which is the guess-the-base defect in
 	// repo-local clothing.
@@ -85,7 +80,7 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 	}
 	errs, warns := 0, 0
 	for _, rule := range rules {
-		for _, f := range rule(git, base, head, stdout) {
+		for _, f := range rule(ctx, git, base, head, stdout) {
 			fmt.Fprintf(stdout, "%-7s %-22s %s\n", f.sev.String(), f.rule, f.detail)
 			if f.sev == severity.Error {
 				errs++
@@ -110,22 +105,22 @@ func runWith(args []string, stdout, stderr io.Writer, git gitFunc) int {
 // verdict is an advisory warn (ADR-0107) - the path heuristic cannot tell a benign
 // change from a behavioral one, so it informs rather than blocks. A git or parse failure
 // is an error - it cannot verify conformance, so it fails loud.
-func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
+func changelogRule(ctx context.Context, git gitReader, base, head string, log io.Writer) []finding {
 	// Judge from the merge base, not the base tip: once base moves past the fork
 	// point, endpoint semantics would blame upstream files on the effort (false
 	// error) and an upstream [Unreleased] edit would mask the effort's own missing
 	// entry (false pass). Both the diff and the section comparison must use it.
-	mb, err := git("merge-base", base, head)
+	mb, err := git.MergeBase(ctx, base, head)
 	if err != nil {
 		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
 	}
 	from := strings.TrimSpace(mb)
-	diff, err := git("diff", "--name-only", from, head)
+	diff, err := git.RangeChangedPaths(ctx, from, head)
 	if err != nil {
 		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
 	var touched []string
-	for _, f := range strings.Split(strings.TrimSpace(diff), "\n") {
+	for _, f := range diff {
 		if f == "" || strings.HasSuffix(f, "_test.go") {
 			continue
 		}
@@ -140,11 +135,11 @@ func changelogRule(git gitFunc, base, head string, log io.Writer) []finding {
 		return nil
 	}
 	fmt.Fprintf(log, "repoaudit: adopter-facing paths in %s..%s: %s\n", from, head, strings.Join(touched, ", "))
-	baseBody, err := unreleasedSection(git, from)
+	baseBody, err := unreleasedSection(ctx, git, from)
 	if err != nil {
 		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, from, err)}}
 	}
-	headBody, err := unreleasedSection(git, head)
+	headBody, err := unreleasedSection(ctx, git, head)
 	if err != nil {
 		return []finding{{severity.Error, "changelog-unreleased", fmt.Sprintf("reading %s at %s: %v", changelogPath, head, err)}}
 	}
@@ -169,8 +164,8 @@ const coverageIgnoreMarker = "//" + " coverage-ignore"
 // alone, so each new one gets a deterministic re-evaluation prompt at review
 // time. A warn never affects the exit code; a git failure is an error - the
 // rule cannot verify, so it fails loud like the changelog rule.
-func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding {
-	mb, err := git("merge-base", base, head)
+func coverageIgnoreRule(ctx context.Context, git gitReader, base, head string, log io.Writer) []finding {
+	mb, err := git.MergeBase(ctx, base, head)
 	if err != nil {
 		return []finding{{severity.Error, "coverage-ignore-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
 	}
@@ -178,8 +173,7 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 	// Pin the header format against user git config: diff.noprefix /
 	// diff.mnemonicprefix would drop or change the "b/" prefix the parser keys
 	// on, and an external diff driver would replace the format entirely.
-	diff, err := git("-c", "diff.noprefix=false", "-c", "diff.mnemonicprefix=false",
-		"-c", "diff.dstPrefix=b/", "diff", "--no-ext-diff", "-U0", from, head, "--", "*.go")
+	diff, err := git.RangeDiffText(ctx, from, head)
 	if err != nil {
 		return []finding{{severity.Error, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
 	}
@@ -210,10 +204,13 @@ func coverageIgnoreRule(git gitFunc, base, head string, log io.Writer) []finding
 
 // unreleasedSection returns the body of the ## [Unreleased] section of the changelog at
 // rev - the lines between the [Unreleased] header and the next top-level "## [" header.
-func unreleasedSection(git gitFunc, rev string) (string, error) {
-	content, err := git("show", rev+":"+changelogPath)
+func unreleasedSection(ctx context.Context, git gitReader, rev string) (string, error) {
+	content, found, err := git.FileText(ctx, rev, changelogPath)
 	if err != nil {
 		return "", err
+	}
+	if !found {
+		return "", fmt.Errorf("%s not found", changelogPath)
 	}
 	lines := strings.Split(content, "\n")
 	start := -1

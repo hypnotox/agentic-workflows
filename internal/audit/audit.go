@@ -17,37 +17,10 @@ import (
 	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
-
-// Action is how a file changed in a commit.
-type Action int
-
-const (
-	Added Action = iota
-	Modified
-	Deleted
-)
-
-// FileChange is one file touched by a commit. OldText/NewText are populated
-// only for ".md" files (cheap; the rules need ADR frontmatter), empty otherwise.
-type FileChange struct {
-	Path             string // repo-relative path (the new path; old path for a delete)
-	OldPath          string // repo-relative pre-image path (differs only on rename)
-	Action           Action
-	Added, Deleted   int
-	OldText, NewText string
-}
-
-// Commit is a neutral view of one range commit. The rule engine reads only this.
-type Commit struct {
-	Hash    string
-	Subject string
-	Body    string
-	IsMerge bool
-	Changes []FileChange
-}
 
 // Finding is one reported conformance issue.
 type Finding struct {
@@ -77,20 +50,46 @@ type Inputs struct {
 	DomainPaths map[string][]string
 }
 
+// ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
+// (ADR-0025). It reads live worktree state from native Git porcelain so the
+// audit uses Git's own repository, global, and system ignore semantics.
+// touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in git_test.go
+func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo, in Inputs) ([]Finding, error) {
+	if !in.UncommittedChanges {
+		return nil, nil
+	}
+	tracked, untracked, err := repo.ChangeCounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if tracked == 0 && untracked == 0 {
+		return nil, nil
+	}
+	return []Finding{{
+		Severity: severity.Error,
+		Rule:     "uncommitted-changes",
+		Detail:   fmt.Sprintf("working tree not clean: %d tracked change(s), %d untracked file(s); commit or discard before concluding the implementation", tracked, untracked),
+	}}, nil
+}
+
 // Run collects the caller-supplied commit range and evaluates the rules. The
 // range arrives as parameters rather than Inputs fields because no config key
 // supplies it (ADR-0127 Decision 3).
 // It also returns the number of commits the range resolved to, so the caller can
 // report the scope it evaluated rather than a bare verdict (ADR-0127 Decision 9).
 func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
-	commits, err := Collect(repoRoot, base, head)
+	repo, _, err := awfgit.OpenContaining(repoRoot)
+	if err != nil {
+		return nil, 0, fmt.Errorf("open repo: %w", err)
+	}
+	commits, err := repo.RangeCommits(ctx, base, head)
 	if err != nil {
 		return nil, 0, err
 	}
 	findings := evaluate(commits, in)
-	// The clean-working-tree rule reads live state, so it runs here (with the repo
-	// root) rather than in the commit-only evaluate.
-	liveFindings, err := ruleUncommittedChanges(ctx, repoRoot, in)
+	// The clean-working-tree rule reads live state, so it runs here rather than
+	// in the commit-only evaluate.
+	liveFindings, err := ruleUncommittedChanges(ctx, repo, in)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -101,7 +100,7 @@ func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)
 
 // evaluate applies every rule to the range and returns all findings.
-func evaluate(commits []Commit, in Inputs) []Finding {
+func evaluate(commits []awfgit.Commit, in Inputs) []Finding {
 	var out []Finding
 	out = append(out, ruleConventionalCommits(commits, in)...)
 	out = append(out, ruleADRStatusCochange(commits, in)...)
@@ -117,7 +116,7 @@ func evaluate(commits []Commit, in Inputs) []Finding {
 
 // ruleConventionalCommits applies the shared Conventional Commits check to every
 // commit in the range.
-func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
+func ruleConventionalCommits(commits []awfgit.Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, c := range commits {
 		out = append(out, CheckConventionalCommit(c, in.Settings)...)
@@ -132,7 +131,7 @@ func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
 // (CheckPlannedSubject, ADR-0111) - so none re-implements the regex, the type/scope
 // allow-lists, or the subject-length limit. Merge commits are exempt.
 // touches-state: tooling/audit-and-snapshots:commit-gate-shared-rule - shared conventional-commit rule consumed by check commit; proof in commitgate_test.go
-func CheckConventionalCommit(c Commit, s Settings) []Finding {
+func CheckConventionalCommit(c awfgit.Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, severity.Error)
 }
 
@@ -141,12 +140,12 @@ func CheckConventionalCommit(c Commit, s Settings) []Finding {
 // plan may be the change that adds the scope (ADR-0111), so scope conformance is
 // advisory at plan time while length, type, and malformed shape stay hard (error).
 func CheckPlannedSubject(subject string, s Settings) []Finding {
-	return checkConventionalCommit(Commit{Subject: subject}, s, severity.Warn)
+	return checkConventionalCommit(awfgit.Commit{Subject: subject}, s, severity.Warn)
 }
 
 // checkConventionalCommit is the shared core. scopeSeverity is the rank of a
 // disallowed-scope finding: error for the commit-time callers, warn at plan time.
-func checkConventionalCommit(c Commit, s Settings, scopeSeverity severity.Rank) []Finding {
+func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity.Rank) []Finding {
 	if c.IsMerge { // merges exempt (ADR-0017 constraint 2)
 		return nil
 	}
@@ -170,11 +169,11 @@ func checkConventionalCommit(c Commit, s Settings, scopeSeverity severity.Rank) 
 // ruleADRFrontmatter surfaces an ADR change whose new frontmatter does not
 // parse: the status-cochange and staleness rules cannot evaluate such a change,
 // so the breakage is reported instead of silently skipped.
-func ruleADRFrontmatter(commits []Commit, in Inputs) []Finding {
+func ruleADRFrontmatter(commits []awfgit.Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, c := range commits {
 		for _, ch := range c.Changes {
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
 				continue
 			}
 			if _, ok := adrRecordOf(ch.Path, ch.NewText); !ok {
@@ -186,7 +185,7 @@ func ruleADRFrontmatter(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
+func ruleADRStatusCochange(commits []awfgit.Commit, in Inputs) []Finding {
 	var out []Finding
 	for _, c := range commits {
 		indexTouched := false
@@ -196,7 +195,7 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 			}
 		}
 		for _, ch := range c.Changes {
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
 				continue
 			}
 			rec, ok := adrRecordOf(ch.Path, ch.NewText)
@@ -206,7 +205,7 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 			// An unparseable old side cannot witness a transition - skip rather
 			// than read garbage as a status change.
 			oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText)
-			if ch.Action == Added || (oldOK && oldRec.Status != rec.Status) {
+			if ch.Action == awfgit.Added || (oldOK && oldRec.Status != rec.Status) {
 				if !indexTouched {
 					out = append(out, finding(severity.Error, "adr-status-cochange", c,
 						filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
@@ -217,11 +216,11 @@ func ruleADRStatusCochange(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
+func ruleDependencyADR(commits []awfgit.Commit, in Inputs) []Finding {
 	if len(in.DependencyManifests) == 0 {
 		return nil
 	}
-	var manifestCommit *Commit
+	var manifestCommit *awfgit.Commit
 	adrTouched := false
 	for i := range commits {
 		for _, ch := range commits[i].Changes {
@@ -240,7 +239,7 @@ func ruleDependencyADR(commits []Commit, in Inputs) []Finding {
 	return nil
 }
 
-func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
+func rulePlanForLargeChange(commits []awfgit.Commit, in Inputs) []Finding {
 	if in.DiffThreshold <= 0 {
 		return nil
 	}
@@ -264,7 +263,7 @@ func rulePlanForLargeChange(commits []Commit, in Inputs) []Finding {
 }
 
 // touches-state: tooling/audit-and-snapshots:audit-domain-doc-staleness - domain-doc-staleness audit rule; proof in audit_test.go
-func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
+func ruleDomainDocStaleness(commits []awfgit.Commit, in Inputs) []Finding {
 	if !in.DomainDocStaleness {
 		return nil
 	}
@@ -275,14 +274,14 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 			if d, ok := domainOfPart(ch.Path, in.DomainsPartsDir); ok {
 				refreshed[d] = true
 			}
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
 				continue
 			}
 			rec, ok := adrRecordOf(ch.Path, ch.NewText)
 			if !ok || !rec.IsImplemented() {
 				continue
 			}
-			if oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText); ch.Action != Added && (!oldOK || oldRec.IsImplemented()) {
+			if oldRec, oldOK := adrRecordOf(ch.Path, ch.OldText); ch.Action != awfgit.Added && (!oldOK || oldRec.IsImplemented()) {
 				continue // already Implemented (or unknowable old side); not a witnessed transition
 			}
 			for _, d := range rec.Domains {
@@ -303,14 +302,14 @@ func ruleDomainDocStaleness(commits []Commit, in Inputs) []Finding {
 }
 
 // touches-state: tooling/audit-and-snapshots:audit-undocumented-domain - undocumented-domain audit rule; proof in audit_test.go
-func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
+func ruleUndocumentedDomain(commits []awfgit.Commit, in Inputs) []Finding {
 	if !in.UndocumentedDomain || len(in.ConfiguredDomains) == 0 {
 		return nil
 	}
 	flagged := map[string]bool{}
 	for _, c := range commits {
 		for _, ch := range c.Changes {
-			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == Deleted {
+			if !isADRFile(ch.Path, in.ADRDir) || ch.Action == awfgit.Deleted {
 				continue
 			}
 			// An unparseable record yields no domains, which is what the
@@ -332,7 +331,7 @@ func ruleUndocumentedDomain(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-func ruleDomainCodeStaleness(commits []Commit, in Inputs) []Finding {
+func ruleDomainCodeStaleness(commits []awfgit.Commit, in Inputs) []Finding {
 	if !in.DomainCodeStaleness || len(in.DomainPaths) == 0 {
 		return nil
 	}
@@ -401,14 +400,14 @@ func countBanned(s string) map[rune]int {
 }
 
 // touches-state: tooling/audit-and-snapshots:audit-plain-punctuation - plain-punctuation audit rule; proof in audit_test.go
-func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
+func rulePlainPunctuation(commits []awfgit.Commit, in Inputs) []Finding {
 	if !in.PlainPunctuation || in.DocsDir == "" {
 		return nil
 	}
 	var out []Finding
 	for _, c := range commits {
 		for _, ch := range c.Changes {
-			if ch.Action == Deleted || !strings.HasSuffix(ch.Path, ".md") ||
+			if ch.Action == awfgit.Deleted || !strings.HasSuffix(ch.Path, ".md") ||
 				!underDir(ch.Path, in.DocsDir) || in.GeneratedPaths[ch.Path] {
 				continue
 			}
@@ -431,7 +430,7 @@ func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
 	return out
 }
 
-func finding(s severity.Rank, rule string, c Commit, detail string) Finding {
+func finding(s severity.Rank, rule string, c awfgit.Commit, detail string) Finding {
 	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: c.Subject, Detail: detail}
 }
 
