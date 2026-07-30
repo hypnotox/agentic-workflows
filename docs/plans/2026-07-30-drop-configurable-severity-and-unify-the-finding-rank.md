@@ -881,10 +881,17 @@ Beyond each phase's `awf check --staged` and `./x gate`:
 
 ## Notes
 
-**The ADR number is already taken on main and must be renumbered at integration.** This branch forked from
-main at `65c4e967`, where 0178 was the tip. Main has since advanced and now carries
-`docs/decisions/0179-rendered-explorer-and-grounding-checker-role-contracts.md`, so the number this ADR and
-plan use collides.
+**The ADR number is already taken on main and MUST be pinned as the first step of the integration
+transaction.** This branch forked from main at `65c4e967`, where 0178 was the tip. Main has since advanced
+past it twice: `0179-rendered-explorer-and-grounding-checker-role-contracts.md` and
+`0180-state-ownership-and-derived-state-lifetime.md` both landed on 2026-07-30, the same day this branch was
+cut. So the number this ADR and plan use collides, and 0180 is taken as well.
+
+Do not assume any specific successor number. Two ADRs were proposed on main within hours of each other, so
+the free number moves faster than this branch's implementation will. The number is therefore DERIVED, not
+predicted: as the first step of the integration transaction, after the merge brings main's ADRs in, read the
+actual tip of `docs/decisions/` and take the next number. Pin it once, apply it across every site listed
+below in the same transaction, and do not begin the phase commits with a number chosen earlier.
 
 The renumber cannot be done on this branch. `awf check` enforces contiguous ADR numbering, and this branch
 does not contain main's 0179, so renaming to 0180 here fails with `ADR numbers are not contiguous from 1:
@@ -910,8 +917,15 @@ substituting whatever number this ADR carried.
 The `state-sequence` values need no pre-assignment: every phase takes the next value reported at execution
 time.
 
-Checked at authoring: main's 0179 declares only `rendering/*` operations, so none of this plan's five claim
-operations collides with it.
+Checked at authoring: main's 0179 declares only `rendering/*` operations and its 0180 declares five
+`code-design/state-ownership` operations, so neither collides with any of this plan's five claim operations.
+
+**One live design interaction to re-check before Phase 3.** Main's 0180 creates a third `code-design` topic,
+`code-design/state-ownership`, whose claims include `project-derived-state-ownership`. It was `Proposed` when
+this plan settled, so it carried no authority over Phase 3 or Phase 4. If it reaches Accepted or Implemented
+first, re-read it against the `CurrentStateReport` changes in Tasks 3.1 through 3.3 and Task 4.3, which
+reshape exactly the derived-state surface in `internal/project` its name suggests it governs. This is an
+authority check, not a known conflict.
 
 **One chain step was deliberately skipped, by user decision.** The resync pass produced two findings that
 implicated the ADR rather than the plan, and the ADR was amended for them while still `Proposed`.
