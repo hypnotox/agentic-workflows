@@ -103,10 +103,14 @@ so that topic describes a design rather than a mess. Working notes for the effor
    configurable severity with an adopter-facing config key, which this decision forecloses; a Breaking
    changes entry in `changelog/CHANGELOG.md` under `[Unreleased]`, since removing config-schema keys is
    adopter-facing; and the regenerated `docs/config-reference.md` and `docs/glossary.md` in both the root and
-   `examples/sundial` trees. The same obligation covers the production doc comments this falsifies, at
-   `internal/project/currentstate.go:26-28` and `:51-52`, `internal/topic/coverage.go:53-55`,
-   `internal/project/context.go:361-363`, and `cmd/repoaudit/main.go:22-23`. Every status transition commits
-   the regenerated `docs/decisions/INDEX.md` and lock from `./x render`.
+   `examples/sundial` trees. The same obligation covers every production doc comment and authored description
+   this falsifies, including `internal/project/currentstate.go:26-28`, `:51-52` and `:445-446`,
+   `internal/topic/coverage.go:53-55`, `:89-90` and `:112-121`, `internal/project/context.go:361-363`,
+   `cmd/repoaudit/main.go:22-23`, and the `currentState.maxTopicsPerPath` description in
+   `internal/configspec/spec.go`, which is the authored source of the regenerated config reference above. The
+   list is illustrative rather than exhaustive: the obligation is that no authored prose survives describing a
+   severity as configured or suppressible. Every status transition commits the regenerated
+   `docs/decisions/INDEX.md` and lock from `./x render`.
 
 8. Replace `topic.CoveragePolicy`'s per-check severity with an explicit selection of which checks to
    evaluate. A caller that does not want fan-out findings does not ask for them, rather than asking and
@@ -178,8 +182,9 @@ package domain ownership and a scoped topic. The `coverage-evaluation-selects-ch
 `invariants/topics-and-markers` because coverage evaluation is `internal/topic` code and that topic's
 selectors are the only ones matching it; its metadata summary needs widening in the same commit to cover
 coverage evaluation policy alongside parsing and resolution. `severity-single-spelling` lands in
-`tooling/audit-commands` rather than `tooling/cli`: four tooling topics share the identical selector set, so
-selector uniqueness cannot choose between them, and the rank tokens are emitted by the advisory audit
+`tooling/audit-commands` rather than `tooling/cli`: three tooling topics share one identical selector set and
+a fourth is a strict superset of it, so selector uniqueness cannot choose between them, and the rank tokens
+are emitted by the advisory audit
 surfaces that topic already governs, alongside the two claims this one is nearest,
 `audit-warn-exit-zero` and `audit-reports-evaluated-scope`.
 
