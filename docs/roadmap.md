@@ -179,14 +179,14 @@ provide. Settle that before writing the report format, not after.
 
 ## A frozen-state ADR flip can smuggle unreviewed section content
 
-The commit that moves an ADR to Accepted, Implemented, or Abandoned may also mutate the ADR's
-digest-covered sections, because the digest is recomputed at the flip: an amendment folded into
-the freeze commit is frozen without a fresh-context review. The 0154 effort did exactly this
-(the forward-only resolution clause landed in the flip commit) and only reviewer diligence
-caught it afterwards. Candidate `awf audit` advisory rule: flag a status transition into a
-frozen state whose commit also changes the ADR's digest-covered section content relative to the
-parent snapshot. Deferred because audit rules ship behind their own decision; the pitfalls
-entry recording the occurrence is the interim memory.
+Since ADR-0186, the stamp chain makes every status flip after the first content stamp
+content-pure by validation: a post-Accepted amendment must append its own Amended event in a
+separate commit. The residual case is a direct status flip out of Proposed whose commit also
+mutates digest-covered content, establishing the first stamp and freezing unreviewed content in
+one transaction. The 0154 effort did exactly this when its direct Implemented flip also landed
+the forward-only resolution clause, and only reviewer diligence caught it afterwards. Candidate
+`awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
+their own decision; the pitfalls entry recording the occurrence is the interim memory.
 
 ## Decomposing the `internal/project` god object
 
