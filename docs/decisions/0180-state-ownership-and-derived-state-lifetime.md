@@ -12,22 +12,22 @@ which settled where a dependency is selected and which direction it points. It s
 value owns once constructed, or about where state derived during one operation lives. `internal/project`
 shows why that gap matters.
 
-`internal/project` is 8086 production lines across 30 production files. It imports seventeen internal
+`internal/project` is 8087 production lines across 30 production files. It imports seventeen internal
 packages and is imported by exactly two production packages, `cmd/awf` and `cmd/releasecheck`. One type,
-`Project`, carries
-95 production methods, 23 exported and 72 private. Its fields split cleanly in two. `Root`,
+`Project`, carries 95 production methods, 23 exported and 72 private. Its fields split cleanly in two.
+`Root`,
 `residentRoot`, `Cfg`, `Cat`, `Targets`, and `standard` are construction inputs, written once and read
 thereafter. `corpus`, `topics`, and `effSkills` are derived during an operation and cached on a value
 that outlives it.
 
 Those three cached derivations each need a discipline no compiler enforces.
 
-`beginInvocation` (`internal/project/project.go:468`) nils `corpus` and `topics`, and the comment above
+`beginInvocation` (`internal/project/project.go:469`) nils `corpus` and `topics`, and the comment above
 it states the obligation in prose: "Every public operation that reads ADRs calls it before its first
 Corpus use." The same comment spells out the consequence of forgetting: a `Check` following a `Sync` would
 miss an ADR written in between, "silently blinding the drift oracle rather than merely serving a stale
 read." Five call sites honour it today (`check.go:28`, `check.go:398`,
-`output_plan.go:457`, `topics.go:26`, `project.go:236`), but the discipline is already inexact: the
+`output_plan.go:457`, `topics.go:26`, `project.go:237`), but the discipline is already inexact: the
 `topics.go:26` call is vestigial, because `QueryTopic` reads neither field and takes its corpora from
 `workingCurrentState`; and the `output_plan.go:457` call fires again inside `Check`, nested mid-operation
 after `check.go:398` already reset. No bug is live, because nothing loads a corpus between the two
@@ -73,10 +73,10 @@ contains a second, independent corpus-construction path: `workingCurrentState`
 `currentstate.LoadFromTree`, backing `QueryTopic`, `CheckCurrentState`, `CheckStaged`,
 `ContextForOptions`, and `StagedContextRootOptions`. That path is already operation-owned and threaded,
 and five `adr.NewCorpus` production sites in the package are independent of these fields and survive any
-conversion of them (a sixth, the `adr.LoadCorpus` call inside `Corpus` at `project.go:485`, is the field
+conversion of them (a sixth, the `adr.LoadCorpus` call inside `Corpus` at `project.go:486`, is the field
 loader itself and moves with it). A claim asserting that `internal/project` derives its corpora per
-operation in general would be
-either already satisfied or still false; the claim must name the cached derivations it converts.
+operation in general would be either already satisfied or still false; the claim must name the cached
+derivations it converts.
 
 Second, `topic.Corpus` itself completes construction in two steps for a real reason. `LoadCorpus`
 assembles the corpus, builds the marker index from it, and then writes `c.Markers = markers`
@@ -147,13 +147,18 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
    consumers; delete `beginInvocation`; and delete or unexport `Corpus` and `Topics`, whose production
    callers all become threaded parameters.
 
-   Derivation happens once per outermost operation, never once per public entry point. `Check`,
-   `syncReport`, and `AdvisoryNotes` derive at their own entry. `OutputPlan` and `RenderAll` derive only
-   when entered directly, and receive the threaded value when reached from an operation that already
-   derived; neither has a production caller outside `internal/project`, so parameterising them is
-   available. `sweepConfigTree` and `generateDomainDocs` likewise receive rather than derive. This is
-   item 3's intermediate-boundary clause applied by name: without it, `Check` and the `OutputPlan` it
-   calls would each derive, turning one `BuildMarkerIndex` repository walk into two or three.
+   Derivation happens once per outermost operation, never once per public entry point. The general rule
+   is that an operation reaching a derivation with no threaded value derives at its own entry, and every
+   operation it calls receives that value. Concretely: `Check`, `syncReport`, `AdvisoryNotes`, and
+   `ConfigReferenceModel` derive at their own entry, the last being `AdvisoryNotes`' twin in shape
+   (`RenderAll` then `generateDomainDocs`, at `configreference.go:405` and `:409`). `OutputPlan` and
+   `RenderAll` derive only when entered directly, as they are on the `PlannedOutputs` path that
+   `InitCollisions` reaches from `awf init`, and receive the threaded value when reached from an
+   operation that already derived; neither has a production caller outside `internal/project`, so
+   parameterising them is available. `sweepConfigTree` and `generateDomainDocs` likewise receive rather
+   than derive. This is item 3's intermediate-boundary clause applied by name: without it, `Check` and the
+   `OutputPlan` it calls would each derive, turning one `BuildMarkerIndex` repository walk into two or
+   three.
 
    Leave `QueryTopic`'s snapshot derivation and the rest of the `workingCurrentState` path unchanged
    beyond removing its vestigial reset at `topics.go:26`, so the one path that derives no cached corpus
@@ -189,7 +194,7 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
    deletes the exclusion outright.
 
 10. Treat the three remaining stepwise `*Project` constructions as conforming under item 2 and leave them
-    out of the conversion: `Loader.Open` writes `p.Cat` after its literal at `project.go:174`,
+    out of the conversion: `Loader.Open` writes `p.Cat` after its literal at `project.go:164-175`,
     `ContextForOptions` writes `universe.Targets` and `universe.Cat` after its literal at
     `context.go:44-49`, and `StagedContextRootOptions` writes `p.Cfg`, `p.Targets`, and `p.Cat` after its
     literal at `context.go:61-71`. Each write is inside the function that constructs the value and is
@@ -202,7 +207,10 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
     structure, and update
     `code-design/dependency-composition:dependency-composition-commit-classification` to match, leaving
     its second half (a structural change uses the existing `refactor` type, not a `refactor` scope)
-    unchanged. This lands with the authority batch, not the conversion. Without it the scope's documented
+    unchanged. Carry its `Verify:` line with the widening too: it currently names dependency-composition
+    subjects and an ADR-0178-specific staged-scope-addition step, so after the widening it would verify a
+    narrower claim than the one it belongs to. This lands with the authority batch, not the conversion.
+    Without it the scope's documented
     meaning covers neither an authority commit that adds a code-design topic nor an intra-package
     conversion performed under one, so this ADR's own commits would have no correct scope. The conversion
     commits then use `code-design` rather than the owning domain's `rendering`, because their subject is
@@ -234,7 +242,7 @@ The cost is visible parameters. Roughly ten method signatures across six product
 or skill-set parameter, and about thirty-three test call sites move with them. `Corpus` and `Topics` must
 be deleted or unexported in the same transaction, because the dead-code gate flags an exported method
 whose production callers have become parameters, and that breaks the four `Topics` call sites in
-`internal/project/topics_test.go`. Test-side risk is otherwise smaller than the package's 17815 lines of
+`internal/project/topics_test.go`. Test-side risk is otherwise smaller than the package's 17912 lines of
 test code suggests: no test sets `corpus` or `topics`, and the existing `Project` literals in tests never
 set them.
 
@@ -261,7 +269,7 @@ producer per type, so the surviving sites are not counterexamples to it either.
 
 The topic's own coverage view will be empty, exactly as `dependency-composition`'s is, because the
 pathless domain declares no selectors and a global topic's applicability is computed against them.
-Discovery therefore rests on three pointers that name the topic by id, the three reviewer focus items and
+Discovery therefore rests on four pointers that name the topic by id, the three reviewer focus items and
 the workflow chain part, plus `awf context`, which attaches global topics to a queried path. The only
 mechanical anchor is the proof marker on the test-backed claim.
 
