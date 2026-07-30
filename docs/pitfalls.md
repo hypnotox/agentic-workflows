@@ -13,6 +13,28 @@ _Domains: tooling_
 `git status` correctly ignores `.awf/worktrees/`, but go-git's `Worktree().Status()` can still return tracked-looking `.gitignore` files inside a resident managed worktree below that ignored parent. The `awf audit` uncommitted-changes rule then reported a dirty primary checkout even when native Git reported clean. This surfaced during the ADR-0168 terminal audit as eight false untracked files owned by another effort. Audit cleanliness now reads native Git porcelain, so Git itself owns repository, global, and system ignore semantics. Other path-universe consumers that still use go-git status must not copy audit's old assumption that injected global excludes make its result identical to native Git.
 
 
+## An ADR citation in a Go comment survives a renumber, because nothing validates it
+
+_Domains: adr-system_
+
+A branch that authors an ADR while main takes the same number renumbers it at integration.
+Every rendered surface is covered: `checkDeadRefs` scans rendered files, and the ADR checks in
+`internal/project/check.go` cover frontmatter tags and related arrays. A citation inside a Go
+comment is covered by none of them, so a stale `ADR-NNNN` in production source stays green
+forever while pointing at an unrelated decision.
+
+Derive the site list with a grep at integration time rather than from a list written earlier.
+An enumeration ages badly: the ADR-0179 effort enumerated four Go citations across three files
+in its plan, and by the end of its review chain there were twelve across seven, two of them
+added by the very commit that froze the plan. Its own review chain then produced a SECOND ADR,
+which needed its own separately-derived number and which no grep in the plan mentioned.
+
+So: grep for every ADR number the branch authored, not just the first one; do not assume two
+such numbers end up consecutive; and include test files, since a citation there is equally
+stale and equally unvalidated. The `Revised-by:` lines in claim parts are the one part that is
+caught mechanically, because `internal/currentstate` rejects a `Revised-by` naming an ADR with
+no matching applied update operation.
+
 ## Dropping a config key needs a ConfigForCurrentSchema branch, or the staged check cannot parse HEAD
 
 _Domains: config_

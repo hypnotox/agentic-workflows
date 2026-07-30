@@ -87,6 +87,9 @@ func TestResidentPathsAreNeverEligibleOrNested(t *testing.T) {
 // (every static handshake message plus each error-severity coverage line) and
 // non-failing notes (warn-severity coverage lines), rendering both coverage
 // kinds.
+// The claim's routing clause is marked here rather than named in prose from
+// internal/currentstate, which cannot see CurrentStateReport.
+// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked
 func TestCurrentStateReportRouting(t *testing.T) {
 	r := CurrentStateReport{
 		Static: []currentstate.Finding{{Message: "handshake broke"}},
@@ -215,6 +218,9 @@ func TestCheckCurrentStateClaimBudgetAdvisory(t *testing.T) {
 
 // TestCheckCurrentStateNoPolicy proves coverage is skipped when the project
 // configures no currentState policy: the report carries static findings only.
+// This is the site backing the claim's "a tree that declares no currentState
+// block requests neither" clause; internal/config's marker cannot reach the gate.
+// invariant: config/configuration:severity-not-configurable
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
 	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
 	p := csRepo(t, cfg, map[string]string{
