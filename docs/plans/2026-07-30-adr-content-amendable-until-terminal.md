@@ -281,8 +281,7 @@ the transaction's own verifier.
     "flipped in the deferred flip transaction after the applicable terminal review settles (the
     same flip for ADR-driven and non-ADR plans). In {{ .prefix }}'s usual flow a plan and its
     ADR(s) co-flip in that transaction, but"; in `templates/plans-readme/README.md.tmpl`, replace
-    "flipped in the implementation's final commit." (wraps as "...flipped in the\nimplementation's
-    final commit."; match across the line break) with "flipped in the deferred flip transaction
+    "flipped in the implementation's final commit." with "flipped in the deferred flip transaction
     after the applicable terminal review settles."; in `templates/plans-template/template.md.tmpl`,
     replace "The `status: Implemented` flip in the final commit records these" with "The
     `status: Implemented` flip in the deferred post-review transaction records these".
