@@ -81,7 +81,7 @@ Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](doc
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory
 
-A minimal simple fix uses no effort. Once work becomes a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. Carry the slug and exact owned path through checkpoints and handoffs. Repository sources and current-state documentation outrank checkpoint prose. One effort has one user-managed writer: report-only reviewers, explorers, grounding children, and helpers never edit shared memory. Standalone memory is forbidden, and an effort finishes only after terminal review, any required worktree integration and removal, and retrospective.
+A minimal simple fix uses no effort. Once work becomes a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. The effort's managed worktree is the default execution location (`--no-worktree` is the explicit exception), while the owned memory stays under the primary checkout. Carry the slug and exact owned path through checkpoints and handoffs. Repository sources and current-state documentation outrank checkpoint prose. One effort has one user-managed writer: report-only reviewers, explorers, grounding children, and helpers never edit shared memory. Standalone memory is forbidden, and an effort finishes only after terminal review, any required worktree integration and removal, and retrospective.
 
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
