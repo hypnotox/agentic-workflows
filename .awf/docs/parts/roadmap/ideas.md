@@ -5,6 +5,17 @@
   and patch-producing parallel workers remain out of scope for the current workflow contract.
 
 - Add phase-sensitive tool activation so each workflow phase exposes only its relevant tools.
+- Let a global topic carry path selectors, so it can own specific paths as well as supply
+  global authority. Today `applies: global` is skipped outright by both `coveredByDomain`
+  and `matchingScopedTopics` in `internal/topic/coverage.go`, so a global topic can never
+  own a path and can never satisfy scoped coverage. That leaves a shared-pattern holder
+  with nowhere natural to live: a small package existing only to carry a cross-cutting
+  type belongs to the global topic describing that pattern, not to whichever scoped topic
+  happens to be closest. ADR-0179 hit this concretely and had to extend an unrelated
+  topic's selectors to keep a new package covered. Needs its own ADR: the coverage
+  semantics, whether a path-owning global topic satisfies scoped coverage or only
+  ownership, and what it does to the fan-out budget, which deliberately excludes global
+  topics today.
 - Promote the topic-claim-budget advisory to a configurable severity (`error`, `warn`,
   `off`) now that ADR-0148 brought every topic under budget; needs its own small ADR
   revising `tooling/cli:topic-claim-budget-advisory` and an adopter-facing config key.
