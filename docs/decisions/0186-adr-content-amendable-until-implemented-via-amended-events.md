@@ -75,9 +75,12 @@ land after the record froze.
    `FrozenContentEqual` and `ContentDigest`, which state the freeze-at-Accepted rule this
    decision replaces, are corrected in the same change.
 7. The Implemented flip moves out of its current owners into terminal review: the final
-   Applied batch and the Implemented status event land after the implementation review
-   settles and before worktree integration and retrospective. Review findings ride
-   amendment commits under the same record before the flip. The owning surfaces are the
+   Applied batch and the Implemented status event land after the terminal review that
+   settles last, immediately before managed-worktree removal and retrospective. When a
+   divergent merge forces a renewed post-merge review, that renewed review is the one that
+   settles the flip, so the flip commit lands after integration and every review finding,
+   including a post-merge one, rides an amendment commit under the same still-amendable
+   record. The owning surfaces are the
    `procedure-adr-final-commit` section of executing-plans, the `final-task-adr-flip`
    section of subagent-driven-development, the no-plan direct-implementation path in
    adr-lifecycle, and the ownership statement in reviewing-adr's `status-flip` section.
