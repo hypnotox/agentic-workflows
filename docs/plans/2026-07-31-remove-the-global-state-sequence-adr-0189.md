@@ -40,7 +40,9 @@ markers, and ADR events.
   - `internal/currentstate/check.go`, `internal/currentstate/transition.go`,
     `internal/currentstate/check_test.go`, `internal/currentstate/transition_test.go`,
     `internal/currentstate/aggregate_test.go`
-  - `internal/topic/query.go`, `internal/topic/query_test.go`
+  - `internal/topic/query.go`, `internal/topic/query_test.go`, `internal/topic/corpus_test.go`
+  - `internal/project/project.go`, `internal/project/version_test.go`,
+    `internal/project/context_adr_test.go`
   - `internal/project/context_adr.go`, `internal/project/context_paths.go`, and the
     `internal/project` tests that assert sequence output (`context_paths_test.go`,
     `golden_test.go`, `topics_test.go`, `staged_test.go`, `mergeaggregate_test.go`)
@@ -53,7 +55,12 @@ markers, and ADR events.
     `.awf/docs/pitfalls.yaml`
   - `.awf/topics/parts/invariants/current-state-authority/current-state.md`,
     `.awf/topics/parts/adr-system/adr-lifecycle/current-state.md`
-  - `changelog/CHANGELOG.md`, `.awf/awf.lock`
+  - `.awf/topics/parts/rendering/pi-workflows/current-state.md` and
+    `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md` (their `Revised-by`
+    lines rewritten by the migration run, not by hand) and their rendered
+    `docs/topics/rendering/pi-workflows.md` and
+    `docs/topics/rendering/workflow-skill-templates.md`
+  - `changelog/CHANGELOG.md`, `.awf/awf.lock`, `examples/sundial/.awf/awf.lock`
   - `docs/decisions/0189-replace-the-global-state-sequence-with-adr-number-provenance-order.md`
     (status events only)
   - Every governed `docs/decisions/*.md` status-history line carrying `state-sequence` (rewritten
@@ -99,14 +106,25 @@ only the final staged state must be green.
     the `seenSeq` variable; simplify the `content-sha256` ordering condition that referenced it
     (line 156). A terminal or status tail that still contains `state-sequence:` must fall through
     to the existing unrecognized-segment error path so a stale file fails loudly.
+  - Field-read closure so the package compiles: every remaining `Sequence`/`HasSequence` read is
+    dispositioned here. Delete the two mixed-mode guards as vacuous
+    (`internal/adr/application.go:46-52`, the `mixes explicit Applied events with implicit
+    terminal sequencing` error, and `internal/adr/format.go:402-405`, its V2 twin); drop the
+    `x.Sequence`/`x.HasSequence` comparisons from `historiesEqual` (`format.go` around line 182);
+    drop only the `HasSequence` conjunct, keeping the rationale and digest halves, from the
+    first-entry Proposed-scaffold checks (`format.go:314` and `:342`) and from the
+    accepted/implementing status-entry checks (`format.go:448` and `:474`). Confirm closure with
+    `grep -n "HasSequence\|\.Sequence" internal/adr/*.go` (excluding tests) returning no
+    production hit.
 - [ ] **Task 2.2: Sequence-free batches (`internal/adr/application.go`).** Delete `Sequence` from
   `ApplicationBatch` (lines 10-14) and from `AppliedOperation` (lines 17-20). In
   `ApplicationBatches()` (30-68): explicit batches keep their `HistoryApplied` event order; the
   implicit terminal branch (58-66) no longer requires `HasSequence`, and the error
   `"ADR-%s Implemented status has no state-sequence"` (62) is deleted; an implicit batch is now
-  constructed from the terminal event's operations alone. In `OperationProgress()` (72-128): delete
-  the `batch.Sequence < 1` rejection (87); `AppliedOperation{Operation: op}` (98) carries no
-  sequence. Batch identity for downstream consumers is the batch's index in the ADR's history.
+  constructed from the terminal event's operations alone. In `OperationProgress()` (72-128): the
+  guard at line 87 drops its `batch.Sequence < 1` conjunct and keeps the empty-batch conjunct;
+  `AppliedOperation{Operation: op}` (98) carries no sequence. Batch identity for downstream
+  consumers is the batch's index in the ADR's history.
 - [ ] **Task 2.3: Order claim history by ADR number (`internal/adr/corpus.go`).** Delete
   `StateSequence` from `OperationRecord` (28-33) and rewrite its doc comment: ADR number orders
   implemented mutations. In `ClaimOperationHistory` (143-181), replace the sort at line 165 with
@@ -132,6 +150,10 @@ only the final staged state must be green.
     `"claim %s has an operation after its remove"` finding (173) so only an add after a remove is
     a finding (reuse of a removed id); an update after a remove is legal dominated history and
     produces no finding.
+  - `retiredTopicOperations` (238-277): the completeness test becomes "exactly one add first and
+    exactly one remove, with only dominated updates permitted after the remove" instead of
+    requiring the remove to be the last element, so a fully retired topic whose claim carries a
+    dominated tail still classifies retired; task 2.12's tombstone tests cover this shape.
   - In `checkBackward` (336-388): replace the sequence seed (359-364) and loop (365-376) with
     ADR-number comparison. Seed `last` with the Origin ADR's number when the Origin operation
     exists; for each `Revised-by` entry require its number strictly greater than `last`, finding
@@ -150,12 +172,18 @@ only the final staged state must be green.
     and duplicate-target rejection are unchanged.
   - `foldChain` (297-330): after a remove, further updates are legal and classified dominated
     (they join no `updaters` list and do not alter net effect); an add after a remove stays
-    illegal. Net effect: a chain containing a remove resolves net remove, or net no-op when it
-    also begins with the chain's add, regardless of dominated updates after the remove; a chain of
-    updates whose claim is absent on the before side resolves to a new `opNetDominated` sentinel.
-  - `checkMutations` (132-171): `opNetDominated` requires the claim absent on both sides and a
-    prior applied remove present in the after universe (compute via the corpus the after universe
-    already carries); finding when violated:
+    illegal. When the fold sees the remove it captures that step's ADR and returns it for the
+    net-remove and net-noop results, never `chain[len(chain)-1]`, so absence stays attributed to
+    the remove. Net effect: a chain containing a remove resolves net remove, or net no-op when it
+    also begins with the chain's add, regardless of dominated updates after the remove. The fold
+    stays pure over operations: a pure-update chain still folds to `adr.OpUpdate` with its
+    `updaters`; domination is not decided here.
+  - `checkMutations` (132-171) owns the dominated classification, because it holds both
+    universes: when an update-verdict chain's claim is absent on both sides and a prior applied
+    remove for that id exists in `after.ADRs` (a small helper derives the applied-remove set from
+    the after corpus), the chain is dominated history and no mutation is expected; when the claim
+    is absent with no such remove, the existing unmatched-mutation and update-target findings
+    keep firing; finding when a dominated chain shows a mutation:
     `"claim %s has only dominated updates in this transition, so it must stay absent"`. The
     net-noop path (156-162) is unchanged.
   - `revisedByExtension` (374-396): replace exact-prefix-append with the union rule: the after
@@ -165,12 +193,15 @@ only the final staged state must be green.
     for any after entry that is neither carried over nor an updater.
 - [ ] **Task 2.7: Presentation surfaces.** Delete `StateSequence` from `ADRHistory`
   (`internal/topic/query.go:39-44`) and its copy in `operationADR` (183). Delete
-  `stateSequenceSuffix` (`cmd/awf/topic.go:128-133`) and its three call sites (91, 94, 97). Delete
-  the two annotation blocks in `cmd/awf/context.go` (251-254 and 259-261; the removal-history line
-  keeps the ADR number, dropping only `at state-sequence N`). Delete `StateSequence` from
-  `ADROperationContext` (`internal/project/context_adr.go:17-22`), the `state.sequence` plumbing
-  in `projectADRArtifact` (54-81), and the `add(strconv.Itoa(op.StateSequence))` component in
-  `contextGroupKey` (`internal/project/context_paths.go:420`).
+  `stateSequenceSuffix` (`cmd/awf/topic.go:128-133`) and its three call sites (91, 94, 97). In
+  `cmd/awf/context.go`: delete only the `if op.StateSequence != 0 { ... }` guard (251-253),
+  keeping the `fmt.Fprintln(out, "]")` terminator at 254; edit the removal-history Fprintf (260)
+  to `"%s  Removal history: removed by ADR-%s\n"`, dropping the `at state-sequence %d` suffix and
+  its argument. Delete `StateSequence` from `ADROperationContext`
+  (`internal/project/context_adr.go:17-22`), the `state.sequence` plumbing in
+  `projectADRArtifact` (54-81), and the `add(strconv.Itoa(op.StateSequence))` component in
+  `contextGroupKey` (`internal/project/context_paths.go:420`); if that leaves `strconv` unused in
+  `context_paths.go`, drop the import.
 - [ ] **Task 2.8: Migration 26 (`internal/migrate/adrnumberprovenance.go`).** Follow the
   `supersessionkeys.go` shape: pure function `applyADRNumberProvenance(root string, out io.Writer) error`,
   registered in `migrate.go` as the new last entry
@@ -189,14 +220,24 @@ only the final staged state must be green.
   nothing) and fails loudly on a malformed Applied line it cannot rewrite.
   `adrnumberprovenance_test.go` mirrors `supersessionkeys_test.go`: fixture ADRs and topic parts,
   byte-exact expected output, digest stability, idempotency, and the malformed-input error.
-- [ ] **Task 2.9: Run the migration on this repository.** From the worktree root run
+  Registration closure: add `26: "0.29.0"` to `minVersionBySchema` in
+  `internal/project/project.go` (0.29.0 is unreleased, so no `Version` bump); in
+  `internal/project/version_test.go`, assert `minVersionBySchema[26] == Version` and move the
+  unmapped-schema probe from generation 26 to 27. In `internal/adr/corpus_test.go`,
+  `TestCorpusRawAccessEnumerated` gains `"internal/migrate/adrnumberprovenance.go": true` in its
+  `want` map and its failure text becomes `the three single-call migration seams`.
+- [ ] **Task 2.9: Run the migration on both in-repo trees.** From the worktree root run
   `./awf upgrade`; expected output includes `awf upgrade: applied adr-number-provenance` and the
-  lock stamps `SchemaVersion` 26. Then run `git grep -n "state-sequence" -- 'docs/decisions'` and
-  confirm the only remaining hits are ADR Decision and Context prose (0135, 0143, 0182, 0189
-  bodies), never a `## Status history` line. Also run
-  `git grep -ln "state-sequence" -- 'examples/sundial/docs/decisions'` and confirm no
-  status-history hits there either (sundial's corpus is expected to carry none; if any appear,
-  the migration run in sundial's tree handles them the same way).
+  lock stamps `SchemaVersion` 26. Then run the same upgrade inside the example adopter,
+  `(cd examples/sundial && go run ../.. upgrade)`, carrying its tree to generation 26 through a
+  real upgrade rather than a hand edit (precedent: the generation-25 bump touched both locks);
+  stage `examples/sundial/.awf/awf.lock` and, if the upgrade or the later render changes
+  `examples/sundial/.awf/bootstrap.sh` or other sundial files, stage those too as `git status`
+  reports them. Post-check, reachable at this position:
+  `git grep -n "state-sequence" -- 'docs/decisions/[0-9]*.md' 'examples/sundial/docs/decisions'`
+  returns no line starting with a status-history event (no hit whose matched line begins
+  `- <date>:`); the surviving hits are ADR Decision and Context prose (0135, 0143, 0182, 0183,
+  0189 bodies) and INDEX.md's permanent hit inside ADR-0189's own filename.
 - [ ] **Task 2.10: Documentation-source sweep.** Edit the sources, never rendered outputs:
   - `templates/skills/adr-lifecycle/SKILL.md.tmpl:53`: grammar becomes
     `- YYYY-MM-DD: Applied; operations: <operation-list>`; delete
@@ -211,12 +252,16 @@ only the final staged state must be green.
     the batch state sequence` (53-54); example line 59 becomes
     `- YYYY-MM-DD: Applied; operations: update \`<domain>/<topic>:<slug>\``.
   - `.awf/agents/plan-reviewer.yaml` `v2-batch-partition-legality` description: keep the
-    partition-legality half verbatim; delete everything from `and the same draft hardcoded
-    state-sequence literals` through `never a number (a concurrent effort sharing the checkout may
-    advance the counter first)`; the closing check becomes `Check partition legality per planned
-    commit, and that no plan pre-computes a content-sha256 stamp`.
-  - `.awf/domains/parts/adr-system/current-state.md:5`: grammar drops
-    `state-sequence: <positive integer>; `; no other sentence changes.
+    partition-legality half verbatim through `...exhausted all operations two phases before the
+    flip`, ending that sentence with a period there, and follow it with exactly
+    `Check partition legality per planned commit, and that no plan pre-computes a content-sha256
+    stamp`; everything between (the hardcoded-literals clause, the repo-global sequence sentence,
+    and the counter parenthetical) is deleted, including the joining comma.
+  - `.awf/domains/parts/adr-system/current-state.md`: line 5's grammar drops
+    `state-sequence: <positive integer>; `. Line 7 changes in the same edit: the staged-check
+    update rule becomes `preserves the claim's \`Origin\`, unions its \`Revised-by\` with the
+    updating ADR at its ascending position, and changes a canonical field`, and the static-check
+    enumeration drops `sequence, `; the rest of line 7 stays verbatim.
   - `.awf/docs/pitfalls.yaml`, four entries: in `A V2 ADR's Implementing flip cannot commit
     alone`, drop the state-sequence halves of the two sentences (182, 190), keeping digest
     language. Delete the entries `Concurrent ADR application branches may require replay before
@@ -236,13 +281,17 @@ only the final staged state must be green.
     ascending ADR number; run \`awf upgrade\`. (ADR-0189)`
   - Run `./x render`; every rendered output listed in File structure follows.
 - [ ] **Task 2.11: Test sweep (batch task).** Affected set: every `_test.go` hit of
-  `git grep -ln "state-sequence\|StateSequence\|stateSequence" -- '*_test.go'` (at authoring time:
-  `internal/adr/format_test.go`, `internal/adr/corpus_test.go`, `internal/currentstate/check_test.go`,
-  `internal/currentstate/transition_test.go`, `internal/currentstate/aggregate_test.go`,
+  `git grep -ln "state-sequence\|StateSequence\|stateSequence\|HasSequence\|Sequence:" -- '*_test.go'`,
+  which also catches `adr.HistoryEvent{... Sequence: N, HasSequence: true ...}` struct literals
+  (at authoring time: `internal/adr/format_test.go`, `internal/adr/corpus_test.go`,
+  `internal/currentstate/check_test.go`, `internal/currentstate/transition_test.go`,
   `internal/project/staged_test.go`, `internal/project/mergeaggregate_test.go`,
-  `internal/project/context_paths_test.go`, `internal/project/golden_test.go`,
-  `internal/project/topics_test.go`, `cmd/awf/topic_test.go`, `cmd/awf/context_test.go`,
-  `cmd/awf/initrender_test.go`, `internal/topic/query_test.go`). Representative transformation:
+  `internal/project/context_adr_test.go`, `internal/project/context_paths_test.go`,
+  `internal/project/golden_test.go`, `internal/project/topics_test.go`,
+  `internal/topic/query_test.go`, `internal/topic/corpus_test.go`, `cmd/awf/topic_test.go`,
+  `cmd/awf/context_test.go`, `cmd/awf/initrender_test.go`; the set is the command's output at
+  execution time; `internal/currentstate/aggregate_test.go` is touched by task 2.12, not this
+  batch). Representative transformation:
   a fixture line `- 2026-07-20: Applied; state-sequence: 1; operations: add \`d/t:c\`` becomes
   `- 2026-07-20: Applied; operations: add \`d/t:c\``, and assertions on
   `[state-sequence: N]` suffixes, `stateSequence` JSON, or `StateSequence` fields are deleted with
