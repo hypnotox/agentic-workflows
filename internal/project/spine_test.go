@@ -418,8 +418,13 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"do not edit files or commit",
 		"Work only from the brief you were given",
 		"never edit it",
-		// The shared orientation ladder partial reaches this contract too.
+		// The shared orientation ladder partial reaches this contract too,
+		// including its current-state-first ordering and the conditional that
+		// keeps history off every dispatch.
 		"Ground guide-first, in order",
+		"domain docs under `docs/domains`",
+		"Current-state documentation is what binds",
+		"only when current state leaves what you are seeing unexplained",
 		"For managed context calls, start bare",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
@@ -1054,7 +1059,10 @@ func TestOrientingSkillContract(t *testing.T) {
 			for _, want := range []string{
 				"Four moments call for orientation",
 				"**Fresh work:**", "**Effort resume:**", "**Handoff takeover:**", "**Mid-chain re-orientation:**",
-				"Ground guide-first, in order", "one or more exploration subagents",
+				"Ground guide-first, in order", "domain docs under `docs/domains`",
+				"Current-state documentation is what binds",
+				"only when current state leaves what you are seeing unexplained",
+				"one or more exploration subagents",
 				"one information need", "every child is report-only",
 				"location is unknown", "and inline search would pollute the parent context",
 				"exact-known-file", "genuinely trivial", "`example-exploring`",

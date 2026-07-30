@@ -11,6 +11,8 @@ Orientation, the act of grounding a session in a topic before acting, has no own
 
 The same staleness risk applies mid-chain: ADR authoring and plan writing frequently run in a later session than the brainstorm that settled the design, and both write repository facts into durable records.
 
+The ladder's rungs are not interchangeable. Three of them (the agent guide, the document-map docs, the domain docs) are current-state surfaces, and current state is what binds here: a decision record is history rather than active authority, and a later decision changes the claims an earlier one established. Recent path history is the one rung that is not current state, and the cost of consulting it lands on every call. It is least justified for the grounding-checker, which shares this ladder and whose lenses (factual premises, unstated assumptions, altitude, convention fit) are all answered by current-state claims rather than by commit subjects. It is more defensible for the skill's own fresh-work and mid-chain moments, where knowing that an area is churning is genuinely orienting; that asymmetry is why history is kept and conditioned rather than dropped. The case where history is load-bearing rather than speculative, verifying what landed since a checkpoint, is covered unconditionally by resume-revalidation instead, which sits outside the shared partial.
+
 A grounding check against the repository established the mechanical constraints this decision honors: the include engine expands partials in a single non-recursive pass and hard-errors on a partial that itself contains an `awf:include` directive; workflow-profile validation rejects an empty `Purpose`; the skill-section-parity invariant requires the catalog `Sections` list to equal the template's `awf:section` marker set; `Core: true` affects only new-adopter pre-selection, and `awf upgrade` never auto-enables an artifact; the closure-migration primitive walks only structural requirement edges, and `requires-skills-exact` forces every standard skill's `RequiresSkills` empty, so no existing mechanism can backfill a skill that declares no agent or doc requirement.
 
 User constraints, verbatim: "It shouldn't be a chain skill like brainstorming. It should be a utility skill used by the agent in fitting situations." "the grounding check subagent could probably also benefit from that spine." "it would probably be useful if the skill would enable to use one or more exploration subagents as they see fit."
@@ -40,6 +42,7 @@ User constraints, verbatim: "It shouldn't be a chain skill like brainstorming. I
 - The `rendering/workflow-skill-templates` topic reaches the twenty-claim advisory ceiling with the `orienting-single-home` add; the next addition to that topic needs a split or a new topic.
 - Explicitly ruled out: `orienting` as a chain gate or prerequisite; effort creation inside `orienting`; inbound workflow-profile edges to it.
 - Risk: the mid-chain re-orientation moment is judgment-based and may be over- or under-invoked; mitigated by keeping the skill single-pass and cheap, and by the advisory pointer sentences anchoring the two highest-value call sites.
+- Risk: conditioning the history rung adds a second judgment gate, so an agent that never finds current state wanting will never read history at all. Accepted because the load-bearing case is covered unconditionally elsewhere (resume-revalidation checks what landed since the checkpoint), and because the failure it trades away, a missed churn signal, is recoverable within the session while the cost it removes was paid on every call.
 
 ## Alternatives Considered
 
@@ -50,6 +53,8 @@ User constraints, verbatim: "It shouldn't be a chain skill like brainstorming. I
 | Ship without a backfill migration, ADR note only | Project precedent (the exploring closure generation) chose backfill over dangling references |
 | Backfill via the closure primitive | Impossible: `requires-skills-exact` forces `RequiresSkills` empty and `orienting` has no agent or doc requirement to hang closure on |
 | Nest the context-spill include inside the shared partial | Impossible: the include engine is single-pass and hard-errors on nested includes |
+| Keep recent path history as an unconditional fourth ladder rung | Inherited from brainstorming's old step rather than designed. It is the only non-current-state rung, it charges every call including every grounding-checker dispatch whose lenses it does not serve, and its load-bearing use is already covered by resume-revalidation |
+| Drop the history rung entirely | Overcorrects: churn and half-finished migrations in the touched area are genuinely orienting, and current state by construction does not describe them |
 
 ## Status history
 
