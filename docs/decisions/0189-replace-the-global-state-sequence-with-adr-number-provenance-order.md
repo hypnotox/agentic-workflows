@@ -51,10 +51,12 @@ order, is the authority readers consume.
    contiguity, or expected-next-sequence validation exists anywhere.
 
 2. Per-claim provenance order is ascending final ADR number. A claim's canonical chain is its
-   Origin ADR followed by its `Revised-by` ADRs sorted ascending and duplicate-free, and claim
-   history output sorts revision records the same way. Under the merge-time numbering contract this
-   order is integration chronology; until that contract lands it is the canonical deterministic
-   presentation and asserts no chronology.
+   Origin ADR followed by its `Revised-by` ADRs sorted ascending and duplicate-free, and every
+   `Revised-by` entry is greater than the Origin's number: an update targets a claim whose add has
+   already integrated, so the rule holds in both the pre-contract and post-contract windows, and it
+   holds across today's corpus. Claim history output sorts revision records the same way. Under the
+   merge-time numbering contract this order is integration chronology; until that contract lands it
+   is the canonical deterministic presentation and asserts no chronology.
 
 3. Inside one ADR the authored record stays authoritative: Applied events are ordered by their
    position in the append-only Status history, each batch's operations keep declaration order, and
@@ -76,17 +78,25 @@ order, is the authority readers consume.
    absence stays attributed to the remove. Update-then-remove and remove-then-dominated-update
    converge to the same current state, absent with full history retained.
 
-7. Merge-aggregate chain validation is restated without the sequence. A claim's operations across
-   the pair, taken in ascending ADR-number order and intra-ADR history order, admit at most one
-   leading add, any number of updates, and at most one trailing remove; a chain of updates against
-   an already-absent claim is additionally legal as dominated history under item 6. The global
-   contiguity condition is deleted. An authored non-merge commit keeps the stricter contract of one
-   new batch per ADR, one operation per claim, and the fixed status-event shape.
+7. Merge-aggregate chain validation is restated without the sequence, and the remove is absorbing
+   in the chain grammar itself, not merely trailing. A claim's operations across the pair, taken in
+   ascending ADR-number order and intra-ADR history order, admit at most one leading add, any
+   number of updates, at most one remove, and after the remove any number of dominated updates. Net
+   effect derives from the chain as in ADR-0182, extended by absorption: a chain containing a
+   remove is a net remove (or, when it also begins with the add, a net no-op) whose claim must be
+   absent on the after side regardless of dominated updates following the remove, and a chain of
+   updates against a claim already absent on the before side is legal dominated history with net
+   effect none. The global contiguity condition is deleted. An authored non-merge commit keeps the
+   stricter contract of one new batch per ADR, one operation per claim, and the fixed status-event
+   shape.
 
-8. Bidirectionality is restated: every applied governed operation has its current result, its
-   removed result, or its dominated-history record, and every active claim Origin or revision has
-   the inverse applied ADR operation. Dominated operations, like Remaining and Canceled ones,
-   provide no authority.
+8. Bidirectionality and atomicity are restated for domination: every applied governed operation
+   has its current result, its removed result, or its dominated-history record, and every active
+   claim Origin or revision has the inverse applied ADR operation. Dominated operations, like
+   Remaining and Canceled ones, provide no authority. A dominated operation's required claim
+   mutation set is empty, so the transaction-atomicity contract is satisfied by the batch record
+   alone; the update's original mutation remains in its branch's own authored commit, where the
+   per-commit contract already validated it.
 
 9. One ordered schema migration retrofits the corpus: it strips every `state-sequence:` segment
    from status-history events and canonicalizes every `Revised-by` list to duplicate-free ascending
@@ -94,16 +104,28 @@ order, is the authority readers consume.
    grandfathered; this ADR records that correction, and the original application chronology stays
    recoverable from git history. The retrofit is meaning-preserving at event level: each event
    keeps its date, status, digest, and operations, and only the retired ordering encoding is
-   dropped, its meaning carried forward by ADR number.
+   dropped, its meaning carried forward by ADR number. The migration rewrites raw ADR bytes and so
+   becomes the third enumerated raw-bytes migration seam, extending the enumeration that
+   `adr-system/adr-lifecycle:corpus-raw-access-enumerated` pins.
 
-10. Documentation travels with the implementation: the Applied grammar in the decisions README, the
-    ADR template's example status lines, and the pitfalls that teach sequence allocation by
-    provoked error and replay-before-integration are rewritten in the same change that lands the
-    behaviour.
+10. Both added claims land as `Backing: test`, with proof markers on `internal/currentstate` tests:
+    the provenance-order claim on fixtures proving ascending, duplicate-free, Origin-minimal
+    `Revised-by` validation, and the tombstone claim on fixtures proving that remove-then-update
+    and update-then-remove integration orders converge to attributed absence with the dominated
+    batch retained. Each add lands with ADR-0189 as Origin; each updated claim preserves its Origin
+    and prior revisions and gains ADR-0189 in `Revised-by` in the same transaction.
 
-11. The merge-time numbering design sheds its sequence responsibilities: `awf adr number` renames
-    files and rewrites identities only, and no numbering-transition check mode for shifted
-    sequences is needed.
+11. Documentation travels with the implementation, edited at the sources, never the rendered
+    outputs. The same change that lands the behaviour rewrites the Applied grammar and
+    next-sequence allocation instruction in `templates/skills/adr-lifecycle/SKILL.md.tmpl`, the
+    grammar lines in `templates/adr-readme/README.md.tmpl` and
+    `templates/adr-template/template.md.tmpl`, the sequence guidance in the plan-review focus of
+    `.awf/agents/plan-reviewer.yaml`, the Applied grammar in
+    `.awf/domains/parts/adr-system/current-state.md`, and every `.awf/docs/pitfalls.yaml` entry
+    that mentions the state sequence, the provoked-error allocation and replay-before-integration
+    entries included; the rendered outputs, `examples/sundial` copies included, follow from
+    `./x render`. A Breaking-changes entry lands under the changelog's Unreleased section, and
+    `docs/decisions/INDEX.md` is regenerated at every status flip this ADR reaches.
 
 ## State changes
 
@@ -113,7 +135,9 @@ order, is the authority readers consume.
 - update `invariants/current-state-authority:merge-transition-ordered-aggregate`
 - update `invariants/current-state-authority:implemented-impact-bidirectional`
 - update `invariants/current-state-authority:update-requires-substance`
+- update `invariants/current-state-authority:state-impact-transition-atomic`
 - update `adr-system/adr-lifecycle:applied-history-events-append-only`
+- update `adr-system/adr-lifecycle:corpus-raw-access-enumerated`
 
 ## Consequences
 
@@ -121,9 +145,16 @@ Independently developed mutations integrate without touching each other. Nothing
 batch ever needs rewriting at integration, so the renumber-before-integration path that ADR-0182
 left as the normal case disappears, `awf effort integrate`'s divergent path stops failing on
 sequence collisions, and the merge-time numbering effort drops both its sequence-shifting step and
-the transition-check mode it existed to legalize. Authoring gets simpler in the same stroke: there
-is no next-number to discover, so the provoke-the-error allocation pitfall is deleted rather than
+the transition-check mode it existed to legalize: any future numbering decision inherits a scope of
+renaming files and rewriting identities only. Authoring gets simpler in the same stroke: there is
+no next-number to discover, so the provoke-the-error allocation pitfall is deleted rather than
 documented.
+
+Agent-facing output loses a field. `awf topic` drops its `[state-sequence: N]` suffix on Origin,
+Revised-by, and Removed-by lines, `awf context` drops its per-operation state-sequence annotations,
+and the `stateSequence` field leaves the `awf topic --json` contract. The ordering signal remaining
+in all three outputs is the ADR number already printed, which after this decision carries exactly
+the information the sequence used to.
 
 The corpus loses its global total order over applied operations. Per-claim order is fully defined
 by ADR number; a cross-claim "which applied first" question has no in-corpus answer and falls back
@@ -151,6 +182,8 @@ at implementation time under their declared backing.
 | Alternative | Why not chosen |
 |---|---|
 | Keep the global sequence and add an allocator command | Removes the discovery pitfall but keeps the shared counter, so parallel efforts still collide and rewrite applied history at integration. |
+| Relax the namespace to unique-but-not-contiguous | Contiguity is what forces renumbering, but a shared counter without an allocator still collides: two parallel efforts optimistically hand-pick the same integer and one must rewrite applied history at integration, and the surviving number duplicates information the ADR number already carries. |
+| Order provenance by the Applied event date, ADR number as tiebreak | Hand-authored dates give no trustworthy total order: same-day batches are the common case for parallel efforts, so the tiebreak would decide most orderings anyway, with a fabricated chronology layered on top. |
 | Per-claim sequence counters | A second allocated namespace when ADR number already orders per-claim history; concurrent updates to one claim still contend for the counter. |
 | Causal metadata (vector clocks or recorded happened-before) | Deterministic presentation needs no causality; heavy authoring friction for provenance whose authority is current claim text. |
 | Grandfather the two historical inversions | Permanent legacy ordering complexity in grammar and checks for two adjacent entries nobody consumes as chronology. |
