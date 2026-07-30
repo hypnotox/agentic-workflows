@@ -1,0 +1,4 @@
+title: Git access
+summary: The one semantic git seam - entrypoints, backends, and their pinned contracts.
+paths:
+  - internal/git/**

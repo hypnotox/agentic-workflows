@@ -8,6 +8,7 @@
 - [Context and topic](context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
+- [Git access](git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
 - [Init and enablement](init-and-enablement.md): Project scaffolding and enablement surfaces: init, add, remove, new.
 - [Quality gates](quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
 - [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.

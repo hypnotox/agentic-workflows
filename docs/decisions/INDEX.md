@@ -3,6 +3,7 @@
 
 - [ADR-0180: State ownership and derived state lifetime](0180-state-ownership-and-derived-state-lifetime.md) (Proposed)
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
+- [ADR-0182: Git access through one semantic seam](0182-git-access-through-one-semantic-seam.md) (Proposed)
 
 ## History
 
