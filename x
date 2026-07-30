@@ -26,6 +26,13 @@ case "$cmd" in
     go run ./cmd/covercheck "$prof"
     tools/pi-extension-test/container.sh run
     go vet ./...
+    # Cross-compile gate: the suite only ever runs on the host platform, so a
+    # package that stops building for a contributor's OS is otherwise invisible
+    # until they clone. Covers both released goarch values per non-host goos
+    # (.goreleaser.yaml ships linux, darwin, and windows for amd64 and arm64).
+    for target in darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+      GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+    done
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck

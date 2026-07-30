@@ -4,6 +4,7 @@
 with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
 blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
 coverage across all five generated Pi TypeScript files, descriptor cross-runtime parity, `go vet`,
+a cross-compile of `./...` for every released non-host platform,
 `golangci-lint`, a whole-program dead-code check (ADR-0063),
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan
 (`awf check prose`, ADR-0119, opt-in for adopters and enabled in this repo), and the effort-owned-memory
