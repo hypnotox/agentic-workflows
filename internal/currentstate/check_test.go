@@ -493,9 +493,11 @@ func TestFindingCarriesOnlyMessage(t *testing.T) {
 	}
 }
 
-// The claim's second clause: the check path treats every handshake finding as
-// blocking. A malformed-provenance corpus must route its finding to Findings and
-// leave Notes empty, with no rank consulted anywhere on the way.
+// The claim's second clause, from this package's side: a provenance violation
+// produces a finding and that finding carries its message, with no rank
+// consulted anywhere on the way. The routing half of the clause (Static findings
+// reach Findings and never Notes) is not reachable from package
+// currentstate_test; internal/project's report-routing test proves it.
 func TestEveryHandshakeFindingIsBlocking(t *testing.T) {
 	findings := currentstate.Check([]adr.ADR{rec("0001", "Implemented", 1, adr.Operation{Verb: "add", ID: "d/t:missing"})}, nil)
 	if len(findings) == 0 {

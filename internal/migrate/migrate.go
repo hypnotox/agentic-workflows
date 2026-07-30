@@ -104,6 +104,12 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 			}
 		}
+		// Deliberately a pure removal, unlike applyDropSeveritySettings, which also
+		// seeds a default budget when the removals would empty the block. This
+		// function exists so a historical config PARSES under the current strict
+		// decoder; coverage is never evaluated from a before-side config, so
+		// materializing a key the committed bytes never had would put a value into
+		// a historical universe rather than fix a parse.
 		if migration.To == 24 {
 			for _, key := range []string{"topicCoverage", "topicFanout"} {
 				var err error

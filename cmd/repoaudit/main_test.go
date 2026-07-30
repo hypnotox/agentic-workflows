@@ -111,6 +111,11 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	}
 }
 
+// The rendered rank column is asserted here, not only in internal/severity: that
+// test cannot reach this surface, because repoaudit's finding type is unexported
+// in package main. Without this marker the claim would name a surface no proof
+// reads.
+// invariant: tooling/audit-commands:severity-single-spelling
 func TestWarnMissingEntry(t *testing.T) {
 	// Adopter-facing change, [Unreleased] identical across the range -> advisory warn,
 	// exit 0 (ADR-0107): the conformance verdict no longer blocks, only informs.

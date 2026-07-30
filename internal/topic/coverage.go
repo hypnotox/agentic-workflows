@@ -67,11 +67,13 @@ const (
 // emitted once per path across owners; Topics carries a Fanout finding's
 // matching count.
 type CoverageFinding struct {
-	Path     string       `json:"path"`
-	Domain   string       `json:"domain,omitempty"`
-	Kind     CoverageKind `json:"kind"`
-	Severity severity.Rank
-	Topics   int `json:"topics,omitempty"`
+	Path   string       `json:"path"`
+	Domain string       `json:"domain,omitempty"`
+	Kind   CoverageKind `json:"kind"`
+	// The rank is not part of this struct's wire form. Stated rather than left
+	// implicit: an untagged exported field still marshals, as a bare 0 or 1.
+	Severity severity.Rank `json:"-"`
+	Topics   int           `json:"topics,omitempty"`
 }
 
 // CoveragePolicy carries which coverage checks a caller wants evaluated and the

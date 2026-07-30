@@ -1,5 +1,28 @@
 data:
   pitfalls:
+    - title: "Dropping a config key needs a ConfigForCurrentSchema branch, or the staged check cannot parse HEAD"
+      domains: [config]
+      tags: [schema-migration, verification-discipline]
+      body: |
+        `migrate.ConfigForCurrentSchema` forward-ports a historical committed config so the current
+        strict parser can read it, and it does that through one explicit per-migration branch, not
+        by replaying the registry. A migration that removes a config key must add its own branch
+        there as well as its `apply` function. Miss it and `awf check --staged` fails to parse HEAD
+        the moment the key leaves the config model, because HEAD still carries it: the before side
+        of the transition handshake loads the committed config, not the index one.
+
+        This did not surface until ADR-0179, even though four drop-a-key migrations preceded it,
+        because none of those keys was actually set in this repo's own tree, so the before side
+        never had one to choke on. Reading those precedents is therefore not enough. The failure
+        appears at the phase-closing staged check, never in the migration's own test, which
+        operates on fixture bytes and passes regardless.
+
+        Two related traps in the same area. `RemoveMappingKey` drops the parent key when the
+        removal empties it, so removing the last children of a block deletes the block; when a
+        feature is gated on the block being present, that silently disables it. And
+        `SetMappingInteger` appends an absent parent at the end of the document, so repairing a
+        collapsed block afterwards relocates it: seed the surviving key before the removals
+        instead.
     - title: "The pi-extension container test races concurrent git activity"
       domains: [tooling]
       tags: [worktree-isolation, verification-discipline]
