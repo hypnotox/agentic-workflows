@@ -13,7 +13,8 @@ value owns once constructed, or about where state derived during one operation l
 shows why that gap matters.
 
 `internal/project` is 8086 production lines across 30 production files. It imports seventeen internal
-packages and is imported by exactly two, `cmd/awf` and `cmd/releasecheck`. One type, `Project`, carries
+packages and is imported by exactly two production packages, `cmd/awf` and `cmd/releasecheck`. One type,
+`Project`, carries
 95 production methods, 23 exported and 72 private. Its fields split cleanly in two. `Root`,
 `residentRoot`, `Cfg`, `Cat`, `Targets`, and `standard` are construction inputs, written once and read
 thereafter. `corpus`, `topics`, and `effSkills` are derived during an operation and cached on a value
@@ -23,9 +24,9 @@ Those three cached derivations each need a discipline no compiler enforces.
 
 `beginInvocation` (`internal/project/project.go:468`) nils `corpus` and `topics`, and the comment above
 it states the obligation in prose: "Every public operation that reads ADRs calls it before its first
-Corpus use." The same comment spells out the consequence of forgetting, that a `Check` following a `Sync`
-would miss an ADR written in between and so would "silently blind the drift oracle rather than merely
-serving a stale read." Five call sites honour it today (`check.go:28`, `check.go:398`,
+Corpus use." The same comment spells out the consequence of forgetting: a `Check` following a `Sync` would
+miss an ADR written in between, "silently blinding the drift oracle rather than merely serving a stale
+read." Five call sites honour it today (`check.go:28`, `check.go:398`,
 `output_plan.go:457`, `topics.go:26`, `project.go:236`), but the discipline is already inexact: the
 `topics.go:26` call is vestigial, because `QueryTopic` reads neither field and takes its corpora from
 `workingCurrentState`; and the `output_plan.go:457` call fires again inside `Check`, nested mid-operation
@@ -34,12 +35,15 @@ resets, yet the invariant the comment states is not the invariant the code enfor
 operation that reads a corpus and omits the reset introduces the failure the comment predicts, and no
 gate catches it.
 
-`effSkills` needs an ordering rather than an invalidation, and the corresponding bug is live rather than
-latent. It is nil until `RenderAll` writes it (`render.go:477`, and again at `output_plan.go:408`).
-`checkDeadSkillRefs` reads it at `check.go:438` and is correct only because `Check` reaches `OutputPlan`
-first at `check.go:406`. Called directly, `checkDeadSkillRefs` sees a nil map and reports no dead skill
-references at all. That is the same silent-blinding failure mode, with the ordering obligation recorded
-nowhere but the call sequence.
+`effSkills` needs an ordering rather than an invalidation. It is nil until a render pass writes it, at
+`output_plan.go:408` in `targetOutputDeclarations` and then at `render.go:477` in `renderAllBase`, in that
+order within one `OutputPlan`. `Check` reads the field at `check.go:438` and is correct only because
+`check.go:406` reached `OutputPlan` first. Every production reader today is preceded by a write in the
+same call tree, so the hazard is latent rather than live: `checkDeadSkillRefs` takes the effective set as
+a parameter (`check.go:538`), so it is the caller that must supply a populated map, and a second caller
+that passes the field without rendering first would report no dead skill references at all. That is the
+same silent-blinding failure mode as the corpus case, one function-signature step further along, with the
+ordering obligation recorded nowhere but the call sequence.
 
 Removing these caches costs nothing that ADR-0130 was protecting. ADR-0130 item 1 introduced the shared
 corpus view and chose the field deliberately: "they already share a `*Project` receiver, so the threading
@@ -48,9 +52,11 @@ gain is correctness before speed... at 129 ADRs the wall-clock saving is not the
 its own Alternatives row rejects caching in terms this decision only completes: "a cache keyed on
 directory path invites staleness across a sync that rewrites ADRs. Threading a value makes the sharing
 explicit." The cache is in any case already per-operation rather than per-process. `cmd/awf/check.go`
-calls `AdvisoryNotes`, `Check`, and `CheckCurrentState` on one `Project` (`:28`, `:37`, `:41`), and each
-re-derives, so a single `awf check` performs three full ADR-corpus and three topic-corpus derivations
-today. Threading one derivation per operation preserves exactly the sharing the field provides.
+calls `AdvisoryNotes`, `Check`, and `CheckCurrentState` on one `Project` (`:28`, `:37`, `:41`), and the
+first two each re-derive both corpora from scratch, so a single `awf check` already performs two full
+cache-driven derivations of each. The third, `CheckCurrentState`, derives independently through the
+snapshot path (`workingCurrentState`, `currentstate.go:136`), which is never cached and is untouched by
+this conversion. Threading one derivation per operation preserves exactly the sharing the field provides.
 
 Where the derivation is genuinely expensive is the topic corpus, not the ADR parse. `topic.LoadCorpus`
 calls `BuildMarkerIndex`, which walks the repository reading every file matching the `currentState.sources`
@@ -66,31 +72,43 @@ contains a second, independent corpus-construction path: `workingCurrentState`
 (`internal/project/currentstate.go:93-111`) builds both corpora from a snapshot tree through
 `currentstate.LoadFromTree`, backing `QueryTopic`, `CheckCurrentState`, `CheckStaged`,
 `ContextForOptions`, and `StagedContextRootOptions`. That path is already operation-owned and threaded,
-and six `adr.NewCorpus` or `adr.LoadCorpus` production sites in the package survive any conversion of the
-fields. A claim asserting that `internal/project` derives its corpora per operation in general would be
+and five `adr.NewCorpus` production sites in the package are independent of these fields and survive any
+conversion of them (a sixth, the `adr.LoadCorpus` call inside `Corpus` at `project.go:485`, is the field
+loader itself and moves with it). A claim asserting that `internal/project` derives its corpora per
+operation in general would be
 either already satisfied or still false; the claim must name the cached derivations it converts.
 
 Second, `topic.Corpus` itself completes construction in two steps for a real reason. `LoadCorpus`
 assembles the corpus, builds the marker index from it, and then writes `c.Markers = markers`
-(`internal/topic/corpus.go:103-111`; the snapshot loader does the same at
+(`internal/topic/corpus.go:102-111`; the snapshot loader does the same at
 `internal/topic/tree.go:66-75`), because `BuildMarkerIndex` needs the assembled corpus to resolve claim
 ids. Since `topic.Corpus` is one of the values this decision threads, an immutability claim phrased as
 "no field written after construction" would condemn the first consumer's own dependency. The claim must
 permit completing construction inside the constructing function.
 
-Two adjacent surfaces need deliberate handling. Reasoned claims carry no mechanical enforcement, so
-ADR-0178's authority commit added a focus item named `dependency-composition-authority` to
-`.awf/agents/adr-reviewer.yaml`, `code-reviewer.yaml`, and `plan-reviewer.yaml`. That item names its
-topic specifically and will not fire for a second one, so a new topic of reasoned claims without a
-parallel focus item has no enforcement path at all; `awf check` validates claim provenance and the
-absence of a proof marker, never claim content. And `focusItems` replaces catalog defaults wholesale, so
-the addition must compare and backfill rather than append blindly.
+Discoverability needs deliberate handling, because every surface ADR-0178 built names its topic by id
+rather than naming the domain. Reasoned claims carry no mechanical enforcement, so ADR-0178's authority
+commit added a focus item named `dependency-composition-authority` to `.awf/agents/adr-reviewer.yaml`,
+`code-reviewer.yaml`, and `plan-reviewer.yaml`; `awf check` validates claim provenance and the absence of
+a proof marker, never claim content, so a new topic of reasoned claims without a parallel focus item has
+no enforcement path at all. And `focusItems` replaces catalog defaults wholesale, so the addition must
+compare and backfill rather than append blindly. The same is true design-side: the workflow chain part
+directs agents changing dependency selection, ownership, or wiring to `code-design/dependency-composition`
+by id, and will not fire for a second topic either.
 
 Unlike ADR-0178, this decision needs no new governance surface. The pathless `code-design` domain, the
-`code-design` commit scope, the glossary entry, and the architecture and development wiring all already
-exist. `dependency-composition:dependency-composition-commit-classification` already assigns
-cross-package code-structure work to the `code-design` scope, so this decision adds no
-commit-classification claim of its own.
+`code-design` commit scope, and the architecture wiring all already exist, so only the topic itself, its
+per-topic pointers, and a glossary term for the new vocabulary are added.
+
+The commit scope does need a meaning correction, though. `.awf/config.yaml` gives `code-design` the
+meaning "dependency composition and cross-package code structure", and
+`dependency-composition:dependency-composition-commit-classification` says the same. That wording was
+written when `code-design` owned one topic about dependencies. It now names a domain, and it fits neither
+of the two commit kinds this pattern series produces: an authority commit that adds a topic is not
+dependency composition, and this decision's conversion is entirely inside `internal/project`, a path the
+`rendering` domain owns, so it is not cross-package either. ADR-0178's own conversion commit was
+genuinely cross-package, reaching `cmd/awf` and `internal/project` together, so the mismatch did not
+surface there.
 
 This decision establishes the pattern and converts one type. Package-level cohesion, including whether a
 method that reads no receiver field should be a function and whether `internal/project` should be split,
@@ -107,8 +125,9 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
    derivations nonconforming debt to sweep.
 
 2. A value that outlives one operation is immutable once construction completes: no field is written
-   outside the function that constructs it. A construction that genuinely needs two steps, because a
-   later field is derived from the assembled value, completes both inside that one function.
+   outside the function that constructs it. That is the whole rule. A construction that genuinely needs
+   more than one step completes every step inside the one function that constructs the value, whether
+   the later field derives from the assembled value or from a separate input.
 
 3. State an operation derives is owned by that operation and threaded explicitly to the consumers that
    need it, rather than stored on a value that outlives the operation. Threading reaches every consumer
@@ -119,36 +138,75 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
    remember to perform. Where such a step exists today, the fix is to give the derivation a lifetime that
    makes staleness unrepresentable, not to document the step more loudly.
 
-5. A derived value has exactly one producer, and a consumer receives it rather than re-deriving it.
+5. Within one operation, a derived value is produced exactly once, and every consumer receives it rather
+   than re-deriving it. The rule counts productions per value per operation, not producers per type, so a
+   type that several unrelated operations legitimately construct is not a counterexample.
 
 6. Convert the three cached derivations on `internal/project.Project` as the concrete first consumer:
    `corpus`, `topics`, and `effSkills`. Derive each in the operation that needs it and thread it to its
    consumers; delete `beginInvocation`; and delete or unexport `Corpus` and `Topics`, whose production
-   callers all become threaded parameters. Derive at the entry of the operations where derivation is
-   already unconditional, and leave `QueryTopic` and the rest of the `workingCurrentState` snapshot path
-   untouched, so no path that short-circuits today gains a derivation it does not need.
+   callers all become threaded parameters.
 
-7. Back the conversion with one structural test that loads the production packages and asserts no method
-   on `*Project` writes a field outside the function that constructs it. Do not use a behavioural
-   "`Check` after `Sync`" assertion as the proof: that property already holds, because `Check` calls
-   `beginInvocation` for exactly that reason, so such a test passes before the change and proves nothing
-   about ownership.
+   Derivation happens once per outermost operation, never once per public entry point. `Check`,
+   `syncReport`, and `AdvisoryNotes` derive at their own entry. `OutputPlan` and `RenderAll` derive only
+   when entered directly, and receive the threaded value when reached from an operation that already
+   derived; neither has a production caller outside `internal/project`, so parameterising them is
+   available. `sweepConfigTree` and `generateDomainDocs` likewise receive rather than derive. This is
+   item 3's intermediate-boundary clause applied by name: without it, `Check` and the `OutputPlan` it
+   calls would each derive, turning one `BuildMarkerIndex` repository walk into two or three.
 
-8. Add one reviewer focus item naming `code-design/state-ownership` to `.awf/agents/adr-reviewer.yaml`,
-   `.awf/agents/code-reviewer.yaml`, and `.awf/agents/plan-reviewer.yaml`, comparing against and
-   backfilling the catalog defaults each list replaces, so the reasoned claims have an enforcement path.
+   Leave `QueryTopic`'s snapshot derivation and the rest of the `workingCurrentState` path unchanged
+   beyond removing its vestigial reset at `topics.go:26`, so the one path that derives no cached corpus
+   today gains nothing.
 
-9. Re-derive every `coverage-ignore` justification that cites the shared cache as its unreachability
-   argument (`sweep.go:119`, `render.go:813`, `output_plan.go:532`, `check.go:446`, `check.go:451`,
-   `check.go:456`, `configreference.go:410`). Threading removes the error return in most cases, which
-   deletes the exclusion; any exclusion that survives carries a justification that no longer names a
-   cache.
+7. Back `code-design/state-ownership:project-derived-state-ownership` with one structural test that loads
+   the production packages and asserts that no production function in `internal/project` writes a
+   `*Project` field outside the function that constructs that value. The assertion covers package
+   functions as well as methods, because `StagedContextRootOptions` is a function. The other four claims
+   are reasoned contracts carrying `Backing: unbacked` and a `Verify:` instruction, with no proof marker.
 
-10. Leave the remaining post-construction writes to `*Project` out of scope and named: `ContextForOptions`
-    writes `universe.Targets` and `universe.Cat` after the literal at `context.go:44-48`, and
-    `StagedContextRootOptions` writes `p.Cfg`, `p.Targets`, and `p.Cat` after the literal at
-    `context.go:61-70`. Both are stepwise construction driven by a real ordering need, and both are
-    bounded future candidates under item 1 rather than conforming sites.
+   Do not use a behavioural "`Check` after `Sync`" assertion as the proof: that property already holds,
+   because `Check` calls `beginInvocation` for exactly that reason, so such a test passes before the
+   change and proves nothing about ownership.
+
+8. Give the topic both a review-side and a design-side anchor. Add one reviewer focus item naming
+   `code-design/state-ownership` to `.awf/agents/adr-reviewer.yaml`, `.awf/agents/code-reviewer.yaml`, and
+   `.awf/agents/plan-reviewer.yaml`, comparing against and backfilling the catalog defaults each list
+   replaces, so the reasoned claims have an enforcement path. Extend the workflow chain part
+   (`.awf/parts/workflow/chain.md`), which already directs agents changing dependency selection to
+   `code-design/dependency-composition`, so that agents changing what a value owns or where derived state
+   lives consult this topic before design or implementation. Add a glossary term for the new vocabulary.
+   The development dependencies part stays unchanged: it is about selecting dependencies, which remains
+   `dependency-composition`'s subject.
+
+9. Re-derive every `coverage-ignore` justification whose unreachability argument rests on a shared cache
+   or on a prior pass having already derived the same value. The known sites are `sweep.go:119`,
+   `render.go:813`, `output_plan.go:532`, `check.go:34`, `check.go:40`, `check.go:446`, `check.go:451`,
+   `check.go:456`, `configreference.go:410`, and `render.go:474`, whose exclusion exists only because the
+   effective skill set is derived twice and so disappears with item 5. Treat that list as known rather
+   than exhaustive: the terminal condition is that no surviving justification in `internal/project` names
+   a shared cache or a prior pass's derivation. Threading removes the error return in most cases, which
+   deletes the exclusion outright.
+
+10. Treat the three remaining stepwise `*Project` constructions as conforming under item 2 and leave them
+    out of the conversion: `Loader.Open` writes `p.Cat` after its literal at `project.go:174`,
+    `ContextForOptions` writes `universe.Targets` and `universe.Cat` after its literal at
+    `context.go:44-49`, and `StagedContextRootOptions` writes `p.Cfg`, `p.Targets`, and `p.Cat` after its
+    literal at `context.go:61-71`. Each write is inside the function that constructs the value and is
+    ordered by a real dependency, so item 2 permits all three. They are named here because item 7's
+    structural test must permit them, and because a reviewer auditing item 2 against its exemplar type
+    will find them.
+
+11. Widen the `code-design` commit scope from dependency composition to code-design authority generally.
+    Change its `meaning` in `.awf/config.yaml` to cover code-design authority and cross-package code
+    structure, and update
+    `code-design/dependency-composition:dependency-composition-commit-classification` to match, leaving
+    its second half (a structural change uses the existing `refactor` type, not a `refactor` scope)
+    unchanged. This lands with the authority batch, not the conversion. Without it the scope's documented
+    meaning covers neither an authority commit that adds a code-design topic nor an intra-package
+    conversion performed under one, so this ADR's own commits would have no correct scope. The conversion
+    commits then use `code-design` rather than the owning domain's `rendering`, because their subject is
+    the code-design authority they apply.
 
 ## State changes
 
@@ -156,6 +214,7 @@ and the four synthetic partial `Project` literals (`currentstate.go:154`, `conte
 - add `code-design/state-ownership:operation-owned-derivation`
 - add `code-design/state-ownership:no-remembered-invalidation`
 - add `code-design/state-ownership:single-derivation-producer`
+- update `code-design/dependency-composition:dependency-composition-commit-classification`
 - add `code-design/state-ownership:project-derived-state-ownership`
 
 ## Consequences
@@ -164,8 +223,8 @@ awf gains a second code-design authority that answers a question `dependency-com
 where a dependency comes from, but what a value keeps afterwards. The two compose, because a threaded
 derivation is a dependency the consumer receives rather than discovers.
 
-The conversion removes a live defect and a latent one. `checkDeadSkillRefs` stops depending on `Check`
-having called `OutputPlan` first, so it can no longer report zero dead skill references from a nil map.
+The conversion removes two latent defects. `Check`'s dead-skill-reference pass stops depending on
+`OutputPlan` having run first, so no future caller can report zero dead skill references from a nil map.
 And the drift oracle stops depending on every future public operation remembering to reset a cache; the
 sixth operation that reads a corpus cannot introduce the staleness the current comment predicts, because
 there is no cache to go stale. Threading also tends to delete error returns, since a parameter cannot
@@ -195,14 +254,22 @@ sidecars is deliberate work, because an appended focus item silently erases the 
 
 One claim is deliberately narrower than its subject. `project-derived-state-ownership` names the cached
 derivations rather than asserting that `internal/project` derives corpora per operation, because the
-`workingCurrentState` snapshot path already does so and six corpus-construction sites in the package
+`workingCurrentState` snapshot path already does so and five corpus-construction sites in the package
 survive the conversion. A reader looking for a blanket guarantee about corpus construction in that
-package will not find one here.
+package will not find one here. Item 5 is scoped the same way, per value per operation rather than per
+producer per type, so the surviving sites are not counterexamples to it either.
 
 The topic's own coverage view will be empty, exactly as `dependency-composition`'s is, because the
 pathless domain declares no selectors and a global topic's applicability is computed against them.
-Discovery works through `awf context`, which attaches global topics to a queried path, and the only
-concrete anchor is the proof marker on the test-backed claim.
+Discovery therefore rests on three pointers that name the topic by id, the three reviewer focus items and
+the workflow chain part, plus `awf context`, which attaches global topics to a queried path. The only
+mechanical anchor is the proof marker on the test-backed claim.
+
+Widening the `code-design` scope reaches outside this decision's own topic: it mutates a claim ADR-0178
+established. That is the intended mechanism for changing a prior decision's current-state claim rather
+than editing the earlier record, but it does mean this ADR's authority batch changes the commit taxonomy
+that governs its own later commits, so the config change, the claim update, and the rendered scope tables
+travel together or `awf check` fails on the rendered workflow doc.
 
 Finally, this decision creates downstream work it does not perform. Package-level cohesion in
 `internal/project` becomes the next code-design pattern, and it now has a stated prerequisite: a value
@@ -214,13 +281,14 @@ whose fields are all construction inputs is far easier to split than one carryin
 |---|---|
 | Keep the caches and document the reset obligation more strongly | The obligation is already documented and already inexact: one of its five call sites is vestigial and another is nested-redundant. Prose cannot be gated. |
 | Keep the caches but add a gate that every public operation resets first | It enforces a mechanism instead of removing the need for one, and it cannot distinguish an operation that reads a corpus from one that does not. |
-| Convert `corpus` and `topics` only, leaving `effSkills` | `effSkills` carries the one live defect and is the only genuine two-producer case, so excluding it would leave the strongest exemplar of two claims unproven and a real bug in place. |
+| Convert `corpus` and `topics` only, leaving `effSkills` | `effSkills` is the only genuine two-production case in the package, so excluding it would leave item 5 with no consumer at all, and would leave its ordering hazard in place. |
 | Include the four synthetic partial `Project` literals and the fourteen zero-field files | That is package cohesion, a separate decision. Including it would make this effort the `internal/project` decomposition rather than its prerequisite. |
 | Prove the claim with a behavioural `Check`-after-`Sync` test | The property already holds today, so the test passes before the change and cannot be written failing first. |
 | Prove the claim with an approved-call-set test, as ADR-0130 did for `ParseDir` | It governs where a corpus is constructed rather than whether a value keeps it, which is not what the claim states. |
 | Fold these rules into `code-design/dependency-composition` | Dependency selection and state lifetime are separate subjects; merging them would make one topic's claims answer two questions and blur which authority a reviewer is applying. |
+| Leave the `code-design` scope meaning alone and commit the conversion as `rendering` | The scope's documented meaning would still cover no authority commit, and a conversion's code-design character would be invisible in its subject line. |
 | Add a generic section on immutability to `docs/maintainable-code-design.md` instead | That document's sections are a fixed list and its value is generic guidance. The whole point of a topic is being specific and mechanically reviewable where the guide cannot be. |
-| Derive eagerly at the entry of every public operation | `tagHealthNotes` returns before deriving when an adopter declares no tags, and `QueryTopic` never touches the fields, so a blanket rule would add a repository walk to operations that currently avoid one. |
+| Derive eagerly at the entry of every public operation | `QueryTopic` derives from the snapshot path and touches neither field, so a blanket rule would add a repository walk to the one operation that currently avoids it; and deriving at a nested entry as well as its caller's would multiply the walk rather than share it. |
 
 ## Status history
 
