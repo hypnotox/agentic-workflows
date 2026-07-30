@@ -260,7 +260,11 @@ and their test suite. No claim mutation: ADR-0180 item 7 records why this conver
   - Update the import list at the top of the file: remove `createPreferenceStore`, add
     `loadPreferenceState`.
 
-  Post-check: `grep -n "preferences\." templates/pi/awf-subagents/index.ts.tmpl` returns no output.
+  Post-check: `grep -n "preferences\.[a-zA-Z]" templates/pi/awf-subagents/index.ts.tmpl` returns no
+  output. The trailing character class is required: a bare `preferences\.` also matches the prose string
+  `"Configure per-role subagent model preferences."` at `:496`, which no rewrite removes, so the
+  unqualified pattern can never reach empty. The narrowed pattern returns exactly the seven real sites
+  (`:466`, `:468`, `:469`, `:470`, `:599`, `:600`, `:601`).
 
   Behaviour that must not change: the notice text and severity in `notifyPreferenceState`, the
   `preferenceNotices` WeakSet dedupe keyed on `ctx.sessionManager`, the blocked-state error thrown by
@@ -291,8 +295,10 @@ and their test suite. No claim mutation: ADR-0180 item 7 records why this conver
   Apply the same last-argument substitution at the other four sites, currently `:237`, `:238`, `:240`,
   and `:242`. Edge case within this task's own site set that must keep its exact assertion: `:237`, the
   undefined-parent-model path, which asserts the thrown message matches `/without an active parent
-  model/` and is the one site whose shape differs from the four registry-failure assertions.
-  Affected-site set: every `resolveChildModel` occurrence in this file other than the import.
+  model/`. The other four are one `assert.deepEqual` on the inherited-routing path (`:234`) and three
+  registry-failure `assert.throws` (`:238` `/unregistered/`, `:240` `/unauthenticated/`, `:242`
+  `/unavailable/`). Affected-site set: every `resolveChildModel` occurrence in this file other than the
+  import.
   Post-check: `grep -n "stateStore" tools/pi-extension-test/tests/index.test.ts` returns no output.
 
 - [ ] **Task 2.6: Rewrite the six `createPreferenceStore` test sites.** The same file constructs a
@@ -540,8 +546,11 @@ Whole-effort acceptance, beyond the per-phase gates:
 
 - `grep -rn "beginInvocation" internal/ cmd/` returns no output.
 - `grep -rn "p\.Corpus()\|p\.Topics()\|p\.effSkills" internal/ cmd/` returns no output.
-- `grep -rn "createPreferenceStore\|PreferenceStore" templates/ tools/ | grep -v node_modules` returns
-  no output.
+- `grep -rnE "PreferenceStore\b" templates/ tools/ | grep -v node_modules` returns no output. The word
+  boundary is required: task 2.2 deliberately RETAINS the `PreferenceStoreDependencies` interface and
+  puts it in `loadPreferenceState`'s signature, so an unanchored `PreferenceStore` alternation matches
+  that surviving identifier forever. `\b` excludes it while still matching `createPreferenceStore`, the
+  `type PreferenceStore =` alias, and the `store: PreferenceStore` parameter, all of which are deleted.
 - `./awf topic code-design/state-ownership` lists five claims, four printing `[backing: unbacked]` and
   one printing `[backing: test]`.
 - `./x check` is clean with the `Backing: test` claim present. That is the check that actually enforces
