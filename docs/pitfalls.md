@@ -1419,5 +1419,66 @@ silently accepted. Before invoking the tool, pass no repository-root prefix,
 backslashes, empty components, `.` or `..` components, or symlink components; the leaf
 must be a bounded singly-linked regular file of valid UTF-8 (ADR-0145, ADR-0175).
 
+## A pathspec commit takes the worktree copy of a shared generated file
+
+_Domains: rendering, tooling_
+
+`git commit <pathspec>` commits the WORKING TREE content of those paths, not the index
+content. When a concurrent session in the same checkout has staged part of a shared
+generated file, the pathspec form silently folds their part into your commit. `.awf/awf.lock`
+is the dangerous case, because every session's `awf render` writes it: on 2026-07-30 another
+session had staged an ADR status flip plus its regenerated `docs/decisions/INDEX.md` plus the
+lock's new `INDEX.md` outputHash, so committing the lock by pathspec without their
+`INDEX.md` would have landed a lock whose recorded hash no file in that commit matched.
+The pre-commit hook does NOT catch this: `awf check --staged` validates the staged UNION,
+which is internally consistent, so the broken commit passes the gate and only the next
+person's `awf check` fails. Neither including their `INDEX.md` (splitting their transaction)
+nor including their ADR (committing their work under your message) is acceptable either.
+Before staging a `MM` lock, diff `git show HEAD:.awf/awf.lock` against the worktree copy
+key-by-key and confirm every changed entry is yours; if it is not, the work has to wait for
+their commit or move to a worktree. The same reasoning covers any generated file two
+sessions both regenerate.
+
+## An ADR's frozen digest and next state-sequence cannot be read directly
+
+_Domains: adr-system_
+
+_Related: ADR-0134, ADR-0177_
+
+Applying a V2 claim operation needs two values `awf check` computes: the frozen
+`content-sha256` for the status event and the next free `state-sequence`. There is no command
+that prints them on demand, and the obvious ways to ask are both blocked, because claim
+provenance is enforced in BOTH directions. With the claim authored and no matching Applied
+operation yet, every `awf check` form fails with "cites ADR-NNNN without an applied add
+operation"; remove the claim to get past that and the proof marker you already placed becomes
+a dangling "unknown claim ID". The working method is to write the status lines with a
+deliberately wrong digest (64 zeros) and let `awf check state` report the computed one, then
+fix the digest and let the duplicate-sequence error report the next free sequence. Both
+errors name the correct value. The digest excludes the Status history, so it is stable across
+the `Implementing` and `Implemented` events and the same value is repeated on both. Do not
+copy a sequence from another ADR or precompute one in a plan: the number moves whenever any
+sibling ADR applies a batch.
+
+## A new catalog agent and a generation bump each trip guards the ADR will not list
+
+_Domains: rendering, config_
+
+_Related: ADR-0177_
+
+ADR-0177 enumerated five machine-forced obligations for adding an `AgentSpec` and a plan
+review added a sixth; the gate then found three more that neither had listed. Budget for the
+full set. `TestConditionalTemplatesHaveFallbackCases` walks EVERY catalog agent template, so
+any template with a conditional needs an `unsetFallbackCases` entry in
+`internal/project/spine_test.go`; a second render with empty data inside your own golden test
+does not satisfy it, because the guard reads the case table, not the test body.
+`TestTemplateSourceResidue` forbids ADR citations in shipped templates (ADR-0082), so a
+comment explaining a change must carry the reasoning without the number. A schema-generation
+bump additionally needs a `minVersionBySchema` entry or EVERY gated command refuses before
+rendering, including the upgrade and gate meant to prove the change, and three literals pin
+the old generation: a `Current() != N` assertion, the joined applied-migration list, and
+`version_test.go`'s highest-generation-equals-Version assertion plus its unmapped-generation
+case. Run `./x gate` early rather than at the phase close, since these fail fast and cost a
+round trip each.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
