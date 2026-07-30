@@ -113,7 +113,7 @@ to any function or message text, so it needed no claim operation of its own.
    `templates/agents/grounding-checker.md.tmpl`. Both keep `RequiresSkills` empty, for the same reason
    `implementer` does: the contract deliberately routes the child into no skill.
 
-2. The rendered explorer body carries the ten runtime-neutral clauses now in the explore branch of
+2. The rendered explorer body carries the eleven runtime-neutral clauses now in the explore branch of
    `rolePrompt`: report-only identity with read and evidence-producing commands only; exactly one
    information need with no bundling and no recursive delegation; the dispatch-discipline sentence that
    independent information needs may run concurrently as separate calls while refinement of an earlier
@@ -159,12 +159,16 @@ to any function or message text, so it needed no claim operation of its own.
    gains `RequiresAgent: "grounding-checker"`. Two mechanical consequences land in the same commit.
    `nonReviewingDispatchers` (`internal/catalog/catalog_test.go:107-110`) is a closed allowlist and
    `TestReviewingSkillSpecsArePaired` errors at `:123` on any non-`reviewing-` skill carrying
-   `RequiresAgent`, so both new pairings fail until that map names them. Nine fixtures enable
-   `exploring` or `brainstorming` with `agents: []` and fail project open until they enable the paired
-   agent: `internal/project/render_tree_test.go:115` and `:141`,
+   `RequiresAgent`, so both new pairings fail until that map names them. Eight fixtures enable
+   `exploring` or `brainstorming` without the paired agent and fail project open until they add it:
+   `internal/project/render_tree_test.go:115` and `:141`,
    `internal/project/skillrefs_test.go:88` and `:102`,
    `internal/project/context_artifacts_test.go:260`, `internal/project/target_test.go:367` and `:455`,
-   `internal/project/project_test.go:1458`, and `internal/migrate/closeenabledset_test.go:82`. The
+   and `internal/migrate/closeenabledset_test.go:82`. Seven of them carry a bare `agents: []`; the
+   exception is `explorationFixtureConfig` at `target_test.go:367`, whose list is populated but predates
+   both new agents. `internal/project/project_test.go:1458` is deliberately not in this list: it pairs
+   `brainstorming` with a `local: true` sidecar precisely to prove that a local artifact skips the
+   closure check, so it must keep passing untouched. The
    `target_test.go:455` fixture must gain `agents: [explorer]` specifically, or item 8's revised
    `TestBoundedExplorationReporting` cannot render the body it asserts against. The `RequiresAgent`
    doc comment (`internal/catalog/catalog.go:57-61`) enumerates the field's users as reviewers plus
@@ -223,10 +227,13 @@ to any function or message text, so it needed no claim operation of its own.
 11. Correct in the same commit the descriptive surfaces that two new `AgentSpec` entries falsify, the
     obligation ADR-0177 item 8 set the precedent for: `README.md:46` (the enumeration "Three review
     agents ... One `implementer` agent", which no longer covers the catalog), `README.md:249` ("and
-    four agents", which becomes six), `README.md:12` (the "independent review agents" framing of the
-    agent set), the agents-key prose in `internal/configspec` that feeds `docs/config-reference.md`,
-    and `cmd/awf/main.go`'s package comment. A bare count bump would reintroduce ADR-0177's own error,
-    so each enumeration is reworded rather than incremented.
+    four agents", which becomes six), and `README.md:12` (the "independent review agents" framing of
+    the agent set). A bare count bump would reintroduce ADR-0177's own error, so each enumeration is
+    reworded rather than incremented. Two surfaces checked and found sound need no edit, recorded so
+    they are not touched reflexively: `internal/configspec`'s agents-key description is generic with no
+    count or enumeration, and its only numeric rendering in `docs/config-reference.md` is a generated
+    enabled-count column that item 12's `./x render` already refreshes; `cmd/awf/main.go`'s package
+    comment names the artifact kinds without counting them.
 
 12. Every status transition on this ADR runs `./x render` and commits the regenerated
     `docs/decisions/INDEX.md` and lock alongside the status change. The implementing commit also adds a
@@ -256,7 +263,7 @@ and no role prose remains inline in the generated extension. Changing what an ex
 grounding-checker child is told becomes a template edit under `awf render` and `awf check` rather than
 a TypeScript string edit invisible to both.
 
-Non-Pi adopters gain the most. The explorer's ten clauses and the grounding-checker's five obligations
+Non-Pi adopters gain the most. The explorer's eleven clauses and the grounding-checker's five obligations
 currently reach only Pi children; as agent artifacts they render for every target, all six of which
 have an `AgentDir`. This is the first time a Codex or Claude adopter's exploration and grounding
 children receive the same contract the Pi ones do, which is why item 5 names both agents in both
