@@ -42,14 +42,18 @@ construction site names its constant; verify with the grep in Task 1.3 rather th
   - `internal/migrate/dropseveritysettings.go`
   - `internal/migrate/dropseveritysettings_test.go`
 - **Modified:**
-  - `internal/audit/audit.go`, `internal/audit/git.go`
+  - `internal/audit/audit.go`, `internal/audit/git.go`, `internal/audit/audit_test.go`,
+    `internal/audit/git_test.go`
   - `cmd/repoaudit/main.go`, `cmd/repoaudit/main_test.go`
   - `cmd/awf/audit.go`, `cmd/awf/audit_test.go`, `cmd/awf/check_test.go`
   - `internal/config/config.go`, `internal/config/config_test.go`, `internal/config/edit_test.go`
-  - `internal/configspec/spec.go`
-  - `internal/migrate/migrate.go`
-  - `internal/project/project.go`, `internal/project/check.go`, `internal/project/currentstate.go`,
-    `internal/project/context.go`
+  - `internal/configspec/spec.go`, `internal/configspec/spec_test.go`
+  - `internal/migrate/migrate.go`, `internal/migrate/dropworkflowtelemetry_test.go`,
+    `internal/migrate/workflowtelemetry_test.go`
+  - `internal/project/project.go`, `internal/project/version_test.go`, `internal/project/check.go`,
+    `internal/project/currentstate.go`, `internal/project/currentstate_test.go`,
+    `internal/project/context.go`, `internal/project/configreference.go`,
+    `internal/project/configreference_test.go`, `internal/project/staged_test.go`
   - `internal/topic/coverage.go`, `internal/topic/coverage_test.go`
   - `internal/currentstate/check.go`, `internal/currentstate/transition.go`,
     `internal/currentstate/check_test.go`
@@ -149,7 +153,9 @@ ADR-0179 stays `Proposed` through this phase. Start from a clean working tree on
   ordering. Do not proceed on a non-empty result.
 
 - [ ] **Task 1.4: Convert `internal/audit` to `severity.Rank`.** In `internal/audit/audit.go`, delete the
-  `type Severity int` block, its `const` block, and its `String()` method (currently at `:23-35`), and add
+  `type Severity int` block, its `const` block, and its `String()` method together with the doc comment
+  above the type (currently `:22-35`; starting at `:23` orphans the comment above an unrelated
+  declaration), and add
   `"github.com/hypnotox/agentic-workflows/internal/severity"` to the import block. Then replace every
   reference within the package:
   - `Severity` as a type (the `Finding.Severity` field and the `scopeSeverity Severity` parameter at
@@ -191,23 +197,37 @@ ADR-0179 stays `Proposed` through this phase. Start from a clean working tree on
   output.
 
 - [ ] **Task 1.6: Convert `cmd/repoaudit` to the shared rank.** Delete the private `type severity int`
-  block, its constants, and its `label()` method (currently `:24-35`), and delete the stale justification
+  block, its constants, and its `label()` method (currently `:24-36`; the method's closing brace is at
+  `:36`, so stopping at `:35` leaves a stray `}`), and delete the stale justification
   comment at `:22-23` that claims repoaudit avoids importing the type because it is standalone tooling: its
   production code already imports `internal/git`. Replace the `sev severity` field on the private `finding`
   struct with `sev severity.Rank`, every `errorSev`/warning constant with `severity.Error`/`severity.Warn`,
   and every `.label()` call with `.String()`. Add the `internal/severity` import. Post-check: `grep -n
   "label()\|errorSev\|type severity" cmd/repoaudit/main.go` returns no output.
 
-- [ ] **Task 1.7: Update the golden output for the token change.** Both audit surfaces now render `warn`
-  where they rendered `warning`. Update every affected expectation in `cmd/awf/audit_test.go` and
-  `cmd/repoaudit/main_test.go`. Do not weaken an assertion to accommodate the change: if a test asserted
-  the literal `warning`, it asserts the literal `warn`. Post-check: `go test ./cmd/... ./internal/audit/...`
+- [ ] **Task 1.7: Update the tests the conversion touches.** Both audit surfaces now render `warn` where
+  they rendered `warning`, and the in-package tests reference the deleted types directly, so they do not
+  compile until converted. Do not weaken an assertion to accommodate the change: if a test asserted the
+  literal `warning` as a rank, it asserts the literal `warn`.
+  - `internal/audit/audit_test.go`: `TestSeverityString` at `:13-19` retires, superseded by
+    `internal/severity/severity_test.go` from Task 1.2. Retype `countRule`'s `sev Severity` parameter at
+    `:23` to `severity.Rank`. Convert the bare `Error`/`Warning` constants at `:90`, `:94`, `:97`, `:100`,
+    `:175`, `:209`, `:241`, `:258`, `:415`, and `:470`.
+  - `internal/audit/git_test.go:327`: convert the bare constant.
+  - `cmd/repoaudit/main_test.go`: `TestSeverityLabel` at `:37-40` retires with the `label()` method Task 1.6
+    deletes. Update the remaining rank expectations from `warning` to `warn`.
+  - `internal/project/staged_test.go`: convert `audit.Error`/`audit.Warning` at `:617`, `:658`, `:685`,
+    and `:746`.
+  - `cmd/awf/audit_test.go`: update every rendered-rank expectation.
+
+  Post-check: `go test ./cmd/... ./internal/audit/... ./internal/project/... ./internal/severity/...`
   passes, and `grep -rn '"warning"' cmd/awf cmd/repoaudit internal/audit` returns no output.
 
 - [ ] **Task 1.8: Give the new package domain ownership and scoped topic coverage.** Without both, the
-  commit introducing the package emits an Uncovered finding, which is at error severity. Add
-  `- internal/severity/**` to the `paths:` list in `.awf/domains/tooling.yaml`, keeping the file's existing
-  order and inserting it adjacent to the other `internal/` entries. Add the same selector to the `paths:`
+  commit introducing the package emits an Uncovered finding, which is at error severity. In
+  `.awf/domains/tooling.yaml`, insert `  - internal/severity/**` immediately after `  - internal/audit/**`.
+  That list is not sorted and the rendered domain doc reproduces file order, so an exact anchor is required
+  for a deterministic committed result. Add the same selector to the `paths:`
   list in `.awf/topics/metadata/tooling/audit-and-snapshots.yaml`:
 
   ```yaml
@@ -244,9 +264,18 @@ in declaration order. The three remaining operations stay pending, so the Implem
   `topicCoverage` and `topicFanout` cases from the `currentState` decode switch (currently `:126-135`),
   delete the `TopicCoverage` and `TopicFanout` fields (`:96-97`), delete the `coverageSet` and `fanoutSet`
   bool fields, and delete from `Validate` both the default assignments and the whole severity validation
-  loop (currently `:541-556`). Because the decoder is strict, a surviving key in an adopter tree now
-  hard-fails at load, which is what the migration in Task 2.4 exists to prevent. Post-check: `grep -n
-  "TopicCoverage\|TopicFanout\|coverageSet\|fanoutSet" internal/config/config.go` returns no output.
+  loop (currently `:542-556`). The `if c.CurrentState != nil {` guard at `:541` must SURVIVE: it also guards
+  the maxima positivity loop at `:557-566`. Because the decoder is strict, a surviving key in an adopter tree
+  now hard-fails at load, which is what the migration in Task 2.4 exists to prevent.
+
+  The generated config reference also reads both fields and will not compile once they are gone. In
+  `internal/project/configreference.go`, delete the `case "currentState.topicCoverage":` and
+  `case "currentState.topicFanout":` arms (currently `:141-150`), leaving the surrounding arms untouched. In
+  `internal/project/configreference_test.go`, delete the two fixture lines at `:200-201` and the two
+  expected table rows at `:231-232`.
+
+  Post-check: `grep -rn "TopicCoverage\|TopicFanout\|coverageSet\|fanoutSet" --include='*.go' internal cmd`
+  returns no output, and `go build ./...` succeeds.
 
 - [ ] **Task 2.2: Remove both configspec entries.** In `internal/configspec/spec.go`, delete the
   `currentState.topicCoverage` entry (`:153-157`) and the `currentState.topicFanout` entry (`:158-162`),
@@ -327,20 +356,68 @@ in declaration order. The three remaining operations stay pending, so the Implem
   Follow the existing per-migration `TestXIsCurrent` convention in the package if one applies to the tip
   migration. Post-check: `go test ./internal/migrate/...` passes.
 
-- [ ] **Task 2.6: Set the schema version floor.** Add `24: "0.27.0"` to `minVersionBySchema` in
-  `internal/project/project.go:42`. Reusing 0.27.0 is legal only because it is unreleased: the newest
-  released section in `changelog/CHANGELOG.md` is `## [0.22.0]`, and 0.27.0 sits under `[Unreleased]`.
-  Confirm that is still true before writing the entry; if 0.27.0 has shipped in the meantime, bump `Version`
-  to `0.28.0` and map 24 to it instead. Leave `Version` unchanged in the unreleased case.
+- [ ] **Task 2.6: Set the schema version floor and re-point the generation-pinned assertions.** Bump
+  `Version` in `internal/project/project.go:31` to `"0.28.0"` and add `24: "0.28.0"` to
+  `minVersionBySchema` at `:42`. Reusing 0.27.0 would be legal, since it is unreleased (the newest released
+  section in `changelog/CHANGELOG.md` is `## [0.22.0]`), but generations 19 through 23 each took their own
+  unreleased minor, and reuse would leave `internal/project/version_test.go:15` pinned at generation 23,
+  where its "highest mapped generation equals `Version`" assertion silently stops meaning anything.
 
-- [ ] **Task 2.7: Remove the keys from both in-repo trees.** Delete the `topicCoverage` and `topicFanout`
-  lines from `.awf/config.yaml` (currently `:53-54`) and from `examples/sundial/.awf/config.yaml`
-  (currently `:68-69`). awf is its own first adopter, so omitting the root tree would leave the project
-  failing its own strict validation. Then run `./x render`, which re-renders both trees, and stage every
-  file it reports including both locks.
+  Four existing assertions pin generation 23 as the tip and fail the moment migration 24 registers. Update
+  all four:
+  - `internal/migrate/dropworkflowtelemetry_test.go:11`: `if Current() != 23` becomes `24`.
+  - `internal/migrate/workflowtelemetry_test.go:64`: append `,drop-severity-settings` to the pinned joined
+    applied-migration list, which currently ends `...,implementer-agent-closure`.
+  - `internal/project/version_test.go:15`: re-point `minVersionBySchema[23]` to `minVersionBySchema[24]`.
+  - `internal/project/version_test.go:29`: the unmapped-generation case asserts
+    `ValidateSchemaMinimumVersion(24, Version)` returns a "no minimum" error; re-point it from 24 to 25.
 
-- [ ] **Task 2.8: Migrate the affected config tests.** Four sites, each different:
+  Post-check: `go test ./internal/migrate/... ./internal/project/...` passes.
+
+- [ ] **Task 2.7: Upgrade both in-repo trees before any render or check.** Registering `{To: 24}` makes
+  `migrate.Current()` report 24 while both committed locks still record `"schemaVersion": 23`.
+  `gateStateFor` in `internal/migrate/migrate.go:220` classifies a registered `To` landing in
+  `(gen, current]` as `gate`, so `cmd/awf/gate.go` refuses EVERY gated command, including `./x render`,
+  `./x check`, and `awf check --staged`, until both trees are upgraded. Run the upgrade before any of them,
+  mirroring the same step in `docs/plans/2026-07-29-rendered-implementer-role-contract-adr-0177-part-a.md`:
+
+  ```bash
+  bindir="$(mktemp -d)"
+  go build -o "$bindir/awf" ./cmd/awf
+  ./awf upgrade
+  (cd examples/sundial && "$bindir/awf" upgrade)
+  rm -rf "$bindir"
+  ```
+
+  Expected terminal state: each invocation announces `drop-severity-settings: removed currentState.topicCoverage`
+  and `... topicFanout`, and both `.awf/awf.lock` and `examples/sundial/.awf/awf.lock` stamp
+  `"schemaVersion": 24`. Let the migration delete the keys from `.awf/config.yaml` and
+  `examples/sundial/.awf/config.yaml` rather than hand-editing them, so this transaction exercises the real
+  migration on the trees it ships. awf is its own first adopter, so omitting the root tree would leave the
+  project failing its own strict validation. Then run `./x render` and stage every file it reports, both
+  locks included.
+
+- [ ] **Task 2.8: Migrate the affected config tests.** Each site differs; work the list to its end rather
+  than stopping at the first few:
   - `internal/config/config_test.go:477` `TestCurrentStateSeverityValidation` retires entirely.
+  - `internal/config/config_test.go:462`, inside `TestCurrentStateDefaultsAndPresence`: drop the
+    `cfg.CurrentState.TopicCoverage != "error" || cfg.CurrentState.TopicFanout != "warn"` conditions from the
+    predicate, keeping the maxima assertions and the `config/configuration:topic-claim-budget-configured`
+    proof marker at `:442` intact.
+  - `internal/configspec/spec_test.go:152-153`, inside `TestCurrentStateKeysPublished`: delete the two
+    hard-listed key paths without retiring the test.
+  - Add a new strict-rejection case, which is what backs the config claim. In
+    `TestCurrentStateStrictValidation`'s strict-nested table (the block at `internal/config/config_test.go:553-558`),
+    add one case per removed key so a tree carrying either is rejected by the decoder's unknown-field path at
+    `internal/config/config.go:148` (`field %s not found in type config.CurrentStateConfig`):
+
+    ```go
+    		{"prefix: x\ncurrentState:\n  topicCoverage: error\n", "topicCoverage"},
+    		{"prefix: x\ncurrentState:\n  topicFanout: warn\n", "topicFanout"},
+    ```
+
+    Note the duplicate-key case at `:555` that currently names `topicCoverage` is dropped by this task, so
+    without these two new cases nothing exercises the rejection and the claim would have no honest proof.
   - the `topicCoverage`/`topicFanout` sub-cases inside `TestCurrentStateStrictValidation` (`:507`),
     `TestCurrentStateRejectsNonStringScalars` (`:591`), and `TestCurrentStateRejectsWrongValueTypes`
     (`:620`) drop; those tests survive with their `sources`, `testGlobs`, `maxTopicsPerPath`, and
@@ -362,12 +439,29 @@ in declaration order. The three remaining operations stay pending, so the Implem
 
 - [ ] **Task 2.9: Migrate the check fixtures that used `off`.** `cmd/awf/check_test.go:115` hard-codes
   `topicFanout: off` inside the shared `coverageYAML` helper while parameterizing `topicCoverage`; the
-  helper's severity parameter becomes dead, so remove the parameter and both keys from the emitted YAML and
-  update its four callers (`:132`, `:149`, `:213`, `:229`) to call it with no argument. `:164` and `:244`
-  set `topicCoverage: off` to suppress coverage entirely; each must now either supply real scoped topic
-  coverage in its fixture or assert the Uncovered findings it produces. Choose per fixture by what the test
-  is about, and do not suppress a finding by weakening an assertion. Post-check: `grep -rn "off" cmd/awf/check_test.go
-  | grep -i "topic"` returns no output, and `go test ./cmd/awf/...` passes.
+  helper's severity parameter becomes dead, so remove the parameter and both keys from the emitted YAML,
+  update its four callers (`:132`, `:149`, `:213`, `:229`) to call it with no argument, and correct the
+  helper's doc comment at `:112`, which still claims the severity is parameterized. `:164` and `:244` set
+  `topicCoverage: off` to suppress coverage entirely; each must now supply real scoped topic coverage in its
+  fixture. Do not suppress a finding by weakening an assertion.
+
+  Two of those callers need more than a signature change. `TestRunCheckCurrentStateWarnNote` at `:148` and
+  `TestRunCheckStagedWarnNote` at `:227` exist to prove a warn-rank coverage finding prints a note WITHOUT
+  failing the command, and they got that by passing `coverageYAML("warn")`. Once coverage is fixed at error,
+  the same fixture (`coverageFiles()` owns `internal/**` for domain alpha and supplies `internal/bar.go`
+  with no scoped topic) produces an Uncovered finding at error, `runCheck` returns non-nil, and both tests
+  hit their `t.Fatalf("warn coverage must not fail...")`. Re-base both on the one warn class that survives,
+  fan-out: extend the fixture with two path-scoped claim-bearing topics that both match a single path and
+  set `maxTopicsPerPath: 1`, so a Fanout finding is emitted at warn while coverage stays satisfied. Each
+  fixture therefore needs, in the alpha domain: two topic metadata files under
+  `.awf/topics/metadata/alpha/`, two matching claim parts under `.awf/topics/parts/alpha/<topic>/current-state.md`
+  each carrying at least one claim (a claimless topic satisfies nothing, per
+  `internal/topic/coverage.go:180`), selectors on both topics matching the same file, and the ADR fixture
+  the existing helper already writes for claim provenance. Keep both tests asserting the note channel and
+  the `awf check: clean` / `awf check --staged: clean` verdicts they assert today.
+
+  Post-check: `grep -n "topicCoverage\|topicFanout" cmd/awf/check_test.go` returns no output, and
+  `go test ./cmd/awf/...` passes.
 
 - [ ] **Task 2.10: Update the documentation this falsifies.** Reality and its documentation land in the
   same commit.
@@ -383,22 +477,32 @@ in declaration order. The three remaining operations stay pending, so the Implem
     migration path. Match the surrounding entries' voice and line width.
   - `internal/project/currentstate.go:26-28`, the doc comment describing coverage findings as each
     carrying "its configured severity, ADR-0134 item 11": correct it to the fixed ranks.
+  - `internal/project/currentstate.go:447-448`, the `coveragePolicy` doc comment saying it "reads the
+    coverage and fan-out severities and the fan-out budget from a currentState config block": rewrite it to
+    say it reads only the fan-out budget from config, with the requested checks and their ranks fixed in
+    code. Task 3.4's post-check grep does not match this wording, so it must be corrected here.
   - the `docs/config-reference.md` and `docs/glossary.md` regenerations in both trees come from `./x render`;
     stage them, never hand-edit them.
 
-- [ ] **Task 2.11: Author the two claims and record the application.** In
-  `.awf/topics/parts/config/configuration/current-state.md`, add in the file's existing alphabetical
-  position:
+- [ ] **Task 2.11: Author the two claims and record the application.** Claim order in a part file renders as
+  file order, and none of these files is strictly alphabetical, so each insertion point is given as an exact
+  preceding heading. In `.awf/topics/parts/config/configuration/current-state.md`, insert immediately after
+  the `scope-config-dual-form` claim block:
 
   ```markdown
   ### `invariant: severity-not-configurable`
 
-  The currentState configuration exposes no severity setting: topic coverage and topic fan-out always evaluate, coverage reporting at error and fan-out at warn, and a tree carrying a currentState.topicCoverage or currentState.topicFanout key is rejected by strict parsing rather than honoured.
+  The currentState configuration exposes no severity setting: no configuration value selects, suppresses, or reranks topic coverage and topic fan-out, where a caller requests one it reports at error and the other at warn, and a tree carrying a currentState.topicCoverage or currentState.topicFanout key is rejected by strict parsing rather than honoured.
   Origin: ADR-0179
   Backing: test
   ```
 
-  In `.awf/topics/parts/config/migrations-and-locks/current-state.md`, add:
+  The sentence is scoped to the configuration surface on purpose: an unqualified "always evaluate" would be
+  false on the uncovered-report path, which requests coverage only, and would contradict the sibling claim
+  Phase 3 adds.
+
+  In `.awf/topics/parts/config/migrations-and-locks/current-state.md`, insert immediately after the
+  `schema-version-lock` claim block:
 
   ```markdown
   ### `invariant: severity-keys-dropped`
@@ -434,12 +538,27 @@ the single-spelling claim only becomes true here, not in Phase 1.
 - [ ] **Task 3.1: Replace `CoverageSeverity` with the shared rank.** In `internal/topic/coverage.go`,
   delete the `type CoverageSeverity string` declaration and its `CoverageError`, `CoverageWarn`, and
   `CoverageOff` constants (currently `:56-65`), and add the `internal/severity` import. Change
-  `CoverageFinding.Severity` to `severity.Rank`, preserving its existing `json:"severity"` tag so the JSON
-  shape is unchanged in value as well as key: `severity.Rank` must marshal as its string spelling, not its
-  integer. If `CoverageFinding` is marshalled anywhere, add a `MarshalJSON` on `Rank` in
-  `internal/severity` returning the quoted `String()` value, with a test, rather than letting the integer
-  leak into output. Determine which applies by running `grep -rn "CoverageFinding" --include='*.go' internal
-  cmd | grep -v _test.go` and inspecting each consumer for JSON encoding.
+  `CoverageFinding.Severity` to `severity.Rank`, keeping its existing `json:"severity"` tag.
+
+  Settled here rather than at execution time: no production consumer marshals a `CoverageFinding` today.
+  Its only uses are the struct field at `internal/project/currentstate.go:33` and `coverageLine` at `:70`,
+  which formats Path, Kind, and Topics only; the one JSON encoder on a topic surface, `cmd/awf/topic.go:57`,
+  encodes `topic.QueryResult`, whose coverage member carries only topic applicability. Even so, add
+  `MarshalJSON` to `internal/severity` now, because `CoverageFinding` declares a json tag on every field and
+  therefore presents itself as a serialization surface: leaving the rank to marshal as `0` or `1` sets a trap
+  for the first caller who encodes one, and a rank that spells itself everywhere including JSON is what the
+  single-spelling claim asserts. Exact addition to `internal/severity/severity.go`:
+
+  ```go
+  // MarshalJSON emits the rank as its spelling, so a serialized finding carries
+  // the same token a rendered one does rather than the underlying integer.
+  func (r Rank) MarshalJSON() ([]byte, error) {
+  	return []byte(`"` + r.String() + `"`), nil
+  }
+  ```
+
+  Extend `internal/severity/severity_test.go` with a test asserting `json.Marshal` of each rank yields
+  `"error"` and `"warn"`, keeping the package at 100% coverage.
 
 - [ ] **Task 3.2: Replace the policy's severities with check selection.** In `internal/topic/coverage.go`,
   replace the `CoveragePolicy` declaration with:
@@ -480,8 +599,17 @@ the single-spelling claim only becomes true here, not in Phase 1.
   ```
 
   `internal/project/currentstate.go:449-450`, set to the fixed constants in Task 2.3, becomes
-  `Coverage: true, Fanout: true` with `MaxTopicsPerPath` still from config. Post-check: `grep -rn
-  "CoverageOff\|CoverageError\|CoverageWarn" --include='*.go' internal cmd` returns no output.
+  `Coverage: true, Fanout: true` with `MaxTopicsPerPath` still from config.
+
+  Two further production consumers of the deleted constants decide the blocking-versus-note routing and must
+  be converted with them, not improvised: `internal/project/currentstate.go:45`
+  (`if c.Severity == topic.CoverageError` in `CurrentStateReport.Findings()`) becomes `severity.Error`, and
+  `:61` (`topic.CoverageWarn` in `Notes()`) becomes `severity.Warn`. The `internal/severity` import is
+  already present in that file from Task 1.5. Also rewrite the `coveragePolicy` doc comment at `:447-448`
+  again if Task 2.10's rewrite still mentions severities at all.
+
+  Post-check: `grep -rn "CoverageOff\|CoverageError\|CoverageWarn\|CoverageSeverity" --include='*.go' internal cmd`
+  returns no output.
 
 - [ ] **Task 3.4: Update the remaining doc comments.** `internal/topic/coverage.go:53-55` documents
   `CoverageOff`'s suppression semantics; `internal/project/currentstate.go:51-52` says "Off findings are
@@ -500,9 +628,15 @@ the single-spelling claim only becomes true here, not in Phase 1.
   // invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks
   ```
 
-  For the spelling claim, add a test asserting that every rank any awf surface renders is exactly `error` or
-  `warn`. Assert it over the rank type's own values plus the audit and coverage finding renderings, and place
-  in the test file whose package owns the assertion:
+  In `internal/project/currentstate_test.go:93-94`, convert the `topic.CoverageError` and `topic.CoverageWarn`
+  literals to `severity.Error` and `severity.Warn`; the file also constructs a `currentstate.Finding` at
+  `:91` that Task 4.4 handles.
+
+  For the spelling claim, extend `internal/severity/severity_test.go`, which is already `package
+  severity_test` and may therefore import `internal/audit` and `internal/topic` without a cycle. Add a test
+  that renders `severity.Error` and `severity.Warn` directly, an `audit.Finding`'s rank, and a
+  `topic.CoverageFinding`'s rank, asserting each renders within the set {`error`, `warn`} and that none
+  renders `warning`. Place the marker there:
 
   ```go
   // invariant: tooling/audit-commands:severity-single-spelling
@@ -510,24 +644,36 @@ the single-spelling claim only becomes true here, not in Phase 1.
 
 - [ ] **Task 3.6: Widen the destination topic's metadata summary.** The
   `invariants/topics-and-markers` summary describes parsing and resolution only and does not cover coverage
-  evaluation policy, which the new claim is about. In
-  `.awf/topics/metadata/invariants/topics-and-markers.yaml`, extend `summary:` to name coverage evaluation
-  policy alongside topic input, claim, and marker parsing and resolution. Then run `./x render` and stage
-  the regenerated topic documents.
+  evaluation policy, which the new claim is about. The summary is machine-consumed: it renders into
+  `docs/topics/invariants/topics-and-markers.md` and appears in every `awf context` authority block, so drift
+  depends on its exact bytes. In `.awf/topics/metadata/invariants/topics-and-markers.yaml`, replace the
+  `summary:` value exactly:
+
+  ```yaml
+  summary: How topic inputs, claims, and their relevance and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
+  ```
+
+  Then run `./x render` and stage the regenerated topic documents.
 
 - [ ] **Task 3.7: Author the two claims and record the application.** In
-  `.awf/topics/parts/tooling/audit-commands/current-state.md`, add in the file's existing alphabetical
-  position:
+  `.awf/topics/parts/tooling/audit-commands/current-state.md`, insert immediately after the
+  `repoaudit-requires-explicit-range` claim block:
 
   ```markdown
   ### `invariant: severity-single-spelling`
 
-  Every finding rank awf reports renders as exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no surface renders warning.
+  Every finding rank awf reports renders as exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no finding rank renders as warning.
   Origin: ADR-0179
   Backing: test
   ```
 
-  In `.awf/topics/parts/invariants/topics-and-markers/current-state.md`, add:
+  The final clause is scoped to the rank deliberately. Both audit verdict summaries still print a
+  `%d warning(s)` count (`cmd/awf/audit.go:58` and `:61`, `cmd/repoaudit/main.go:115`), which ADR-0179 item 3
+  leaves out of scope; an unqualified "no surface renders warning" would be a false obligation the gate
+  cannot catch.
+
+  In `.awf/topics/parts/invariants/topics-and-markers/current-state.md`, insert immediately after the
+  `backed-requires-proof` claim block:
 
   ```markdown
   ### `invariant: coverage-evaluation-selects-checks`
@@ -556,6 +702,13 @@ refactor(code-design): request coverage checks explicitly
 `invariants/current-state-authority:currentstate-handshake-findings-unranked`, then flips ADR-0179 and this
 plan to Implemented in the same green commit.
 
+Commit scope note: the phase removes an exported type and a struct field from `internal/currentstate` and
+adjusts an `internal/project` consumer, which
+`code-design/dependency-composition:dependency-composition-commit-classification` would place under the
+`code-design` scope. The scope is `invariants` because the phase's dominant concern is retiring an
+invariants-domain rank and freezing both governance records; the type removal is the mechanism, not the
+point. `./x gate` cannot arbitrate this, so the choice is stated rather than left implicit.
+
 - [ ] **Task 4.1: Remove the claim-handshake severity.** In `internal/currentstate/check.go`, delete the
   `type Severity int` declaration, its `Error`/`Warn` constants, and its `String()` method (currently
   `:13-25`), and delete the `Severity` field from `Finding`, leaving:
@@ -582,8 +735,11 @@ plan to Implemented in the same green commit.
 
   Affected-site set: every match of `grep -n "Finding{" internal/currentstate/check.go
   internal/currentstate/transition.go`. Both files are in scope; `transition.go` is easy to miss because the
-  type is declared in `check.go`. Post-check: `grep -rn "Finding{Error\|{Error, " internal/currentstate/` returns
-  no output, and `go build ./...` succeeds.
+  type is declared in `check.go`. One cross-package literal is also affected:
+  `internal/project/currentstate_test.go:91` constructs `currentstate.Finding{{Severity: currentstate.Error,
+  Message: ...}}` and becomes `currentstate.Finding{{Message: "handshake broke"}}`. Post-check:
+  `grep -rn "currentstate.Error\|Finding{Error\|{Error, " --include='*.go' internal` returns no output, and
+  `go build ./...` succeeds.
 
 - [ ] **Task 4.3: Simplify the two consumers.** `internal/project/currentstate.go:409` maps every
   current-state finding to `audit.Finding{Severity: severity.Error, ...}` using `f.Message`; it keeps doing
@@ -604,8 +760,8 @@ plan to Implemented in the same green commit.
   Post-check: `go test ./internal/currentstate/... ./internal/project/...` passes.
 
 - [ ] **Task 4.5: Author the final claim.** In
-  `.awf/topics/parts/invariants/current-state-authority/current-state.md`, add in the file's existing
-  alphabetical position:
+  `.awf/topics/parts/invariants/current-state-authority/current-state.md`, insert immediately after the
+  `current-state-sole-active-authority` claim block:
 
   ```markdown
   ### `invariant: currentstate-handshake-findings-unranked`
@@ -661,3 +817,7 @@ Out of scope, recorded during authoring:
   effort, and two of the claims it would otherwise need retire with this plan.
 - `internal/prosegate` and `internal/memorycite` produce findings that carry no rank and are untouched here.
   Their duplicated pinned-exemption comparison is a separate known candidate.
+- The `%d warning(s)` verdict summaries at `cmd/awf/audit.go:58`, `:61`, and `cmd/repoaudit/main.go:115`
+  survive deliberately, per ADR-0179 item 3. They are verdict prose, not a finding rank, so
+  `severity-single-spelling` is scoped to the rank and a later reader should not read the surviving
+  summaries as contradicting it.
