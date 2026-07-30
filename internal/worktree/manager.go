@@ -182,7 +182,7 @@ func (m *Manager) topologyPresent(slug, path string) bool {
 	return err != nil || exists
 }
 
-func (m *Manager) Integrate(slug string) (Result, error) {
+func (m *Manager) Integrate(slug, gateCommand string) (Result, error) {
 	if _, err := m.efforts.Show(slug); err != nil {
 		return Result{}, err
 	}
@@ -244,10 +244,19 @@ func (m *Manager) Integrate(slug string) (Result, error) {
 	if err != nil || strings.TrimSpace(string(base)) == "" {
 		return Result{}, refusalCause("ancestry", "target and effort have no proven common ancestor", false, "inspect repository and branch identity; do not use --allow-unrelated-histories", err)
 	}
+	gateStep := integrationGateStep(gateCommand)
 	if _, err := m.run(m.ctx, m.roots.InvokingRoot, "merge", "--no-ff", "--no-commit", branch(slug)); err != nil {
-		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, "resolve or abort the merge; after resolution run `./awf check --staged`, `./x gate`, commit, and renew terminal review", err)
+		return Result{}, refusalCause("merge-conflict", "divergent integration stopped with visible conflict state", true, "resolve or abort the merge; after resolution run `./awf check --staged`, "+gateStep+", commit, and renew terminal review", err)
 	}
-	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check --staged`, `./x gate`, commit the merge, and renew terminal implementation review"}, nil
+	return Result{Condition: "divergent integration is staged without a commit", ChangedTopology: true, NextAction: "run `./awf check --staged`, " + gateStep + ", commit the merge, and renew terminal implementation review"}, nil
+}
+
+func integrationGateStep(command string) string {
+	command = strings.TrimSpace(command)
+	if command == "" {
+		return "the project gate"
+	}
+	return "`" + command + "`"
 }
 
 func (m *Manager) validateIntegrationFacts(path, slug, target, tip string) error {

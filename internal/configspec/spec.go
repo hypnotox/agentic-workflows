@@ -59,7 +59,7 @@ func VarEntries() []VarEntry {
 // varAvailability holds the configspec-owned availability clause per config
 // var; the parity test pins its key set to the config-var descriptors.
 var varAvailability = map[string]string{
-	"gateCmd":           "Consumed while an enabled artifact's template references it, and by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel).",
+	"gateCmd":           "Consumed while an enabled artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
 	"gateCmdFull":       "Consumed while an enabled artifact's template references it.",
 	"checkCmd":          "Consumed while an enabled artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
 	"commitGateCmd":     "Consumed by the rendered commit-msg hook payload while the hooks singleton is enabled.",
@@ -88,7 +88,7 @@ var keys = []Entry{
 	{
 		Path: "vars", Type: "key → value map", Default: "seeded with every catalog-referenced var as an empty string at init",
 		Description:  "Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is failing drift.",
-		Availability: "Each key is consumed only while an enabled artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it.",
+		Availability: "Each key is consumed only while an enabled artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance.",
 	},
 	{
 		Path: "skills", Type: "string list", Default: "the workflow-core set at init",

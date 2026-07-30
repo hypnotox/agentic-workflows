@@ -366,7 +366,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:0d936267cd0990d26dfa4c808e7ffdb87633050d677a8c5378e635b4375b3ddc",
+      "outputHash": "sha256:f44e91fc04334ab69cc3e731fa3b88aa6b6eaffe4f7da2af3a532e76a93f048d",
       "regenChecked": true
     },
     "docs/decisions/INDEX.md": {

@@ -972,7 +972,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:80e2391254ab84c9e5f05fd52b945d867cee7a17c5b5de47e9fc6a129e5dd7af",
+      "outputHash": "sha256:b01d72fb5483a7c7ed30de956b82777ef0c59569fac443ec90b227011afc932b",
       "regenChecked": true
     },
     "docs/debugging.md": {

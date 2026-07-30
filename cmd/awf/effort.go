@@ -3,9 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
@@ -75,15 +79,34 @@ func runEffort(c *cmdCtx) error {
 		}
 		return writeWorktreeResult(c.stdout, result, err)
 	case "integrate":
+		gateCommand, err := integrationGateCommand(c.root)
+		if err != nil {
+			return err
+		}
 		manager, err := openWorktreeManager(context.Background(), c.root, worktree.Options{})
 		if err != nil {
 			return err
 		}
-		result, err := manager.Integrate(slug)
+		result, err := manager.Integrate(slug, gateCommand)
 		return writeWorktreeResult(c.stdout, result, err)
 	default:
 		return &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate>"}
 	}
+}
+
+func integrationGateCommand(root string) (string, error) {
+	cfg, err := config.Load(config.RootDir(root))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return "", nil
+		}
+		return "", err
+	}
+	command, ok := cfg.Vars["gateCmd"].(string)
+	if !ok {
+		return "", nil
+	}
+	return strings.TrimSpace(command), nil
 }
 
 func validateEffortGrammar(c *cmdCtx) error {
