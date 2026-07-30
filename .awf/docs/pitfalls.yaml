@@ -20,6 +20,17 @@ data:
         resolution status, while a standalone `./x gate` passed immediately before and again
         immediately after. Missing-file and missing-module errors are the tell either way;
         assertion failures are not.
+
+        A third class does present as an assertion failure, so the "assertion failures are not
+        the tell" rule above is necessary but not sufficient. `TestPiRealRuntimeSmoke`
+        (`internal/project/target_test.go`) shells out to `./x pi-test run`, the same container
+        lane the gate runs directly, so `go test ./...` and a concurrent session's gate contend
+        for one container. During ADR-0179 Part B this produced three distinct signatures across
+        one session: `generated Pi runtime smoke failed: exit status 1`, a run reporting 0%
+        TypeScript coverage against a 100% threshold, and one `find: .pi/extensions: No such file
+        or directory` while a concurrent render was mid-prune. Each time the lane passed standalone
+        immediately after. Before diagnosing any of these, run `tools/pi-extension-test/container.sh
+        run` and `go test ./internal/project/ -run TestPiRealRuntimeSmoke` alone on a quiet tree.
     - title: "A claim must not out-claim the filter its own command applies"
       domains: [invariants]
       tags: [invariant-backing, verification-discipline]
@@ -127,6 +138,13 @@ data:
         state-sequence when explicit Applied events exist. The ADR-0148 grounding check caught a
         design that would have scheduled the Implemented flip as its own commit; plans must pin
         both ends of the batch choreography, not just the first.
+
+        Within that one transaction the batch also has to land before the render, not after it:
+        `awf render` refuses a claim citing an ADR with no applied operation ("cites ADR-NNNN
+        without an applied update operation"), so a phase whose task order renders first is
+        blocked until the Applied line exists. `awf check` reports that claim-provenance error
+        ahead of any drift, which also means the documented digest and state-sequence probes only
+        become reachable once the batch line is present, even with a placeholder digest.
     - title: "A schema-generation bump needs `awf upgrade`, not `awf render`"
       domains: [config, tooling]
       tags: [schema-migration, upgrade-flow]
@@ -207,6 +225,33 @@ data:
 
         Exemptions follow default-inclusion semantics (ADR-0080 Decision 7): every exception
         is an explicit entry that itself fails when stale.
+    - title: "Adding a `RequiresAgent` pairing: what the guards force"
+      domains: [rendering]
+      tags: [kind-descriptor, catalog-derived-tests, verification-discipline]
+      body: |
+        Pairing a skill to its dispatched agent falsifies two disjoint families of test, and a plan
+        that enumerates only the first will be wrong. ADR-0179's plan enumerated the first family
+        across two review rounds and a verify pass and was still incomplete at execution.
+
+        The first family is fixtures that fail `Open`: `checkNodeRequirements` errors when an
+        enabled non-local skill's paired agent is missing, so every fixture config enabling that
+        skill needs the agent in its `agents:` list. These name themselves loudly
+        ("skill X requires agent Y"), and a site that upgrades rather than opens needs no edit
+        because the migration path self-heals. A `local: true` sidecar is exempt, since
+        `checkKindAgainstCatalog` skips both the pool and closure checks for one.
+
+        The second family is assertions over a closure or trim result, and these do not mention
+        the pairing at all. `RequiresAgent` is a structural closure edge where a profiled skill's
+        advisory `RequiresSkills` is not, so any assertion that a skill closes to nothing becomes
+        false. In ADR-0179 that was `TestWorkflowProfileNeighborsDoNotCloseRequirements`,
+        `TestScaffoldCatalogTrim`, and `TestCloseEnabledSetAddsExploringFromShippedCatalog`. Each
+        is legitimately falsified and must be re-expressed to expect the agent while still proving
+        the advisory edges stay out; relaxing them instead would discard what they exist to prove.
+
+        So the discriminator for a candidate site is two questions, not one: does it reach `Open`
+        with the skill, and does it assert over a closure or trim result. Derive the set from the
+        failures rather than an enumeration: `go test ./internal/project/ ./internal/migrate/
+        ./internal/catalog/` names every site in both families.
     - title: "Hard-coded counts in domain narratives drift"
       domains: [adr-system]
       tags: [domain-staleness, convention-parts]
@@ -568,6 +613,18 @@ data:
         ordering. When adding or moving a proof marker, read the claim as a conjunction and enumerate
         each status, direction, and failure branch it names. Include at least one refuting case per
         clause; marker presence and a green suite are not evidence of semantic completeness.
+
+        It recurred in ADR-0179 Part B despite this entry, so treat the prose rule as insufficient
+        on its own and verify mechanically. A combined claim covering two rendered agent bodies
+        enumerated roughly twenty clauses while its two golden tests pinned eleven; nine clauses
+        could be deleted from the templates with the whole suite still green. The failure mode is
+        specific to authoring a claim by *moving* existing prose: the clause count grows with the
+        sentence while the proof stays at one representative literal per section. The check is
+        cheap and deterministic, so run it rather than reasoning about it: delete each clause the
+        sentence names, one at a time, and confirm the suite goes red. A clause that survives
+        deletion is unbacked no matter how many markers the claim carries. Note also that a claim
+        quantifying over several artifacts ("neither rendered body carries...") needs its negative
+        assertion on every artifact it quantifies over, not just the first.
     - title: "A Proposed ADR's same-commit state-doc update must not speak in present tense"
       domains: [adr-system]
       tags: [adr-lifecycle, domain-staleness]
