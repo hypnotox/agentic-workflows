@@ -15,6 +15,18 @@ import (
 // invariant: config/migrations-and-locks:orienting-skill-backfill
 func TestOrientingBackfill(t *testing.T) {
 	const announce = "orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)\n"
+	// The claim opens with "the schema-26 migration", so the marked test pins
+	// the generation too; asserting only the behaviour would leave that clause
+	// provable by no test carrying this marker.
+	var found *Migration
+	for i := range registry {
+		if registry[i].To == 26 {
+			found = &registry[i]
+		}
+	}
+	if found == nil || found.Name != "orienting-skill-backfill" {
+		t.Fatalf("generation 26 migration = %+v, want name orienting-skill-backfill", found)
+	}
 	for _, tc := range []struct {
 		name          string
 		cfg           string
