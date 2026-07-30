@@ -411,8 +411,7 @@ duplicating the ADR's rationale.
     in the effort's managed worktree when one exists; append `ADR-0189` to
     `Revised-by:`.
   - In the ADR's `## Status history`, append one middle-batch event (no status
-    change; repeat the latest content stamp; use the next sequence `awf check`
-    reports):
+    change; use the next sequence `awf check` reports):
 
     ```
     - <today>: Applied; state-sequence: <next>; operations: update rendering/guide-and-doc-templates:working-memory-single-home, update rendering/workflow-skill-templates:memory-checkpoint-chain-coverage
@@ -429,7 +428,7 @@ duplicating the ADR's rationale.
   state: `go test ./...` passes and `./x check` is clean.
 
 ```commit
-docs(rendering): worktree-default authority (applies 0189 batch)
+feat(rendering): worktree-default authority (applies 0189 batch)
 ```
 
 Stage templates, parts, claim parts, the ADR, regenerated outputs, and test updates
