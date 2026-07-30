@@ -581,27 +581,18 @@ the single-spelling claim only becomes true here, not in Phase 1.
   `CoverageWarn`, and `CoverageOff` constants (currently `:53-65`; starting at `:56` orphans the doc comment
   above an unrelated declaration, the same trap Tasks 1.4 and 1.6 call out), and add the
   `internal/severity` import. Change
-  `CoverageFinding.Severity` to `severity.Rank`, keeping its existing `json:"severity"` tag.
+  `CoverageFinding.Severity` to `severity.Rank` and DELETE its `json:"severity"` tag, leaving the tags on the
+  other fields untouched.
 
-  Settled here rather than at execution time: no production consumer marshals a `CoverageFinding` today.
-  Its only uses are the struct field at `internal/project/currentstate.go:33` and `coverageLine` at `:70`,
-  which formats Path, Kind, and Topics only; the one JSON encoder on a topic surface, `cmd/awf/topic.go:57`,
-  encodes `topic.QueryResult`, whose coverage member carries only topic applicability. Even so, add
-  `MarshalJSON` to `internal/severity` now, because `CoverageFinding` declares a json tag on every field and
-  therefore presents itself as a serialization surface: leaving the rank to marshal as `0` or `1` sets a trap
-  for the first caller who encodes one, and a rank that spells itself everywhere including JSON is what the
-  single-spelling claim asserts. Exact addition to `internal/severity/severity.go`:
-
-  ```go
-  // MarshalJSON emits the rank as its spelling, so a serialized finding carries
-  // the same token a rendered one does rather than the underlying integer.
-  func (r Rank) MarshalJSON() ([]byte, error) {
-  	return []byte(`"` + r.String() + `"`), nil
-  }
-  ```
-
-  Extend `internal/severity/severity_test.go` with a test asserting `json.Marshal` of each rank yields
-  `"error"` and `"warn"`, keeping the package at 100% coverage.
+  Settled here rather than at execution time: no production consumer marshals a `CoverageFinding`. Its only
+  uses are the struct field at `internal/project/currentstate.go:33` and `coverageLine` at `:70`, which
+  formats Path, Kind, and Topics only; the one JSON encoder on a topic surface, `cmd/awf/topic.go:57`,
+  encodes `topic.QueryResult`, whose coverage member carries only topic applicability. So no `MarshalJSON` is
+  added to `internal/severity`: a serialization method with no production consumer is exactly what
+  `code-design/dependency-composition:concrete-first-consumer` refuses. Dropping the tag alongside it removes
+  the reason the method looked necessary, rather than leaving a tagged field whose value would marshal as `0`
+  or `1`. If a caller ever needs to serialize a rank, it lands with that caller and its spelling method
+  together.
 
 - [ ] **Task 3.2: Replace the policy's severities with check selection.** In `internal/topic/coverage.go`,
   replace the `CoveragePolicy` declaration with:
