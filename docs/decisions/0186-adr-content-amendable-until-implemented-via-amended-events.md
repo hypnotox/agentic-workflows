@@ -98,7 +98,10 @@ land after the record froze.
    data (the `adrStates` Accepted and Implementing rows in internal/catalog/standard.go,
    whose meaning and mutability strings assert the freeze), its transitions section, its
    amendment section (renamed amendment-until-terminal, carrying items 5 and 8), and its
-   notes append-only bullet; the four flip surfaces named in item 7; this project's
+   notes append-only bullet; the four flip surfaces named in item 7; the three plan-freeze
+   surfaces whose co-flip prose item 7 retimes (the writing-plans skill's plan-lifecycle
+   section, the plans guide, and the plans template, which say the plan freezes in the
+   implementation's final commit); this project's
    agent-guide append-only bullet and the adr-system domain narrative; the glossary term
    `State changes`, whose opening word `frozen` item 5 falsifies for unapplied operations;
    and the pitfalls entry and deferred-roadmap item named in Consequences. The rendered
