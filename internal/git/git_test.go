@@ -6,8 +6,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -420,21 +422,62 @@ func TestHeadHash(t *testing.T) {
 	}
 }
 
-func TestChangeCountsDoesNotLeakExecErrors(t *testing.T) {
+func TestChangeCountsExposesOnlySeamAndContextErrors(t *testing.T) {
 	_, dir := gitfixture.InitRepo(t)
 	repo := gitRepo(t, dir)
-	t.Setenv("PATH", t.TempDir())
-	_, _, err := repo.ChangeCounts(testsupport.Context(t))
-	if err == nil {
-		t.Fatal("ChangeCounts succeeded without a git binary")
+	assertNoExecError := func(t *testing.T, err error) {
+		t.Helper()
+		if errors.Is(err, exec.ErrNotFound) {
+			t.Fatalf("ChangeCounts leaked exec.ErrNotFound: %v", err)
+		}
+		var exit *exec.ExitError
+		if errors.As(err, &exit) {
+			t.Fatalf("ChangeCounts leaked *exec.ExitError: %v", err)
+		}
 	}
-	if errors.Is(err, exec.ErrNotFound) {
-		t.Fatalf("ChangeCounts leaked exec.ErrNotFound: %v", err)
+
+	t.Run("missing binary", func(t *testing.T) {
+		t.Setenv("PATH", t.TempDir())
+		_, _, err := repo.ChangeCounts(testsupport.Context(t))
+		if err == nil {
+			t.Fatal("ChangeCounts succeeded without a git binary")
+		}
+		assertNoExecError(t, err)
+	})
+
+	if runtime.GOOS == "windows" {
+		return
 	}
-	var exit *exec.ExitError
-	if errors.As(err, &exit) {
-		t.Fatalf("ChangeCounts leaked *exec.ExitError: %v", err)
-	}
+	t.Run("non-zero exit", func(t *testing.T) {
+		bin := t.TempDir()
+		if err := os.WriteFile(filepath.Join(bin, "git"), []byte("#!/bin/sh\necho seam-failure >&2\nexit 7\n"), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		_, _, err := repo.ChangeCounts(testsupport.Context(t))
+		var command *awfgit.CommandError
+		if !errors.As(err, &command) || command.ExitCode != 7 {
+			t.Fatalf("ChangeCounts command error = %T %v", err, err)
+		}
+		assertNoExecError(t, err)
+	})
+
+	t.Run("deadline", func(t *testing.T) {
+		bin := t.TempDir()
+		script := "#!/bin/sh\nif [ \"$3\" = config ]; then exit 1; fi\nexec sleep 30\n"
+		if err := os.WriteFile(filepath.Join(bin, "git"), []byte(script), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+		ctx, cancel := context.WithTimeout(testsupport.Context(t), 50*time.Millisecond)
+		defer cancel()
+		_, _, err := repo.ChangeCounts(ctx)
+		var command *awfgit.CommandError
+		if !errors.As(err, &command) || !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("ChangeCounts deadline error = %T %v", err, err)
+		}
+		assertNoExecError(t, err)
+	})
 }
 
 func TestChangedPathsRange(t *testing.T) {

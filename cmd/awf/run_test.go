@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -102,11 +103,16 @@ func TestCommandStagesUseIndependentDeadlines(t *testing.T) {
 	first, cancelFirst := newGitCommandContext()
 	second, cancelSecond := newGitCommandContext()
 	defer cancelSecond()
-	if _, ok := first.Deadline(); !ok {
-		t.Fatal("first stage has no deadline")
+	firstDeadline, firstOK := first.Deadline()
+	secondDeadline, secondOK := second.Deadline()
+	if !firstOK || !secondOK {
+		t.Fatalf("stage deadlines present = %v, %v", firstOK, secondOK)
 	}
-	if _, ok := second.Deadline(); !ok {
-		t.Fatal("second stage has no deadline")
+	for name, deadline := range map[string]time.Time{"first": firstDeadline, "second": secondDeadline} {
+		remaining := time.Until(deadline)
+		if remaining < gitCommandTimeout-time.Second || remaining > gitCommandTimeout {
+			t.Fatalf("%s stage deadline remaining = %v, want approximately %v", name, remaining, gitCommandTimeout)
+		}
 	}
 	cancelFirst()
 	if !errors.Is(first.Err(), context.Canceled) || second.Err() != nil {
@@ -137,6 +143,19 @@ func TestCommandStagesUseIndependentDeadlines(t *testing.T) {
 	}
 	if calls != 3 {
 		t.Fatalf("run creates %d stage contexts, want guard, gate, and handler", calls)
+	}
+	raw, err := os.ReadFile("main.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for stage, wiring := range map[string]string{
+		"guard":   "guardProjectState(guardCtx,",
+		"gate":    "gateFn(gateCtx,",
+		"handler": "ctx: handlerCtx,",
+	} {
+		if !bytes.Contains(raw, []byte(wiring)) {
+			t.Errorf("%s stage is not wired to its own context variable %q", stage, wiring)
+		}
 	}
 }
 
