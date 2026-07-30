@@ -234,33 +234,52 @@ function rolePrompt(role: "grounding" | "explore", options: { breadth?: Explorat
   ].join("\n");
 }
 
-async function loadReviewer(deps: ExtensionDependencies, root: string, kind: ReviewKind): Promise<string> {
-  const relative = REVIEWER_PATHS[kind];
-  let content: string;
-  try { content = await deps.readFile(join(root, relative), "utf8"); }
-  catch {
-    throw new Error(`Missing Pi reviewer ${relative}. Enable the matching ${kind}-reviewer agent and run awf render.`);
-  }
-  const parsed = parseFrontmatter<Record<string, unknown>>(content);
-  if (!parsed.body.trim()) throw new Error(`Pi reviewer ${relative} has no instruction body; run awf render.`);
-  return `You are the governed ${kind} reviewer. You are report-only: never edit or commit.\n\n${parsed.body}`;
+// A dispatched role's contract is a rendered agent artifact rather than a literal
+// string here, so the durable prose is reviewable and drift-checked. Three
+// behaviours are shared by every role that loads one: the missing-file error
+// carries an actionable repair, the frontmatter is stripped rather than passed to
+// the child, and an empty instruction body is a hard error instead of a silently
+// contentless prompt. What varies per role is only the wording, so each caller
+// supplies its own noun, repair clause, and prepend.
+interface ContractSource {
+  relative: string;
+  noun: string;
+  repair: string;
+  prepend: string;
 }
 
-// The implementation role's contract is a rendered artifact, like the reviewers'.
-// The per-role prepend carries the commit authority, which the rendered body
-// describes but cannot know for a given call.
-async function loadImplementer(deps: ExtensionDependencies, root: string, allowCommits: boolean): Promise<string> {
+async function loadAgentContract(deps: ExtensionDependencies, root: string, source: ContractSource): Promise<string> {
   let content: string;
-  try { content = await deps.readFile(join(root, IMPLEMENTER_PATH), "utf8"); }
+  try { content = await deps.readFile(join(root, source.relative), "utf8"); }
   catch {
-    throw new Error(`Missing Pi implementer ${IMPLEMENTER_PATH}. Enable the implementer agent and run awf render.`);
+    throw new Error(`Missing Pi ${source.noun} ${source.relative}. ${source.repair}`);
   }
   const parsed = parseFrontmatter<Record<string, unknown>>(content);
-  if (!parsed.body.trim()) throw new Error(`Pi implementer ${IMPLEMENTER_PATH} has no instruction body; run awf render.`);
+  if (!parsed.body.trim()) throw new Error(`Pi ${source.noun} ${source.relative} has no instruction body; run awf render.`);
+  return `${source.prepend}\n\n${parsed.body}`;
+}
+
+function loadReviewer(deps: ExtensionDependencies, root: string, kind: ReviewKind): Promise<string> {
+  return loadAgentContract(deps, root, {
+    relative: REVIEWER_PATHS[kind],
+    noun: "reviewer",
+    repair: `Enable the matching ${kind}-reviewer agent and run awf render.`,
+    prepend: `You are the governed ${kind} reviewer. You are report-only: never edit or commit.`,
+  });
+}
+
+// The per-role prepend carries the commit authority, which the rendered body
+// describes but cannot know for a given call.
+function loadImplementer(deps: ExtensionDependencies, root: string, allowCommits: boolean): Promise<string> {
   const authority = allowCommits
     ? "Commits are allowed when the task requests them; you are the phase owner."
     : "Commits are forbidden; do not change HEAD. You are a helper.";
-  return `You are the governed implementation subagent. ${authority}\n\n${parsed.body}`;
+  return loadAgentContract(deps, root, {
+    relative: IMPLEMENTER_PATH,
+    noun: "implementer",
+    repair: "Enable the implementer agent and run awf render.",
+    prepend: `You are the governed implementation subagent. ${authority}`,
+  });
 }
 
 async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {

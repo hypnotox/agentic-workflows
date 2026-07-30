@@ -736,9 +736,9 @@
     },
     ".pi/extensions/awf-subagents/index.ts": {
       "templateId": "pi/awf-subagents/index.ts.tmpl",
-      "templateHash": "sha256:9f8a2f65747ac79d00b352c46940d34f191467e6cd01d36c307c7ca6f4519acb",
+      "templateHash": "sha256:083884dc1b87ebff537426afffb2e5193ed9163330759e5ced306440ce210914",
       "configHash": "sha256:c2d0c5389c6bf2322256199fd881e0d05730cd408b50c9816f2300e133b247db",
-      "outputHash": "sha256:cfa43f794d507a9ce80ade353f4715109eb7b6d84271882ba34a2eb4ad994157"
+      "outputHash": "sha256:c4e0232b6627ea46918fd39a833c7a27deeb33b795b377273005a28af252515f"
     },
     ".pi/extensions/awf-subagents/model-routing.ts": {
       "templateId": "pi/awf-subagents/model-routing.ts.tmpl",
