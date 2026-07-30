@@ -81,7 +81,11 @@ The test lane splits the same way. Fourteen test files import go-git outside
 cannot express: unmerged index entries, submodule gitlinks, allow-empty commits, add-all
 staging, branch refs), and gitfixture's own signatures return go-git types
 (`*git.Repository`, `plumbing.Hash`), so no single-home claim over test fixtures is possible
-without reshaping its API. gitfixture cannot consume the production seam:
+without reshaping its API. A further eight test files build git state by shelling out to
+git at thirteen sites (`internal/project/context_test.go`, `internal/project/topics_test.go`,
+`internal/worktree/manager_test.go`, `internal/effort/store_test.go`, `cmd/awf/topic_test.go`,
+`cmd/awf/context_test.go`, `cmd/awf/audit_test.go`, `internal/migrate/remove_workflow_residents_test.go`),
+including registered managed worktrees, a state go-git cannot express at all. gitfixture cannot consume the production seam:
 `tooling/quality-gates:testsupport-zero-internal-deps` forbids it importing any internal
 package and explicitly permits go-git within gitfixture, so its carve-out is mechanically
 forced, not stylistic.
@@ -212,14 +216,23 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    A mutation-testing pass over `internal/git` is an advisory post-implementation option,
    not a gate.
 
-10. The test fixture lane converges on the same rule: `internal/testsupport/gitfixture`
-    becomes the only constructor of git fixtures, gains the capabilities the fourteen
-    direct-importing test files need (unmerged index entries, explicit filemodes including
-    gitlinks, allow-empty commits, add-all staging, branch refs), and reshapes its exported
-    signatures to neutral types so consuming tests need no go-git import; all fourteen
-    files convert. gitfixture keeps go-git internally under its
-    `testsupport-zero-internal-deps` carve-out. The false "purely through go-git" assertion
-    at `cmd/awf/testmain_test.go:12` is corrected in the same pass.
+10. The test fixture lane converges on the same rule, totally ("we want to clean
+    everything that interfaces with git in any way"): `internal/testsupport/gitfixture`
+    becomes the only constructor of git fixtures, with two internal lanes behind one
+    neutral API. The go-git lane gains the capabilities the fourteen direct-importing
+    test files need (unmerged index entries, explicit filemodes including gitlinks,
+    allow-empty commits, add-all staging, branch refs); a native-git lane expresses what
+    go-git cannot (registered managed worktrees and their topology), converting the
+    eight test files that build git state by shelling out at thirteen sites. Exported
+    signatures reshape to neutral types so a consuming test needs neither a go-git
+    import nor a git subprocess; all twenty-two files convert. The `fixture-single-home`
+    walker covers both forms, flagging any test file outside its allowlist that imports
+    go-git or constructs a git subprocess; the allowlist is gitfixture itself and
+    `internal/git`'s own test files, which exercise the mechanism the seam owns.
+    gitfixture keeps go-git and process execution internally under its
+    `testsupport-zero-internal-deps` carve-out (the library and the standard library
+    alike are outside-internal dependencies). The false "purely through go-git"
+    assertion at `cmd/awf/testmain_test.go:12` is corrected in the same pass.
 
 11. Claim backing: `all-access-via-seam` (production repo-walker; its allowlist is
     `internal/git/**` plus the gitfixture carve-out), `fixture-single-home` (test-file
@@ -285,8 +298,9 @@ thread a handle, roughly fifteen worktree/effort methods gain or lose parameters
 post-construction test writes are retired in favour of per-instance fakes, and converted
 packages become parallelisable except the isolation and missing-binary suites, which
 `t.Setenv` keeps serial by construction. The gitfixture reshape is the largest single work
-item; it is what the fixture-single-home claim costs, and it was chosen deliberately over
-a staged posture.
+item, now spanning two construction lanes and twenty-two converted files; it is what the
+total fixture-single-home claim costs, and the user chose it deliberately over a staged
+posture, twice.
 
 A later backend migration, either direction, becomes a per-entrypoint decision guarded by
 that entrypoint's contract suite, which is the option value this seam buys. Nothing
@@ -322,7 +336,7 @@ when packages do.
 | go-git-only | Impossible: no worktree lifecycle, no `check-ref-format`, and status semantics that diverge from real git in three documented, paid-for ways. |
 | Keep `cmd/repoaudit` standalone with its own git shim | Rejected by the user ("a production tooling that rolls their own implementation sounds simply bad"); ADR-0073's standalone posture covers `internal/audit` coupling only, and repoaudit already imports `internal/git`. |
 | Bounded-candidate posture instead of whole-area conversion | Rejected by the user: this is the application effort for standing patterns, not an introduction needing an example slice; partial conversion would also force qualified claims instead of statements of completed reality. |
-| Staged fixture-lane conversion (convert the three `PlainInit` sites, leave eleven as candidates) | Rejected by the user in favour of full conversion; a staged claim would be honest but weaker, and the eleven files' exotic states are exactly the capabilities gitfixture should own. |
+| Staged fixture-lane conversion (convert the three `PlainInit` sites, leave the rest as candidates) | Rejected by the user twice: first for the fourteen go-git importers, then for the eight exec-based builders; the exotic states are exactly the capabilities gitfixture should own, and a staged claim would be honest but weaker. |
 
 ## Status history
 
