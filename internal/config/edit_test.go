@@ -494,3 +494,34 @@ func TestAnchorNoSlashGlobsSkipsNonMappingSourceItem(t *testing.T) {
 		t.Errorf("scalar source item must be skipped, mapping one rewritten:\n%s", out)
 	}
 }
+
+func TestHasMapping(t *testing.T) {
+	for _, tc := range []struct {
+		name, src, key string
+		want           bool
+	}{
+		{"mapping value", "prefix: x\ncurrentState:\n  maxTopicsPerPath: 8\n", "currentState", true},
+		{"absent key", "prefix: x\n", "currentState", false},
+		// A key present with a non-mapping value reports false, matching every
+		// editor that declines a foreign shape rather than coercing it.
+		{"scalar value", "prefix: x\ncurrentState: nope\n", "currentState", false},
+		{"sequence value", "prefix: x\ncurrentState: [a]\n", "currentState", false},
+		{"null value", "prefix: x\ncurrentState:\n", "currentState", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := HasMapping([]byte(tc.src), tc.key)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tc.want {
+				t.Errorf("HasMapping(%q, %q) = %v, want %v", tc.src, tc.key, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestHasMappingRefusesMalformedYAML(t *testing.T) {
+	if _, err := HasMapping([]byte("prefix: [\n"), "currentState"); err == nil {
+		t.Fatal("malformed YAML must surface the parse error, not report a bare false")
+	}
+}

@@ -11,8 +11,14 @@ query a single version or a range.
 ### Breaking changes
 
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
-  the `off` value with them. Topic coverage and fan-out now always evaluate, at ranks fixed in
-  code: coverage reports at error and fan-out at warn. A caller that does not want a finding
+  the `off` value with them. A tree that declares a `currentState` block now always evaluates both
+  topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
+  Where the two keys were a present block's only children the migration seeds and announces
+  `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped, since an
+  absent block stops both checks evaluating. That is the one case where `awf upgrade` adds a line to
+  your `config.yaml` instead of only removing one; it materializes the budget that was already in
+  force by default, and the regenerated `docs/config-reference.md` prints that row as `8` rather than
+  `8 (default)`. A caller that does not want a finding
   class no longer suppresses it with a rank, it does not request the check. Every finding rank
   awf reports is now one shared two-member rank spelled `error` or `warn`; the audit surfaces
   that previously printed `warning` for a rank print `warn`, while the `%d warning(s)` verdict

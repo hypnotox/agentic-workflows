@@ -17,8 +17,9 @@ Verify: Topic corpus tests exercise duplicate local slugs across different and i
 
 ### `invariant: coverage-evaluation-selects-checks`
 
-A coverage evaluation caller selects which checks run: coverage and fan-out are requested independently, no rank value suppresses a requested finding, and the uncovered report requests coverage only.
+A coverage evaluation caller selects which checks run: coverage and fan-out are requested independently, an unrequested check produces none of its findings, no rank value suppresses a requested one, and the uncovered report requests coverage only.
 Origin: ADR-0179
+Revised-by: ADR-0180
 Backing: test
 
 ### `invariant: invariant-marker-close-token`

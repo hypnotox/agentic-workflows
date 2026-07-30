@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0180: Preserve the currentState block and correct three severity claim scopes
@@ -151,3 +151,4 @@ than this correction, and ADR-0179 did not take it.
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-30: Implemented; content-sha256: b986a9dcd6b980b900584f5239df66557598e867de3f05db88787a9233b53c0f; state-sequence: 93

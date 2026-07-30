@@ -22,6 +22,7 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 	cases := []struct {
 		name, src, want string
 		wantKeys        []string
+		wantSeed        bool
 	}{
 		{
 			name: "removes both keys, keeps every sibling",
@@ -48,10 +49,20 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 			want: "prefix: ex\nskills: []\n",
 		},
 		{
-			name:     "both keys as the sole children drop the whole block",
+			// The removals would empty the block, and an absent block suppresses
+			// BOTH checks, so the explicit default budget is seeded instead of
+			// letting the block collapse (ADR-0179 item 1).
+			name:     "sole children seed the default budget rather than collapsing",
 			src:      "prefix: ex\ncurrentState:\n  topicCoverage: warn\n  topicFanout: off\nskills: []\n",
-			want:     "prefix: ex\nskills: []\n",
+			want:     "prefix: ex\ncurrentState:\n  maxTopicsPerPath: 8\nskills: []\n",
 			wantKeys: []string{"topicCoverage", "topicFanout"},
+			wantSeed: true,
+		},
+		{
+			name:     "a lone surviving sibling needs no seed",
+			src:      "prefix: ex\ncurrentState:\n  topicCoverage: warn\n  maxClaimsPerTopic: 5\n",
+			want:     "prefix: ex\ncurrentState:\n  maxClaimsPerTopic: 5\n",
+			wantKeys: []string{"topicCoverage"},
 		},
 	}
 	for _, tc := range cases {
@@ -79,8 +90,16 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 					t.Errorf("announcement for %s = %v, want %v (output %q)", key, got, want, out.String())
 				}
 			}
-			if n := strings.Count(out.String(), "\n"); n != len(tc.wantKeys) {
-				t.Errorf("announced %d lines, want %d: %q", n, len(tc.wantKeys), out.String())
+			seedLine := "drop-severity-settings: set currentState.maxTopicsPerPath to 8"
+			if got := strings.Contains(out.String(), seedLine); got != tc.wantSeed {
+				t.Errorf("seed announcement = %v, want %v (output %q)", got, tc.wantSeed, out.String())
+			}
+			wantLines := len(tc.wantKeys)
+			if tc.wantSeed {
+				wantLines++
+			}
+			if n := strings.Count(out.String(), "\n"); n != wantLines {
+				t.Errorf("announced %d lines, want %d: %q", n, wantLines, out.String())
 			}
 			// A replay must neither change the file again nor re-announce.
 			var second bytes.Buffer

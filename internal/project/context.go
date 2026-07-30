@@ -362,7 +362,10 @@ func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) U
 	// Owned-but-uncovered: the report wants coverage gaps and nothing else, so it
 	// requests the coverage check alone. Fan-out is a budget concern the gate
 	// evaluates; asking for it here and discarding the result would be the magic
-	// rank this replaced (ADR-0179).
+	// rank this replaced (ADR-0179). There is deliberately no kind filter below:
+	// filtering an unrequested class is that discarded answer, and without it a
+	// later edit that requests fan-out here fails TestUncovered rather than being
+	// silently swallowed (ADR-0180 item 5).
 	var scoped []string
 	for _, path := range eligible {
 		if inScope(path) {
@@ -370,9 +373,7 @@ func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) U
 		}
 	}
 	for _, f := range topic.EvaluateCoverage(corpus, scoped, topic.CoveragePolicy{Coverage: true, Fanout: false}) {
-		if f.Kind == topic.Uncovered {
-			res.Uncovered = append(res.Uncovered, UncoveredTopic{Path: f.Path, Domain: f.Domain})
-		}
+		res.Uncovered = append(res.Uncovered, UncoveredTopic{Path: f.Path, Domain: f.Domain})
 	}
 
 	// Unowned: eligible paths matched by no domain glob, collapsed to the topmost

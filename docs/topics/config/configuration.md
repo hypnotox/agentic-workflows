@@ -73,8 +73,9 @@ Backing: test
 
 ### `invariant: severity-not-configurable`
 
-The currentState configuration exposes no severity setting: no configuration value selects, suppresses, or reranks topic coverage and topic fan-out, where a caller requests one it reports at error and the other at warn, and a tree carrying a currentState.topicCoverage or currentState.topicFanout key is rejected by strict parsing rather than honoured.
+The currentState configuration exposes no severity setting: no configuration value ranks or suppresses a produced topic coverage or topic fan-out finding, a requested coverage finding always reports at error and a requested fan-out finding always at warn, and a tree carrying a currentState.topicCoverage or currentState.topicFanout key is rejected by strict parsing rather than honoured. Whether the checks run at all is a separate concern: a tree that declares no currentState block requests neither.
 Origin: ADR-0179
+Revised-by: ADR-0180
 Backing: test
 
 ### `invariant: tag-coverage-note`
