@@ -84,6 +84,7 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- `awf effort new` now creates the managed `.awf/worktrees/<slug>` checkout by default and directs execution there; `--no-worktree` keeps the invoking checkout, `--base <ref>` selects the branch base, and effort commands report primary-root-qualified memory paths outside the primary checkout.
 - Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
   each post-Accepted content digest, status events repeat the latest stamp, and terminal review now
   owns the final Implemented flip after findings settle. Existing records remain valid unchanged;

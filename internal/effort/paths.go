@@ -73,3 +73,13 @@ func (p paths) managedWorktree(slug string) string { return filepath.Join(p.work
 func memoryPublicPath(slug string) string {
 	return filepath.ToSlash(filepath.Join(".awf", "efforts", slug, "memory.md"))
 }
+
+// publicMemoryPath reports the owned memory path resolvably: the historical
+// repository-relative form from the primary root, an absolute
+// primary-root-qualified path from anywhere else (ADR-0189).
+func (p paths) publicMemoryPath(slug string) string {
+	if filepath.Clean(p.roots.InvokingRoot) == filepath.Clean(p.roots.PrimaryRoot) {
+		return memoryPublicPath(slug)
+	}
+	return filepath.Join(p.roots.PrimaryRoot, ".awf", "efforts", slug, "memory.md")
+}

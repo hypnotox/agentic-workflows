@@ -16,11 +16,14 @@ type Options struct {
 	Runner Runner
 }
 
-// Result is the line-oriented mutation protocol.
+// Result is the line-oriented mutation protocol plus structured facts
+// for orchestration; String() remains the only text surface.
 type Result struct {
 	Condition       string
 	ChangedTopology bool
 	NextAction      string
+	Path            string
+	Branch          string
 }
 
 func (r Result) String() string {
@@ -163,7 +166,42 @@ func (m *Manager) Add(slug, base string) (Result, error) {
 	if err := exactRegistration(m.ctx, m.run, m.roots.InvokingRoot, path, wantBranch); err != nil {
 		return Result{}, refusalCause("repository-identity", "Git add returned without exact managed registration", true, "inspect actual Git topology and perform safe native-Git cleanup before retrying", err)
 	}
-	return Result{Condition: "managed worktree added for " + slug, ChangedTopology: true, NextAction: "continue the effort in " + path}, nil
+	return Result{
+		Condition: "managed worktree added for " + slug, ChangedTopology: true,
+		NextAction: "continue the effort in " + path, Path: path, Branch: branch(slug),
+	}, nil
+}
+
+// NewEffort publishes the effort residents, then creates its managed
+// worktree via the same standalone Add machinery (ADR-0189). On Add
+// failure it rolls back through restartable finish, removing the effort
+// only when the finish flow proves managed topology absent.
+func (m *Manager) NewEffort(title, base string) (effort.Record, Result, error) {
+	record, err := m.efforts.New(title)
+	if err != nil {
+		return effort.Record{}, Result{}, err
+	}
+	result, addErr := m.Add(record.Slug, base)
+	if addErr == nil {
+		return record, result, nil
+	}
+	return effort.Record{}, Result{}, m.rollback(record.Slug, addErr)
+}
+
+// rollback composes the one creation failure from the structured finish
+// outcome and the managed-topology classification, never from error prose.
+func (m *Manager) rollback(slug string, addErr error) error {
+	finishResult, finishErr := m.efforts.Finish(slug)
+	switch {
+	case finishErr == nil:
+		return fmt.Errorf("worktree creation failed: %w; effort %s rolled back; next action: fix the reported cause and retry `awf effort new`", addErr, slug)
+	case errors.Is(finishErr, effort.ErrManagedTopologyPresent):
+		return fmt.Errorf("worktree creation failed: %w; effort %s retained: managed topology remains; next action: inspect `git worktree list --porcelain`, clean up with native Git or `awf effort worktree remove %s`, then retry `awf effort worktree add %s` or finish the effort", addErr, slug, slug, slug)
+	case finishResult.Renamed:
+		return fmt.Errorf("worktree creation failed: %w; effort %s rollback interrupted after rename: %w; next action: retry `awf effort finish %s`", addErr, slug, finishErr, slug)
+	default:
+		return fmt.Errorf("worktree creation failed: %w; effort %s retained: rollback failed: %w; next action: resolve the rollback failure, then retry `awf effort worktree add %s` or `awf effort finish %s`", addErr, slug, finishErr, slug, slug)
+	}
 }
 
 func (m *Manager) topologyPresent(slug, path string) bool {

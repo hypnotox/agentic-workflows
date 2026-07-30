@@ -30,6 +30,9 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 		t.Fatalf("add result = %#v", added)
 	}
 	managed := filepath.Join(root, ".awf", "worktrees", "managed-result")
+	if added.Path != managed || added.Branch != "awf/managed-result" || !strings.Contains(added.NextAction, added.Path) {
+		t.Fatalf("add facts = %#v, want path %q and branch awf/managed-result named by the next action", added, managed)
+	}
 	writeWorktreeFile(t, filepath.Join(managed, "effort.txt"), "effort\n")
 	commitWorktree(t, managed, "effort")
 
@@ -219,6 +222,152 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	if _, err := service.Show("partial-add"); err != nil {
 		t.Fatalf("complete effort changed by add failure: %v", err)
 	}
+}
+
+func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
+	root := initWorktreeRepo(t, "sha1")
+	manager, err := Open(context.Background(), root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, result, err := manager.NewEffort("Default creation", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	managed := filepath.Join(root, ".awf", "worktrees", "default-creation")
+	if record.Slug != "default-creation" || record.Title != "Default creation" {
+		t.Fatalf("record = %#v", record)
+	}
+	if !result.ChangedTopology || result.Path != managed || result.Branch != "awf/default-creation" {
+		t.Fatalf("result = %#v, want the managed path %q on awf/default-creation", result, managed)
+	}
+	if info, statErr := os.Lstat(managed); statErr != nil || !info.IsDir() {
+		t.Fatalf("managed checkout absent: %v", statErr)
+	}
+	if !worktreeBranchExists(t, root, "default-creation") {
+		t.Fatal("managed branch absent")
+	}
+	if _, showErr := manager.efforts.Show("default-creation"); showErr != nil {
+		t.Fatalf("effort resident absent: %v", showErr)
+	}
+}
+
+func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
+	t.Run("rolled back", func(t *testing.T) {
+		root := initWorktreeRepo(t, "sha1")
+		manager, err := Open(context.Background(), root, Options{Runner: runnerFailingPrefix(nativeRunner, "worktree add")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = manager.NewEffort("Rolled back", "")
+		if err == nil || !strings.Contains(err.Error(), "effort rolled-back rolled back") || !strings.Contains(err.Error(), "retry `awf effort new`") {
+			t.Fatalf("rollback error = %v", err)
+		}
+		if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "rolled-back")); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("rolled-back effort resident remains: %v", statErr)
+		}
+	})
+
+	t.Run("retained with topology", func(t *testing.T) {
+		root := initWorktreeRepo(t, "sha1")
+		runner := func(ctx context.Context, directory string, args ...string) ([]byte, error) {
+			out, err := nativeRunner(ctx, directory, args...)
+			if len(args) >= 2 && args[0] == "worktree" && args[1] == "add" && err == nil {
+				return nil, errors.New("injected post-add failure")
+			}
+			return out, err
+		}
+		manager, err := Open(context.Background(), root, Options{Runner: runner})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = manager.NewEffort("Retained topology", "")
+		if err == nil || !strings.Contains(err.Error(), "retained: managed topology remains") || !strings.Contains(err.Error(), "git worktree list --porcelain") {
+			t.Fatalf("retained error = %v", err)
+		}
+		if _, showErr := manager.efforts.Show("retained-topology"); showErr != nil {
+			t.Fatalf("retained effort was removed: %v", showErr)
+		}
+	})
+}
+
+func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		stage   string
+		wants   []string
+		removed bool
+	}{
+		{
+			name:  "rollback failed before rename",
+			stage: "finish.rename",
+			wants: []string{"retained: rollback failed", "retry `awf effort worktree add retained-rollback`"},
+		},
+		{
+			name:    "interrupted after rename",
+			stage:   "finish.root-fsync",
+			wants:   []string{"rollback interrupted after rename", "retry `awf effort finish retained-rollback`"},
+			removed: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := initWorktreeRepo(t, "sha1")
+			manager := managerWithFaultingEfforts(t, root, runnerFailingPrefix(nativeRunner, "worktree add"), test.stage)
+			_, _, err := manager.NewEffort("Retained rollback", "")
+			if err == nil {
+				t.Fatal("faulted rollback reported success")
+			}
+			for _, want := range test.wants {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("error %v does not report %q", err, want)
+				}
+			}
+			_, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "retained-rollback"))
+			if test.removed != errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("active resident presence = %v, want removed=%v", statErr, test.removed)
+			}
+		})
+	}
+}
+
+func TestNewEffortReturnsResidentFailuresBeforeAnyTopology(t *testing.T) {
+	root := initWorktreeRepo(t, "sha1")
+	var log []string
+	manager, err := Open(context.Background(), root, Options{Runner: recordingWorktreeRunner(nativeRunner, &log)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, result, err := manager.NewEffort("   ", "")
+	if err == nil || !strings.Contains(err.Error(), "invalid outcome title") {
+		t.Fatalf("blank title error = %v", err)
+	}
+	if record != (effort.Record{}) || result != (Result{}) {
+		t.Fatalf("record=%#v result=%#v, want zero values", record, result)
+	}
+	for _, entry := range log {
+		if strings.HasPrefix(entry, "worktree add") {
+			t.Fatalf("add was attempted after a resident failure: %v", log)
+		}
+	}
+}
+
+func managerWithFaultingEfforts(t *testing.T, root string, runner Runner, stage string) *Manager {
+	t.Helper()
+	manager, err := Open(context.Background(), root, Options{Runner: runner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := effort.Open(context.Background(), root, effort.Options{Fault: func(got string) error {
+		if got == stage {
+			return errors.New("injected " + stage)
+		}
+		return nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.efforts = service
+	return manager
 }
 
 func TestResolveAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
