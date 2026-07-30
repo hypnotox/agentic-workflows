@@ -1,6 +1,7 @@
 paths:
   - cmd/**
   - internal/audit/**
+  - internal/severity/**
   - internal/coverage/**
   - internal/changelog/**
   - internal/evals/**

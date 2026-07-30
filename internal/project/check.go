@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/refs"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // AdvisoryNotes returns the non-failing render advisories in print order - the
@@ -625,7 +626,7 @@ func (p *Project) checkPlans() ([]manifest.Drift, error) {
 		}
 		for _, sub := range pl.CommitSubjects {
 			for _, f := range audit.CheckPlannedSubject(sub, aset) {
-				if f.Severity == audit.Error {
+				if f.Severity == severity.Error {
 					drift = append(drift, manifest.Drift{Path: path, Kind: "plan-commit-subject", Detail: f.Detail})
 				}
 			}
@@ -653,7 +654,7 @@ func (p *Project) planCommitScopeNotes() ([]string, error) {
 		}
 		for _, sub := range pl.CommitSubjects {
 			for _, f := range audit.CheckPlannedSubject(sub, aset) {
-				if f.Severity == audit.Warning {
+				if f.Severity == severity.Warn {
 					notes = append(notes, fmt.Sprintf("%s/%s: planned commit %s", rel, pl.Filename, f.Detail))
 				}
 			}

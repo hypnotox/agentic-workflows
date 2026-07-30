@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -401,12 +402,12 @@ func (p *Project) auditTransitions(base, head string) ([]audit.Finding, error) {
 	for _, c := range commits {
 		before, after, err := p.rangePairUniverses(c.Hash)
 		if err != nil {
-			out = append(out, audit.Finding{Severity: audit.Warning, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
+			out = append(out, audit.Finding{Severity: severity.Warn, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject,
 				Detail: "could not load the current-state universes for this commit: " + err.Error()})
 			continue
 		}
 		for _, f := range currentstate.CheckPair(before, after) {
-			out = append(out, audit.Finding{Severity: audit.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
+			out = append(out, audit.Finding{Severity: severity.Error, Rule: currentStateTransitionRule, Commit: c.Hash, Subject: c.Subject, Detail: f.Message})
 		}
 	}
 	return out, nil

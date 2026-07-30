@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hypnotox/agentic-workflows/internal/audit"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 func runAudit(root, rangeArg string, stdout io.Writer) error {
@@ -29,7 +29,7 @@ func runAudit(root, rangeArg string, stdout io.Writer) error {
 	}
 	errs := 0
 	for _, f := range findings {
-		if f.Severity == audit.Error {
+		if f.Severity == severity.Error {
 			errs++
 		}
 		loc := f.Commit
