@@ -96,6 +96,9 @@ Apply all lenses to every plan:
 **dependency-composition-authority**: when a plan changes dependency selection, ownership, or wiring, consult code-design/dependency-composition and reject speculative capability or a capability without one concrete first consumer
 
 
+**state-ownership-authority**: when a plan changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
+
+
 
 ## Doc-currency checklist
 
