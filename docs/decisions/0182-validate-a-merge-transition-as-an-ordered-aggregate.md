@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0182: Validate a merge transition as an ordered aggregate
@@ -203,3 +203,4 @@ this correction.
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-30: Implemented; content-sha256: acf8eb3763f7ffcd62787c43b0ba524aaf8af7818ff44bce696dac5faf2a39ac; state-sequence: 92

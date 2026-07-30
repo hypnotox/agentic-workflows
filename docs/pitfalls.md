@@ -191,14 +191,21 @@ _Domains: adr-system, tooling_
 
 A divergent managed-worktree merge presents the effort branch as one staged change against
 the target branch's first parent. If both branches independently consumed current-state
-sequences, the effort's Applied events can collide with the target's sequence numbers, and
-the merge endpoint can appear to append multiple application batches in one transition.
-`awf check --staged` correctly rejects both conditions. Do not bypass the check or mutate
-frozen ADR meaning. Abort the merge, replay the effort commits onto the current target in
-their original transaction order, assign the next available sequence to each Applied event,
-regenerate derived files, rerun the gate, and renew terminal review over the rewritten
-combined history before fast-forward integration. ADR-0178 hit this when concurrent ADR-0177
-consumed sequences 86 and 87, so ADR-0178 had to move to 88 and 89.
+sequences, the effort's Applied events collide with the target's sequence numbers, and
+`awf check --staged` correctly rejects the merge: the global state-sequence namespace must
+stay contiguous, and that requirement is deliberately retained for a merge (ADR-0182). Do not
+bypass the check or mutate frozen ADR meaning. Renumber the effort's Applied events to the
+next available sequences, or replay the effort commits onto the current target in their
+original transaction order, then regenerate derived files, rerun the gate, and renew terminal
+review before integrating. ADR-0178 hit this when concurrent ADR-0177 consumed sequences 86
+and 87, so ADR-0178 had to move to 88 and 89; the 2026-07-30 severity effort hit it again and
+had to move five batches.
+
+Carrying several application batches is NOT one of the rejected conditions. Before ADR-0182 a
+merge was also refused for appending more than one batch to a single ADR and for targeting one
+claim with more than one operation, which an incrementally-applied ADR and a follow-up ADR
+revising an earlier claim both do legitimately. Those are now validated as an ordered
+aggregate rather than refused, so a merge that only trips them needs no replay.
 
 ## go-git status ignores the global and system gitignore
 

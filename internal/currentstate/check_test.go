@@ -163,10 +163,10 @@ func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 
 	before := uni([]adr.ADR{baseX, baseY, proposed}, claim("d/t:x", "0136"), claim("d/t:y", "0137"))
 	afterApplied := uni([]adr.ADR{baseX, baseY, implementing}, claim("d/t:y", "0137"))
-	if f := currentstate.CheckPair(before, afterApplied); len(f) != 0 {
+	if f := currentstate.CheckPair(before, afterApplied, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("applied V2 remove pair rejected:\n%s", messages(f))
 	}
-	if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{baseX, baseY, implementing}, claim("d/t:x", "0136"), claim("d/t:y", "0137")))); !strings.Contains(got, "removes claim d/t:x") {
+	if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{baseX, baseY, implementing}, claim("d/t:x", "0136"), claim("d/t:y", "0137")), currentstate.AuthoredCommit)); !strings.Contains(got, "removes claim d/t:x") {
 		t.Fatalf("Applied event without required removal was accepted:\n%s", got)
 	}
 
@@ -174,7 +174,7 @@ func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 	abandoned.Status = "Abandoned"
 	abandoned.History = append(append([]adr.HistoryEvent(nil), implementing.History...), v2status("Abandoned"))
 	afterAbandoned := uni([]adr.ADR{baseX, baseY, abandoned}, claim("d/t:y", "0137"))
-	if f := currentstate.CheckPair(afterApplied, afterAbandoned); len(f) != 0 {
+	if f := currentstate.CheckPair(afterApplied, afterAbandoned, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("abandonment after applied remove rejected:\n%s", messages(f))
 	}
 	if f := currentstate.Check([]adr.ADR{baseX, baseY, abandoned}, topics(claim("d/t:y", "0137"))); len(f) != 0 {

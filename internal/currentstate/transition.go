@@ -25,6 +25,22 @@ func (l Loaded) Universe() Universe {
 	return Universe{ADRs: l.ADRs, Topics: l.Topics.All()}
 }
 
+// TransitionMode selects which contract CheckPair applies to a pair.
+type TransitionMode int
+
+const (
+	// AuthoredCommit is the strict per-step contract: one commit is one
+	// authoring step, so an ADR appends at most one batch, a claim is the
+	// target of at most one operation, and a Status history grows by the fixed
+	// one-or-two-event shape.
+	AuthoredCommit TransitionMode = iota
+	// MergeAggregate is the contract for a merge, which is one Git commit but
+	// the aggregate of a branch's commits. Several batches, a claim's ordered
+	// operation chain, and a multi-step Status history are each legal when they
+	// form a legal ordered chain (ADR-0182).
+	MergeAggregate
+)
+
 // CheckPair validates the current-state transition from the before universe to
 // the after universe (ADR-0135): every current-state-v1 ADR status change across
 // the pair is a legal lifecycle edge, and the claim add/update/remove mutations
@@ -36,19 +52,20 @@ func (l Loaded) Universe() Universe {
 // operation with no matching mutation are both rejected. It also runs the full
 // after-state static Check, so a legal transition still lands in a valid state.
 // Parsed record formats identify the closed migration bootstrap. Findings are
-// returned sorted by message.
-func CheckPair(before, after Universe) []Finding {
+// returned sorted by message. The mode selects the per-step or aggregate
+// contract; see TransitionMode.
+func CheckPair(before, after Universe, mode TransitionMode) []Finding {
 	var findings []Finding
 	findings = append(findings, Check(after.ADRs, after.Topics)...)
-	findings = append(findings, checkTransitions(before.ADRs, after.ADRs)...)
-	findings = append(findings, checkMutations(before, after)...)
+	findings = append(findings, checkTransitions(before.ADRs, after.ADRs, mode)...)
+	findings = append(findings, checkMutations(before, after, mode)...)
 	sort.Slice(findings, func(i, j int) bool { return findings[i].Message < findings[j].Message })
 	return findings
 }
 
 // checkTransitions enforces frozen content, stable-history prefix preservation,
 // and the format-specific event shape for every governed record pair.
-func checkTransitions(before, after []adr.ADR) []Finding {
+func checkTransitions(before, after []adr.ADR, mode TransitionMode) []Finding {
 	beforeByNum := byNumber(before)
 	afterByNum := byNumber(after)
 	var findings []Finding
@@ -78,7 +95,7 @@ func checkTransitions(before, after []adr.ADR) []Finding {
 		if !adr.FrozenContentEqual(b, a) {
 			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s violates the frozen-content rule: canonical decision content changed after Proposed", a.Number)})
 		}
-		if !adr.HistoryTransitionValid(b, a) {
+		if !historyTransitionValid(b, a, mode) {
 			shape := "Status history must remain equal at the same status or append exactly one entry for a legal transition"
 			if a.IsV2() {
 				shape = "prior events must remain an exact prefix and the transition must append the required status/Applied event shape"
@@ -98,9 +115,18 @@ func checkTransitions(before, after []adr.ADR) []Finding {
 
 // pairOp is one operation an ADR reaching Implemented across the pair declares
 // over a claim, tagged with the implementing ADR number.
+// opNetNoop is the net effect of a chain that both adds and removes a claim
+// within one aggregate: the claim must be absent on both sides. It is internal
+// to the fold and never appears in an ADR.
+const opNetNoop adr.OpVerb = "net-noop"
+
 type pairOp struct {
 	verb adr.OpVerb
 	adr  string
+	// updaters lists the updating ADRs of a folded net-update chain, in
+	// sequence order. Empty for every other verb and for an authored commit,
+	// where the single updating ADR is `adr`.
+	updaters []string
 }
 
 // checkMutations reconciles the claim add/update/remove mutations between the two
@@ -108,8 +134,8 @@ type pairOp struct {
 // across the pair. Every union of an operation ID and a mutated claim ID is
 // classified once, so an operation with no mutation and a mutation with no
 // operation are both surfaced.
-func checkMutations(before, after Universe) []Finding {
-	ops, dups, batchFindings := pairOps(before.ADRs, after.ADRs)
+func checkMutations(before, after Universe, mode TransitionMode) []Finding {
+	ops, dups, batchFindings := pairOps(before.ADRs, after.ADRs, mode)
 	beforeClaims := claimMap(before.Topics)
 	afterClaims := claimMap(after.Topics)
 
@@ -131,7 +157,7 @@ func checkMutations(before, after Universe) []Finding {
 				findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s removes claim %s, which did not exist before this transition", op.adr, id)})
 			}
 		case hasOp && op.verb == adr.OpUpdate:
-			findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter)...)
+			findings = append(findings, checkUpdate(op.adr, id, bcl, acl, hasBefore, hasAfter, op.updaters...)...)
 		default:
 			findings = append(findings, checkUnmatchedMutation(after.ADRs, id, bcl, acl, hasBefore, hasAfter)...)
 		}
@@ -147,7 +173,7 @@ type appendedBatch struct {
 
 // pairOps derives only newly appended batches. It validates one batch per ADR,
 // cross-batch target uniqueness, and next-consecutive global sequencing.
-func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
+func pairOps(before, after []adr.ADR, mode TransitionMode) (map[string]pairOp, []string, []Finding) {
 	beforeByNum := byNumber(before)
 	var batches []appendedBatch
 	var findings []Finding
@@ -186,7 +212,7 @@ func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
 			continue
 		}
 		added := afterBatches[beforeCount:]
-		if len(added) > 1 {
+		if len(added) > 1 && mode == AuthoredCommit {
 			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s appends %d application batches; at most one new batch is allowed per transition", a.Number, len(added))})
 		}
 		for _, batch := range added {
@@ -200,30 +226,101 @@ func pairOps(before, after []adr.ADR) (map[string]pairOp, []string, []Finding) {
 			findings = append(findings, Finding{Error, fmt.Sprintf("ADR-%s application batch has state-sequence %d; expected next sequence %d", batch.adr, batch.sequence, expected)})
 		}
 	}
-	ops := map[string]pairOp{}
-	dupSet := map[string]bool{}
+	// Batches are already in sequence order, so appending here yields each
+	// claim's operation chain in the order the ADRs declared it.
+	chains := map[string][]pairOp{}
+	order := []string{}
 	for _, batch := range batches {
 		for _, operation := range batch.ops {
-			if _, exists := ops[operation.ID]; exists {
-				dupSet[operation.ID] = true
-				continue
+			if _, seen := chains[operation.ID]; !seen {
+				order = append(order, operation.ID)
 			}
-			ops[operation.ID] = pairOp{verb: operation.Verb, adr: batch.adr}
+			chains[operation.ID] = append(chains[operation.ID], pairOp{verb: operation.Verb, adr: batch.adr})
 		}
 	}
-	dups := make([]string, 0, len(dupSet))
-	for id := range dupSet {
-		dups = append(dups, id)
+	sort.Strings(order)
+	ops := map[string]pairOp{}
+	dups := []string{}
+	for _, id := range order {
+		chain := chains[id]
+		if len(chain) == 1 {
+			ops[id] = chain[0]
+			continue
+		}
+		if mode == AuthoredCommit {
+			dups = append(dups, id)
+			continue
+		}
+		net, reason := foldChain(chain)
+		if reason != "" {
+			findings = append(findings, Finding{Error, fmt.Sprintf("claim %s has an illegal operation chain in this transition: %s", id, reason)})
+			continue
+		}
+		ops[id] = net
 	}
-	sort.Strings(dups)
 	return ops, dups, findings
+}
+
+// historyTransitionValid applies the Status-history contract the mode selects:
+// the fixed one-or-two-event shape for an authored commit, append-only prefix
+// preservation for a merge, whose appended events were already proven a legal
+// ordered chain when the record parsed (ADR-0182 item 7).
+func historyTransitionValid(before, after adr.ADR, mode TransitionMode) bool {
+	if mode == MergeAggregate {
+		return adr.HistoryTransitionValidAggregate(before, after)
+	}
+	return adr.HistoryTransitionValid(before, after)
+}
+
+// foldChain reduces a claim's ordered operation chain to the net effect the pair
+// must show, or names why the chain is illegal. Taken in sequence order a legal
+// chain admits at most one add, which must be first, at most one remove, which
+// must be last, and any number of updates between them; one ADR may not update
+// the same claim twice, which update-requires-substance already forbids by
+// requiring an update to append its ADR once (ADR-0182 item 6).
+func foldChain(chain []pairOp) (pairOp, string) {
+	var updaters []string
+	hasAdd, hasRemove := false, false
+	for i, step := range chain {
+		switch step.verb {
+		case adr.OpAdd:
+			if i != 0 {
+				return pairOp{}, "an add must be the first operation"
+			}
+			hasAdd = true
+		case adr.OpRemove:
+			if i != len(chain)-1 {
+				return pairOp{}, "no operation may follow a remove"
+			}
+			hasRemove = true
+		default:
+			if slices.Contains(updaters, step.adr) {
+				return pairOp{}, fmt.Sprintf("ADR-%s updates it more than once", step.adr)
+			}
+			updaters = append(updaters, step.adr)
+		}
+	}
+	last := chain[len(chain)-1]
+	switch {
+	case hasAdd && hasRemove:
+		return pairOp{verb: opNetNoop, adr: chain[0].adr}, ""
+	case hasAdd:
+		return pairOp{verb: adr.OpAdd, adr: chain[0].adr}, ""
+	case hasRemove:
+		return pairOp{verb: adr.OpRemove, adr: last.adr}, ""
+	default:
+		return pairOp{verb: adr.OpUpdate, adr: last.adr, updaters: updaters}, ""
+	}
 }
 
 // checkUpdate validates a declared update: the claim is present on both sides, a
 // canonical non-provenance/non-formatting field changed, the Origin is
 // preserved, and Revised-by grew by exactly the updating ADR with the prior list
 // as an exact prefix.
-func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool) []Finding {
+func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAfter bool, updaters ...string) []Finding {
+	if len(updaters) == 0 {
+		updaters = []string{adrNum}
+	}
 	if !hasBefore || !hasAfter {
 		return []Finding{{Error, fmt.Sprintf("ADR-%s updates claim %s, which is not present on both sides of this transition", adrNum, id)}}
 	}
@@ -234,7 +331,7 @@ func checkUpdate(adrNum, id string, before, after topic.Claim, hasBefore, hasAft
 	if before.Origin != after.Origin {
 		out = append(out, Finding{Error, fmt.Sprintf("ADR-%s update of claim %s changed its Origin from ADR-%s to ADR-%s; an update must preserve Origin", adrNum, id, before.Origin, after.Origin)})
 	}
-	if reason, ok := revisedByExtension(before, after, adrNum); !ok {
+	if reason, ok := revisedByExtension(before, after, updaters); !ok {
 		out = append(out, Finding{Error, fmt.Sprintf("ADR-%s update of claim %s %s", adrNum, id, reason)})
 	}
 	return out
@@ -260,17 +357,26 @@ func checkUnmatchedMutation(records []adr.ADR, id string, before, after topic.Cl
 
 // revisedByExtension reports whether after.RevisedBy is before.RevisedBy with
 // exactly the updating ADR appended, returning the reason it is not otherwise.
-func revisedByExtension(before, after topic.Claim, adrNum string) (string, bool) {
-	if len(after.RevisedBy) != len(before.RevisedBy)+1 {
-		return "must extend Revised-by by exactly one entry, the updating ADR", false
+// revisedByExtension validates that Revised-by grew by exactly the updating ADRs
+// with the prior list preserved as an exact prefix. A folded aggregate chain
+// carries several updaters in sequence order; an authored commit carries one, and
+// keeps that case's wording so its diagnostic stays specific (ADR-0182 item 9).
+func revisedByExtension(before, after topic.Claim, adrNums []string) (string, bool) {
+	if len(after.RevisedBy) != len(before.RevisedBy)+len(adrNums) {
+		if len(adrNums) == 1 {
+			return "must extend Revised-by by exactly one entry, the updating ADR", false
+		}
+		return fmt.Sprintf("must extend Revised-by by exactly %d entries, the updating ADRs in sequence order", len(adrNums)), false
 	}
 	for i := range before.RevisedBy {
 		if after.RevisedBy[i] != before.RevisedBy[i] {
 			return "must keep the prior Revised-by list as an exact prefix", false
 		}
 	}
-	if after.RevisedBy[len(after.RevisedBy)-1] != adrNum {
-		return fmt.Sprintf("must append the updating ADR-%s to Revised-by", adrNum), false
+	for i, num := range adrNums {
+		if after.RevisedBy[len(before.RevisedBy)+i] != num {
+			return fmt.Sprintf("must append the updating ADR-%s to Revised-by", num), false
+		}
 	}
 	return "", true
 }
