@@ -134,3 +134,28 @@ Sequencing matters more than usual here. Half of "where does a package boundary
 go" is dependency direction, which `dependency-composition` already owns, so a
 cohesion pattern authored without reference to it would create dual authority.
 The decomposition itself should follow the pattern rather than accompany it.
+
+## A `coverage-ignore` the profile records as executed is a false ignore
+
+The `coverage-ignore-reachability` review item and the pitfalls entry behind it have now failed
+to prevent eight recurrences of a false exclusion. Both are rung-3 and rung-4 controls:
+probabilistic, and applied only when a reviewer runs. One whole subclass is mechanically
+decidable and needs no judgement at all: an exclusion sitting on a guarded body that the
+coverage profile records as EXECUTED is false by construction, because the branch it declares
+unreachable was just reached.
+
+`cmd/covercheck` already parses the profile and already applies the ignore filter, so it holds
+both halves of the comparison; the rule is to fail when a block is both ignored and counted.
+That turns the most common shape into a gate failure at write time rather than a finding a
+reviewer may or may not reach.
+
+What deferred it until now was an unmeasured cost, which the 2026-07-30 state-ownership review
+finally supplied: a sweep found EIGHT excluded-but-covered sites currently in the repository,
+seven of them predating that session. So the work is the rule plus its own tests at the 100%
+floor, plus resolving eight existing sites that span several efforts' territory, each needing
+its own judgement about whether to delete the exclusion or cover the branch. That is a bounded
+but real slice, and it should be one deliberate effort rather than a drive-by.
+
+Worth settling in the same decision: whether the rule is an error or a warning during the
+transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
+subsumed by it or kept as the complementary "touched, re-evaluate" signal.

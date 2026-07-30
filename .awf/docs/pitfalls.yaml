@@ -227,6 +227,16 @@ data:
         claim with more than one operation, which an incrementally-applied ADR and a follow-up ADR
         revising an earlier claim both do legitimately. Those are now validated as an ordered
         aggregate rather than refused, so a merge that only trips them needs no replay.
+
+        RENUMBER INSIDE THE MERGE, not on the branch beforehand. The branch's corpus does not contain
+        the sequences the target consumed, so numbering its batches to the next free values there fails
+        the contiguous-from-1 check instead of fixing anything; the collision is only resolvable where
+        both sides' sequences are present. The state-ownership effort (2026-07-30, third occurrence) hit
+        this after waiting for ADR-0182 to land: its batches were numbered 92 and 93 at authoring time
+        and 92 through 97 were consumed while it waited, so they moved to 98 and 99 during the merge
+        resolution. The renumber is safe for a frozen ADR because `digestSections` covers Context,
+        Decision, State changes, Consequences, and Alternatives Considered and never the Status history,
+        so the content digest is unaffected; confirm that by recomputation rather than assuming it.
     - title: "go-git status ignores the global and system gitignore"
       domains: [tooling]
       tags: [repo-open, context-query]
@@ -648,6 +658,25 @@ data:
         a probe to an existing path, ask what the path tolerated before the probe, not only whether the
         new branch is reachable; and enumerate a syscall's error surface rather than reasoning about it,
         since two of this session's three wrong ignores were errno claims.
+
+        An eighth recurrence (the 2026-07-30 state-ownership conversion) is the one that should settle
+        the deferral above, because it finally measures its cost. Terminal review refuted five of that
+        session's justifications BY EXECUTION, and the verify pass then refuted a sixth that the fix
+        commit had itself introduced while removing the other five. Two shapes are worth naming. First,
+        three ignores asserted "tested elsewhere" rather than unreachability, which this entry and the
+        review focus item both already forbid in as many words, so prose failed at the exact sentence
+        that describes the mistake. Second, a refactor that moves a derivation EARLIER relocates every
+        fault it can raise in BOTH directions: three new ignores were needed because deriving at
+        operation entry pre-empted faults that used to surface deeper, while an inherited ignore became
+        reachable and had to go. Re-derive every ignore in the blast radius rather than assuming a
+        conversion only deletes them.
+
+        THE COST ESTIMATE THE DEFERRAL LACKED: a reviewer sweep for excluded-but-covered guarded bodies
+        found EIGHT in the repository, of which seven predate that session. So the `cmd/covercheck` rule
+        is implementable and would have caught the worst finding of that review automatically, but
+        landing it means fixing eight existing sites across several efforts' territory, which is why it
+        stays deferred rather than cheap. It is now carried as a roadmap item instead of only as this
+        sentence.
     - title: "Two V2-ADR fixture traps in Go tests, each hit twice in one session"
       domains: [adr-system, tooling]
       tags: [adr-lifecycle, test-support]
