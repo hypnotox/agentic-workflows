@@ -286,7 +286,7 @@ feat(rendering): shrink orientation prose to the orienting skill
 
 ## Phase 4: Claims, markers, and the flip
 
-**Execution mode: inline.** One transaction: all six operations of ADR-0187 apply as a single direct Implemented batch, with proof markers and topic renders in the same commit.
+**Execution mode: inline.** Two transactions. The first applied five of ADR-0187's six operations with their proof marker and topic renders, moving the ADR to `Implementing`. The second is this phase's remaining work: the pending sixth operation, its proof marker, and the topic render land together with the Applied and Implemented status events in one commit, after terminal review settles.
 
 - [ ] **Task 4.1: Proof markers.** Add `// invariant: rendering/workflow-skill-templates:orienting-single-home` above `TestOrientingSkillContract` (Task 1.6) and `// invariant: config/migrations-and-locks:orienting-skill-backfill` above the Task 2.3 test's top-level function. The three updated claims keep their existing proof markers; extend the marked tests only if phase 1 or 3 has not already routed the new assertions through them.
 
