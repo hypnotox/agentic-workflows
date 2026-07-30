@@ -73,7 +73,12 @@ so that topic describes a design rather than a mess. Working notes for the effor
    `docs/maintainable-code-design.md` names as dependency inversion by accident. Because a new package
    under no `.awf/domains/*.yaml` selector is an unowned path, and because item 1 fixes coverage at error,
    the same implementation must give the new package domain ownership and scoped topic coverage or
-   `awf check` fails at error severity on the commit that introduces it.
+   `awf check` fails at error severity on the commit that introduces it. That obligation is discharged by
+   extending the `tooling` domain and the `tooling/audit-and-snapshots` topic selectors to match the new
+   package, which needs no further claim: the topic is already claim-bearing, and an empty topic shell would
+   not satisfy coverage, since `internal/topic/coverage.go:180` skips any topic carrying no claims. The
+   topic governs the audit finding surfaces the rank is emitted from, so the fit is topical rather than
+   incidental.
 
 5. Claim-handshake findings carry no rank. `internal/currentstate.Severity` and the `Severity` field on
    `internal/currentstate.Finding` are removed rather than wired up: every finding that package produces is
