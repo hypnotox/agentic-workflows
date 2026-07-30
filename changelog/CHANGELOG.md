@@ -10,6 +10,12 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Add the `orienting` support skill: the single home of the orientation procedure (guide-first
+  grounding ladder, managed `awf context` discipline, and effort-resume revalidation against
+  repository truth), shared with the grounding-checker contract via a template partial. Schema
+  generation 26 enables it in any config that has `brainstorming` enabled, since the shrunk
+  brainstorming template now invokes it by name; configs without `brainstorming` are untouched.
+
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
   the `off` value with them. A tree that declares a `currentState` block now always evaluates both
   topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.

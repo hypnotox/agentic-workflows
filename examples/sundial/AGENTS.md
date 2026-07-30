@@ -66,6 +66,7 @@ Enabled skills:
 - `sundial-tdd` (support): Drive a change from a failing test. Trigger: Use when writing the failing test before the implementation change. Common follow-ups: executing-direct, executing-plans.
 - `sundial-writing-plans` (chain): Turn an approved design into an executable plan. Trigger: Use when implementation needs a durable, reviewable plan. Usually follows: brainstorming, proposing-adr. Common follow-ups: reviewing-plan.
 - `sundial-exploring` (support): Explore repository facts without polluting the main context. Trigger: Use for fresh-context repository exploration when inline search would pollute the parent context. Common follow-ups: brainstorming, debugging, refactor-coupling-audit.
+- `sundial-orienting` (support): Ground the session in a topic before starting, resuming, or widening work. Trigger: Use when taking up a topic: before brainstorming fresh non-trivial work, when resuming an effort, or when taking over a handoff. Common follow-ups: brainstorming, debugging, writing-plans, executing-plans.
 
 In Pi, use any enabled native skill when its purpose fits the current work.
 
