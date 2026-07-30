@@ -174,14 +174,29 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 					switch node := n.(type) {
 					case *ast.AssignStmt:
 						for _, lhs := range node.Lhs {
-							if sel, ok := lhs.(*ast.SelectorExpr); ok {
-								report(sel, "writes")
+							switch target := lhs.(type) {
+							case *ast.SelectorExpr:
+								// x.field = v, and x.slice[i].field = v once the
+								// index is unwrapped by selectorRoot.
+								report(target, "writes")
+							case *ast.StarExpr:
+								// *x = Project{...} replaces every field at once.
+								if isProjectValue(pkg.TypesInfo, target.X) {
+									if root := selectorRoot(target.X); root != nil {
+										if obj := pkg.TypesInfo.ObjectOf(root); obj == nil || !built[obj] {
+											pos := pkg.Fset.Position(target.Pos())
+											findings = append(findings, funcDecl.Name.Name+" replaces the whole value "+
+												root.Name+" at "+filepath.ToSlash(filepath.Base(pos.Filename))+":"+
+												strconv.Itoa(pos.Line))
+										}
+									}
+								}
+							case *ast.IndexExpr:
+								// x.slice[i] = v writes through a field.
+								if sel, ok := target.X.(*ast.SelectorExpr); ok {
+									report(sel, "writes through an index into")
+								}
 							}
-						}
-					case *ast.IncDecStmt:
-						// x.field++ writes the field without an assignment.
-						if sel, ok := node.X.(*ast.SelectorExpr); ok {
-							report(sel, "writes")
 						}
 					case *ast.UnaryExpr:
 						// &x.field hands the field out to be written elsewhere.
@@ -244,6 +259,42 @@ func declaredFuncNames(pkgs []*packages.Package) map[string]bool {
 	return names
 }
 
+// producerCallSites collects, per enclosing function name, the production call
+// sites of the derivation producers named in the claim. Clause 2 is about those
+// values, so counting deriveOperationState alone would miss a nested consumer
+// that calls a producer directly and bypasses the aggregate.
+func producerCallSites(pkgs []*packages.Package) map[string][]string {
+	producers := map[string]bool{"LoadCorpus": true, "effectiveSkills": true}
+	sites := map[string][]string{}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				funcDecl, ok := decl.(*ast.FuncDecl)
+				if !ok || funcDecl.Body == nil {
+					continue
+				}
+				ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
+					call, ok := n.(*ast.CallExpr)
+					if !ok {
+						return true
+					}
+					sel, ok := call.Fun.(*ast.SelectorExpr)
+					if !ok || !producers[sel.Sel.Name] {
+						return true
+					}
+					name := sel.Sel.Name
+					if root := selectorRoot(sel.X); root != nil {
+						name = root.Name + "." + name
+					}
+					sites[name] = append(sites[name], funcDecl.Name.Name)
+					return true
+				})
+			}
+		}
+	}
+	return sites
+}
+
 // TestProjectDerivedStateOwnership proves that no production function in
 // internal/project writes a *Project field outside the function that constructs
 // that value: the ADR corpus, topic corpus, and effective skill set are derived
@@ -285,6 +336,17 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 	for name := range wantEntries {
 		if entries[name] == 0 {
 			t.Errorf("%s no longer derives operation state at its own entry", name)
+		}
+	}
+
+	// Clause 2, at the level of the values themselves: each producer is called
+	// from exactly one production function, deriveOperationState. Counting the
+	// aggregate alone would miss a consumer calling a producer directly.
+	for producer, owners := range producerCallSites(production) {
+		for _, owner := range owners {
+			if owner != "deriveOperationState" {
+				t.Errorf("%s calls %s directly; only deriveOperationState produces the threaded values", owner, producer)
+			}
 		}
 	}
 
@@ -358,5 +420,44 @@ func (p *Project) mutationRederivesNested() {
 `)})
 	if derivingEntries(nested)["mutationRederivesNested"] != 1 {
 		t.Error("a nested deriveOperationState call escaped the deriving-entry scan")
+	}
+
+	// A consumer calling a producer directly bypasses the aggregate entirely
+	// and writes no field, so only the producer scan can see it.
+	direct := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+
+import "github.com/hypnotox/agentic-workflows/internal/adr"
+
+func (p *Project) mutationRederivesCorpusDirectly() (adr.Corpus, error) {
+	return adr.LoadCorpus(p.decisionsDir())
+}
+`)})
+	var directFlagged bool
+	for _, owners := range producerCallSites(direct) {
+		for _, owner := range owners {
+			if owner == "mutationRederivesCorpusDirectly" {
+				directFlagged = true
+			}
+		}
+	}
+	if !directFlagged {
+		t.Error("a direct producer call bypassing deriveOperationState escaped the producer scan")
+	}
+
+	// Replacing the whole value writes every field at once.
+	wholesale := loadProjectPackage(t, map[string][]byte{fixture: []byte(`package project
+
+func (p *Project) mutationOverwritesWholeValue() {
+	*p = Project{Root: "mutated"}
+}
+`)})
+	var wholesaleFlagged bool
+	for _, f := range projectFieldWriteFindings(wholesale) {
+		if strings.HasPrefix(f, "mutationOverwritesWholeValue replaces the whole value p") {
+			wholesaleFlagged = true
+		}
+	}
+	if !wholesaleFlagged {
+		t.Error("a wholesale *p = Project{...} overwrite escaped the detector")
 	}
 }

@@ -31,7 +31,7 @@ func (p *Project) AdvisoryNotes() ([]string, error) {
 		return nil, err
 	}
 	op, err := p.outputPlan(corpus, topics, eff)
-	if err != nil { // coverage-ignore: outputPlan renders every producer this operation reads, so a render fault fails at the call above rather than here
+	if err != nil {
 		return nil, err
 	}
 	files := op.writeFiles()
