@@ -138,3 +138,9 @@ The rendered explorer body defines its report-only identity, one information nee
 Origin: ADR-0179
 Revised-by: ADR-0187
 Backing: test
+
+### `invariant: orienting-single-home`
+
+The orienting support skill is the single home of the orientation procedure: its rendered body defines the four invocation moments, the guide-first grounding ladder shared as a partial with the grounding-checker contract, multi-child report-only exploration dispatch with one information need per child, the managed context discipline, and effort-resume revalidation that reads the memory file whole and resolves discrepancies in favor of the repository; the skill is single-pass, never a chain gate, never creates an effort, and never commits. Brainstorming's first step invokes it, and proposing-adr and writing-plans carry advisory pointers.
+Origin: ADR-0187
+Backing: test

@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [0187]
-status: Proposed
+status: Implemented
 ---
 # Plan: Orienting support skill (ADR-0187)
 

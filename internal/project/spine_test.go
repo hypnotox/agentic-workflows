@@ -1037,6 +1037,7 @@ func TestOrientingTemplate(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:orienting-single-home
 func TestOrientingSkillContract(t *testing.T) {
 	if !catalog.Standard.Skills["orienting"].Core {
 		t.Fatal("orienting is not a core skill")
