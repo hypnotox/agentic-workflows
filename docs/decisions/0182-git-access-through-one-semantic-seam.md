@@ -171,10 +171,12 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    commit-range walk), `internal/migrate` (three files drop go-git and the sentinel
    matches), `internal/upgrade` (`HeadHash`) and `internal/project` (`HeadExists`; and the
    duplicated resident-root resolution at `internal/project/project.go:130-141` and
-   `cmd/awf/sync.go:25-35` collapses to one home: the outer `cmd/awf` helper survives
-   and the transitional `project.Open` delegates to it, keeping
-   `outer-composition` intact, and `sync-project-loader-wiring`'s canonical text
-   survives unchanged so no operation is owed against it), `internal/worktree` (its `git.go`
+   `cmd/awf/sync.go:25-35` collapses to one home in `internal/git`, which already owns
+   `ResolveControlRoots` and `ResidentRoot`: `cmd/awf`'s composition point calls it
+   directly and the transitional `project.Open` calls the same function internally, so
+   no import inverts, `outer-composition` stays intact, and
+   `sync-project-loader-wiring`'s canonical text survives unchanged with no operation
+   owed against it), `internal/worktree` (its `git.go`
    deletes; its consumer-owned runner contract is satisfied by seam-backed wiring;
    `ancestor` becomes a seam entrypoint), `internal/effort` (`nativeGit`,
    `nativeBranchExists`, and the inline `check-ref-format` exec delete), `cmd/awf`
@@ -244,8 +246,8 @@ exists under `internal/git/`, so the path transfer is marker-safe.
     opens entry, the `GlobalExcludePatterns` injection instruction, and the gitfile
     resolution heading) are rewritten to name the seam entrypoints while their underlying
     incidents stay recorded as the contract suites' named regression cases;
-    docs/architecture.md's package-ownership bullets (`internal/worktree` native-git
-    ownership, per-package control-root resolution) and its go-git dependency note are
+    docs/architecture.md's `internal/worktree` native-git ownership bullet and its
+    go-git dependency note (repository control-root resolution) are
     updated to the seam shape; and docs/testing.md gains the contract-suite category and
     the serial-by-construction exception for the isolation and missing-binary suites.
 
