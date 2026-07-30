@@ -418,6 +418,9 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"do not edit files or commit",
 		"Work only from the brief you were given",
 		"never edit it",
+		// The shared orientation ladder partial reaches this contract too.
+		"Ground guide-first, in order",
+		"For managed context calls, start bare",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
 		"Assess whether the effort needs a decision record",
@@ -1033,8 +1036,10 @@ func TestOrientingSkillContract(t *testing.T) {
 	if !catalog.Standard.Skills["orienting"].Core {
 		t.Fatal("orienting is not a core skill")
 	}
+	// The three consumer skills are enabled so the same render proves both the
+	// single home and the references that replaced their inline copies.
 	config := func(target string) string {
-		return "prefix: example\nskills: [exploring, orienting]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
+		return "prefix: example\nskills: [brainstorming, exploring, orienting, proposing-adr, writing-plans]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
 	}
 	for _, target := range KnownTargets() {
 		t.Run(target, func(t *testing.T) {
@@ -1044,11 +1049,19 @@ func TestOrientingSkillContract(t *testing.T) {
 			if body == "" {
 				t.Fatalf("missing rendered orienting skill for %s", target)
 			}
+			// One literal per property the skill contract promises: a heading
+			// count alone would survive deleting the moments it counts.
 			for _, want := range []string{
-				"Four moments call for orientation", "Ground guide-first, in order", "one or more exploration subagents",
-				"one information need", "location is unknown", "and inline search would pollute the parent context",
-				"exact-known-file", "genuinely trivial", "`example-exploring`", "A discrepancy resolves in favor of the repository",
+				"Four moments call for orientation",
+				"**Fresh work:**", "**Effort resume:**", "**Handoff takeover:**", "**Mid-chain re-orientation:**",
+				"Ground guide-first, in order", "one or more exploration subagents",
+				"one information need", "every child is report-only",
+				"location is unknown", "and inline search would pollute the parent context",
+				"exact-known-file", "genuinely trivial", "`example-exploring`",
+				"landed since the checkpoint", "git worktree list", "against the decision index",
+				"cited plan and file existence", "A discrepancy resolves in favor of the repository",
 				"never creates an effort, never commits", "never prescribe `--full`",
+				"single-pass and advisory, never a chain gate",
 			} {
 				if !strings.Contains(body, want) {
 					t.Errorf("%s orienting skill missing %q", target, want)
@@ -1059,6 +1072,17 @@ func TestOrientingSkillContract(t *testing.T) {
 				if !strings.Contains(agent, want) {
 					t.Errorf("%s grounding-checker missing %q", target, want)
 				}
+			}
+			// The single home is only single if the three sites that gave up
+			// their inline copies reference it instead. Brainstorming's
+			// reference is pinned to its first step, which is what the claim says.
+			for _, consumer := range []string{"brainstorming", "proposing-adr", "writing-plans"} {
+				if ref := files[adapter.SkillPath("example", consumer)]; !strings.Contains(ref, "`example-orienting`") {
+					t.Errorf("%s %s does not reference the orienting skill", target, consumer)
+				}
+			}
+			if b := files[adapter.SkillPath("example", "brainstorming")]; !strings.Contains(b, "1. **Orient in the topic.** Invoke `example-orienting`") {
+				t.Errorf("%s brainstorming does not invoke orienting as its first step", target)
 			}
 		})
 	}
@@ -1480,6 +1504,20 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
 		t.Error("guide or routine skill duplicated the workflow document's detailed skeleton")
+	}
+	// The workflow doc keeps the memory contract but routes resume verification
+	// to the orienting skill, which owns the procedure it routes to.
+	if !strings.Contains(workflow, "the rendered orienting skill's resume-revalidation section is the procedural home of that check") {
+		t.Error("workflow doc does not route resume revalidation to the orienting skill")
+	}
+	orienting := renderSkillGolden(t, "orienting", data)
+	for _, want := range []string{
+		"landed since the checkpoint", "git worktree list", "against the decision index",
+		"A discrepancy resolves in favor of the repository",
+	} {
+		if !strings.Contains(orienting, want) {
+			t.Errorf("orienting resume-revalidation missing %q", want)
+		}
 	}
 }
 

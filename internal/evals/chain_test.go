@@ -295,7 +295,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	}
 
 	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
-	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true}
+	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
 		"A minimal simple fix uses no effort",
