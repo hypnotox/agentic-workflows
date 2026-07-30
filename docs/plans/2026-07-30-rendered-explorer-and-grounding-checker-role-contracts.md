@@ -28,8 +28,9 @@ in that single commit.
 Phase 2 pairs the two dispatchers and bumps the config schema, which must follow Phase 1 because
 `RequiresAgent` validation fails at project open until the named agents exist and are enabled.
 
-Phase 3 applies the sixth operation (a prose-only claim narrowing), corrects the descriptive surfaces
-the two new agents falsify, and freezes both records.
+Phase 3 applies the sixth operation, a prose-only claim narrowing, and freezes both records. The
+descriptive-surface corrections live in Phase 1 instead, because ADR-0179 item 11 requires them in the
+same commit as the two new `AgentSpec` entries.
 
 Operation-to-transaction assignment. ADR-0179 declares six operations, and they land in exactly two
 batches, because at most one new application batch is legal per transition (`pairOps`,
@@ -512,7 +513,47 @@ grounding dispatch.
   - 2026-07-30: Applied; state-sequence: <next>; operations: add `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, add `rendering/pi-workflows:pi-role-contract-loader`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:bounded-exploration-reporting`, update `rendering/workflow-skill-templates:cross-runtime-exploration-dispatch`
   ```
 
-- [ ] **Task 1.13: Render, then verify the whole phase.** Run `./x render`, then `./x check`, which must
+- [ ] **Task 1.13: Correct the three README enumerations.** ADR-0179 item 11 requires these to land in
+  the same commit as the two new `AgentSpec` entries, which Task 1.3 adds in this phase; `README.md:249`
+  becomes false the moment Task 1.3 lands, so deferring it would ship a knowingly-stale surface between
+  commits. ADR-0177 item 8 set the precedent and its own plan honoured it in the same phase.
+
+  Each site gets an exact replacement. The rule is to drop the count rather than increment it, because a
+  bumped number is what ADR-0177 got wrong and the next agent would falsify it again.
+
+  `README.md:12`, currently `retrospective; independent review agents that read each artifact with fresh
+  context; a`, becomes:
+
+  ```
+  retrospective; dispatched agents that read or implement with fresh context, reviewers among them; a
+  ```
+
+  `README.md:46-48`, currently opening `- **Agents**, likewise per runtime. Three review agents
+  (`adr-reviewer`, `plan-reviewer`, `code-reviewer`) are each dispatched with fresh context, so the
+  author never grades its own work, and are report-only. One `implementer` agent carries the contract
+  for`, becomes:
+
+  ```
+  - **Agents**, likewise per runtime. The review agents (`adr-reviewer`, `plan-reviewer`,
+    `code-reviewer`) are each dispatched with fresh context, so the author never grades
+    its own work, and are report-only. The `explorer` and `grounding-checker` agents are
+    report-only too. The `implementer` agent carries the contract for
+  ```
+
+  Preserve whatever text follows on the original line after "carries the contract for"; only the
+  enumeration ahead of it changes.
+
+  `README.md:249`, currently `` `adr-lifecycle`, and `exploring`) and four agents. ``, becomes:
+
+  ```
+  `adr-lifecycle`, and `exploring`) and every catalog agent.
+  ```
+
+  Two surfaces need no edit and must not be touched reflexively: `internal/configspec`'s agents-key
+  description carries no count, and `cmd/awf/main.go`'s package comment names artifact kinds without
+  counting them.
+
+- [ ] **Task 1.14: Render, then verify the whole phase.** Run `./x render`, then `./x check`, which must
   print `awf check: clean`. Expect the render to rewrite the rendered agents, both skills, the Pi
   extension in both trees, `AGENTS.md`, `docs/config-reference.md`, `docs/decisions/INDEX.md` (the status
   flip from Task 1.12 changes it), `docs/topics/rendering/workflow-skill-templates.md`,
@@ -674,7 +715,7 @@ pairing cannot land before the agents it names exist and are enabled.
 feat(config): pair the exploration dispatchers at generation 24
 ```
 
-## Phase 3: Narrow the implementer claim, correct the surfaces, and freeze
+## Phase 3: Narrow the implementer claim and freeze both records
 
 **Execution mode: inline.** This phase is one independently green coherent implementation transaction.
 Checkbox tasks are ordered steps, not transaction boundaries.
@@ -693,43 +734,7 @@ Checkbox tasks are ordered steps, not transaction boundaries.
   `:360-361`, and `:365` without asserting anything about imperatives no test checks. No test changes:
   the existing proof already establishes exactly this.
 
-- [ ] **Task 3.2: Correct the three README enumerations.** Each site gets an exact replacement. The rule
-  is to drop the count rather than increment it, because a bumped number is what ADR-0177 got wrong and
-  the next agent would falsify it again.
-
-  `README.md:12`, currently `retrospective; independent review agents that read each artifact with fresh
-  context; a`, becomes:
-
-  ```
-  retrospective; dispatched agents that read or implement with fresh context, reviewers among them; a
-  ```
-
-  `README.md:46-48`, currently opening `- **Agents**, likewise per runtime. Three review agents
-  (`adr-reviewer`, `plan-reviewer`, `code-reviewer`) are each dispatched with fresh context, so the
-  author never grades its own work, and are report-only. One `implementer` agent carries the contract
-  for`, becomes:
-
-  ```
-  - **Agents**, likewise per runtime. The review agents (`adr-reviewer`, `plan-reviewer`,
-    `code-reviewer`) are each dispatched with fresh context, so the author never grades
-    its own work, and are report-only. The `explorer` and `grounding-checker` agents are
-    report-only too. The `implementer` agent carries the contract for
-  ```
-
-  Preserve whatever text follows on the original line after "carries the contract for"; only the
-  enumeration ahead of it changes.
-
-  `README.md:249`, currently `` `adr-lifecycle`, and `exploring`) and four agents. ``, becomes:
-
-  ```
-  `adr-lifecycle`, and `exploring`) and every catalog agent.
-  ```
-
-  Two surfaces need no edit and must not be touched reflexively: `internal/configspec`'s agents-key
-  description carries no count, and `cmd/awf/main.go`'s package comment names artifact kinds without
-  counting them.
-
-- [ ] **Task 3.3: Flip the ADR to `Implemented` and append batch two.** Two edits, both required in this
+- [ ] **Task 3.2: Flip the ADR to `Implemented` and append batch two.** Two edits, both required in this
   same transaction:
   1. Change the frontmatter `status: Implementing` to `status: Implemented`. The same
      lastStatus-versus-frontmatter check at `internal/adr/format.go:360` fails without it, and
@@ -750,11 +755,11 @@ Checkbox tasks are ordered steps, not transaction boundaries.
   - 2026-07-30: Implemented; content-sha256: <same digest as the Implementing event>
   ```
 
-- [ ] **Task 3.4: Flip the plan status and record findings.** Change this plan's frontmatter `status:
+- [ ] **Task 3.3: Flip the plan status and record findings.** Change this plan's frontmatter `status:
   Proposed` to `status: Implemented`, and record in Notes below anything that surfaced during
   execution: a wrong diff, an unsliceable phase, a guard neither the ADR nor this plan listed.
 
-- [ ] **Task 3.5: Render and verify.** Run `./x render` then `./x check`, which must print `awf check:
+- [ ] **Task 3.4: Render and verify.** Run `./x render` then `./x check`, which must print `awf check:
   clean`. Expect it to regenerate `docs/decisions/INDEX.md` for the status change,
   `docs/topics/rendering/workflow-skill-templates.md` and `docs/domains/rendering.md` for Task 3.1's claim
   prose, and both locks; stage from `git status` rather than a fixed list.
@@ -820,7 +825,9 @@ Whole-effort acceptance, beyond each phase's gate:
   site reach `Open` with a non-local `exploring` or `brainstorming`", since `checkNodeRequirements` only
   errors while the migration path self-heals. Executors should re-derive the set with that test rather
   than trusting the enumeration, and expect `go test ./internal/project/ ./internal/migrate/` to name
-  anything still missing.
+  anything still missing. ADR-0179 item 6 carried the same stale enumeration and was amended while
+  `Proposed` to match this verified set, so the two records now agree rather than the plan silently
+  superseding the decision.
 - Out of scope and pre-existing: versions 0.23.0 through 0.27.0 have never been released
   (`changelog/CHANGELOG.md`'s newest release heading is 0.22.0), so `0.28.0` becomes the sixth
   unreleased floor. ADR-0179 item 7 records this as a release-cadence matter it does not address.
