@@ -913,6 +913,13 @@ time.
 Checked at authoring: main's 0179 declares only `rendering/*` operations, so none of this plan's five claim
 operations collides with it.
 
+**One chain step was deliberately skipped, by user decision.** The resync pass produced two findings that
+implicated the ADR rather than the plan, and the ADR was amended for them while still `Proposed`.
+`awf-reviewing-plan-resync` prescribes routing such an amendment back through `awf-reviewing-adr` and then a
+second resync. That loop was not run: the amendment was authored to the resync reviewer's own written
+specification, touches two prose passages, and changes no `State changes` operation, no Decision item, and no
+claim destination. Recorded here so a later reader sees the deviation rather than inferring the loop ran.
+
 Out of scope, recorded during authoring:
 
 - Letting a global topic carry path selectors, so a shared-pattern holder like `internal/severity` could be
