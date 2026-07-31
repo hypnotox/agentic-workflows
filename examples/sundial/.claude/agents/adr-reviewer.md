@@ -56,7 +56,7 @@ Apply all lenses to every ADR:
 
 1. **doc-currency (ADR-level)**: verify same-commit update obligations are declared for all affected artifacts (see project-specific checklist below).
 
-1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration and global sequence order; each batch and its current-claim truth are one checked pair.
+1. **application-progress**: verify declared operations have unambiguous Applied, Remaining, and Canceled semantics; batches preserve declaration order and ascending ADR-number, intra-ADR position order; each batch and its current-claim truth are one checked pair.
 
 1. **structural-design**: consult `docs/maintainable-code-design.md` only when a Decision changes a semantic model, representation, module/package boundary, dependency direction, ownership boundary, or comparable structural contract. When active, check cohesion, representation isolation, dependency direction, enabling-refactor disposition, testable seams, and justification for indirection. When no trigger is present, skip this lens rather than manufacturing structural requirements.
 

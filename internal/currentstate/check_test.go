@@ -10,15 +10,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// rec builds a current-state-v1 ADR record with a Status history whose terminal
-// entry carries seq as its state-sequence when status is Implemented with ops.
-func rec(num, status string, seq int, ops ...adr.Operation) adr.ADR {
+// rec builds a current-state-v1 ADR record with a Status history whose
+// terminal entry reflects status.
+func rec(num, status string, ops ...adr.Operation) adr.ADR {
 	hist := []adr.StatusEntry{{Date: "2026-01-01", Status: "Proposed"}}
 	if status != "Proposed" {
 		e := adr.StatusEntry{Date: "2026-01-02", Status: status}
-		if status == "Implemented" && len(ops) > 0 && seq > 0 {
-			e.Sequence, e.HasSequence = seq, true
-		}
 		hist = append(hist, e)
 	}
 	return adr.ADR{Number: num, Format: adr.CurrentStateV1, Status: status, Operations: ops, History: hist}
@@ -53,13 +50,13 @@ func messages(f []currentstate.Finding) string {
 // legacy record that filterV1 skips.
 func TestCheckValid(t *testing.T) {
 	records := []adr.ADR{
-		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:kept")),
-		rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:kept")),
-		rec("0139", "Implemented", 3, op(adr.OpAdd, "d/t:gone")),
-		rec("0140", "Implemented", 4, op(adr.OpUpdate, "d/t:gone")), // update of a later-removed claim
-		rec("0141", "Implemented", 5, op(adr.OpRemove, "d/t:gone")),
-		rec("0142", "Accepted", 0, op(adr.OpAdd, "d/t:pending")),
-		rec("0143", "Abandoned", 0, op(adr.OpAdd, "d/t:never")), // unapplied
+		rec("0137", "Implemented", op(adr.OpAdd, "d/t:kept")),
+		rec("0138", "Implemented", op(adr.OpUpdate, "d/t:kept")),
+		rec("0139", "Implemented", op(adr.OpAdd, "d/t:gone")),
+		rec("0140", "Implemented", op(adr.OpUpdate, "d/t:gone")), // update of a later-removed claim
+		rec("0141", "Implemented", op(adr.OpRemove, "d/t:gone")),
+		rec("0142", "Accepted", op(adr.OpAdd, "d/t:pending")),
+		rec("0143", "Abandoned", op(adr.OpAdd, "d/t:never")), // unapplied
 		{Number: "0100", Format: adr.Legacy, Status: "Implemented"},
 	}
 	tp := topics(
@@ -71,24 +68,6 @@ func TestCheckValid(t *testing.T) {
 	}
 }
 
-// TestCheckSequences covers duplicate and non-contiguous sequences.
-func TestCheckSequences(t *testing.T) {
-	dup := currentstate.Check([]adr.ADR{
-		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:a")),
-		rec("0138", "Implemented", 1, op(adr.OpAdd, "d/t:b")),
-	}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0138")))
-	if !strings.Contains(messages(dup), "used by more than one ADR") {
-		t.Errorf("duplicate sequence not reported:\n%s", messages(dup))
-	}
-	gap := currentstate.Check([]adr.ADR{
-		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:a")),
-		rec("0138", "Implemented", 3, op(adr.OpAdd, "d/t:b")),
-	}, topics(claim("d/t:a", "0137"), claim("d/t:b", "0138")))
-	if !strings.Contains(messages(gap), "not contiguous") {
-		t.Errorf("sequence gap not reported:\n%s", messages(gap))
-	}
-}
-
 // TestCheckOperationHistory covers the per-identity add/update/remove ordering.
 func TestCheckOperationHistory(t *testing.T) {
 	cases := []struct {
@@ -96,10 +75,10 @@ func TestCheckOperationHistory(t *testing.T) {
 		records []adr.ADR
 		want    string
 	}{
-		{"two adds", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")), rec("0138", "Implemented", 2, op(adr.OpAdd, "d/t:x"))}, "2 add operations"},
-		{"update without add", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:x"))}, "does not begin with an add"},
-		{"two removes", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")), rec("0138", "Implemented", 2, op(adr.OpRemove, "d/t:x")), rec("0139", "Implemented", 3, op(adr.OpRemove, "d/t:x"))}, "more than one remove"},
-		{"op after remove", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpRemove, "d/t:x")), rec("0138", "Implemented", 2, op(adr.OpAdd, "d/t:x"))}, "operation after its remove"},
+		{"two adds", []adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")), rec("0138", "Implemented", op(adr.OpAdd, "d/t:x"))}, "2 add operations"},
+		{"update without add", []adr.ADR{rec("0137", "Implemented", op(adr.OpUpdate, "d/t:x"))}, "does not begin with an add"},
+		{"two removes", []adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")), rec("0138", "Implemented", op(adr.OpRemove, "d/t:x")), rec("0139", "Implemented", op(adr.OpRemove, "d/t:x"))}, "more than one remove"},
+		{"add after remove", []adr.ADR{rec("0137", "Implemented", op(adr.OpRemove, "d/t:x")), rec("0138", "Implemented", op(adr.OpAdd, "d/t:x"))}, "has an add after its remove; a removed claim id is never reused"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -114,8 +93,8 @@ func TestCheckOperationHistory(t *testing.T) {
 func TestCheckOperationHistoryAllowsMigratedBaseline(t *testing.T) {
 	records := []adr.ADR{
 		{Number: "0100"},
-		rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:legacy")),
-		rec("0138", "Implemented", 2, op(adr.OpRemove, "d/t:retired")),
+		rec("0137", "Implemented", op(adr.OpUpdate, "d/t:legacy")),
+		rec("0138", "Implemented", op(adr.OpRemove, "d/t:retired")),
 	}
 	tp := topics(claim("d/t:legacy", "0100", "0137"))
 	if f := currentstate.Check(records, tp); len(f) != 0 {
@@ -132,15 +111,15 @@ func TestCheckForward(t *testing.T) {
 		topics  []topic.Topic
 		want    string
 	}{
-		{"pending add exists", []adr.ADR{rec("0137", "Accepted", 0, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0100")), "already exists"},
-		{"pending update missing", []adr.ADR{rec("0137", "Proposed", 0, op(adr.OpUpdate, "d/t:x"))}, nil, "updates missing claim"},
-		{"implemented add missing", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))}, nil, "has no active claim"},
-		{"implemented add wrong origin", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0199")), "Origin is ADR-0199"},
-		{"implemented update not revised", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100")), "does not list updating ADR-0137"},
-		{"implemented remove still present", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpRemove, "d/t:x"))}, topics(claim("d/t:x", "0100")), "still has an active claim"},
-		{"abandoned add applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0137")), "add for claim d/t:x was applied"},
-		{"abandoned update applied", []adr.ADR{rec("0137", "Abandoned", 0, op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100", "0137")), "update for claim d/t:x was applied"},
-		{"pending re-add of removed", []adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"), op(adr.OpRemove, "d/t:x")), rec("0138", "Proposed", 0, op(adr.OpAdd, "d/t:x"))}, nil, "may never be reused"},
+		{"pending add exists", []adr.ADR{rec("0137", "Accepted", op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0100")), "already exists"},
+		{"pending update missing", []adr.ADR{rec("0137", "Proposed", op(adr.OpUpdate, "d/t:x"))}, nil, "updates missing claim"},
+		{"implemented add missing", []adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))}, nil, "has no active claim"},
+		{"implemented add wrong origin", []adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0199")), "Origin is ADR-0199"},
+		{"implemented update not revised", []adr.ADR{rec("0137", "Implemented", op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100")), "does not list updating ADR-0137"},
+		{"implemented remove still present", []adr.ADR{rec("0137", "Implemented", op(adr.OpRemove, "d/t:x"))}, topics(claim("d/t:x", "0100")), "still has an active claim"},
+		{"abandoned add applied", []adr.ADR{rec("0137", "Abandoned", op(adr.OpAdd, "d/t:x"))}, topics(claim("d/t:x", "0137")), "add for claim d/t:x was applied"},
+		{"abandoned update applied", []adr.ADR{rec("0137", "Abandoned", op(adr.OpUpdate, "d/t:x"))}, topics(claim("d/t:x", "0100", "0137")), "update for claim d/t:x was applied"},
+		{"pending re-add of removed", []adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"), op(adr.OpRemove, "d/t:x")), rec("0138", "Proposed", op(adr.OpAdd, "d/t:x"))}, nil, "may never be reused"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -155,12 +134,12 @@ func TestCheckForward(t *testing.T) {
 func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 	removeX := op(adr.OpRemove, "d/t:x")
 	removeY := op(adr.OpRemove, "d/t:y")
-	baseX := rec("0136", "Implemented", 1, op(adr.OpAdd, "d/t:x"))
-	baseY := rec("0137", "Implemented", 2, op(adr.OpAdd, "d/t:y"))
+	baseX := rec("0136", "Implemented", op(adr.OpAdd, "d/t:x"))
+	baseY := rec("0137", "Implemented", op(adr.OpAdd, "d/t:y"))
 	proposed := v2rec("0138", "Proposed", []adr.Operation{removeX, removeY}, v2status("Proposed"))
 	implementing := proposed
 	implementing.Status = "Implementing"
-	implementing.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(3, removeX))
+	implementing.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(removeX))
 
 	before := uni([]adr.ADR{baseX, baseY, proposed}, claim("d/t:x", "0136"), claim("d/t:y", "0137"))
 	afterApplied := uni([]adr.ADR{baseX, baseY, implementing}, claim("d/t:y", "0137"))
@@ -188,8 +167,8 @@ func TestCheckAbandonedRemoveAttributedByPair(t *testing.T) {
 
 func TestCheckDestinationTopicRetiredWithFinalClaim(t *testing.T) {
 	records := []adr.ADR{
-		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/retired:only")),
-		rec("0138", "Implemented", 2, op(adr.OpRemove, "d/retired:only")),
+		rec("0137", "Implemented", op(adr.OpAdd, "d/retired:only")),
+		rec("0138", "Implemented", op(adr.OpRemove, "d/retired:only")),
 	}
 	if got := messages(currentstate.Check(records, nil)); strings.Contains(got, "targets missing topic d/retired") {
 		t.Fatalf("final-claim removal did not permit retiring its topic:\n%s", got)
@@ -197,7 +176,7 @@ func TestCheckDestinationTopicRetiredWithFinalClaim(t *testing.T) {
 
 	t.Run("invalid history retains missing-topic finding", func(t *testing.T) {
 		invalid := append([]adr.ADR(nil), records...)
-		invalid = append(invalid, rec("0139", "Implemented", 3, op(adr.OpRemove, "d/retired:only")))
+		invalid = append(invalid, rec("0139", "Implemented", op(adr.OpRemove, "d/retired:only")))
 		if got := messages(currentstate.Check(invalid, nil)); !strings.Contains(got, "targets missing topic d/retired") {
 			t.Fatalf("invalid removal history retired its topic:\n%s", got)
 		}
@@ -212,7 +191,7 @@ func TestCheckDestinationTopic(t *testing.T) {
 				tp = otherTopic(claim("d/t:x", "0100"))
 			}
 			got := messages(currentstate.Check([]adr.ADR{
-				rec("0137", "Accepted", 0, op(verb, "d/t:x")),
+				rec("0137", "Accepted", op(verb, "d/t:x")),
 			}, tp))
 			if !strings.Contains(got, "ADR-0137 operation "+string(verb)+" targets missing topic d/t") {
 				t.Fatalf("missing destination topic not reported:\n%s", got)
@@ -225,7 +204,7 @@ func TestCheckDestinationTopic(t *testing.T) {
 				tp[0].Claims = []topic.Claim{claim("d/t:x", "0100")}
 			}
 			got := messages(currentstate.Check([]adr.ADR{
-				rec("0137", "Accepted", 0, op(verb, "d/t:x")),
+				rec("0137", "Accepted", op(verb, "d/t:x")),
 			}, tp))
 			if strings.Contains(got, "targets missing topic") {
 				t.Fatalf("empty topic shell was treated as absent:\n%s", got)
@@ -243,7 +222,7 @@ func TestCheckDestinationTopic(t *testing.T) {
 				tp = nil
 			}
 			got := messages(currentstate.Check([]adr.ADR{
-				rec("0137", "Implemented", 1, op(verb, "d/t:x")),
+				rec("0137", "Implemented", op(verb, "d/t:x")),
 			}, tp))
 			if !strings.Contains(got, "ADR-0137 operation "+string(verb)+" targets missing topic d/t") {
 				t.Fatalf("missing destination topic not reported:\n%s", got)
@@ -256,7 +235,7 @@ func TestCheckDestinationTopic(t *testing.T) {
 				tp = otherTopic(claim("d/t:x", "0100"))
 			}
 			got := messages(currentstate.Check([]adr.ADR{
-				rec("0137", "Proposed", 0, op(verb, "d/t:x")),
+				rec("0137", "Proposed", op(verb, "d/t:x")),
 			}, tp))
 			if strings.Contains(got, "targets missing topic") {
 				t.Fatalf("Proposed operation required destination metadata:\n%s", got)
@@ -267,7 +246,7 @@ func TestCheckDestinationTopic(t *testing.T) {
 
 func TestCheckDestinationTopicAbandonedHistory(t *testing.T) {
 	t.Run("Accepted then Abandoned requires topic", func(t *testing.T) {
-		a := rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x"))
+		a := rec("0137", "Abandoned", op(adr.OpAdd, "d/t:x"))
 		a.History = []adr.StatusEntry{
 			{Date: "2026-01-01", Status: "Proposed"},
 			{Date: "2026-01-02", Status: "Accepted"},
@@ -281,7 +260,7 @@ func TestCheckDestinationTopicAbandonedHistory(t *testing.T) {
 
 	t.Run("Proposed then Abandoned is exempt", func(t *testing.T) {
 		got := messages(currentstate.Check([]adr.ADR{
-			rec("0137", "Abandoned", 0, op(adr.OpAdd, "d/t:x")),
+			rec("0137", "Abandoned", op(adr.OpAdd, "d/t:x")),
 		}, nil))
 		if strings.Contains(got, "targets missing topic") {
 			t.Fatalf("directly Abandoned operation required destination metadata:\n%s", got)
@@ -293,37 +272,36 @@ func TestCheckDestinationTopicAbandonedHistory(t *testing.T) {
 func TestCheckBackward(t *testing.T) {
 	// Origin at/above cutoff whose ADR carries no add operation.
 	noAdd := currentstate.Check(
-		[]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:other"))},
+		[]adr.ADR{rec("0137", "Implemented", op(adr.OpUpdate, "d/t:other"))},
 		topics(claim("d/t:x", "0137"), claim("d/t:other", "0137")))
 	if !strings.Contains(messages(noAdd), "Origin ADR-0137, which has no matching add") {
 		t.Errorf("missing add operation not reported:\n%s", messages(noAdd))
 	}
 	// Revised-by whose ADR carries no update operation.
 	noUpdate := currentstate.Check(
-		[]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))},
+		[]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))},
 		topics(claim("d/t:x", "0137", "0199")))
 	if !strings.Contains(messages(noUpdate), "Revised-by ADR-0199, which has no matching update") {
 		t.Errorf("missing update operation not reported:\n%s", messages(noUpdate))
 	}
 	outOfOrder := currentstate.Check(
 		[]adr.ADR{
-			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-			rec("0138", "Implemented", 3, op(adr.OpUpdate, "d/t:x")),
-			rec("0139", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+			rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+			rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x")),
+			rec("0139", "Implemented", op(adr.OpUpdate, "d/t:x")),
 		},
-		topics(claim("d/t:x", "0137", "0138", "0139")))
-	if !strings.Contains(messages(outOfOrder), "not in increasing State-sequence order at ADR-0139") {
+		topics(claim("d/t:x", "0137", "0139", "0138")))
+	if !strings.Contains(messages(outOfOrder), "not in ascending ADR-number order at ADR-0138") {
 		t.Errorf("out-of-order Revised-by not reported:\n%s", messages(outOfOrder))
 	}
 	beforeOrigin := currentstate.Check(
 		[]adr.ADR{
-			rec("0136", "Implemented", 1, op(adr.OpAdd, "d/t:other")),
-			rec("0137", "Implemented", 3, op(adr.OpAdd, "d/t:x")),
-			rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+			rec("0137", "Implemented", op(adr.OpUpdate, "d/t:x")),
+			rec("0138", "Implemented", op(adr.OpAdd, "d/t:x")),
 		},
-		topics(claim("d/t:other", "0136"), claim("d/t:x", "0137", "0138")))
-	if !strings.Contains(messages(beforeOrigin), "not in increasing State-sequence order at ADR-0138") {
-		t.Errorf("Revised-by before Origin sequence not reported:\n%s", messages(beforeOrigin))
+		topics(claim("d/t:x", "0138", "0137")))
+	if !strings.Contains(messages(beforeOrigin), "not in ascending ADR-number order at ADR-0137") {
+		t.Errorf("Revised-by at or below Origin not reported:\n%s", messages(beforeOrigin))
 	}
 }
 
@@ -335,8 +313,8 @@ func v2status(status string) adr.HistoryEvent {
 	return adr.HistoryEvent{Kind: adr.HistoryStatus, Date: "2026-01-01", Status: status}
 }
 
-func v2batch(sequence int, operations ...adr.Operation) adr.HistoryEvent {
-	return adr.HistoryEvent{Kind: adr.HistoryApplied, Date: "2026-01-02", Sequence: sequence, HasSequence: true, Operations: operations}
+func v2batch(operations ...adr.Operation) adr.HistoryEvent {
+	return adr.HistoryEvent{Kind: adr.HistoryApplied, Date: "2026-01-02", Operations: operations}
 }
 
 // invariant: invariants/current-state-authority:implemented-impact-bidirectional
@@ -345,9 +323,9 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 	addX := op(adr.OpAdd, "d/t:x")
 	updateX := op(adr.OpUpdate, "d/t:x")
 	pending := op(adr.OpAdd, "d/t:pending")
-	base := rec("0137", "Implemented", 1, addX)
+	base := rec("0137", "Implemented", addX)
 	implementing := v2rec("0138", "Implementing", []adr.Operation{updateX, pending},
-		v2status("Proposed"), v2status("Implementing"), v2batch(2, updateX))
+		v2status("Proposed"), v2status("Implementing"), v2batch(updateX))
 	if f := currentstate.Check([]adr.ADR{base, implementing}, topics(claim("d/t:x", "0137", "0138"))); len(f) != 0 {
 		t.Fatalf("valid interleaved Implementing state rejected:\n%s", messages(f))
 	}
@@ -362,7 +340,7 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 	remove := op(adr.OpRemove, "d/t:x")
 	cancel := op(adr.OpUpdate, "d/t:unused")
 	partialRemove := v2rec("0139", "Abandoned", []adr.Operation{remove, cancel},
-		v2status("Proposed"), v2status("Implementing"), v2batch(2, remove), v2status("Abandoned"))
+		v2status("Proposed"), v2status("Implementing"), v2batch(remove), v2status("Abandoned"))
 	if f := currentstate.Check([]adr.ADR{base, partialRemove}, topics()); len(f) != 0 {
 		t.Fatalf("partially Abandoned remove lost authority:\n%s", messages(f))
 	}
@@ -374,7 +352,7 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 	if got := messages(currentstate.Check([]adr.ADR{base, partialRemove, directlyAbandonedReuse}, topics())); !strings.Contains(got, "may never be reused") {
 		t.Fatalf("directly Abandoned V2 removed ID reuse not rejected:\n%s", got)
 	}
-	v1AbandonedReuse := rec("0140", "Abandoned", 0, addX)
+	v1AbandonedReuse := rec("0140", "Abandoned", addX)
 	if got := messages(currentstate.Check([]adr.ADR{base, partialRemove, v1AbandonedReuse}, topics())); !strings.Contains(got, "may never be reused") {
 		t.Fatalf("Abandoned V1 removed ID reuse not rejected:\n%s", got)
 	}
@@ -388,16 +366,12 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 	if f := currentstate.Check([]adr.ADR{{Number: "0100"}, directlyAbandoned}, topics(claim("d/t:active", "0100"))); len(f) != 0 {
 		t.Fatalf("directly Abandoned V2 operations imposed pending/result preconditions:\n%s", messages(f))
 	}
-	v1Abandoned := rec("0142", "Abandoned", 0, canceledWithoutPreconditions...)
+	v1Abandoned := rec("0142", "Abandoned", canceledWithoutPreconditions...)
 	if f := currentstate.Check([]adr.ADR{{Number: "0100"}, v1Abandoned}, topics(claim("d/t:active", "0100"))); len(f) != 0 {
 		t.Fatalf("Abandoned V1 operations changed equivalent canceled behavior:\n%s", messages(f))
 	}
 
-	implementedRemove := v2rec("0141", "Implemented", []adr.Operation{op(adr.OpRemove, "d/t:implemented-gone")}, v2status("Proposed"), func() adr.HistoryEvent {
-		e := v2status("Implemented")
-		e.Sequence, e.HasSequence = 1, true
-		return e
-	}())
+	implementedRemove := v2rec("0141", "Implemented", []adr.Operation{op(adr.OpRemove, "d/t:implemented-gone")}, v2status("Proposed"), v2status("Implemented"))
 	implementedReuse := v2rec("0142", "Proposed", []adr.Operation{op(adr.OpAdd, "d/t:implemented-gone")}, v2status("Proposed"))
 	if got := messages(currentstate.Check([]adr.ADR{{Number: "0100"}, implementedRemove, implementedReuse}, topics())); !strings.Contains(got, "may never be reused") {
 		t.Fatalf("ID removed by Implemented V2 ADR was reusable:\n%s", got)
@@ -420,11 +394,11 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 		topics  []topic.Topic
 		want    string
 	}{
-		{"applied add missing result", []adr.ADR{rec("0150", "Implemented", 1, op(adr.OpAdd, "d/t:add"))}, topics(), "has no active claim"},
-		{"applied update missing result", []adr.ADR{{Number: "0100"}, rec("0150", "Implemented", 1, op(adr.OpUpdate, "d/t:update"))}, topics(claim("d/t:update", "0100")), "does not list updating ADR-0150"},
-		{"applied remove missing result", []adr.ADR{{Number: "0100"}, rec("0150", "Implemented", 1, op(adr.OpRemove, "d/t:remove"))}, topics(claim("d/t:remove", "0100")), "still has an active claim"},
-		{"inverse add missing", []adr.ADR{rec("0150", "Implemented", 1, op(adr.OpUpdate, "d/t:other"))}, topics(claim("d/t:add", "0150"), claim("d/t:other", "0100", "0150")), "no matching add"},
-		{"inverse update missing", []adr.ADR{rec("0150", "Implemented", 1, op(adr.OpAdd, "d/t:update"))}, topics(claim("d/t:update", "0150", "0151")), "no matching update"},
+		{"applied add missing result", []adr.ADR{rec("0150", "Implemented", op(adr.OpAdd, "d/t:add"))}, topics(), "has no active claim"},
+		{"applied update missing result", []adr.ADR{{Number: "0100"}, rec("0150", "Implemented", op(adr.OpUpdate, "d/t:update"))}, topics(claim("d/t:update", "0100")), "does not list updating ADR-0150"},
+		{"applied remove missing result", []adr.ADR{{Number: "0100"}, rec("0150", "Implemented", op(adr.OpRemove, "d/t:remove"))}, topics(claim("d/t:remove", "0100")), "still has an active claim"},
+		{"inverse add missing", []adr.ADR{rec("0150", "Implemented", op(adr.OpUpdate, "d/t:other"))}, topics(claim("d/t:add", "0150"), claim("d/t:other", "0100", "0150")), "no matching add"},
+		{"inverse update missing", []adr.ADR{rec("0150", "Implemented", op(adr.OpAdd, "d/t:update"))}, topics(claim("d/t:update", "0150", "0151")), "no matching update"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := messages(currentstate.Check(tc.records, tc.topics))
@@ -437,44 +411,9 @@ func TestCheckV2AppliedAuthority(t *testing.T) {
 
 func TestCheckRejectsInvalidV2Projection(t *testing.T) {
 	operation := op(adr.OpAdd, "d/t:x")
-	invalid := v2rec("0137", "Implementing", []adr.Operation{operation}, v2status("Proposed"), v2status("Implementing"), v2batch(1, operation))
+	invalid := v2rec("0137", "Implementing", []adr.Operation{operation}, v2status("Proposed"), v2status("Implementing"), v2batch(operation))
 	if got := messages(currentstate.Check([]adr.ADR{invalid}, topics(claim("d/t:x", "0137")))); !strings.Contains(got, "requires applied and remaining operations") {
 		t.Fatalf("invalid projection not reported:\n%s", got)
-	}
-}
-
-// invariant: invariants/current-state-authority:application-batch-sequence-order
-func TestCheckV2BatchSequences(t *testing.T) {
-	addX := op(adr.OpAdd, "d/t:x")
-	updateX := op(adr.OpUpdate, "d/t:x")
-	v1Implicit := rec("0137", "Implemented", 1, addX)
-	v2Implicit := v2rec("0138", "Implemented", []adr.Operation{updateX}, v2status("Proposed"), v2status("Implemented"))
-	v2Implicit.History[len(v2Implicit.History)-1].Sequence, v2Implicit.History[len(v2Implicit.History)-1].HasSequence = 2, true
-	pending := op(adr.OpAdd, "d/t:pending")
-	v2Explicit := v2rec("0139", "Implementing", []adr.Operation{updateX, pending}, v2status("Proposed"), v2status("Implementing"), v2batch(3, updateX))
-	records := []adr.ADR{v1Implicit, v2Implicit, v2Explicit}
-	claims := topics(claim("d/t:x", "0137", "0138", "0139"))
-	if f := currentstate.Check(records, claims); len(f) != 0 {
-		t.Fatalf("interleaved V1 implicit, V2 implicit, and V2 explicit sequences rejected:\n%s", messages(f))
-	}
-	for i, record := range records {
-		progress, err := record.OperationProgress()
-		if err != nil || len(progress.Applied) != 1 || progress.Applied[0].Sequence != i+1 {
-			t.Fatalf("ADR-%s inherited sequence = %#v, err=%v", record.Number, progress.Applied, err)
-		}
-	}
-	if got := claims[0].Claims[0].RevisedBy; len(got) != 2 || got[0] != "0138" || got[1] != "0139" {
-		t.Fatalf("topic provenance order = %v", got)
-	}
-
-	duplicate := v2Implicit
-	duplicate.History[len(duplicate.History)-1].Sequence = 1
-	if got := messages(currentstate.Check([]adr.ADR{v1Implicit, duplicate}, topics(claim("d/t:x", "0137", "0138")))); !strings.Contains(got, "more than one ADR batch") {
-		t.Fatalf("duplicate batch sequence not rejected:\n%s", got)
-	}
-	duplicate.History[len(duplicate.History)-1].Sequence = 3
-	if got := messages(currentstate.Check([]adr.ADR{v1Implicit, duplicate}, topics(claim("d/t:x", "0137", "0138")))); !strings.Contains(got, "expected 2, found 3") {
-		t.Fatalf("batch sequence gap not rejected:\n%s", got)
 	}
 }
 
@@ -499,7 +438,7 @@ func TestFindingCarriesOnlyMessage(t *testing.T) {
 // reach Findings and never Notes) is not reachable from package
 // currentstate_test; internal/project's report-routing test proves it.
 func TestEveryHandshakeFindingIsBlocking(t *testing.T) {
-	findings := currentstate.Check([]adr.ADR{rec("0001", "Implemented", 1, adr.Operation{Verb: "add", ID: "d/t:missing"})}, nil)
+	findings := currentstate.Check([]adr.ADR{rec("0001", "Implemented", adr.Operation{Verb: "add", ID: "d/t:missing"})}, nil)
 	if len(findings) == 0 {
 		t.Fatal("an operation targeting a missing topic must produce a finding")
 	}
@@ -540,5 +479,43 @@ func TestParseRecordRouting(t *testing.T) {
 	// Cutoff of zero treats everything as legacy.
 	if a, err := adr.ParseRecord("0200-x.md", legacy, adr.FormatBoundaries{}); err != nil || a.IsGoverned() {
 		t.Fatalf("cutoff 0 routing: %+v err=%v", a, err)
+	}
+}
+
+// TestCheckBackwardOrdersRevisedByByADRNumber covers the replacement provenance
+// order (ADR-0189): a claim's canonical chain is its Origin followed by its
+// Revised-by entries in ascending ADR-number order, every entry above the
+// Origin's number, with no global counter; and a tolerated legacy
+// state-sequence segment is a blocking finding directing to awf upgrade.
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number
+func TestCheckBackwardOrdersRevisedByByADRNumber(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	update := op(adr.OpUpdate, "d/t:c")
+	origin := v2rec("0140", "Implemented", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	first := v2rec("0141", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	second := v2rec("0142", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	records := []adr.ADR{origin, first, second}
+
+	if got := messages(currentstate.Check(records, topics(claim("d/t:c", "0140", "0141", "0142")))); got != "" {
+		t.Fatalf("ascending Revised-by must be clean:\n%s", got)
+	}
+	if got := messages(currentstate.Check(records, topics(claim("d/t:c", "0140", "0142", "0141")))); !strings.Contains(got, "not in ascending ADR-number order at ADR-0141") {
+		t.Fatalf("descending Revised-by must be a finding:\n%s", got)
+	}
+
+	lowUpdate := v2rec("0139", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	if got := messages(currentstate.Check([]adr.ADR{origin, lowUpdate}, topics(claim("d/t:c", "0140", "0139")))); !strings.Contains(got, "not in ascending ADR-number order at ADR-0139") {
+		t.Fatalf("a Revised-by entry at or below the Origin number must be a finding:\n%s", got)
+	}
+
+	legacy := origin
+	legacy.History = append([]adr.HistoryEvent(nil), origin.History...)
+	legacy.History[2].LegacySequence = true
+	if got := messages(currentstate.Check([]adr.ADR{legacy}, topics(claim("d/t:c", "0140")))); !strings.Contains(got, "ADR-0140 carries a retired state-sequence segment; run awf upgrade") {
+		t.Fatalf("a tolerated legacy segment must be a blocking finding:\n%s", got)
 	}
 }

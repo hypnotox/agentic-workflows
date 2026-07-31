@@ -144,4 +144,4 @@ the staged check explicitly even where Git hook activation is absent.
 ## Status history
 
 - 2026-07-21: Proposed
-- 2026-07-21: Implemented; content-sha256: 3ce20ea9796dd5b7eba18c79ee1c956d5bc16079afc262ac7edb1cdb3306512b; state-sequence: 3
+- 2026-07-21: Implemented; content-sha256: 3ce20ea9796dd5b7eba18c79ee1c956d5bc16079afc262ac7edb1cdb3306512b

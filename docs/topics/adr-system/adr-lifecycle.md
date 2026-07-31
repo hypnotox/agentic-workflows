@@ -79,8 +79,9 @@ Backing: test
 
 ### `invariant: applied-history-events-append-only`
 
-Stable V2 Status history is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations with one positive state sequence, and a checked pair refuses deletion or mutation of any prior event.
+Stable V2 Status history is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations, and a checked pair refuses deletion or mutation of any prior event.
 Origin: ADR-0143
+Revised-by: ADR-0189
 Backing: test
 
 ### `invariant: audit-shares-adr-parser`
@@ -111,9 +112,9 @@ Backing: test
 
 ### `invariant: corpus-raw-access-enumerated`
 
-The two ordered schema migrations in internal/migrate are the only call sites of the corpus view's raw-bytes accessor, and no file outside internal/adr calls os.ReadFile on an ADR.Path.
+The three ordered schema migrations in internal/migrate are the only call sites of the corpus view's raw-bytes accessor, and no file outside internal/adr calls os.ReadFile on an ADR.Path.
 Origin: ADR-0130
-Revised-by: ADR-0138
+Revised-by: ADR-0138, ADR-0189
 Backing: test
 
 ### `invariant: corpus-single-identity-key`

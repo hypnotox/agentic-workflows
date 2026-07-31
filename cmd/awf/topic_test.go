@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -43,8 +42,8 @@ currentState:
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-scheduling.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: Scheduling origin"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Scheduling.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-revision.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0002: Scheduling revision"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Revise scheduling.\n")))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-update-active.md"), topicV1ADR(t, "0003", "Update active claim", "- update `schedule/contracts:deterministic-order`", 1))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove legacy claim", "- remove `schedule/contracts:removed`", 2))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-update-active.md"), topicV1ADR(t, "0003", "Update active claim", "- update `schedule/contracts:deterministic-order`"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove legacy claim", "- remove `schedule/contracts:removed`"))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md"), `Scheduling contracts.
 
@@ -76,7 +75,7 @@ References: schedule/contracts:stable-output
 	return root
 }
 
-func topicV1ADR(t *testing.T, number, title, operation string, sequence int) string {
+func topicV1ADR(t *testing.T, number, title, operation string) string {
 	t.Helper()
 	build := func(status, history string) string {
 		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
@@ -90,7 +89,7 @@ func topicV1ADR(t *testing.T, number, title, operation string, sequence int) str
 		t.Fatal(err)
 	}
 	digest := adr.ContentDigest(proposed.Sections)
-	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest+"; state-sequence: "+strconv.Itoa(sequence))
+	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest)
 }
 
 func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
@@ -204,11 +203,11 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	}
 }
 
-func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
+func TestPrintTopicHistoryHumanJSON(t *testing.T) {
 	result := topic.QueryResult{
 		Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{},
 		History: []topic.ClaimHistory{
-			{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented", StateSequence: 3}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing", StateSequence: 4}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned", StateSequence: 5}},
+			{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing"}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned"}},
 			{ClaimID: "d/t:legacy", Origin: &topic.ADRHistory{Number: "0100", Title: "Legacy origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{}},
 		},
 	}
@@ -216,7 +215,7 @@ func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
 	if err := printTopic(&human, result, false); err != nil {
 		t.Fatal(err)
 	}
-	wantHuman := "topic d/t\n\n## Claims\n\n## History\nd/t:x\n  Origin: ADR-0001 (Implemented) Origin [state-sequence: 3]\n  Revised-by: ADR-0002 (Implementing) Revision [state-sequence: 4]\n  Removed-by: ADR-0003 (Abandoned) Removal [state-sequence: 5]\nd/t:legacy\n  Origin: ADR-0100 (Implemented) Legacy origin\n"
+	wantHuman := "topic d/t\n\n## Claims\n\n## History\nd/t:x\n  Origin: ADR-0001 (Implemented) Origin\n  Revised-by: ADR-0002 (Implementing) Revision\n  Removed-by: ADR-0003 (Abandoned) Removal\nd/t:legacy\n  Origin: ADR-0100 (Implemented) Legacy origin\n"
 	if human.String() != wantHuman {
 		t.Fatalf("human history:\n%s\nwant:\n%s", human.String(), wantHuman)
 	}
@@ -225,7 +224,7 @@ func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
 	if err := printTopic(&encoded, result, true); err != nil {
 		t.Fatal(err)
 	}
-	wantJSON := "{\n  \"kind\": \"topic\",\n  \"id\": \"d/t\",\n  \"claims\": [],\n  \"history\": [\n    {\n      \"claimId\": \"d/t:x\",\n      \"origin\": {\n        \"number\": \"0001\",\n        \"title\": \"Origin\",\n        \"status\": \"Implemented\",\n        \"stateSequence\": 3\n      },\n      \"revisedBy\": [\n        {\n          \"number\": \"0002\",\n          \"title\": \"Revision\",\n          \"status\": \"Implementing\",\n          \"stateSequence\": 4\n        }\n      ],\n      \"removedBy\": {\n        \"number\": \"0003\",\n        \"title\": \"Removal\",\n        \"status\": \"Abandoned\",\n        \"stateSequence\": 5\n      }\n    },\n    {\n      \"claimId\": \"d/t:legacy\",\n      \"origin\": {\n        \"number\": \"0100\",\n        \"title\": \"Legacy origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": []\n    }\n  ]\n}\n"
+	wantJSON := "{\n  \"kind\": \"topic\",\n  \"id\": \"d/t\",\n  \"claims\": [],\n  \"history\": [\n    {\n      \"claimId\": \"d/t:x\",\n      \"origin\": {\n        \"number\": \"0001\",\n        \"title\": \"Origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": [\n        {\n          \"number\": \"0002\",\n          \"title\": \"Revision\",\n          \"status\": \"Implementing\"\n        }\n      ],\n      \"removedBy\": {\n        \"number\": \"0003\",\n        \"title\": \"Removal\",\n        \"status\": \"Abandoned\"\n      }\n    },\n    {\n      \"claimId\": \"d/t:legacy\",\n      \"origin\": {\n        \"number\": \"0100\",\n        \"title\": \"Legacy origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": []\n    }\n  ]\n}\n"
 	if encoded.String() != wantJSON {
 		t.Fatalf("JSON history:\n%s\nwant:\n%s", encoded.String(), wantJSON)
 	}

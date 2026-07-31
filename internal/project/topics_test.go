@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -356,7 +355,7 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 		t.Fatalf("sweep: %#v", drift)
 	}
 }
-func queryV1ADR(t *testing.T, number, title, operation string, sequence int) string {
+func queryV1ADR(t *testing.T, number, title, operation string) string {
 	t.Helper()
 	build := func(status, history string) string {
 		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
@@ -370,7 +369,7 @@ func queryV1ADR(t *testing.T, number, title, operation string, sequence int) str
 		t.Fatal(err)
 	}
 	digest := adr.ContentDigest(proposed.Sections)
-	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest+"; state-sequence: "+strconv.Itoa(sequence))
+	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest)
 }
 
 func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
@@ -379,7 +378,7 @@ func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
 		".awf/domains/rendering.yaml":                            "paths: [\"internal/**\"]\n",
 		".awf/topics/metadata/rendering/contracts.yaml":          "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
-		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`", 1),
+		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`"),
 	})
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, ADRFormatV1From: 2, LegacyADRGaps: []int{}, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(lockFile(p.Root)); err != nil {
@@ -410,17 +409,17 @@ func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
 	}{
 		{
 			name: "absent add-only",
-			adrs: map[string]string{"docs/decisions/0002-add.md": queryV1ADR(t, "0002", "Add absent claim", "- add `"+claimID+"`", 1)},
+			adrs: map[string]string{"docs/decisions/0002-add.md": queryV1ADR(t, "0002", "Add absent claim", "- add `"+claimID+"`")},
 			want: "has no active claim",
 		},
 		{
-			name: "operation after remove",
+			name: "add after remove",
 			adrs: map[string]string{
-				"docs/decisions/0002-add.md":    queryV1ADR(t, "0002", "Add claim", "- add `"+claimID+"`", 1),
-				"docs/decisions/0003-remove.md": queryV1ADR(t, "0003", "Remove claim", "- remove `"+claimID+"`", 2),
-				"docs/decisions/0004-update.md": queryV1ADR(t, "0004", "Update removed claim", "- update `"+claimID+"`", 3),
+				"docs/decisions/0002-add.md":    queryV1ADR(t, "0002", "Add claim", "- add `"+claimID+"`"),
+				"docs/decisions/0003-remove.md": queryV1ADR(t, "0003", "Remove claim", "- remove `"+claimID+"`"),
+				"docs/decisions/0004-readd.md":  queryV1ADR(t, "0004", "Reuse removed claim id", "- add `"+claimID+"`"),
 			},
-			want: "operation after its remove",
+			want: "add after its remove",
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

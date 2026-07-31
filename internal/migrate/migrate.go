@@ -61,6 +61,7 @@ var registry = []Migration{
 	// gains its paired agent on upgrade instead of failing at project open.
 	{To: 24, Name: "explorer-grounding-closure", Apply: applyCloseEnabledSet},
 	{To: 25, Name: "drop-severity-settings", Apply: applyDropSeveritySettings},
+	{To: 26, Name: "adr-number-provenance", Apply: applyADRNumberProvenance},
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state

@@ -141,9 +141,9 @@ func TestQueryHistoricalOnlyRemovedClaim(t *testing.T) {
 	claimID := "alpha/contracts:removed"
 	adrs := adr.NewCorpus(append(existing.All(),
 		adr.ADR{Number: "0003", Title: "ADR-0003: Add removed claim", Status: "Implemented", Format: adr.CurrentStateV1,
-			Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented", Sequence: 1, HasSequence: true}}},
+			Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented"}}},
 		adr.ADR{Number: "0004", Title: "ADR-0004: Remove old claim", Status: "Implemented", Format: adr.CurrentStateV1,
-			Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented", Sequence: 2, HasSequence: true}}},
+			Operations: []adr.Operation{{Verb: adr.OpRemove, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented"}}},
 	))
 
 	if _, err := Query(corpus, adrs, claimID, QueryOptions{}, nil); err == nil || !strings.Contains(err.Error(), "not found") {
@@ -170,16 +170,16 @@ func TestQueryHistoricalOnlyRemovedClaim(t *testing.T) {
 func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 	corpus, existing := loadedQueryFixture(t)
 	claimID := "alpha/contracts:stable"
-	record := func(number string, verb adr.OpVerb, sequence int) adr.ADR {
+	record := func(number string, verb adr.OpVerb) adr.ADR {
 		return adr.ADR{Number: number, Title: "ADR-" + number + ": Operation " + number, Status: "Implemented", Format: adr.CurrentStateV1,
-			Operations: []adr.Operation{{Verb: verb, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented", Sequence: sequence, HasSequence: true}}}
+			Operations: []adr.Operation{{Verb: verb, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented"}}}
 	}
-	operations := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd, 1), record("0004", adr.OpUpdate, 2)))
+	operations := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd), record("0004", adr.OpUpdate)))
 	got, err := Query(corpus, operations, claimID, QueryOptions{History: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.History) != 1 || got.History[0].Origin.Number != "0003" || got.History[0].Origin.StateSequence != 1 || len(got.History[0].RevisedBy) != 1 || got.History[0].RevisedBy[0].Number != "0004" || got.History[0].RevisedBy[0].StateSequence != 2 {
+	if len(got.History) != 1 || got.History[0].Origin.Number != "0003" || len(got.History[0].RevisedBy) != 1 || got.History[0].RevisedBy[0].Number != "0004" {
 		t.Fatalf("active operation history = %#v", got.History)
 	}
 
@@ -188,22 +188,22 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 		History: []adr.HistoryEvent{
 			{Kind: adr.HistoryStatus, Status: "Proposed"},
 			{Kind: adr.HistoryStatus, Status: "Implementing"},
-			{Kind: adr.HistoryApplied, Sequence: 2, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: claimID}}},
+			{Kind: adr.HistoryApplied, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: claimID}}},
 		},
 	}
-	operations = adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd, 1), incremental))
+	operations = adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd), incremental))
 	got, err = Query(corpus, operations, claimID, QueryOptions{History: true}, nil)
-	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" || got.History[0].RevisedBy[0].StateSequence != 2 {
+	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" {
 		t.Fatalf("immediate incremental operation history = %#v, err=%v", got.History, err)
 	}
 
-	incomplete := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0004", adr.OpUpdate, 1)))
+	incomplete := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0004", adr.OpUpdate)))
 	got, err = Query(corpus, incomplete, claimID, QueryOptions{History: true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got.History) != 1 || got.History[0].Origin.Number != "0001" || got.History[0].Origin.StateSequence != 0 {
-		t.Fatalf("incomplete operations did not fall back to zero-sequence active provenance: %#v", got.History)
+	if len(got.History) != 1 || got.History[0].Origin.Number != "0001" {
+		t.Fatalf("incomplete operations did not fall back to claim-based origin provenance: %#v", got.History)
 	}
 }
 

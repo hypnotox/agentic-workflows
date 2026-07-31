@@ -88,5 +88,5 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
 - This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
+- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for ADR-number and intra-ADR position order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

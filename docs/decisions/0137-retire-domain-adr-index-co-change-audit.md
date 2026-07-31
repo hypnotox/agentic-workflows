@@ -63,4 +63,4 @@ bridge preparation history.
 ## Status history
 
 - 2026-07-20: Proposed
-- 2026-07-20: Implemented; content-sha256: 1cf0d4e461b5d9943c826eb3bf1a1e1bf20c419b3cf40b31e922a1a161339925; state-sequence: 1
+- 2026-07-20: Implemented; content-sha256: 1cf0d4e461b5d9943c826eb3bf1a1e1bf20c419b3cf40b31e922a1a161339925

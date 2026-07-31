@@ -8,15 +8,16 @@ import (
 // ApplicationBatch is one implicit or explicit application of declared state
 // operations. Operations are retained in declaration/event order.
 type ApplicationBatch struct {
-	Sequence   int
 	Operations []Operation
 	Implicit   bool
 }
 
-// AppliedOperation is one applied declaration and its inherited batch sequence.
+// AppliedOperation is one applied declaration and the index of its batch in
+// the owning ADR's history; per-claim cross-ADR order is ascending ADR number
+// (ADR-0189), never derived from batch positions.
 type AppliedOperation struct {
-	Operation Operation
-	Sequence  int
+	Operation  Operation
+	BatchIndex int
 }
 
 // OperationProgress partitions an ADR's declarations by application state.
@@ -37,19 +38,10 @@ func (a ADR) ApplicationBatches() ([]ApplicationBatch, error) {
 			if !a.IsV2() {
 				return nil, fmt.Errorf("ADR-%s has an Applied event outside current-state-v2", a.Number)
 			}
-			batches = append(batches, ApplicationBatch{
-				Sequence: event.Sequence, Operations: slices.Clone(event.Operations),
-			})
+			batches = append(batches, ApplicationBatch{Operations: slices.Clone(event.Operations)})
 		}
 	}
 	if len(batches) != 0 {
-		if a.IsImplemented() {
-			for _, event := range a.History {
-				if event.Kind == HistoryStatus && event.Status == statusImplemented && event.HasSequence {
-					return nil, fmt.Errorf("ADR-%s mixes explicit Applied events with implicit terminal sequencing", a.Number)
-				}
-			}
-		}
 		return batches, nil
 	}
 	if !a.IsImplemented() || len(a.Operations) == 0 {
@@ -58,10 +50,7 @@ func (a ADR) ApplicationBatches() ([]ApplicationBatch, error) {
 	for i := len(a.History) - 1; i >= 0; i-- {
 		event := a.History[i]
 		if (event.Kind == HistoryStatus || (a.IsV1() && event.Kind == 0)) && event.Status == statusImplemented {
-			if !event.HasSequence {
-				return nil, fmt.Errorf("ADR-%s Implemented status has no state-sequence", a.Number)
-			}
-			return []ApplicationBatch{{Sequence: event.Sequence, Operations: slices.Clone(a.Operations), Implicit: true}}, nil
+			return []ApplicationBatch{{Operations: slices.Clone(a.Operations), Implicit: true}}, nil
 		}
 	}
 	return nil, fmt.Errorf("ADR-%s has no Implemented status event", a.Number)
@@ -83,8 +72,8 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 		declared[op] = i
 	}
 	applied := make(map[Operation]bool, len(a.Operations))
-	for _, batch := range batches {
-		if batch.Sequence < 1 || len(batch.Operations) == 0 {
+	for i, batch := range batches {
+		if len(batch.Operations) == 0 {
 			return OperationProgress{}, fmt.Errorf("ADR-%s has an invalid application batch", a.Number)
 		}
 		for _, op := range batch.Operations {
@@ -95,7 +84,7 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 				return OperationProgress{}, fmt.Errorf("ADR-%s applies operation %s `%s` more than once", a.Number, op.Verb, op.ID)
 			}
 			applied[op] = true
-			progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, Sequence: batch.Sequence})
+			progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, BatchIndex: i})
 		}
 	}
 	var complement []Operation

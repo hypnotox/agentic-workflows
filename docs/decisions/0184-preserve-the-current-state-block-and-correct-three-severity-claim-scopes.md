@@ -151,4 +151,4 @@ than this correction, and ADR-0183 did not take it.
 ## Status history
 
 - 2026-07-30: Proposed
-- 2026-07-30: Implemented; content-sha256: 563553c07eee9661819cf7106738255a59092423ad02d8cfa213362aae8c4cc3; state-sequence: 96
+- 2026-07-30: Implemented; content-sha256: 563553c07eee9661819cf7106738255a59092423ad02d8cfa213362aae8c4cc3

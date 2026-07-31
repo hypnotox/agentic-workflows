@@ -20,8 +20,8 @@ func prosed(c topic.Claim, p string) topic.Claim { c.Prose = p; return c }
 // TestCheckPairValidAdd accepts a Proposed->Implemented add: the claim appears
 // with the adding ADR as its Origin and nothing else mutates.
 func TestCheckPairValidAdd(t *testing.T) {
-	before := uni([]adr.ADR{rec("0137", "Proposed", 0, op(adr.OpAdd, "d/t:new"))})
-	after := uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:new"))}, claim("d/t:new", "0137"))
+	before := uni([]adr.ADR{rec("0137", "Proposed", op(adr.OpAdd, "d/t:new"))})
+	after := uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:new"))}, claim("d/t:new", "0137"))
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("expected no findings, got:\n%s", messages(f))
 	}
@@ -30,18 +30,18 @@ func TestCheckPairValidAdd(t *testing.T) {
 // TestCheckPairValidUpdate accepts an Accepted->Implemented update that preserves
 // Origin, appends the updating ADR to Revised-by, and changes the prose.
 func TestCheckPairValidUpdate(t *testing.T) {
-	accepted := rec("0138", "Accepted", 0, op(adr.OpUpdate, "d/t:x"))
-	implemented := rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x"))
+	accepted := rec("0138", "Accepted", op(adr.OpUpdate, "d/t:x"))
+	implemented := rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x"))
 	implemented.History = append(append([]adr.StatusEntry(nil), accepted.History...), implemented.History[len(implemented.History)-1])
 	before := uni(
 		[]adr.ADR{
-			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
+			rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
 			accepted,
 		},
 		prosed(claim("d/t:x", "0137"), "old"))
 	after := uni(
 		[]adr.ADR{
-			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
+			rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
 			implemented,
 		},
 		prosed(claim("d/t:x", "0137", "0138"), "new"))
@@ -53,17 +53,17 @@ func TestCheckPairValidUpdate(t *testing.T) {
 // TestCheckPairValidRemove accepts an Accepted->Implemented remove that retires
 // the claim.
 func TestCheckPairValidRemove(t *testing.T) {
-	accepted := rec("0139", "Accepted", 0, op(adr.OpRemove, "d/t:x"))
-	implemented := rec("0139", "Implemented", 2, op(adr.OpRemove, "d/t:x"))
+	accepted := rec("0139", "Accepted", op(adr.OpRemove, "d/t:x"))
+	implemented := rec("0139", "Implemented", op(adr.OpRemove, "d/t:x"))
 	implemented.History = append(append([]adr.StatusEntry(nil), accepted.History...), implemented.History[len(implemented.History)-1])
 	before := uni(
 		[]adr.ADR{
-			rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
+			rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
 			accepted,
 		},
 		claim("d/t:x", "0137"))
 	after := uni([]adr.ADR{
-		rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
+		rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
 		implemented,
 	})
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
@@ -94,7 +94,7 @@ func TestCheckPairUnchangedClaim(t *testing.T) {
 
 // TestCheckPairDeletedV1ADR rejects removal of a governed ADR record.
 func TestCheckPairDeletedV1ADR(t *testing.T) {
-	before := uni([]adr.ADR{rec("0137", "Implemented", 1)})
+	before := uni([]adr.ADR{rec("0137", "Implemented")})
 	if f := currentstate.CheckPair(before, uni(nil), currentstate.AuthoredCommit); !strings.Contains(messages(f), "current-state-v1 ADR-0137 was deleted") {
 		t.Fatalf("deleted ADR not reported:\n%s", messages(f))
 	}
@@ -102,8 +102,8 @@ func TestCheckPairDeletedV1ADR(t *testing.T) {
 
 // TestCheckPairIllegalTransition rejects an edge out of a terminal state.
 func TestCheckPairIllegalTransition(t *testing.T) {
-	before := uni([]adr.ADR{rec("0137", "Implemented", 0)})
-	after := uni([]adr.ADR{rec("0137", "Abandoned", 0)})
+	before := uni([]adr.ADR{rec("0137", "Implemented")})
+	after := uni([]adr.ADR{rec("0137", "Abandoned")})
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); !strings.Contains(messages(f), "ADR-0137 changed status from Implemented to Abandoned, which is not a legal") {
 		t.Fatalf("illegal transition not reported:\n%s", messages(f))
 	}
@@ -187,12 +187,12 @@ func TestCheckPairAmendedContent(t *testing.T) {
 	})
 
 	t.Run("merge aggregate interleaves amendments and batches", func(t *testing.T) {
-		base := rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:base"))
+		base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
 		x, y := op(adr.OpAdd, "d/t:x"), op(adr.OpAdd, "d/t:y")
 		pending := op(adr.OpAdd, "d/t:pending")
-		partial := v2doc("Implementing", "old", proposed, v2status("Implementing"), v2batch(2, x))
+		partial := v2doc("Implementing", "old", proposed, v2status("Implementing"), v2batch(x))
 		partial.Operations = []adr.Operation{x, y, pending}
-		merged := v2doc("Implementing", "new", proposed, v2status("Implementing"), v2batch(2, x), amended, v2batch(3, y))
+		merged := v2doc("Implementing", "new", proposed, v2status("Implementing"), v2batch(x), amended, v2batch(y))
 		merged.Operations = partial.Operations
 		before := uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141"))
 		after := uni([]adr.ADR{base, merged}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"))
@@ -246,11 +246,11 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	updateX := op(adr.OpUpdate, "d/t:x")
 	addA := op(adr.OpAdd, "d/t:a")
 	addB := op(adr.OpAdd, "d/t:b")
-	base := rec("0137", "Implemented", 1, addX)
+	base := rec("0137", "Implemented", addX)
 	proposed := v2rec("0138", "Proposed", []adr.Operation{updateX, addA, addB}, v2status("Proposed"))
 	first := proposed
 	first.Status = "Implementing"
-	first.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(2, updateX))
+	first.History = append(append([]adr.HistoryEvent(nil), proposed.History...), v2status("Implementing"), v2batch(updateX))
 	before := uni([]adr.ADR{base, proposed}, prosed(claim("d/t:x", "0137"), "old"))
 	after := uni([]adr.ADR{base, first}, prosed(claim("d/t:x", "0137", "0138"), "new"))
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
@@ -258,7 +258,7 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	}
 
 	middle := first
-	middle.History = append(append([]adr.HistoryEvent(nil), first.History...), v2batch(3, addA))
+	middle.History = append(append([]adr.HistoryEvent(nil), first.History...), v2batch(addA))
 	middleAfter := uni([]adr.ADR{base, middle}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"))
 	if f := currentstate.CheckPair(after, middleAfter, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("middle batch pair rejected:\n%s", messages(f))
@@ -266,7 +266,7 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 
 	done := middle
 	done.Status = "Implemented"
-	done.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(4, addB), v2status("Implemented"))
+	done.History = append(append([]adr.HistoryEvent(nil), middle.History...), v2batch(addB), v2status("Implemented"))
 	doneAfter := uni([]adr.ADR{base, done}, prosed(claim("d/t:x", "0137", "0138"), "new"), claim("d/t:a", "0138"), claim("d/t:b", "0138"))
 	if f := currentstate.CheckPair(middleAfter, doneAfter, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("final batch pair rejected:\n%s", messages(f))
@@ -288,13 +288,11 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 	assertSplit("final", middleAfter, doneAfter)
 
 	removeD := op(adr.OpRemove, "d/t:d")
-	baseD := rec("0140", "Implemented", 1, op(adr.OpAdd, "d/t:d"))
+	baseD := rec("0140", "Implemented", op(adr.OpAdd, "d/t:d"))
 	directBeforeADR := v2rec("0141", "Accepted", []adr.Operation{removeD}, v2status("Proposed"), v2status("Accepted"))
 	directAfterADR := directBeforeADR
 	directAfterADR.Status = "Implemented"
-	directTerminal := v2status("Implemented")
-	directTerminal.Sequence, directTerminal.HasSequence = 2, true
-	directAfterADR.History = append(append([]adr.HistoryEvent(nil), directBeforeADR.History...), directTerminal)
+	directAfterADR.History = append(append([]adr.HistoryEvent(nil), directBeforeADR.History...), v2status("Implemented"))
 	directBefore := uni([]adr.ADR{baseD, directBeforeADR}, claim("d/t:d", "0140"))
 	directAfter := uni([]adr.ADR{baseD, directAfterADR})
 	if f := currentstate.CheckPair(directBefore, directAfter, currentstate.AuthoredCommit); len(f) != 0 {
@@ -317,40 +315,32 @@ func TestCheckPairV2IncrementalBatches(t *testing.T) {
 }
 
 func TestCheckPairV2BatchSetRules(t *testing.T) {
-	base := rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:base"))
-	direct := func(num, id string, sequence int) (adr.ADR, adr.ADR) {
+	base := rec("0137", "Implemented", op(adr.OpAdd, "d/t:base"))
+	direct := func(num, id string) (adr.ADR, adr.ADR) {
 		operation := op(adr.OpAdd, id)
 		before := v2rec(num, "Accepted", []adr.Operation{operation}, v2status("Proposed"), v2status("Accepted"))
 		after := before
 		after.Status = "Implemented"
-		terminal := v2status("Implemented")
-		terminal.Sequence, terminal.HasSequence = sequence, true
-		after.History = append(append([]adr.HistoryEvent(nil), before.History...), terminal)
+		after.History = append(append([]adr.HistoryEvent(nil), before.History...), v2status("Implemented"))
 		return before, after
 	}
-	b1, a1 := direct("0138", "d/t:a", 2)
-	b2, a2 := direct("0139", "d/t:b", 3)
+	b1, a1 := direct("0138", "d/t:a")
+	b2, a2 := direct("0139", "d/t:b")
 	before := uni([]adr.ADR{base, b1, b2}, claim("d/t:base", "0137"))
 	after := uni([]adr.ADR{base, a1, a2}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139"))
 	if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
 		t.Fatalf("disjoint consecutive batches rejected:\n%s", messages(f))
 	}
 
-	_, duplicateTarget := direct("0140", "d/t:a", 3)
+	_, duplicateTarget := direct("0140", "d/t:a")
 	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, b1, b2}), uni([]adr.ADR{base, a1, duplicateTarget}, claim("d/t:a", "0138")), currentstate.AuthoredCommit)); !strings.Contains(got, "target of more than one operation") {
 		t.Fatalf("cross-batch duplicate target not rejected:\n%s", got)
 	}
 
-	wrong := a2
-	wrong.History[len(wrong.History)-1].Sequence = 4
-	if got := messages(currentstate.CheckPair(before, uni([]adr.ADR{base, a1, wrong}, claim("d/t:base", "0137"), claim("d/t:a", "0138"), claim("d/t:b", "0139")), currentstate.AuthoredCommit)); !strings.Contains(got, "expected next sequence 3") {
-		t.Fatalf("nonconsecutive appended sequences not diagnosed:\n%s", got)
-	}
-
 	x, y, z := op(adr.OpAdd, "d/t:x"), op(adr.OpAdd, "d/t:y"), op(adr.OpAdd, "d/t:z")
-	partial := v2rec("0141", "Implementing", []adr.Operation{x, y, z}, v2status("Proposed"), v2status("Implementing"), v2batch(2, x))
+	partial := v2rec("0141", "Implementing", []adr.Operation{x, y, z}, v2status("Proposed"), v2status("Implementing"), v2batch(x))
 	two := partial
-	two.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(3, y), v2batch(4, z))
+	two.History = append(append([]adr.HistoryEvent(nil), partial.History...), v2batch(y), v2batch(z))
 	if got := messages(currentstate.CheckPair(uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141")), uni([]adr.ADR{base, two}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"), claim("d/t:z", "0141")), currentstate.AuthoredCommit)); !strings.Contains(got, "at most one new batch") {
 		t.Fatalf("same ADR duplicate batch not rejected:\n%s", got)
 	}
@@ -381,10 +371,10 @@ func TestCheckPairMismatches(t *testing.T) {
 	}{
 		{
 			name:   "add of an existing claim",
-			before: uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))}, claim("d/t:x", "0137")),
+			before: uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))}, claim("d/t:x", "0137")),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpAdd, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpAdd, "d/t:x")),
 			}, claim("d/t:x", "0137")),
 			cutoff: 137,
 			want:   "ADR-0138 adds claim d/t:x, which already existed before this transition",
@@ -392,74 +382,74 @@ func TestCheckPairMismatches(t *testing.T) {
 		{
 			name:   "remove of an absent claim",
 			before: uni(nil),
-			after:  uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpRemove, "d/t:x"))}),
+			after:  uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpRemove, "d/t:x"))}),
 			cutoff: 137,
 			want:   "ADR-0137 removes claim d/t:x, which did not exist before this transition",
 		},
 		{
 			name:   "update of a claim absent after",
 			before: uni([]adr.ADR{{Number: "0100", Format: adr.Legacy, Status: "Implemented"}}, claim("d/t:x", "0100")),
-			after:  uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpUpdate, "d/t:x"))}),
+			after:  uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpUpdate, "d/t:x"))}),
 			cutoff: 137,
 			want:   "ADR-0137 updates claim d/t:x, which is not present on both sides",
 		},
 		{
 			name: "update with no canonical change",
-			before: uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))},
+			before: uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))},
 				prosed(claim("d/t:x", "0137"), "same")),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x")),
 			}, prosed(claim("d/t:x", "0137", "0138"), "same\n")),
 			cutoff: 137,
 			want:   "ADR-0138 updates claim d/t:x, but no canonical field changed",
 		},
 		{
 			name: "update changing Origin",
-			before: uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))},
+			before: uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))},
 				prosed(claim("d/t:x", "0137"), "old")),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x")),
 			}, prosed(claim("d/t:x", "0199", "0138"), "new")),
 			cutoff: 137,
 			want:   "update of claim d/t:x changed its Origin from ADR-0137 to ADR-0199",
 		},
 		{
 			name: "update not appending Revised-by",
-			before: uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))},
+			before: uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))},
 				prosed(claim("d/t:x", "0137"), "old")),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x")),
 			}, prosed(claim("d/t:x", "0137"), "new")),
 			cutoff: 137,
-			want:   "must extend Revised-by by exactly one entry",
+			want:   "must add the updating ADR-0138 to Revised-by",
 		},
 		{
-			name: "update breaking the Revised-by prefix",
+			name: "update dropping a prior Revised-by entry",
 			before: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x")),
 			}, prosed(claim("d/t:x", "0137", "0138"), "v1")),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
-				rec("0140", "Implemented", 3, op(adr.OpUpdate, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpUpdate, "d/t:x")),
+				rec("0140", "Implemented", op(adr.OpUpdate, "d/t:x")),
 			}, prosed(claim("d/t:x", "0137", "0199", "0140"), "v2")),
 			cutoff: 137,
-			want:   "must keep the prior Revised-by list as an exact prefix",
+			want:   "must preserve every prior Revised-by entry",
 		},
 		{
 			name: "update appending the wrong ADR",
-			before: uni([]adr.ADR{rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x"))},
+			before: uni([]adr.ADR{rec("0137", "Implemented", op(adr.OpAdd, "d/t:x"))},
 				prosed(claim("d/t:x", "0137"), "old")),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0140", "Implemented", 2, op(adr.OpUpdate, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0140", "Implemented", op(adr.OpUpdate, "d/t:x")),
 			}, prosed(claim("d/t:x", "0137", "0199"), "new")),
 			cutoff: 137,
-			want:   "must append the updating ADR-0140 to Revised-by",
+			want:   "must add the updating ADR-0140 to Revised-by",
 		},
 		{
 			name:   "added claim with no operation",
@@ -509,8 +499,8 @@ func TestCheckPairMismatches(t *testing.T) {
 			name:   "two operations on one claim",
 			before: uni(nil),
 			after: uni([]adr.ADR{
-				rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:x")),
-				rec("0138", "Implemented", 2, op(adr.OpRemove, "d/t:x")),
+				rec("0137", "Implemented", op(adr.OpAdd, "d/t:x")),
+				rec("0138", "Implemented", op(adr.OpRemove, "d/t:x")),
 			}),
 			cutoff: 137,
 			want:   "claim d/t:x is the target of more than one operation in this transition",
@@ -532,4 +522,59 @@ func TestLoadedUniverse(t *testing.T) {
 	if len(u.ADRs) != 1 || u.ADRs[0].Number != "0137" || len(u.Topics) != 0 {
 		t.Fatalf("unexpected universe: %+v", u)
 	}
+}
+
+// TestAppliedRemoveAbsorbsConcurrentUpdate covers the absorbing tombstone
+// (ADR-0189): update-then-remove and remove-then-dominated-update integration
+// orders converge to the same attributed absence, the dominated batch is
+// retained as history with an empty required mutation set, and a dominated
+// chain whose claim survives is rejected.
+// invariant: invariants/current-state-authority:applied-remove-absorbing-tombstone
+func TestAppliedRemoveAbsorbsConcurrentUpdate(t *testing.T) {
+	add := op(adr.OpAdd, "d/t:c")
+	update := op(adr.OpUpdate, "d/t:c")
+	remove := op(adr.OpRemove, "d/t:c")
+	origin := v2rec("0140", "Implemented", []adr.Operation{add},
+		v2status("Proposed"), v2status("Implementing"), v2batch(add), v2status("Implemented"))
+	updater := v2rec("0141", "Implemented", []adr.Operation{update},
+		v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
+	remover := v2rec("0142", "Implemented", []adr.Operation{remove},
+		v2status("Proposed"), v2status("Implementing"), v2batch(remove), v2status("Implemented"))
+
+	t.Run("update integrates first, remove second", func(t *testing.T) {
+		before := uni([]adr.ADR{origin, updater}, prosed(claim("d/t:c", "0140", "0141"), "revised"))
+		after := uni([]adr.ADR{origin, updater, remover})
+		if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
+			t.Fatalf("remove after an integrated update must be clean:\n%s", messages(f))
+		}
+	})
+
+	t.Run("remove integrates first, update arrives dominated", func(t *testing.T) {
+		// The legacy record and the record with an inconsistent progress are
+		// skipped, not consulted, when deriving the applied-remove set.
+		legacy := adr.ADR{Number: "0100", Format: adr.Legacy, Status: "Implemented"}
+		broken := v2rec("0143", "Implementing", []adr.Operation{op(adr.OpAdd, "d/t:other")}, v2status("Proposed"))
+		before := uni([]adr.ADR{legacy, origin, remover})
+		after := uni([]adr.ADR{legacy, broken, origin, remover, updater})
+		got := messages(currentstate.CheckPair(before, after, currentstate.MergeAggregate))
+		if strings.Contains(got, "must stay absent") || strings.Contains(got, "updates claim d/t:c") {
+			t.Fatalf("a dominated update after an integrated remove must be clean:\n%s", got)
+		}
+	})
+
+	t.Run("both orders converge to attributed absence", func(t *testing.T) {
+		full := []adr.ADR{origin, updater, remover}
+		if f := currentstate.Check(full, topics()); len(f) != 0 {
+			t.Fatalf("the converged corpus must be clean with the claim absent:\n%s", messages(f))
+		}
+	})
+
+	t.Run("a dominated chain must not resurrect the claim", func(t *testing.T) {
+		before := uni([]adr.ADR{origin, remover})
+		after := uni([]adr.ADR{origin, remover, updater}, prosed(claim("d/t:c", "0140", "0141"), "revived"))
+		got := messages(currentstate.CheckPair(before, after, currentstate.MergeAggregate))
+		if !strings.Contains(got, "claim d/t:c has only dominated updates in this transition, so it must stay absent") {
+			t.Fatalf("a surviving claim under a dominated chain must be rejected:\n%s", got)
+		}
+	})
 }

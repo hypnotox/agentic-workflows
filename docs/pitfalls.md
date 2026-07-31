@@ -200,8 +200,8 @@ authoring or reviewing a plan for a V2 ADR with incremental batches, check that 
 commits an Implementing event without its paired first Applied event. The terminal edge
 mirrors this: Implemented requires zero remaining operations while Implementing requires
 both applied and remaining ones, so the Implemented status event must land in the same
-staged transaction as the final Applied batch, and it carries the frozen digest but no
-state-sequence when explicit Applied events exist. The ADR-0148 grounding check caught a
+staged transaction as the final Applied batch, and it carries the frozen digest. The
+ADR-0148 grounding check caught a
 design that would have scheduled the Implemented flip as its own commit; plans must pin
 both ends of the batch choreography, not just the first.
 
@@ -209,8 +209,8 @@ Within that one transaction the batch also has to land before the render, not af
 `awf render` refuses a claim citing an ADR with no applied operation ("cites ADR-NNNN
 without an applied update operation"), so a phase whose task order renders first is
 blocked until the Applied line exists. `awf check` reports that claim-provenance error
-ahead of any drift, which also means the documented digest and state-sequence probes only
-become reachable once the batch line is present, even with a placeholder digest.
+ahead of any drift, which also means the documented digest probe only becomes reachable
+once the batch line is present, even with a placeholder digest.
 
 ## A schema-generation bump needs `awf upgrade`, not `awf render`
 
@@ -230,38 +230,6 @@ root. Bit the ADR-0127 plan, whose Task 2.5 named the wrong command for both tre
 _Domains: tooling_
 
 `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
-
-## Concurrent ADR application branches may require replay before integration
-
-_Domains: adr-system, tooling_
-
-A divergent managed-worktree merge presents the effort branch as one staged change against
-the target branch's first parent. If both branches independently consumed current-state
-sequences, the effort's Applied events collide with the target's sequence numbers, and
-`awf check --staged` correctly rejects the merge: the global state-sequence namespace must
-stay contiguous, and that requirement is deliberately retained for a merge (ADR-0182). Do not
-bypass the check or mutate frozen ADR meaning. Renumber the effort's Applied events to the
-next available sequences, or replay the effort commits onto the current target in their
-original transaction order, then regenerate derived files, rerun the gate, and renew terminal
-review before integrating. ADR-0178 hit this when concurrent ADR-0177 consumed sequences 86
-and 87, so ADR-0178 had to move to 88 and 89; the 2026-07-30 severity effort hit it again and
-had to move five batches.
-
-Carrying several application batches is NOT one of the rejected conditions. Before ADR-0182 a
-merge was also refused for appending more than one batch to a single ADR and for targeting one
-claim with more than one operation, which an incrementally-applied ADR and a follow-up ADR
-revising an earlier claim both do legitimately. Those are now validated as an ordered
-aggregate rather than refused, so a merge that only trips them needs no replay.
-
-RENUMBER INSIDE THE MERGE, not on the branch beforehand. The branch's corpus does not contain
-the sequences the target consumed, so numbering its batches to the next free values there fails
-the contiguous-from-1 check instead of fixing anything; the collision is only resolvable where
-both sides' sequences are present. The state-ownership effort (2026-07-30, third occurrence) hit
-this after waiting for ADR-0182 to land: its batches were numbered 92 and 93 at authoring time
-and 92 through 97 were consumed while it waited, so they moved to 98 and 99 during the merge
-resolution. The renumber is safe for a frozen ADR because `digestSections` covers Context,
-Decision, State changes, Consequences, and Alternatives Considered and never the Status history,
-so the content digest is unaffected; confirm that by recomputation rather than assuming it.
 
 ## go-git status ignores the global and system gitignore
 
@@ -1422,13 +1390,10 @@ the ADR status history, then sync, then run the tests; the commit boundary is un
 
 _Domains: adr-system_
 
-`state-sequence` is a repository-global contiguous namespace and the frozen content
-digest is computed over the ADR body; both are named exactly by `awf check --staged` on
-mismatch, and a concurrently Implementing ADR may interleave batches at any time. The
-ADR-0151 plan initially wrote literal `state-sequence: 1` and `2` while the repository
-stood at 27; plan review caught it before implementation. A plan writes the event shape
-and the instruction "use exactly the value the staged check names", never a number or a
-digest, the same way it already avoids hard-coded counts.
+The frozen content digest is computed over the ADR body and named exactly by
+`awf check --staged` on mismatch. A plan writes the event shape and the instruction
+"use exactly the value the staged check names", never a digest, the same way it already
+avoids hard-coded counts.
 
 ## A pinned template contract string is usually pinned in more than one test
 
@@ -1611,25 +1576,22 @@ key-by-key and confirm every changed entry is yours; if it is not, the work has 
 their commit or move to a worktree. The same reasoning covers any generated file two
 sessions both regenerate.
 
-## An ADR's frozen digest and next state-sequence cannot be read directly
+## An ADR's frozen digest cannot be read directly
 
 _Domains: adr-system_
 
 _Related: ADR-0134, ADR-0177_
 
-Applying a V2 claim operation needs two values `awf check` computes: the frozen
-`content-sha256` for the status event and the next free `state-sequence`. There is no command
-that prints them on demand, and the obvious ways to ask are both blocked, because claim
-provenance is enforced in BOTH directions. With the claim authored and no matching Applied
-operation yet, every `awf check` form fails with "cites ADR-NNNN without an applied add
-operation"; remove the claim to get past that and the proof marker you already placed becomes
-a dangling "unknown claim ID". The working method is to write the status lines with a
-deliberately wrong digest (64 zeros) and let `awf check state` report the computed one, then
-fix the digest and let the duplicate-sequence error report the next free sequence. Both
-errors name the correct value. The digest excludes the Status history, so it is stable across
-the `Implementing` and `Implemented` events and the same value is repeated on both. Do not
-copy a sequence from another ADR or precompute one in a plan: the number moves whenever any
-sibling ADR applies a batch.
+Applying a V2 claim operation needs the frozen `content-sha256` for the status event,
+which `awf check` computes but no command prints on demand, and the obvious way to ask is
+blocked, because claim provenance is enforced in BOTH directions. With the claim authored
+and no matching Applied operation yet, every `awf check` form fails with "cites ADR-NNNN
+without an applied add operation"; remove the claim to get past that and the proof marker
+you already placed becomes a dangling "unknown claim ID". The working method is to write
+the status lines with a deliberately wrong digest (64 zeros) and let `awf check state`
+report the computed one, then fix the line. The digest excludes the Status history, so it
+is stable across the `Implementing` and `Implemented` events and the same value is
+repeated on both.
 
 ## A new catalog agent and a generation bump each trip guards the ADR will not list
 

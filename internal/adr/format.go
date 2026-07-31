@@ -178,8 +178,7 @@ func HistoryTransitionValid(before, after ADR) bool {
 func historiesEqual(a, b []HistoryEvent) bool {
 	return slices.EqualFunc(a, b, func(x, y HistoryEvent) bool {
 		return x.Kind == y.Kind && x.Date == y.Date && x.Status == y.Status &&
-			x.Digest == y.Digest && x.Sequence == y.Sequence &&
-			x.HasSequence == y.HasSequence && x.Rationale == y.Rationale &&
+			x.Digest == y.Digest && x.Rationale == y.Rationale &&
 			slices.Equal(x.Operations, y.Operations)
 	})
 }
@@ -305,13 +304,13 @@ func validateDecisionItems(a ADR) error {
 
 // validateV1History enforces the per-ADR Status-history semantics: a Proposed
 // scaffold first entry, legal adjacent transitions, non-descending dates,
-// per-status digest/sequence/rationale rules, and final-status agreement with
-// the frontmatter (ADR-0135 items 6 and 7).
+// per-status digest/rationale rules, and final-status agreement with the
+// frontmatter (ADR-0135 items 6 and 7).
 func validateV1History(a ADR) error {
 	h := a.History
 	digest := ContentDigest(a.Sections)
 	first := h[0]
-	if first.Status != statusProposed || first.Digest != "" || first.HasSequence || first.Rationale != "" {
+	if first.Status != statusProposed || first.Digest != "" || first.Rationale != "" {
 		return errors.New("first Status history entry must be the `- <date>: Proposed` scaffold")
 	}
 	for i, e := range h {
@@ -323,7 +322,7 @@ func validateV1History(a ADR) error {
 				return fmt.Errorf("status history dates must not descend: %s after %s", e.Date, h[i-1].Date)
 			}
 		}
-		if err := validateHistoryEntry(a, e, digest); err != nil {
+		if err := validateHistoryEntry(e, digest); err != nil {
 			return err
 		}
 	}
@@ -333,13 +332,13 @@ func validateV1History(a ADR) error {
 	return nil
 }
 
-// validateHistoryEntry enforces one entry's digest, sequence, and rationale
-// rules for its status.
+// validateV2History enforces one governed record's event stream: scaffold,
+// transitions, dates, stamps, and application cardinality.
 func validateV2History(a ADR) error {
 	h := a.History
 	digest := ContentDigest(a.Sections)
 	first := h[0]
-	if first.Kind != HistoryStatus || first.Status != statusProposed || first.Digest != "" || first.HasSequence || first.Rationale != "" {
+	if first.Kind != HistoryStatus || first.Status != statusProposed || first.Digest != "" || first.Rationale != "" {
 		return errors.New("first Status history entry must be the `- <date>: Proposed` scaffold")
 	}
 	applied := map[Operation]bool{}
@@ -400,9 +399,6 @@ func validateV2History(a ADR) error {
 			}
 		}
 		if event.Status == statusImplemented && explicit {
-			if event.HasSequence {
-				return errors.New("V2 ADR cannot mix explicit Applied events with implicit terminal sequencing")
-			}
 			if i == 0 || h[i-1].Kind != HistoryApplied {
 				return errors.New("explicit Implemented transition requires a final Applied event immediately before it")
 			}
@@ -413,15 +409,6 @@ func validateV2History(a ADR) error {
 	}
 	if lastStamp != "" && lastStamp != digest {
 		return fmt.Errorf("latest stamped content-sha256 %q does not match the computed digest %q", lastStamp, digest)
-	}
-	if !explicit && a.Status == statusImplemented {
-		terminal := h[len(h)-1]
-		if len(a.Operations) > 0 && !terminal.HasSequence {
-			return errors.New("implemented ADR with operations must record a state-sequence")
-		}
-		if len(a.Operations) == 0 && terminal.HasSequence {
-			return errors.New("implemented `None.` ADR must not record a state-sequence")
-		}
 	}
 	switch a.Status {
 	case statusImplementing:
@@ -445,17 +432,14 @@ func validateV2StatusEntry(e HistoryEvent) error {
 	case statusProposed:
 		return nil // the first-entry scaffold check owns Proposed metadata
 	case statusAccepted, statusImplementing:
-		if e.HasSequence || e.Rationale != "" {
-			return fmt.Errorf("%s entry carries a sequence or rationale it must not", e.Status)
+		if e.Rationale != "" {
+			return fmt.Errorf("%s entry carries a rationale it must not", e.Status)
 		}
 	case statusImplemented:
 		if e.Rationale != "" {
 			return errors.New("implemented entry must not carry a rationale")
 		}
 	case statusAbandoned:
-		if e.HasSequence {
-			return errors.New("abandoned entry must not record a state-sequence")
-		}
 		if e.Rationale == "" {
 			return errors.New("abandoned entry must end with a nonempty rationale")
 		}
@@ -466,28 +450,19 @@ func validateV2StatusEntry(e HistoryEvent) error {
 	return nil
 }
 
-func validateHistoryEntry(a ADR, e HistoryEvent, digest string) error {
+func validateHistoryEntry(e HistoryEvent, digest string) error {
 	switch e.Status {
 	case statusProposed:
-		return nil // the scaffold: no digest, sequence, or rationale (shape checked once, above)
+		return nil // the scaffold: no digest or rationale (shape checked once, above)
 	case statusAccepted:
-		if e.HasSequence || e.Rationale != "" {
-			return errors.New("accepted entry carries a sequence or rationale it must not")
+		if e.Rationale != "" {
+			return errors.New("accepted entry carries a rationale it must not")
 		}
 	case statusImplemented:
 		if e.Rationale != "" {
 			return errors.New("implemented entry must not carry a rationale")
 		}
-		if len(a.Operations) > 0 && !e.HasSequence {
-			return errors.New("implemented ADR with operations must record a state-sequence")
-		}
-		if len(a.Operations) == 0 && e.HasSequence {
-			return errors.New("implemented `None.` ADR must not record a state-sequence")
-		}
 	case statusAbandoned:
-		if e.HasSequence {
-			return errors.New("abandoned entry must not record a state-sequence")
-		}
 		if e.Rationale == "" {
 			return errors.New("abandoned entry must end with a nonempty rationale")
 		}

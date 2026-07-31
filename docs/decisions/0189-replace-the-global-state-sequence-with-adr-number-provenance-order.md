@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Accepted
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0189: Replace the global state sequence with ADR-number provenance order
@@ -200,3 +200,5 @@ at implementation time under their declared backing.
 
 - 2026-07-31: Proposed
 - 2026-07-31: Accepted; content-sha256: 6c6dc3d3de5cdc640cf8e8329c50d0f76ec3f2711e18b202d4d5a38a9d3714b9
+- 2026-07-31: Implementing; content-sha256: 6c6dc3d3de5cdc640cf8e8329c50d0f76ec3f2711e18b202d4d5a38a9d3714b9
+- 2026-07-31: Applied; operations: remove `invariants/current-state-authority:application-batch-sequence-order`, add `invariants/current-state-authority:provenance-ordered-by-adr-number`, add `invariants/current-state-authority:applied-remove-absorbing-tombstone`, update `invariants/current-state-authority:merge-transition-ordered-aggregate`, update `invariants/current-state-authority:implemented-impact-bidirectional`, update `invariants/current-state-authority:state-impact-transition-atomic`, update `adr-system/adr-lifecycle:applied-history-events-append-only`, update `adr-system/adr-lifecycle:corpus-raw-access-enumerated`

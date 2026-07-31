@@ -60,4 +60,4 @@ with the claims; migration behavior remains covered by its migration-specific te
 ## Status history
 
 - 2026-07-20: Proposed
-- 2026-07-20: Implemented; content-sha256: 862c9f5c08f168065f0a4045ee2490972b688f82ea98c0576d743bb0efb2194a; state-sequence: 2
+- 2026-07-20: Implemented; content-sha256: 862c9f5c08f168065f0a4045ee2490972b688f82ea98c0576d743bb0efb2194a

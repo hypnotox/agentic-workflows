@@ -333,6 +333,6 @@ The retrospective lesson that caught it is thereby exercised once against real p
 
 - 2026-07-30: Proposed
 - 2026-07-30: Implementing; content-sha256: 9aeb4cbed6292fc8533c7b27d5ec9f8a7ee73f8953660333c9b18ce10ec69452
-- 2026-07-30: Applied; state-sequence: 90; operations: add `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, add `rendering/pi-workflows:pi-role-contract-loader`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:bounded-exploration-reporting`, update `rendering/workflow-skill-templates:cross-runtime-exploration-dispatch`
-- 2026-07-30: Applied; state-sequence: 91; operations: update `rendering/workflow-skill-templates:implementer-role-contract`
+- 2026-07-30: Applied; operations: add `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, add `rendering/pi-workflows:pi-role-contract-loader`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:bounded-exploration-reporting`, update `rendering/workflow-skill-templates:cross-runtime-exploration-dispatch`
+- 2026-07-30: Applied; operations: update `rendering/workflow-skill-templates:implementer-role-contract`
 - 2026-07-30: Implemented; content-sha256: 9aeb4cbed6292fc8533c7b27d5ec9f8a7ee73f8953660333c9b18ce10ec69452

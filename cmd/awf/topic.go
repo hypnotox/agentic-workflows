@@ -88,13 +88,13 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 			if history.LegacyBaseline {
 				write("legacy baseline origin", "  origin: legacy baseline (not retained in active authority)\n")
 			} else if history.Origin != nil {
-				write("claim origin", "  Origin: ADR-%s (%s) %s%s\n", history.Origin.Number, history.Origin.Status, history.Origin.Title, stateSequenceSuffix(history.Origin.StateSequence))
+				write("claim origin", "  Origin: ADR-%s (%s) %s\n", history.Origin.Number, history.Origin.Status, history.Origin.Title)
 			}
 			for _, revision := range history.RevisedBy {
-				write("claim revision", "  Revised-by: ADR-%s (%s) %s%s\n", revision.Number, revision.Status, revision.Title, stateSequenceSuffix(revision.StateSequence))
+				write("claim revision", "  Revised-by: ADR-%s (%s) %s\n", revision.Number, revision.Status, revision.Title)
 			}
 			if history.RemovedBy != nil {
-				write("claim removal", "  Removed-by: ADR-%s (%s) %s%s\n", history.RemovedBy.Number, history.RemovedBy.Status, history.RemovedBy.Title, stateSequenceSuffix(history.RemovedBy.StateSequence))
+				write("claim removal", "  Removed-by: ADR-%s (%s) %s\n", history.RemovedBy.Number, history.RemovedBy.Status, history.RemovedBy.Title)
 			}
 		}
 	}
@@ -123,11 +123,4 @@ func printTopic(stdout io.Writer, result topic.QueryResult, asJSON bool) error {
 		}
 	}
 	return writeErr
-}
-
-func stateSequenceSuffix(sequence int) string {
-	if sequence == 0 {
-		return ""
-	}
-	return fmt.Sprintf(" [state-sequence: %d]", sequence)
 }

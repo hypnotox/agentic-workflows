@@ -201,6 +201,6 @@ and its foundation are implemented and reviewed.
 - 2026-07-29: Proposed
 - 2026-07-30: Accepted; content-sha256: 49f987e32c2c08dacb656500fe87c393933cf071f34e2a2e2ed66f407a465814
 - 2026-07-30: Implementing; content-sha256: 49f987e32c2c08dacb656500fe87c393933cf071f34e2a2e2ed66f407a465814
-- 2026-07-30: Applied; state-sequence: 88; operations: add `code-design/dependency-composition:outer-composition`, add `code-design/dependency-composition:consumer-owned-contracts`, add `code-design/dependency-composition:mechanism-adapters`, add `code-design/dependency-composition:direct-injection-first`, add `code-design/dependency-composition:concrete-first-consumer`, add `code-design/dependency-composition:dependency-composition-commit-classification`
-- 2026-07-30: Applied; state-sequence: 89; operations: add `code-design/dependency-composition:sync-project-loader-wiring`
+- 2026-07-30: Applied; operations: add `code-design/dependency-composition:outer-composition`, add `code-design/dependency-composition:consumer-owned-contracts`, add `code-design/dependency-composition:mechanism-adapters`, add `code-design/dependency-composition:direct-injection-first`, add `code-design/dependency-composition:concrete-first-consumer`, add `code-design/dependency-composition:dependency-composition-commit-classification`
+- 2026-07-30: Applied; operations: add `code-design/dependency-composition:sync-project-loader-wiring`
 - 2026-07-30: Implemented; content-sha256: 49f987e32c2c08dacb656500fe87c393933cf071f34e2a2e2ed66f407a465814

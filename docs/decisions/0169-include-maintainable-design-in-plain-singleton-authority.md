@@ -50,4 +50,4 @@ current singleton membership.
 ## Status history
 
 - 2026-07-28: Proposed
-- 2026-07-28: Implemented; content-sha256: fe69ba140b6c02f691ab92ee23491eb9c5d0aa5e338b0db94a6a73db0423744e; state-sequence: 73
+- 2026-07-28: Implemented; content-sha256: fe69ba140b6c02f691ab92ee23491eb9c5d0aa5e338b0db94a6a73db0423744e

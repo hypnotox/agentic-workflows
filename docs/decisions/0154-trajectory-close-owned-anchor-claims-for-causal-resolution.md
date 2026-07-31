@@ -152,4 +152,4 @@ with them; the change ships as one staged transaction.
 ## Status history
 
 - 2026-07-23: Proposed
-- 2026-07-23: Implemented; content-sha256: 35438c04fd96a6a8414aa1b3f6260ab08d36204ddbae178997a4308b5f4939cf; state-sequence: 35
+- 2026-07-23: Implemented; content-sha256: 35438c04fd96a6a8414aa1b3f6260ab08d36204ddbae178997a4308b5f4939cf

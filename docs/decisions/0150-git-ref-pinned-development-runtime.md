@@ -85,4 +85,4 @@ The local ref and cache are operational state, not tracked project outputs. Clon
 ## Status history
 
 - 2026-07-23: Proposed
-- 2026-07-23: Implemented; content-sha256: 8413e69865158c4c9c34c69a63bf90f6ef70cba42ade77d066b8fb20656bcac2; state-sequence: 26
+- 2026-07-23: Implemented; content-sha256: 8413e69865158c4c9c34c69a63bf90f6ef70cba42ade77d066b8fb20656bcac2

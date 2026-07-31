@@ -45,7 +45,7 @@ Backing: test
 
 Pi checkpoint guidance invokes handoff alone after persistence at a settled phase boundary, carrying the same effort slug and exact owned memory path for non-minimal work. It never creates standalone memory, requires selection or telemetry lifecycle state, adopts a checkpoint, or treats checkbox tasks and helper returns as routine handoff boundaries; repository authority remains primary and report-only children do not edit memory.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0167, ADR-0166, ADR-0175
+Revised-by: ADR-0149, ADR-0152, ADR-0164, ADR-0166, ADR-0167, ADR-0175
 Backing: test
 
 ### `invariant: pi-native-workflow-skills`

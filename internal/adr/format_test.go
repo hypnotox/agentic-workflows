@@ -120,10 +120,10 @@ func TestParseV1Valid(t *testing.T) {
 			"- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+opsDigest), "Accepted", 2, false},
 		{"implemented none", build("Implemented", "2026-07-21", oneDecision, "None.",
 			"- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+noneDigest), "Implemented", 0, true},
-		{"implemented with ops and sequence", build("Implemented", "2026-07-22", oneDecision, opsChanges,
-			"- 2026-07-20: Proposed\n- 2026-07-22: Implemented; content-sha256: "+opsDigest+"; state-sequence: 7"), "Implemented", 2, false},
+		{"implemented with ops", build("Implemented", "2026-07-22", oneDecision, opsChanges,
+			"- 2026-07-20: Proposed\n- 2026-07-22: Implemented; content-sha256: "+opsDigest), "Implemented", 2, false},
 		{"accepted then implemented", build("Implemented", "2026-07-23", oneDecision, opsChanges,
-			"- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+opsDigest+"\n- 2026-07-23: Implemented; content-sha256: "+opsDigest+"; state-sequence: 3"), "Implemented", 2, false},
+			"- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+opsDigest+"\n- 2026-07-23: Implemented; content-sha256: "+opsDigest), "Implemented", 2, false},
 		{"abandoned with rationale", build("Abandoned", "2026-07-24", oneDecision, opsChanges,
 			"- 2026-07-20: Proposed\n- 2026-07-24: Abandoned; content-sha256: "+opsDigest+"; rationale: never built the seam"), "Abandoned", 2, false},
 	}
@@ -183,16 +183,13 @@ func TestParseV1Errors(t *testing.T) {
 		{"non-positive sequence", build("Implemented", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+d+"; state-sequence: 0"), "positive integer"},
 		{"duplicate sequence", build("Implemented", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+d+"; state-sequence: 1; state-sequence: 2"), "state-sequence is duplicated"},
 		{"unknown segment", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+d+"; mystery: x"), "unknown metadata segment"},
+		{"accepted with rationale", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+d+"; rationale: nope"), "carries a rationale it must not"},
 		{"malformed metadata segment", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Accepted;content-sha256: "+d), "malformed metadata segment"},
 		{"first not proposed", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-21: Accepted; content-sha256: "+d), "must be the `- <date>: Proposed` scaffold"},
 		{"illegal transition", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+d), "illegal Status history transition"},
 		{"descending dates", build("Accepted", "2026-07-19", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-19: Accepted; content-sha256: "+d), "must not descend"},
-		{"accepted with sequence", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+d+"; state-sequence: 1"), "sequence or rationale it must not"},
 		{"implemented with rationale", build("Implemented", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+d+"; rationale: x"), "must not carry a rationale"},
-		{"implemented ops missing sequence", build("Implemented", "2026-07-21", oneDecision, "- add `a/b:c`", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digestFor(t, "- add `a/b:c`")), "must record a state-sequence"},
-		{"implemented none with sequence", build("Implemented", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+d+"; state-sequence: 1"), "must not record a state-sequence"},
 		{"abandoned missing rationale", build("Abandoned", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Abandoned; content-sha256: "+d), "must end with a nonempty rationale"},
-		{"abandoned with sequence", build("Abandoned", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Abandoned; content-sha256: "+d+"; state-sequence: 1"), "abandoned entry must not record a state-sequence"},
 		{"digest mismatch", build("Accepted", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed\n- 2026-07-21: Accepted; content-sha256: "+strings.Repeat("a", 64)), "does not match the computed digest"},
 		{"final status mismatch", build("Implemented", "2026-07-21", oneDecision, "None.", "- 2026-07-20: Proposed"), "does not match frontmatter status"},
 	}
@@ -226,9 +223,9 @@ func TestParseV2LifecycleAndApplications(t *testing.T) {
 	p := "- 2026-07-20: Proposed"
 	a := "- 2026-07-21: Accepted; content-sha256: " + digest
 	i := "- 2026-07-22: Implementing; content-sha256: " + digest
-	first := "- 2026-07-22: Applied; state-sequence: 4; operations: add `a/b:first`"
-	middle := "- 2026-07-23: Applied; state-sequence: 7; operations: update `a/b:second`"
-	final := "- 2026-07-24: Applied; state-sequence: 9; operations: remove `a/b:third`"
+	first := "- 2026-07-22: Applied; operations: add `a/b:first`"
+	middle := "- 2026-07-23: Applied; operations: update `a/b:second`"
+	final := "- 2026-07-24: Applied; operations: remove `a/b:third`"
 	implemented := "- 2026-07-24: Implemented; content-sha256: " + digest
 	abandoned := "- 2026-07-24: Abandoned; content-sha256: " + digest + "; rationale: stopped; safely"
 	cases := []struct {
@@ -238,11 +235,11 @@ func TestParseV2LifecycleAndApplications(t *testing.T) {
 		{"proposed", "Proposed", p, 1},
 		{"proposed accepted", "Accepted", p + "\n" + a, 2},
 		{"whitespace-only blank line", "Accepted", p + "\n \t \n" + a, 2},
-		{"proposed direct implemented", "Implemented", p + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 2", 2},
+		{"proposed direct implemented", "Implemented", p + "\n- 2026-07-22: Implemented; content-sha256: " + digest, 2},
 		{"proposed abandoned", "Abandoned", p + "\n" + abandoned, 2},
 		{"proposed implementing first", "Implementing", p + "\n" + i + "\n" + first, 3},
 		{"accepted implementing middle", "Implementing", p + "\n" + a + "\n" + i + "\n" + first + "\n" + middle, 5},
-		{"accepted direct implemented", "Implemented", p + "\n" + a + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 3", 3},
+		{"accepted direct implemented", "Implemented", p + "\n" + a + "\n- 2026-07-22: Implemented; content-sha256: " + digest, 3},
 		{"accepted abandoned", "Abandoned", p + "\n" + a + "\n" + abandoned, 3},
 		{"implementing implemented", "Implemented", p + "\n" + i + "\n" + first + "\n" + middle + "\n" + final + "\n" + implemented, 6},
 		{"partial abandoned", "Abandoned", p + "\n" + i + "\n" + first + "\n" + abandoned, 4},
@@ -265,54 +262,69 @@ func TestParseV2LifecycleAndApplications(t *testing.T) {
 	}
 }
 
+// TestParseV2AppliedLegacySequenceTolerated proves a stale Applied line
+// carrying a retired state-sequence segment still parses: the segment is
+// tolerated and discarded, recorded only as LegacySequence, with no other
+// effect on the parsed event (ADR-0189).
+func TestParseV2AppliedLegacySequenceTolerated(t *testing.T) {
+	changes := "- add `a/b:first`\n- update `a/b:second`"
+	digest := v2DigestFor(t, changes)
+	history := "- 2026-07-20: Proposed" +
+		"\n- 2026-07-21: Implementing; content-sha256: " + digest +
+		"\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`"
+	record, err := adr.ParseV2("0137-test.md", []byte(buildV2("Implementing", changes, history)))
+	if err != nil {
+		t.Fatalf("ParseV2: %v", err)
+	}
+	applied := record.History[2]
+	wantOp := adr.Operation{Verb: adr.OpAdd, ID: "a/b:first", Slug: "first"}
+	if applied.Kind != adr.HistoryApplied || applied.Date != "2026-07-21" || !applied.LegacySequence ||
+		len(applied.Operations) != 1 || applied.Operations[0] != wantOp {
+		t.Fatalf("legacy Applied event = %#v", applied)
+	}
+}
+
 // invariant: adr-system/adr-lifecycle:applied-history-events-append-only
 func TestParseV2RejectsInvalidHistory(t *testing.T) {
 	changes := "- add `a/b:first`\n- update `a/b:second`"
 	digest := v2DigestFor(t, changes)
 	p := "- 2026-07-20: Proposed"
 	i := "- 2026-07-21: Implementing; content-sha256: " + digest
-	first := "- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`"
+	first := "- 2026-07-21: Applied; operations: add `a/b:first`"
 	cases := []struct{ name, status, changes, history, want string }{
 		{"v1 excludes implementing", "Implementing", changes, p + "\n" + i, ""},
 		{"first not proposed", "Accepted", changes, "- 2026-07-20: Accepted; content-sha256: " + digest, "first Status history"},
 		{"repeated proposed", "Proposed", changes, p + "\n" + p, "illegal Status history transition"},
-		{"proposed metadata", "Proposed", changes, p + "; state-sequence: 1", "first Status history"},
-		{"accepted sequence", "Accepted", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + digest + "; state-sequence: 1", "sequence or rationale"},
-		{"implementing rationale", "Implementing", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + digest + "; rationale: no\n" + first, "sequence or rationale"},
-		{"implemented rationale", "Implemented", changes, p + "\n- 2026-07-21: Implemented; content-sha256: " + digest + "; state-sequence: 1; rationale: no", "must not carry a rationale"},
-		{"abandoned sequence", "Abandoned", changes, p + "\n- 2026-07-21: Abandoned; content-sha256: " + digest + "; state-sequence: 1; rationale: no", "must not record a state-sequence"},
+		{"implementing rationale", "Implementing", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + digest + "; rationale: no\n" + first, "carries a rationale it must not"},
+		{"implemented rationale", "Implemented", changes, p + "\n- 2026-07-21: Implemented; content-sha256: " + digest + "; rationale: no", "must not carry a rationale"},
 		{"abandoned missing rationale", "Abandoned", changes, p + "\n- 2026-07-21: Abandoned; content-sha256: " + digest, "nonempty rationale"},
-		{"implicit operations missing sequence", "Implemented", changes, p + "\n- 2026-07-21: Implemented; content-sha256: " + digest, "must record a state-sequence"},
-		{"implicit None with sequence", "Implemented", "None.", p + "\n- 2026-07-21: Implemented; content-sha256: " + v2DigestFor(t, "None.") + "; state-sequence: 1", "must not record a state-sequence"},
 		{"implementing none", "Implementing", "None.", p + "\n" + i + "\n" + first, "not declared"},
 		{"implementing one op", "Implementing", "- add `a/b:first`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`") + "\n" + first, "at least two"},
 		{"missing first application", "Implementing", changes, p + "\n" + i, "followed by"},
-		{"all applied while implementing", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`, update `a/b:second`", "one remaining"},
+		{"all applied while implementing", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`, update `a/b:second`", "one remaining"},
 		{"applied before implementing", "Proposed", changes, p + "\n" + first, "only while Implementing"},
-		{"undeclared verb", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: remove `a/b:first`", "not declared"},
-		{"undeclared id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:other`", "not declared"},
-		{"duplicate in batch", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
-		{"duplicate across batches", "Implementing", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: add `a/b:first`", "already applied"},
-		{"declaration order", "Implementing", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n- 2026-07-21: Applied; state-sequence: 1; operations: update `a/b:second`, add `a/b:first`", "declaration order"},
-		{"bad separator", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`,update `a/b:second`", "malformed Applied operation"},
-		{"bad code span", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add a/b:first", "malformed Applied operation"},
-		{"bad id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `A/b:first`", "malformed Applied operation"},
+		{"undeclared verb", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: remove `a/b:first`", "not declared"},
+		{"undeclared id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:other`", "not declared"},
+		{"duplicate in batch", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`, add `a/b:first`", "duplicated"},
+		{"duplicate across batches", "Implementing", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; operations: add `a/b:first`", "already applied"},
+		{"declaration order", "Implementing", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n- 2026-07-21: Applied; operations: update `a/b:second`, add `a/b:first`", "declaration order"},
+		{"bad separator", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`,update `a/b:second`", "malformed Applied operation"},
+		{"bad code span", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add a/b:first", "malformed Applied operation"},
+		{"bad id", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `A/b:first`", "malformed Applied operation"},
 		{"zero sequence", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 0; operations: add `a/b:first`", "malformed Status history"},
-		{"metadata order", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`; state-sequence: 1", "malformed Status history"},
-		{"empty application", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: 1; operations: ", "malformed Status history"},
-		{"applied sequence overflow", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; state-sequence: " + strings.Repeat("9", 100) + "; operations: add `a/b:first`", "parse Applied state-sequence"},
+		{"metadata order", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: add `a/b:first`; state-sequence: 1", "malformed Applied operation"},
+		{"empty application", "Implementing", changes, p + "\n" + i + "\n- 2026-07-21: Applied; operations: ", "malformed Status history"},
 		{"leading status whitespace", "Proposed", changes, " " + p, "malformed Status history"},
 		{"trailing status whitespace", "Proposed", changes, p + " ", "malformed Status history"},
 		{"leading applied whitespace", "Implementing", changes, p + "\n" + i + "\n " + first, "malformed Status history"},
 		{"trailing applied whitespace", "Implementing", changes, p + "\n" + i + "\n" + first + " ", "malformed Applied operation"},
-		{"mixed sequencing", "Implemented", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 3", "mix"},
 		{"missing final application", "Implemented", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Implemented; content-sha256: " + digest, "every declared"},
-		{"incomplete implemented", "Implemented", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"), "every declared"},
-		{"fully applied abandoned", "Abandoned", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-23: Abandoned; content-sha256: " + digest + "; rationale: stopped", "canceled"},
-		{"descending applied date", "Implementing", changes, p + "\n" + i + "\n- 2026-07-19: Applied; state-sequence: 1; operations: add `a/b:first`", "must not descend"},
+		{"incomplete implemented", "Implemented", "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`", p + "\n- 2026-07-21: Implementing; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`") + "\n" + first + "\n- 2026-07-22: Applied; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + v2DigestFor(t, "- add `a/b:first`\n- update `a/b:second`\n- remove `a/b:third`"), "every declared"},
+		{"fully applied abandoned", "Abandoned", changes, p + "\n" + i + "\n" + first + "\n- 2026-07-22: Applied; operations: update `a/b:second`\n- 2026-07-23: Abandoned; content-sha256: " + digest + "; rationale: stopped", "canceled"},
+		{"descending applied date", "Implementing", changes, p + "\n" + i + "\n- 2026-07-19: Applied; operations: add `a/b:first`", "must not descend"},
 		{"digest mismatch", "Accepted", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64), "does not match"},
-		{"implemented breaks accepted stamp chain", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64) + "\n- 2026-07-22: Implemented; content-sha256: " + digest + "; state-sequence: 2", "does not repeat the preceding stamp"},
-		{"implemented breaks implementing stamp chain", "Implemented", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + strings.Repeat("a", 64) + "\n" + first + "\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + digest, "does not repeat the preceding stamp"},
+		{"implemented breaks accepted stamp chain", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + strings.Repeat("a", 64) + "\n- 2026-07-22: Implemented; content-sha256: " + digest, "does not repeat the preceding stamp"},
+		{"implemented breaks implementing stamp chain", "Implemented", changes, p + "\n- 2026-07-21: Implementing; content-sha256: " + strings.Repeat("a", 64) + "\n" + first + "\n- 2026-07-22: Applied; operations: update `a/b:second`\n- 2026-07-22: Implemented; content-sha256: " + digest, "does not repeat the preceding stamp"},
 		{"latest status mismatch", "Implemented", changes, p + "\n- 2026-07-21: Accepted; content-sha256: " + digest, "does not match frontmatter"},
 	}
 	for _, tc := range cases {
@@ -350,11 +362,11 @@ func TestParseV2StampChain(t *testing.T) {
 		{"amended while accepted", "Accepted", changes,
 			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", d), ""},
 		{"amended while implementing", "Implementing", changes,
-			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`\n" + amend("2026-07-22", d), ""},
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; operations: add `a/b:first`\n" + amend("2026-07-22", d), ""},
 		{"amended between batches", "Implementing", wide,
-			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`\n" + amend("2026-07-22", dWide) + "\n- 2026-07-23: Applied; state-sequence: 2; operations: update `a/b:second`", ""},
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; operations: add `a/b:first`\n" + amend("2026-07-22", dWide) + "\n- 2026-07-23: Applied; operations: update `a/b:second`", ""},
 		{"amended then implemented", "Implemented", changes,
-			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d + "; state-sequence: 2", ""},
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d, ""},
 		{"two amendments", "Accepted", changes,
 			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", other) + "\n" + amend("2026-07-23", d), ""},
 		{"malformed amended digest", "Accepted", changes,
@@ -362,19 +374,19 @@ func TestParseV2StampChain(t *testing.T) {
 		{"amended while proposed", "Proposed", changes,
 			p + "\n" + amend("2026-07-21", d), "only while Accepted or Implementing"},
 		{"amended after terminal", "Implemented", changes,
-			p + "\n- 2026-07-21: Implemented; content-sha256: " + d + "; state-sequence: 2\n" + amend("2026-07-22", old), "only while Accepted or Implementing"},
+			p + "\n- 2026-07-21: Implemented; content-sha256: " + d + "\n" + amend("2026-07-22", old), "only while Accepted or Implementing"},
 		{"amended repeats stamp", "Accepted", changes,
 			p + "\n- 2026-07-21: Accepted; content-sha256: " + d + "\n" + amend("2026-07-22", d), "digest different from the preceding stamp"},
 		{"amended before first applied", "Implementing", changes,
-			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Applied; state-sequence: 1; operations: add `a/b:first`", "followed by the first Applied"},
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n" + amend("2026-07-22", d) + "\n- 2026-07-23: Applied; operations: add `a/b:first`", "followed by the first Applied"},
 		{"amended before explicit implemented", "Implemented", changes,
-			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; state-sequence: 1; operations: add `a/b:first`\n- 2026-07-22: Applied; state-sequence: 2; operations: update `a/b:second`\n" + amend("2026-07-23", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d, "final Applied event immediately before it"},
+			p + "\n- 2026-07-21: Implementing; content-sha256: " + old + "\n- 2026-07-21: Applied; operations: add `a/b:first`\n- 2026-07-22: Applied; operations: update `a/b:second`\n" + amend("2026-07-23", d) + "\n- 2026-07-23: Implemented; content-sha256: " + d, "final Applied event immediately before it"},
 		{"latest stamp mismatch", "Accepted", changes,
 			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n" + amend("2026-07-22", other), "does not match the computed digest"},
 		{"status event missing stamp", "Accepted", changes,
 			p + "\n- 2026-07-21: Accepted", "must carry a content-sha256"},
 		{"status event introduces a digest", "Implemented", changes,
-			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n- 2026-07-22: Implemented; content-sha256: " + d + "; state-sequence: 2", "does not repeat the preceding stamp"},
+			p + "\n- 2026-07-21: Accepted; content-sha256: " + old + "\n- 2026-07-22: Implemented; content-sha256: " + d, "does not repeat the preceding stamp"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -426,8 +438,8 @@ func TestFormatSpecificTransitionMatrices(t *testing.T) {
 // invariant: adr-system/adr-lifecycle:applied-history-events-append-only
 func TestV2HistoryTransitionPrefixAndShapes(t *testing.T) {
 	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
-	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 1, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:c", Slug: "c"}}}
-	appliedNext := adr.HistoryEvent{Kind: adr.HistoryApplied, Sequence: 2, HasSequence: true, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: "a/b:d", Slug: "d"}}}
+	applied := adr.HistoryEvent{Kind: adr.HistoryApplied, Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "a/b:c", Slug: "c"}}}
+	appliedNext := adr.HistoryEvent{Kind: adr.HistoryApplied, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: "a/b:d", Slug: "d"}}}
 	amended := adr.HistoryEvent{Kind: adr.HistoryAmended, Digest: "new-digest"}
 	record := func(front string, events ...adr.HistoryEvent) adr.ADR {
 		return adr.ADR{Format: adr.CurrentStateV2, Status: front, History: events}
