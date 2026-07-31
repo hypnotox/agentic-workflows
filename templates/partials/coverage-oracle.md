@@ -1,0 +1,1 @@
+- Coverage may never regress. A fix that breaks an existing passing test is itself a bug.

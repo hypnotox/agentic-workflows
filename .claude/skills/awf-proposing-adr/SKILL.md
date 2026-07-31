@@ -24,6 +24,7 @@ Load-bearing triggers include:
 - Adopting a new external dependency
 - Changing the manifest / lock file format
 
+When grounding is stale - the ADR will cite repository facts not verified in the current session - invoke `awf-orienting` before writing.
 
 ## Conventions enforced
 
@@ -37,7 +38,7 @@ Load-bearing triggers include:
 
 ## Procedure
 
-Carry the one verified effort slug and exact `.awf/efforts/<slug>/memory.md` path from brainstorming. This ADR is a concrete non-minimal outcome: if no effort exists, create exactly one immutable slugged effort before authoring. It always owns memory, repository sources and current-state documentation outrank checkpoint prose, and standalone memory is forbidden. Preserve one user-managed writer; reviewers never edit the shared file.
+Carry the one verified effort slug and exact `.awf/efforts/<slug>/memory.md` path from brainstorming, creating the effort first if none exists. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible; reviewers never edit the shared file.
 
 <!-- awf:edit procedure-number: default; create .awf/skills/parts/proposing-adr/procedure-number.md to override -->
 1. **Scaffold the file.** Run `awf new adr "<Title>"` to create `docs/decisions/NNNN-kebab-title.md` with the next sequential number, the rendered template's marker comments stripped, and its date and title heading filled in.
@@ -71,14 +72,11 @@ Carry the one verified effort slug and exact `.awf/efforts/<slug>/memory.md` pat
 
 **Routine checkpoint.** At this boundary:
 1. Classify the outcome, not the boundary. A minimal simple fix uses no effort, and reaching a checkpoint never creates one by itself. Once the work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; use `.awf/efforts/<slug>/memory.md` as its only working memory. If that need is first recognized here, create the effort before updating memory. Repository sources and current-state documentation remain authoritative over checkpoint prose.
-2. Validate the existing effort before writing: carry the exact `<slug>` and `.awf/efforts/<slug>/memory.md`, confirm the file starts with `Effort: <slug>`, and preserve one user-managed writer for the effort. A reviewer, explorer, grounding child, or batch helper is report-only with respect to this shared memory and never edits it. Update the file in its own tool batch: set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Validate the existing effort before writing: carry the exact `<slug>` and `.awf/efforts/<slug>/memory.md` (a primary-root-relative spelling; the owned file lives under the primary checkout), confirm the file starts with `Effort: <slug>`, continue the work in the effort's managed worktree when one exists, and preserve one user-managed writer for the effort. A reviewer, explorer, grounding child, or batch helper is report-only with respect to this shared memory and never edits it. Update the file in its own tool batch: set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, append any decision settled and any observation hit since the last boundary that is not yet recorded, and refresh `Updated:`.
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action. For an effort-backed outcome include its exact slug and owned memory path; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the workflow doc's working-memory section.
 
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/proposing-adr/notes.md to override -->
-- The ADR stays `status: Proposed` through the implementation sequence. It flips to `Accepted` (design final, implementation follows) or directly to `Implemented` (design and implementation land together) in a later commit; that is handled by `awf-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.
-- `docs/decisions/INDEX.md` is never hand-edited; it is always regenerated via `./x render`.
-- The `State changes` operations, not any frontmatter relation, are how a later ADR changes what an earlier one established: it updates or removes the affected claim directly.
-- For the full ADR lifecycle, see `docs/workflow.md`.
+- The ADR stays `status: Proposed` through review. A later implementation step owns any nonterminal `Accepted` or `Implementing` transition for incremental work; the terminal-review flow owns the direct or final `Implemented` transition. Those transitions use `awf-adr-lifecycle`, not this skill. V2 claim operations may apply in individually checked first, middle, and final batches; each Applied event travels with exactly its matching claim mutations.

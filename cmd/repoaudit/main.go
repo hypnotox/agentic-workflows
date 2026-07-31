@@ -54,12 +54,22 @@ func main() { // coverage-ignore: process-exit composition boundary; runWith has
 
 const changelogPath = "changelog/CHANGELOG.md"
 
-// adopterFacingPrefixes are the path roots whose change is adopter-visible (rendered
-// templates, the shipped CLI, the config/lock schema, and the artifact catalog - since
-// ADR-0068 a new shipped skill/agent can land as a pure catalog entry). Conservative
-// and logged - a render-logic-only change under internal/render can slip it (ADR-0073).
-// Test files under these roots are excluded: tests are not adopter-visible.
-var adopterFacingPrefixes = []string{"templates/", "cmd/awf/", "internal/config/", "internal/manifest/", "internal/catalog/"}
+// adopterFacingPrefixes are the path roots whose change is adopter-visible: the
+// rendered templates, the shipped CLI, the config/lock schema, the artifact catalog
+// (since ADR-0068 a new shipped skill/agent can land as a pure catalog entry), and
+// the packages that decide what the shipped commands actually answer or write.
+// The behaviour roots were added after a real miss: `awf context` reported an
+// in-flight decision record as frozen, and the fix under internal/adr and
+// internal/project drew no finding because only the declarative roots were listed.
+// A source root belongs here when changing it alone can change what an adopter
+// observes without any template or schema moving. Test files under these roots are
+// excluded: tests are not adopter-visible (ADR-0073).
+var adopterFacingPrefixes = []string{
+	"templates/", "cmd/awf/",
+	"internal/config/", "internal/manifest/", "internal/catalog/",
+	"internal/adr/", "internal/project/", "internal/render/",
+	"internal/effort/", "internal/worktree/",
+}
 
 // rules is the repo-local audit's rule registry (ADR-0073 Decision 1): each rule
 // reports findings over the range, and another repo-local rule is a new function

@@ -81,7 +81,7 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, phrase := range []string{"Effort: zeta-result\n", "Phase:", "Next:", "Updated:", "## Brief", "## Decisions", "## Handoff log"} {
+	for _, phrase := range []string{"Effort: zeta-result\n", "Phase:", "Next:", "Updated:", "## Brief", "## Decision log", "## Observations", "## Handoff log"} {
 		if !strings.Contains(string(memory), phrase) {
 			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}

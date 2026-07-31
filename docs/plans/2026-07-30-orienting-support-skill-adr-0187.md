@@ -1,0 +1,329 @@
+---
+date: 2026-07-30
+adrs: [0187]
+status: Implemented
+---
+# Plan: Orienting support skill (ADR-0187)
+
+## Goal
+
+Implement ADR-0187 in full: the `orienting` support skill exists in the compile-time catalog and template tree as the single home of the orientation procedure, the grounding-checker contract shares its ladder, the scattered inline copies shrink to references, schema generation 26 backfills the skill wherever brainstorming is enabled, and all six declared claim operations apply, the ADR reaching Implemented after its terminal review. Non-goals: the reviewing-plan-resync merge question, enabling roadmap-graduation in this repo, and cutting the 0.30.0 release itself.
+
+## Architecture summary
+
+Four transactions. First the skill comes into existence everywhere at once (catalog spec and profile, template, shared partial, grounding-checker include, enablement and render in this repo). Second the config machinery lands (bespoke gen-26 migration, min-version and version bump, upgrades of both in-repo trees), so every in-repo adopter has the skill enabled before anything references it. Third the existing orientation prose shrinks to references (brainstorming, proposing-adr, writing-plans, workflow doc template, this repo's local guide part); this must follow the backfill because `awf check` hard-fails on a rendered reference to a disabled skill (`checkDeadSkillRefs`, invariant skill-ref-dead-fails), so the shrink is only buildable once sundial has `orienting`. Fourth the six claim operations are authored with proof markers, in two batches: five operations apply on the integrated history, and the sixth lands with the Implemented flip once terminal review settles. Every operation's backing test exists by the end of phase 3, so the split is imposed by the lifecycle and the review-before-flip contract rather than by readiness.
+
+## File structure
+
+- **Created:**
+  - `templates/partials/orientation-ladder.md`
+  - `templates/skills/orienting/SKILL.md.tmpl`
+  - `internal/migrate/orientingbackfill.go`
+  - `internal/migrate/orientingbackfill_test.go`
+  - rendered outputs via `./x render`: `.claude/skills/awf-orienting/SKILL.md`, `.pi/skills/awf-orienting/SKILL.md`, and after phase 2 the sundial equivalents
+- **Modified:**
+  - `internal/catalog/standard.go`
+  - `templates/agents/grounding-checker.md.tmpl`
+  - `templates/skills/brainstorming/SKILL.md.tmpl`
+  - `templates/skills/proposing-adr/SKILL.md.tmpl`
+  - `templates/skills/writing-plans/SKILL.md.tmpl`
+  - `templates/docs/workflow.md.tmpl`
+  - `internal/evals/chain_test.go`
+  - skill-enumerating test literals (batch task 1.5)
+  - `internal/migrate/migrate.go`
+  - `internal/project/project.go`, `internal/project/version_test.go`
+  - `changelog/CHANGELOG.md`
+  - `.awf/config.yaml`, `.awf/awf.lock`, `.awf/parts/agents-doc/commands.md`
+  - `examples/sundial/.awf/config.yaml`, `examples/sundial/.awf/awf.lock`
+  - sundial rendered outputs: `./x render` at the root always re-renders `examples/sundial` too, so every phase that renders stages the sundial diff as part of its own transaction (phases 1 and 3 touch its agents and skills; phase 2 its config, lock, and guide)
+  - `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`, `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, `.awf/topics/parts/config/migrations-and-locks/current-state.md` and their rendered `docs/topics/` counterparts
+  - `AGENTS.md`, `docs/workflow.md`, rendered `.claude/skills/` and `.pi/skills/` bodies touched by the shrinks
+  - `docs/decisions/0187-add-the-orienting-support-skill-as-the-single-home-of-orientation.md`, `docs/decisions/INDEX.md`, this plan (status flips)
+- **Deleted:** none.
+
+## Phase 1: The orienting skill exists
+
+**Execution mode: inline.** One transaction: catalog entry, template, shared partial, grounding-checker include, tests, and this repo's enablement land together so the section-parity and profile-validation invariants hold at the phase close.
+
+- [ ] **Task 1.1: Create `templates/partials/orientation-ladder.md`.** The partial carries both the guide-first grounding order and the managed-context discipline, as ADR-0187 Decision 3 requires. Its discipline says `managed context calls` rather than naming the `awf context` command: the projection-pinning spine test scans expanded skill includes line by line and treats every line naming that command as a call requiring its own spill contract. The orienting skill's `context-command` section owns the one literal command invocation and points back to this shared discipline. Exact content (no `awf:include` directive may appear inside it; the include engine rejects nested includes):
+
+  ```
+  Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs under `{{ .layout.domainsDir }}`. Current-state documentation is what binds. Consult the recent history of the touched paths (`git log --oneline -20 <path>`) only when current state leaves what you are seeing unexplained.
+
+  For managed context calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
+  ```
+
+- [ ] **Task 1.2: Create `templates/skills/orienting/SKILL.md.tmpl`.** Exact content:
+
+  ```
+  ---
+  name: {{ .prefix }}-orienting
+  description: Use when taking up a topic - before brainstorming fresh non-trivial work, when resuming an effort, when taking over a handoff, or when the working set widens mid-chain. Grounds the session in repository truth; single-pass, never a chain gate.
+  ---
+
+  # {{ .prefix }}-orienting
+
+  <!-- awf:section when-to-invoke -->
+  ## When to invoke
+
+  Four moments call for orientation:
+
+  1. **Fresh work:** before brainstorming any non-trivial outcome.
+  2. **Effort resume:** taking up an in-progress effort in a new session, after context summarization, or on re-entering a managed worktree.
+  3. **Handoff takeover:** receiving work another session checkpointed.
+  4. **Mid-chain re-orientation:** the working set widens into unexamined files or domains, or a durable artifact (an ADR's Context or State changes, a plan's tasks) is about to cite repository facts not verified in the current session.
+
+  This is a support skill: single-pass and advisory, never a chain gate or prerequisite. It never creates an effort, never commits, and never edits shared working memory unless this session is the effort's one user-managed writer.
+  <!-- awf:end -->
+
+  <!-- awf:section guide-ladder -->
+  ## Grounding ladder
+
+  <!-- awf:include orientation-ladder -->
+
+  When a needed fact's location is unknown and inline search would pollute the parent context, invoke `{{ .prefix }}-exploring` and dispatch one or more exploration subagents as fitting: each carries exactly one information need with a chosen breadth and report detail, independent needs may run in parallel, and every child is report-only. Keep an exact-known-file read or genuinely trivial lookup inline.
+  <!-- awf:end -->
+
+  <!-- awf:section context-command -->
+  ## Managed context
+
+  Once candidate files are identified, run `awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
+  <!-- awf:include context-spill -->
+  <!-- awf:end -->
+
+  <!-- awf:section resume-revalidation -->
+  ## Resume revalidation
+
+  When resuming an effort or taking over a handoff, read the effort's memory file at `.awf/efforts/<slug>/memory.md`: its header (`Effort:`, `Phase:`, `Next:`, `Updated:`) and its handoff log. Then verify every load-bearing claim against repository truth before acting on it: commits landed since the checkpoint (`git log` since `Updated:`), worktree topology versus what memory describes (`git worktree list`), cited decision-record statuses against the decision index, and cited plan and file existence. A discrepancy resolves in favor of the repository. Only the effort's one user-managed writer corrects the stale checkpoint before continuing; a dispatched child never edits it.
+  <!-- awf:end -->
+
+  <!-- awf:section hand-off -->
+  ## Hand-off
+
+  Orientation produces understanding, never commits. Route onward to whichever enabled skill fits the work: brainstorming for fresh design, debugging for a defect, plan execution to continue an accepted plan, plan or ADR writing when a durable artifact is next.
+  <!-- awf:end -->
+  ```
+
+  Note on the fenced block above: the file carries the plain Go-template placeholder exactly as every sibling `SKILL.md.tmpl` does (compare `templates/skills/exploring/SKILL.md.tmpl`). The description line must not contain a `: ` sequence after the frontmatter key itself (YAML plain-scalar constraint enforced by the templates-valid-frontmatter invariant); the hyphenated form above satisfies that.
+
+- [ ] **Task 1.3: Add the catalog entries in `internal/catalog/standard.go`.** In the `Skills` map, after the `"exploring"` entry:
+
+  ```go
+  "orienting": {Core: true, Sections: []string{
+      "when-to-invoke", "guide-ladder", "context-command", "resume-revalidation", "hand-off",
+  }},
+  ```
+
+  In the `init()` profiles map, after the `"exploring"` entry:
+
+  ```go
+  "orienting": {Kind: WorkflowSupport, Purpose: "Ground the session in a topic before starting, resuming, or widening work.", Trigger: "Use when taking up a topic: before brainstorming fresh non-trivial work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}},
+  ```
+
+  No `RequiresAgent`, no `RequiresDoc`, no `UsuallyFollows`, and no edits to any other skill's profile (ADR-0187 Decision 1).
+
+- [ ] **Task 1.4: Share the ladder with the grounding-checker.** In `templates/agents/grounding-checker.md.tmpl`, inside the `verification-scope` section, append after the convention-fit paragraph:
+
+  ```
+  Ground guide-first before verifying:
+
+  <!-- awf:include orientation-ladder -->
+  <!-- awf:include context-spill -->
+  ```
+
+  Both include directives sit directly in the agent template as siblings, never inside either partial (nested includes hard-fail the render). The context-spill sibling is required in each consuming template by ADR-0187 Decision 3.
+
+- [ ] **Task 1.5: Batch task - extend every skill-enumerating test.** Representative (exact): in `internal/evals/chain_test.go`, the `roles` map in `TestUnifiedEffortWorkflowCoverage` gains the entry `"orienting": "report",` beside `"exploring": "report"`. Edge (exact): in `internal/project/spine_test.go`, the `policies` map in `TestManagedContextCallersChooseProjection` gains `"orienting": "",` (a bare-context caller with no facet policy; without this entry the template's one context call errors as an unclassified invocation). Affected-site set: every test literal, map, or table that enumerates the standard or core skill set or the skill templates, found by `grep -rn '"exploring"' internal/ --include='*_test.go'` plus the failures the post-check surfaces (that grep currently lands in `internal/catalog/catalog_test.go`, `internal/project/subagent_model_selection_test.go`, `internal/project/spine_test.go` - including its template table, which gains `skills/orienting/SKILL.md.tmpl` beside `skills/exploring/SKILL.md.tmpl` - `internal/project/target_test.go`, and `internal/evals/chain_test.go`). Post-check (deterministic): `go test ./...` exits zero.
+
+- [ ] **Task 1.6: Add the orienting golden and contract tests.** In `internal/project/spine_test.go`, add the hand-authored `TestOrientingTemplate` golden required by `TestStandardSkillsHaveGoldenCompleteness`, following the neighboring `TestExploringTemplate` shape. Also add `TestOrientingSkillContract`: use the package-local `explorationRenderedByPath` helper with a fixture config that enables `orienting` and read the target-specific rendered body, as `TestCrossRuntimeExplorationDispatch` does; do not call the `internal/evals`-local `syncFullCatalogForTarget`. Assert the rendered orienting body for each enabled target contains, at minimum, the literal fragments `Four moments call for orientation`, `Ground guide-first, in order`, `one or more exploration subagents`, `one information need`, `location is unknown`, `and inline search would pollute the parent context`, `exact-known-file`, `genuinely trivial`, the target-prefixed orienting-to-exploring route, `A discrepancy resolves in favor of the repository`, `never creates an effort, never commits`, and `never prescribe` followed by the backticked `--full` token (in Go source the fragment is written inside a backtick-free double-quoted string as "never prescribe `--full`" with the backticks unescaped; Go double-quoted literals carry backticks verbatim). Also assert the rendered grounding-checker agent contract contains `Ground guide-first, in order`, `For managed context calls, start bare`, and `never prescribe ` followed by the backticked `--full` token (proving both halves of the shared partial reach both consumers), plus a distinctive context-spill contract fragment such as `AWF_CONTEXT_SPILL_V1` (proving the required sibling include reaches the rendered agent). No proof marker yet; markers land with the claims in phase 4.
+
+- [ ] **Task 1.7: Enable and render in this repo.** Run `./awf enable skill orienting`, then `./x render`, then `./x check` (expected: clean). The rendered `.claude/skills/awf-orienting/SKILL.md` and `.pi/skills/awf-orienting/SKILL.md` exist and `AGENTS.md` lists the skill with its purpose and trigger. `./x render` also re-renders `examples/sundial` (its grounding-checker contract gains the ladder); that sundial diff belongs to this transaction and is staged with it.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction including the sundial rendered diff; run `awf check --staged` then `./x gate`; create the one phase-closing commit:
+
+```commit
+feat(rendering): add the orienting support skill
+```
+
+## Phase 2: Schema generation 26
+
+**Execution mode: inline.** One transaction: migration, version obligations, changelog, and both in-repo upgrades land together so the binary-version gate is consistent at the phase close and every in-repo adopter has `orienting` enabled before phase 3 references it.
+
+- [ ] **Task 2.1: Create `internal/migrate/orientingbackfill.go`.** Exact content:
+
+  ```go
+  package migrate
+
+  import (
+      "fmt"
+      "io"
+      "os"
+      "slices"
+
+      "github.com/hypnotox/agentic-workflows/internal/config"
+  )
+
+  // applyOrientingSkillBackfill ports schema 25 -> 26 (ADR-0187): the orienting
+  // skill becomes the single home of the orientation procedure and the shrunk
+  // brainstorming template invokes it by name, a prose reference no structural
+  // edge backs (requires-skills-exact forces RequiresSkills empty, and orienting
+  // declares no agent or doc requirement), so applyCloseEnabledSet cannot reach
+  // it. Any config with brainstorming enabled gains orienting; a config without
+  // brainstorming is untouched. Idempotent; the addition is announced.
+  func applyOrientingSkillBackfill(root string, out io.Writer) error {
+      if _, err := os.Stat(config.ConfigPath(root)); os.IsNotExist(err) {
+          return nil // no config: nothing to backfill (idempotent re-run safe)
+      }
+      cfg, err := loadForMigration(root)
+      if err != nil {
+          return err
+      }
+      if !slices.Contains(cfg.Skills, "brainstorming") || slices.Contains(cfg.Skills, "orienting") {
+          return nil
+      }
+      return editConfig(root, func(src []byte) ([]byte, error) {
+          b, err := config.SetArrayMember(src, "skills", "orienting", true)
+          if err != nil { // coverage-ignore: config.Load already parsed this config, so SetArrayMember cannot error here
+              return nil, err
+          }
+          fmt.Fprintln(out, "orienting-skill-backfill: enabled skill orienting (brainstorming is enabled)")
+          return b, nil
+      })
+  }
+  ```
+
+  Adjust the coverage-ignore reason only if the gate rejects it; never fork `editConfig` or `SetArrayMember` to dodge coverage.
+
+- [ ] **Task 2.2: Register generation 26.** In `internal/migrate/migrate.go`, append to `registry`:
+
+  ```go
+  {To: 26, Name: "orienting-skill-backfill", Apply: applyOrientingSkillBackfill},
+  ```
+
+  `ConfigForCurrentSchema` needs no generation-26 byte branch: the migration only adds a list entry the strict parser already accepts, so a historical committed config still parses (contrast the severity-key removal, which removed keys from the model and did need one). State this in the commit body.
+
+- [ ] **Task 2.3: Create `internal/migrate/orientingbackfill_test.go`.** Table-driven over config fixtures, following the sibling migration tests' fixture style: (a) brainstorming enabled without orienting: config gains `orienting` in the skills array and the run prints the exact announcement line; (b) brainstorming and orienting both enabled: config bytes unchanged, no output; (c) no brainstorming: config bytes unchanged, no output; (d) no config file at root: nil error, no output; (e) idempotence: running twice equals running once; (f) a malformed `.awf/config.yaml` (unparseable YAML) surfaces the load error and mutates nothing (covering the `loadForMigration` error return; precedent: the malformed-config case in `internal/migrate/closeenabledset_test.go`). No proof marker yet; it lands in phase 4.
+
+- [ ] **Task 2.4: Version obligations.** In `internal/project/project.go`: `Version` becomes `"0.30.0"` and `minVersionBySchema` gains `26: "0.30.0",`. In `internal/project/version_test.go`: the generation-pin assertion moves from `minVersionBySchema[25]` to `minVersionBySchema[26]` (still compared against `Version`); the historical `[20]` assertions stay.
+
+- [ ] **Task 2.5: Changelog.** In `changelog/CHANGELOG.md` under `## [Unreleased]`, add under the existing `### Breaking changes` heading (the schema-25 precedent's category: a schema bump forces `awf upgrade` on every adopter, and the phase subject carries the `!` marker):
+
+  ```
+  - Add the `orienting` support skill: the single home of the orientation procedure (guide-first
+    grounding ladder, managed `awf context` discipline, and effort-resume revalidation against
+    repository truth), shared with the grounding-checker contract via a template partial. Schema
+    generation 26 enables it in any config that has `brainstorming` enabled, since the shrunk
+    brainstorming template now invokes it by name; configs without `brainstorming` are untouched.
+  ```
+
+- [ ] **Task 2.6: Upgrade both in-repo trees with the from-source binary.** The sundial wrappers must not be used: `examples/sundial/awf` execs the bootstrap-pinned released binary (which has no generation 26), and `examples/sundial/x` supports only `gate` and `test`. Build once and run directly, mirroring the root runner's own from-source pattern:
+
+  ```
+  bindir=$(mktemp -d)
+  go build -o "$bindir/awf" ./cmd/awf
+  ./awf upgrade                                  # root tree; expected: lock advances to 26,
+                                                 # backfill prints nothing (orienting already
+                                                 # enabled - live proof of case (b))
+  (cd examples/sundial && "$bindir/awf" upgrade) # expected: the exact announcement line prints
+                                                 # and sundial's config gains orienting - live
+                                                 # proof of case (a)
+  (cd examples/sundial && "$bindir/awf" render)
+  (cd examples/sundial && "$bindir/awf" check)   # expected: clean
+  ./x render && ./x check                        # expected: clean at the root
+  ```
+
+  The sundial guide, config, and lock diff belongs to this transaction and is staged with it.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction including the sundial diff; run `awf check --staged` then `./x gate`; create the one phase-closing commit:
+
+```commit
+feat(config)!: backfill the orienting skill at schema generation 26
+```
+
+## Phase 3: Reference-and-shrink
+
+**Execution mode: inline.** One transaction: all five prose homes shrink together with their re-render. This phase requires phase 2: after the shrink, every rendered brainstorming body references the orienting skill, and `checkDeadSkillRefs` hard-fails any tree where that reference dangles, so sundial must already have `orienting` enabled.
+
+- [ ] **Task 3.1: Shrink brainstorming step 1.** In `templates/skills/brainstorming/SKILL.md.tmpl`, replace the whole bare step-1 block (the line beginning `1. **Explore project context.**` plus its trailing `<!-- awf:include context-spill -->` line) with exactly:
+
+  ```
+  1. **Orient in the topic.** Invoke `{{ .prefix }}-orienting` and follow its ladder: guide-first grounding, delegated exploration where fitting, and managed context over the candidate files the work touches.
+  ```
+
+  Step 6's own `awf context` paste instruction and its context-spill include are untouched: brainstorming remains a managed context-calling skill there. The exploration-dispatch trigger and the direct `{{ .prefix }}-exploring` route move to orienting's guide-ladder section in Task 1.2; brainstorming does not retain a duplicate.
+
+- [ ] **Task 3.2: Advisory pointer in proposing-adr.** In `templates/skills/proposing-adr/SKILL.md.tmpl`, inside the `when-to-invoke` section, append as a final paragraph:
+
+  ```
+  When grounding is stale - the ADR will cite repository facts not verified in the current session - invoke `{{ .prefix }}-orienting` before writing.
+  ```
+
+- [ ] **Task 3.3: Advisory pointer in writing-plans.** In `templates/skills/writing-plans/SKILL.md.tmpl`, inside the `procedure-confirm-scope` section, append to step 1:
+
+  ```
+  If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `{{ .prefix }}-orienting` first.
+  ```
+
+- [ ] **Task 3.4: Route the workflow doc's resume sentence.** In `templates/docs/workflow.md.tmpl`, in the working-memory section, replace the sentence `Resume from `Phase:` and `Next:` only after checking the repository sources and current-state documentation, which remain authoritative over checkpoint prose.` with:
+
+  ```
+  Resume from `Phase:` and `Next:` only after revalidating them against the repository sources and current-state documentation, which remain authoritative over checkpoint prose; the rendered orienting skill's resume-revalidation section is the procedural home of that check.
+  ```
+
+- [ ] **Task 3.5: Shrink this repo's guide part.** Replace the managed-context paragraph in `.awf/parts/agents-doc/commands.md` (the paragraph beginning `For managed `awf context` calls, start bare:`) with exactly:
+
+  ```
+  For managed `awf context` calls, follow the awf-orienting skill's context discipline: start bare, request only the named facets the active lens requires, never prescribe `--full`, and consume spill notices per the shared contract.
+  ```
+
+- [ ] **Task 3.6: Batch task - re-render and settle assertions.** Run `./x render`; the rendered brainstorming, proposing-adr, and writing-plans skills, `docs/workflow.md`, `AGENTS.md`, and the sundial equivalents update (the sundial diff belongs to this transaction). In `internal/project/target_test.go`, `TestCrossRuntimeExplorationDispatch` continues to assert the dispatch-condition fragments on debugging and refactor-coupling-audit, but moves the brainstorming case to the rendered orienting body and also asserts that body names the target-prefixed exploring skill. In `internal/evals/chain_test.go`, `TestExplorationConsumerToPiToolSeam` replaces brainstorming with orienting in its exploring-consumer set; debugging and refactor-coupling-audit remain. Any other assertion pinning brainstorming's old step-1 text moves to orienting. Affected-site set: every test assertion the post-check fails on brainstorming step-1 prose, the workflow-doc sentence, or context-call classification (known candidates: `internal/project/spine_test.go` including `TestManagedContextCallersChooseProjection`, `internal/project/target_test.go` including `TestCrossRuntimeExplorationDispatch`, `internal/evals/chain_test.go` including `TestExplorationConsumerToPiToolSeam`). Constraint: never weaken an assertion; relocate it to the surface the prose moved to. Post-check (deterministic): `go test ./...` exits zero and `./x check` is clean.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction including the sundial rendered diff; run `awf check --staged` then `./x gate`; create the one phase-closing commit:
+
+```commit
+feat(rendering): shrink orientation prose to the orienting skill
+```
+
+## Phase 4: Claims, markers, and the flip
+
+**Execution mode: inline.** Two transactions. The first applied five of ADR-0187's six operations with their proof marker and topic renders, moving the ADR to `Implementing`. The second is this phase's remaining work: the pending sixth operation, its proof marker, and the topic render land together with the Applied and Implemented status events in one commit, after terminal review settles.
+
+- [ ] **Task 4.1: Proof markers.** Add `// invariant: rendering/workflow-skill-templates:orienting-single-home` above `TestOrientingSkillContract` (Task 1.6) and `// invariant: config/migrations-and-locks:orienting-skill-backfill` above the Task 2.3 test's top-level function. The three updated claims keep their existing proof markers; extend the marked tests only if phase 1 or 3 has not already routed the new assertions through them.
+
+- [ ] **Task 4.2: Author the claim mutations.** In `.awf/topics/parts/rendering/workflow-skill-templates/current-state.md`:
+  - Add claim `orienting-single-home` with prose: `The orienting support skill is the single home of the orientation procedure: its rendered body defines the four invocation moments, the guide-first grounding ladder shared as a partial with the grounding-checker contract, multi-child report-only exploration dispatch with one information need per child, the managed context discipline, and effort-resume revalidation that resolves discrepancies in favor of the repository; the skill is single-pass, never a chain gate, never creates an effort, and never commits. Brainstorming's first step invokes it, and proposing-adr and writing-plans carry advisory pointers.` `Origin: ADR-0187`, `Backing: test`.
+  - Update `explorer-and-grounding-role-contracts`: append to its prose `The grounding-checker body grounds guide-first through the shared orientation ladder partial.` and append ADR-0187 to `Revised-by`.
+  - Update `implementer-context-grounding`: in the sentence enumerating bare-context callers, add orientation so it reads `Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare  awf context ` (backticked command as in the current prose); append ADR-0187 to `Revised-by`.
+  - Update `unified-effort-workflow-coverage`: extend the enumeration `... coupling-audit, exploration, orientation, and roadmap skill ...`; append ADR-0187 to `Revised-by`.
+
+  In `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, update `working-memory-single-home`: append `Resume verification is procedurally homed in the orienting skill's resume-revalidation section; the workflow doc keeps the memory contract and routes to it.` and append ADR-0187 to `Revised-by`.
+
+  In `.awf/topics/parts/config/migrations-and-locks/current-state.md`, add claim `orienting-skill-backfill` with prose: `The schema-26 migration enables the orienting skill in any config that has brainstorming enabled, as a bespoke idempotent atomic edit announced per addition; configs without brainstorming are untouched, and the closure primitive is not used because no structural edge reaches orienting.` `Origin: ADR-0187`, `Backing: test`.
+
+- [ ] **Task 4.3: Apply the final batch, flip, and render.** The first batch already applied five operations and moved the ADR to `Implementing`. This task owns only the sixth. Append `- YYYY-MM-DD: Applied; state-sequence: <n>; operations: add ` + the backticked `rendering/workflow-skill-templates:orienting-single-home` + `, then the terminal status event `- YYYY-MM-DD: Implemented; content-sha256: <64 lowercase hex characters>; state-sequence: <n>`, in that order, in the same commit as the claim add and the `TestOrientingSkillContract` proof marker. The digest is `adr.ContentDigest`, the sha256 over exactly the five canonical sections (Context, Decision, State changes, Consequences, Alternatives Considered), each serialized as `## <name>` plus the body with trailing whitespace stripped plus one newline; it is NOT a `sha256sum` of the file. Mechanical procedure: write any 64-lowercase-hex placeholder, run `./awf check`, and copy the computed digest and next state sequence from its mismatch message; never invent a literal sequence value. Flip this plan's `status:` to `Implemented` and record any beyond-plan findings in its Notes. Run `./x render` (INDEX.md and `docs/topics/` regenerate). `./x check` is clean.
+
+- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction; run `awf check --staged` then `./x gate`; create the one phase-closing commit:
+
+```commit
+docs(adr): apply 0187 state changes and flip to Implemented
+```
+
+## Verification
+
+- `./x gate` green at every phase close (100% coverage, dead-code, prose, memory, drift).
+- `./awf check` clean at the repo root and in `examples/sundial` (from-source binary) after phase 2.
+- `git grep -n "Explore project context" -- templates/skills/brainstorming/ .claude/skills/ .pi/skills/ examples/sundial/.agents/skills/ examples/sundial/.claude/skills/ examples/sundial/.cursor/skills/ examples/sundial/.gemini/skills/ examples/sundial/.github/skills/ examples/sundial/.pi/skills/` returns no output after phase 3 (the active template and every rendered in-repo brainstorming skill have no stale copy; retained historical plans are intentionally outside this check).
+- `./awf list` shows `orienting  enabled` at the root; sundial's config lists it after phase 2.
+- The rendered `.claude/skills/awf-orienting/SKILL.md` and the grounding-checker contract both contain the ladder sentence `Ground guide-first, in order` (shared partial reaches both consumers).
+- `awf audit` over the implementation range reports no workflow-conformance findings (advisory).
+
+## Notes
+
+- **Plan-review decisions:** (1) the orienting template's guide-ladder section owns the exploration-dispatch conditions and names `{{ .prefix }}-exploring`; brainstorming retains only its orienting invocation, and the invariant-marked consumer assertions relocate their brainstorming case to orienting while continuing to cover debugging and refactor-coupling-audit; (2) the shared orientation partial retains both the guide-first ladder and managed-context discipline as ADR-0187 requires, but says `managed context calls` without creating a second literal command invocation, while orienting's context-command section owns the one `awf context` call and spill contract. These preserve the approved single-home design without expanding ADR-0187's state-change set.
+- Out of scope, tracked elsewhere: the reviewing-plan-resync merge candidate, roadmap-graduation's disabled state in this repo, cutting and publishing the 0.30.0 release (docs/releasing.md), and the reviewer-spine dedup.
+- After ADR-0186, `orienting-single-home` is the twenty-first `rendering/workflow-skill-templates` claim, exceeding the twenty-claim advisory limit. The user approved this exception for the cohesive topic; the existing `maxClaimsPerTopic` behavior is advisory, and any budget redesign remains future cleanup. `config/migrations-and-locks` reaches the ceiling exactly with `orienting-skill-backfill`, so the next claim added there needs a split or a new topic.
+- Indicative only: the batch tasks' known-candidate lists were surveyed at authoring time; the affected-site sets are defined by their greps and post-checks, not by those lists.
+- **Beyond-plan findings, all mechanical consequences of registering generation 26 (phase 2).** Three pins the plan did not enumerate had to move with the bump: `internal/migrate/dropworkflowtelemetry_test.go` asserts the current generation (25 became 26); `internal/migrate/workflowtelemetry_test.go` pins the joined applied-migration sequence from schema 16 (gained `orienting-skill-backfill`); and `internal/project/version_test.go` probes an unmapped generation, which had to move from 26 to 27 once 26 gained an entry. Each is the same edit the three preceding schema bumps made.
+- **Audit deviation.** The Verification section expected `awf audit` to report no findings over the implementation range; as executed it reports three advisory `domain-code-staleness` warnings, for the config, rendering, and tooling domains. Each domain's `current-state.md` was read and none is falsified by this change: they describe mechanisms rather than enumerating schema generations or skills, so no refresh was warranted. The repo-local audit reports one advisory `coverage-ignore-added` warning for the migration's `SetArrayMember` branch, which is genuinely unreachable on the add path and reuses the accepted `closeenabledset.go` precedent verbatim.
+- **Phase 4 backing extension.** Task 4.1 permitted extending a marked test where phases 1 and 3 had not already routed the new assertions through it. `TestOrientingSkillContract` needed both: an assertion for the single-pass, never-a-chain-gate wording, and assertions that brainstorming, proposing-adr, and writing-plans reference the skill, since the `orienting-single-home` claim states those and no other marked test covers them. Its fixture config gained the three consumer skills so one render proves the home and its references together.
+- **Phase 4 was withdrawn and is re-run after integration.** Phase 4 originally applied all six operations in one batch and flipped ADR-0187 to `Implemented`, conforming to the executing-plans contract in force at this branch's base. Main has since narrowed that contract so the final batch and the flip settle after the last terminal review, and ADR-0186 made a V2 body amendable until a terminal status. `Implemented` is terminal, so that flip would have frozen the decision while a question about the grounding ladder's content was still open. The flip could not be corrected forward: the checker refuses to withdraw an applied claim without a `remove` operation, and `Implementing` requires at least one operation to remain pending, so an all-applied non-terminal state is not expressible. The unpublished branch tip was rewritten instead, leaving the ADR at `Proposed` where every section amends freely with no history event. Phase 4 re-runs after integration and after the ladder amendment, but not unchanged: it splits into two batches, because the lifecycle rejects an all-applied non-terminal state (`Implementing` requires at least one operation still pending) while the renewed contract requires the flip to follow terminal review. The first batch applied five operations at state-sequence 102; `add rendering/workflow-skill-templates:orienting-single-home` is the pending sixth and lands with the flip in Task 4.3. The test strengthening that phase 4's review produced is retained without its two proof markers, which return with their claims.

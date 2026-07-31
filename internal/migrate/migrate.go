@@ -62,6 +62,7 @@ var registry = []Migration{
 	// gains its paired agent on upgrade instead of failing at project open.
 	{To: 24, Name: "explorer-grounding-closure", Apply: treeOnly(applyCloseEnabledSet)},
 	{To: 25, Name: "drop-severity-settings", Apply: treeOnly(applyDropSeveritySettings)},
+	{To: 26, Name: "orienting-skill-backfill", Apply: treeOnly(applyOrientingSkillBackfill)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

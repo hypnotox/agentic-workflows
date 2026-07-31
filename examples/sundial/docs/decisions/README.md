@@ -62,8 +62,12 @@ The lock has immutable `adrFormatV1From` and `adrFormatV2From` cutoffs. Records 
 legacy, records from V1 to before V2 retain the four-state V1 grammar, and records at or above V2
 use this five-state grammar. There is no `Superseded` status.
 
-V2 history is a date-nondecreasing, prefix-append-only event stream. Status events repeat the
-frozen `content-sha256`. An application batch uses exactly
+V2 history is a date-nondecreasing, prefix-append-only event stream. Content stays amendable until
+a terminal status: while Accepted or Implementing an amendment appends
+`- YYYY-MM-DD: Amended; content-sha256: <new digest>`, a status event repeats the latest stamp (or
+establishes the first), and the latest stamp always equals the current content, freezing permanently
+at Implemented or Abandoned. V1 records instead freeze once they leave Proposed. An application
+batch uses exactly
 `- YYYY-MM-DD: Applied; state-sequence: <positive integer>; operations: <verb> `<qualified-id>`[, ...]`.
 Operations are nonempty, previously unapplied, and declaration-ordered. Entering Implementing
 appends its status then the first Applied event; a middle pair appends one Applied event; the final

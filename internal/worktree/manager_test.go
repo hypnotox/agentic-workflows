@@ -30,17 +30,20 @@ func TestManagedWorktreeAddIntegrateAndRestartableRemove(t *testing.T) {
 		t.Fatalf("add result = %#v", added)
 	}
 	managed := filepath.Join(root, ".awf", "worktrees", "managed-result")
+	if added.Path != managed || added.Branch != "awf/managed-result" || !strings.Contains(added.NextAction, added.Path) {
+		t.Fatalf("add facts = %#v, want path %q and branch awf/managed-result named by the next action", added, managed)
+	}
 	writeWorktreeFile(t, filepath.Join(managed, "effort.txt"), "effort\n")
 	commitWorktree(t, managed, "effort")
 
-	integrated, err := manager.Integrate("managed-result")
+	integrated, err := manager.Integrate("managed-result", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !integrated.ChangedTopology || !strings.Contains(integrated.Condition, "fast-forwarded") {
 		t.Fatalf("integrate result = %#v", integrated)
 	}
-	already, err := manager.Integrate("managed-result")
+	already, err := manager.Integrate("managed-result", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,11 +89,13 @@ func TestDivergentIntegrationStopsBeforeCommit(t *testing.T) {
 	writeWorktreeFile(t, filepath.Join(root, "target.txt"), "target\n")
 	commitWorktree(t, root, "target")
 
-	result, err := manager.Integrate("divergent-result")
+	result, err := manager.Integrate("divergent-result", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !result.ChangedTopology || !strings.Contains(result.Condition, "staged without a commit") || !strings.Contains(result.NextAction, "check --staged") {
+	if !result.ChangedTopology || !strings.Contains(result.Condition, "staged without a commit") ||
+		!strings.Contains(result.NextAction, "check --staged") || !strings.Contains(result.NextAction, "project gate") ||
+		strings.Contains(result.NextAction, "./x gate") {
 		t.Fatalf("divergent result = %#v", result)
 	}
 	mergeHead := strings.TrimSpace(runWorktreeGit(t, root, "rev-parse", "--git-path", "MERGE_HEAD"))
@@ -119,8 +124,9 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 		commitWorktree(t, managed, "effort conflict")
 		writeWorktreeFile(t, filepath.Join(root, "tracked.txt"), "target\n")
 		commitWorktree(t, root, "target conflict")
-		_, err = manager.Integrate("conflict-result")
-		if err == nil || !strings.Contains(err.Error(), "changed topology: yes") || !strings.Contains(err.Error(), "resolve or abort") {
+		_, err = manager.Integrate("conflict-result", "make gate")
+		if err == nil || !strings.Contains(err.Error(), "changed topology: yes") || !strings.Contains(err.Error(), "resolve or abort") ||
+			!strings.Contains(err.Error(), "`make gate`") || strings.Contains(err.Error(), "./x gate") {
 			t.Fatalf("conflict error = %v", err)
 		}
 		if !commandSucceeds(root, "rev-parse", "--verify", "MERGE_HEAD") {
@@ -147,7 +153,7 @@ func TestIntegrationConflictAndUnrelatedHistoryStayVisibleAndActionable(t *testi
 		runWorktreeGit(t, root, "branch", "-f", "awf/unrelated-result", "unrelated-temp")
 		runWorktreeGit(t, managed, "checkout", "awf/unrelated-result")
 		before := runWorktreeGit(t, root, "rev-parse", "HEAD")
-		_, err = manager.Integrate("unrelated-result")
+		_, err = manager.Integrate("unrelated-result", "")
 		if err == nil || !strings.Contains(err.Error(), "no proven common ancestor") || !strings.Contains(err.Error(), "changed topology: no") || !strings.Contains(err.Error(), "do not use --allow-unrelated-histories") {
 			t.Fatalf("unrelated error = %v", err)
 		}
@@ -216,6 +222,155 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	if _, err := service.Show("partial-add"); err != nil {
 		t.Fatalf("complete effort changed by add failure: %v", err)
 	}
+}
+
+// invariant: tooling/effort-management:default-worktree-creation
+func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
+	root := initWorktreeRepo(t, "sha1")
+	manager, err := Open(testContext(t), root, Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, result, err := manager.NewEffort("Default creation", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	managed := filepath.Join(root, ".awf", "worktrees", "default-creation")
+	if record.Slug != "default-creation" || record.Title != "Default creation" {
+		t.Fatalf("record = %#v", record)
+	}
+	if !result.ChangedTopology || result.Path != managed || result.Branch != "awf/default-creation" {
+		t.Fatalf("result = %#v, want the managed path %q on awf/default-creation", result, managed)
+	}
+	if info, statErr := os.Lstat(managed); statErr != nil || !info.IsDir() {
+		t.Fatalf("managed checkout absent: %v", statErr)
+	}
+	if !worktreeBranchExists(t, root, "default-creation") {
+		t.Fatal("managed branch absent")
+	}
+	if _, showErr := manager.efforts.Show("default-creation"); showErr != nil {
+		t.Fatalf("effort resident absent: %v", showErr)
+	}
+}
+
+// invariant: tooling/effort-management:default-worktree-creation
+func TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
+	t.Run("rolled back", func(t *testing.T) {
+		root := initWorktreeRepo(t, "sha1")
+		manager, err := Open(testContext(t), root, Options{Runner: runnerFailingPrefix(nativeRunner, "worktree add")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = manager.NewEffort("Rolled back", "")
+		if err == nil || !strings.Contains(err.Error(), "effort rolled-back rolled back") || !strings.Contains(err.Error(), "retry `awf effort new`") {
+			t.Fatalf("rollback error = %v", err)
+		}
+		if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "rolled-back")); !errors.Is(statErr, os.ErrNotExist) {
+			t.Fatalf("rolled-back effort resident remains: %v", statErr)
+		}
+	})
+
+	t.Run("retained with topology", func(t *testing.T) {
+		root := initWorktreeRepo(t, "sha1")
+		runner := func(ctx context.Context, directory string, args ...string) ([]byte, error) {
+			out, err := nativeRunner(ctx, directory, args...)
+			if len(args) >= 2 && args[0] == "worktree" && args[1] == "add" && err == nil {
+				return nil, errors.New("injected post-add failure")
+			}
+			return out, err
+		}
+		manager, err := Open(testContext(t), root, Options{Runner: runner})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _, err = manager.NewEffort("Retained topology", "")
+		if err == nil || !strings.Contains(err.Error(), "retained: managed topology remains") || !strings.Contains(err.Error(), "git worktree list --porcelain") {
+			t.Fatalf("retained error = %v", err)
+		}
+		if _, showErr := manager.efforts.Show("retained-topology"); showErr != nil {
+			t.Fatalf("retained effort was removed: %v", showErr)
+		}
+	})
+}
+
+// invariant: tooling/effort-management:default-worktree-creation
+func TestNewEffortReportsInterruptedAndFailedRollbacksDistinctly(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		stage   string
+		wants   []string
+		removed bool
+	}{
+		{
+			name:  "rollback failed before rename",
+			stage: "finish.rename",
+			wants: []string{"retained: rollback failed", "retry `awf effort worktree add retained-rollback`"},
+		},
+		{
+			name:    "interrupted after rename",
+			stage:   "finish.root-fsync",
+			wants:   []string{"rollback interrupted after rename", "retry `awf effort finish retained-rollback`"},
+			removed: true,
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := initWorktreeRepo(t, "sha1")
+			manager := managerWithFaultingEfforts(t, root, runnerFailingPrefix(nativeRunner, "worktree add"), test.stage)
+			_, _, err := manager.NewEffort("Retained rollback", "")
+			if err == nil {
+				t.Fatal("faulted rollback reported success")
+			}
+			for _, want := range test.wants {
+				if !strings.Contains(err.Error(), want) {
+					t.Fatalf("error %v does not report %q", err, want)
+				}
+			}
+			_, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "retained-rollback"))
+			if test.removed != errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("active resident presence = %v, want removed=%v", statErr, test.removed)
+			}
+		})
+	}
+}
+
+func TestNewEffortReturnsResidentFailuresBeforeAnyTopology(t *testing.T) {
+	root := initWorktreeRepo(t, "sha1")
+	var log []string
+	manager, err := Open(testContext(t), root, Options{Runner: recordingWorktreeRunner(nativeRunner, &log)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	record, result, err := manager.NewEffort("   ", "")
+	if err == nil || !strings.Contains(err.Error(), "invalid outcome title") {
+		t.Fatalf("blank title error = %v", err)
+	}
+	if record != (effort.Record{}) || result != (Result{}) {
+		t.Fatalf("record=%#v result=%#v, want zero values", record, result)
+	}
+	for _, entry := range log {
+		if strings.HasPrefix(entry, "worktree add") {
+			t.Fatalf("add was attempted after a resident failure: %v", log)
+		}
+	}
+}
+
+func managerWithFaultingEfforts(t *testing.T, root string, runner Runner, stage string) *Manager {
+	t.Helper()
+	manager, err := Open(testContext(t), root, Options{Runner: runner})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service, err := effort.Open(testContext(t), root, effort.Options{Fault: func(got string) error {
+		if got == stage {
+			return errors.New("injected " + stage)
+		}
+		return nil
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.efforts = service
+	return manager
 }
 
 func TestResolveAcceptsSHA1AndSHA256ObjectIDs(t *testing.T) {
@@ -454,7 +609,7 @@ func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 		}
 		path := filepath.Join(root, ".awf", "worktrees", "managed-caller")
 		m.roots.InvokingRoot = path
-		if _, err := m.Integrate("managed-caller"); err == nil || !strings.Contains(err.Error(), "receiving checkout") {
+		if _, err := m.Integrate("managed-caller", ""); err == nil || !strings.Contains(err.Error(), "receiving checkout") {
 			t.Fatalf("error = %v", err)
 		}
 	})
@@ -480,7 +635,7 @@ func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 			commitWorktree(t, managed, "change")
 			base := m.run
 			m.run = runnerFailingPrefix(base, tc.prefix)
-			if _, err := m.Integrate(slug); err == nil {
+			if _, err := m.Integrate(slug, ""); err == nil {
 				t.Fatal("runner fault hidden")
 			}
 		})
@@ -497,7 +652,7 @@ func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 			}
 			return base(ctx, dir, args...)
 		}
-		if _, err := m.Integrate("integrate-own"); err == nil || !strings.Contains(err.Error(), "effort branch") {
+		if _, err := m.Integrate("integrate-own", ""); err == nil || !strings.Contains(err.Error(), "effort branch") {
 			t.Fatalf("error = %v root=%s", err, root)
 		}
 	})
@@ -511,7 +666,7 @@ func TestIntegratePreconditionAndMutationFailureBranches(t *testing.T) {
 		commitWorktree(t, managed, "change")
 		base := m.run
 		m.run = runnerFailingPrefix(base, "merge --ff-only")
-		if _, err := m.Integrate("integrate-ff-failure"); err == nil || !strings.Contains(err.Error(), "fast-forward failed") {
+		if _, err := m.Integrate("integrate-ff-failure", ""); err == nil || !strings.Contains(err.Error(), "fast-forward failed") {
 			t.Fatalf("error = %v", err)
 		}
 		before := runWorktreeGit(t, root, "rev-parse", "HEAD")
@@ -565,7 +720,7 @@ func TestManagerMutationPropagationBranches(t *testing.T) {
 		commitWorktree(t, managed, "change")
 		originalRoots := m.roots
 		m.roots.PrimaryRoot = "relative"
-		if _, err := m.Integrate("integrate-propagation"); err == nil {
+		if _, err := m.Integrate("integrate-propagation", ""); err == nil {
 			t.Fatal("invalid integrate authority accepted")
 		}
 		m.roots = originalRoots
@@ -580,7 +735,7 @@ func TestManagerMutationPropagationBranches(t *testing.T) {
 			}
 			return base(ctx, dir, args...)
 		}
-		if _, err := m.Integrate("integrate-propagation"); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
+		if _, err := m.Integrate("integrate-propagation", ""); err == nil || !strings.Contains(err.Error(), "target HEAD changed") {
 			t.Fatalf("error = %v", err)
 		}
 	})
@@ -636,7 +791,7 @@ func TestManagerMutationPropagationBranches(t *testing.T) {
 func TestIntegrationAdditionalRefusalBranches(t *testing.T) {
 	t.Run("missing effort and target", func(t *testing.T) {
 		m, root := newManagerWithEffort(t, "Integration missing target")
-		if _, err := m.Integrate("missing-effort"); err == nil {
+		if _, err := m.Integrate("missing-effort", ""); err == nil {
 			t.Fatal("missing effort accepted")
 		}
 		if _, err := m.Add("integration-missing-target", "HEAD"); err != nil {
@@ -646,7 +801,7 @@ func TestIntegrationAdditionalRefusalBranches(t *testing.T) {
 		if err := os.RemoveAll(path); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Integrate("integration-missing-target"); err == nil {
+		if _, err := m.Integrate("integration-missing-target", ""); err == nil {
 			t.Fatal("missing target accepted")
 		}
 	})
@@ -669,7 +824,7 @@ func TestIntegrationAdditionalRefusalBranches(t *testing.T) {
 			}
 			return base(ctx, dir, args...)
 		}
-		if _, err := m.Integrate("integration-second-ancestry"); err == nil || !strings.Contains(err.Error(), "second ancestry") {
+		if _, err := m.Integrate("integration-second-ancestry", ""); err == nil || !strings.Contains(err.Error(), "second ancestry") {
 			t.Fatalf("error = %v", err)
 		}
 	})

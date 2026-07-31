@@ -418,9 +418,17 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"do not edit files or commit",
 		"Work only from the brief you were given",
 		"never edit it",
+		// The shared orientation ladder partial reaches this contract too,
+		// including its current-state-first ordering and the conditional that
+		// keeps history off every dispatch.
+		"Ground guide-first, in order",
+		"domain docs under `docs/domains`",
+		"Current-state documentation is what binds",
+		"only when current state leaves what you are seeing unexplained",
+		"For managed context calls, start bare",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
-		"Assess whether the effort needs a decision record",
+		"Assess whether the work needs a decision record",
 		"Check convention fit",
 		"advisory and single-pass",
 		"open-question | possible-issue",
@@ -542,7 +550,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal change to pass",
 		}},
 		"executing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "No drift from the plan",
+			"docs/maintainable-code-design.md", "preserve the plan's settled structural choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "do not drift from the plan",
 		}},
 		"executing-direct": {wants: []string{
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "new load-bearing or materially larger choice", "return to brainstorming", "rather than silently expanding scope or accepting a workaround", "Invoke only after brainstorming has settled the design",
@@ -660,6 +668,7 @@ func TestManagedContextCallersChooseProjection(t *testing.T) {
 		"bugfix":                      "",
 		"debugging":                   "",
 		"executing-plans":             "",
+		"orienting":                   "",
 		"refactor-coupling-audit":     "",
 		"reviewing-impl":              "--show invariants --show all-rules --show evidence --show pending",
 		"reviewing-plan":              "--show invariants --show all-rules --show evidence --show pending",
@@ -863,7 +872,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to subagent-driven-development
 	loadBearing := []string{
 		"complete phase",
-		"allowCommits: true",
+		"state commit-capable phase-owner mode in the brief",
 		"known clean and green baseline",
 		"report-only phase review",
 		"example-reviewing-impl",
@@ -1011,6 +1020,81 @@ func TestExploringTemplate(t *testing.T) {
 	}
 	if !strings.Contains(fallback, "target-native fresh-context exploration subagent") || strings.Contains(fallback, "subagent_explore") {
 		t.Errorf("fallback exploring dispatch is not generic:\n%s", fallback)
+	}
+}
+
+func TestOrientingTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "orienting", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
+	})
+	if !strings.Contains(out, "name: example-orienting") {
+		t.Errorf("expected 'name: example-orienting' in output:\n%s", out)
+	}
+	for _, want := range []string{"Four moments call for orientation", "Ground guide-first, in order", "`example-exploring`", "A discrepancy resolves in favor of the repository"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("orienting render missing %q:\n%s", want, out)
+		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:orienting-single-home
+func TestOrientingSkillContract(t *testing.T) {
+	if !catalog.Standard.Skills["orienting"].Core {
+		t.Fatal("orienting is not a core skill")
+	}
+	// The three consumer skills are enabled so the same render proves both the
+	// single home and the references that replaced their inline copies.
+	config := func(target string) string {
+		return "prefix: example\nskills: [brainstorming, exploring, orienting, proposing-adr, writing-plans]\nagents: [explorer, grounding-checker]\ntargets: [" + target + "]\n"
+	}
+	for _, target := range KnownTargets() {
+		t.Run(target, func(t *testing.T) {
+			files := explorationRenderedByPath(t, config(target))
+			adapter := targetRegistry[target]
+			body := files[adapter.SkillPath("example", "orienting")]
+			if body == "" {
+				t.Fatalf("missing rendered orienting skill for %s", target)
+			}
+			// One literal per property the skill contract promises: a heading
+			// count alone would survive deleting the moments it counts.
+			for _, want := range []string{
+				"Four moments call for orientation",
+				"**Fresh work:**", "**Effort resume:**", "**Handoff takeover:**", "**Mid-chain re-orientation:**",
+				"Ground guide-first, in order", "domain docs under `docs/domains`",
+				"Current-state documentation is what binds",
+				"only when current state leaves what you are seeing unexplained",
+				"one or more exploration subagents",
+				"one information need", "every child is report-only",
+				"location is unknown", "and inline search would pollute the parent context",
+				"exact-known-file", "genuinely trivial", "`example-exploring`",
+				"landed since the checkpoint", "git worktree list", "against the decision index",
+				"its decision log including every `Record:` block", "not yours to re-decide",
+				"cited plan and file existence", "A discrepancy resolves in favor of the repository",
+				"never creates an effort, never commits", "never prescribe `--full`",
+				"single-pass and advisory, never a chain gate",
+			} {
+				if !strings.Contains(body, want) {
+					t.Errorf("%s orienting skill missing %q", target, want)
+				}
+			}
+			agent := files[adapter.AgentPath("grounding-checker")]
+			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, start bare", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
+				if !strings.Contains(agent, want) {
+					t.Errorf("%s grounding-checker missing %q", target, want)
+				}
+			}
+			// The single home is only single if the three sites that gave up
+			// their inline copies reference it instead. Brainstorming's
+			// reference is pinned to its first step, which is what the claim says.
+			for _, consumer := range []string{"brainstorming", "proposing-adr", "writing-plans"} {
+				if ref := files[adapter.SkillPath("example", consumer)]; !strings.Contains(ref, "`example-orienting`") {
+					t.Errorf("%s %s does not reference the orienting skill", target, consumer)
+				}
+			}
+			if b := files[adapter.SkillPath("example", "brainstorming")]; !strings.Contains(b, "1. **Orient in the topic.** Invoke `example-orienting`") {
+				t.Errorf("%s brainstorming does not invoke orienting as its first step", target)
+			}
+		})
 	}
 }
 
@@ -1186,7 +1270,7 @@ func TestReviewingPlanTemplate(t *testing.T) {
 		"plan-reviewer",
 		"user-decision",
 		"example-reviewing-plan-resync",
-		"scope-completeness",
+		"all universal lenses",
 		"per-phase ownership",
 		"helper partitions",
 	}
@@ -1423,13 +1507,80 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("%s retains standalone memory path", label)
 		}
 	}
-	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decisions`", "`## Handoff log`", "awf effort finish <slug>"} {
+	for _, detailed := range []string{"`Phase:`", "`Next:`", "`Updated:`", "`## Brief`", "`## Decision log`", "`## Observations`", "`## Handoff log`", "awf effort finish <slug>"} {
 		if !strings.Contains(workflow, detailed) {
 			t.Errorf("workflow protocol missing %q", detailed)
 		}
 	}
+	for _, worktreeDefault := range []string{"managed worktree at `.awf/worktrees/<slug>/` by default", "`--no-worktree` as the explicit exception", "primary-root-relative"} {
+		if !strings.Contains(workflow, worktreeDefault) {
+			t.Errorf("workflow missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
+	for _, worktreeDefault := range []string{"managed worktree is the default execution location", "`--no-worktree` is the explicit exception", "stays under the primary checkout"} {
+		if !strings.Contains(guide, worktreeDefault) {
+			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
 		t.Error("guide or routine skill duplicated the workflow document's detailed skeleton")
+	}
+	// The workflow doc keeps the memory contract but routes resume verification
+	// to the orienting skill, which owns the procedure it routes to.
+	if !strings.Contains(workflow, "the rendered orienting skill's resume-revalidation section is the procedural home of that check") {
+		t.Error("workflow doc does not route resume revalidation to the orienting skill")
+	}
+	orienting := renderSkillGolden(t, "orienting", data)
+	for _, want := range []string{
+		"landed since the checkpoint", "git worktree list", "against the decision index",
+		"its decision log including every `Record:` block", "not yours to re-decide",
+		"A discrepancy resolves in favor of the repository",
+	} {
+		if !strings.Contains(orienting, want) {
+			t.Errorf("orienting resume-revalidation missing %q", want)
+		}
+	}
+}
+
+// invariant: rendering/workflow-skill-templates:memory-log-consumer-coverage
+func TestMemoryLogConsumerCoverage(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"},
+		"layout": testLayout(), "data": map[string]any{},
+		"skills": map[string]bool{},
+	}
+	for _, agent := range []string{"adr-reviewer", "plan-reviewer", "code-reviewer"} {
+		out := renderAgentGolden(t, agent, data)
+		for _, want := range []string{
+			"## Consensus adherence",
+			"user-decision",
+			"`location` cites the deviating",
+			"`issue` names the deviation",
+			"`suggested_fix` carries the escalation phrasing",
+			"we decided X; during <phase> we found Z; recommend Y, approve?",
+			"A brief without consensus entries leaves this check idle.",
+		} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing consensus-adherence phrase %q:\n%s", agent, want, out)
+			}
+		}
+	}
+	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
+		out := renderSkillGolden(t, skill, data)
+		for _, want := range []string{"pasted verbatim", "`Record:` blocks included"} {
+			if !strings.Contains(out, want) {
+				t.Errorf("%s missing decision-log paste phrase %q:\n%s", skill, want, out)
+			}
+		}
+	}
+	if out := renderSkillGolden(t, "reviewing-plan-resync", data); strings.Contains(out, "pasted verbatim") {
+		t.Errorf("reviewing-plan-resync must keep its narrowed contract:\n%s", out)
+	}
+	retrospective := renderSkillGolden(t, "retrospective", data)
+	for _, want := range []string{"`## Observations`", "`## Decision log`", "as primary input", "across the effort's sessions"} {
+		if !strings.Contains(retrospective, want) {
+			t.Errorf("retrospective missing memory-log phrase %q:\n%s", want, retrospective)
+		}
 	}
 }
 
@@ -1511,7 +1662,7 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{
 			"confirm it with a falsifiable check before touching code",
 			"Write the failing test first",
-			"The project's gate (fast tier) is the default",
+			"The project's gate is the default",
 			"the project's docs",
 			"Run the project's review step as the terminal step.",
 		},
@@ -1532,6 +1683,10 @@ var unsetFallbackCases = []fallbackCase{
 		tmpl: "skills/exploring/SKILL.md.tmpl",
 		want: []string{"target-native fresh-context exploration subagent"},
 		ban:  []string{"subagent_explore"},
+	},
+	{
+		tmpl: "skills/orienting/SKILL.md.tmpl",
+		want: []string{"Ground guide-first, in order", "`example-exploring`"},
 	},
 	{
 		tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",
@@ -1633,7 +1788,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/reviewing-plan-resync/SKILL.md.tmpl",
-		want: []string{"an amendment-while-Proposed edit", "using the project's commit scope conventions"},
+		want: []string{"an amendment-until-terminal edit", "using the project's commit scope conventions"},
 		ban:  []string{"example-adr-lifecycle"},
 	},
 	{
@@ -1764,8 +1919,8 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	}
 }
 
-// The AGENTS.md task-skill trigger table derives from the catalog's enabled
-// non-Chain skills - every catalog task skill's trigger row appears iff enabled
+// The AGENTS.md skill trigger table derives from the catalog's enabled
+// skills - every catalog skill's trigger row appears iff enabled
 // (a hand enumeration could never mention a newer one like
 // refactor-coupling-audit), and disabled ones stay absent (ADR-0046 follow-up
 // sweep; table shape per ADR-0157).
@@ -1802,7 +1957,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	}
 	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle", "example-roadmap-graduation"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("disabled task skill %q must not render:\n%s", banned, out)
+			t.Errorf("disabled skill %q must not render:\n%s", banned, out)
 		}
 	}
 }

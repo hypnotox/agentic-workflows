@@ -214,7 +214,7 @@ func TestFinalUpgradeConsumesSeal(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(dir, approvalPath)); !os.IsNotExist(err) {
 		t.Fatal("approval file not deleted")
 	}
-	if JournalPresent(dir) {
+	if journalPresence(t, dir) {
 		t.Fatal("journal residue after success")
 	}
 	after, found, err := manifest.LoadOptional(config.LockPath(dir))
@@ -297,7 +297,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 		if err := ResetLegacyResidents(root, nil, 22, io.Discard); err != nil {
 			t.Fatalf("lockless tree with no residents: %v", err)
 		}
-		if JournalPresent(root) {
+		if journalPresence(t, root) {
 			t.Fatal("journal created for a no-op reset")
 		}
 	})
@@ -309,7 +309,7 @@ func TestResetLegacyResidentsRefusals(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), "invalid resident reset plan") {
 			t.Fatalf("want a plan refusal, got %v", err)
 		}
-		if JournalPresent(root) {
+		if journalPresence(t, root) {
 			t.Fatal("journal created for a refused plan")
 		}
 	})
@@ -350,7 +350,7 @@ func TestResetLegacyResidentsCommitsSchemaAndDiscards(t *testing.T) {
 	if lock.AWFVersion != "0.25.0" {
 		t.Fatalf("awfVersion = %q, want the pre-reset value", lock.AWFVersion)
 	}
-	if JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after a committed reset")
 	}
 	if !strings.Contains(log.String(), "operation: upgrade committed") {

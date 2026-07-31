@@ -1,3 +1,5 @@
+//go:build linux || darwin
+
 // Command contextspilllog is the repository runner's private context-spill
 // observability helper. It is not part of the public awf CLI.
 package main

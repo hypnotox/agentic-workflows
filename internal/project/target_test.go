@@ -364,7 +364,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
+	return "prefix: example\nskills: [adr-lifecycle, brainstorming, debugging, executing-direct, executing-plans, exploring, orienting, proposing-adr, refactor-coupling-audit, retrospective, reviewing-adr, reviewing-impl, reviewing-plan, reviewing-plan-resync, subagent-driven-development, writing-plans]\nagents: [adr-reviewer, code-reviewer, explorer, grounding-checker, implementer, plan-reviewer]\ntargets: [" + target + "]\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -409,10 +409,10 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				t.Fatalf("missing rendered exploring skill for %s", target)
 			}
 			shared := []string{
-				"targeted < bounded < broad", "targeted` locates one declaration", "bounded` investigates within a named symbol", "broad` searches across the project search universe",
-				"paths < summary < analysis", "file:line", "file:start-end", "minimal labels needed to distinguish", "concise explanations", "evidence-grounded synthesis",
+				"targeted < bounded < broad", "targeted locates one declaration", "bounded investigates within a named symbol", "broad searches across the project search universe",
+				"paths < summary < analysis", "file:line", "file:start-end", "minimal labels and no search narrative", "concise explanations", "evidence-grounded synthesis",
 				"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires", "never widen beyond the selected maximum", "boundary is exhausted, report that explicitly",
-				"tracked files plus non-ignored untracked working-tree files", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
+				"tracked files plus non-ignored untracked working-tree files", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings",
 				"not-found", "inconclusive", "unverified", "Not found within <breadth> boundary:", "successful execution", "one concise next refinement", "project search universe and searched surfaces", "Ground every material claim with file/line evidence",
 				"new fresh-context call", "correct the task", "change report detail", "widen breadth", "one information need", "relevant final findings",
 			}
@@ -422,7 +422,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				}
 			}
 			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "Omit the `model` field entirely to use configured role routing", "tier's exact `provider/model-id`"} {
+				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "omit the `model` field to use configured role routing", "tier's exact `provider/model-id`"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("Pi exploring skill missing %q", want)
 					}
@@ -443,13 +443,24 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 					t.Errorf("%s brainstorming skill does not name the grounding-checker agent", target)
 				}
 			}
-			for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+			// Orienting owns the dispatch conditions brainstorming used to carry
+			// inline; brainstorming now reaches them only by invoking orienting.
+			for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 				body := skillBody(consumer)
 				for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {
 					if !strings.Contains(body, want) {
 						t.Errorf("%s/%s missing dispatch condition %q", target, consumer, want)
 					}
 				}
+			}
+			// The dispatch route names the target-prefixed exploring skill, and
+			// brainstorming's shrunk step routes to orienting rather than
+			// duplicating the conditions.
+			if orienting := skillBody("orienting"); !strings.Contains(orienting, "`example-exploring`") {
+				t.Errorf("%s orienting skill does not name the prefixed exploring skill", target)
+			}
+			if brainstorming := skillBody("brainstorming"); !strings.Contains(brainstorming, "`example-orienting`") {
+				t.Errorf("%s brainstorming skill does not invoke the prefixed orienting skill", target)
 			}
 		})
 	}
@@ -469,10 +480,10 @@ func TestBoundedExplorationReporting(t *testing.T) {
 	}{
 		"rendered exploring guidance": {guidance, []string{
 			"Independent information needs may be sibling-dispatched", "at most ten exploration children", "queues the rest FIFO", "Refinement stays sequential",
-			"targeted < bounded < broad", "`targeted` locates one declaration, implementation, file, or exact fact", "`bounded` investigates within a named symbol, package, component, or subsystem", "`broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
+			"targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
 			"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires it", "never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
-			"tracked files plus non-ignored untracked working-tree files under the repository root", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
-			"paths < summary < analysis", "`paths` returns only relevant `file:line` or `file:start-end` locations with minimal labels needed to distinguish them", "`summary` returns grounded locations plus concise explanations of what each contains and why it matters", "`analysis` directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
+			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
+			"paths < summary < analysis", "paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative", "summary returns grounded locations plus concise explanations of what each contains and why it matters", "analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
 			"Ground every material claim with file/line evidence", "Not found within <breadth> boundary: <what was searched>", "successful execution", "one concise next refinement", "broad absence report must name the project search universe and searched surfaces", "Distinguish inconclusive and unverified outcomes from absence",
 			"new fresh-context call to correct the task, change report detail, or widen breadth",
 		}},

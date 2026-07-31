@@ -155,6 +155,53 @@ func TestCheckPairFrozenAndHistoryRules(t *testing.T) {
 	}
 }
 
+// TestCheckPairAmendedContent covers the V2 amendability window across pairs:
+// a non-terminal record's content may change when the commit appends exactly
+// one Amended event, a terminal record stays frozen, and a merge aggregate
+// accepts Amended events interleaved with Applied batches (ADR-0188).
+func TestCheckPairAmendedContent(t *testing.T) {
+	v2doc := func(status, body string, events ...adr.HistoryEvent) adr.ADR {
+		return adr.ADR{Number: "0141", Format: adr.CurrentStateV2, Status: status,
+			Sections: map[string]string{"Decision": body}, History: events}
+	}
+	proposed := v2status("Proposed")
+	accepted := adr.HistoryEvent{Kind: adr.HistoryStatus, Date: "2026-01-02", Status: "Accepted", Digest: "old-digest"}
+	amended := adr.HistoryEvent{Kind: adr.HistoryAmended, Date: "2026-01-03", Digest: "new-digest"}
+
+	t.Run("accepted amendment with event is finding-free", func(t *testing.T) {
+		before := uni([]adr.ADR{v2doc("Accepted", "old", proposed, accepted)})
+		after := uni([]adr.ADR{v2doc("Accepted", "new", proposed, accepted, amended)})
+		if f := currentstate.CheckPair(before, after, currentstate.AuthoredCommit); len(f) != 0 {
+			t.Fatalf("amendment with Amended event must be finding-free:\n%s", messages(f))
+		}
+	})
+
+	t.Run("terminal content change stays frozen", func(t *testing.T) {
+		done := adr.HistoryEvent{Kind: adr.HistoryStatus, Date: "2026-01-04", Status: "Implemented", Digest: "old-digest"}
+		before := uni([]adr.ADR{v2doc("Implemented", "old", proposed, accepted, done)})
+		after := uni([]adr.ADR{v2doc("Implemented", "new", proposed, accepted, done)})
+		got := messages(currentstate.CheckPair(before, after, currentstate.AuthoredCommit))
+		if !strings.Contains(got, "frozen-content rule") || !strings.Contains(got, "changed after the record froze") {
+			t.Fatalf("terminal rewrite not reported as frozen-content violation:\n%s", got)
+		}
+	})
+
+	t.Run("merge aggregate interleaves amendments and batches", func(t *testing.T) {
+		base := rec("0137", "Implemented", 1, op(adr.OpAdd, "d/t:base"))
+		x, y := op(adr.OpAdd, "d/t:x"), op(adr.OpAdd, "d/t:y")
+		pending := op(adr.OpAdd, "d/t:pending")
+		partial := v2doc("Implementing", "old", proposed, v2status("Implementing"), v2batch(2, x))
+		partial.Operations = []adr.Operation{x, y, pending}
+		merged := v2doc("Implementing", "new", proposed, v2status("Implementing"), v2batch(2, x), amended, v2batch(3, y))
+		merged.Operations = partial.Operations
+		before := uni([]adr.ADR{base, partial}, claim("d/t:base", "0137"), claim("d/t:x", "0141"))
+		after := uni([]adr.ADR{base, merged}, claim("d/t:base", "0137"), claim("d/t:x", "0141"), claim("d/t:y", "0141"))
+		if f := currentstate.CheckPair(before, after, currentstate.MergeAggregate); len(f) != 0 {
+			t.Fatalf("aggregate with interleaved Amended events must be finding-free:\n%s", messages(f))
+		}
+	})
+}
+
 // TestCheckPairHistoryValid accepts Proposed edits before freezing and every
 // legal edge when Status history appends exactly one entry.
 func TestCheckPairHistoryValid(t *testing.T) {

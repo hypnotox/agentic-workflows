@@ -18,7 +18,7 @@ by this repository's own checks (ADR-0090).
 
 
 <!-- awf:edit commands: from .awf/parts/working-with-awf/commands.md -->
-A minimal simple fix uses no effort. For a concrete non-minimal outcome, run `awf effort new "<outcome>"`; the immutable slug identifies `.awf/efforts/<slug>/state.json`, its always-owned `.awf/efforts/<slug>/memory.md`, optional `.awf/worktrees/<slug>/`, and optional `awf/<slug>` branch. Creation and `awf effort worktree add <slug>` are separate operations. Git topology, not effort state, owns integration and removal facts; finish is restartable deletion and refuses until every managed path, registration, and branch is absent.
+A minimal simple fix uses no effort. For a concrete non-minimal outcome, run `awf effort new "<outcome>"`; the immutable slug identifies `.awf/efforts/<slug>/state.json`, its always-owned `.awf/efforts/<slug>/memory.md`, `.awf/worktrees/<slug>/`, and the `awf/<slug>` branch. Creation makes the managed worktree by default (`--no-worktree` opts out; `--base <ref>` selects the base); `awf effort worktree add <slug>` remains the standalone operation for efforts created without one. Git topology, not effort state, owns integration and removal facts; finish is restartable deletion and refuses until every managed path, registration, and branch is absent.
 
 Pi's `handoff_session` accepts only the exact repository-relative `.awf/efforts/<slug>/memory.md` path or an absolute spelling that normalizes to it. It validates the slug, confinement, ownership, bounded UTF-8 regular-file identity, and repository identity without selecting an effort or mutating lifecycle state.
 
@@ -38,7 +38,7 @@ commit-disabled, receive path-disjoint subsets, and never own shared files or th
 dirty stop is inventoried before the parent completes inline, restores and restarts the complete
 phase, or transfers the complete revised phase with completed and remaining work plus recovery
 verification. Checkbox tasks and helper returns are not transaction or checkpoint boundaries, and a
-blind task-level successor is forbidden. Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
+blind task-level successor is forbidden. Every governed subagent dispatch chooses the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; the full tier definitions live in the agent guide's workflow section. In Pi, omission uses the configured role default and an exact tier reference is supplied only for a deliberate override.
 
 
 <!-- awf:edit placeholders: default; create .awf/parts/working-with-awf/placeholders.md to override -->

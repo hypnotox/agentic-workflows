@@ -18,9 +18,9 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Every managed context-calling skill consumes the exact spill notice, verifies the declared byte length, and best-effort deletes the temporary packet after successful or failed use. Brainstorming, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill contract.
+Every managed context-calling skill consumes the exact spill notice, verifies the declared byte length, and best-effort deletes the temporary packet after successful or failed use. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill contract.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174
+Revised-by: ADR-0165, ADR-0174, ADR-0187
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
@@ -32,15 +32,22 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance creates no effort for a minimal simple fix or merely because a boundary was reached. Once the outcome is concrete and non-minimal, it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, updates phase, next action, time, and handoff log in one writer-owned batch, and subordinates checkpoint prose to repository authority. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
+Checkpoint guidance creates no effort for a minimal simple fix or merely because a boundary was reached. Once the outcome is concrete and non-minimal, it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and subordinates checkpoint prose to repository authority. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166, ADR-0175
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166, ADR-0175, ADR-0186, ADR-0189
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
-Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, exact slug/path continuity, repository-authority precedence, standalone-memory ban, and one-writer/report-only-child contract. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
+Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, exact slug/path continuity, repository-authority precedence, standalone-memory ban, and one-writer/report-only-child contract. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
 Origin: ADR-0175
+Revised-by: ADR-0187
+Backing: test
+
+### `invariant: memory-log-consumer-coverage`
+
+The shared review spine carries the consensus-adherence check: with pasted user-provenance consensus entries in the brief, a deviation from a user entry is a `user-decision` finding citing the deviating passage and carrying the "we decided X; during <phase> we found Z; recommend Y, approve?" escalation, and an entry-free brief leaves the check idle. The reviewing-adr, reviewing-plan, and reviewing-impl dispatch briefs paste user entries verbatim with their `Record:` blocks while resync stays narrowed, and the retrospective reads the observation and decision logs as primary input with recurrence extended across the effort's sessions.
+Origin: ADR-0186
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
@@ -101,8 +108,9 @@ Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
 
-Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables.
+Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables. Each governed dispatch section carries the compressed tier-and-escalation rule with its target branch rule, and the full tier definitions render once per target in the agent guide's workflow section, sourced from the shared model-selection partial.
 Origin: ADR-0173
+Revised-by: ADR-0190
 Backing: test
 
 ### `invariant: implementer-role-contract`
@@ -120,6 +128,13 @@ Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`
 
-The rendered explorer body defines its report-only identity, one information need with no bundling or recursive delegation, concurrent independent needs with sequential refinement, breadth ordered targeted < bounded < broad as an adaptive maximum with its project search universe, report detail ordered paths < summary < analysis independent of breadth, file:line grounding, the distinction between not-found, inconclusive, and unverified outcomes with the exact not-found opening, final-report-only output, and statelessness across calls. The rendered grounding-checker body defines its report-only identity, that it works only from its brief and never edits the working memory that brief may name, its verification obligations across factual premises, unstated assumptions, altitude, and convention fit, and a closed finding schema whose confidence field distinguishes verified, interpreted, and unverified. The exploring and brainstorming skills each name their dispatched agent in the branch that dispatches a target-native subagent, and neither rendered body carries per-call or runtime-specific text.
+The rendered explorer body defines its report-only identity, one information need with no bundling or recursive delegation, concurrent independent needs with sequential refinement, breadth ordered targeted < bounded < broad as an adaptive maximum with its project search universe, report detail ordered paths < summary < analysis independent of breadth, file:line grounding, the distinction between not-found, inconclusive, and unverified outcomes with the exact not-found opening, final-report-only output, and statelessness across calls. The rendered grounding-checker body defines its report-only identity, that it works only from its brief and never edits the working memory that brief may name, its verification obligations across factual premises, unstated assumptions, altitude, and convention fit, and a closed finding schema whose confidence field distinguishes verified, interpreted, and unverified. The exploring and brainstorming skills each name their dispatched agent in the branch that dispatches a target-native subagent, and neither rendered body carries per-call or runtime-specific text. The grounding-checker body grounds guide-first through the shared orientation ladder partial.
 Origin: ADR-0179
+Revised-by: ADR-0187
+Backing: test
+
+### `invariant: orienting-single-home`
+
+The orienting support skill is the single home of the orientation procedure: its rendered body defines the four invocation moments, the guide-first grounding ladder shared as a partial with the grounding-checker contract, multi-child report-only exploration dispatch with one information need per child, the managed context discipline, and effort-resume revalidation that reads the memory file whole and resolves discrepancies in favor of the repository; the skill is single-pass, never a chain gate, never creates an effort, and never commits. Brainstorming's first step invokes it, and proposing-adr and writing-plans carry advisory pointers.
+Origin: ADR-0187
 Backing: test

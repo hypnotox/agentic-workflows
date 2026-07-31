@@ -46,18 +46,19 @@ Per `{{ .layout.workflowRef }}`: complex ADR-driven work (multi-commit implement
 
 ## Procedure
 
-Complex planning is a concrete non-minimal outcome. Create or resume exactly one immutable slugged effort before authoring, carry its slug and exact `.awf/efforts/<slug>/memory.md` path, and confirm it always owns that memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The plan reviewer receives slug/path as read-only context and never edits memory.
+Complex planning is a concrete non-minimal outcome: create or resume exactly one immutable slugged effort before authoring and carry its slug and exact `.awf/efforts/<slug>/memory.md` path. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The plan reviewer receives slug/path as read-only context and never edits memory.
 
 <!-- awf:section procedure-confirm-scope -->
-1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan.
+1. **Confirm scope with the user** if the brainstorm did not already pin down the file structure and phase shape. Resolve any open questions before writing the plan. If the plan is written in a later session than the brainstorm, or the file structure reaches areas not examined this session, invoke `{{ .prefix }}-orienting` first.
 <!-- awf:end -->
 
 <!-- awf:section plan-template-ref -->
-Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} new plan "<Title>"` to scaffold a dated plan from the rendered template, or copy `{{ .layout.plansTemplate }}`. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the three canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
+Start from the canonical skeleton rather than a blank file: run `{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} new plan "<Title>"` to scaffold a dated plan from the rendered template. The skeleton carries the frontmatter (`date`, `adrs: []`, `status: Proposed`), the `# Plan:` H1, the three canonical header sections, a phase skeleton, and the optional Verification/Notes tails.
 <!-- awf:end -->
 
 <!-- awf:section procedure-write-plan -->
-2. **Write the plan file in one go.** Per `{{ .layout.maintainableCodeDesign }}`, convert the settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation into ordered executable tasks. The plan must be self-contained: every step executable by an agent with no prior conversation context. While drafting the file-structure header and tasks, run `awf context <the plan's created and modified paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a task touches a claimed surface) so task content is grounded in current authority rather than reconstructed from memory.
+2. **Write the plan file in one go.** Per `{{ .layout.maintainableCodeDesign }}`, convert the settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation into ordered executable tasks. The plan must be self-contained: every step executable by an agent with no prior conversation context. While drafting the file-structure header and tasks, run `awf context <the plan's created and modified paths>` so task content is grounded in current authority rather than reconstructed from memory.
+<!-- awf:include context-orientation -->
 <!-- awf:include context-spill -->
 <!-- awf:end -->
 
@@ -81,7 +82,7 @@ Start from the canonical skeleton rather than a blank file: run `{{ .prefix }} n
 
 <!-- awf:section plan-lifecycle -->
 - For a V2 ADR, assign each operation to an explicit direct, first, middle, or final application transaction; name exact sequences, claim mutations, and the Abandoned cancellation result where relevant. Do not defer all operations to one final commit unless the direct path is intentional.
-- A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** (through review and through implementation, where findings are noted as they surface) and **freezes at `status: Implemented`**, flipped in the implementation's final commit (the same flip for ADR-driven and non-ADR plans). In {{ .prefix }}'s usual flow a plan and its ADR(s) co-flip in that final commit, but the plan's freeze keys off its own status, not the ADR's.
+- A plan carries its own two-state `status:` frontmatter, independent of any linked ADR's status. It is **mutable while `status: Proposed`** (through review and through implementation, where findings are noted as they surface) and **freezes at `status: Implemented`**, flipped in the deferred flip transaction after the applicable terminal review settles (the same flip for ADR-driven and non-ADR plans). In {{ .prefix }}'s usual flow a plan and its ADR(s) co-flip in that transaction, but the plan's freeze keys off its own status, not the ADR's.
 <!-- awf:end -->
 
 <!-- awf:section plan-resync -->

@@ -97,16 +97,16 @@ are acceptable output for a healthy project, or the report suppresses a check
 whose knob is off, which weakens the very disclosure the decision exists to
 provide. Settle that before writing the report format, not after.
 
-## A frozen-state ADR flip can smuggle unreviewed section content
+## A direct first-stamp ADR flip can smuggle unreviewed section content
 
-The commit that moves an ADR to Accepted, Implemented, or Abandoned may also mutate the ADR's
-digest-covered sections, because the digest is recomputed at the flip: an amendment folded into
-the freeze commit is frozen without a fresh-context review. The 0154 effort did exactly this
-(the forward-only resolution clause landed in the flip commit) and only reviewer diligence
-caught it afterwards. Candidate `awf audit` advisory rule: flag a status transition into a
-frozen state whose commit also changes the ADR's digest-covered section content relative to the
-parent snapshot. Deferred because audit rules ship behind their own decision; the pitfalls
-entry recording the occurrence is the interim memory.
+Since ADR-0188, the stamp chain makes every status flip after the first content stamp
+content-pure by validation: a post-Accepted amendment must append its own Amended event in a
+separate commit. The residual case is a direct status flip out of Proposed whose commit also
+mutates digest-covered content, establishing the first stamp over unreviewed content in one
+transaction. A direct terminal flip also freezes that content immediately. The 0154 effort did exactly this when its direct Implemented flip also landed
+the forward-only resolution clause, and only reviewer diligence caught it afterwards. Candidate
+`awf audit` advisory rule: flag that direct flip shape. Deferred because audit rules ship behind
+their own decision; the pitfalls entry recording the occurrence is the interim memory.
 
 ## Decomposing the `internal/project` god object
 
@@ -159,3 +159,13 @@ but real slice, and it should be one deliberate effort rather than a drive-by.
 Worth settling in the same decision: whether the rule is an error or a warning during the
 transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
 subsumed by it or kept as the complementary "touched, re-evaluate" signal.
+
+## `awf context` disagrees with its own spec about a required path
+
+`internal/clispec` declares `context` with `MinPos: 0`, but the handler rejects
+a bare `awf context` with a usage error and exit 2. One of the two is wrong:
+either the spec should require a positional path, or the handler should accept
+the bare form. Found in passing on 2026-07-31 while enumerating gated commands
+for the version-gate test, which had to pass a path to reach the gate at all.
+Low impact, since the usage error is clear either way, but the spec is what the
+CLI reference renders from, so the mismatch publishes a wrong arity.

@@ -155,6 +155,26 @@ func TestLoaderOpenUsesInjectedStandardCatalog(t *testing.T) {
 	}
 }
 
+// TestLoaderOpenValidatesInjectedStandardWorkflowProfiles pins that the workflow
+// profile check reads the injected catalog rather than the package global. With
+// the global as its subject the check passed unconditionally in production and
+// in every test, so an injected catalog reached Project.standard unvalidated.
+// invariant: code-design/dependency-composition:sync-project-loader-wiring
+func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: []\nagents: []\n")
+	injectedValue := *catalog.Standard
+	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
+	broken := injectedValue.Skills["tdd"]
+	broken.Profile.Purpose = ""
+	injectedValue.Skills["tdd"] = broken
+	loader := NewLoaderWithoutRepository(config.Load, &injectedValue, ResolveResidentRoot(func(_ context.Context, root string) string { return root }))
+	_, err := loader.Open(testContext(t), root)
+	if err == nil || !strings.Contains(err.Error(), "incomplete workflow profile") {
+		t.Fatalf("error = %v, want the injected catalog's incomplete workflow profile", err)
+	}
+}
+
 func TestLoaderOpenReturnsConformanceError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [unknown]\nagents: []\n")

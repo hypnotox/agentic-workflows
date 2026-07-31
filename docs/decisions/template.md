@@ -50,8 +50,9 @@ Include known risks and how they are mitigated.
 | Option A | ... |
 | Option B | ... |
 
-Append-only Status history starts with Proposed. Later status events carry the frozen
-content digest; direct Implemented events also carry the batch state sequence. Incremental
+Append-only Status history starts with Proposed. Later status events carry the latest content stamp,
+and an Amended event records each post-Accepted amendment with its new digest; direct Implemented
+events also carry the batch state sequence. Incremental
 implementation first appends an Implementing status event, then appends Applied events in
 declaration order, one checked batch per commit. For example:
 

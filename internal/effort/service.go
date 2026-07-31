@@ -130,12 +130,16 @@ func (s *Service) New(title string) (Record, error) {
 	if !uuidV4Pattern.MatchString(id) {
 		return Record{}, fmt.Errorf("allocator returned invalid UUIDv4 %q; changed bytes: no; next action: repair the awf installation and retry", id)
 	}
-	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: slug, Title: normalized, CreatedAt: s.now(), MemoryPath: memoryPublicPath(slug)}
+	record := Record{SchemaVersion: SchemaVersion, ID: id, Slug: slug, Title: normalized, CreatedAt: s.now(), MemoryPath: s.paths.publicMemoryPath(slug)}
 	if err := s.store.create(record); err != nil {
 		return Record{}, err
 	}
 	return record, nil
 }
+
+// InvokingRoot reports the checkout the service was opened from, so callers
+// can name where execution continues when no managed worktree is created.
+func (s *Service) InvokingRoot() string { return s.paths.roots.InvokingRoot }
 
 func (s *Service) List() ([]Record, error) { return s.store.list() }
 
@@ -189,7 +193,7 @@ func (s *Service) Finish(slug string) (FinishResult, error) {
 func (s *Service) requireNoManagedTopology(slug string) error {
 	managed := filepath.Clean(s.paths.managedWorktree(slug))
 	if _, err := os.Lstat(managed); err == nil {
-		return fmt.Errorf("managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
+		return managedTopologyRefusal("managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
 	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
 		return fmt.Errorf("inspect managed worktree path %s: %w", managed, err)
 	}
@@ -200,7 +204,7 @@ func (s *Service) requireNoManagedTopology(slug string) error {
 	wantBranch := "refs/heads/awf/" + slug
 	for _, registration := range registrations {
 		if filepath.Clean(registration.Path) == managed || registration.Branch == wantBranch {
-			return fmt.Errorf("managed Git registration for %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
+			return managedTopologyRefusal("managed Git registration for %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 		}
 	}
 	exists, err := s.branchExists(s.ctx, s.paths.roots.InvokingRoot, "awf/"+slug)
@@ -208,7 +212,7 @@ func (s *Service) requireNoManagedTopology(slug string) error {
 		return fmt.Errorf("inspect managed branch for %s: %w", slug, err)
 	}
 	if exists {
-		return fmt.Errorf("managed branch awf/%s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
+		return managedTopologyRefusal("managed branch awf/%s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 	}
 	return nil
 }

@@ -50,8 +50,8 @@ func persisted(r Record) persistedRecord {
 	return persistedRecord{SchemaVersion: r.SchemaVersion, ID: r.ID, Slug: r.Slug, Title: r.Title, CreatedAt: r.CreatedAt}
 }
 
-func logical(r persistedRecord) Record {
-	return Record{SchemaVersion: r.SchemaVersion, ID: r.ID, Slug: r.Slug, Title: r.Title, CreatedAt: r.CreatedAt, MemoryPath: memoryPublicPath(r.Slug)}
+func (s store) logical(r persistedRecord) Record {
+	return Record{SchemaVersion: r.SchemaVersion, ID: r.ID, Slug: r.Slug, Title: r.Title, CreatedAt: r.CreatedAt, MemoryPath: s.paths.publicMemoryPath(r.Slug)}
 }
 
 func normalizeTitle(title string) (string, error) {
@@ -334,7 +334,7 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 			return Record{}, &CorruptError{Path: memoryPath, Err: errors.New("published state has memory with a mismatched effort identity")}
 		}
 	}
-	return logical(value), nil
+	return s.logical(value), nil
 }
 
 func validateOwnedDirectory(path string) error {

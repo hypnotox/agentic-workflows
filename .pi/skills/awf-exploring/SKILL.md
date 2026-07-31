@@ -14,19 +14,21 @@ Invoke this skill only when both the repository location is unknown and inline s
 <!-- awf:edit breadth: default; create .awf/skills/parts/exploring/breadth.md to override -->
 ## Breadth
 
-Breadth is ordered `targeted < bounded < broad`. `targeted` locates one declaration, implementation, file, or exact fact. `bounded` investigates within a named symbol, package, component, or subsystem. `broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.
+Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.
 
-Treat the selected breadth as an adaptive maximum. Start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly. The broad project search universe is tracked files plus non-ignored untracked working-tree files under the repository root. It includes tracked generated and vendor files. It excludes ignored files, `.git`, nested repositories, and external dependencies unless explicitly scoped.
+Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.
+
+For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.
 
 <!-- awf:edit detail: default; create .awf/skills/parts/exploring/detail.md to override -->
 ## Detail
 
-Report detail is ordered `paths < summary < analysis` independently of breadth. `paths` returns only relevant `file:line` or `file:start-end` locations with minimal labels needed to distinguish them. `summary` returns grounded locations plus concise explanations of what each contains and why it matters. `analysis` directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.
+Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.
 
 <!-- awf:edit dispatch: default; create .awf/skills/parts/exploring/dispatch.md to override -->
 ## Dispatch
 
-Construct one self-contained task. Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.
+Construct one self-contained task. Call `subagent_explore` with required task, breadth, and detail. Independent information needs may be sibling-dispatched; Pi runs at most ten exploration children and queues the rest FIFO. Refinement stays sequential. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section.
 
 <!-- awf:edit results: default; create .awf/skills/parts/exploring/results.md to override -->
 ## Results
@@ -41,6 +43,4 @@ After not-found, inconclusive, unverified, or insufficient output, the parent ma
 This skill is report-only. When a parent has an effort, receive its slug and exact `.awf/efforts/<slug>/memory.md` path only as context; repository and current-state authority outrank checkpoint prose. Standalone memory is forbidden. Never create a second effort or become a second writer, and never edit shared memory, edit files, commit, recursively delegate, widen past the selected maximum, bundle an unrelated need, or retain state.
 
 <!-- awf:edit notes: default; create .awf/skills/parts/exploring/notes.md to override -->
-## Notes
 
-Pi is deeply integrated. Non-Pi targets have semantic parity through native delegation, not identical orchestration.

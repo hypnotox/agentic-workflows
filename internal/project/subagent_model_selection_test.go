@@ -22,16 +22,20 @@ var deliberateSelectionDispatches = []governedDispatches{
 }
 
 var deliberateSelectionCommon = []string{
-	"smallest model expected to complete reliably",
-	"small` is for narrow, mechanical, low-ambiguity work",
-	"standard` is for substantive but bounded work",
-	"large` is for broad, intricate, cross-cutting, or high-consequence work",
-	"Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation.",
+	"hoose the smallest reliable tier",
+	"small` (narrow, mechanical)",
+	"standard` (substantive but bounded)",
+	"large` (broad, intricate, cross-cutting, or high-consequence)",
+	"escalating after uncertainty, failed reasoning, or widened scope",
+	"Full tier definitions: the agent guide's workflow section.",
 }
 
 const (
-	deliberateSelectionPiRule    = "Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value."
-	deliberateSelectionNonPiRule = "Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable."
+	deliberateSelectionPiRule    = "omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value."
+	deliberateSelectionNonPiRule = "select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable."
+	// The full tier definitions render once per target, in the agent guide's
+	// workflow section, sourced from the shared model-selection partial.
+	deliberateSelectionGuideDefinitions = "Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable."
 )
 
 func renderedEditSection(t *testing.T, body, section string) string {
@@ -111,6 +115,12 @@ func TestDeliberateSubagentModelSelectionAcrossGovernedDispatches(t *testing.T) 
 				t.Fatal("missing AGENTS.md")
 			}
 			assertNoDeliberateSelectionLeakage(t, agents)
+			if !strings.Contains(agents, deliberateSelectionGuideDefinitions) {
+				t.Errorf("%s AGENTS.md missing the full tier definitions from the model-selection partial", target)
+			}
+			if strings.Count(agents, "smallest model expected to complete reliably") != 1 {
+				t.Errorf("%s AGENTS.md must carry the full definitional form exactly once", target)
+			}
 		})
 	}
 

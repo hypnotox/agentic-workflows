@@ -1,13 +1,13 @@
 ---
 date: 2026-07-30
-adrs: [181, 186]
+adrs: [181, 191]
 status: Proposed
 ---
 # Plan: Git seam whole-area conversion
 
 ## Goal
 
-Implement ADR-0181 (single-home ownership) and ADR-0186 (git access through one semantic
+Implement ADR-0181 (single-home ownership) and ADR-0191 (git access through one semantic
 seam): consolidate every git capability behind `internal/git`'s handle and runner, convert
 every production and test consumer, reshape gitfixture into the only fixture constructor,
 and apply both ADRs' claims in their declared transactions. Non-goals: no backend
@@ -53,7 +53,7 @@ obligated docs, and flips both ADRs and this plan.
   `.awf/topics/parts/code-design/single-home/current-state.md`,
   `internal/git/parserange_test.go`, `docs/pitfalls.md` sources, `changelog/CHANGELOG.md`,
   `docs/decisions/0181-*.md`,
-  `docs/decisions/0186-*.md`, this plan, and every rendered output of the above.
+  `docs/decisions/0191-*.md`, this plan, and every rendered output of the above.
 - **Deleted:** `internal/worktree/git.go`, `internal/audit/git.go`,
   `internal/git/git_test.go`'s `TestWorktreeStatusInjectsGlobalExcludes` (function, not file).
 
@@ -73,7 +73,7 @@ obligated docs, and flips both ADRs and this plan.
   its number. Rename this branch's git-seam ADR file and heading to the next free
   identity awf reports after the merge (do not hardcode a number), then update every
   reference to the old number: the `Origin:` targets in Task 7.3, this plan's `adrs:`
-  frontmatter, and every `ADR-0186` literal in this plan's Goal, Architecture summary,
+  frontmatter, and every `ADR-0191` literal in this plan's Goal, Architecture summary,
   File structure, and Tasks. Confirm ADR-0181's item 7 forward reference still carries
   no literal number (it names "its own ADR next in this effort", so no edit is owed).
   Re-render and confirm `./awf check` is clean.
@@ -447,12 +447,12 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   backfilling the current catalog defaults each list replaces; extend
   `.awf/parts/workflow/chain.md` to name the topic beside its siblings; add a
   `single home` entry to `.awf/docs/glossary.yaml`.
-- [ ] **Task 7.3: Apply ADR-0186's ten operations in one batch.** In
+- [ ] **Task 7.3: Apply ADR-0191's ten operations in one batch.** In
   `.awf/topics/parts/tooling/git-access/current-state.md`: author the six new claims per
-  ADR-0186 item 11 (four `Backing: test` with proof markers placed on the seam walker,
+  ADR-0191 item 11 (four `Backing: test` with proof markers placed on the seam walker,
   the fixture walker, the entrypoint-table test, and the runner suite; two
   `Backing: unbacked` with `Verify:` lines), and re-add the two range-parser claims
-  (`Origin: ADR-0186`, prose preserving ADR-0127 by reference, existing test backing).
+  (`Origin: ADR-0191`, prose preserving ADR-0127 by reference, existing test backing).
   Remove the two range-parser claims from
   `.awf/topics/parts/tooling/audit-and-snapshots/current-state.md` and narrow that
   topic's metadata paths to `internal/audit/**` and `internal/snapshot/**`. Rewrite the

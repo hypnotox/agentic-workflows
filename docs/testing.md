@@ -8,6 +8,7 @@
 with a coverage profile, a 100% **statement**-coverage floor over non-`// coverage-ignore`
 blocks (ADR-0012), containerized Pi-extension strict type checks and 100% line/function/branch
 coverage across all five generated Pi TypeScript files, descriptor cross-runtime parity, `go vet`,
+a cross-compile of `./...` for every released non-host platform,
 `golangci-lint`, a whole-program dead-code check (ADR-0063),
 the workflow supply-chain pin check (`cmd/pincheck`, ADR-0079), the plain-punctuation scan
 (`awf check prose`, ADR-0119, opt-in for adopters and enabled in this repo), and the effort-owned-memory
@@ -56,10 +57,10 @@ needs you to judge whether it is a real gap or an unkillable equivalent mutant.
 <!-- awf:edit tiers: from .awf/docs/parts/testing/tiers.md -->
 ## Tiers
 
-awf has a single tier: `./x gate` runs everything, and `./x gate full` runs the
-identical Go and containerized TypeScript steps, including protocol parity and the pinned in-memory Pi 0.81.1
-three-factory runtime seam plus the pinned repository-runtime cache and launcher tests; the `full` argument is accepted only so the rendered pre-push hook
-payload (which invokes `./x gate full`) works unchanged. There is no slower, fuller
+awf has a single tier: `./x gate` runs everything, including protocol parity and the pinned in-memory Pi 0.81.1
+three-factory runtime seam plus the pinned repository-runtime cache and launcher tests. `./x gate full` runs the
+identical Go and containerized TypeScript steps; the `full` argument is accepted only as a
+no-op legacy argument, and no rendered artifact passes it. There is no slower, fuller
 tier to reach for; the whole gate is fast enough to run before every commit. The release-only real interactive Pi smoke remains the manual unbacked verification documented in the test layout; it is not mislabeled as a deterministic gate tier.
 
 `./x check` (beside the gate at every commit via the pre-commit payload) also

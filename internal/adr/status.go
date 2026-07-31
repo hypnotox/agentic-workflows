@@ -20,6 +20,24 @@ const (
 // IsAbandoned reports the current-state-v1 terminal Abandoned state.
 func (a ADR) IsAbandoned() bool { return a.Status == statusAbandoned }
 
+// terminalStatus reports whether a status permanently freezes a record's
+// content: Implemented and Abandoned close a lifecycle in both formats.
+func terminalStatus(s string) bool { return s == statusImplemented || s == statusAbandoned }
+
+// IsContentAmendable reports whether the record's digest-covered content may
+// still be amended. A current-state-v2 body stays amendable through Proposed,
+// Accepted, and Implementing and freezes permanently at a terminal status
+// (ADR-0188); every other format keeps the older rule of freezing the moment it
+// leaves Proposed. Callers that report or gate on mutability read this rather
+// than testing the status themselves, so the two formats' rules stay in one
+// place as the lifecycle grows.
+func (a ADR) IsContentAmendable() bool {
+	if a.IsV2() {
+		return !terminalStatus(a.Status)
+	}
+	return a.IsProposed()
+}
+
 // v1Statuses is the closed current-state-v1 status enum (ADR-0135 item 1);
 // Superseded is deliberately absent.
 var v1Statuses = map[string]bool{
@@ -89,7 +107,10 @@ func (a ADR) IsLegacyShipped() bool {
 	return a.Status == statusImplemented || a.Status == statusSuperseded
 }
 
-// IsProposed reports whether the ADR's body is still mutable.
+// IsProposed reports the Proposed state, the one status whose body amends with
+// no history event in either format. It is not the amendability test: since
+// ADR-0188 a V2 body stays amendable past Proposed, so use IsContentAmendable
+// for that question.
 func (a ADR) IsProposed() bool { return a.Status == statusProposed }
 
 // IsAccepted reports the current-state-v1 Accepted state: the decision is

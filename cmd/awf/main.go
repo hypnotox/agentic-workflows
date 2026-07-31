@@ -239,7 +239,9 @@ func authorityLockPath(root string) string { return migrate.AuthorityLockPath(ro
 func projectGuardState(ctx context.Context, root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound bool, loadErr, err error) {
 	if !staged {
 		present = migrate.ProjectPresent(root)
-		journalFound = upgrade.JournalPresent(root)
+		if journalFound, err = upgrade.JournalPresent(root); err != nil {
+			return false, nil, false, nil, false, nil, err
+		}
 		lock, lockFound, loadErr = manifest.LoadOptional(authorityLockPath(root))
 		return
 	}

@@ -32,7 +32,7 @@ You are a developer on `awf`, the Agentic Workflows CLI and standard. You are re
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
+- **Append-only ADRs.** Decision rationale lives under `docs/decisions/`; `docs/decisions/INDEX.md` is generated, never hand-edited. An ADR is history, not active authority: its meaning freezes at a terminal status, every post-Accepted amendment recorded as an Amended history event (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run `./x gate`. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
 - **Publication-safe templates.** Every interpolation degrades to coherent generic prose when its var/data is unset; no unresolved-value token ever renders. (ADR-0001, ADR-0045)
@@ -55,20 +55,21 @@ Enabled skills:
 - `awf-adr-lifecycle` (support): Apply an ADR lifecycle transition correctly. Trigger: Use when transitioning an ADR between lifecycle states. Usually follows: proposing-adr, reviewing-adr. Common follow-ups: executing-plans, writing-plans.
 - `awf-brainstorming` (chain): Clarify an outcome and settle a grounded design. Trigger: Use for non-trivial work before deciding its design. Common follow-ups: proposing-adr, writing-plans, executing-direct.
 - `awf-bugfix` (task): Apply a fix with a known root cause. Trigger: Use when applying a fix whose root cause is already known. Usually follows: debugging. Common follow-ups: reviewing-impl.
-- `awf-debugging` (task): Investigate a defect before changing it. Trigger: Use when investigating a bug or unexpected behaviour before any fix. Common follow-ups: bugfix, executing-direct.
+- `awf-debugging` (task): Investigate a defect before changing it. Trigger: Use when investigating a bug or unexpected behaviour before any fix. Common follow-ups: bugfix.
 - `awf-executing-direct` (chain): Implement a small approved change directly. Trigger: Use when the change is understood and does not need a plan. Usually follows: brainstorming. Common follow-ups: reviewing-impl.
-- `awf-executing-plans` (chain): Implement an accepted plan. Trigger: Use when a plan is ready for implementation. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl.
+- `awf-executing-plans` (chain): Implement an accepted plan. Trigger: Use when a plan is ready for implementation. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, subagent-driven-development.
 - `awf-proposing-adr` (chain): Author a decision record for a material design choice. Trigger: Use when a durable architectural or workflow decision is needed. Usually follows: brainstorming. Common follow-ups: reviewing-adr, writing-plans.
-- `awf-refactor-coupling-audit` (support): Scope dependency and test coupling before a refactor. Trigger: Use when scoping a refactor that moves files between packages or inverts dependencies. Usually follows: exploring. Common follow-ups: brainstorming, writing-plans.
+- `awf-refactor-coupling-audit` (support): Scope dependency and test coupling before a refactor. Trigger: Use when scoping a refactor that moves files between packages or inverts dependencies. Common follow-ups: brainstorming, proposing-adr, writing-plans.
 - `awf-retrospective` (chain): Capture durable lessons, verify managed topology is absent, and finish the effort last. Trigger: Use after settled terminal review and any required managed-worktree removal. Usually follows: reviewing-impl.
 - `awf-reviewing-adr` (chain): Independently review an ADR. Trigger: Use when a proposed ADR needs decision-quality review. Usually follows: proposing-adr. Common follow-ups: reviewing-plan-resync, writing-plans.
 - `awf-reviewing-impl` (chain): Independently review an implementation and route any managed-worktree integration, renewed review, and removal before retrospective. Trigger: Use when an implementation commit or series needs terminal review. Usually follows: executing-direct, executing-plans, subagent-driven-development. Common follow-ups: retrospective.
 - `awf-reviewing-plan` (chain): Independently review an implementation plan. Trigger: Use when a written plan needs review before execution. Usually follows: writing-plans. Common follow-ups: reviewing-plan-resync, executing-plans.
 - `awf-reviewing-plan-resync` (chain): Reconcile a plan after review findings. Trigger: Use when review findings require a plan revision and re-review. Usually follows: reviewing-plan, reviewing-adr. Common follow-ups: executing-plans, subagent-driven-development.
-- `awf-subagent-driven-development` (chain): Implement a plan through reviewed phase owners. Trigger: Use when a plan phase benefits from delegated implementation ownership. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl.
-- `awf-tdd` (support): Drive a change from a failing test. Trigger: Use when writing the failing test before the implementation change. Common follow-ups: executing-direct, executing-plans.
+- `awf-subagent-driven-development` (chain): Implement a plan through reviewed phase owners. Trigger: Use when a plan phase benefits from delegated implementation ownership. Usually follows: writing-plans, reviewing-plan. Common follow-ups: reviewing-impl, executing-plans.
+- `awf-tdd` (support): Drive a change from a failing test. Trigger: Use when writing the failing test before the implementation change. Usually follows: bugfix, debugging. Common follow-ups: executing-direct, executing-plans.
 - `awf-writing-plans` (chain): Turn an approved design into an executable plan. Trigger: Use when implementation needs a durable, reviewable plan. Usually follows: brainstorming, proposing-adr. Common follow-ups: reviewing-plan.
 - `awf-exploring` (support): Explore repository facts without polluting the main context. Trigger: Use for fresh-context repository exploration when inline search would pollute the parent context. Common follow-ups: brainstorming, debugging, refactor-coupling-audit.
+- `awf-orienting` (support): Ground the session in a topic before starting, resuming, or widening work. Trigger: Use when taking up a topic: before brainstorming fresh non-trivial work, when resuming an effort, or when taking over a handoff. Common follow-ups: brainstorming, debugging, writing-plans, executing-plans.
 
 In Pi, use any enabled native skill when its purpose fits the current work.
 
@@ -81,7 +82,7 @@ Conventional Commits; one concern per commit. Full rules: [docs/workflow.md](doc
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 ## Working memory
 
-A minimal simple fix uses no effort. Once work becomes a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. Carry the slug and exact owned path through checkpoints and handoffs. Repository sources and current-state documentation outrank checkpoint prose. One effort has one user-managed writer: report-only reviewers, explorers, grounding children, and helpers never edit shared memory. Standalone memory is forbidden, and an effort finishes only after terminal review, any required worktree integration and removal, and retrospective.
+A minimal simple fix uses no effort. Once work becomes a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. The effort's managed worktree is the default execution location (`--no-worktree` is the explicit exception), while the owned memory stays under the primary checkout. Carry the slug and exact owned path through checkpoints and handoffs. Repository sources and current-state documentation outrank checkpoint prose. One effort has one user-managed writer: report-only reviewers, explorers, grounding children, and helpers never edit shared memory. Standalone memory is forbidden, and an effort finishes only after terminal review, any required worktree integration and removal, and retrospective.
 
 
 <!-- awf:edit commands: from .awf/parts/agents-doc/commands.md -->
@@ -96,7 +97,7 @@ awf audit: report workflow-conformance findings over an explicit commit range (a
 awf new plan "<Title>": scaffold a dated plan under docs/plans from the rendered plans template
 ```
 
-For managed `awf context` calls, start bare: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets required by the active lens, and never prescribe `--full`. When the command returns a valid spill notice, consume the complete packet, verify its declared byte length, and best-effort delete its temporary file after successful or failed use.
+For managed `awf context` calls, follow the awf-orienting skill's context discipline: start bare, request only the named facets the active lens requires, never prescribe `--full`, and consume spill notices per the shared contract.
 
 Command specifics, effort and lifecycle contracts, and upgrade behaviour: see docs/working-with-awf.md.
 

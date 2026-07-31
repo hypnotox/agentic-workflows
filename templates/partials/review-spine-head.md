@@ -1,3 +1,5 @@
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+
 ## Finding schema
 
 Every finding must have all six fields:
@@ -24,3 +26,7 @@ Classify by what acting on the finding requires, not by severity:
 - **user-decision**: a genuine design fork or unresolved ambiguity that should not be decided unilaterally; escalate.
 
 Severity is informational only; the dispatching skill routes by classification kind.
+
+## Consensus adherence
+
+When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the {{ with .data.reviewSubject }}{{ . }}{{ else }}artifact{{ end }} against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating {{ with .data.reviewSubject }}{{ . }}{{ else }}artifact{{ end }} passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.

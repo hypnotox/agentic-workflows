@@ -12,7 +12,7 @@ Invoked as the independent review step of the implementation phase. It validates
 <!-- awf:section when-fires -->
 Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `{{ .layout.adrDir }}/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift.
+A docs-only session diff may skip the independent review; step 2 defines the check and its ADR-directory exception.
 <!-- awf:end -->
 
 ## Procedure
@@ -26,14 +26,15 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section docs-only-check -->
-2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `{{ .layout.adrDir }}/` changes always proceed. If every changed file is docs-only (outside `{{ .layout.adrDir }}/`), surface a `Skipped (docs-only)` note and return.
+2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `{{ .layout.adrDir }}/` changes always proceed. If every changed file is docs-only (outside `{{ .layout.adrDir }}/`), surface a `Skipped (docs-only)` note and continue at step 8, treating the docs-only check as the applicable terminal review with zero findings.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->
-{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. The brief must include:
-{{ else }}3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes the following. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.
+{{ if .targetSubagentTools }}3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section. The brief must include:
+{{ else }}3. **Dispatch the `code-reviewer` subagent: an independent review in fresh context, separate from the implementer.** Provide it a brief that includes the following. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section.
 {{ end }}
    - The SHA range (`baseSha..headSha`), the `planPath` (or `null`), and the effort slug plus exact owned memory path as read-only context; the reviewer never edits shared memory.
+   - Every user-provenance decision-log entry from the effort memory pasted verbatim, `Record:` blocks included, so the consensus-adherence check can run; a log without user entries omits the paste and leaves that check idle.
    - The plan/requirements the implementation is held to (paste the plan's goal section or summarise if no plan exists), for the agent's plan-adherence lens.
    - The affected context instruction: with the concrete SHAs substituted, direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})` itself so the doc-currency and convention lenses receive the non-direct invariant summaries, additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved SHA range, not pasted packet output.
 <!-- awf:include context-spill -->
@@ -64,15 +65,17 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
-7. **Verify pass.** After applying fixes and passing the gate, {{ if .targetSubagentTools }}call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task`. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.{{ else }}dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Select the smallest reliable target-native model explicitly; if this harness cannot select a model, use its default and note in the dispatch brief that explicit selection is unavailable.{{ end }} This pass confirms the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+7. **Verify pass.** After applying fixes and passing the gate, {{ if .targetSubagentTools }}call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section.{{ else }}dispatch exactly one fresh `code-reviewer` verify pass. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: the agent guide's workflow section.{{ end }} This pass confirms the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 <!-- awf:end -->
 
 <!-- awf:section hand-off -->
 8. **Route settled terminal review through optional worktree integration.** Repository sources and current-state documentation remain authoritative over checkpoint prose; standalone memory is forbidden.
-   - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, invoke `{{ .prefix }}-retrospective`.
+   - If no managed `.awf/worktrees/<slug>` path, registration, or `awf/<slug>` branch exists, skip integration and continue to the deferred flip below.
    - If managed topology exists, change to the intended clean target checkout and run `awf effort integrate <slug>`. Integration never implies review, removal, retrospective, or finish.
    - An already-integrated or fast-forward result continues after confirming the settled review still covers the effort tip. A divergent merge runs `awf check --staged`, the project gate, and a merge commit, then invokes this terminal implementation review again over the combined target history. Conflicts remain visible until explicitly resolved or aborted.
-   - Only after the applicable terminal review has zero findings run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent. Then invoke `{{ .prefix }}-retrospective`.
+   - Only after the applicable terminal review has zero findings, land the deferred flip transaction: apply any final V2 batch with exactly its claim mutations and flip the linked ADR(s) and plan to `Implemented` per `{{ .prefix }}-adr-lifecycle`.
+   - If managed topology exists, run `awf effort worktree remove <slug>` without force and verify path, registration, and branch are absent.
+   - Invoke `{{ .prefix }}-retrospective`.
 
 <!-- awf:include checkpoint-routine -->
 <!-- awf:end -->
@@ -80,7 +83,6 @@ Terminal step of {{ .prefix }}-executing-plans or {{ .prefix }}-subagent-driven-
 ## Notes
 
 <!-- awf:section notes -->
-- This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; this skill does not alter lifecycle history.
+- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.
 <!-- awf:end -->

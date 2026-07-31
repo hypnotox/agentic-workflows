@@ -30,7 +30,7 @@ You are a developer on `{{ .prefix }}`, responsible for its long-term health as 
 <!-- Authoring: see agents-md-standard.md for hard rules, one terse imperative line each, owning ADR in parens; mechanism lives in the ADR. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.indexMd }}` is generated, never hand-edited. An ADR is history, not active authority: its meaning is frozen once it leaves Proposed (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
+- **Append-only ADRs.** Decision rationale lives under `{{ .layout.adrDir }}/`; `{{ .layout.indexMd }}` is generated, never hand-edited. An ADR is history, not active authority: its meaning freezes at a terminal status, every post-Accepted amendment recorded as an Amended history event (a meaning-preserving schema retrofit may migrate its encoding), stable history is corrected forward rather than by deleting or mutating retained events, and a later decision changes the current-state claims it established rather than editing it.
 - **Docs travel with the change.** Reality and its documentation update in the same commit.
 - **Staged authority and green gate before every commit.** Stage the complete transaction, run `awf check --staged`, then run {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. Commit only after both commands pass. The hook repeats the staged check as defense in depth.
 {{- range .data.invariants }}
@@ -49,13 +49,14 @@ Hard rules every change must respect:
 
 {{ if .skills.brainstorming }}For non-trivial work, brainstorming is often useful; select any enabled skill whose purpose fits, and treat catalog relationships as advice.
 
-{{ with .taskSkillRows }}Enabled skills:
+{{ with .skillRows }}Enabled skills:
 
 {{ . }}
 
 {{ end }}{{if .targetSessionHandoff}}In Pi, use any enabled native skill when its purpose fits the current work.
 
-{{end}}{{ end }}Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
+{{end}}{{ end -}}
+<!-- awf:include model-selection -->
 
 Any enabled skill may be used whenever its purpose fits the current work; the listed relationships are recommendations, not prerequisites or required next steps.
 
@@ -65,7 +66,7 @@ Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} Full
 <!-- awf:section working-memory -->
 ## Working memory
 
-A minimal simple fix uses no effort. Once work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. Carry the slug and exact path through checkpoints and handoffs, but verify checkpoint claims against repository sources and current-state documentation. One effort has one user-managed writer; report-only children and helpers never edit shared memory. Never create standalone memory, commit the owned file, or cite its concrete path in an ADR, plan, or commit message. Worktree-backed efforts integrate and remove topology after terminal review and before retrospective; retrospective finishes the effort last. The detailed protocol lives in the workflow doc's working-memory section.
+A minimal simple fix uses no effort. Once work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; it always owns `.awf/efforts/<slug>/memory.md`. The effort's managed worktree is the default execution location (`--no-worktree` is the explicit exception), while the owned memory stays under the primary checkout. Carry the slug and exact path through checkpoints and handoffs, but verify checkpoint claims against repository sources and current-state documentation. One effort has one user-managed writer; report-only children and helpers never edit shared memory. Never create standalone memory, commit the owned file, or cite its concrete path in an ADR, plan, or commit message. Worktree-backed efforts integrate and remove topology after terminal review and before retrospective; retrospective finishes the effort last. The detailed protocol lives in the workflow doc's working-memory section.
 <!-- awf:end -->
 
 <!-- awf:section commands -->

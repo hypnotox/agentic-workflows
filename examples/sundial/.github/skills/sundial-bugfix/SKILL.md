@@ -19,22 +19,25 @@ If the root cause is not yet known, invoke `sundial-debugging` first.
 
 ## Procedure
 
-A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, create or resume exactly one immutable slugged effort before mutation; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, preserve one user-managed writer, and carry slug/path through TDD and review. Repository sources and current-state documentation outrank checkpoint prose, children never edit shared memory, and standalone memory is forbidden.
+A minimal simple known-root fix uses no effort. For a concrete non-minimal fix, carry the effort slug and exact `.awf/efforts/<slug>/memory.md` path through TDD and review; children receive them read-only and never edit shared memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
-1. **Ensure a regression test exists that fails for the right reason.** Invoke `sundial-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the fix touches a claimed surface).
+1. **Ensure a regression test exists that fails for the right reason.** Invoke `sundial-tdd` for the project's test-first discipline: it picks the right surface, writes the failing test, and verifies it fails for the right reason before the fix. Before writing the test, run `awf context <the implementation and test paths>`.
+Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
-2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated. No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
+2. **Implement the root-cause fix, not the symptom.** Per `docs/maintainable-code-design.md`, assess whether the root cause is an unsuitable model or boundary; include bounded enabling work that prevents a workaround. For materially larger work, ask the user whether to
+perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
+No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
 
 <!-- awf:edit pitfalls-check: default; create .awf/skills/parts/bugfix/pitfalls-check.md to override -->
    Before writing the fix, check `docs/pitfalls.md` for known-tricky areas: the pitfalls list catalogues recurring traps; verify the fix is not re-introducing one that bit before.
 
 
-3. **Verify via the gates.** `./x gate` (fast tier) is the default. Run `./x gate full` when regression-test placement warrants the full tier.
+3. **Verify via the gates.** `./x gate` is the default. Run `./x gate full` when regression-test placement warrants the full tier.
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Per `docs/workflow.md`, fixes ship with a regression test.
 
-5. **Run the project's review step as the terminal step.**
+5. **Run `sundial-reviewing-impl` as the terminal step.**
 
 <!-- awf:edit test-tiers: default; create .awf/skills/parts/bugfix/test-tiers.md to override -->
 ## Test tiers
@@ -51,7 +54,7 @@ The oracle is non-negotiable. A fix that adjusts expected output instead of the 
 <!-- awf:edit memory-checkpoint: default; create .awf/skills/parts/bugfix/memory-checkpoint.md to override -->
 **Routine checkpoint.** At this boundary:
 1. Classify the outcome, not the boundary. A minimal simple fix uses no effort, and reaching a checkpoint never creates one by itself. Once the work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; use `.awf/efforts/<slug>/memory.md` as its only working memory. If that need is first recognized here, create the effort before updating memory. Repository sources and current-state documentation remain authoritative over checkpoint prose.
-2. Validate the existing effort before writing: carry the exact `<slug>` and `.awf/efforts/<slug>/memory.md`, confirm the file starts with `Effort: <slug>`, and preserve one user-managed writer for the effort. A reviewer, explorer, grounding child, or batch helper is report-only with respect to this shared memory and never edits it. Update the file in its own tool batch: set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, and refresh `Updated:`.
+2. Validate the existing effort before writing: carry the exact `<slug>` and `.awf/efforts/<slug>/memory.md` (a primary-root-relative spelling; the owned file lives under the primary checkout), confirm the file starts with `Effort: <slug>`, continue the work in the effort's managed worktree when one exists, and preserve one user-managed writer for the effort. A reviewer, explorer, grounding child, or batch helper is report-only with respect to this shared memory and never edits it. Update the file in its own tool batch: set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, append any decision settled and any observation hit since the last boundary that is not yet recorded, and refresh `Updated:`.
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action. For an effort-backed outcome include its exact slug and owned memory path; the notice is informational, never a stop. Continue through the target-native successor without claiming session replacement. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the workflow doc's working-memory section.
 

@@ -60,11 +60,16 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
 	root := syncFullCatalogForTarget(t, cat, "pi")
-	for _, consumer := range []string{"brainstorming", "debugging", "refactor-coupling-audit"} {
+	// Orienting replaced brainstorming as the exploring consumer: brainstorming
+	// now reaches exploration only by invoking orienting.
+	for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+consumer, "SKILL.md"))
 		if !strings.Contains(body, "exploring") {
 			t.Errorf("Pi consumer %q does not route through exploring", consumer)
 		}
+	}
+	if body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-brainstorming", "SKILL.md")); !strings.Contains(body, "orienting") {
+		t.Error("Pi brainstorming skill does not route through orienting")
 	}
 	exploring := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
 	if !namesOnInvocationLine(exploring, "subagent_explore") {
@@ -90,7 +95,7 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
 			t.Errorf("Pi skill %q does not connect subagent_review to %q", tc.skill, tc.agent)
 		}
-		if got := strings.Count(body, "Omit the `model` field entirely to use configured role routing"); got != 2 {
+		if got := strings.Count(body, "omit the `model` field to use configured role routing"); got != 2 {
 			t.Errorf("Pi skill %q has %d deliberate selection rules, want primary and verify rules", tc.skill, got)
 		}
 		if reviewer := read(t, filepath.Join(root, ".pi", "agents", tc.agent+".md")); !strings.Contains(reviewer, "## Classification rules") {
@@ -278,7 +283,7 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 		"subagent-driven-development": "execution", "reviewing-impl": "terminal-review",
 		"retrospective": "finish", "debugging": "conditional-creation", "bugfix": "conditional-creation",
 		"tdd": "conditional-creation", "refactor-coupling-audit": "report", "exploring": "report",
-		"roadmap-graduation": "conditional-creation",
+		"orienting": "report", "roadmap-graduation": "conditional-creation",
 	}
 	if len(roles) != len(cat.Skills) {
 		t.Fatalf("unified-effort classification has %d skills, enabled catalog has %d", len(roles), len(cat.Skills))
@@ -290,16 +295,19 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	}
 
 	minimal := map[string]bool{"brainstorming": true, "executing-direct": true, "debugging": true, "bugfix": true, "tdd": true, "roadmap-graduation": true}
-	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true}
+	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
 		"A minimal simple fix uses no effort",
 		"concrete non-minimal outcome",
 		"`.awf/efforts/<slug>/memory.md` as its only working memory",
 		"Repository sources and current-state documentation remain authoritative",
+		"primary-root-relative spelling",
 		"Effort: <slug>",
+		"managed worktree when one exists",
 		"one user-managed writer",
 		"never edits it",
+		"append any decision settled and any observation hit since the last boundary",
 		"continuity notice",
 	}
 	for _, target := range []string{"pi", "claude"} {
@@ -340,11 +348,16 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			return skillPath(root, name)
 		}
 		impl := read(t, pathFor("reviewing-impl"))
+		assertOrderedBody(t, target+"/reviewing-impl docs-only", impl, []string{
+			"Skipped (docs-only)", "continue at step 8", "Route settled terminal review",
+		})
 		assertOrderedBody(t, target+"/reviewing-impl integration", impl, []string{
-			"Route settled terminal review", "If no managed", "awf effort integrate <slug>",
+			"Route settled terminal review", "If no managed", "continue to the deferred flip",
+			"awf effort integrate <slug>",
 			"Integration never implies review, removal, retrospective, or finish",
 			"divergent merge", "awf check --staged", "project gate", "merge commit",
-			"terminal implementation review again", "awf effort worktree remove <slug>", "retrospective",
+			"terminal implementation review again", "deferred flip transaction",
+			"If managed topology exists", "awf effort worktree remove <slug>", "retrospective",
 		})
 		retro := read(t, pathFor("retrospective"))
 		assertOrderedBody(t, target+"/retrospective finish", retro, []string{
@@ -436,9 +449,12 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"exactly one immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
 		"Repository sources and current-state documentation remain authoritative",
+		"primary-root-relative spelling",
 		"Effort: <slug>",
+		"managed worktree when one exists",
 		"one user-managed writer",
 		"never edits the shared memory",
+		"append any decision settled and any observation hit since the last boundary",
 		"explicitly request approval",
 		"end the turn",
 		"Stop even when there is no concern to raise",

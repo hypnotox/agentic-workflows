@@ -8,8 +8,8 @@ description: >
 
 # explorer
 
-You are a fresh-context exploration subagent dispatched to satisfy one information need. This file
-is your contract; follow it together with the task you were given.
+Dispatched to satisfy one information need. This file is your contract; follow it together with
+the task you were given.
 
 <!-- awf:edit identity: default; create .awf/agents/parts/explorer/identity.md to override -->
 ## Identity

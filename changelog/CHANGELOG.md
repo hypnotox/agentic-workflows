@@ -10,6 +10,33 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
+  every enabled skill, not only task skills). A local override of
+  `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty
+  skills list rather than erroring; update the reference when upgrading.
+
+- `awf effort new` now creates the managed `.awf/worktrees/<slug>` checkout on `awf/<slug>` by
+  default and directs execution there; `--no-worktree` keeps the invoking checkout, `--base <ref>`
+  selects the branch base, and creation inherits the standalone add refusal surface (for example
+  an in-progress rebase or merge in the invoking checkout). Effort commands report
+  primary-root-qualified absolute memory paths outside the primary checkout, and Pi handoff
+  resolves the primary control root so it validates the effort memory from any managed worktree
+  (submodule and separate-git-dir layouts keep their rendered root).
+
+- Add the `orienting` support skill: the single home of the orientation procedure. Its grounding
+  ladder is current-state first (agent guide, document-map docs, domain docs), and consults recent
+  path history only when current state leaves the situation unexplained; it carries the managed
+  `awf context` discipline, report-only exploration dispatch, and effort-resume revalidation that
+  reads the working-memory file whole, decision log included, and resolves any discrepancy in
+  favour of the repository. The ladder is shared with the grounding-checker contract through a
+  template partial, so the two stop drifting apart. Brainstorming's first step now invokes the
+  skill instead of carrying its own copy, and `proposing-adr` and `writing-plans` gain an advisory
+  pointer for stale grounding. Schema generation 26 enables it in any config that has
+  `brainstorming` enabled, since the shrunk brainstorming template now invokes it by name; configs
+  without `brainstorming` are untouched. Disabling `orienting` afterwards while `brainstorming`
+  stays enabled fails `awf check` with dead-skill-reference drift until you re-enable it or
+  override the three consumer sections.
+
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
   the `off` value with them. A tree that declares a `currentState` block now always evaluates both
   topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
@@ -84,6 +111,21 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
+  the writing-plans scaffold command resolves the awf binary instead of the skill prefix,
+  reviewer-lens enumerations are count-free, the resync skill names both invokers and carries
+  plan-path identification on every target, the Pi-only `allowCommits` literal no longer leaks
+  into non-Pi renders, catalog relationship rows and the support-skill vocabulary match the
+  bodies, refactor-coupling-audit uncounts its categories and gives each one its own report
+  line so sidecar-dropped categories drop cleanly, restated working-memory and notes prose is
+  trimmed, and shared spine prose moves into new `templates/partials/` files
+  (context-orientation, escalation-menu, coverage-oracle, exploration-breadth,
+  exploration-detail). Rendered output changes for every target.
+
+- Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
+  each post-Accepted content digest, status events repeat the latest stamp, and terminal review now
+  owns the final Implemented flip after findings settle. Existing records remain valid unchanged;
+  this requires no migration or schema-generation bump.
 - `awf check --staged` and `awf audit` now validate a merge as an ordered aggregate rather than
   refusing it. A merge is one Git commit but the aggregate of a branch's commits, so an ADR may
   contribute several application batches, a claim's operations across the pair may form an ordered
@@ -166,8 +208,30 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Divergent effort-integration guidance now derives the project gate command from `vars.gateCmd` and uses generic project-gate prose when that value is unavailable.
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.
 - Managed effort worktrees now support current-user-owned checkouts beneath system-owned filesystem ancestors while retaining ancestor symlink, resident ownership, and repository-identity protections.
+- `awf context` no longer reports an in-flight decision record as frozen. It derived mutability from
+  whether the record was still Proposed, which stopped being the amendability rule once a
+  current-state-v2 body became amendable through Accepted and Implementing, freezing only at a
+  terminal status. Those two statuses now report `mutable`; terminal records, and every
+  current-state-v1 record outside Proposed, are unchanged.
+- `awf render` and `awf check` now fail when a directory under the project tree cannot be read,
+  instead of silently enumerating what they could reach. A truncated enumeration narrowed the set
+  of managed outputs the drift oracle was computed over, so an unreadable directory could produce
+  a clean verdict and exit 0 over a tree that was never fully inspected.
+- Every command now refuses when it cannot determine whether a current-state upgrade journal
+  exists, instead of reading the failed check as "no journal". An unreadable `.awf` therefore no
+  longer permits the commands an unrecovered upgrade is meant to block.
+- `awf upgrade --recover` now restores each journaled file through a temp-file-plus-rename write,
+  so an interrupted recovery cannot leave a partially written file at a path the journal records
+  as holding a whole image. The restored file keeps its recorded permissions.
+- `awf audit`'s uncommitted-changes rule now reads the worktree it was asked about. It shelled out
+  to Git with the inherited environment, so an inherited `GIT_DIR` selected a different repository
+  and the rule could report a dirty tree as clean.
+- `awf context` now classifies an absolute request as outside the repository on Windows. The check
+  asked only `filepath.IsAbs`, which answers false there for a slash-rooted path, so such a request
+  was reported as merely not found. Unix behaviour is unchanged.
 
 ## [0.22.0] - 2026-07-24
 
@@ -363,6 +427,7 @@ query a single version or a range.
   reintroduced `.awf/current-state-migration.yaml` is reported as unclaimed drift after cutover.
 
 ### Others
+- Purpose-partition the effort memory skeleton into consumer-named sections: `## Brief` with durable-artifact pointers, an append-only ordinal `## Decision log` (the effort-spanning consensus record with verbatim `Record:` evidence blocks on user entries), a new at-occurrence `## Observations` log, and `## Handoff log`. Checkpoint guidance gains a backstop append for unrecorded decisions and observations, the full-review dispatch briefs paste user-provenance entries verbatim, the shared review spine gains a consensus-adherence check that routes any deviation from a user entry as a user-decision finding, and the retrospective reads both logs as primary input with recurrence tracked across an effort's sessions. Pre-existing memory files migrate on first write by appending the missing headings.
 - Split three overloaded invariant claims (version-compat gate, metrics/doctor command contract,
   context authority packet) into six focused single-obligation claims (ADR-0153); no behavior
   change.

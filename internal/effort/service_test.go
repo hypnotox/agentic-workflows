@@ -99,6 +99,9 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 			if err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "worktree remove") {
 				t.Fatalf("result=%#v err=%v", result, err)
 			}
+			if !errors.Is(err, ErrManagedTopologyPresent) {
+				t.Fatalf("refusal %v is not classified as managed topology", err)
+			}
 		})
 	}
 }
@@ -195,12 +198,19 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 	if _, err := service.New("Probe errors"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Finish("probe-errors"); err == nil || !strings.Contains(err.Error(), "registration") {
+	probeErr := func(err error) error {
+		t.Helper()
+		if errors.Is(err, ErrManagedTopologyPresent) {
+			t.Fatalf("inspection failure %v was classified as a managed-topology refusal", err)
+		}
+		return err
+	}
+	if _, err := service.Finish("probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "registration") {
 		t.Fatalf("registration error = %v", err)
 	}
 	service.worktrees = func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil }
 	service.branchExists = func(context.Context, string, string) (bool, error) { return false, errors.New("branch probe") }
-	if _, err := service.Finish("probe-errors"); err == nil || !strings.Contains(err.Error(), "branch") {
+	if _, err := service.Finish("probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "branch") {
 		t.Fatalf("branch error = %v", err)
 	}
 	if _, err := service.Finish("bad_slug"); err == nil {

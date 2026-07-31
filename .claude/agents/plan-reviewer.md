@@ -8,7 +8,9 @@ description: >
 
 # plan-reviewer
 
-Independent, lens-diverse reviewer for plans under `docs/plans/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+Independent, lens-diverse reviewer for plans under `docs/plans/`.
+
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 ## Finding schema
 
@@ -37,6 +39,10 @@ Classify by what acting on the finding requires, not by severity:
 
 Severity is informational only; the dispatching skill routes by classification kind.
 
+## Consensus adherence
+
+When the brief carries pasted consensus entries (user-provenance decision-log entries with their `Record:` blocks), check the plan against each one. A deviation from a user entry is always a `user-decision` finding, never silently absorbed: `location` cites the deviating plan passage, `issue` names the deviation, and `suggested_fix` carries the escalation phrasing "we decided X; during <phase> we found Z; recommend Y, approve?". A brief without consensus entries leaves this check idle.
+
 ## Universal lenses
 
 <!-- awf:edit universal-lenses: default; create .awf/agents/parts/plan-reviewer/universal-lenses.md to override -->
@@ -60,7 +66,7 @@ Apply all lenses to every plan:
 
 <!-- awf:edit project-focus: default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
-**step-exactness**: every phase declares independent inline or subagent-driven ownership, one independently green coherent implementation transaction, and one closing subject; tasks are ordered steps with exact file paths, relevant symbols, exact commands with expected terminal states, and exact content/diffs or implementation-ready pseudocode covering behavior, branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and deterministic verification. Exact form remains mandatory for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and the batch task's representative and edge. Non-contractual prose may use qualifying instructions and a mixed task may combine both forms. The batch task retains its affected-site set and post-check; an optional exhaustive partition assigns every site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and commands confined. `TBD`, `implement later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode. Every task is executable with no prior conversation context. Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders.
+**step-exactness**: Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders.
 
 
 **quoted-command-output-is-rerun**: a plan that quotes a command and its expected output states a checkable fact: RUN it rather than reasoning about it, and never write a corrected number you have not observed. A review of the ADR-0128 plan "corrected" a `grep -rn adr.ParseDir(` count from 10 to 12 on the theory that two `coverage-ignore` comments matched; they read `adr.ParseDir here`, with no opening paren, so the pattern never matched them and BOTH the before and after numbers shipped wrong. An unverified correction makes a plan less accurate than leaving it alone, because the executor now trusts it. Escalate rather than correct when a plan asserts a literal COUNT at all: prefer a terminal-state assertion (the finding count reaches zero, the grep returns nothing, the drift check is clean), because a count is a measurement of a corpus that moves and a stale one fails misleadingly rather than loudly. The 2026-07-19 retrofit-D plan showed the compound form: its headline total was a merge-base measurement, its item/slug split was wrong at every commit, its sibling plan carried a third figure, and because four later figures were derived from the total, one stale measurement made every phase unverifiable. Correcting such numbers one at a time treats the symptom; the fix is to delete them in favour of the command
@@ -116,9 +122,9 @@ For each item below, flag a finding if the gating condition is met AND the plan 
 ## Resync mode
 
 <!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
-When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The other three lenses (`executability`, `convention-alignment`, `testing-discipline`) already ran during the initial plan review and need not re-run unless explicitly requested.
+When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The remaining lenses already ran during the initial plan review and need not re-run unless explicitly requested.
 
-Resync mode is triggered by the `awf-reviewing-plan-resync` skill after the linked ADR review converges. Its purpose is to catch plan-vs-finalised-ADR drift introduced by changes the ADR review made before settling.
+Resync mode is triggered by the `awf-reviewing-plan-resync` skill after whichever review settled - an ADR review converging, or a plan review that found at least one linked ADR. Its purpose is to catch plan-vs-finalised-ADR drift.
 
 ## Dedup rule
 
@@ -145,4 +151,4 @@ Plan review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Plan summary (range 50-100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
+Target ~80 words for the Plan summary (range 50-100 words).

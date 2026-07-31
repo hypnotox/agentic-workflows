@@ -1,3 +1,3 @@
 - **Effort:** One active, immutable slugged local coordination resident at `.awf/efforts/<slug>/`, with static schema-2 state and always-owned `memory.md`; directory presence is the active fact.
-- **Managed effort worktree:** Optional Git-authoritative `.awf/worktrees/<slug>/` checkout on `awf/<slug>`, integrated and removed explicitly without stored disposition.
+- **Managed effort worktree:** Default Git-authoritative `.awf/worktrees/<slug>/` checkout on `awf/<slug>`, created with the effort unless `--no-worktree` opts out, integrated and removed explicitly without stored disposition.
 - **Finishing tombstone:** A confined slug-and-internal-UUID-matched effort-directory rename that reserves the slug while restartable finish deletes proven bytes.

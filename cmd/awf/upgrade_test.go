@@ -70,6 +70,17 @@ func TestRunUpgradeGateStateError(t *testing.T) {
 	}
 }
 
+// journalPresence answers upgrade.JournalPresent for the tests that assert
+// presence or absence and expect no fault reading it.
+func journalPresence(t *testing.T, root string) bool {
+	t.Helper()
+	found, err := upgrade.JournalPresent(root)
+	if err != nil {
+		t.Fatalf("JournalPresent(%s): %v", root, err)
+	}
+	return found
+}
+
 // writeValidJournal writes a minimal valid single-op (lock) journal in the given
 // phase. When finalMatchesLock, its final hash matches the on-disk lock so
 // recovery treats it as committed and cleans it up.
@@ -147,11 +158,32 @@ func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	if code := runAt(t, root, []string{"awf", "upgrade", "--recover"}, &out, &errb); code != 0 {
 		t.Fatalf("recover failed: code=%d\n%s", code, errb.String())
 	}
-	if upgrade.JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal not cleaned by recovery")
 	}
 	if !strings.Contains(out.String(), "operation: recovered") {
 		t.Fatalf("no recovered line: %s", out.String())
+	}
+}
+
+// TestGuardRefusesWhenJournalPresenceIsUnreadable pins that the command-state
+// guard refuses when it cannot determine whether a journal exists. Reading the
+// fault as absence permitted every command an unrecovered upgrade must block,
+// including the ones that mutate the tree.
+func TestGuardRefusesWhenJournalPresenceIsUnreadable(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := scaffoldProject(t)
+	awfDir := filepath.Join(root, ".awf")
+	if err := os.Chmod(awfDir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(awfDir, 0o755) })
+	var out, errb bytes.Buffer
+	code := runAt(t, root, []string{"awf", "check"}, &out, &errb)
+	if code == 0 || !strings.Contains(errb.String(), "current-state upgrade journal") {
+		t.Fatalf("unreadable journal location not refused: code=%d\n%s", code, errb.String())
 	}
 }
 
@@ -282,7 +314,7 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 	if _, err := os.Stat(prepared); !os.IsNotExist(err) {
 		t.Fatal("prepared.txt not rolled back")
 	}
-	if upgrade.JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after rollback")
 	}
 }

@@ -1,5 +1,10 @@
+//go:build linux || darwin
+
 // Package contextspill recognizes context spill notices and records local,
-// path-free observability events for the repository runner.
+// path-free observability events for the repository runner. The descriptor
+// anchoring it relies on is POSIX-only, and its sole consumer
+// (cmd/contextspilllog) is invoked from the bash runner, so the package is
+// built for Unix alone and is absent from the released ./cmd/awf binary.
 package contextspill
 
 import (
@@ -232,15 +237,21 @@ func inspectOwnedFD(fd int, kind uint32, mode uint32, label string) error {
 	return nil
 }
 
+// widenMode normalizes the platform-width st_mode field, which is uint32 on
+// Linux and uint16 on Darwin. The type parameter keeps the conversion honest on
+// both platforms rather than redundant on one.
+func widenMode[T ~uint16 | ~uint32](mode T) uint32 { return uint32(mode) }
+
 func validateOwnedStat(stat unix.Stat_t, kind uint32, mode uint32) error {
-	if stat.Mode&unix.S_IFMT != kind {
+	fileMode := widenMode(stat.Mode)
+	if fileMode&unix.S_IFMT != kind {
 		if kind == unix.S_IFREG {
 			return errors.New("not a regular file")
 		}
 		return errors.New("not a directory")
 	}
-	if mode != 0 && stat.Mode&0o777 != mode {
-		return fmt.Errorf("mode is %04o, want %04o", stat.Mode&0o777, mode)
+	if mode != 0 && fileMode&0o777 != mode {
+		return fmt.Errorf("mode is %04o, want %04o", fileMode&0o777, mode)
 	}
 	if uint64(stat.Uid) != uint64(os.Getuid()) {
 		return errors.New("owned by another user")
