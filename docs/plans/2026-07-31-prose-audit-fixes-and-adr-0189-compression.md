@@ -762,3 +762,27 @@ Beyond the per-phase gates, after Phase 7:
   debugging symptom-list overlap (Task 5.3), refactor-coupling-audit Test-coupling
   planning rule section (Task 5.3), writing-plans Notes duplicate (Task 5.3, skip if
   weak).
+- Execution findings (phases 1-6, recorded while `status: Proposed`):
+  - Task 6.2 (staged-transaction partial) was NOT executable: no `templates/partials/`
+    file may reference `.vars` (the config-reference dormancy scan reads raw template
+    bytes; enforced by `TestConfigReferenceNoBareVars`), and the shared sentence
+    carries the gate-command interpolation. The three sites keep their inline
+    sentence; a future extraction needs the scan extended to expanded includes first.
+  - Task 6.4's single exploration-ladder partial became two
+    (`exploration-breadth.md`, `exploration-detail.md`): the ladder spans two catalog
+    sections in each file and a partial may not contain section markers. The agent
+    wording is canonical; the skill unified to it, and the cross-runtime test
+    literals followed (the claim pins the semantic protocol, not the spelling).
+  - Task 5.3's writing-plans Notes cut was skipped as re-verified WEAK: the Notes
+    bullets are not verbatim duplicates of the positioning line at HEAD.
+  - Both verified at execution and cut: the debugging symptom-list default and the
+    refactor-coupling-audit Test-coupling planning rule section (bodies emptied,
+    markers kept).
+  - Observed out of scope: `templates/docs/testing.md.tmpl:12` states "The gate has
+    tiers" unconditionally (generic-doc guidance prose; renders into adopters'
+    testing docs regardless of `gateCmdFull`). Left for a future pass.
+  - Golden/proof literal refreshes performed under the never-weaken rule, each
+    following corrected prose with claim text unchanged: grounding-checker
+    "the work", reviewing-plan "all universal lenses", bugfix fallback, gate
+    fast-tier fallback, executing-plans "do not drift from the plan",
+    sdd generic-branch owner-mode phrase, exploration wording unification.
