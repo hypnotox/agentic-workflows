@@ -26,6 +26,19 @@ case "$cmd" in
     go run ./cmd/covercheck "$prof"
     tools/pi-extension-test/container.sh run
     go vet ./...
+    # Cross-compile gate: the suite only ever runs on the host platform, so a
+    # package that stops building for a contributor's platform is otherwise
+    # invisible until they clone. The matrix is the released set
+    # (.goreleaser.yaml: linux, darwin, and windows for amd64 and arm64) minus
+    # the host, which the steps above already build. Deriving it from the host
+    # rather than hardcoding non-linux targets keeps a linux-only break visible
+    # to a contributor gating on macOS.
+    host="$(go env GOOS)/$(go env GOARCH)"
+    for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
+      if [ "$target" != "$host" ]; then
+        GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+      fi
+    done
     go tool golangci-lint run
     go tool deadcode -json ./... | go run ./cmd/deadcodecheck
     go run ./cmd/pincheck

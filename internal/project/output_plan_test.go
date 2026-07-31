@@ -12,6 +12,30 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+// TestOutputPlanPropagatesPreAdoptionEnumerationFault pins that a tree the
+// planner cannot fully read fails the plan rather than producing one built from
+// a truncated enumeration. A pre-adoption tree (no Git worktree) enumerates the
+// filesystem directly, so an unreadable directory there used to be skipped and
+// the plan, and the drift oracle computed from it, silently narrowed.
+func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
+	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\n")
+	p, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	denied := filepath.Join(root, "denied")
+	if err := os.Mkdir(denied, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(denied, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(denied, 0o755) })
+	if _, err := p.OutputPlan(); err == nil {
+		t.Fatal("output plan built from a truncated enumeration")
+	}
+}
+
 // invariant: rendering/project-output-plan:output-plan-complete
 // invariant: rendering/pi-workflows:pi-native-workflow-skills
 func TestOutputPlanContainsWritesGeneratedNodesAndReservations(t *testing.T) {

@@ -6,11 +6,11 @@ package git
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -165,8 +165,13 @@ func HeadHash(repoRoot string) (string, error) {
 // is the cleanliness oracle because go-git's status traversal can re-include a
 // nested .gitignore below an ignored parent directory.
 func WorktreeChangeCounts(repoRoot string) (tracked, untracked int, err error) {
-	cmd := exec.Command("git", "--no-optional-locks", "-C", repoRoot, "status", "--porcelain=v2", "-z", "--untracked-files=all")
-	out, err := cmd.Output()
+	// Shares the isolated runner every other native Git read uses, so an
+	// inherited GIT_DIR, GIT_CONFIG, or credential helper cannot change what the
+	// cleanliness oracle sees, and a failure carries Git's stderr instead of a
+	// bare exit status. The audit path that reaches here carries no context of
+	// its own; threading one through belongs to the git-adapter consolidation,
+	// not to this call site.
+	out, err := runGitBytes(context.Background(), repoRoot, "--no-optional-locks", "status", "--porcelain=v2", "-z", "--untracked-files=all")
 	if err != nil {
 		return 0, 0, fmt.Errorf("read native Git worktree status: %w", err)
 	}

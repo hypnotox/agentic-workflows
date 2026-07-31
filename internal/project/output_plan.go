@@ -20,9 +20,11 @@ import (
 )
 
 // ProjectTreeReader is the read-only input authority for output declarations.
+// Paths reports a fault rather than a short list: a truncated enumeration would
+// silently narrow the declarations the drift oracle is computed over.
 type ProjectTreeReader interface {
 	ReadFile(path string) ([]byte, bool)
-	Paths(prefix string) []string
+	Paths(prefix string) ([]string, error)
 }
 
 type OutputInput struct {
@@ -47,7 +49,7 @@ func (r snapshotTreeReader) ReadFile(path string) ([]byte, bool) {
 	}
 	return slices.Clone(f.Bytes), true
 }
-func (r snapshotTreeReader) Paths(prefix string) []string {
+func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
 	prefix = filepath.ToSlash(prefix)
 	for _, f := range r.tree.List() {
@@ -55,7 +57,7 @@ func (r snapshotTreeReader) Paths(prefix string) []string {
 			out = append(out, f.Path)
 		}
 	}
-	return out
+	return out, nil // an in-memory tree has no read to fault
 }
 
 type filesystemProjectReader struct{ root string }
@@ -67,21 +69,39 @@ func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool) {
 	}
 	return slices.Clone(b), true
 }
-func (r filesystemProjectReader) Paths(prefix string) []string {
+func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
-	_ = filepath.WalkDir(filepath.Join(r.root, filepath.FromSlash(prefix)), func(p string, d fs.DirEntry, err error) error {
+	base := filepath.Join(r.root, filepath.FromSlash(prefix))
+	err := filepath.WalkDir(base, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return fs.SkipAll
+			// Callers enumerate directories that need not exist yet, so an absent
+			// base is an empty result. Any other fault truncates the enumeration
+			// and must reach the caller instead of narrowing the oracle.
+			if p == base && errors.Is(err, fs.ErrNotExist) {
+				return fs.SkipAll
+			}
+			return err
 		}
 		if !d.IsDir() {
-			if rel, e := filepath.Rel(r.root, p); e == nil {
-				out = append(out, filepath.ToSlash(rel))
+			rel, e := filepath.Rel(r.root, p)
+			if e != nil { // coverage-ignore: p is always rooted at r.root, so Rel cannot fail
+				return e
 			}
+			out = append(out, filepath.ToSlash(rel))
 		}
 		return nil
 	})
+	if err != nil {
+		// The whole-tree call passes an empty prefix, which would render as
+		// "enumerate : ...".
+		subject := prefix
+		if subject == "" {
+			subject = "project tree"
+		}
+		return nil, fmt.Errorf("enumerate %s: %w", subject, err)
+	}
 	slices.Sort(out)
-	return out
+	return out, nil
 }
 
 // BuildOutputDeclarations enumerates deterministic producer declarations without
@@ -248,7 +268,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		authored := []OutputInput{{Path: ".awf/domains/" + d + ".yaml", Role: ArtifactAuthoredData}}
 		authored = append(authored, partInputs("domains", d, cat.DomainDoc.Sections, sc.Sections)...)
-		for _, metadataPath := range read.Paths(".awf/topics/metadata/" + d + "/") {
+		domainMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
+		if err != nil {
+			return nil, err
+		}
+		for _, metadataPath := range domainMetadata {
 			if strings.HasSuffix(metadataPath, ".yaml") {
 				id := strings.TrimSuffix(strings.TrimPrefix(metadataPath, ".awf/topics/metadata/"), ".yaml")
 				authored = append(authored, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
@@ -256,7 +280,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		add(strings.TrimRight(cfg.DocsDir, "/")+"/domains/"+d+".md", "domains/domain.md.tmpl", "generated-domain", inputs("domains/domain.md.tmpl", authored...), false)
 	}
-	for _, p := range read.Paths(".awf/topics/metadata/") {
+	allMetadata, err := read.Paths(".awf/topics/metadata/")
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range allMetadata {
 		if !strings.HasSuffix(p, ".yaml") {
 			continue
 		}
@@ -265,7 +293,11 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
-		for _, p := range read.Paths(".awf/topics/metadata/" + d + "/") {
+		indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range indexMetadata {
 			if strings.HasSuffix(p, ".yaml") {
 				id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
 				topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
@@ -510,7 +542,7 @@ func (p *Project) outputPlan(corpus adr.Corpus, topics topic.Corpus, eff map[str
 		}
 	}
 	topicFiles, topicDeps, err := p.generateTopicDocs(topics)
-	if err != nil { // coverage-ignore: generateTopicDocs receives the already-derived topic corpus, so it can no longer fail on corpus assembly and its remaining render faults are individually unreachable
+	if err != nil {
 		return nil, err
 	}
 	localDocs := map[string]bool{}

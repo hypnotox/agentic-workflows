@@ -71,3 +71,28 @@ func TestWorktreeChangeCountsRejectsNonRepository(t *testing.T) {
 		t.Fatal("WorktreeChangeCounts unexpectedly succeeded outside a repository")
 	}
 }
+
+// TestWorktreeChangeCountsIgnoresInheritedGitEnvironment pins that the
+// cleanliness oracle reads the worktree it was asked about. Run unisolated, an
+// inherited GIT_DIR selects a different repository, so the audit's clean-tree
+// verdict would describe whichever repository the environment happened to name.
+func TestWorktreeChangeCountsIgnoresInheritedGitEnvironment(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, dir, "base", map[string]string{"tracked.txt": "tracked"})
+	if err := os.WriteFile(filepath.Join(dir, "loose.txt"), []byte("loose"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A second, entirely clean repository whose .git the environment points at.
+	otherRepo, other := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, otherRepo, other, "base", map[string]string{"only.txt": "only"})
+	t.Setenv("GIT_DIR", filepath.Join(other, ".git"))
+	t.Setenv("GIT_WORK_TREE", other)
+
+	tracked, untracked, err := WorktreeChangeCounts(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tracked != 0 || untracked != 1 {
+		t.Fatalf("counts = (%d, %d), want (0, 1) from the requested worktree, not the inherited one", tracked, untracked)
+	}
+}

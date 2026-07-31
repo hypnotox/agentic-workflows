@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -190,30 +191,119 @@ func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
 	}
 }
 
-// TestDriverGatesGatedCommands confirms the driver refuses every Gated command
-// before its handler on an ahead-schema project. For enable/disable this also
-// pins the gate-before-config-write guarantee: the handler never runs, so no
-// half-mutated config is stranded.
+// gatedProbes maps every gated command to an invocation that reaches its gate.
+// Group children are keyed "<parent> <child>". The set is checked against
+// clispec below rather than trusted, so this table cannot silently fall behind
+// the spec.
+var gatedProbes = map[string][]string{
+	"render":           {"awf", "render"},
+	"check":            {"awf", "check"},
+	"check drift":      {"awf", "check", "drift"},
+	"check state":      {"awf", "check", "state"},
+	"check invariants": {"awf", "check", "invariants"},
+	"audit":            {"awf", "audit"},
+	"effort":           {"awf", "effort", "list"},
+	"effort new":       {"awf", "effort", "new", "gate probe outcome"},
+	"effort list":      {"awf", "effort", "list"},
+	"effort show":      {"awf", "effort", "show", "gate-probe"},
+	"effort finish":    {"awf", "effort", "finish", "gate-probe"},
+	"effort worktree":  {"awf", "effort", "worktree", "add", "gate-probe"},
+	"effort integrate": {"awf", "effort", "integrate", "gate-probe"},
+	"list":             {"awf", "list"},
+	"config":           {"awf", "config"},
+	"context":          {"awf", "context", "README.md"},
+	"topic":            {"awf", "topic", "rendering/doc-outputs"},
+	"new":              {"awf", "new", "plan", "Gate probe"},
+	"new adr":          {"awf", "new", "adr", "Gate probe"},
+	"new plan":         {"awf", "new", "plan", "Gate probe"},
+	"new topic":        {"awf", "new", "topic", "rendering", "gate-probe"},
+	"new skill":        {"awf", "new", "skill", "gate-probe", "desc"},
+	"new agent":        {"awf", "new", "agent", "gate-probe", "desc"},
+	"new doc":          {"awf", "new", "doc", "gate-probe", "desc"},
+	"enable":           {"awf", "enable", "skill", "tdd"},
+	"disable":          {"awf", "disable", "skill", "tdd"},
+}
+
+// gatedCommandKeys derives, from clispec alone, the key of every command whose
+// resolved gating is not Ungated.
+func gatedCommandKeys() []string {
+	var keys []string
+	for _, c := range clispec.Commands {
+		if c.Gating != clispec.Ungated {
+			keys = append(keys, c.Name)
+		}
+		for _, child := range c.Children {
+			if clispec.ResolvedGating(c, child) != clispec.Ungated {
+				keys = append(keys, c.Name+" "+child.Name)
+			}
+		}
+	}
+	return keys
+}
+
+// TestDriverGatesGatedCommands confirms every command clispec marks gated
+// refuses on an ahead-schema project, and derives that set from clispec rather
+// than restating it, so a newly added gated command fails here until it gets a
+// probe. A Gated command refuses in the driver before its handler runs, which
+// for enable and disable also pins the gate-before-config-write guarantee: the
+// handler never runs, so no half-mutated config is stranded. A GatedInHandler
+// command refuses from inside its handler, after the static-fallback check that
+// lets config, context, and topic degrade outside an adopted tree. Both layers
+// must exit 1 on an adopted-but-ahead tree, which is what this asserts; the
+// per-handler tests above pin which layer does the refusing.
 func TestDriverGatesGatedCommands(t *testing.T) {
-	for _, tc := range []struct {
-		cmd  string
-		args []string
-	}{
-		{"render", []string{"awf", "render"}},
-		{"check", []string{"awf", "check"}},
-		{"check invariants", []string{"awf", "check", "invariants"}},
-		{"audit", []string{"awf", "audit"}},
-		{"list", []string{"awf", "list"}},
-		{"enable", []string{"awf", "enable", "skill", "tdd"}},
-		{"disable", []string{"awf", "disable", "skill", "tdd"}},
-	} {
-		t.Run(tc.cmd, func(t *testing.T) {
-			root := gateFixture(t, "0.4.0", migrate.Current()+1)
-			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
+	keys := gatedCommandKeys()
+	for _, key := range keys {
+		if _, ok := gatedProbes[key]; !ok {
+			t.Errorf("gated command %q has no probe: every gated command must be proven to refuse on an ahead-schema project", key)
+		}
+	}
+	if len(gatedProbes) != len(keys) {
+		known := make(map[string]bool, len(keys))
+		for _, key := range keys {
+			known[key] = true
+		}
+		for key := range gatedProbes {
+			if !known[key] {
+				t.Errorf("probe %q is not a gated command in clispec", key)
+			}
+		}
+	}
+	for _, key := range keys {
+		t.Run(key, func(t *testing.T) {
+			root := aheadSchemaProject(t)
 			var out, errb bytes.Buffer
-			if code := run(tc.args, &out, &errb); code != 1 {
-				t.Errorf("%s: expected exit 1 on ahead schema, got %d (%s)", tc.cmd, code, errb.String())
+			code := runAt(t, root, gatedProbes[key], &out, &errb)
+			all := out.String() + errb.String()
+			if code != 1 {
+				t.Fatalf("%s: expected exit 1 on ahead schema, got %d (%s)", key, code, all)
+			}
+			// Exit 1 alone would also pass for an incidental failure unrelated to
+			// the gate, so pin the gate's own message. Before this assertion the
+			// fixture's lock carried pre-tracking authority, and every command
+			// here refused at the authority guard without reaching the gate.
+			if !strings.Contains(all, "update your pinned awf") {
+				t.Errorf("%s: refused without the version-gate message, so the refusal was not the gate: %s", key, all)
 			}
 		})
 	}
+}
+
+// aheadSchemaProject builds a fully initialized project (permanent lock
+// authority, so the command-state guard passes) whose lock then claims a schema
+// generation newer than this binary. That is the only shape in which a gated
+// command reaches the binary-version gate.
+func aheadSchemaProject(t *testing.T) string {
+	t.Helper()
+	root := scaffoldProject(t)
+	lockPath := filepath.Join(root, ".awf", "awf.lock")
+	l, err := manifest.Load(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	l.SchemaVersion = migrate.Current() + 1
+	if err := l.Save(lockPath); err != nil {
+		t.Fatal(err)
+	}
+	return root
 }
