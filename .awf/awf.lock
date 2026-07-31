@@ -780,9 +780,9 @@
     },
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
-      "templateHash": "sha256:e357a544997e3c0a1c065a665dd9d8bb425d51073b8ab81485cccaf0705eea18",
+      "templateHash": "sha256:6a24003e73a69f463fe41824ef7f978d8d7db9acf8ff8000be5b113493adb0b9",
       "configHash": "sha256:b937d20a225574bcaf29de4c1de97be5b6fa8e5be97d3dd6b47f3a20705ccccb",
-      "outputHash": "sha256:1b104590a84e1b032ddbae80250eecf4ddc54cedf083fc4c2b6371bc5f51f321"
+      "outputHash": "sha256:e4df226d668ec95dd90bddea6b06195077ce91d666182f4b8a891faeff12c8e1"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
