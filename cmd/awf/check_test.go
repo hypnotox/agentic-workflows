@@ -196,6 +196,9 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 	}
 }
 
+// stagedCheckProject builds a git repo whose HEAD holds the given committed files
+// and whose index additionally holds stageOnly, so `awf check --staged` sees a
+// HEAD-to-index delta. The config lives in commit, so Open resolves it.
 func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) string {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)

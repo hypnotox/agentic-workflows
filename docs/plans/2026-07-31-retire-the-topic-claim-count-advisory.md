@@ -672,6 +672,26 @@ Beyond the per-phase gates, the effort is done when all of the following hold:
   commit is reauthored before it meets main. Budget for the rewrite touching each commit that
   names the number: this plan's `adrs:` frontmatter, every in-file `ADR-0194` reference, the
   ADR filename, and Phase 2's and Phase 3's closing subjects.
+- **Deviation taken during Phase 2, and why.** `loadForMigration` in
+  `internal/migrate/configedit.go` now strips `currentState.maxClaimsPerTopic` before parsing,
+  beside the `invariants` block it already stripped. No task prescribed this. It is forced by
+  item 6: the generation-16 migration that WRITES the key is retained, and generation 23
+  parses config through `loadForMigration` between 16 and 28, so a tree upgrading from before
+  generation 16 carried the key into a parser that no longer declares it and hard-failed
+  mid-upgrade. That is an adopter bug, not a test artifact;
+  `TestUpgradeRelocatesLocklessPreRelocationTree` and `TestAwfRelocationGatesAndMoves` caught
+  it. The strip is confined to migration analysis, so every user-facing path still hard-fails
+  a surviving key and item 5 is intact. No claim and no ADR amendment is owed: it is an
+  implementation mechanism that makes item 6 workable, not a new decision. Its unreachable
+  error branch carries a reasoned `coverage-ignore` mirroring the neighbouring one.
+  Generalisable: retiring a key that a RETAINED migration writes is not symmetric with
+  retiring one adopters only ever set by hand.
+- **Other findings from execution, for the next plan author.** Task 2.8's sundial command
+  `(cd examples/sundial && go run ../../cmd/awf upgrade)` cannot work, because sundial is its
+  own Go module; build a binary and invoke it with sundial as cwd, as `./x` does. Task 2.9's
+  site set also missed `internal/migrate/workflowtelemetry_test.go`, which pins the full
+  applied-migration name list and therefore changes on ANY new generation, and the gofmt
+  realignment that deleting a struct field forces on its neighbouring literal keys.
 - **Out of scope, worth fixing separately:** `docs/topics/tooling/git-access.md.awf-bak` is a
   stray backup file committed to main by the git-seam merge. It is tracked, `awf check` does
   not flag it, and it belongs to no phase here.

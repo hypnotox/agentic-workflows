@@ -217,6 +217,20 @@ func TestCheckCurrentState(t *testing.T) {
 	}
 }
 
+// TestCheckCurrentStateNoPolicy proves coverage and fan-out both evaluate for a
+// tree that declares no currentState block: evaluation does not depend on the
+// block's presence (ADR-0192). internal/foo/** carries nine topics, one
+// claim-bearing so the path is covered and eight claimless, which together
+// exceed the nil-receiver default budget of 8 and yield the fan-out finding;
+// internal/bar.go is owned by the domain but scoped by no claim-bearing topic,
+// so it yields the coverage finding.
+//
+// The DeepEqual below pins severity.Error and severity.Warn exactly, which is
+// also what backs severity-not-configurable's fixed-rank clause; that clause lost
+// its only marker when this test's previous assertion (of the struck
+// block-presence sentence) was inverted.
+// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional
+// invariant: config/configuration:severity-not-configurable
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
 	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
 	files := map[string]string{
