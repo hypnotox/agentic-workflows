@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0189: Managed worktrees as the default effort execution location
@@ -162,3 +162,5 @@ steps rather than risking deletion next to ambiguous state.
 - 2026-07-31: Implementing; content-sha256: b4496ecf0ecf853073f1efea851da34b004df3b34471f2e2f60669d050422f52
 - 2026-07-31: Applied; state-sequence: 104; operations: add `tooling/effort-management:default-worktree-creation`, update `tooling/effort-management:effort-record-authority`, update `tooling/effort-management:managed-worktree-lifecycle`, update `tooling/cli:effort-command-contract`
 - 2026-07-31: Applied; state-sequence: 105; operations: update `rendering/guide-and-doc-templates:working-memory-single-home`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`
+- 2026-07-31: Applied; state-sequence: 106; operations: update `rendering/pi-workflows:pi-session-handoff-public-contract`
+- 2026-07-31: Implemented; content-sha256: b4496ecf0ecf853073f1efea851da34b004df3b34471f2e2f60669d050422f52

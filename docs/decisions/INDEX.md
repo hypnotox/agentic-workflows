@@ -2,7 +2,6 @@
 ## In flight
 
 - [ADR-0181: Single-home ownership for shared concerns](0181-single-home-ownership-for-shared-concerns.md) (Proposed)
-- [ADR-0189: Managed worktrees as the default effort execution location](0189-managed-worktrees-as-the-default-effort-execution-location.md) (Implementing)
 
 ## History
 
@@ -193,3 +192,4 @@
 - [ADR-0186: Effort memory as consensus and observation channel](0186-effort-memory-as-consensus-and-observation-channel.md) (Implemented)
 - [ADR-0187: Add the orienting support skill as the single home of orientation](0187-add-the-orienting-support-skill-as-the-single-home-of-orientation.md) (Implemented)
 - [ADR-0188: ADR content amendable until Implemented via Amended events](0188-adr-content-amendable-until-implemented-via-amended-events.md) (Implemented)
+- [ADR-0189: Managed worktrees as the default effort execution location](0189-managed-worktrees-as-the-default-effort-execution-location.md) (Implemented)

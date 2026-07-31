@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [0189]
-status: Proposed
+status: Implemented
 ---
 # Plan: Default managed effort worktrees (ADR-0189)
 

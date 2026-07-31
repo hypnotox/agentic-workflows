@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:e5ed81d8a21526a3609593b9b38f08e50403338290d3d2ad640a465cad5cfa8b",
+      "outputHash": "sha256:5d3834ae1f7537ad3fe8163cd194028f94179aa710870346065accf4d32e7e79",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -655,8 +655,8 @@
     "docs/topics/rendering/pi-workflows.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:809fe7ce60a12ba0631115259a3ea5168b15da2f13df79e9b9be985ecc7f1080",
-      "outputHash": "sha256:6e0dad0cfc855ce40ce8d50fb6a59ef5e64f6430a5c14c8506581e809de20a13"
+      "configHash": "sha256:5295b805338c9be53a2053e1a78d5439393005cf94153b98d5816fac4b1a8c9a",
+      "outputHash": "sha256:cd96138e00ba43d64fa1fed6732424419d739d90eb639219b41508d305c56cec"
     },
     "docs/topics/rendering/project-output-plan.md": {
       "templateId": "topics/topic.md.tmpl",

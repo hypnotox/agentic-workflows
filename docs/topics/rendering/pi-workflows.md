@@ -36,9 +36,9 @@ Backing: test
 
 ### `invariant: pi-session-handoff-public-contract`
 
-Pi handoff accepts an optional exact repository-relative `.awf/efforts/<slug>/memory.md` path, or an absolute spelling that normalizes to it, plus a bounded kickoff; absent memory remains valid. It validates slug grammar, exact basename, lexical and no-follow containment, ownership, one hard link, 1 MiB size, fatal UTF-8 decoding, stable identity, effort header, and repository identity without selecting or assigning an effort, invoking awf, adopting checkpoints, or fabricating history.
+Pi handoff accepts an optional exact repository-relative `.awf/efforts/<slug>/memory.md` path, or an absolute spelling that normalizes to it, plus a bounded kickoff; absent memory remains valid. Containment resolves against the primary control root: a current-owned regular-file `.git` marker whose `gitdir:` pointer has the `.git/worktrees/<name>` shape is dereferenced to the primary root, any other well-formed pointer or a symlinked, unowned, or absent marker keeps the rendered root, and a marker without a `gitdir:` line is rejected, so validation accepts the effort memory from any managed worktree. It validates slug grammar, exact basename, lexical and no-follow containment, ownership, one hard link, 1 MiB size, fatal UTF-8 decoding, stable identity, effort header, and repository identity without selecting or assigning an effort, invoking awf, adopting checkpoints, or fabricating history.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175
+Revised-by: ADR-0149, ADR-0162, ADR-0164, ADR-0167, ADR-0175, ADR-0189
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`
