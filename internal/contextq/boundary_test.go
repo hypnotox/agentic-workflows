@@ -222,7 +222,8 @@ func cmdRenderFindings(pkgs []*packages.Package) []string {
 				return true
 			}
 			if ident, ok := sel.X.(*ast.Ident); ok {
-				if ident.Name == "fmt" && (strings.HasPrefix(sel.Sel.Name, "Fprint") || strings.HasPrefix(sel.Sel.Name, "Sprint")) {
+				if ident.Name == "fmt" && (strings.HasPrefix(sel.Sel.Name, "Fprint") ||
+					strings.HasPrefix(sel.Sel.Name, "Sprint") || strings.HasPrefix(sel.Sel.Name, "Print")) {
 					found = true
 				}
 				if ident.Name == "strings" && sel.Sel.Name == "Builder" {
@@ -261,8 +262,9 @@ func cmdRenderFindings(pkgs []*packages.Package) []string {
 // core side, qualified selector expressions on the query side, and
 // result-typed text-building functions on the cmd side, so a vocabulary type
 // smuggled through an exported alias in a third package, a core symbol reached
-// by dot-import, or a cmd rendering that hides the result behind a local type
-// stays invisible to it; extend the shapes if one ever appears.
+// by dot-import, a cmd rendering that hides the result behind a local type or
+// constructs the result locally instead of receiving it, stays invisible to
+// it; extend the shapes if one ever appears.
 // invariant: tooling/context-and-topic:context-query-boundary
 func TestContextQueryBoundary(t *testing.T) {
 	core := loadBoundaryPackages(t, corePattern, nil)
