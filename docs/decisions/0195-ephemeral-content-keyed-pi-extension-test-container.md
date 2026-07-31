@@ -95,7 +95,13 @@ container startup it adds.
    worktree without needing a lock, a lease, or a liveness predicate.
 9. The `stop` subcommand is removed from the script and from `./x`, because an ephemeral run
    leaves nothing to stop. `reset` prunes the lane's images, and additionally removes
-   containers and volumes left behind by the superseded path-keyed design.
+   containers and volumes left behind by the superseded path-keyed design. That legacy sweep
+   removes a container only when it is provably unused: either the container is not running,
+   or the source path recorded in its bind mount no longer exists, which proves no gate can be
+   running against it. A running container whose source path still exists belongs to a checkout
+   that has not yet adopted this decision, and is left for that checkout to remove. Without
+   this restriction the sweep would reintroduce, for the duration of the migration, exactly the
+   cross-worktree deletion that item 8 rules out.
 10. The `contract` subcommand is removed. `./x` routes only `run`, `stop`, and `reset`, and
     nothing in the repository invokes `contract`, so it is unreachable today. This removal is
     incidental to rewriting the script rather than motivated by the defects above, and is
@@ -144,11 +150,19 @@ left behind, and the `reset` command is extended to perform it. Removing the unr
 `contract` subcommand is a deliberate capability removal recorded here rather than a silent one.
 
 This decision changes the claim that ADR-0123 established, which is what brings it here rather
-than into a routine refactor. Separately, the backing test for that claim was deleted by an
-unrelated commit while its proof marker was left in place, so the claim has been declared
-`Backing: test` while being proven by nothing; implementing this decision restores real backing.
-The general problem, that a proof marker can outlive the test it was proving without the drift
-check noticing, is out of scope here and is tracked on its own.
+than into a routine refactor.
+
+Two claims covering this lane are currently declared `Backing: test` while being proven by
+nothing, because an unrelated commit deleted their backing tests and left their proof markers
+in place. Both markers sit in `internal/project/example_wiring_test.go`: the marker for
+`tooling/quality-gates:pi-extension-container-gate` stands above a test about something else,
+and the marker for `rendering/pi-workflows:pi-extension-editor-quiet-strip` is the final line
+of the file with no test beneath it at all. Implementing this decision restores real backing
+for both. Only the first is a `State changes` operation, because only its prose becomes false;
+the strip claim describes the strip as happening after the source copy and before the
+TypeScript compiler, which the narrow copy preserves, so its text stays true and only its
+backing is repaired. The general problem, that a proof marker can outlive the test it was
+proving without the drift check noticing, is out of scope here and is tracked on its own.
 
 ## Alternatives Considered
 
