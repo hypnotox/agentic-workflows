@@ -340,14 +340,16 @@ func loadMutationPackage(t *testing.T, rel, pattern, body string) []*packages.Pa
 
 // TestCorpusParsedOnce enforces ADR-0130 item 1: one parse per invocation.
 // adr.ParseDir has no production caller outside internal/adr - every consumer
-// enters through Corpus construction - and inside internal/adr only that seam
-// and NextNumber call it. NextNumber is the command-boundary exception that
-// holds no active topic corpus.
+// enters through Corpus construction - and inside internal/adr only the two
+// construction seams call it: LoadCorpus, the full-body read every consumer of
+// a governed record enters through, and loadIdentityCorpus, the identity-only
+// read scaffolding uses so authoring never depends on another record's body
+// parsing (ADR-0194 item 17).
 // invariant: adr-system/adr-lifecycle:corpus-parsed-once
 func parseDirProblems(callers map[callOwner][]string) []string {
 	want := map[callOwner]bool{
-		{path: "internal/adr/corpus.go", name: "LoadCorpus"}: true,
-		{path: "internal/adr/adr.go", name: "NextNumber"}:    true,
+		{path: "internal/adr/corpus.go", name: "LoadCorpus"}:      true,
+		{path: "internal/adr/adr.go", name: "loadIdentityCorpus"}: true,
 	}
 	var problems []string
 	for owner, positions := range callers {
@@ -412,14 +414,14 @@ func mutationParseDir() {
 		t.Fatalf("aliased ParseDir invocation escaped the production detector: %#v", got)
 	}
 
-	const nextParseCall = "func NextNumber(dir string) (string, error) {\n\tadrs, err := ParseDir(dir)\n"
-	withoutNext := replaceMutationSource(t, "internal/adr/adr.go", nextParseCall, "func NextNumber(dir string) (string, error) {\n\tvar adrs []ADR\n\tvar err error\n")
-	withoutNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutNext)
-	if problems := parseDirProblems(parseDirCallFindings(withoutNextPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once") {
+	const identityParseCall = "func loadIdentityCorpus(dir string) (Corpus, error) {\n\tadrs, err := ParseDir(dir)\n"
+	withoutIdentity := replaceMutationSource(t, "internal/adr/adr.go", identityParseCall, "func loadIdentityCorpus(dir string) (Corpus, error) {\n\tvar adrs []ADR\n\tvar err error\n")
+	withoutIdentityPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", withoutIdentity)
+	if problems := parseDirProblems(parseDirCallFindings(withoutIdentityPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "loadIdentityCorpus must call ParseDir exactly once") {
 		// LoadCorpus is in corpus.go and remains visible, so only the missing
 		// call should be reported.
-		t.Fatalf("removed NextNumber call escaped cardinality proof: %#v", problems)
+		t.Fatalf("removed loadIdentityCorpus call escaped cardinality proof: %#v", problems)
 	}
 
 	extraFunction := replaceMutationSource(t, "internal/adr/adr.go", "\nfunc NextNumber(dir string)", `
@@ -434,11 +436,11 @@ func NextNumber(dir string)`)
 		t.Fatalf("additional adr.go function call escaped enclosing-function proof: %#v", problems)
 	}
 
-	duplicateNext := replaceMutationSource(t, "internal/adr/adr.go", nextParseCall, nextParseCall+"\t_, _ = ParseDir(dir)\n")
-	duplicateNextPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateNext)
-	if problems := parseDirProblems(parseDirCallFindings(duplicateNextPkgs)); len(problems) != 1 ||
-		!strings.Contains(strings.Join(problems, "\n"), "NextNumber must call ParseDir exactly once; found 2") {
-		t.Fatalf("duplicate NextNumber ParseDir call escaped cardinality proof: %#v", problems)
+	duplicateIdentity := replaceMutationSource(t, "internal/adr/adr.go", identityParseCall, identityParseCall+"\t_, _ = ParseDir(dir)\n")
+	duplicateIdentityPkgs := loadMutationPackage(t, "internal/adr/adr.go", "./internal/adr", duplicateIdentity)
+	if problems := parseDirProblems(parseDirCallFindings(duplicateIdentityPkgs)); len(problems) != 1 ||
+		!strings.Contains(strings.Join(problems, "\n"), "loadIdentityCorpus must call ParseDir exactly once; found 2") {
+		t.Fatalf("duplicate loadIdentityCorpus ParseDir call escaped cardinality proof: %#v", problems)
 	}
 }
 

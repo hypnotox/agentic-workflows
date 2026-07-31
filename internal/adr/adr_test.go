@@ -655,6 +655,45 @@ func TestNewFileRefusesSlugAlreadyInCorpus(t *testing.T) {
 	}
 }
 
+// Scaffolding reads the corpus for identity alone, so a governed record whose
+// body does not parse must not stop the next author from scaffolding. That is
+// the ordinary state of a record someone is still filling in, and of another
+// effort's pending record that arrived with a merge of the integration branch.
+// invariant: adr-system/adr-lifecycle:corpus-parsed-once
+func TestScaffoldReadsIdentityBesideAnUnparseableBody(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		scaffold func(dir string) (string, error)
+	}{
+		{"numbered", func(dir string) (string, error) { return adr.NewFile(dir, "Second One", adr.CurrentStateV1) }},
+		{"pending", func(dir string) (string, error) { return adr.NewPendingFile(dir, "Second One") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeTemplateFixture(t, dir)
+			swapNow(t, fixedNow)
+			malformed := "---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-01-01\n---\n" +
+				"# ADR-0004: Half Written\n\n## State changes\n\n- not a parseable operation entry\n"
+			if err := os.WriteFile(filepath.Join(dir, "0004-half-written.md"), []byte(malformed), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			// The body genuinely does not parse: the full-body seam refuses it,
+			// so a green scaffold below is the identity-only read and not a
+			// fixture that happens to be well-formed.
+			if _, err := adr.LoadCorpus(dir); err == nil {
+				t.Fatal("fixture body parses; the regression it guards cannot occur")
+			}
+			path, err := tc.scaffold(dir)
+			if err != nil {
+				t.Fatalf("scaffold refused beside an unparseable body: %v", err)
+			}
+			if _, err := os.Stat(path); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}
+
 func TestNewFilePropagatesNextNumberError(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "bad[")
 	if err := os.Mkdir(dir, 0o755); err != nil {

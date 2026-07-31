@@ -421,27 +421,40 @@ func AdoptionBoundary(dir string) (cutoff int, gaps []int, err error) {
 }
 
 // NextNumber returns the next available 4-digit ADR number for dir: one more
-// than the highest number ParseDir finds, or "0001" for an ADR-less dir.
+// than the highest number the identity corpus holds, or "0001" for an ADR-less
+// dir. Highest-plus-one has one home, Corpus.NextIdentity; this is the
+// string-shaped spelling the scaffold's format decision needs before there is a
+// record to allocate.
 // touches-state: adr-system/adr-lifecycle:adr-new-sequential-numbering - NextNumber returns highest-plus-one; proof in adr_test.go
 func NextNumber(dir string) (string, error) {
-	adrs, err := ParseDir(dir)
+	corpus, err := loadIdentityCorpus(dir)
 	if err != nil {
 		return "", err
 	}
-	max := 0
-	for _, a := range adrs {
-		if a.Number == "" {
-			continue // a pending record holds no number to succeed
-		}
-		n, err := strconv.Atoi(a.Number)
-		if err != nil { // coverage-ignore: past the numberless guard, Number is the four-digit group FilenameRe captured
-			return "", err
-		}
-		if n > max {
-			max = n
-		}
+	next, err := corpus.NextIdentity()
+	if err != nil { // coverage-ignore: loadIdentityCorpus already rejected any record whose number is not the four-digit group FilenameRe captured
+		return "", err
 	}
-	return fmt.Sprintf("%04d", max+1), nil
+	return fmt.Sprintf("%04d", next), nil
+}
+
+// loadIdentityCorpus indexes the decisions directory by identity alone. It is
+// the identity-only corpus construction seam beside LoadCorpus's full-body one
+// (ADR-0194 item 17): scaffolding asks only what the next free number is and
+// whether a slug is taken, and the frontmatter and filenames ParseDir already
+// reads answer both, so nothing below the heading is parsed.
+//
+// Reading the full body here instead would make authoring conditional on the
+// health of every other record in the corpus. A record someone is still filling
+// in does not parse, and neither does another effort's pending record that
+// arrived with a merge of the integration branch - which numbering-at-
+// integration deliberately brings in.
+func loadIdentityCorpus(dir string) (Corpus, error) {
+	adrs, err := ParseDir(dir)
+	if err != nil {
+		return Corpus{}, err
+	}
+	return NewCorpus(adrs)
 }
 
 // slugify lowercases title and collapses every run of non-alphanumeric
@@ -514,7 +527,7 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 	if numberedSlugRe.MatchString(slug) {
 		return "", fmt.Errorf("adr: title slugifies to %q, which reads as a numbered filename", slug)
 	}
-	corpus, err := LoadCorpus(dir)
+	corpus, err := loadIdentityCorpus(dir)
 	if err != nil {
 		return "", err
 	}
@@ -522,7 +535,7 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 		return "", fmt.Errorf("adr: slug %q already used by %s", slug, existing)
 	}
 	next, err := corpus.NextIdentity()
-	if err != nil { // coverage-ignore: LoadCorpus already rejected any record whose number is not the four-digit group FilenameRe captured
+	if err != nil { // coverage-ignore: loadIdentityCorpus already rejected any record whose number is not the four-digit group FilenameRe captured
 		return "", err
 	}
 	number := fmt.Sprintf("%04d", next)

@@ -33,8 +33,9 @@ Backing: test
 
 awf new adr refuses to overwrite an existing file at its computed target path, returning an already-exists error rather than clobbering it.
 Origin: ADR-0042
+Revised-by: ADR-0194
 Backing: unbacked
-Verify: Read NewFile in internal/adr/adr.go and confirm it stats the computed target path and returns an already-exists error before performing any write.
+Verify: Read scaffoldRecord in internal/adr/adr.go, which both NewFile and NewPendingFile delegate to, and confirm it stats the computed target path and returns an already-exists error before performing any write.
 
 ### `invariant: adr-new-sequential-numbering`
 
@@ -108,9 +109,9 @@ Backing: test
 
 ### `invariant: corpus-parsed-once`
 
-adr.ParseDir has no production call site outside internal/adr, and inside internal/adr only the corpus construction seam and NextNumber call it; consumers do not independently parse the decisions directory.
+adr.ParseDir has no production call site outside internal/adr, and inside internal/adr only the two corpus construction seams call it: the full-body read every consumer of a governed record enters through, and the identity-only read that answers scaffolding's number and slug questions without parsing any body. Consumers do not independently parse the decisions directory.
 Origin: ADR-0130
-Revised-by: ADR-0138
+Revised-by: ADR-0138, ADR-0194
 Backing: test
 
 ### `invariant: corpus-raw-access-enumerated`
