@@ -52,48 +52,65 @@ obligations closed. Design and rationale: ADR-0191.
   `.awf/agents/plan-reviewer.yaml`, `.awf/parts/workflow/chain.md`,
   `.awf/docs/parts/architecture/` and `.awf/docs/parts/roadmap/deferred.md` and
   `.awf/docs/parts/glossary/` source parts with their rendered outputs,
-  `docs/decisions/0191-...md` (status events).
-- **Deleted:** the five `internal/project/context*.go` production files and their sibling tests
-  (moved, not lost); `validateDeclarationPlanParity` and its direct tests (Phase 5).
+  `docs/decisions/0191-...md` (status events), and the render outputs every phase-closing
+  commit stages: `docs/decisions/INDEX.md`, `.awf/awf.lock`,
+  `docs/topics/rendering/project-output-plan.md`, `docs/topics/tooling/context-and-topic.md`,
+  `docs/topics/code-design/presentation-ownership.md`,
+  `docs/topics/code-design/state-ownership.md`.
+- **Deleted:** the five context production files (`internal/project/context.go`,
+  `context_paths.go`, `context_projection.go`, `context_artifacts.go`, `context_adr.go`) and
+  their five sibling tests (`context_test.go`, `context_paths_test.go`,
+  `context_projection_test.go`, `context_artifacts_test.go`, `context_adr_test.go`) - moved,
+  not lost; `internal/project/context_wrapper_test.go` is NOT among them and stays (it drives
+  the `./x context` wrapper by exec and carries the context-spill-observability proof marker);
+  `validateDeclarationPlanParity` and its direct tests (Phase 5).
 
 ## Phase 1: Core straddle repairs and module-wide kind dispatch
 
 **Execution mode: inline.**
 
-- [ ] **Task 1.1: Relocate the cycle edges.** Move `validateArtifact` and `localOutPaths` (both
-  currently in `internal/project/check.go`) into `internal/project/validate.go` verbatim (no
-  behavior change). Post-check: `grep -n "func (p \*Project) validateArtifact\|func (p \*Project) localOutPaths" internal/project/check.go`
-  returns no output; `go test ./internal/project/` passes.
+- [ ] **Task 1.1: Relocate the cycle edges.** Move `validateArtifact` (a free function) and
+  `localOutPaths` (a `*Project` method), both currently in `internal/project/check.go`, into
+  `internal/project/validate.go` verbatim (no behavior change). Post-check:
+  `grep -n "func validateArtifact\|func (p \*Project) localOutPaths" internal/project/check.go`
+  returns no output (exit 1) and the same grep over `internal/project/validate.go` returns two
+  lines; `go test ./internal/project/` passes.
 - [ ] **Task 1.2: Relocate the small straddles.** Move `ScaffoldVarRefs` from
-  `internal/project/local.go` to `internal/project/scaffold.go`; move `pathMatchesAny` (from
-  context.go) into `internal/project/currentstate.go` and `safelyMatchablePaths` (from
-  context_paths.go) into `internal/project/topics.go`, both verbatim; move the `ArtifactRole`
-  type and its constants from `internal/project/context_artifacts.go` into
-  `internal/project/output_plan.go`. Post-check: `go build ./...` clean;
-  `go test ./internal/project/` passes.
+  `internal/project/local.go` to `internal/project/scaffold.go`; move the `ArtifactRole` type
+  and its constants from `internal/project/context_artifacts.go` into
+  `internal/project/output_plan.go`. For the two helpers with callers on both sides of the
+  Phase 3 split: hoist `pathMatchesAny` (context.go) into `internal/pathglob` as exported
+  `MatchAny` (it is a small loop over `pathglob.Match`; both future sides import pathglob) and
+  update its callers (`currentstate.go:571` and the context files); leave
+  `safelyMatchablePaths` in `internal/project/topics.go` for the staying callers, and Phase 3
+  gives `contextq` its own private copy (it is a small filter over `snapshot.Tree.List`).
+  Post-check: `go build ./...` clean; `go test ./internal/project/ ./internal/pathglob/`
+  passes.
 - [ ] **Task 1.3: Add the missing descriptor facets.** In `internal/project/kind.go`, extend
   `kindDescriptor` with the two boolean facets the cmd-side facts need: `graphKind` (true for
   skill, agent, doc) and `freeformDomain` (true for the domains kind), populated in the ordered
   table. Extend the existing table-completeness test in `internal/project/kind_test.go` to
   assert the new facets are set for the kinds named above and unset otherwise.
-- [ ] **Task 1.4: Fold the four cmd/awf kind facts into the table.** Replace the body of
-  `isGraphKind` in `cmd/awf/list_add.go` and the kind switch arm in `cmd/awf/new.go` and the two
-  `kind == "domain"` branches in `cmd/awf/list_add.go` with calls through exported descriptor
-  lookups (add narrow exported accessors on the project package, for example
-  `project.IsGraphKind(kind string) bool` and `project.IsFreeformDomainKind(kind string) bool`,
-  implemented via the table). Affected sites (exhaustive): `cmd/awf/list_add.go` (the
-  `isGraphKind` function and both domain branches), `cmd/awf/new.go` (the kind switch).
-  Post-check: `grep -rn '"domain"\|"skill" || ' cmd/awf/list_add.go cmd/awf/new.go` shows no
-  kind fact decided by string comparison outside the accessor calls; `go test ./cmd/awf/` passes.
+- [ ] **Task 1.4: Fold the cmd/awf kind facts into the table.** Replace every cmd-side kind
+  fact with calls through narrow exported descriptor lookups (for example
+  `project.IsGraphKind(kind string) bool`, `project.IsFreeformDomainKind(kind string) bool`,
+  `project.IsDocKind(kind string) bool`, implemented via the table). Affected sites
+  (exhaustive): `cmd/awf/list_add.go` (the `isGraphKind` function body, both
+  `kind == "domain"` branches, and the `op.Node.Kind == "skill"` comparison at ~:297) and
+  `cmd/awf/new.go` (the catalog-kind switch arm at ~:31 and the `isDoc := kind == "doc"`
+  comparison at ~:218). The `case "adr"` / `"plan"` / `"topic"` arms and the usage string in
+  new.go are command routing over non-catalog artifact names, not kind facts; they stay.
+  Post-check: `go test ./cmd/awf/` passes and the Task 1.5 structural test passes.
 - [ ] **Task 1.5: The widened kind proof.** Add a source-scanning structural test in
   `internal/project/kind_test.go` (same AST-walking shape as
   `internal/project/stateownership_test.go`) that parses the `cmd/awf` production sources and
-  fails if any comparison against a kind-name string literal occurs outside the exported
-  accessor implementations. Carry the proof marker for
-  `rendering/project-output-plan:kind-dispatch-single-table` on this test (move the marker from
-  its current test if the claim keeps a single proof; both markers may coexist since one claim
-  may have multiple proofs only if the checker allows it - if not, keep the marker on the new
-  scan and let the existing completeness test stand unmarked).
+  fails on any equality or switch-case comparison whose string-literal operand is one of the
+  descriptor table's kind names (singular or plural), with the exported accessor bodies as the
+  only allowlist. Multiple proofs on one claim are legal (`internal/topic/markers.go` requires
+  only proofs > 0, and the corpus already carries multi-proof claims), so keep the existing
+  marker on the table-completeness test and add a second
+  `// invariant: rendering/project-output-plan:kind-dispatch-single-table` marker on this scan.
+  Post-check: the new test passes (`go test ./internal/project/ -run` its name, PASS).
 - [ ] **Task 1.6: Land the updated claim prose and the Implementing flip.** In
   `.awf/topics/parts/rendering/project-output-plan/current-state.md`, replace the
   `kind-dispatch-single-table` claim body with: "Every per-kind facet - the config enable array,
@@ -104,8 +121,13 @@ obligations closed. Design and rationale: ADR-0191.
   sources asserts no kind fact is decided outside the table." Keep `Origin: ADR-0027`, add
   `Revised-by: ADR-0191`, keep `Backing: test`. Append to the ADR's Status history an
   `Implementing` event and an `Applied` event for `state-sequence` and operation 1 per the
-  status-event format in `docs/decisions/template.md`; run `./x render` and stage the rendered
-  outputs. Post-check: `./awf check --staged` clean.
+  status-event format in `docs/decisions/template.md`. Obtaining the stamp and sequence is
+  mechanical, never guessed: write 64 zeros as the digest and any sequence, run
+  `./awf check state`, and copy the computed digest and the reported next free sequence from
+  the mismatch messages; the same content stamp repeats on every later status event of this
+  ADR unless an Amended event changes it. Run `./x render` and stage every rendered output
+  (`docs/decisions/INDEX.md`, `.awf/awf.lock`, and the rendered topic doc). Post-check:
+  `./awf check --staged` clean.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -115,7 +137,8 @@ refactor(code-design): repair core straddles and widen kind dispatch
 ## Phase 2: The internal/resident carve
 
 **Execution mode: subagent-driven.** Baseline: `git status --short` empty, `./x check` clean,
-`./x gate` exit 0 on the phase branch.
+`./x gate` exit 0, in the effort's managed worktree on
+`awf/decompose-the-internal-project-package`.
 
 - [ ] **Task 2.1: Create the package.** New `internal/resident/resident.go` holding, moved
   verbatim from `internal/project/install.go` and `internal/project/project.go` and
@@ -138,9 +161,9 @@ refactor(code-design): repair core straddles and widen kind dispatch
   and `cmd/awf/{init.go,uninstall.go}` (rewire `project.CollisionsAt` and `project.Uninstall`
   to `resident.CollisionsAt`/`resident.Uninstall`) and `cmd/awf/sync.go` (imports unchanged;
   `Backup`/`Change` stay project types). Post-check:
-  `grep -rn "outputPath\|residentRoots\b" internal/project/*.go` (production) returns only the
-  `resident.` qualified uses and the staying `InitCollisions`/`BackupFile` bodies;
-  `go build ./...` clean.
+  `grep -rn "func (p \*Project) outputPath\|residentRoots\b" $(ls internal/project/*.go | grep -v _test)`
+  returns no output (exit 1), and `go build ./... && go test ./internal/project/ ./internal/resident/ ./cmd/awf/`
+  passes.
 - [ ] **Task 2.3: Move the tests and markers.** Move `internal/project/install_test.go` content
   that exercises moved symbols into `internal/resident/resident_test.go` (external test package
   if it needs project); keep tests of `InitCollisions`/`BackupFile` in project. The
@@ -192,15 +215,18 @@ refactor(code-design): carve internal/resident below the core
   functions over the state value - implementer's choice, one construction path only) replacing
   the `*Project` receivers. `ContextForOptions` and `Uncovered` and the staged query entry
   points become `contextq` functions. `ArtifactRole` references become `project.ArtifactRole`.
-  Unlisted unexported helpers of those files move with them. Post-check: `go build ./...`
-  clean; no production file in `internal/project` references a moved symbol
-  (`grep -rn "classifyContextPath\|projectTopicImpact\|assembleContextUniverse" internal/project/*.go`
-  returns no output).
+  Unlisted unexported helpers of those files move with them; `contextq` receives its own
+  private copy of `safelyMatchablePaths` per Task 1.2. Post-check: `go build ./...` clean;
+  `grep -rn "classifyContextPath\|projectTopicImpact\|assembleContextUniverse" internal/project/*.go`
+  returns no output (exit 1).
 - [ ] **Task 3.3: Descend the render bank.** Move the `render*` functions from
   `cmd/awf/context.go` into `internal/contextq` (exported entry per rendered report, for
   example `RenderContextText(result) string`); `cmd/awf/context.go` keeps flag parsing, the
   text-vs-JSON switch, and exit mapping, and calls `contextq` for both the query and the text.
-  Post-check: `grep -cn "func render" cmd/awf/context.go` returns no output.
+  The eight functions to descend: `renderUncovered`, `renderContext`, `renderPathImpact`,
+  `renderRelationships`, `renderTopicImpact`, `renderClaimCategory`, `renderEvidence`,
+  `renderList`. Post-check: `grep -n "func render" cmd/awf/context.go` returns no output
+  (exit 1).
 - [ ] **Task 3.4: Move tests, convert packages, unexport.** Move the five sibling test files
   and the field-assertion content of `cmd/awf/context_test.go` into `internal/contextq` tests;
   convert `internal/project/output_plan_test.go`'s two context-calling cases and any
@@ -237,14 +263,22 @@ refactor(code-design): carve contextq behind the ContextState seam
 
 **Execution mode: inline.**
 
-- [ ] **Task 4.1: Typed config-reference rendering in core.** Move the rendering logic of
-  `cmd/awf/config.go` (`printConfigReference` and its helpers) into
-  `internal/project/configreference.go` as typed rendering over `ConfigReferenceModel`'s
-  actual types (no `map[string]any`, no discarded type assertions); `cmd/awf/config.go` calls
-  the exported renderer and keeps selection and exit mapping. Post-check:
-  `grep -n "map\[string\]any" cmd/awf/config.go` returns no output; `go test ./cmd/awf/`
-  passes (update goldens/assertions to the identical expected text - the output bytes must not
-  change; if any diff appears it is a defect, fix the renderer, not the test).
+- [ ] **Task 4.1: Typed config-reference rendering in core.** Today
+  `ConfigReferenceModel` returns `map[string]any` (built by `configReferenceData`, which the
+  doc generator `generateConfigReference` shares), and `cmd/awf/config.go` renders it plus a
+  cmd-local `staticModel()` map. The change: introduce typed row and section types in
+  `internal/project/configreference.go` as a typed projection beside `configReferenceData`
+  (the doc-generator path keeps its current shape so `docs/config-reference.md` stays
+  byte-identical); change `ConfigReferenceModel` to return the typed model; move the
+  rendering (`printConfigReference` and helpers) AND the `staticModel` builder into core as
+  typed rendering with no discarded type assertions; `cmd/awf/config.go` keeps flag parsing,
+  selection, and exit mapping. The three config-reference invariants
+  (`config/configspec-and-reference:config-reference-regen-drift`,
+  `:config-reference-no-bare-vars`, `:config-reference-data-rejected`) must stay green.
+  Post-check: `grep -n "map\[string\]any" cmd/awf/config.go` returns no output (exit 1);
+  `go test ./cmd/awf/ ./internal/project/` passes with byte-identical `awf config` output and
+  `./x render` reporting no change to `docs/config-reference.md` (any diff is a defect in the
+  renderer, not the tests).
 - [ ] **Task 4.2: Anchor the topic.** Add a presentation-ownership focus item to
   `.awf/agents/adr-reviewer.yaml`, `.awf/agents/code-reviewer.yaml`, and
   `.awf/agents/plan-reviewer.yaml` (these sidecars replace catalog defaults wholesale:
@@ -271,13 +305,22 @@ feat(code-design): anchor the presentation-ownership rule
 
 **Execution mode: inline.**
 
-- [ ] **Task 5.1: Consolidate derivation.** Extend the kind-descriptor and declaration tables
-  so every template ID used in production derives from them: replace the inline constructions
-  in `internal/project/output_plan.go` (the skill/base tid builders), the hook tids spelled in
-  both `render.go` and `output_plan.go`, the singleton tids (`singleton.go`), the bootstrap
-  and runner literals in `output_plan.go`, and the resident table's re-spelled IDs (now in
-  `internal/resident`, which imports nothing new: core passes the IDs in or the table derives
-  them - implementer picks the direction that keeps resident free of template knowledge).
+- [ ] **Task 5.1: Consolidate derivation.** The sanctioned declaration files are
+  `internal/catalog/standard.go` (the catalog's own TID declarations),
+  `internal/project/kind.go`, and the declaration tables in
+  `internal/project/{output_plan.go,target.go,singleton.go}`. Rerun
+  `grep -rn '\.tmpl"' --include=*.go internal/ cmd/ | grep -v _test` and disposition every
+  hit outside the sanctioned files, by category: the inline skill/base tid builders in
+  `output_plan.go` and the fallback TIDs in `local.go` (`baseSkillTID`/`baseAgentTID`/
+  `baseDocTID`) fold into descriptor-table closures; `project.go`'s `coOwnedRunnerTID` and
+  the bootstrap/runner literals in `output_plan.go` move into the declaration tables; the
+  hook tids spelled in both `render.go` and `output_plan.go` collapse to one table entry; the
+  resident table sheds its `TemplateID` field entirely (resident carries only names; core
+  keeps `effortsTID`/`worktreesTID` as the single derivation, and `render.go`'s and
+  `output_plan.go`'s iterations pair a resident name with its core-derived ID); the
+  `scaffold.go` and `configreference.go` literals route through descriptor lookups; the
+  `topics.go` re-read sites die in Task 5.2; the bare `.tmpl` suffix-trim literals in
+  `check.go` are string operations, not IDs, and are exempt by the Task 5.3 predicate.
   Byte-identity is the oracle: after this task `./x render` reports no changed files and
   `git diff --stat` over rendered outputs is empty.
 - [ ] **Task 5.2: Stop re-reading in topic.** Change `internal/topic`'s render entry
@@ -289,16 +332,17 @@ feat(code-design): anchor the presentation-ownership rule
 - [ ] **Task 5.3: Retire the parity check.** Delete `validateDeclarationPlanParity`
   (`internal/project/output_plan.go`) and its direct tests; its callers drop the call. Add the
   structural test for the claim: new `internal/project/templateid_test.go` scanning production
-  files and failing on any string literal ending `.tmpl` outside the sanctioned table files
-  (`kind.go`, the declaration tables in `output_plan.go`/`target.go`/`singleton.go`, and test
-  files). Carry the proof marker for
+  files under `internal/` and `cmd/` and failing on any string literal that contains `/` and
+  ends `.tmpl` (a full template-ID path, distinguishing IDs from bare suffix-trim literals)
+  outside the sanctioned declaration files named in Task 5.1. Carry the proof marker for
   `rendering/project-output-plan:template-id-single-derivation`.
 - [ ] **Task 5.4: Claim prose, Applied event.** Land in
   `.awf/topics/parts/rendering/project-output-plan/current-state.md`: slug
-  `template-id-single-derivation`, body: "Template identity derives from the kind-descriptor
-  and declaration tables alone; no production file outside those tables spells a template-ID
-  string, and internal/topic receives template identity and content from its caller rather
-  than re-reading the embedded tree." `Origin: ADR-0191`, `Backing: test`. Append the Applied
+  `template-id-single-derivation`, body: "Template identity derives from the catalog and
+  kind-descriptor declaration tables alone; no production file outside those declaration
+  files spells a full template-ID path literal, and internal/topic receives template identity
+  and content from its caller rather than re-reading the embedded tree." `Origin: ADR-0191`,
+  `Backing: test`. Append the Applied
   event for operation 5. `./x render`; `./awf check --staged` clean.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
@@ -327,8 +371,10 @@ refactor(rendering): derive every template ID from the tables
   needs them and threaded to their consumers." Keep `Origin: ADR-0180`, add
   `Revised-by: ADR-0191`, keep `Backing: test`.
 - [ ] **Task 6.3: The ownership guard.** New structural test (in `internal/topic`'s test files,
-  where domain-coverage machinery lives): enumerate every production package under
-  `internal/` and `cmd/` (walk for directories containing non-test `.go` files) and fail if
+  where domain-coverage machinery lives): resolve the repository root by walking upward from
+  the test's working directory to the directory containing `go.mod`, enumerate every
+  production package under `internal/` and `cmd/` (directories containing non-test `.go`
+  files, excluding `internal/testsupport/testdata`, whose Go files are fixtures), and fail if
   any package's path is matched by no domain's `paths` selectors (load the domain metadata the
   same way production coverage code does). Carry the proof marker for
   `tooling/context-and-topic:production-packages-domain-owned`. Land that claim in
