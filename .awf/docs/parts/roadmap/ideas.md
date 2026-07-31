@@ -71,3 +71,31 @@
   re-read, so the check would earn its keep on amendments rather than on new claims. Needs its own ADR:
   it changes what `awf check` rejects, and a false positive on legitimate absolute prose would be
   expensive.
+- Make `awf effort integrate` fast-forward-only. Keep the already-contained and fast-forward
+  arms and refuse when the target is not an ancestor of the effort tip, naming the recovery:
+  merge the target in the managed worktree, run `awf check --staged`, run the gate, commit,
+  renew terminal review, retry. The motivation is concurrency, not correctness: the divergent
+  path leaves a staged uncommitted merge in the shared receiving checkout across a full gate
+  and a renewed terminal review, blocking every other finishing effort for that whole window,
+  while moving the work into the effort worktree collapses the shared critical section to an
+  atomic fast-forward. The predicate already exists, `Ancestor(target, tip)` at
+  `internal/worktree/manager.go:315`; turning that branch point into a precondition is the
+  whole behavioural change. Compare against the receiving checkout's HEAD as `Integrate`
+  already resolves it, or against `integrationBranch` once that key ships. `MergeNoCommit`
+  has exactly one production consumer (`manager.go:333`), so removing the divergent arm makes
+  it dead down through the Runner contract (`manager.go:30`) and `internal/git/lifecycle.go:139`
+  and the dead-code gate forces the deletion. Needs its own ADR: it falsifies the test-backed
+  `tooling/effort-management:managed-worktree-lifecycle` claim, whose text still reads that
+  integration "reports already-contained history, fast-forwards, or starts a divergent
+  `--no-commit` merge", so it carries an update operation. SEQUENCING: this must land after
+  the pending-ADR-numbering decision's final phase, not merely after that decision lands. Both
+  changes rewrite the same lines of `templates/skills/reviewing-impl/SKILL.md.tmpl` step 8
+  (`:75` carries the divergent-merge routing that becomes wrong here; the numbering plan's
+  Task 6.2 rewrites `:72-77`), so authoring them concurrently reproduces exactly the
+  integration collision both are trying to reduce. Deliberately NOT absorbed into the numbering
+  decision: that record was already `Implementing` with its first batch applied when this was
+  raised, its prescription that numbering "runs in the effort worktree after merging the
+  integration branch in" is a usage prescription rather than an assertion about integrate's
+  behaviour, and its integration-branch block plus the branch-independent duplicate-identity
+  check already force numbering without this. Worth doing as the first pending slug ADR once
+  numbering ships, which dogfoods the mechanism on its first real use.
