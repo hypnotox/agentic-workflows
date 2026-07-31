@@ -27,11 +27,14 @@ Constraints verified against the repository:
   chosen by `internal/project/subagent_model_selection_test.go`, which pins five common
   clauses plus the branch rule at each governed dispatch section. Changing the rendered
   text is therefore a deliberate decision about the claim's proof shape, not drift repair.
-- A dispatched subagent may not have the agent guide in context: Pi loads only the agent
-  artifact per the role-contract loader (ADR-0179). Full deferral of the rule to the guide
-  would leave such a child without the selection rule. The guide itself cannot be disabled
-  by any adopter (`agents-doc` is Mandatory and ADR-0061 keeps mandatory docs out of the
-  toggleable pool), so guide presence is guaranteed for the parent, not the child.
+- Every governed dispatch section is parent-read skill-body text: the parent session
+  performing the dispatch reads it, and the parent always has the agent guide
+  (`agents-doc` is Mandatory and ADR-0061 keeps mandatory docs out of the toggleable
+  pool). A dispatched child reads neither the guide nor the skill body - Pi loads only
+  the agent artifact per the role-contract loader (ADR-0179), and no agent template
+  carries the model-selection block. What full deferral would actually cost is steering
+  proximity: the parent would have to leave the skill step and consult the guide at the
+  moment of dispatch, and the backing test would lose its per-site pin.
 - There is no rendered-identical extraction tier. `awf:include` directives are
   line-anchored (the directive occupies a whole line and is replaced wholesale), and the
   model-selection block sits mid-line at every site (numbered list items in six skills,
@@ -56,8 +59,10 @@ Constraints verified against the repository:
    per target, the agent guide's workflow section, sourced from a single shared
    model-selection partial in `templates/partials/` whose first consumer is the
    agent-guide template; no skill site includes the full form. Full deferral to the
-   guide alone is ruled out because a dispatched child may lack the guide; unchanged
-   per-site verbatim restatement is ruled out as the duplication this decision removes.
+   guide alone is ruled out for steering proximity: the selection rule must appear at
+   the point of dispatch for the parent applying it, and per-site presence is the pin
+   the backing test keeps; unchanged per-site verbatim restatement is ruled out as the
+   duplication this decision removes.
 2. Repeated multi-file spine prose in `templates/` is maintained as shared partials under
    `templates/partials/`, included via `awf:include`, and a partial may carry template
    actions to hold target-conditional branches. This convention authorises rendered-level
@@ -116,16 +121,16 @@ Constraints verified against the repository:
   templates. Template readers also accept an indirection cost, following an include to
   see the rendered text.
 - Risk: a one-line rule teaches less than the full glosses at the dispatch site. Accepted
-  because the guide is always rendered for the parent session, the shared partial serves
-  any site needing the full form, and the tier names plus escalation trigger stay
-  self-sufficient for a child that sees only the skill body.
+  because the guide with the full definitions is always rendered for the parent session
+  that performs the dispatch, and the tier names plus escalation trigger keep each site
+  self-sufficient at the point of action.
 
 ## Alternatives Considered
 
 | Alternative | Why not chosen |
 |---|---|
 | Keep per-site verbatim restatement | 26 copies drift independently; the audit already found micro-drift in sibling spines |
-| Full deferral to the agent guide | A dispatched child may not load the guide (Pi loads only the agent artifact, ADR-0179) |
+| Full deferral to the agent guide | Loses steering proximity: the parent would consult the guide mid-dispatch instead of reading the rule at the point of action, and the backing test would lose its per-site pin |
 | Source-only partial extraction with unchanged rendered output | Impossible as a distinct tier: includes are line-anchored and the blocks sit mid-sentence in list items, and it would leave the rendered duplication untouched |
 | Narrow test-literal refresh without an ADR | The claim text arguably permits compression, but the policy would be undocumented and the partials convention unauthorised; a durable prose-economy rule warrants a record |
 
