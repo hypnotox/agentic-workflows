@@ -108,8 +108,13 @@ that describes it also names the command spellings, and a claim carries exactly 
   top-level commands whose gating classification is not ungated, with no group-children exclusion
   list. Append `ADR-0199` to `gated-commands-generated`'s `Revised-by`, preserving its existing
   `Origin`. Obtain the digest by writing 64 zeros and reading the computed value back from
-  `./x check`, per the pitfalls entry on frozen digests.
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the one
+  `./x check`, per the pitfalls entry on frozen digests. Regenerate `docs/decisions/INDEX.md` with
+  `./x render` and stage it with the flip; the index records the ADR's status and is never
+  hand-edited.
+- [ ] **Phase-close: render, stage, check, gate, and commit.** Run `./x render` and stage every
+  regenerated output with the change that caused it: each batch task mutates
+  `.awf/topics/parts/**/current-state.md`, which renders into `docs/`, and each ADR status flip
+  changes `docs/decisions/INDEX.md`. Then stage the complete transaction and create the one
   phase-closing commit; it requires the staged check and `./x gate` to pass, enforced by the wired
   pre-commit hook (confirm with `git config core.hooksPath`). Phase 1 still spells the staged check
   `awf check --staged`; from Phase 2 onward it is `awf check staged`.
@@ -128,9 +133,9 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
 - [ ] **Task 2.1: Restructure the `check` command table.** In `internal/clispec/clispec.go`, replace
   the flat children with two group children plus one carried-over leaf. `repo` holds `drift`,
   `state`, `prose`, `memory`; `staged` holds `state`, `drift`, `commit`. `invariants` STAYS a direct
-  child of `check`, unmoved and unrespelled, until Phase 5 deletes it. Rehoming it here would respell
+  child of `check`, unmoved and unrespelled, until Phase 4 deletes it. Rehoming it here would respell
   the `x` invocation that `tooling/quality-gates:example-adopter-checked` names verbatim, and that
-  claim takes its single update in Phase 5 alongside two other changes to the same sentence. Delete `"--staged"` from every `BoolFlags` list under
+  claim takes its single update in Phase 4 alongside two other changes to the same sentence. Delete `"--staged"` from every `BoolFlags` list under
   `check`, and from the `check` group itself. `commit` keeps `MaxPos: 1` and `StateExempt: true`;
   `prose` and `memory` lose `StateExempt` (ADR-0199 item 13: they no longer run standalone from the
   payload). `staged` and `repo` each carry `MaxPos: -1` so a leaf name reaches the handler. Rewrite
@@ -158,7 +163,7 @@ returns empty, `./x check` prints `awf check: clean`, and `./x gate` exits zero.
   and `cmd/awf/checkstaged.go` with `runCheckStaged` (moved from `cmd/awf/check.go`). `runCheckRepo`
   runs drift, current-state, prose, and memory, and owns both project-level notes: the version-ahead
   note and `AdvisoryNotes`, emitted once whether invoked directly or through bare `check`
-  (ADR-0199 item 4). `runCheckStaged` runs the transition check and, from Phase 5, staged drift; it
+  (ADR-0199 item 4). `runCheckStaged` runs the transition check and, from Phase 3, staged drift; it
   excludes `commit`. Bare `runCheck` invokes both and, outside a git repository, runs the repo
   universe alone and prints that the staged universe was unavailable. `checkLockVsBinary` loses its
   `staged` bool: `runCheckRepo` compares the working lock, `runCheckStaged` the index lock.
@@ -338,7 +343,7 @@ Phase 2's knob-first change binds only when a gate is off, which after this phas
   Run `./x check` and fix every finding inside the example tree rather than by adding exemptions,
   unless a finding is a genuine depiction, in which case add the narrowest exemption and say so in the
   commit body. Acceptance: `./x check` exits zero with no `note:` line in the example's output, which
-  is what `tooling/quality-gates:example-zero-notes` requires and what Phase 6 depends on.
+  is what `tooling/quality-gates:example-zero-notes` requires and what Phase 5 depends on.
 - [ ] **Task 4.3: Add the chained migration.** Create `internal/migrate/retargetcheckcommands.go` at
   the next schema generation, registered in `internal/migrate/migrate.go`. It retargets `check prose`
   to `check repo prose`, `check memory` to `check repo memory`, and `check commit` to
@@ -413,8 +418,8 @@ feat(tooling): disclose a disabled opt-in check
 - `./x gate` passes, including the 100% coverage floor with no new `coverage-ignore` beyond any this
   plan names, and the dead-code step with `runInvariants`, `CurrentStateInvariants`, `InvariantReport`,
   and `UngatedGroupChildren` all gone.
-- ADR-0199 carries `Accepted`, `Implementing`, and six `Applied` events whose operations, concatenated
-  in order, equal its declared thirteen.
+- ADR-0199 carries `Accepted`, `Implementing`, five `Applied` events, and `Implemented`, whose
+  operations, concatenated in order, equal its declared thirteen.
 
 ## Notes
 

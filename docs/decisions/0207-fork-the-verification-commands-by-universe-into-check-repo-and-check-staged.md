@@ -253,8 +253,12 @@ the append-only column records what the commands were called when those decision
     carried-forward remainder lands in `.awf/docs/parts/roadmap/ideas.md`, recording that three of its four contracts are discharged here and carrying
     forward the two deferred halves of item 5 as a check-architecture cleanup; the deferred entry at
     `.awf/docs/parts/roadmap/deferred.md:235` ("`awf check drift` and `awf check state`: deliberately
-    kept, currently uninvoked") is resolved by item 4, which invokes both. `.awf/domains/parts/adr-system/current-state.md:7`
-    and `.awf/parts/workflow/local-hooks.md:3` take the respelled invocation from item 1.
+    kept, currently uninvoked") is resolved by item 4, which invokes both.
+    `.awf/domains/parts/adr-system/current-state.md:7` takes the respelled invocation from item 1.
+    `.awf/parts/workflow/local-hooks.md:3` takes a semantic rewrite rather than a respelling, because
+    it enumerates the payload's steps and item 1 deletes three of them; it joins
+    `.awf/parts/workflow/composing-the-gate.md:9-14` and `.awf/docs/parts/testing/gate.md:11-12` in
+    describing the payload's new shape.
     `.awf/parts/workflow/composing-the-gate.md:9-14` and `.awf/docs/parts/testing/gate.md:11-12`
     take a semantic update rather than a respelling: both describe the two scans as separate
     non-gate steps the payload runs on its own, which item 4 and item 1 together retire.
