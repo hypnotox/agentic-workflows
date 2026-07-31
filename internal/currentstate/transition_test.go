@@ -570,13 +570,19 @@ func TestAppliedRemoveAbsorbsConcurrentUpdate(t *testing.T) {
 	})
 
 	t.Run("a net remove is attributed to the removing ADR", func(t *testing.T) {
-		// The claim is absent on the before side, so the net-remove finding
-		// fires; it must name the remover, never the dominated updater.
+		// The remover carries the LOWER number, so the dominated updater is
+		// the chain's trailing element: the finding must still name the
+		// remover, never chain[len-1]. The claim is absent on the before
+		// side, which is what makes the net-remove finding fire.
+		removerLow := v2rec("0141", "Implemented", []adr.Operation{remove},
+			v2status("Proposed"), v2status("Implementing"), v2batch(remove), v2status("Implemented"))
+		updaterHigh := v2rec("0142", "Implemented", []adr.Operation{update},
+			v2status("Proposed"), v2status("Implementing"), v2batch(update), v2status("Implemented"))
 		before := uni([]adr.ADR{origin})
-		after := uni([]adr.ADR{origin, remover, updater})
+		after := uni([]adr.ADR{origin, removerLow, updaterHigh})
 		got := messages(currentstate.CheckPair(before, after, currentstate.MergeAggregate))
-		if !strings.Contains(got, "ADR-0142 removes claim d/t:c, which did not exist before this transition") {
-			t.Fatalf("the net remove must be attributed to the removing ADR-0142:\n%s", got)
+		if !strings.Contains(got, "ADR-0141 removes claim d/t:c, which did not exist before this transition") {
+			t.Fatalf("the net remove must be attributed to the removing ADR-0141:\n%s", got)
 		}
 	})
 
