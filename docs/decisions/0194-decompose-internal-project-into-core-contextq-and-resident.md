@@ -313,3 +313,4 @@ audit's stale 86/47 to the verified 128/60.
 - 2026-07-31: Applied; operations: update `rendering/project-output-plan:kind-dispatch-single-table`
 - 2026-07-31: Applied; operations: add `rendering/project-output-plan:resident-policy-single-home`
 - 2026-07-31: Applied; operations: add `tooling/context-and-topic:context-query-boundary`
+- 2026-07-31: Applied; operations: add `code-design/presentation-ownership:model-owner-renders`
