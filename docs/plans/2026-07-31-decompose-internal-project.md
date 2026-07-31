@@ -119,10 +119,13 @@ Design and rationale: ADR-0194.
   `.awf/topics/parts/rendering/project-output-plan/current-state.md`, replace the
   `kind-dispatch-single-table` claim body with: "Every per-kind facet - the config enable array,
   catalog pool, declared sections, output path, singular and plural labels, graph membership,
-  and freeform-domain membership - resolves through the single ordered kind-descriptor table for
-  every consumer in the module, cmd/awf included; a test asserts the table's kind set equals the
-  catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf
-  sources asserts no kind fact is decided outside the table." Keep `Origin: ADR-0027`, add
+  and freeform-domain membership - is defined once in the single ordered kind-descriptor table
+  in the project package, and cmd/awf decides no kind fact outside the table's exported
+  accessors; a test asserts the table's kind set equals the catalog's kinds plus the freeform
+  domains kind, and a source-scanning test over the cmd/awf sources asserts no kind-name
+  equality or switch-case comparison remains there." (Phase 1 review reworded this from a
+  module-wide universal: in-core kind-literal dispatch beside the table falsified it; see
+  Notes.) Keep `Origin: ADR-0027`, add
   `Revised-by: ADR-0194`, keep `Backing: test`. Append to the ADR's Status history an
   `Implementing` event and an `Applied` event for operation 1 per the
   status-event format in `docs/decisions/template.md` (`- YYYY-MM-DD: Applied; operations:
@@ -434,6 +437,12 @@ contents, so the reviewer executes rather than designs:
 - Deferred by decision: `internal/git` untouched (ADR-0194 item 7); slash/OS-space discipline;
   fixture-builder consolidation; `printTopic`/`printPlan` conversions (future presentation-rule
   applications); further core decomposition is future-effort territory (user note at approval).
+- Deferred by Phase 1 review ruling (2026-07-31): the in-core kind-literal dispatch that
+  re-decides table facets beside the table (`nodeEnabled` in validate.go, `enableArray`,
+  `hasLocalArtifact`, the count rows and sidecar-data lookup in configreference.go, the closure
+  bucketing and base-TID switch in scaffold.go) stays as found; the claim wording was narrowed
+  to the proven scope instead (ADR-0194 item 6 records the reasoning). The scaffold base-TID
+  switch may still fold into Phase 5's template-ID consolidation.
 - The single-home branch may land shapes that shift Phase 5's topic-render entry points; if so,
   amend the ADR (pre-terminal) and adjust Task 5.2's touched symbols here, recording the
   finding in this section.
