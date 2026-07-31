@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [0191]
-status: Proposed
+status: Implemented
 ---
 # Plan: Remove the global state sequence (ADR-0191)
 

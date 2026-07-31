@@ -97,8 +97,8 @@ Backing: test
 
 ### `invariant: update-requires-substance`
 
-An update preserves Origin and prior revision history, appends its ADR once, and changes a canonical claim field other than formatting or provenance alone. Across a merge, where the intermediate claim states exist only in the branch's own commits and never in either compared universe, the substantive-change requirement is evaluated on the net effect of the claim's operation chain; per-step substance is enforced where it is verifiable, at the authored commits themselves.
+An update preserves Origin and prior revision history, adds its ADR once at its canonical ascending position, and changes a canonical claim field other than formatting or provenance alone. Across a merge, where the intermediate claim states exist only in the branch's own commits and never in either compared universe, the substantive-change requirement is evaluated on the net effect of the claim's operation chain; per-step substance is enforced where it is verifiable, at the authored commits themselves.
 Origin: ADR-0135
-Revised-by: ADR-0182
+Revised-by: ADR-0182, ADR-0191
 Backing: unbacked
 Verify: Staged fixtures with Origin edits, revision deletion or reordering, whitespace-only, provenance-only, and substantive prose, reference, or backing changes satisfy an update only in the prefix-preserving substantive cases.
