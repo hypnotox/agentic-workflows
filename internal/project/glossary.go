@@ -42,11 +42,12 @@ type glossaryRecord struct {
 var glossaryRecordKeys = map[string]bool{"term": true, "meaning": true, "domains": true}
 
 // glossaryMeaningMax bounds a meaning at roughly two sentences of ordinary
-// prose (ADR-0198 decision 9). It is a fixed constant rather than a config key
-// on purpose: an adopter-raisable threshold is a suppressing value, which this
-// project's severity model does not have. Over-length raises a non-failing
-// advisory for authored terms; the shipped standard vocabulary is held under it
-// by a portability test, since it merges into every adopter's glossary.
+// prose, counted in runes (ADR-0198 decision 9). It is a fixed constant rather
+// than a config key on purpose: an adopter-raisable threshold is a suppressing
+// value, which this project's severity model does not have. The advisory
+// evaluates the merged set, so this bounds the shipped standard vocabulary as
+// well as authored terms (decision 10); the portability test is the additional
+// guard that awf never ships an over-length term in the first place.
 const glossaryMeaningMax = 280
 
 // glossaryTransform replaces data.terms with the finished, always-sorted

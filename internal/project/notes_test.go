@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -525,6 +526,31 @@ func TestGlossaryTersenessNotes(t *testing.T) {
 	}
 }
 
+// The threshold counts runes, not bytes, so a meaning of accented letters that
+// reads short is not reported merely for encoding wider. Accented letters stay
+// legal under the plain-punctuation rule, which bans only seven punctuation
+// codepoints, so an adopter can genuinely hit this.
+func TestGlossaryTersenessNotesCountsRunesNotBytes(t *testing.T) {
+	// 200 runes, 400 bytes: under the threshold read, over it counted as bytes.
+	wide := strings.Repeat("é", 200)
+	if len(wide) <= glossaryMeaningMax || utf8.RuneCountInString(wide) > glossaryMeaningMax {
+		t.Fatalf("fixture must be over the threshold in bytes (%d) and under it in runes (%d)", len(wide), utf8.RuneCountInString(wide))
+	}
+	root := scaffoldFiles(t, "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: accented\n      meaning: \"" + wide + "\"\n"})
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	notes, err := p.glossaryTersenessNotes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(notes) != 0 {
+		t.Fatalf("a meaning under the threshold in runes must not be reported, got %v", notes)
+	}
+}
+
 // The producer is inert when the glossary doc is disabled, mirroring the other
 // doc-scoped families, so a project that renders no glossary is never nagged.
 func TestGlossaryTersenessNotesDisabled(t *testing.T) {
@@ -565,8 +591,9 @@ func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		// p.Cat aliases catalog.Standard and its Docs map is shared, so swap in a
-		// copy rather than mutating the catalog for every other test in the package.
+		// p.Cat's Docs map is this project's own clone, but the rest of this
+		// Project reads it, so swap in a local copy rather than mutating the
+		// project's catalog mid-test.
 		e := p.Cat.Docs["glossary"]
 		e.Data = map[string]any{"standardTerms": []any{
 			map[string]any{"term": "shipped-bloat", "meaning": strings.Repeat("x", glossaryMeaningMax+1)},
