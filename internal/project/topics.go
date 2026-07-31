@@ -54,7 +54,10 @@ func (p *Project) generateTopicDocs(corpus topic.Corpus) (files []RenderedFile, 
 	} else {
 		// Init and isolated renderer tests can render before a Git repository
 		// exists; use the same canonical filesystem paths in that pre-adoption case.
-		currentPaths = filesystemProjectReader{root: p.Root}.Paths("")
+		currentPaths, err = filesystemProjectReader{root: p.Root}.Paths("")
+		if err != nil {
+			return nil, nil, err
+		}
 	}
 	base := strings.TrimRight(p.Cfg.DocsDir, "/") + "/topics"
 	for _, discovered := range corpus.All() {
