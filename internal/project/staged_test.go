@@ -202,7 +202,7 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedSchema15Cutoff(t *test
 		t.Fatalf("missing config error = %v", err)
 	}
 	badConfig, _ := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Bytes: []byte("unknown: true\n")}})
-	if err := validatePermanentLockTransition(badConfig, before, after); err == nil || !strings.Contains(err.Error(), "compute ADR V2 cutoff") {
+	if err := validatePermanentLockTransition(badConfig, before, after); err == nil || !strings.Contains(err.Error(), "compute ADR cutoff") {
 		t.Fatalf("invalid config error = %v", err)
 	}
 }
@@ -1065,5 +1065,11 @@ func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T)
 	after.ADRFormatV3From = 1
 	if err := validatePermanentLockTransition(missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
 		t.Fatalf("missing config error = %v", err)
+	}
+	// Each cutoff is sealed by its own generation, so the computed value at any
+	// other generation pair is an authority the migration never writes.
+	offGeneration := &manifest.Lock{SchemaVersion: 27, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
+	if err := validatePermanentLockTransition(tree, before, offGeneration); err == nil || !strings.Contains(err.Error(), "changes immutable") {
+		t.Fatalf("seal without the generation stamp = %v", err)
 	}
 }

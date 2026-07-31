@@ -296,10 +296,14 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		return nil
 	}
-	// The V3 sealing edge: the schema migration writes the computed cutoff into
-	// an authority that carried none, leaving every other permanent value alone
-	// (ADR-0194 item 1). It mirrors the V2 sealing edge below it.
-	if before.ADRFormatV3From == 0 && after.ADRFormatV3From > 0 &&
+	// The V3 sealing edge: the adr-format-v3-cutoff migration (generation 28)
+	// writes the computed cutoff into an authority that carried none, leaving
+	// every other permanent value alone (ADR-0194 item 1). It mirrors the V2
+	// sealing edge below it, generation pin included: each cutoff is sealed by
+	// its own generation, so a seal at any other generation is an authority the
+	// migration never writes.
+	if before.SchemaVersion == 27 && after.SchemaVersion == 28 &&
+		before.ADRFormatV3From == 0 && after.ADRFormatV3From > 0 &&
 		before.InitializedWithVersion == after.InitializedWithVersion &&
 		before.ADRFormatV1From == after.ADRFormatV1From &&
 		before.ADRFormatV2From == after.ADRFormatV2From &&
@@ -340,14 +344,14 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
 	file, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {
-		return 0, errors.New("compute ADR V2 cutoff: snapshot has no .awf/config.yaml")
+		return 0, errors.New("compute ADR cutoff: snapshot has no .awf/config.yaml")
 	}
 	if !file.Scannable() {
-		return 0, errors.New("compute ADR V2 cutoff: snapshot .awf/config.yaml is not scannable")
+		return 0, errors.New("compute ADR cutoff: snapshot .awf/config.yaml is not scannable")
 	}
 	cfg, err := config.Parse(".", file.Bytes)
 	if err != nil {
-		return 0, fmt.Errorf("compute ADR V2 cutoff: %w", err)
+		return 0, fmt.Errorf("compute ADR cutoff: %w", err)
 	}
 	prefix := strings.Trim(cfg.DocsDir, "/") + "/decisions/"
 	max := 0
