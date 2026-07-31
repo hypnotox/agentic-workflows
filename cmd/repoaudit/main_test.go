@@ -103,7 +103,10 @@ func TestCleanNonAdopterFacing(t *testing.T) {
 	g := fakeGit{
 		"merge-base origin/main HEAD": {out: "origin/main\n"},
 		"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 origin/main HEAD -- *.go": {out: ""},
-		"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/render/render.go\n"},
+		// internal/testsupport/ is a source root that ships no adopter-visible
+		// behaviour, so it stays outside the allowlist that internal/render/
+		// joined once render-logic changes were recognised as adopter-visible.
+		"diff --name-only origin/main HEAD": {out: "docs/x.md\n\ninternal/testsupport/fixture.go\n"},
 	}
 	code, out := runFake([]string{"repoaudit", "origin/main..HEAD"}, g)
 	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
@@ -180,6 +183,38 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 0 || !strings.Contains(out, "warn    changelog-unreleased") || !strings.Contains(out, "[Unreleased] is unchanged") {
 		t.Fatalf("code=%d out=%q", code, out)
+	}
+}
+
+func TestBehaviourPackagesAreAdopterFacing(t *testing.T) {
+	// Regression: the allowlist covered the catalog and the schema but not the
+	// packages that decide what the shipped commands answer, so a real
+	// adopter-visible change slipped it. `awf context` began reporting an
+	// in-flight decision record as frozen, fixed in internal/adr and
+	// internal/project, and this rule stayed silent because neither root was
+	// listed. Each root is asserted separately: one shared case would pass
+	// while the others stayed missing.
+	for _, path := range []string{
+		"internal/adr/status.go",
+		"internal/project/context_adr.go",
+		"internal/render/render.go",
+		"internal/effort/service.go",
+		"internal/worktree/manager.go",
+	} {
+		t.Run(path, func(t *testing.T) {
+			same := changelog("\n")
+			g := fakeGit{
+				"merge-base b h": {out: "b\n"},
+				"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 b h -- *.go": {out: ""},
+				"diff --name-only b h":    {out: path + "\n"},
+				"show b:" + changelogPath: {out: same},
+				"show h:" + changelogPath: {out: same},
+			}
+			code, out := runFake([]string{"repoaudit", "b..h"}, g)
+			if code != 0 || !strings.Contains(out, "warn    changelog-unreleased") {
+				t.Fatalf("%s: code=%d out=%q", path, code, out)
+			}
+		})
 	}
 }
 
