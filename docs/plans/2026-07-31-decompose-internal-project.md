@@ -35,8 +35,9 @@ dispatch; (2) the `internal/resident` carve below core; (3) the `internal/contex
 core behind the `ContextState` seam, with the render bank descending from `cmd/awf`; (4) the
 presentation-ownership topic anchored and the config-reference rendering typed into core; (5)
 template-ID derivation consolidated into the descriptor and declaration tables; (6) the
-state-ownership scanner widened, the package-ownership guard added, and the roadmap and glossary
-obligations closed. Design and rationale: ADR-0191.
+state-ownership scanner widened and the roadmap and glossary obligations closed. The
+package-ownership guard and operation 7 land in the terminal transaction after Phase 6.
+Design and rationale: ADR-0191.
 
 ## File structure
 
@@ -359,7 +360,7 @@ feat(code-design): anchor the presentation-ownership rule
 refactor(rendering): derive every template ID from the tables
 ```
 
-## Phase 6: Scanner widening, the ownership guard, and the record
+## Phase 6: Scanner widening and the record
 
 **Execution mode: inline.**
 
