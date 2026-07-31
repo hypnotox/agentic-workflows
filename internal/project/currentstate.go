@@ -463,7 +463,11 @@ func (p *Project) rangePairUniverses(rev string) (before, after currentstate.Uni
 }
 
 // coveragePolicy reads only the fan-out budget from a currentState config block.
-// Which checks run and the rank each reports at are fixed in code (ADR-0183).
+// Which checks run and the rank each reports at are fixed in code (ADR-0183). A
+// nil block is a real input at both call sites and needs no special case: since
+// ADR-0192 both checks evaluate regardless of block presence, and
+// EffectiveMaxTopicsPerPath returns the default of 8 on a nil receiver, so a tree
+// declaring no block evaluates exactly as one declaring an empty one.
 func coveragePolicy(cs *config.CurrentStateConfig) topic.CoveragePolicy {
 	return topic.CoveragePolicy{
 		Coverage:         true,

@@ -106,6 +106,8 @@ Backing: test
 
 - [ ] **Task 2.3: Restore the proof markers.** Add `// invariant: rendering/sync-and-drift:coverage-evaluation-unconditional` immediately above `TestCheckCurrentStateNoPolicy` in `internal/project/currentstate_test.go` and above `TestCheckStagedNoPolicy` in `internal/project/staged_test.go`. Two markers are required, not one: the claim asserts both paths, and a marker on only the working-tree test would leave the staged half unproven, which is the two-layer gap the code-reviewer's `invariant-proof-exercises-its-claim` lens exists to catch. Confirm both tests genuinely exercise the claim by reverting each guard removal from task 1.3 independently and checking that the corresponding test goes red, then restore.
 
+  Also add a second `// invariant: config/configuration:severity-not-configurable` marker above `TestCheckCurrentStateNoPolicy`, alongside the new claim's marker. Phase 1's terminal review found that after task 1.4's strike, that claim's fixed-rank clause ("a requested coverage finding always reports at error and a requested fan-out finding always at warn") carries no proof marker: the removed marker proved only the struck sentence, so the gap is pre-existing rather than created here. The inverted test's `reflect.DeepEqual` already pins `severity.Error` and `severity.Warn` exactly, so closing the gap costs one line and stops a `Backing: test` claim from carrying an unproven universal.
+
 - [ ] **Task 2.4: Apply the final batch and flip.** In `docs/decisions/0192-...md`, set the frontmatter `status:` on line 3 to `Implemented`, then append these two lines to `## Status history`, in this order:
 
   ```

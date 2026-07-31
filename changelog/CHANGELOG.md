@@ -46,11 +46,16 @@ query a single version or a range.
   `awf upgrade`. (ADR-0191)
 
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
-  the `off` value with them. A tree that declares a `currentState` block now always evaluates both
-  topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
-  Where the two keys were a present block's only children the migration seeds and announces
-  `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped, since an
-  absent block stops both checks evaluating. That is the one case where `awf upgrade` adds a line to
+  the `off` value with them. Every adopted tree now always evaluates both topic coverage and
+  fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn. Whether your
+  config declares a `currentState` block no longer affects it. If your tree has no such block it
+  previously received neither finding and now receives both, so an error-rank coverage finding can
+  newly fail a gate that was passing; every tree `awf init` scaffolds already declares the block and
+  is unaffected. Where the two keys were a present block's only children the migration seeds and
+  announces `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped.
+  That seeding was protecting the block-presence gate this release also removes, so it is now inert
+  but harmless and its announcement still says it keeps the checks evaluating; the migration is
+  frozen and neither is changed. That is the one case where `awf upgrade` adds a line to
   your `config.yaml` instead of only removing one; it materializes the budget that was already in
   force by default, and the regenerated `docs/config-reference.md` prints that row as `8` rather than
   `8 (default)`. A caller that does not want a finding

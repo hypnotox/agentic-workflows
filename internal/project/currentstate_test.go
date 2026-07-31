@@ -124,17 +124,9 @@ currentState:
 `
 
 // csNoPolicyYAML is csYAML without its currentState block, the shape ADR-0192
-// makes indistinguishable from csYAML for coverage and fan-out evaluation.
-const csNoPolicyYAML = `prefix: example
-skills:
-  - tdd
-agents:
-  - code-reviewer
-domains:
-  - alpha
-contextIgnore:
-  - internal/skip.go
-`
+// makes indistinguishable from csYAML for coverage and fan-out evaluation. It is
+// derived rather than copied so the stated relationship stays enforced.
+var csNoPolicyYAML = strings.TrimSuffix(csYAML, "currentState:\n  maxTopicsPerPath: 8\n")
 
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
 const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"
