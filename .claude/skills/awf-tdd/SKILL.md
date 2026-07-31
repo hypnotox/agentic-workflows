@@ -6,7 +6,7 @@ description: Use to write the failing test before the implementation change in a
 
 # awf-tdd
 
-The test-first discipline as a project-owned task skill.
+The test-first discipline as a project-owned support skill.
 
 <!-- awf:edit surfaces: default; create .awf/skills/parts/tdd/surfaces.md to override -->
 ## Pick the right test surface

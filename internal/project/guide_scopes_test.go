@@ -43,7 +43,7 @@ func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
 	skills["local"] = catalog.SkillSpec{Profile: catalog.WorkflowProfile{}}
 	names = append(names, "local")
 	p := &Project{Cfg: &config.Config{Prefix: "example", Skills: names}, Cat: &catalog.Catalog{Skills: skills}}
-	rows := p.taskSkillRows()
+	rows := p.skillRows()
 	for _, name := range names {
 		profile := skills[name].Profile
 		kind, purpose, trigger := string(profile.Kind), profile.Purpose, profile.Trigger
@@ -67,13 +67,13 @@ func TestGuideCatalogRowsAreCompleteSafeAndAdvisory(t *testing.T) {
 			t.Errorf("row for %s = missing %q:\n%s", name, want, rows)
 		}
 	}
-	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{}, "taskSkillRows": rows}
+	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "commitScopes": "", "gatedCommands": "", "skills": map[string]bool{}, "skillRows": rows}
 	out := renderGuide(t, data)
 	if !strings.Contains(out, "Any enabled skill may be used whenever its purpose fits") {
 		t.Error("guide does not state advisory skill selection")
 	}
 	p.Cfg.Prefix = ""
-	if !strings.Contains(p.taskSkillRows(), "`project-local`") {
+	if !strings.Contains(p.skillRows(), "`project-local`") {
 		t.Fatal("missing-prefix fallback is not coherent")
 	}
 	banned := []string{"<no value>", "awf_workflow", "only legal predecessor", "only legal successor", "mandatory successor", "must follow", "must be followed by", "mandatory transition", "router"}

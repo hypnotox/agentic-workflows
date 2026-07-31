@@ -1909,8 +1909,8 @@ func TestRoadmapGraduationTemplate(t *testing.T) {
 	}
 }
 
-// The AGENTS.md task-skill trigger table derives from the catalog's enabled
-// non-Chain skills - every catalog task skill's trigger row appears iff enabled
+// The AGENTS.md skill trigger table derives from the catalog's enabled
+// skills - every catalog skill's trigger row appears iff enabled
 // (a hand enumeration could never mention a newer one like
 // refactor-coupling-audit), and disabled ones stay absent (ADR-0046 follow-up
 // sweep; table shape per ADR-0157).
@@ -1947,7 +1947,7 @@ func TestAgentsDocTaskSkillsGating(t *testing.T) {
 	}
 	for _, banned := range []string{"example-tdd", "example-debugging", "example-adr-lifecycle", "example-roadmap-graduation"} {
 		if strings.Contains(out, banned) {
-			t.Errorf("disabled task skill %q must not render:\n%s", banned, out)
+			t.Errorf("disabled skill %q must not render:\n%s", banned, out)
 		}
 	}
 }

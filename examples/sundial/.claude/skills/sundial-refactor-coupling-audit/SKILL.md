@@ -10,7 +10,7 @@ description: >
 
 # sundial-refactor-coupling-audit
 
-A task skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
+A support skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
 
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/refactor-coupling-audit/when-to-invoke.md to override -->
 ## When to invoke
@@ -23,7 +23,7 @@ Before finalising the Context section of a refactor ADR that:
 
 Skip when the refactor is contained within one package (no cross-package coupling to audit) or when the refactor is a pure rename without coupling shifts.
 
-This is a **task skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before `sundial-proposing-adr` finalises the Decision.
+This is a **support skill**: it sits off the workflow chain and does not gate it. Its output feeds the ADR's Context section before `sundial-proposing-adr` finalises the Decision.
 
 ## Procedure
 

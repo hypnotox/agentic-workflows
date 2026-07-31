@@ -9,7 +9,7 @@ description: >
 
 # awf-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A support skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `docs/workflow.md` and `docs/decisions/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
