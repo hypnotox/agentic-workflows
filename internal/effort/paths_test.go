@@ -32,6 +32,14 @@ func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 	if got := memoryPublicPath("meaningful-slug"); got != ".awf/efforts/meaningful-slug/memory.md" {
 		t.Fatalf("public memory path = %q", got)
 	}
+	if got := paths.publicMemoryPath("meaningful-slug"); got != ".awf/efforts/meaningful-slug/memory.md" {
+		t.Fatalf("primary-root public memory path = %q, want the repository-relative form", got)
+	}
+	linked := paths
+	linked.roots.InvokingRoot = filepath.Join(root, "linked")
+	if got := linked.publicMemoryPath("meaningful-slug"); got != filepath.Join(root, ".awf", "efforts", "meaningful-slug", "memory.md") {
+		t.Fatalf("linked-checkout public memory path = %q, want the absolute primary-root form", got)
+	}
 	if err := paths.validate(paths.worktrees); err != nil {
 		t.Fatalf("worktrees root rejected: %v", err)
 	}

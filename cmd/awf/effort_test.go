@@ -29,15 +29,16 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	linked := filepath.Join(filepath.Dir(primary), "linked with spaces")
 	commandGit(t, "-C", primary, "worktree", "add", "--detach", linked, "HEAD")
 
-	createdJSON := runEffortCommand(t, primary, "new", []string{"CLI outcome"}, map[string]bool{"--json": true})
+	createdJSON := runEffortCommand(t, primary, "new", []string{"CLI outcome"}, map[string]bool{"--json": true, "--no-worktree": true})
 	var created struct {
-		SchemaVersion int           `json:"schemaVersion"`
-		Effort        effort.Record `json:"effort"`
+		SchemaVersion int                  `json:"schemaVersion"`
+		Effort        effort.Record        `json:"effort"`
+		Worktree      *effortWorktreeFacts `json:"worktree"`
 	}
 	if err := json.Unmarshal([]byte(createdJSON), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.SchemaVersion != 2 || created.Effort.Slug != "cli-outcome" || created.Effort.Title != "CLI outcome" || created.Effort.MemoryPath != ".awf/efforts/cli-outcome/memory.md" {
+	if created.SchemaVersion != 2 || created.Effort.Slug != "cli-outcome" || created.Effort.Title != "CLI outcome" || created.Effort.MemoryPath != ".awf/efforts/cli-outcome/memory.md" || created.Worktree != nil {
 		t.Fatalf("new JSON = %#v", created)
 	}
 	resident := filepath.Join(primary, ".awf", "efforts", "cli-outcome")
@@ -48,8 +49,21 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 		t.Fatal(err)
 	}
 	shownJSON := runEffortCommand(t, linked, "show", []string{"cli-outcome"}, map[string]bool{"--json": true})
-	if shownJSON != createdJSON {
-		t.Fatalf("show JSON = %q, want exact new JSON %q", shownJSON, createdJSON)
+	var shown struct {
+		SchemaVersion int           `json:"schemaVersion"`
+		Effort        effort.Record `json:"effort"`
+	}
+	if err := json.Unmarshal([]byte(shownJSON), &shown); err != nil {
+		t.Fatal(err)
+	}
+	primaryMemory := filepath.Join(primary, ".awf", "efforts", "cli-outcome", "memory.md")
+	qualified := created.Effort
+	qualified.MemoryPath = primaryMemory
+	if shown.SchemaVersion != 2 || shown.Effort != qualified {
+		t.Fatalf("show JSON from the linked checkout = %#v, want the created effort with memoryPath %q", shown, primaryMemory)
+	}
+	if text := runEffortCommand(t, linked, "show", []string{"cli-outcome"}, nil); !strings.Contains(text, "memory="+primaryMemory) {
+		t.Fatalf("linked show text = %q, want the primary-root-qualified memory fact", text)
 	}
 	listedJSON := runEffortCommand(t, linked, "list", nil, map[string]bool{"--json": true})
 	var listed struct {
@@ -59,7 +73,7 @@ func TestEffortProtocol2CLIFromPrimaryAndLinkedWorktrees(t *testing.T) {
 	if err := json.Unmarshal([]byte(listedJSON), &listed); err != nil {
 		t.Fatal(err)
 	}
-	if listed.SchemaVersion != 2 || len(listed.Efforts) != 1 || listed.Efforts[0].Slug != "cli-outcome" {
+	if listed.SchemaVersion != 2 || len(listed.Efforts) != 1 || listed.Efforts[0].Slug != "cli-outcome" || listed.Efforts[0].MemoryPath != primaryMemory {
 		t.Fatalf("list JSON = %#v", listed)
 	}
 	if text := runEffortCommand(t, primary, "show", []string{"cli-outcome"}, nil); !strings.Contains(text, "effort cli-outcome") || !strings.Contains(text, "memory=.awf/efforts/cli-outcome/memory.md") {
@@ -117,17 +131,19 @@ func TestEffortCommandUsageAndOutputErrors(t *testing.T) {
 	if err := runEffort(&cmdCtx{root: filepath.Join(root, "missing"), sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
 		t.Fatal("invalid repository accepted")
 	}
-	if err := runEffort(&cmdCtx{root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
-		t.Fatal("blank title accepted")
+	for _, bools := range []map[string]bool{{}, {"--no-worktree": true}} {
+		if err := runEffort(&cmdCtx{root: root, sub: "new", inv: invocation{positionals: []string{" "}, bools: bools, values: map[string]string{}}, stdout: &bytes.Buffer{}}); err == nil {
+			t.Fatalf("blank title accepted with bools %v", bools)
+		}
 	}
-	runEffortCommand(t, root, "new", []string{"Output errors"}, nil)
+	runEffortCommand(t, root, "new", []string{"Output errors"}, map[string]bool{"--no-worktree": true})
 	for _, test := range []struct {
 		sub   string
 		pos   []string
 		bools map[string]bool
 	}{
-		{sub: "new", pos: []string{"Another output"}},
-		{sub: "new", pos: []string{"JSON output"}, bools: map[string]bool{"--json": true}},
+		{sub: "new", pos: []string{"Another output"}, bools: map[string]bool{"--no-worktree": true}},
+		{sub: "new", pos: []string{"JSON output"}, bools: map[string]bool{"--json": true, "--no-worktree": true}},
 		{sub: "show", pos: []string{"output-errors"}},
 		{sub: "show", pos: []string{"output-errors"}, bools: map[string]bool{"--json": true}},
 		{sub: "list"},

@@ -1512,6 +1512,16 @@ func TestWorkingMemorySingleHomeSurfaces(t *testing.T) {
 			t.Errorf("workflow protocol missing %q", detailed)
 		}
 	}
+	for _, worktreeDefault := range []string{"managed worktree at `.awf/worktrees/<slug>/` by default", "`--no-worktree` as the explicit exception", "primary-root-relative"} {
+		if !strings.Contains(workflow, worktreeDefault) {
+			t.Errorf("workflow missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
+	for _, worktreeDefault := range []string{"managed worktree is the default execution location", "`--no-worktree` is the explicit exception", "stays under the primary checkout"} {
+		if !strings.Contains(guide, worktreeDefault) {
+			t.Errorf("guide missing worktree-default execution phrase %q", worktreeDefault)
+		}
+	}
 	if strings.Contains(guide, "The memory skeleton contains") || strings.Contains(routine, "The memory skeleton contains") {
 		t.Error("guide or routine skill duplicated the workflow document's detailed skeleton")
 	}

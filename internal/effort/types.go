@@ -1,7 +1,27 @@
 // Package effort owns repository-local immutable effort residents and their memory.
 package effort
 
-import "time"
+import (
+	"errors"
+	"fmt"
+	"time"
+)
+
+// ErrManagedTopologyPresent classifies the restartable-finish refusal that
+// managed Git topology for the slug still exists. Callers branch on
+// errors.Is; the prose stays the user-facing protocol.
+var ErrManagedTopologyPresent = errors.New("managed topology present")
+
+// managedTopologyError carries one refusal message unchanged while
+// classifying it, so callers never inspect the prose.
+type managedTopologyError struct{ message string }
+
+func (e *managedTopologyError) Error() string { return e.message }
+func (e *managedTopologyError) Unwrap() error { return ErrManagedTopologyPresent }
+
+func managedTopologyRefusal(format string, args ...any) error {
+	return &managedTopologyError{message: fmt.Sprintf(format, args...)}
+}
 
 const SchemaVersion = 2
 
