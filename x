@@ -3,6 +3,12 @@
 # Usage: ./x <command> [args]
 set -euo pipefail
 
+# Per-checkout lint cache: the default shared cache is content-keyed but stores
+# absolute file positions, so a byte-identical package linted in another checkout
+# (a managed .awf/worktrees/ tree) leaks that checkout's paths into this one's
+# findings, pointing at files that vanish when the worktree is removed.
+export GOLANGCI_LINT_CACHE="${PWD}/.cache/golangci-lint"
+
 cleanup_paths=()
 cleanup() {
   if [ "${#cleanup_paths[@]}" -gt 0 ]; then
