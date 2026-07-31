@@ -252,16 +252,18 @@ query a single version or a range.
 ### Bug fixes
 
 - Managed-worktree refusals no longer direct an agent to resolve or discard work that may belong
-  to a concurrent effort. A checkout mid-merge is now refused with "do not finish, abort, or
-  discard a merge you did not start; wait until this checkout is clean, then retry", and the
+  to a concurrent effort. A checkout mid-merge is now refused with "finish or abort this merge
+  only if you started it; otherwise wait until this checkout is clean, then retry", and the
   refusal names the effort whose tip is being merged when it can prove one from repository truth
   alone (MERGE_HEAD matched against the effort branches registered at their managed worktrees).
   The cleanliness refusal, which cannot attribute unstaged work, now asks the caller to confirm
   the changes are its own before acting. Previously the cleanliness refusal told a blocked agent
   to inspect and discard the changes with native Git and the merge refusal told it to finish or
-  abort the operation, either of which destroys a peer's staged integration when several efforts
-  finish at once. Attribution is best-effort and decorates the refusal without deciding it: an
-  unresolvable probe drops the effort name and keeps the same safe instruction.
+  abort the operation unconditionally, either of which destroys a peer's staged integration when
+  several efforts finish at once. The other four in-progress operations (cherry-pick, revert, and
+  the two rebase states) keep the unconditional finish-or-abort guidance. Attribution is
+  best-effort and decorates the refusal without deciding it: an unresolvable probe drops the
+  effort name and keeps the same instruction.
 
 - Divergent effort-integration guidance now derives the project gate command from `vars.gateCmd` and uses generic project-gate prose when that value is unavailable.
 - Pi fresh-session handoff now accepts absolute memory paths confined beneath the repository memory root, normalizes them to canonical repository-relative slash form, requires a regular file, and revalidates the checkpoint after the countdown immediately before replacement.

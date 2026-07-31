@@ -192,11 +192,16 @@ func markerAt(t *testing.T, present string) func(context.Context, string) (strin
 	}
 }
 
-// mergeHeadAt answers one commit for every revision, which is all attribution
-// asks for: it resolves MERGE_HEAD and reads every other commit from the
-// registration listing rather than resolving it a second time.
+// mergeHeadAt answers commit for MERGE_HEAD and a different commit for every
+// other revision, so a test proves attribution reads the merged tip from
+// MERGE_HEAD and not from whatever revision it happens to ask for.
 func mergeHeadAt(commit string) func(context.Context, string) (string, error) {
-	return func(context.Context, string) (string, error) { return commit, nil }
+	return func(_ context.Context, revision string) (string, error) {
+		if revision == "MERGE_HEAD" {
+			return commit, nil
+		}
+		return otherTip, nil
+	}
 }
 
 // registrations answers a fixed worktree listing, so a test states the managed

@@ -143,18 +143,20 @@ func operationFree(ctx context.Context, checkout Runner) error {
 	return nil
 }
 
-// mergeRefusal is the one refusal that never advises resolution. Finishing or
-// aborting a merge destroys work when the caller did not start it, and an
-// effort integration sits staged and uncommitted in the receiving checkout for
-// the whole gate and renewed review, so waiting is the only safe instruction
-// whether or not a holder can be named. Attribution decorates that instruction;
-// it never decides it.
+// mergeRefusal is the one refusal that conditions resolution on ownership.
+// Finishing or aborting a merge destroys work when the caller did not start it,
+// and an effort integration sits staged and uncommitted in the receiving
+// checkout for the whole gate and renewed review. The caller's own stuck merge
+// still needs an exit, though, and this same probe runs against a caller's
+// managed checkout during removal, so the instruction guards resolution rather
+// than forbidding it. Attribution decorates the condition; it never decides the
+// instruction, because a merge nothing could name is no safer to abort.
 func mergeRefusal(ctx context.Context, checkout Runner) error {
 	condition := "a merge is in progress in this checkout"
 	if slug := integrationHolder(ctx, checkout); slug != "" {
 		condition = "a merge of effort " + slug + " is in progress in this checkout"
 	}
-	return refusal("operation", condition, false, "do not finish, abort, or discard a merge you did not start; wait until this checkout is clean, then retry")
+	return refusal("operation", condition, false, "finish or abort this merge only if you started it; otherwise wait until this checkout is clean, then retry")
 }
 
 // integrationHolder names the effort whose branch is being merged here, or the
