@@ -10,6 +10,11 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
+  every enabled skill, not only task skills). A local override of
+  `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty
+  skills list rather than erroring; update the reference when upgrading.
+
 - Add the `orienting` support skill: the single home of the orientation procedure (guide-first
   grounding ladder, managed `awf context` discipline, and effort-resume revalidation against
   repository truth), shared with the grounding-checker contract via a template partial. Schema
@@ -90,6 +95,17 @@ query a single version or a range.
   longer be copied back as an argument that fails later as an unregistered model.
 
 ### Features
+- Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
+  the writing-plans scaffold command resolves the awf binary instead of the skill prefix,
+  reviewer-lens enumerations are count-free, the resync skill names both invokers and carries
+  plan-path identification on every target, the Pi-only `allowCommits` literal no longer leaks
+  into non-Pi renders, catalog relationship rows and the support-skill vocabulary match the
+  bodies, refactor-coupling-audit uncounts its categories and gives each one its own report
+  line so sidecar-dropped categories drop cleanly, restated working-memory and notes prose is
+  trimmed, and shared spine prose moves into new `templates/partials/` files
+  (context-orientation, escalation-menu, coverage-oracle, exploration-breadth,
+  exploration-detail). Rendered output changes for every target.
+
 - Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
   each post-Accepted content digest, status events repeat the latest stamp, and terminal review now
   owns the final Implemented flip after findings settle. Existing records remain valid unchanged;

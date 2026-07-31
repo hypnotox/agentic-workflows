@@ -62,6 +62,8 @@ status flips) that lands under the terminal-review flow per the deferred-flip co
     Task 4.1's relationship edits shift plain golden expectations; its
     `TestUnifiedEffortWorkflowCoverage` phrases are never edited)
   - `x` (comment lines 19-22 only, Phase 3)
+  - `changelog/CHANGELOG.md` (terminal-review fix: Unreleased entries for the
+    rendered-output changes and the skillRows render-key rename)
   - `.awf/config.yaml`, `.awf/docs/glossary.yaml`, `.awf/docs/pitfalls.yaml`,
     `.awf/agents/plan-reviewer.yaml`,
     `.awf/agents/adr-reviewer.yaml`, `.awf/skills/parts/debugging/debugging-surfaces.md`,

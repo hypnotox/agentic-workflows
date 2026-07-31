@@ -43,5 +43,4 @@ After not-found, inconclusive, unverified, or insufficient output, the parent ma
 This skill is report-only. When a parent has an effort, receive its slug and exact `.awf/efforts/<slug>/memory.md` path only as context; repository and current-state authority outrank checkpoint prose. Standalone memory is forbidden. Never create a second effort or become a second writer, and never edit shared memory, edit files, commit, recursively delegate, widen past the selected maximum, bundle an unrelated need, or retain state.
 
 <!-- awf:edit notes: default; create .awf/skills/parts/exploring/notes.md to override -->
-## Notes
 

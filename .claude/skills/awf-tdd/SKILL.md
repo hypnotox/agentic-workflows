@@ -25,7 +25,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 2. Run it and confirm it fails for the right reason: `go test ./...`.
 3. Before implementing, per `docs/maintainable-code-design.md`, assess whether a bounded enabling refactor prevents duplication, coupling, representation leakage, or a workaround. Escalate materially larger work by asking the user whether to
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
- Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
+Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
 4. Implement the minimal change to pass.
 5. Run the gate: `./x gate`.
 

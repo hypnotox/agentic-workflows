@@ -40,7 +40,7 @@ If the entry cites inline numbers, re-measure on the current code before graduat
 Commit with subject `docs(roadmap): drop <item>`; the one-line reason goes in the commit body, not the subject or the file.
 
 <!-- awf:edit same-commit: default; create .awf/skills/parts/roadmap-graduation/same-commit.md to override -->
-Same-commit removal is non-negotiable in every case above: a graduated entry that lingers reads as still parked; do not defer the deletion to a cleanup pass.
+**Same-commit removal is non-negotiable in every case above.** A graduated entry that lingers reads as still parked; do not defer the deletion to a cleanup pass.
 
 <!-- awf:edit doc-currency: default; create .awf/skills/parts/roadmap-graduation/doc-currency.md to override -->
 ### 5. Doc-currency

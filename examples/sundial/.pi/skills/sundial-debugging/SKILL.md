@@ -30,9 +30,9 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 
 <!-- awf:edit test-isolation: default; create .awf/skills/parts/debugging/test-isolation.md to override -->
-4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search. Once evidence confirms a concrete non-minimal fix outcome, create or resume exactly one immutable slugged effort; it always owns `.awf/efforts/<slug>/memory.md`. Confirm `Effort: <slug>`, preserve one user-managed writer, and carry slug/path onward. A minimal simple known-root fix stays effort-free. Repository sources and current-state documentation outrank checkpoint prose, exploring children never edit memory, and standalone memory is forbidden.
+4. **Establish effort ownership when the investigation becomes a change.** Initial investigation creates no effort merely to search; a minimal simple known-root fix stays effort-free. Once evidence confirms a concrete non-minimal fix outcome, carry the one effort slug and exact `.awf/efforts/<slug>/memory.md` path onward; exploring children receive them read-only and never edit memory. Repository sources and current-state documentation outrank checkpoint prose; standalone memory is forbidden and one user-managed writer remains responsible. The full protocol lives in the checkpoint below.
 
-5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. Run `awf context <the suspect paths>` first. The test must fail for the right reason on the unfixed code. Invoke `sundial-tdd` for the project's test-first discipline.
+5. **Isolate with a failing test, written first.** Once the defective surface is located, write the smallest possible test that reproduces the failure before touching the fix. The test must fail for the right reason on the unfixed code. Invoke `sundial-tdd` for the project's test-first discipline. Before writing the test, run `awf context <the suspect paths>`.
 Start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where the work touches a claimed surface.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
@@ -57,7 +57,7 @@ Development data stores are disposable. Do not attempt to preserve or restore de
 
 - Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report to the user.
 - Coverage may never regress. A fix that breaks an existing passing test is itself a bug.
- Full debugging recipes and surface-specific commands are in `docs/debugging.md`.
+Full debugging recipes and surface-specific commands are in `docs/debugging.md`.
 
 <!-- awf:edit red-flags: default; create .awf/skills/parts/debugging/red-flags.md to override -->
 ## Red flags
