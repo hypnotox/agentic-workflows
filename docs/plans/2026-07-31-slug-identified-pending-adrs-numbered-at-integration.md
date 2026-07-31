@@ -803,12 +803,16 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
     because the scaffold refusal `numberedSlugRe` requires a trailing hyphen; and the
     number-before-slug case order had no test that discriminated it, since a numeric slug
     and a number share an identity string.
-- 2026-07-31, deferred out of Phase 4: an ADR title slugifying to exactly four digits (for
-  example `awf new adr "2026"`) is accepted by the scaffold, because `numberedSlugRe`
-  (`internal/adr/adr.go`) anchors on `^\d{4}-` and requires the hyphen. Such a record is
-  unreachable through `Corpus.ByIdentity`, which routes a four-digit key to the number
-  index. Recorded in docs/roadmap.md; it is Phase 2/3 scaffold code, not a Phase 4 effect,
-  and closing it properly spans the scaffold refusal and the corpus identity guard.
+- 2026-07-31, found by the Phase 4 review and closed on a user ruling: an ADR title
+  slugifying to digits only (for example `awf new adr "2026"`) was accepted by the
+  scaffold, because `numberedSlugRe` (`internal/adr/adr.go`) anchors on `^\d{4}-` and
+  requires the hyphen. Such a record is unreachable through `Corpus.ByIdentity`, which
+  routes a four-digit key to the number index, and unlinkable from a plan, since
+  `plan.ADRLink` reads any digits-only entry as a number. The scaffold now refuses an
+  all-digit slug (`allDigitSlugRe`), which closes both and is the half available here:
+  the complete guard belongs on `corpus-single-identity-key`, and ADR-0194 spent its one
+  operation on that claim in batch 1. The corpus-guard remainder stays in docs/roadmap.md
+  for a later record.
 - 2026-07-31, Phase 4 review blocker, ruled by the user: the claim sentence "Numbering
   never rewrites a plan." shipped in batch 4 with nothing able to falsify it, and
   ADR-0194 cannot amend it (a claim carries at most one operation per ADR, and batch 4

@@ -138,23 +138,23 @@ ADR updates it. Worth folding into whatever decision next touches the config edi
 worth asking there whether a "closed enumeration" claim should be backed by a
 source-scanning test rather than by prose nobody can mechanically falsify.
 
-## An all-digit ADR slug is unreachable through the identity index
+## A slug colliding with the number namespace is only refused at the scaffold
 
 `Corpus.ByIdentity` routes a four-digit key to the number index and everything else to the
 slug index, so a record whose slug is exactly four digits can only ever be found as a
-number - which it is not. The scaffold does not prevent one: `numberedSlugRe`
-(`internal/adr/adr.go`) anchors on `^\d{4}-` and requires the trailing hyphen, so
-`awf new adr "2026"` off the integration branch writes `2026.md` with `slug: 2026`. A
-hand-authored file can reach the same shape regardless of what the scaffold refuses.
+number - which it is not. `plan.ADRLink` reads any digits-only `adrs:` entry as a number
+too, so an all-digit slug of any width is unlinkable from a plan.
 
-Closing it properly has two halves: tighten the scaffold refusal (`^\d{4}(-|$)`, or refuse
-an all-digit slug outright), and give the corpus a guard so a slug that collides with the
-number namespace is a corpus error rather than a silently unreachable record. Consequence
-today is low - the record fails to resolve rather than resolving to the wrong one, since a
-corpus with 2026 numbered records does not exist - but the failure is silent at the
-identity layer, and `plan.ADRLink` has to document the hole rather than rely on the
-refusal. Surfaced by the Phase 4 review of ADR-0194 on 2026-07-31, in the Phase 2/3
-scaffold code rather than in the phase's own change.
+The scaffold now refuses an all-digit title slug outright (`allDigitSlugRe`,
+`internal/adr/adr.go`), which closes the only path that mints one through awf. A
+hand-authored `2026.md` carrying `slug: 2026` still parses into the corpus and is still
+unreachable by identity. The complete guard belongs on `corpus-single-identity-key`, whose
+text already governs what is a corpus error - but ADR-0194 spent its one operation on that
+claim in batch 1, and a claim carries at most one operation per ADR, so widening it needs a
+later decision record. Worth folding into whatever decision next touches corpus identity,
+and worth asking there whether the number-shaped-slug check belongs beside the existing
+duplicate-key error rather than as a separate rule. Surfaced by the Phase 4 review of
+ADR-0194 on 2026-07-31; the scaffold half landed the same day.
 
 
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->

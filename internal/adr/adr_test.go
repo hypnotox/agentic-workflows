@@ -599,6 +599,8 @@ func TestNewFileRefusals(t *testing.T) {
 		{"reserved stem", "Template", `slugifies to reserved name "template"`},
 		{"reserved stem index", "Index", `slugifies to reserved name "index"`},
 		{"numbered-looking slug", "2026 Roadmap Refresh", `slugifies to "2026-roadmap-refresh", which reads as a numbered filename`},
+		{"four-digit slug", "2026", `slugifies to "2026", which collides with the number identity form`},
+		{"all-digit slug of another width", "123456", `slugifies to "123456", which collides with the number identity form`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, form := range []struct {

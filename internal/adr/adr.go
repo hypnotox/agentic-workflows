@@ -487,6 +487,15 @@ func replaceOnce(s, old, replacement string) (string, error) {
 // and take the whole corpus down instead of producing a scoped finding.
 var numberedSlugRe = regexp.MustCompile(`^\d{4}-`)
 
+// allDigitSlugRe matches a slug made only of digits, which is refused at
+// authoring time because it collides with the number identity form rather than
+// with a filename. Corpus.ByIdentity routes a four-digit key to the number
+// index, so a `2026` slug names a record nothing can find, and a plan's `adrs:`
+// entry reads any digits-only spelling as a number, so a slug of any length
+// made only of digits is unlinkable. The hyphen numberedSlugRe requires is
+// exactly what lets an all-digit slug past it.
+var allDigitSlugRe = regexp.MustCompile(`^\d+$`)
+
 // reservedSlugStems are the reserved basenames' stems. A title slugifying to
 // one of these would scaffold a pending file every corpus walk skips.
 var reservedSlugStems = map[string]bool{"readme": true, "index": true, "template": true}
@@ -526,6 +535,9 @@ func scaffoldRecord(dir, title string, format Format, pending bool) (string, err
 	}
 	if numberedSlugRe.MatchString(slug) {
 		return "", fmt.Errorf("adr: title slugifies to %q, which reads as a numbered filename", slug)
+	}
+	if allDigitSlugRe.MatchString(slug) {
+		return "", fmt.Errorf("adr: title slugifies to %q, which collides with the number identity form", slug)
 	}
 	corpus, err := loadIdentityCorpus(dir)
 	if err != nil {

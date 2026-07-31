@@ -52,8 +52,8 @@ const adrLinkMaxNumber = 9999
 // the slug grammar here - an entry that names no record in the corpus fails
 // link validation with a scoped finding (ADR-0194 item 14) rather than taking
 // the whole check down. The number case is matched first, so an entirely
-// numeric slug would be read as a number; nothing refuses such a slug at
-// scaffold time yet (docs/roadmap.md). Any other node names itself in the error.
+// numeric slug would be read as a number; the ADR scaffold refuses an all-digit
+// slug for exactly that reason. Any other node names itself in the error.
 func (l *ADRLink) UnmarshalYAML(node *yaml.Node) error {
 	switch {
 	case node.Kind != yaml.ScalarNode:
