@@ -10,14 +10,18 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// invariant: tooling/context-and-topic:context-path-attribution
-// invariant: tooling/context-and-topic:context-path-classification
-// TestOutsideContextPathReadsBothPathSpaces pins that an absolute request is
-// refused as outside the repository in either path space. The classifier
+// TestOutsideContextPathReadsBothPathSpaces documents that an absolute request
+// is refused as outside the repository in either path space. The classifier
 // receives a slash-normalized path but asked only filepath.IsAbs, which on
 // Windows answers false for "/etc/passwd" and let it fall through to
-// PathNotFound. These assertions are platform-invariant; the divergence they
-// guard shows up only where filepath and path disagree.
+// PathNotFound.
+//
+// This is documentation, not a regression guard: on Unix path.IsAbs and
+// filepath.IsAbs agree on every input below, so the table stays green against
+// the pre-fix predicate too. Only a Windows run distinguishes them, and giving
+// the predicate an injectable path-space seam purely to simulate that would be
+// the test-only production indirection direct-injection-first rejects. It
+// therefore carries no invariant marker.
 func TestOutsideContextPathReadsBothPathSpaces(t *testing.T) {
 	for _, p := range []string{"/etc/passwd", "/", "..", "../x", "../../x"} {
 		if !outsideContextPath(p) {
@@ -31,6 +35,8 @@ func TestOutsideContextPathReadsBothPathSpaces(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-path-attribution
+// invariant: tooling/context-and-topic:context-path-classification
 func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "owned/a.go", Mode: snapshot.Regular}, {Path: "owned/b.go", Mode: snapshot.Regular}, {Path: "owned/c.go", Mode: snapshot.Regular}, {Path: "owned/d.go", Mode: snapshot.Regular}, {Path: "ignored/x", Mode: snapshot.Regular}, {Path: "nested/.awf/config.yaml", Mode: snapshot.Regular}, {Path: "nested/x", Mode: snapshot.Regular}, {Path: "link", Mode: snapshot.Symlink, Bytes: []byte("../x")}, {Path: "inside-link", Mode: snapshot.Symlink, Bytes: []byte("owned/a.go")}, {Path: "absolute-link", Mode: snapshot.Symlink, Bytes: []byte("/x")}, {Path: "unowned", Mode: snapshot.Regular}})
 	if err != nil {
