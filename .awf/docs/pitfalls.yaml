@@ -38,6 +38,14 @@ data:
         appears at the phase-closing staged check, never in the migration's own test, which
         operates on fixture bytes and passes regardless.
 
+        This prose did not prevent a recurrence: ADR-0194 repeated it, and a plan reviewer
+        caught it rather than the gate. `TestConfigForCurrentSchemaParsesEveryRetiredKey` in
+        `internal/migrate/forwardport_test.go` is now the deterministic backstop. Its
+        `retiredConfigKeys` table carries the maintenance obligation: a migration that retires
+        a config key adds the key and its generation there, and the test then fails inside the
+        migrate package the moment a forward-port branch is missing, rather than at the
+        phase-closing staged check.
+
         Two related traps in the same area. `RemoveMappingKey` drops the parent key when the
         removal empties it, so removing the last children of a block deletes the block; when a
         feature is gated on the block being present, that silently disables it. And
