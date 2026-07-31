@@ -43,4 +43,3 @@ This skill is report-only. When a parent has an effort, receive its slug and exa
 <!-- awf:edit notes: default; create .awf/skills/parts/exploring/notes.md to override -->
 ## Notes
 
-Pi is deeply integrated. Non-Pi targets have semantic parity through native delegation, not identical orchestration.

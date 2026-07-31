@@ -19,13 +19,13 @@ Invoke when a plan phase benefits from delegated implementation ownership. A pla
 
 ## Procedure
 <!-- awf:section procedure-resolve-plan -->
-1. Resolve the mutable plan and read every declared phase mode. Before dispatch, validate the one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm `Effort: <slug>`, and preserve one user-managed writer. Planned work is concrete and non-minimal, the effort always owns memory, repository authority outranks checkpoint prose, and standalone memory is forbidden.
+1. Resolve the mutable plan and read every declared phase mode. Before dispatch, validate the one immutable effort slug and exact `.awf/efforts/<slug>/memory.md` path, confirm `Effort: <slug>`, and preserve one user-managed writer. Repository authority outranks checkpoint prose, and standalone memory is forbidden.
 <!-- awf:end -->
 <!-- awf:section procedure-raise-concerns -->
 2. You, the dispatching parent, stop before dispatch when the plan is missing phase context, paths, boundaries, checks, or a closing subject. Resolve it with the user; never hand a child an incomplete phase and let it discover the gap.
 <!-- awf:end -->
 <!-- awf:section procedure-extract-context -->
-3. Per `{{ .layout.maintainableCodeDesign }}`, preserve the plan's settled structural choices, including a bounded enabling refactor; reassess them if grounded source contradicts them and stop and escalate rather than accept a bolt-on workaround. Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and V2 operation batch. The owner runs `awf context <the phase's exact paths>` before editing.
+3. Per `{{ .layout.maintainableCodeDesign }}`, preserve the plan's settled structural choices, including a bounded enabling refactor; reassess them if grounded source contradicts them and stop and escalate rather than accept a bolt-on workaround. Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and the phase's batch of the ADR's declared State changes operations (V2). The owner runs `awf context <the phase's exact paths>` before editing.
 <!-- awf:include context-spill -->
 The owner preserves the settled design or reports invalidating source facts; does not replan, broaden the task, or perform unrelated cleanup.
 <!-- awf:end -->

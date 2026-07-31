@@ -13,7 +13,7 @@ Invoked as the independent review step of the implementation phase. It validates
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of sundial-executing-plans or sundial-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip independent review when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift. A docs-only skip still continues to the terminal hand-off and any deferred flip transaction.
+A docs-only session diff may skip the independent review; step 2 defines the check and its ADR-directory exception.
 
 ## Procedure
 
@@ -71,13 +71,12 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 
 **Routine checkpoint.** At this boundary:
 1. Classify the outcome, not the boundary. A minimal simple fix uses no effort, and reaching a checkpoint never creates one by itself. Once the work is a concrete non-minimal outcome, create or resume exactly one immutable slugged effort with `awf effort new "<outcome>"`; use `.awf/efforts/<slug>/memory.md` as its only working memory. If that need is first recognized here, create the effort before updating memory. Repository sources and current-state documentation remain authoritative over checkpoint prose.
-2. Validate the existing effort before writing: carry the exact `<slug>` and `.awf/efforts/<slug>/memory.md`, confirm the file starts with `Effort: <slug>`, and preserve one user-managed writer for the effort. A reviewer, explorer, grounding child, or batch helper is report-only with respect to this shared memory and never edits it. Update the file in its own tool batch: set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, append any decision settled and any observation hit since the last boundary that is not yet recorded, and refresh `Updated:`.
+2. Validate the existing effort before writing: confirm the file starts with `Effort: <slug>` and preserve one user-managed writer for the effort. A reviewer, explorer, grounding child, or batch helper is report-only with respect to this shared memory and never edits it. Update the file in its own tool batch: set `Phase:` to the completed phase, set `Next:` to the immediate next action, append one line to `## Handoff log`, append any decision settled and any observation hit since the last boundary that is not yet recorded, and refresh `Updated:`.
 3. Decide whether user attention is required: material authority drift, a materially different choice than the approved design, significant scope expansion, an unresolved correctness or safety concern, a blocker, or failed required verification. If any apply, raise a check-in that names the issue, the options, a recommendation, and the blocked next action, then stop and wait.
 4. Otherwise state a one-line continuity notice with the completed phase and immediate next action. For an effort-backed outcome include its exact slug and owned memory path; the notice is informational, never a stop. When an effort exists, in the next tool batch invoke `handoff_session` alone with the exact `.awf/efforts/<slug>/memory.md` path and a kickoff that states the immediate successor action; continue automatically in the fresh session unless the user cancels during the five-second window. A failed handoff leaves the checkpoint valid and becomes a check-in, never a silent retry. Without an effort, continue in the current session. Mechanical corrections and authority-determined implementation details stay autonomous. The file skeleton and ground rules live in the workflow doc's working-memory section.
 
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
-- This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
 - Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

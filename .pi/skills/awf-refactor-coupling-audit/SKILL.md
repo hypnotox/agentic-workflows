@@ -2,7 +2,7 @@
 name: awf-refactor-coupling-audit
 description: >
   Use before finalising the scope of a refactor ADR that moves files between
-  packages or inverts dependencies. Runs the 6-category coupling audit so
+  packages or inverts dependencies. Runs the coupling audit so
   findings land in the ADR Context section before the Decision is drafted.
   Self-contained; does not gate the workflow chain.
 ---
@@ -10,7 +10,7 @@ description: >
 
 # awf-refactor-coupling-audit
 
-A support skill for refactor ADRs. Runs (or dispatches) the 6-category coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
+A support skill for refactor ADRs. Runs (or dispatches) the coupling audit before the ADR scope is finalised. The audit's output is a structured listing that lands in the ADR's Context section so scope reflects the real coupling surface, not the assumed one.
 
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/refactor-coupling-audit/when-to-invoke.md to override -->
 ## When to invoke
@@ -32,15 +32,17 @@ This is a **support skill**: it sits off the workflow chain and does not gate it
 
 This audit is report-only with respect to the parent effort. Receive the existing slug and exact `.awf/efforts/<slug>/memory.md` path as read-only context; never create a second effort or become a second writer, and never edit shared memory. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
-**Pick the audit shape.** Per `docs/maintainable-code-design.md`, assess whether the requested behavior would create duplication, coupling, representation leakage, or a workaround, and feed the bounded enabling-refactor or larger-work result into ADR scope. For materially larger work, record the user's disposition: perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated. When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve all six categories and the structured output contract. Ground the audit before the categories: run `awf context <the refactor's source and destination paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a moved surface is claimed) so the coupling findings land in the ADR Context section against current authority.
+**Pick the audit shape: run the categories inline, or dispatch exploration children per category.** Per `docs/maintainable-code-design.md`, assess whether the requested behavior would create duplication, coupling, representation leakage, or a workaround, and feed the bounded enabling-refactor or larger-work result into ADR scope. For materially larger work, record the user's disposition: perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated. When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract. Ground the audit before the categories: run `awf context <the refactor's source and destination paths>` (start with bare context to orient on the owning domains and applicable current-state claims, then drill down with `awf topic` where a moved surface is claimed) so the coupling findings land in the ADR Context section against current authority.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
 
 <!-- awf:edit category-1-top-level-files: default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->
-### 1. Top-level package files
+### Top-level package files
 
 Grep the **original** package for concrete type references, function calls, and method invocations against each symbol being moved.
 
 For each hit, decide: does this caller need to update its import path after the move? Can it stay where it is, or does it move with the symbol?
+
+Report line: `- Top-level callers: <list of file:line, or "none">`
 
 ```bash
 # Search the original package's production source for <MovedSymbol>
@@ -49,11 +51,13 @@ grep -rn "<MovedSymbol>" <original-package-path>/
 ```
 
 <!-- awf:edit category-2-sibling-tests: default; create .awf/skills/parts/refactor-coupling-audit/category-2-sibling-tests.md to override -->
-### 2. Sibling test files
+### Sibling test files
 
 Grep your language's test files (e.g. `*_test.go`, `*.spec.ts`) separately from production code. Test files often use moved symbols as helpers in **unrelated** tests; the test-coupling profile differs from production coupling and is routinely larger.
 
-Capture **N** (production call sites) and **M** (test call sites) separately. M is typically larger than N and is the bigger implementation surprise if not enumerated up-front.
+Capture **N** (production call sites) and **M** (test call sites) separately, both destined for the ADR Context section. M is typically larger than N and is the bigger implementation surprise if not enumerated up-front: production code can move cleanly (N small) while test code explodes (M large), shipping a sprawling test diff that was not on the radar.
+
+Report line: `- Sibling tests: N=<number>, M=<number>`
 
 ```bash
 # Search the package's test files only (your language's test-file glob, e.g. *_test.go, *.spec.ts).
@@ -61,7 +65,7 @@ grep -rn "<MovedSymbol>" <original-package-path>/ --include="<test-file-glob>"
 ```
 
 <!-- awf:edit category-3-subpackages: default; create .awf/skills/parts/refactor-coupling-audit/category-3-subpackages.md to override -->
-### 3. Subpackages
+### Subpackages
 
 Existing subpackages that import the symbol under its current path will need import updates after the move. Enumerate them; check for would-cycle cases.
 
@@ -70,14 +74,16 @@ Existing subpackages that import the symbol under its current path will need imp
 grep -rn "<module-prefix>/<original-package-path>" <original-package-path>/
 ```
 
-For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see category 6).
+For each subpackage hit, decide: does the subpackage's import path remain valid after the move, or does it cycle? If a cycle would result, the refactor needs an interface inversion in the original package (see the initialization-ordering category).
+
+Report line: `- Subpackage imports: <list or "none">`
 
 
 
 
 
 <!-- awf:edit category-6-init-visibility: default; create .awf/skills/parts/refactor-coupling-audit/category-6-init-visibility.md to override -->
-### 6. Initialization ordering and cross-module visibility
+### Initialization ordering and cross-module visibility
 
 Functions or methods defined on the moved type with cross-package callers cannot move without preserving reachability, e.g. Go export/visibility, or introducing an interface in the original package with the implementation in the destination.
 
@@ -90,28 +96,15 @@ For each method: is it called from a sibling package? Then it needs to remain re
 
 Initialization ordering across modules is hard to reason about. Flag any cross-module initialization chains the move would break (e.g. Go `init()` functions); registry seeding and global-state setup are common load-bearing sites.
 
+Report line: `- Cross-package methods / init(): <list or "none">`
+
 <!-- awf:edit test-coupling-planning-rule: default; create .awf/skills/parts/refactor-coupling-audit/test-coupling-planning-rule.md to override -->
-## Test-coupling planning rule
 
-When moving a source file with **N** tests co-located, also enumerate the **M** tests in *other* files that use the moved symbols as setup helpers. **M is typically larger than N.** A common surprise: production code moves cleanly (N small), test code explodes (M large), and the refactor ships with a sprawling test diff that was not on the radar.
-
-Capture both numbers in the ADR Context section.
 
 <!-- awf:edit output-format: default; create .awf/skills/parts/refactor-coupling-audit/output-format.md to override -->
 ## Output
 
-The audit's output goes into the ADR's **Context** section under a "Coupling audit" subsection listing each category before the Decision is drafted:
-
-```
-### Coupling audit
-
-- Top-level callers: <list of file:line, or "none">
-- Sibling tests: N=<number>, M=<number>
-- Subpackage imports: <list or "none">
-- Codegen sites: <list or "none">
-- Constructor paths: <list or "none">
-- Cross-package methods / init(): <list or "none">
-```
+The audit's output goes into the ADR's **Context** section under a `### Coupling audit` subsection before the Decision is drafted: one report line per category run, in category order, using the exact report-line format each category above defines.
 
 <!-- awf:edit scope-shrink-rule: default; create .awf/skills/parts/refactor-coupling-audit/scope-shrink-rule.md to override -->
 ## Scope shrink rule
@@ -123,4 +116,4 @@ If the audit reveals the refactor is larger than the ADR's originally proposed s
 
 1. This skill is the authoritative source for the audit categories.
 2. Does not commit on your behalf; its output is content the ADR author lands into the ADR.
-3. For recurring coupling surprises specific to this project, see the `customise:` hints above; capture them via a convention part when patterns repeat.
+3. A project narrows the audit by dropping categories in the skill sidecar (`sections: <category-id>: {drop: true}`); recurring project-specific coupling surprises are captured via a convention part overriding the matching category section.
