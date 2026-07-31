@@ -99,3 +99,37 @@
   behaviour, and its integration-branch block plus the branch-independent duplicate-identity
   check already force numbering without this. Worth doing as the first pending slug ADR once
   numbering ships, which dogfoods the mechanism on its first real use.
+
+## A required config key reds the before-side of every transition check
+
+`loadTreeCurrentState` validates the HEAD-side config after porting it forward, so a
+key that is required with no in-code default fails the whole before-side load until
+every committed config in range carries it. ADR-0194's `integrationBranch` hit this and
+paid for it with a per-key seeding case in `ConfigForCurrentSchema` (`internal/migrate/
+migrate.go`), the first case in that function to materialize a key rather than remove
+one - which the function's own generation-25 comment argues against.
+
+The shipped fix is correct and mutation-proven, but it makes the function a growing list
+of per-required-key special cases: the next required key repeats the discovery, and until
+it does, the before-side of every transition check is red for a release cycle. The
+alternative worth settling is that the before-side needs a historical config to PARSE,
+not to satisfy today's validation rules, since coverage is never evaluated from a
+before-side config. That would retire the seeding cases entirely rather than adding one
+per key. Raised by the Phase 3 review of ADR-0194 on 2026-07-31 as a policy question
+rather than a defect.
+
+## A claim can carry at most one operation per ADR
+
+`internal/adr/application.go` refuses to apply an operation more than once, and duplicate
+declarations collapse to a single map key, so one ADR can never declare two updates on
+the same claim. That is right for the usual case, but it means a record that has already
+applied an update to a claim cannot correct that claim again, however small the
+correction - the fix has to wait for a different decision record.
+
+The live instance: `config/configuration:config-serialization-owned` asserts a CLOSED
+enumeration of the editors that mutate config.yaml, and it omits `RemoveKey` and
+`RemoveMappingKey`, both of which live migrations use. ADR-0194 already spent its one
+update on that claim (adding `SetString`), so the enumeration stays false until another
+ADR updates it. Worth folding into whatever decision next touches the config editors, and
+worth asking there whether a "closed enumeration" claim should be backed by a
+source-scanning test rather than by prose nobody can mechanically falsify.
