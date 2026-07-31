@@ -96,7 +96,11 @@ the table at review time.
    forward-ports it through this function so the current strict parser can read it. Without
    the branch the retired key survives forward-porting and `config.ParseTree` rejects it on
    the very commit that removes it. The generation-25 severity removal carries the same branch
-   for the same reason, and this one omits its seed for the reason item 4 already gives.
+   for the same reason, and it is likewise a pure removal: no branch in that function ever
+   seeds, independently of this decision, because the function exists only so a historical
+   config parses under the current strict decoder, and materializing a key the committed bytes
+   never had would put a value into a historical universe rather than fix a parse. The
+   ADR-0192 rationale for omitting a seed belongs to the migration itself, as stated above.
 
    Registering the generation also breaks three assertions that pin the current one, which
    land in the same transaction: `internal/project/version_test.go` asserts both that

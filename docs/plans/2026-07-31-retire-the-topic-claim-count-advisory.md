@@ -131,7 +131,12 @@ retirement begins.
   Expected terminal state: `awf check: clean`, with the pre-existing
   `rendering/workflow-skill-templates` claim-count note still present (Phase 2 removes it).
   The render must have updated `docs/doc-standard.md`, `examples/sundial/docs/doc-standard.md`,
-  `.claude/agents/adr-reviewer.md`, `.pi/agents/adr-reviewer.md`, and both locks. Confirm the
+  `.claude/agents/adr-reviewer.md`, `.pi/agents/adr-reviewer.md`,
+  `examples/sundial/.claude/agents/adr-reviewer.md`,
+  `examples/sundial/.pi/agents/adr-reviewer.md`, and both locks. The sundial pair changes
+  because that tree has no `.awf/agents/` sidecar, so its `adr-reviewer` renders straight from
+  the catalog default Task 1.2 edits; this repository's pair changes through the sidecar Task
+  1.3 edits. Confirm the
   new rule reached the example adopter: `grep -c 'One subject per topic'
   examples/sundial/docs/doc-standard.md` returns a non-zero count.
 
