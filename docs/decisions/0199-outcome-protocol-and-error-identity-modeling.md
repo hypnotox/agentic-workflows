@@ -60,8 +60,11 @@ than sweep debt.
    only in the topic's applicability paragraph.
 
 2. Surface new or deliberately converted refusals and partial progress through the
-   actionable outcome protocol, derived from all existing `internal/worktree` sites rather
-   than designed fresh. A conforming outcome carries: `Category`, a closed vocabulary of
+   actionable outcome protocol when the outcome observes repository, worktree, or effort
+   state, the territory where retry safety is the live question and where the protocol was
+   derived from all existing `internal/worktree` sites rather than designed fresh. An
+   outcome observing other state remains outside the protocol claim until a successor
+   decision widens the scope. A conforming outcome carries: `Category`, a closed vocabulary of
    state kinds; `Condition`, a present-tense statement of the observed state, never a
    restatement of what the command attempted, where a failed mechanism call is itself an
    observed state whose detail rides along as the cause; `Changed`, one boolean observation
@@ -114,13 +117,22 @@ than sweep debt.
 10. Ship identity with its consumer: a new exported error identity arrives in the same
     green transaction as at least one consumer that branches on it. This specializes
     `code-design/dependency-composition:concrete-first-consumer` to error identity and
-    prevents the current accumulation of exported types no caller matches.
+    prevents the current accumulation of exported types no caller matches. One escape
+    hatch: an identity may land without an in-repo branching consumer when its consuming
+    caller is named and documented in the same transaction.
 
 11. Record the durable vocabulary: add a docs/glossary.md entry for the actionable outcome
     protocol, naming ADR-0199 and `code-design/outcome-modeling`, in the same Implemented
     transaction.
 
-12. Declare authority only. No production conversion rides this ADR; the 34 shallow
+12. Make the authority visible without copying its normative prose into prompts: add an
+    `outcome-modeling-authority` reviewer focus item naming `code-design/outcome-modeling`
+    to the adr-reviewer, code-reviewer, and plan-reviewer sidecars, comparing each
+    list-valued override with the catalog default and preserving every default it
+    replaces, and extend the workflow chain part's per-topic consult sentences beside the
+    four existing code-design siblings, all in the same Implemented transaction.
+
+13. Declare authority only. No production conversion rides this ADR; the 34 shallow
     predicate sites, the message-text assertions, and the unmatched exported types become
     bounded future conversion candidates, each future conversion naming its concrete
     consumer. The roadmap records a static-state inventory command (added with this
@@ -147,10 +159,14 @@ The corpus stays mixed for a while. The ratchet deliberately leaves the existing
 predicates, message-text assertions, and unmatched types in place as bounded candidates, so
 readers will see conforming and nonconforming sites side by side until conversions land.
 All five claims are reasoned contracts: nothing in the gate fails on a violation, so review
-carries the enforcement weight, aided by each claim's `Verify:` instruction.
+carries the enforcement weight, anchored by the `outcome-modeling-authority` focus item in
+the three reviewer sidecars, the chain consult sentence, and each claim's `Verify:`
+instruction. Scoping the protocol claim to outcomes that observe repository, worktree, or
+effort state leaves other refusals ungoverned by the protocol until a successor decision
+widens it; the identity claims carry no such scope and bind globally.
 
-A genuinely anticipatory error identity must wait for its first consumer, mirroring the
-dependency-composition trade-off. Multi-step numbered rendering changes the byte output of
+A genuinely anticipatory error identity must wait for its first consumer or name and
+document the caller it anticipates, mirroring the dependency-composition trade-off. Multi-step numbered rendering changes the byte output of
 flattened remedies only when a site is deliberately converted, never as a side effect of
 this decision.
 
@@ -159,6 +175,7 @@ this decision.
 | Alternative | Why not chosen |
 |---|---|
 | Keep the severity-vocabulary and finding-rank claims in this topic | They retired with ADR-0183 through ADR-0185; restating them would create dual authority. |
+| Fold the rendering half into `code-design/presentation-ownership`, or split protocol and identity into two topics | Presentation-ownership owns which package renders a result model; outcome-modeling owns what an outcome must contain and how its identity is declared and matched. One subject per topic holds on that boundary, and the protocol and identity halves share one lifecycle: an outcome's shape and its matchability are two faces of the same caller contract. |
 | A consumer-owned-finding-payloads claim | It specializes `code-design/dependency-composition:consumer-owned-contracts` and would create dual authority over one subject. |
 | A failure-modelling section in docs/maintainable-code-design.md | The guide's sections are a fixed catalog list (internal/catalog/standard.go), so adding one is not available without changing the standard; it would also collide with the existing "Failure modes" section name, and the topic's value is being specific where the guide cannot. |
 | A generic "test constructs live in _test.go" claim | Broader than this topic's subject and broader than any first consumer proves. |
