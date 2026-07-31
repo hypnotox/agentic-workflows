@@ -20,6 +20,15 @@ audit (docs/research/code-design-audit-2026-07-30.md) fed five items into this d
 `internal/git` three-way split, export-surface minimization, template-ID ownership, a
 path-anchoring type, and report-rendering ownership.
 
+The roadmap's deferred-decomposition section states a third prerequisite, a package-cohesion
+and boundary pattern, and instructs that the decomposition follow it. This decision reverses
+that sequencing deliberately: the boundaries here were measured empirically (the cluster map,
+the two verified cycles, and the per-symbol coupling census below), which grounds this
+package's split more strongly than a generic pattern would, and the direction half of any such
+pattern is already owned by `code-design/dependency-composition`. The deferred
+`receiver-reads-owned-state` rule stays open in the roadmap rewrite this ADR obliges; a later
+cohesion pattern generalizes from this decision's evidence rather than gating it.
+
 The package was mapped before this decision was drafted (all figures verified 2026-07-31 against
 main; line references are current as of that date and drift with the tree):
 
@@ -213,6 +222,12 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    rendered to consult `code-design/presentation-ownership`, and the glossary gains the new
    vocabulary (presentation ownership, the assembled context state, the `Roots` anchoring
    value, resident-root policy), all rendered in the same commit that introduces them.
+12. Package ownership becomes loudly enforced: a structural test asserts that every production
+   package under `internal/` and `cmd/` is matched by at least one domain's paths, so a future
+   package omitted from domain ownership fails the suite instead of degrading silently to
+   unowned. The claim is `tooling/context-and-topic:production-packages-domain-owned`, an
+   invariant, Backing: test, proven by that structural test. This retires the residual risk
+   item 9 otherwise accepts.
 
 ## State changes
 
@@ -221,6 +236,7 @@ amendment while this ADR remains pre-terminal (ADR-0188).
 - add `rendering/project-output-plan:resident-policy-single-home`
 - add `rendering/project-output-plan:template-id-single-derivation`
 - add `tooling/context-and-topic:context-query-boundary`
+- add `tooling/context-and-topic:production-packages-domain-owned`
 - add `code-design/presentation-ownership:model-owner-renders`
 
 ## Consequences
@@ -247,7 +263,8 @@ core remains around 6500 lines, bound by its real cycles; this decision document
 direction (plan orchestrates render, check consumes both) rather than pretending a package
 boundary would hold there. The new packages must be added to domain ownership in the same
 transactions as the moves, because the failure mode of omission is silent unownership, not a
-loud gate failure.
+loud gate failure; item 12's guard then makes that failure mode loud for every future package
+as well.
 
 Risks: the git-seam branch is unlanded, so item 7's premises could shift; while this ADR is
 pre-terminal, drift is absorbed by amendment (ADR-0188). The decision deliberately creates no
