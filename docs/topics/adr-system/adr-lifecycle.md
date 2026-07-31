@@ -11,20 +11,22 @@ The adr package parses decision records, derives their identity, and validates t
 
 ### `invariant: fresh-adoption-v1-cutoff`
 
-Empty first adoption seals both ADR format cutoffs at 1; brownfield first adoption seals both at the highest existing identity plus one with every lower gap explicit; upgrading an existing V1 adopter preserves its V1 cutoff and seals the V2 cutoff at the highest identity plus one; every ADR is legacy below V1, V1 from that cutoff to before V2, and V2 at or above the V2 cutoff.
+The ADR format cutoffs are an ordered set, V1 at or below V2 at or below V3. Empty first adoption seals every cutoff at 1; brownfield first adoption seals every cutoff at the highest existing identity plus one with every lower gap explicit; upgrading an existing adopter preserves each already-sealed cutoff and seals the next one at the highest identity plus one; a numbered ADR is legacy below V1, V1 from that cutoff to before V2, V2 from there to before V3, and V3 at or above the V3 cutoff.
 Origin: ADR-0139
-Revised-by: ADR-0143
+Revised-by: ADR-0143, ADR-0194
 Backing: test
 
 ### `invariant: adr-amendable-until-terminal`
 
-A current-state-v2 ADR's digest-covered content is amendable while Proposed, Accepted, or
-Implementing and freezes permanently at a terminal status. Post-Accepted amendment is
-recorded as a stamp chain: only an Amended event introduces a new digest, which must differ
-from the preceding stamp; a status event repeats the preceding stamp or establishes the
-first; the latest stamp must equal the computed content digest; and an amendment never
-alters or removes an operation already referenced by an Applied event.
+A governed ADR at or above the V2 cutoff, whether current-state-v2 or current-state-v3,
+has digest-covered content that is amendable while Proposed, Accepted, or Implementing and
+freezes permanently at a terminal status. Post-Accepted amendment is recorded as a stamp
+chain: only an Amended event introduces a new digest, which must differ from the preceding
+stamp; a status event repeats the preceding stamp or establishes the first; the latest
+stamp must equal the computed content digest; and an amendment never alters or removes an
+operation already referenced by an Applied event.
 Origin: ADR-0188
+Revised-by: ADR-0194
 Backing: test
 
 ### `invariant: adr-new-heading-matches-file`
@@ -70,18 +72,24 @@ Parsing an ADR directory splits each document body on its `## ` headings and pop
 Origin: ADR-0007
 Backing: test
 
+### `invariant: adr-slug-frontmatter-mandatory`
+
+A current-state-v3 record carries a mandatory `slug:` frontmatter key equal to the slug segment its filename derives, and retains that key forever once the record is numbered. The slug must already be in slug form, and it is unique across every slug-carrying record in the corpus, pending or numbered.
+Origin: ADR-0194
+Backing: test
+
 ### `invariant: adr-status-enum-and-matrix`
 
-Every governed ADR is routed by the two immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 recognizes Proposed, Accepted, Implementing, Implemented, and Abandoned, recognizes status, Applied, and Amended history events, and accepts only the format-specific status, history-event, digest-chain, and application-cardinality transitions.
+Every governed ADR is routed by the three immutable format cutoffs: V1 retains its four statuses and five legal edges, while V2 and V3 recognize Proposed, Accepted, Implementing, Implemented, and Abandoned, recognize status, Applied, and Amended history events, and accept only the format-specific status, history-event, digest-chain, and application-cardinality transitions. A record with no number routes by its `current-state-v3` frontmatter marker rather than by any cutoff.
 Origin: ADR-0135
-Revised-by: ADR-0143, ADR-0188
+Revised-by: ADR-0143, ADR-0188, ADR-0194
 Backing: test
 
 ### `invariant: applied-history-events-append-only`
 
-Stable V2 Status history is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations, and a checked pair refuses deletion or mutation of any prior event.
+Stable Status history in either governed digest format, V2 and V3, is prefix-append-only: each Applied event records one nonempty, declaration-ordered batch of previously unapplied operations, and a checked pair refuses deletion or mutation of any prior event. Numbering a pending record is no exception; it touches no history event.
 Origin: ADR-0143
-Revised-by: ADR-0191
+Revised-by: ADR-0191, ADR-0194
 Backing: test
 
 ### `invariant: audit-shares-adr-parser`
@@ -119,8 +127,9 @@ Backing: test
 
 ### `invariant: corpus-single-identity-key`
 
-Every parsed ADR's identity key is the four-digit number taken from its NNNN-*.md filename prefix, and a file whose name does not match that pattern is not parsed as an ADR.
+Every parsed ADR has one identity key: the four-digit number taken from its NNNN-*.md filename prefix for a numbered record, and the retained slug for a current-state-v3 record that is not numbered yet. Under the decisions directory the reserved README.md, INDEX.md, and template.md are excluded; any other file that parses as neither identity form is a corpus error, and a duplicate of either key is a corpus error.
 Origin: ADR-0130
+Revised-by: ADR-0194
 Backing: test
 
 ### `invariant: decision-index-is-historical-not-authoritative`
@@ -134,4 +143,10 @@ Verify: Fixtures rendered in every legal status produce the exact INDEX.md secti
 
 Parsing an ADR fails when its Decision section has no column-0 numbered items or when its item numbers are not sequential from 1 (a gap, duplicate, or restart).
 Origin: ADR-0120
+Backing: test
+
+### `invariant: pending-adr-slug-identity`
+
+A current-state-v3 ADR authored before it is numbered is a pending record: the file is `<slug>.md`, the heading is `# ADR-<slug>: <Title>`, and its identity form is `ADR-<slug>`. The slug is the filename derivation of the title, frozen at scaffold time and never tracking later title edits. A numberless file routes into the corpus by its `current-state-v3` marker, and the reserved README.md, INDEX.md, and template.md basenames are never records. Numbering prepends the number to the filename and rewrites the heading, leaving the slug key in place. The decision index sorts numbered records first by number and pending records after, alphabetically by slug.
+Origin: ADR-0194
 Backing: test

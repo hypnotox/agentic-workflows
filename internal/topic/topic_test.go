@@ -156,3 +156,25 @@ func TestParsePartRejected(t *testing.T) {
 		})
 	}
 }
+
+// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number
+func TestParsePartAcceptsPendingSlugProvenance(t *testing.T) {
+	body := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\nOrigin: ADR-pending-one\nRevised-by: ADR-0002, ADR-pending-two\n"
+	topic, err := ParsePart(TopicID{"a", "b"}, "part", []byte(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	claim := topic.Claims[0]
+	if claim.Origin != "pending-one" || len(claim.RevisedBy) != 2 || claim.RevisedBy[0] != "0002" || claim.RevisedBy[1] != "pending-two" {
+		t.Fatalf("claim provenance = %#v", claim)
+	}
+	// A purely numeric token that is not four digits is neither identity form.
+	for _, bad := range []string{"ADR-1", "ADR-12345", "ADR-Upper", "ADR-trailing-"} {
+		if _, err := ParsePart(TopicID{"a", "b"}, "part", []byte("Intro.\n\n## Claims\n\n### `rule: x`\nProse.\nOrigin: "+bad+"\n")); err == nil {
+			t.Fatalf("origin %q accepted", bad)
+		}
+		if _, err := ParsePart(TopicID{"a", "b"}, "part", []byte("Intro.\n\n## Claims\n\n### `rule: x`\nProse.\nOrigin: ADR-0001\nRevised-by: "+bad+"\n")); err == nil {
+			t.Fatalf("revised-by %q accepted", bad)
+		}
+	}
+}

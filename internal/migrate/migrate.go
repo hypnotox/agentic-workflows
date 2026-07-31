@@ -64,6 +64,7 @@ var registry = []Migration{
 	{To: 25, Name: "drop-severity-settings", Apply: treeOnly(applyDropSeveritySettings)},
 	{To: 26, Name: "orienting-skill-backfill", Apply: treeOnly(applyOrientingSkillBackfill)},
 	{To: 27, Name: "adr-number-provenance", Apply: treeOnly(applyADRNumberProvenance)},
+	{To: adrFormatV3Generation, Name: "adr-format-v3-cutoff", Apply: treeOnly(applyADRFormatV3Cutoff), OwnsSchemaStamp: true},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the

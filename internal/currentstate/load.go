@@ -17,7 +17,12 @@ import (
 // the records and topics and EvaluateCoverage over the topic corpus, so both
 // the static handshake and coverage read a single consistent universe.
 type Loaded struct {
-	ADRs   []adr.ADR
+	ADRs []adr.ADR
+	// Corpus is the identity-indexed view over ADRs, built and validated once
+	// here. Consumers take it rather than rebuilding one, so the corpus-wide
+	// duplicate-identity refusal (ADR-0194 item 4) has a single evaluation point
+	// per load instead of one per consumer.
+	Corpus adr.Corpus
 	Topics topic.Corpus
 }
 
@@ -35,18 +40,24 @@ func LoadFromTree(tree *snapshot.Tree, cfg *config.Config, boundaries adr.Format
 	if err != nil {
 		return Loaded{}, err
 	}
-	topics, err := topic.LoadCorpusFromTree(tree, cfg, adr.NewCorpus(records))
+	corpus, err := adr.NewCorpus(records)
 	if err != nil {
 		return Loaded{}, err
 	}
-	return Loaded{ADRs: records, Topics: topics}, nil
+	topics, err := topic.LoadCorpusFromTree(tree, cfg, corpus)
+	if err != nil {
+		return Loaded{}, err
+	}
+	return Loaded{ADRs: records, Corpus: corpus, Topics: topics}, nil
 }
 
 // adrsFromTree parses every top-level ADR decision file in the snapshot with the
 // cutoff-aware router, then enforces the corpus-level facts a per-file parse
 // cannot see: no two files share a number, and the numbers are contiguous from 1
-// except for the recorded legacy gaps (ADR-0135). Per-file format-v1 versus
-// legacy routing is already enforced by adr.ParseRecord.
+// except for the recorded legacy gaps (ADR-0135). Per-file legacy, V1, V2, and
+// pending-V3 routing is already enforced by adr.ParseRecord, which also rejects
+// a non-reserved file that is neither form. Contiguity stays number-scoped: a
+// pending record has no number to be contiguous with (ADR-0194 item 4).
 func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoundaries, gaps []int) ([]adr.ADR, error) {
 	prefix := docsDir + "/decisions/"
 	var records []adr.ADR
@@ -59,16 +70,18 @@ func adrsFromTree(tree *snapshot.Tree, docsDir string, boundaries adr.FormatBoun
 		if !ok || strings.Contains(rel, "/") {
 			continue // outside the decisions directory or in a nested subdirectory
 		}
-		m := adr.FilenameRe.FindStringSubmatch(rel)
-		if m == nil {
-			continue // README.md, INDEX.md, a template, or another non-ADR file
+		if !strings.HasSuffix(rel, ".md") || adr.IsReservedBasename(rel) {
+			continue // README.md, INDEX.md, the template, or a non-Markdown companion file
 		}
 		rec, err := adr.ParseRecord(rel, f.Bytes, boundaries)
 		if err != nil {
 			return nil, err
 		}
-		num, _ := strconv.Atoi(m[1]) // the regex admits only four digits
 		records = append(records, rec)
+		if rec.Number == "" {
+			continue
+		}
+		num, _ := strconv.Atoi(rec.Number) // a numbered record carries FilenameRe's four-digit group
 		numbers = append(numbers, num)
 	}
 	if err := checkADRContiguity(numbers, gaps, boundaries.V1From); err != nil {

@@ -32,7 +32,7 @@ func terminalStatus(s string) bool { return s == statusImplemented || s == statu
 // than testing the status themselves, so the two formats' rules stay in one
 // place as the lifecycle grows.
 func (a ADR) IsContentAmendable() bool {
-	if a.IsV2() {
+	if a.HasV2Semantics() {
 		return !terminalStatus(a.Status)
 	}
 	return a.IsProposed()
@@ -80,7 +80,7 @@ func v2TransitionLegal(from, to string) bool { return v2Transitions[from][to] }
 // TransitionLegal reports whether from -> to is legal for the selected format.
 // Omitting format preserves the V1 behavior used by existing callers.
 func TransitionLegal(from, to string, format ...Format) bool {
-	if len(format) > 0 && format[0] == CurrentStateV2 {
+	if len(format) > 0 && (format[0] == CurrentStateV2 || format[0] == CurrentStateV3) {
 		return v2TransitionLegal(from, to)
 	}
 	return v1TransitionLegal(from, to)

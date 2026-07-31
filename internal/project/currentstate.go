@@ -114,15 +114,15 @@ func (p *Project) workingCurrentState(ctx context.Context) (workingState, error)
 }
 
 // attestationBoundaries returns the format boundaries and recorded legacy gaps
-// that govern ADR parsing. Permanent authority owns both boundaries; during the
-// migration window the bridge attestation owns only V1. Before either exists
-// every ADR parses as legacy.
+// that govern ADR parsing. Permanent authority owns the whole ordered cutoff
+// set; during the migration window the bridge attestation owns only V1. Before
+// either exists every ADR parses as legacy.
 func attestationBoundaries(lock *manifest.Lock) (adr.FormatBoundaries, []int) {
 	if lock == nil {
 		return adr.FormatBoundaries{}, nil
 	}
 	if lock.ADRFormatV1From != 0 {
-		return adr.FormatBoundaries{V1From: lock.ADRFormatV1From, V2From: lock.ADRFormatV2From}, lock.LegacyADRGaps
+		return adr.FormatBoundaries{V1From: lock.ADRFormatV1From, V2From: lock.ADRFormatV2From, V3From: lock.ADRFormatV3From}, lock.LegacyADRGaps
 	}
 	if lock.BridgeAttestation != nil {
 		return adr.FormatBoundaries{V1From: lock.BridgeAttestation.ADRFormatV1From}, lock.BridgeAttestation.LegacyADRGaps
@@ -292,8 +292,26 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 	if before.InitializedWithVersion == after.InitializedWithVersion &&
 		before.ADRFormatV1From == after.ADRFormatV1From &&
 		before.ADRFormatV2From == after.ADRFormatV2From &&
+		before.ADRFormatV3From == after.ADRFormatV3From &&
 		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		return nil
+	}
+	// The V3 sealing edge: the schema migration writes the computed cutoff into
+	// an authority that carried none, leaving every other permanent value alone
+	// (ADR-0194 item 1). It mirrors the V2 sealing edge below it.
+	if before.ADRFormatV3From == 0 && after.ADRFormatV3From > 0 &&
+		before.InitializedWithVersion == after.InitializedWithVersion &&
+		before.ADRFormatV1From == after.ADRFormatV1From &&
+		before.ADRFormatV2From == after.ADRFormatV2From &&
+		slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+		next, err := nextADRIdentityFromTree(beforeTree)
+		if err != nil {
+			return err
+		}
+		if after.ADRFormatV3From == next {
+			return nil
+		}
+		return fmt.Errorf("staged .awf/awf.lock adrFormatV3From is %d, want computed cutoff %d", after.ADRFormatV3From, next)
 	}
 	if before.SchemaVersion == 14 && before.ADRFormatV2From == 0 &&
 		after.SchemaVersion == 15 && after.ADRFormatV2From > 0 &&
@@ -316,7 +334,7 @@ func validatePermanentLockTransition(beforeTree *snapshot.Tree, before, after *m
 		slices.Equal(after.LegacyADRGaps, before.BridgeAttestation.LegacyADRGaps) {
 		return nil
 	}
-	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/adrFormatV2From/legacyAdrGaps authority")
+	return errors.New("staged .awf/awf.lock changes immutable initializedWithVersion/adrFormatV1From/adrFormatV2From/adrFormatV3From/legacyAdrGaps authority")
 }
 
 func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
@@ -343,7 +361,7 @@ func nextADRIdentityFromTree(tree *snapshot.Tree) (int, error) {
 		}
 		match := adr.FilenameRe.FindStringSubmatch(name)
 		if match == nil {
-			continue
+			continue // a reserved file or a pending record, neither of which holds a number
 		}
 		n, err := strconv.Atoi(match[1])
 		if err != nil { // coverage-ignore: FilenameRe captures exactly four decimal digits

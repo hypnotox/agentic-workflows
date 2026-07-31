@@ -151,7 +151,7 @@ func TestOperationSpecificProvenance(t *testing.T) {
 		_, err := assembleCorpus(
 			map[string]metaEntry{"alpha/x": {meta: Metadata{Title: "X", Summary: "X.", Paths: []string{"x"}}, path: "meta"}},
 			map[string]partEntry{"alpha/x": {data: []byte("Intro.\n\n## Claims\n\n### `rule: x`\nRule.\nOrigin: ADR-" + origin + "\n" + revisedLine), path: "part"}},
-			[]string{"alpha"}, map[string][]string{"alpha": {"x"}}, adr.NewCorpus(records),
+			[]string{"alpha"}, map[string][]string{"alpha": {"x"}}, mustCorpus(records),
 		)
 		return err
 	}
@@ -212,4 +212,14 @@ func TestLoadCorpusNoTopicTree(t *testing.T) {
 	if err != nil || len(c.All()) != 0 {
 		t.Fatalf("%#v %v", c, err)
 	}
+}
+
+// mustCorpus builds a corpus from a fixture slice, panicking on a duplicate
+// identity no fixture here intends to declare.
+func mustCorpus(adrs []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(adrs)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

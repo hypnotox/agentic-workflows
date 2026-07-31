@@ -1,6 +1,6 @@
 {
   "awfVersion": "0.30.0",
-  "schemaVersion": 27,
+  "schemaVersion": 28,
   "files": {
     ".awf/efforts/.gitignore": {
       "templateId": "efforts/gitignore.tmpl",
@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:3bcd1ea869ee81217ed839c8fa169eed0b9f175a90a0de100450df5e9d217451",
+      "outputHash": "sha256:b1456283ea1d73bb64c6cea34dd18aa51ff25f1428c4f95a85cc75378c61f5b1",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -505,8 +505,8 @@
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:fb061af05dbd7675679f5c513f88f91d913a0ccc808b103527e4d99c753fd5ca",
-      "outputHash": "sha256:7ac13d105a7ebcb072d1e60ce823a247d00338848729f604368cfe68cea65925"
+      "configHash": "sha256:f1ed5552defc13b09ef97e1fd8b9b3d581f30ffe3ea0472678c9686bacbc95c6",
+      "outputHash": "sha256:b628bb3b0fefef913998e603d180f1607c70371d997f050836a6daed801cb1f7"
     },
     "docs/topics/adr-system/frontmatter.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -571,8 +571,8 @@
     "docs/topics/config/migrations-and-locks.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:767f3d5d21b0faca8c713a0dc0fd88247ed73d413e088143a09123afe5a54bd3",
-      "outputHash": "sha256:b0adc471dff006c6a496422da37d89c64fad5ae8c2d71db67d8432fa92e7bcd5"
+      "configHash": "sha256:9be3bcd0a4a6861fcb02279556234a37e2e901aa86fbe052c1aef62156b6a556",
+      "outputHash": "sha256:8ef4cbdf02e566d6025cd92a048cb0b39c300a072652150ffe09820165eeef66"
     },
     "docs/topics/config/validation.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -583,8 +583,8 @@
     "docs/topics/invariants/current-state-authority.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:87b5bcf973cf7617daa74069f1d34c93b29d6e125f229e426ce81b0f8f875903",
-      "outputHash": "sha256:0d485742a428c867e2248d177055f2e028316774e866bcfec5b15ed2e699194e"
+      "configHash": "sha256:1569ff5c51ec797b3aab180222d23b79bc72422e6638d96bb25fc69baa7873ea",
+      "outputHash": "sha256:fdb866dccf73ba7a50bc07e7aceb9b3ddcd36550dc08b50aaaf4631cf6cd3a8e"
     },
     "docs/topics/invariants/index.md": {
       "templateId": "topics/index.md.tmpl",
@@ -787,5 +787,6 @@
   },
   "adrFormatV1From": 137,
   "adrFormatV2From": 144,
+  "adrFormatV3From": 195,
   "legacyAdrGaps": []
 }

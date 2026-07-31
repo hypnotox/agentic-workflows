@@ -40,7 +40,7 @@ func parseCfg(t *testing.T, body string) *config.Config {
 
 // oneImplementedADR is the provenance corpus every fixture claim cites.
 func oneImplementedADR() adr.Corpus {
-	return adr.NewCorpus([]adr.ADR{{Number: "0001", Status: "Implemented"}})
+	return mustCorpus([]adr.ADR{{Number: "0001", Status: "Implemented"}})
 }
 
 // TestLoadCorpusFromTreeValidWithoutCurrentState covers the snapshot loader's

@@ -214,7 +214,7 @@ func TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	before := &manifest.Lock{ADRFormatV1From: 2, ADRFormatV2From: 5, LegacyADRGaps: []int{}}
+	before := &manifest.Lock{ADRFormatV1From: 2, ADRFormatV2From: 5, ADRFormatV3From: 7, LegacyADRGaps: []int{}}
 	for _, tc := range []struct {
 		name   string
 		mutate func(*manifest.Lock)
@@ -224,6 +224,8 @@ func TestValidatePermanentLockTransitionRejectsCutoffDeletionAndMutation(t *test
 		{"mutate V1", func(lock *manifest.Lock) { lock.ADRFormatV1From = 3 }, "adrFormatV1From"},
 		{"delete V2", func(lock *manifest.Lock) { lock.ADRFormatV2From = 0 }, "adrFormatV2From"},
 		{"mutate V2", func(lock *manifest.Lock) { lock.ADRFormatV2From = 6 }, "adrFormatV2From"},
+		{"delete V3", func(lock *manifest.Lock) { lock.ADRFormatV3From = 0 }, "adrFormatV3From"},
+		{"mutate V3", func(lock *manifest.Lock) { lock.ADRFormatV3From = 8 }, "adrFormatV3From"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			after := *before
@@ -1034,4 +1036,34 @@ func publicTopicClaims(slugs ...string) string {
 		fmt.Fprintf(&b, "\n### `rule: %s`\n\n%s\nOrigin: ADR-%s\n", slug, prose, owner)
 	}
 	return b.String()
+}
+
+// The V3 sealing edge admits exactly the schema migration's write: the computed
+// corpus cutoff into an authority that carried none, with every other permanent
+// value unchanged (ADR-0194 item 1).
+// invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
+func TestValidatePermanentLockTransitionAllowsOnlyComputedV3Cutoff(t *testing.T) {
+	t.Parallel()
+	tree, err := snapshot.NewTree([]snapshot.File{
+		{Path: ".awf/config.yaml", Bytes: []byte("prefix: example\n")},
+		{Path: "docs/decisions/0002-two.md", Bytes: []byte("record")},
+		{Path: "docs/decisions/README.md", Bytes: []byte("guide")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	before := &manifest.Lock{SchemaVersion: 27, ADRFormatV1From: 1, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
+	after := &manifest.Lock{SchemaVersion: 28, ADRFormatV1From: 1, ADRFormatV2From: 2, ADRFormatV3From: 3, LegacyADRGaps: []int{}}
+	if err := validatePermanentLockTransition(tree, before, after); err != nil {
+		t.Fatalf("computed cutoff: %v", err)
+	}
+	after.ADRFormatV3From = 9
+	if err := validatePermanentLockTransition(tree, before, after); err == nil || !strings.Contains(err.Error(), "adrFormatV3From is 9, want computed cutoff 3") {
+		t.Fatalf("arbitrary cutoff error = %v", err)
+	}
+	missing, _ := snapshot.NewTree(nil)
+	after.ADRFormatV3From = 1
+	if err := validatePermanentLockTransition(missing, before, after); err == nil || !strings.Contains(err.Error(), "no .awf/config.yaml") {
+		t.Fatalf("missing config error = %v", err)
+	}
 }

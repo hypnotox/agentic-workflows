@@ -337,7 +337,9 @@ func TestAdoptionBoundary(t *testing.T) {
 		dir := t.TempDir()
 		testsupport.WriteFile(t, filepath.Join(dir, "0001-one.md"), legacy("0001"))
 		testsupport.WriteFile(t, filepath.Join(dir, "0001-two.md"), legacy("0001"))
-		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "duplicate") {
+		// Duplicate identity has one home: the corpus refuses it before the
+		// boundary reads a single record (ADR-0194 item 4).
+		if _, _, err := adr.AdoptionBoundary(dir); err == nil || !strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
 			t.Fatalf("error=%v", err)
 		}
 	})

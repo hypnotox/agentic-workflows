@@ -136,6 +136,7 @@ func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
 	}
 	lock.ADRFormatV1From = 1
 	lock.ADRFormatV2From = 1
+	lock.ADRFormatV3From = 9999
 	lock.LegacyADRGaps = []int{}
 	if err := lock.Save(p.lockPath()); err != nil {
 		t.Fatal(err)
@@ -167,6 +168,7 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 				Files:                  map[string]manifest.Entry{},
 				ADRFormatV1From:        137,
 				ADRFormatV2From:        200,
+				ADRFormatV3From:        300,
 				LegacyADRGaps:          []int{2, 9},
 				InitializedWithVersion: initializedWithVersion,
 			}
@@ -188,8 +190,8 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if got.InitializedWithVersion != initializedWithVersion || got.ADRFormatV1From != 137 || got.ADRFormatV2From != 200 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
-				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoffs=%d/%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.ADRFormatV2From, got.LegacyADRGaps)
+			if got.InitializedWithVersion != initializedWithVersion || got.ADRFormatV1From != 137 || got.ADRFormatV2From != 200 || got.ADRFormatV3From != 300 || !slices.Equal(got.LegacyADRGaps, []int{2, 9}) {
+				t.Fatalf("permanent current-state authority was not preserved: initialized=%q cutoffs=%d/%d/%d gaps=%v", got.InitializedWithVersion, got.ADRFormatV1From, got.ADRFormatV2From, got.ADRFormatV3From, got.LegacyADRGaps)
 			}
 		})
 	}

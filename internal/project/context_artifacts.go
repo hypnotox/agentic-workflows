@@ -76,10 +76,8 @@ func artifactRecords(path string, declarations []OutputDeclaration, authorities 
 		add(ArtifactClaimPart, strings.TrimSuffix(strings.TrimPrefix(path, ".awf/topics/parts/"), "/current-state.md"), nil, declarationOutputs(path, declarations))
 	case strings.HasPrefix(path, strings.TrimRight(authorities.Layout.ADRDir, "/")+"/"):
 		base := strings.TrimPrefix(path, strings.TrimRight(authorities.Layout.ADRDir, "/")+"/")
-		if match := adr.FilenameRe.FindStringSubmatch(base); match != nil {
-			if record, ok := authorities.ADRs.ByNumber(match[1]); ok && record.Filename == base {
-				add(ArtifactDecisionRecord, record.Number, nil, declarationOutputs(path, declarations))
-			}
+		if record, ok := authorities.ADRs.ByIdentity(adr.FileIdentity(base)); ok && record.Filename == base {
+			add(ArtifactDecisionRecord, record.Identity(), nil, declarationOutputs(path, declarations))
 		}
 	}
 	for _, d := range declarations {

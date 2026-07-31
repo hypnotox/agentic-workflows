@@ -51,7 +51,7 @@ func (p *Project) ContextForOptions(ctx context.Context, paths []string, options
 	if err != nil {
 		return ContextResult{}, err
 	}
-	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, adr.NewCorpus(ws.Loaded.ADRs))
+	declarations, err := BuildOutputDeclarations(ws.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: ws.Tree}, ws.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextResult{}, err
 	}
@@ -76,7 +76,7 @@ func StagedContextRootOptions(ctx context.Context, root string, paths []string, 
 	if err != nil {
 		return ContextResult{}, err
 	}
-	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, adr.NewCorpus(state.Loaded.ADRs))
+	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, state.Loaded.Corpus)
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextResult{}, err
 	}
@@ -128,7 +128,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	}
 	slices.Sort(nested)
 	set := contextPathSet{tree: state.Tree, eligible: eligiblePaths(state.Tree, state.Lock, state.Config.ContextIgnore), nested: nested, outputs: outputs, ignores: state.Config.ContextIgnore, domainPaths: state.Loaded.Topics.DomainPaths, impacts: map[string]ContextPathImpact{}}
-	selectedADRs := adr.NewCorpus(state.Loaded.ADRs)
+	selectedADRs := state.Loaded.Corpus
 	lay := p.layout()
 	markerSitesByPath := map[string][]topic.MarkerSite{}
 	for _, site := range state.Loaded.Topics.Markers.All() {
@@ -206,7 +206,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 	globallyVisible := contextVisibleClaimIDs(applicable, projectedSources, options.Facets)
 	referencedSeen := map[string]bool{}
 	for _, id := range slices.Sorted(maps.Keys(applicable)) {
-		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.ADRs, map[string]bool{id: true}), options.Facets))
+		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.Corpus, map[string]bool{id: true}), options.Facets))
 	}
 	return result, nil
 }
@@ -264,9 +264,8 @@ func contextRelationshipSources(in map[string]map[int]map[string]bool) map[strin
 	return out
 }
 
-func pendingChanges(adrs []adr.ADR, matchedTopics map[string]bool) []PendingChange {
+func pendingChanges(corpus adr.Corpus, matchedTopics map[string]bool) []PendingChange {
 	var out []PendingChange
-	corpus := adr.NewCorpus(adrs)
 	ordered := slices.Clone(corpus.All())
 	sort.SliceStable(ordered, func(i, j int) bool { return ordered[i].Number < ordered[j].Number })
 	for _, a := range ordered {

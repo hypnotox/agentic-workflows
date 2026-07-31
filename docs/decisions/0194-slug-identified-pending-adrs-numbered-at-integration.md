@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0194: Slug-identified pending ADRs numbered at integration
@@ -276,3 +276,5 @@ reference surface is accepted.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implementing; content-sha256: ad1cecdd656deefbc479d1f26350d5f54f70d4772badc93b3f37253a3ce65d58
+- 2026-07-31: Applied; operations: update `adr-system/adr-lifecycle:fresh-adoption-v1-cutoff`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`, update `adr-system/adr-lifecycle:adr-amendable-until-terminal`, update `adr-system/adr-lifecycle:corpus-single-identity-key`, update `adr-system/adr-lifecycle:applied-history-events-append-only`, add `adr-system/adr-lifecycle:pending-adr-slug-identity`, add `adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory`, update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`, update `invariants/current-state-authority:provenance-ordered-by-adr-number`

@@ -576,7 +576,7 @@ func TestApplicationProjectionContracts(t *testing.T) {
 		}
 	}
 
-	corpus := adr.NewCorpus([]adr.ADR{implementing, errors[1]})
+	corpus := mustCorpusOf([]adr.ADR{implementing, errors[1]})
 	got, found, err := corpus.OperationProgress("0002")
 	if err != nil || !found || len(got.Applied) != 1 {
 		t.Fatalf("corpus progress = %#v, found=%v err=%v", got, found, err)
@@ -638,7 +638,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	}
 	invalid := record("0007", "Invalid", "Implemented", "update")
 	invalid.History = nil
-	corpus := adr.NewCorpus([]adr.ADR{
+	corpus := mustCorpusOf([]adr.ADR{
 		invalid,
 		record("0003", "Revise claim", "Implemented", "update"),
 		record("0004", "Ignored proposal", "Proposed", "remove"),
@@ -657,7 +657,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	if got.LegacyBaseline || got.RemovedBy == nil || got.RemovedBy.Number != "0005" {
 		t.Fatalf("history = %#v", got)
 	}
-	legacy, ok := adr.NewCorpus([]adr.ADR{record("0006", "Remove legacy claim", "Implemented", "remove")}).ClaimOperationHistory(claimID)
+	legacy, ok := mustCorpusOf([]adr.ADR{record("0006", "Remove legacy claim", "Implemented", "remove")}).ClaimOperationHistory(claimID)
 	if !ok || !legacy.LegacyBaseline || legacy.Origin != nil || legacy.RemovedBy == nil || legacy.RemovedBy.Number != "0006" {
 		t.Fatalf("legacy baseline history = %#v, found %v", legacy, ok)
 	}
@@ -682,7 +682,7 @@ func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	}
 	pending := partial
 	pending.Number, pending.Status, pending.History = "0009", "Proposed", []adr.HistoryEvent{{Kind: adr.HistoryStatus, Status: "Proposed"}}
-	partialHistory, ok := adr.NewCorpus([]adr.ADR{partial, pending}).ClaimOperationHistory(claimID)
+	partialHistory, ok := mustCorpusOf([]adr.ADR{partial, pending}).ClaimOperationHistory(claimID)
 	if !ok || partialHistory.RemovedBy == nil || partialHistory.RemovedBy.Number != "0008" || partialHistory.RemovedBy.Status != "Abandoned" {
 		t.Fatalf("partial abandonment operation history = %#v, found=%v", partialHistory, ok)
 	}
@@ -794,4 +794,14 @@ func TestAuditSharesADRParser(t *testing.T) {
 	if !strings.Contains(body, "adr.ParseBytes(") {
 		t.Error("internal/audit no longer calls adr.ParseBytes - has the shared seam moved?")
 	}
+}
+
+// mustCorpusOf builds a corpus from a fixture slice, panicking on a duplicate
+// identity no fixture here intends to declare.
+func mustCorpusOf(adrs []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(adrs)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }

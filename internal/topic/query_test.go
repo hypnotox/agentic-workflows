@@ -139,7 +139,7 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 func TestQueryHistoricalOnlyRemovedClaim(t *testing.T) {
 	corpus, existing := loadedQueryFixture(t)
 	claimID := "alpha/contracts:removed"
-	adrs := adr.NewCorpus(append(existing.All(),
+	adrs := mustCorpus(append(withoutRecord(existing.All(), "0003"),
 		adr.ADR{Number: "0003", Title: "ADR-0003: Add removed claim", Status: "Implemented", Format: adr.CurrentStateV1,
 			Operations: []adr.Operation{{Verb: adr.OpAdd, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented"}}},
 		adr.ADR{Number: "0004", Title: "ADR-0004: Remove old claim", Status: "Implemented", Format: adr.CurrentStateV1,
@@ -174,7 +174,7 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 		return adr.ADR{Number: number, Title: "ADR-" + number + ": Operation " + number, Status: "Implemented", Format: adr.CurrentStateV1,
 			Operations: []adr.Operation{{Verb: verb, ID: claimID}}, History: []adr.StatusEntry{{Status: "Implemented"}}}
 	}
-	operations := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd), record("0004", adr.OpUpdate)))
+	operations := mustCorpus(append(withoutRecord(existing.All(), "0003"), record("0003", adr.OpAdd), record("0004", adr.OpUpdate)))
 	got, err := Query(corpus, operations, claimID, QueryOptions{History: true}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -191,13 +191,13 @@ func TestQueryActiveOperationHistoryAndIncompleteFallback(t *testing.T) {
 			{Kind: adr.HistoryApplied, Operations: []adr.Operation{{Verb: adr.OpUpdate, ID: claimID}}},
 		},
 	}
-	operations = adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0003", adr.OpAdd), incremental))
+	operations = mustCorpus(append(withoutRecord(existing.All(), "0003"), record("0003", adr.OpAdd), incremental))
 	got, err = Query(corpus, operations, claimID, QueryOptions{History: true}, nil)
 	if err != nil || len(got.History) != 1 || got.History[0].RevisedBy[0].Status != "Implementing" {
 		t.Fatalf("immediate incremental operation history = %#v, err=%v", got.History, err)
 	}
 
-	incomplete := adr.NewCorpus(append(append([]adr.ADR{}, existing.All()...), record("0004", adr.OpUpdate)))
+	incomplete := mustCorpus(append(append([]adr.ADR{}, existing.All()...), record("0004", adr.OpUpdate)))
 	got, err = Query(corpus, incomplete, claimID, QueryOptions{History: true}, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -240,4 +240,16 @@ func TestQuerySelectorsMissingAndStableJSON(t *testing.T) {
 	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"claimId"`) || !strings.Contains(string(one), `"backing":"none"`) || strings.Contains(string(one), `"Origin"`) {
 		t.Fatalf("unstable or semantically incomplete JSON: %s / %s", one, two)
 	}
+}
+
+// withoutRecord drops the fixture record a case replaces, so the corpus keeps
+// one file per identity now that a duplicate is a hard error.
+func withoutRecord(all []adr.ADR, number string) []adr.ADR {
+	out := make([]adr.ADR, 0, len(all))
+	for _, a := range all {
+		if a.Number != number {
+			out = append(out, a)
+		}
+	}
+	return out
 }

@@ -327,7 +327,7 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got.InitializedWithVersion != initial.InitializedWithVersion || got.ADRFormatV1From != initial.ADRFormatV1From || got.ADRFormatV2From != initial.ADRFormatV2From || !slices.Equal(got.LegacyADRGaps, initial.LegacyADRGaps) {
+		if got.InitializedWithVersion != initial.InitializedWithVersion || got.ADRFormatV1From != initial.ADRFormatV1From || got.ADRFormatV2From != initial.ADRFormatV2From || got.ADRFormatV3From != initial.ADRFormatV3From || !slices.Equal(got.LegacyADRGaps, initial.LegacyADRGaps) {
 			t.Fatalf("%s changed authority: initial=%#v got=%#v", step, initial, got)
 		}
 	}
@@ -356,8 +356,13 @@ func TestInitialAdoptionAuthorityImmutableAcrossCommands(t *testing.T) {
 				lock.InitializedWithVersion = "0.17.0"
 			}
 		}},
-		{"adrFormatV1From", func(lock *manifest.Lock) { lock.ADRFormatV1From++; lock.ADRFormatV2From++ }},
-		{"adrFormatV2From", func(lock *manifest.Lock) { lock.ADRFormatV2From++ }},
+		{"adrFormatV1From", func(lock *manifest.Lock) {
+			lock.ADRFormatV1From++
+			lock.ADRFormatV2From++
+			lock.ADRFormatV3From++
+		}},
+		{"adrFormatV2From", func(lock *manifest.Lock) { lock.ADRFormatV2From++; lock.ADRFormatV3From++ }},
+		{"adrFormatV3From", func(lock *manifest.Lock) { lock.ADRFormatV3From++ }},
 		{"legacyAdrGaps", func(lock *manifest.Lock) { lock.LegacyADRGaps = []int{1} }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -390,8 +395,8 @@ func TestInitSeedsEmptyAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lock.InitializedWithVersion != project.Version || lock.ADRFormatV1From != 1 || lock.ADRFormatV2From != 1 || lock.LegacyADRGaps == nil || len(lock.LegacyADRGaps) != 0 {
-		t.Fatalf("authority = version %q cutoffs %d/%d gaps %v", lock.InitializedWithVersion, lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps)
+	if lock.InitializedWithVersion != project.Version || lock.ADRFormatV1From != 1 || lock.ADRFormatV2From != 1 || lock.ADRFormatV3From != 1 || lock.LegacyADRGaps == nil || len(lock.LegacyADRGaps) != 0 {
+		t.Fatalf("authority = version %q cutoffs %d/%d/%d gaps %v", lock.InitializedWithVersion, lock.ADRFormatV1From, lock.ADRFormatV2From, lock.ADRFormatV3From, lock.LegacyADRGaps)
 	}
 }
 
@@ -412,8 +417,8 @@ func TestInitSealsBrownfieldAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lock.ADRFormatV1From != 4 || lock.ADRFormatV2From != 4 || len(lock.LegacyADRGaps) != 1 || lock.LegacyADRGaps[0] != 2 {
-		t.Fatalf("cutoffs/gaps = %d/%d/%v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps)
+	if lock.ADRFormatV1From != 4 || lock.ADRFormatV2From != 4 || lock.ADRFormatV3From != 4 || len(lock.LegacyADRGaps) != 1 || lock.LegacyADRGaps[0] != 2 {
+		t.Fatalf("cutoffs/gaps = %d/%d/%d/%v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.ADRFormatV3From, lock.LegacyADRGaps)
 	}
 	for path, want := range map[string]string{onePath: one, threePath: three} {
 		got, err := os.ReadFile(path)
@@ -476,7 +481,7 @@ func TestInitForcePreservesAuthority(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if before.InitializedWithVersion != after.InitializedWithVersion || before.ADRFormatV1From != after.ADRFormatV1From || before.ADRFormatV2From != after.ADRFormatV2From || !slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
+	if before.InitializedWithVersion != after.InitializedWithVersion || before.ADRFormatV1From != after.ADRFormatV1From || before.ADRFormatV2From != after.ADRFormatV2From || before.ADRFormatV3From != after.ADRFormatV3From || !slices.Equal(before.LegacyADRGaps, after.LegacyADRGaps) {
 		t.Fatalf("authority changed: before=%#v after=%#v", before, after)
 	}
 }
@@ -538,8 +543,8 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if lock.ADRFormatV1From != tc.cutoff || lock.ADRFormatV2From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
-				t.Fatalf("initial authority = cutoffs %d/%d gaps %v, want %d/%d gaps %v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.LegacyADRGaps, tc.cutoff, tc.cutoff, tc.gaps)
+			if lock.ADRFormatV1From != tc.cutoff || lock.ADRFormatV2From != tc.cutoff || lock.ADRFormatV3From != tc.cutoff || !slices.Equal(lock.LegacyADRGaps, tc.gaps) {
+				t.Fatalf("initial authority = cutoffs %d/%d/%d gaps %v, want %d gaps %v", lock.ADRFormatV1From, lock.ADRFormatV2From, lock.ADRFormatV3From, lock.LegacyADRGaps, tc.cutoff, tc.gaps)
 			}
 			gitfixture.AddAll(t, repo)
 			gitfixture.Commit(t, repo, "initialize", nil)
@@ -565,8 +570,11 @@ func testInitFirstADRChecksClean(t *testing.T) {
 				t.Fatal(err)
 			}
 			text := string(body)
-			if !strings.Contains(text, "format: current-state-v2\n") {
-				t.Fatalf("new ADR at cutoff %d is not current-state-v2", tc.cutoff)
+			// Fresh adoption seals the whole ordered cutoff set at the same
+			// boundary, so a scaffolded record is V3 with its slug key
+			// (ADR-0194 items 1 and 2).
+			if !strings.Contains(text, "format: current-state-v3\n") {
+				t.Fatalf("new ADR at cutoff %d is not current-state-v3", tc.cutoff)
 			}
 			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
 			if start < 0 || end < 0 || end <= start {
@@ -1283,7 +1291,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, ADRFormatV2From: 1, ADRFormatV3From: 1, LegacyADRGaps: []int{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

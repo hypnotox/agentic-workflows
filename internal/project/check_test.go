@@ -552,8 +552,9 @@ func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
 	}
 }
 
-// A first adoption whose decisions dir parses but carries two ADRs with the
-// same number fails authority sealing after the entry derivation succeeded.
+// A first adoption whose decisions dir carries two ADRs with the same number
+// fails at corpus load: duplicate identity has one home (ADR-0194 item 4), so
+// the refusal precedes every consumer rather than being re-derived by each.
 func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	for _, name := range []string{"0001-alpha.md", "0001-beta.md"} {
@@ -566,7 +567,24 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 		t.Fatal(err)
 	}
 	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
+		!strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
+		t.Fatalf("expected duplicate ADR identity to fail the corpus load, got %v", err)
+	}
+}
+
+// A first adoption whose decisions dir parses cleanly but declares a governed
+// format inside the brownfield legacy set fails authority sealing, after the
+// entry derivation succeeded.
+func TestInitializeReportSurfacesBrownfieldGovernedRecord(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", "0001-governed.md"),
+		"---\nformat: current-state-v2\nstatus: Proposed\ndate: 2026-07-13\n---\n# ADR-0001: Governed\n\n## Context\n\nC.\n\n## Decision\n\n1. D.\n\n## State changes\n\nNone.\n\n## Consequences\n\nC.\n\n## Alternatives Considered\n\nNone.\n\n## Status history\n\n- 2026-07-13: Proposed\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
 		!strings.Contains(err.Error(), "seal first-adoption ADR authority") {
-		t.Fatalf("expected duplicate ADR identity to fail authority sealing, got %v", err)
+		t.Fatalf("expected a brownfield governed record to fail authority sealing, got %v", err)
 	}
 }

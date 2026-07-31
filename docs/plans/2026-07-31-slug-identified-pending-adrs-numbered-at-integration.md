@@ -143,7 +143,7 @@ docs(plans): record the seam-landing baseline for the numbering plan
 nothing; `./x gate` exits 0; `./awf check` prints clean. This phase closes with ADR-0194
 entering `Implementing` and Applied batch 1.
 
-- [ ] **Task 2.1: Lock field `ADRFormatV3From`.** In `internal/manifest/manifest.go`,
+- [x] **Task 2.1: Lock field `ADRFormatV3From`.** In `internal/manifest/manifest.go`,
   mirror the `ADRFormatV2From` triple exactly (field at :46, presence bit at :57, raw
   presence wiring in `Parse` near :200, canonical `Marshal` struct near :230): add
   `ADRFormatV3From int` (`json:"adrFormatV3From,omitempty"` - the lock manifest is
@@ -154,7 +154,7 @@ entering `Implementing` and Applied batch 1.
   `>= ADRFormatV2From`; when `SchemaVersion >=` the Task 2.2 migration's `To`, absence
   is an error (mirror the schema-15-requires-V2From check at :107-117). Tests mirror the
   existing V2From cases per branch.
-- [ ] **Task 2.2: Sealing migration.** New `internal/migrate/adrformatv3.go` cloned from
+- [x] **Task 2.2: Sealing migration.** New `internal/migrate/adrformatv3.go` cloned from
   the `applyADRFormatV2CutoffWithSave` shape (`internal/migrate/adrformatv2.go:22-63`):
   `lockSaver` seam, no-op when lock absent or already at/above target, skip the corpus
   branch unless authority is Permanent, otherwise seal
@@ -169,7 +169,7 @@ entering `Implementing` and Applied batch 1.
   `examples/sundial`, and stage `.awf/awf.lock` and `examples/sundial/.awf/awf.lock`
   with the phase (the binary-version gate reds every gated command on a
   behind-generation tree, and `runner-example-adopted` reds on a stale sundial).
-- [ ] **Task 2.3: V3 parse path and slug identity in `internal/adr`.** In `format.go`:
+- [x] **Task 2.3: V3 parse path and slug identity in `internal/adr`.** In `format.go`:
   add `V3FormatMarker = "current-state-v3"` beside :17-20; add a `v3Frontmatter` struct
   `{Format, Status, Date, Slug string}` decoded with `KnownFields(true)` (V1/V2 parsing
   stays slug-rejecting); add `ParseV3(name, data)` accepting both forms: numbered
@@ -188,7 +188,7 @@ entering `Implementing` and Applied batch 1.
   V2 behavior below the V3 cutoff is unchanged. internal/adr's own `FilenameRe` uses
   (adr.go:94 and :157, format.go:68 and :197) are in this task's scope: :157 and
   format.go:68 legitimately leave `Number` empty for a pending record.
-- [ ] **Task 2.4: Callers stop silently skipping strays; reserved basenames stay
+- [x] **Task 2.4: Callers stop silently skipping strays; reserved basenames stay
   excluded.** Batch task over the `FilenameRe` gate sites. Representative -
   `internal/adr/adr.go:94-97` (`ParseDir`): replace the match-or-`continue` with:
   `base := filepath.Base(path)`; skip exactly `README.md`, `INDEX.md`, `template.md`;
@@ -209,7 +209,7 @@ entering `Implementing` and Applied batch 1.
   (internal/plan's own unrelated `FilenameRe` symbol and internal/adr's in-package
   uses, owned by Task 2.3, are out of scope), and each handles the pending case per
   this task.
-- [ ] **Task 2.5: Corpus slug index and hard duplicate errors.** In
+- [x] **Task 2.5: Corpus slug index and hard duplicate errors.** In
   `internal/adr/corpus.go`: `NewCorpus` (:45-51) gains a `bySlug map[string]ADR` and
   now returns `(Corpus, error)`: a duplicate non-empty `Number` or a duplicate
   non-empty `Slug` (across pending plus retained records) yields the typed error
@@ -226,7 +226,7 @@ entering `Implementing` and Applied batch 1.
   the `Atoi`, and rewrite the three `coverage-ignore` reasons (adr.go:318, corpus.go:100,
   adr.go:280) plus `internal/project/currentstate.go:343` to reflect the guard (or drop
   the ignore where the error branch becomes reachable and test it).
-- [ ] **Task 2.6: Slug-form provenance.** In `internal/topic/topic.go`: widen the
+- [x] **Task 2.6: Slug-form provenance.** In `internal/topic/topic.go`: widen the
   `Origin:`/`Revised-by:` grammar (`adrRE`, :22) to accept `ADR-<slug>` where `<slug>`
   matches `^[a-z0-9]+(-[a-z0-9]+)*$` and is non-numeric; store the reference as its
   string form. In `internal/currentstate/check.go` `checkBackward` (:340): the
@@ -245,12 +245,12 @@ entering `Implementing` and Applied batch 1.
   with slug revisions passes. `checkLegacySegments` (check.go:113) and
   `checkOperationHistory` (:126) need no change: neither indexes by owner identity;
   the identity-keyed work is confined to `checkBackward`.
-- [ ] **Task 2.7: INDEX ordering.** In `internal/adr/index.go`
+- [x] **Task 2.7: INDEX ordering.** In `internal/adr/index.go`
   `renderIndexSection` (:33-47): replace the plain `Number` string sort with: both
   numbered - compare `Number`; exactly one numbered - the numbered record sorts first;
   neither - compare `Slug`. Golden-update the index tests with a pending fixture
   asserting numbered-first, pending-alphabetical-after ordering.
-- [ ] **Task 2.8: Cutoff-set parity sweep.** Batch task: every production site reading
+- [x] **Task 2.8: Cutoff-set parity sweep.** Batch task: every production site reading
   or sealing `ADRFormatV2From` gains the parallel `ADRFormatV3From` handling (boundary
   construction in `internal/project/currentstate.go:119-130` `attestationBoundaries`
   and :357 `loadTreeCurrentState`; fresh-adoption sealing wherever `AdoptionBoundary`'s
@@ -259,7 +259,7 @@ entering `Implementing` and Applied batch 1.
   same value as the V2From seal (highest identity plus one), keeping the ordered-cutoff
   invariant. Post-check: `grep -rln "ADRFormatV2From" internal/ cmd/ --include="*.go" |
   grep -v _test` and the same for `ADRFormatV3From` name identical file sets.
-- [ ] **Task 2.9: Claim mutations and ADR transition.** In
+- [x] **Task 2.9: Claim mutations and ADR transition.** In
   `.awf/topics/parts/adr-system/adr-lifecycle/current-state.md`: rewrite
   `fresh-adoption-v1-cutoff` (cutoff set now ordered V1 <= V2 <= V3, sealing per Task
   2.2/2.8), `adr-status-enum-and-matrix` (three cutoffs; numberless records route by the
@@ -294,7 +294,7 @@ entering `Implementing` and Applied batch 1.
   `adr-v2-cutoff-atomic-immutable`, update `provenance-ordered-by-adr-number` (nine
   operations, a declaration-order subsequence; no event carries a state sequence).
   Run `./x render`.
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage everything; run
+- [x] **Phase-close: stage, check, gate, and commit.** Stage everything; run
   `awf check --staged` then `./x gate`; both must pass with zero findings.
 
 ```commit
@@ -654,3 +654,31 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
   instruction describe machinery that no longer exists. RESYNC REQUIRED: amend the
   still-Proposed ADR-0194 against 0191 (and verify 0192's impact), then run plan
   resync; execution pauses after this Phase 1 close.
+- 2026-07-31, Phase 2 execution findings, four deviations from the task wording, each
+  forced by a repository invariant or by a defect Phase 2's own change would otherwise
+  ship:
+  - Task 2.5's `HasSlug` was NOT added. The dead-code gate refuses a production function
+    unreachable from a `main`, and its first consumer is Phase 4's Task 4.1 plan-link
+    resolution. `BySlug` alone is enough for every Phase 2 caller; Task 4.1 adds `HasSlug`
+    with the call site that makes it live, or resolves through `BySlug`.
+  - Task 2.6's identity keying could not stay confined to `checkBackward`. `checkForward`
+    compares a claim's `Origin`/`Revised-by` against the owning record's number, and
+    `appliedOperations` ranks per-claim history by that number, so a pending record would
+    have compared against the empty string and sorted before every numbered record. The
+    whole check layer now keys on `adr.ADR.Identity()` and ranks by `adr.IdentityOrder`,
+    which places a pending record after every number, matching item 10's ordering rule.
+  - Task 2.8's fresh-adoption seal makes a greenfield project's first record V3, so
+    `awf new adr` had to learn the numbered V3 scaffold in this phase or emit a record
+    that fails its own parse. `NewFile` gained the V3 marker plus the `slug:` injection
+    for the numbered form only; Phase 3's Task 3.5 still owns branch awareness, the
+    pending form, and both refusals.
+  - Task 2.4's `internal/project/currentstate.go:338-349` needed no change: its
+    `FilenameRe` gate already excludes a numberless file by construction, which is exactly
+    the pending-aware behaviour, so the coverage-ignore reason there stands unchanged.
+  Two further consequences worth carrying forward: duplicate ADR identity now has a single
+  home in the corpus, so `AdoptionBoundary`'s own duplicate error was removed as dead
+  redundancy, and `currentstate.Loaded` now carries the validated `adr.Corpus` so no
+  consumer rebuilds (and re-validates) one.
+- 2026-07-31, Phase 2 close: schema generation 28 (`adr-format-v3-cutoff`) sealed
+  `adrFormatV3From` at 195 in this repository and 4 in `examples/sundial`. Task 3.3's
+  migration therefore takes generation 29 at execution time.

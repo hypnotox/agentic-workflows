@@ -4,8 +4,9 @@ These packages migrate the config tree across schema generations and read and wr
 
 ### `invariant: adr-v2-cutoff-atomic-immutable`
 
-Schema-15 upgrade writes the schema generation and computed ADR V2 cutoff in one atomic lock save without rewriting authored ADRs, and every later staged transition preserves both permanent format cutoffs exactly.
+Each format cutoff is sealed by its own schema generation, which writes the generation and the computed cutoff in one atomic lock save without rewriting authored ADRs: schema 15 seals the V2 cutoff and schema 28 the V3 cutoff. Every later staged transition preserves the full ordered cutoff set exactly, admitting only the sealing edge of a cutoff the prior authority did not carry.
 Origin: ADR-0143
+Revised-by: ADR-0194
 Backing: test
 
 ### `invariant: audit-migration-announces-removal`

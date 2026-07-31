@@ -63,6 +63,7 @@ var minVersionBySchema = map[int]string{
 	25: "0.29.0",
 	26: "0.30.0",
 	27: "0.30.0",
+	28: "0.30.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -354,11 +355,16 @@ func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup
 		lock.InitializedWithVersion = old.InitializedWithVersion
 		lock.ADRFormatV1From = old.ADRFormatV1From
 		lock.ADRFormatV2From = old.ADRFormatV2From
+		lock.ADRFormatV3From = old.ADRFormatV3From
 		lock.LegacyADRGaps = slices.Clone(old.LegacyADRGaps)
 	} else {
 		lock.InitializedWithVersion = seed.InitializedWithVersion
+		// Fresh adoption seals the whole ordered cutoff set at the same
+		// boundary, so a greenfield project authors V3 from its first record
+		// and the V1 <= V2 <= V3 ordering holds trivially (ADR-0194 item 1).
 		lock.ADRFormatV1From = initCutoff
 		lock.ADRFormatV2From = initCutoff
+		lock.ADRFormatV3From = initCutoff
 		lock.LegacyADRGaps = slices.Clone(initGaps)
 	}
 	want := map[string]bool{}
@@ -617,6 +623,9 @@ func (p *Project) NewADR(title string) (string, error) {
 	format := adr.CurrentStateV1
 	if lock.ADRFormatV2From > 0 && n >= lock.ADRFormatV2From {
 		format = adr.CurrentStateV2
+	}
+	if lock.ADRFormatV3From > 0 && n >= lock.ADRFormatV3From {
+		format = adr.CurrentStateV3
 	}
 	return adr.NewFile(p.decisionsDir(), title, format)
 }

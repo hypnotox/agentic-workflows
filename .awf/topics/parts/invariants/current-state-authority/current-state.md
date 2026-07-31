@@ -79,8 +79,9 @@ Backing: test
 
 ### `invariant: provenance-ordered-by-adr-number`
 
-A claim's provenance order is ascending final ADR number: the canonical chain is its Origin ADR followed by its Revised-by ADRs sorted ascending and duplicate-free, every Revised-by entry is greater than the Origin's number, claim history output sorts revision records the same way, and no status-history event carries a state sequence.
+A claim's provenance order is ascending final ADR number: the canonical chain is its Origin ADR followed by its Revised-by ADRs sorted ascending and duplicate-free, every Revised-by entry is greater than the Origin's number, claim history output sorts revision records the same way, and no status-history event carries a state sequence. An `ADR-<slug>` entry naming a pending record is legal and resolves only against a pending record: it is placed after every numeric entry, because a pending record takes the corpus's next numbers at integration, and slug entries compare in authored list order among themselves. When the Origin is itself a slug entry, the greater-than-Origin comparison is deferred to numbering, which the numbering command's add-before-revise refusal guarantees.
 Origin: ADR-0191
+Revised-by: ADR-0194
 Backing: test
 
 ### `invariant: applied-remove-absorbing-tombstone`

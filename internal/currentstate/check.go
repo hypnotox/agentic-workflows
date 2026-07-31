@@ -4,7 +4,6 @@ package currentstate
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
@@ -25,9 +24,12 @@ type projectedADR struct {
 }
 
 type operationAt struct {
-	owner    adr.ADR
-	op       adr.Operation
-	adrNum   int
+	owner adr.ADR
+	op    adr.Operation
+	// order is the owning record's provenance rank: its number when numbered,
+	// and a rank above every number when pending, because a pending record
+	// takes the corpus's next numbers at integration (ADR-0194 item 10).
+	order    int
 	batchIdx int
 }
 
@@ -67,7 +69,7 @@ func hasLegacyRecord(records []adr.ADR) bool {
 
 func legacyOrigin(records []adr.ADR, number string) bool {
 	for _, record := range records {
-		if record.Number == number {
+		if record.Identity() == number {
 			return !record.IsGoverned()
 		}
 	}
@@ -99,9 +101,9 @@ func projectADRs(records []adr.ADR) ([]projectedADR, []Finding) {
 func appliedOperations(projected []projectedADR) []operationAt {
 	var out []operationAt
 	for _, p := range projected {
-		num, _ := strconv.Atoi(p.record.Number) // parsed ADR numbers always match FilenameRe
+		order := adr.IdentityOrder(p.record.Identity())
 		for _, applied := range p.progress.Applied {
-			out = append(out, operationAt{owner: p.record, op: applied.Operation, adrNum: num, batchIdx: applied.BatchIndex})
+			out = append(out, operationAt{owner: p.record, op: applied.Operation, order: order, batchIdx: applied.BatchIndex})
 		}
 	}
 	return out
@@ -115,7 +117,7 @@ func checkLegacySegments(records []adr.ADR) []Finding {
 	for _, record := range records {
 		for _, event := range record.History {
 			if event.LegacySequence {
-				findings = append(findings, Finding{fmt.Sprintf("ADR-%s carries a retired state-sequence segment; run awf upgrade", record.Number)})
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s carries a retired state-sequence segment; run awf upgrade", record.Identity())})
 				break
 			}
 		}
@@ -137,8 +139,8 @@ func checkOperationHistory(applied []operationAt, hasLegacy bool) []Finding {
 	for _, id := range ids {
 		ops := byID[id]
 		sort.SliceStable(ops, func(i, j int) bool {
-			if ops[i].adrNum != ops[j].adrNum {
-				return ops[i].adrNum < ops[j].adrNum
+			if ops[i].order != ops[j].order {
+				return ops[i].order < ops[j].order
 			}
 			return ops[i].batchIdx < ops[j].batchIdx
 		})
@@ -196,7 +198,7 @@ func checkForward(projected []projectedADR, claims map[string]topic.Claim, topic
 		}
 		for _, op := range p.progress.Canceled {
 			if op.Verb == adr.OpAdd && removed[op.ID] {
-				findings = append(findings, Finding{fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Number, op.ID)})
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Identity(), op.ID)})
 			}
 			if p.record.IsV1() && p.record.IsAbandoned() {
 				claim, present := claims[op.ID]
@@ -211,7 +213,7 @@ func checkForward(projected []projectedADR, claims map[string]topic.Claim, topic
 				findings = append(findings, checkTopic(p.record, op, topics, false)...)
 			}
 			if op.Verb == adr.OpAdd && removed[op.ID] {
-				findings = append(findings, Finding{fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Number, op.ID)})
+				findings = append(findings, Finding{fmt.Sprintf("ADR-%s adds removed claim %s, which may never be reused", p.record.Identity(), op.ID)})
 			}
 			_, present := claims[op.ID]
 			findings = append(findings, checkPendingOp(p.record, op, present)...)
@@ -223,7 +225,7 @@ func checkForward(projected []projectedADR, claims map[string]topic.Claim, topic
 func checkTopic(a adr.ADR, op adr.Operation, topics map[string]bool, retired bool) []Finding {
 	topicID, _, _ := strings.Cut(op.ID, ":")
 	if !topics[topicID] && !retired {
-		return []Finding{{fmt.Sprintf("ADR-%s operation %s targets missing topic %s", a.Number, op.Verb, topicID)}}
+		return []Finding{{fmt.Sprintf("ADR-%s operation %s targets missing topic %s", a.Identity(), op.Verb, topicID)}}
 	}
 	return nil
 }
@@ -248,8 +250,8 @@ func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[s
 		complete := true
 		for _, history := range histories {
 			sort.SliceStable(history, func(i, j int) bool {
-				if history[i].adrNum != history[j].adrNum {
-					return history[i].adrNum < history[j].adrNum
+				if history[i].order != history[j].order {
+					return history[i].order < history[j].order
 				}
 				return history[i].batchIdx < history[j].batchIdx
 			})
@@ -282,10 +284,10 @@ func retiredTopicOperations(applied []operationAt, topics map[string]bool) map[s
 
 func checkPendingOp(a adr.ADR, op adr.Operation, present bool) []Finding {
 	if op.Verb == adr.OpAdd && present {
-		return []Finding{{fmt.Sprintf("pending ADR-%s adds claim %s, which already exists", a.Number, op.ID)}}
+		return []Finding{{fmt.Sprintf("pending ADR-%s adds claim %s, which already exists", a.Identity(), op.ID)}}
 	}
 	if op.Verb != adr.OpAdd && !present {
-		return []Finding{{fmt.Sprintf("pending ADR-%s %ss missing claim %s", a.Number, op.Verb, op.ID)}}
+		return []Finding{{fmt.Sprintf("pending ADR-%s %ss missing claim %s", a.Identity(), op.Verb, op.ID)}}
 	}
 	return nil
 }
@@ -293,12 +295,12 @@ func checkPendingOp(a adr.ADR, op adr.Operation, present bool) []Finding {
 func checkAbandonedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present bool) []Finding {
 	switch op.Verb {
 	case adr.OpAdd:
-		if present && claim.Origin == a.Number {
-			return []Finding{{fmt.Sprintf("Abandoned ADR-%s add for claim %s was applied; it must be reverted", a.Number, op.ID)}}
+		if present && claim.Origin == a.Identity() {
+			return []Finding{{fmt.Sprintf("Abandoned ADR-%s add for claim %s was applied; it must be reverted", a.Identity(), op.ID)}}
 		}
 	case adr.OpUpdate:
-		if present && contains(claim.RevisedBy, a.Number) {
-			return []Finding{{fmt.Sprintf("Abandoned ADR-%s update for claim %s was applied; it must be reverted", a.Number, op.ID)}}
+		if present && contains(claim.RevisedBy, a.Identity()) {
+			return []Finding{{fmt.Sprintf("Abandoned ADR-%s update for claim %s was applied; it must be reverted", a.Identity(), op.ID)}}
 		}
 	case adr.OpRemove:
 		// V1 removal attribution remains a CheckPair responsibility.
@@ -314,34 +316,52 @@ func checkAppliedOp(a adr.ADR, op adr.Operation, claim topic.Claim, present, was
 			return nil
 		}
 		if !present {
-			return []Finding{{fmt.Sprintf("%s ADR-%s adds claim %s, which has no active claim", label, a.Number, op.ID)}}
+			return []Finding{{fmt.Sprintf("%s ADR-%s adds claim %s, which has no active claim", label, a.Identity(), op.ID)}}
 		}
-		if claim.Origin != a.Number {
-			return []Finding{{fmt.Sprintf("claim %s Origin is ADR-%s, not the adding ADR-%s", op.ID, claim.Origin, a.Number)}}
+		if claim.Origin != a.Identity() {
+			return []Finding{{fmt.Sprintf("claim %s Origin is ADR-%s, not the adding ADR-%s", op.ID, claim.Origin, a.Identity())}}
 		}
 	case adr.OpUpdate:
 		if wasRemoved {
 			return nil
 		}
 		if !present {
-			return []Finding{{fmt.Sprintf("%s ADR-%s updates claim %s, which has no active claim", label, a.Number, op.ID)}}
+			return []Finding{{fmt.Sprintf("%s ADR-%s updates claim %s, which has no active claim", label, a.Identity(), op.ID)}}
 		}
-		if !contains(claim.RevisedBy, a.Number) {
-			return []Finding{{fmt.Sprintf("claim %s does not list updating ADR-%s in Revised-by", op.ID, a.Number)}}
+		if !contains(claim.RevisedBy, a.Identity()) {
+			return []Finding{{fmt.Sprintf("claim %s does not list updating ADR-%s in Revised-by", op.ID, a.Identity())}}
 		}
 	case adr.OpRemove:
 		if present {
-			return []Finding{{fmt.Sprintf("%s ADR-%s removes claim %s, which still has an active claim", label, a.Number, op.ID)}}
+			return []Finding{{fmt.Sprintf("%s ADR-%s removes claim %s, which still has an active claim", label, a.Identity(), op.ID)}}
 		}
 	}
 	return nil
 }
 
+// checkBackward validates each claim's authored provenance against the applied
+// operation set. The index key is the owning record's identity: its number when
+// numbered, its slug while pending (ADR-0194 item 4).
+//
+// A slug-form entry resolves only against a pending record's slug, never
+// against the retained slug of an already-numbered one, which is what forces
+// numbering's substitution to be complete: a leftover slug reference is an
+// error the moment its record takes a number. Order: numeric entries stay
+// strictly ascending, a slug entry is legal only after every numeric entry, and
+// slug entries compare in authored list order among themselves. When the Origin
+// is itself a slug, its greater-than-Origin comparison is deferred to numbering,
+// which the command's add-before-revise refusal guarantees (ADR-0194 item 10).
 func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]topic.Claim) []Finding {
 	byOperation := map[string]operationAt{}
 	for _, operation := range applied {
-		key := operation.owner.Number + "\x00" + string(operation.op.Verb) + "\x00" + operation.op.ID
+		key := operation.owner.Identity() + "\x00" + string(operation.op.Verb) + "\x00" + operation.op.ID
 		byOperation[key] = operation
+	}
+	pendingSlugs := map[string]bool{}
+	for _, record := range records {
+		if record.IsPending() {
+			pendingSlugs[record.Slug] = true
+		}
 	}
 	ids := make([]string, 0, len(claims))
 	for id := range claims {
@@ -351,26 +371,44 @@ func checkBackward(records []adr.ADR, applied []operationAt, claims map[string]t
 	var findings []Finding
 	for _, id := range ids {
 		claim := claims[id]
-		originKey := claim.Origin + "\x00" + string(adr.OpAdd) + "\x00" + id
-		origin, hasOrigin := byOperation[originKey]
-		if !legacyOrigin(records, claim.Origin) && !hasOrigin {
-			findings = append(findings, Finding{fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation applied", id, claim.Origin)})
+		originIsSlug := adr.IsSlugIdentity(claim.Origin)
+		var origin operationAt
+		var hasOrigin bool
+		if originIsSlug && !pendingSlugs[claim.Origin] {
+			findings = append(findings, Finding{fmt.Sprintf("claim %s cites pending ADR-%s which is not in the corpus", id, claim.Origin)})
+		} else {
+			origin, hasOrigin = byOperation[claim.Origin+"\x00"+string(adr.OpAdd)+"\x00"+id]
+			if !legacyOrigin(records, claim.Origin) && !hasOrigin {
+				findings = append(findings, Finding{fmt.Sprintf("claim %s names Origin ADR-%s, which has no matching add operation applied", id, claim.Origin)})
+			}
 		}
 		last := 0
-		if hasOrigin {
-			last = origin.adrNum
+		if hasOrigin && !originIsSlug {
+			last = origin.order
 		}
+		seenSlug := originIsSlug
 		for _, rev := range claim.RevisedBy {
-			key := rev + "\x00" + string(adr.OpUpdate) + "\x00" + id
-			operation, ok := byOperation[key]
+			revIsSlug := adr.IsSlugIdentity(rev)
+			if revIsSlug && !pendingSlugs[rev] {
+				findings = append(findings, Finding{fmt.Sprintf("claim %s cites pending ADR-%s which is not in the corpus", id, rev)})
+				continue
+			}
+			operation, ok := byOperation[rev+"\x00"+string(adr.OpUpdate)+"\x00"+id]
 			if !ok {
 				findings = append(findings, Finding{fmt.Sprintf("claim %s names Revised-by ADR-%s, which has no matching update operation applied", id, rev)})
 				continue
 			}
-			if operation.adrNum <= last {
+			if revIsSlug {
+				seenSlug = true
+				continue
+			}
+			if seenSlug {
+				findings = append(findings, Finding{fmt.Sprintf("claim %s lists numbered Revised-by ADR-%s after a pending entry", id, rev)})
+			}
+			if operation.order <= last {
 				findings = append(findings, Finding{fmt.Sprintf("claim %s Revised-by entries are not in ascending ADR-number order at ADR-%s", id, rev)})
 			}
-			last = operation.adrNum
+			last = operation.order
 		}
 	}
 	return findings

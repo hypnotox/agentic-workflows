@@ -34,10 +34,53 @@ type ADR struct {
 
 	// Governed fields are populated only for an ADR at or above one of the
 	// lock's format cutoffs. A legacy-format record leaves them zero.
-	Format     Format         // Legacy, CurrentStateV1, or CurrentStateV2
+	Format     Format         // Legacy, CurrentStateV1, CurrentStateV2, or CurrentStateV3
 	NoneState  bool           // State changes section is exactly "None."
 	Operations []Operation    // parsed `## State changes` operations
 	History    []HistoryEvent // parsed `## Status history` events
+	// Slug is the mandatory retained `slug:` frontmatter key of a V3 record. It
+	// is the identity of a pending record (Number is empty until numbering) and
+	// survives numbering so an `ADR-<slug>` reference stays resolvable
+	// (ADR-0194 items 2 and 3). Pre-V3 records carry none.
+	Slug string
+}
+
+// Identity returns the record's single identity key: the four-digit number for
+// a numbered record, and the retained slug for a pending V3 record that has not
+// been numbered yet (ADR-0194 item 4).
+func (a ADR) Identity() string {
+	if a.Number != "" {
+		return a.Number
+	}
+	return a.Slug
+}
+
+// IsPending reports whether the record is a V3 record awaiting its number at
+// integration: slug identity, no number.
+func (a ADR) IsPending() bool { return a.Number == "" && a.Slug != "" }
+
+// numberRe matches the four-digit numbered identity form.
+var numberRe = regexp.MustCompile(`^\d{4}$`)
+
+// IsSlugIdentity reports whether an identity reference is the pending slug form
+// rather than the four-digit number form.
+func IsSlugIdentity(ref string) bool { return !numberRe.MatchString(ref) }
+
+// pendingIdentityOrder ranks every pending identity above every four-digit
+// number, which is where numbering will in fact place it: a pending record
+// takes the corpus's next numbers at integration (ADR-0194 item 10). No
+// numbered record can reach the rank, so the two regions never interleave.
+const pendingIdentityOrder = 100000
+
+// IdentityOrder returns the provenance sort rank of an identity reference. A
+// stable sort over it leaves pending identities in their authored order after
+// every numbered one.
+func IdentityOrder(id string) int {
+	if IsSlugIdentity(id) {
+		return pendingIdentityOrder
+	}
+	n, _ := strconv.Atoi(id) // a non-slug identity is exactly four decimal digits
+	return n
 }
 
 // Format distinguishes legacy, current-state-v1, and current-state-v2 ADRs.
@@ -52,6 +95,10 @@ const (
 	// CurrentStateV2 is a `format: current-state-v2` ADR with heterogeneous
 	// status and application history.
 	CurrentStateV2
+	// CurrentStateV3 is a `format: current-state-v3` ADR: V2 semantics exactly,
+	// plus the mandatory retained slug identity and the pending record form
+	// (ADR-0194 item 1).
+	CurrentStateV3
 )
 
 // IsV1 reports whether the record was parsed as current-state-v1.
@@ -60,8 +107,31 @@ func (a ADR) IsV1() bool { return a.Format == CurrentStateV1 }
 // IsV2 reports whether the record was parsed as current-state-v2.
 func (a ADR) IsV2() bool { return a.Format == CurrentStateV2 }
 
-// IsGoverned reports whether the record uses either current-state format.
-func (a ADR) IsGoverned() bool { return a.IsV1() || a.IsV2() }
+// IsV3 reports whether the record was parsed as current-state-v3.
+func (a ADR) IsV3() bool { return a.Format == CurrentStateV3 }
+
+// HasV2Semantics reports whether the record uses the V2 heterogeneous history,
+// amendability, and digest rules. V3 inherits them unchanged, so every rule
+// keyed on "V2 or later" asks this rather than enumerating formats.
+func (a ADR) HasV2Semantics() bool { return a.IsV2() || a.IsV3() }
+
+// IsGoverned reports whether the record uses any current-state format.
+func (a ADR) IsGoverned() bool { return a.IsV1() || a.HasV2Semantics() }
+
+// FormatMarker returns the governed `format:` frontmatter value for format, or
+// the empty string for Legacy.
+func FormatMarker(format Format) string {
+	switch format {
+	case CurrentStateV1:
+		return V1FormatMarker
+	case CurrentStateV2:
+		return V2FormatMarker
+	case CurrentStateV3:
+		return V3FormatMarker
+	case Legacy:
+	}
+	return "" // coverage-ignore: every caller asks only about an already-governed record
+}
 
 // decisionItemRe matches a column-0 numbered Decision item lead. Column-0
 // anchoring is load-bearing: 0067 and 0115 carry indented numbered
@@ -82,7 +152,42 @@ func (a ADR) DecisionItems() []int {
 // FilenameRe matches an ADR filename (NNNN-slug.md); group 1 is the 4-digit number.
 var FilenameRe = regexp.MustCompile(`^(\d{4})-.+\.md$`)
 
-// ParseDir scans dir for ADR files (NNNN-*.md) and parses each into an ADR.
+// reservedBasenames are the decisions-directory files that are never records:
+// the hand-written README, the generated INDEX, and the rendered scaffold
+// template (ADR-0194 item 4).
+var reservedBasenames = map[string]bool{"README.md": true, "INDEX.md": true, "template.md": true}
+
+// IsReservedBasename reports whether a decisions-directory basename is one of
+// the three reserved non-record files. Every corpus walk excludes exactly these
+// and treats what remains as a record, so the exclusion set has one home.
+func IsReservedBasename(name string) bool { return reservedBasenames[name] }
+
+// ErrNotADRRecord names a decisions-directory file that is neither a numbered
+// record nor a pending current-state-v3 record. Such a file used to be silently
+// ignored; ADR-0194 item 4 makes it a corpus error.
+func ErrNotADRRecord(name string) error {
+	return fmt.Errorf("%s: not an ADR record (expected NNNN-*.md or a pending current-state-v3 file)", name)
+}
+
+// FileIdentity returns the identity a decisions-directory basename declares:
+// the four-digit number of a numbered record, the slug of a pending record, or
+// the empty string for a reserved or non-Markdown file. Callers classifying a
+// path as a decision record ask this rather than matching the filename grammar
+// themselves, so the pending form is recognized everywhere it is legal.
+func FileIdentity(base string) string {
+	if IsReservedBasename(base) || !strings.HasSuffix(base, ".md") {
+		return ""
+	}
+	if m := FilenameRe.FindStringSubmatch(base); m != nil {
+		return m[1]
+	}
+	return strings.TrimSuffix(base, ".md")
+}
+
+// ParseDir scans dir for ADR records and parses each into an ADR. Every
+// non-reserved `*.md` file is a record: a numbered `NNNN-*.md` file or a pending
+// `<slug>.md` file declaring `format: current-state-v3`. Anything else is an
+// error rather than a silent skip.
 func ParseDir(dir string) ([]ADR, error) {
 	matches, err := filepath.Glob(filepath.Join(dir, "*.md"))
 	if err != nil {
@@ -91,9 +196,8 @@ func ParseDir(dir string) ([]ADR, error) {
 	var adrs []ADR
 	for _, path := range matches {
 		base := filepath.Base(path)
-		m := FilenameRe.FindStringSubmatch(base)
-		if m == nil {
-			continue // skip INDEX.md, README.md, template.md
+		if IsReservedBasename(base) {
+			continue
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -102,6 +206,9 @@ func ParseDir(dir string) ([]ADR, error) {
 		a, _, err := ParseBytes(base, data)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", base, err)
+		}
+		if a.Number == "" && !a.IsV3() {
+			return nil, ErrNotADRRecord(base)
 		}
 		a.Path = path
 		adrs = append(adrs, a)
@@ -117,6 +224,7 @@ type adrFrontmatter struct {
 	Domains []string `yaml:"domains"`
 	Tags    []string `yaml:"tags"`
 	Related []int    `yaml:"related"`
+	Slug    string   `yaml:"slug"`
 }
 
 // ParseBytes parses one ADR from bytes: status and the other frontmatter
@@ -137,12 +245,14 @@ func ParseBytes(name string, data []byte) (ADR, bool, error) {
 		return ADR{}, found, err
 	}
 	parsed := sections(string(body), len(data)-len(body))
-	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Sections: parsed.bodies}
+	a := ADR{Status: fm.Status, Date: fm.Date, Domains: fm.Domains, Tags: fm.Tags, Related: fm.Related, Slug: fm.Slug, Sections: parsed.bodies}
 	switch fm.Format {
 	case V1FormatMarker:
 		a.Format = CurrentStateV1
 	case V2FormatMarker:
 		a.Format = CurrentStateV2
+	case V3FormatMarker:
+		a.Format = CurrentStateV3
 	}
 	if decision, ok := parsed.ranges["Decision"]; ok {
 		a.DecisionStart, a.DecisionEnd = decision.start, decision.end
@@ -274,23 +384,24 @@ func AdoptionBoundary(dir string) (cutoff int, gaps []int, err error) {
 		return 1, []int{}, nil
 	}
 	numbers := make([]int, 0, len(adrs))
-	seen := map[int]string{}
+	// LoadCorpus above already refused a duplicate number, so this set answers
+	// only the gap question (ADR-0194 item 4 gave duplicate identity one home).
+	seen := map[int]bool{}
 	for _, a := range adrs {
+		if a.Number == "" {
+			// A pending V3 record has no number yet, so it is not part of the
+			// brownfield identity set the boundary seals; it takes a number at
+			// or above the cutoff when it is numbered (ADR-0194 item 3).
+			continue
+		}
 		n, err := strconv.Atoi(a.Number)
-		if err != nil { // coverage-ignore: ParseDir derives Number from FilenameRe
+		if err != nil { // coverage-ignore: past the numberless guard, Number is the four-digit group FilenameRe captured
 			return 0, nil, err
 		}
-		if prior, ok := seen[n]; ok {
-			return 0, nil, fmt.Errorf("duplicate ADR identity %04d in %s and %s", n, prior, a.Filename)
-		}
 		if a.IsGoverned() {
-			marker := V1FormatMarker
-			if a.IsV2() {
-				marker = V2FormatMarker
-			}
-			return 0, nil, fmt.Errorf("ADR %04d declares %s inside the brownfield legacy set", n, marker)
+			return 0, nil, fmt.Errorf("ADR %04d declares %s inside the brownfield legacy set", n, FormatMarker(a.Format))
 		}
-		seen[n] = a.Filename
+		seen[n] = true
 		numbers = append(numbers, n)
 	}
 	slices.Sort(numbers)
@@ -314,8 +425,11 @@ func NextNumber(dir string) (string, error) {
 	}
 	max := 0
 	for _, a := range adrs {
+		if a.Number == "" {
+			continue // a pending record holds no number to succeed
+		}
 		n, err := strconv.Atoi(a.Number)
-		if err != nil { // coverage-ignore: a.Number is always a 4-digit numeral matched by FilenameRe
+		if err != nil { // coverage-ignore: past the numberless guard, Number is the four-digit group FilenameRe captured
 			return "", err
 		}
 		if n > max {
@@ -376,11 +490,9 @@ func NewFile(dir, title string, format Format) (string, error) {
 		return "", fmt.Errorf("adr: read template: %w", err)
 	}
 	content := markerLineRe.ReplaceAllString(string(raw), "")
-	marker := V1FormatMarker
-	if format == CurrentStateV2 {
-		marker = V2FormatMarker
-	} else if format != CurrentStateV1 {
-		return "", errors.New("adr: scaffold format must be current-state-v1 or current-state-v2")
+	marker := FormatMarker(format)
+	if marker == "" {
+		return "", errors.New("adr: scaffold format must be a governed current-state format")
 	}
 	block, body, found := frontmatter.Split([]byte(content))
 	if !found {
@@ -404,6 +516,11 @@ func NewFile(dir, title string, format Format) (string, error) {
 		return "", fmt.Errorf("adr: template frontmatter has unsupported governed format marker %q", templateMarker)
 	}
 	front := strings.Replace(string(block), "format: "+templateMarker, "format: "+marker, 1)
+	if format == CurrentStateV3 {
+		// The slug is mandatory in V3 and frozen at scaffold time; it does not
+		// track later title edits (ADR-0194 item 2).
+		front = strings.Replace(front, "format: "+marker, "format: "+marker+"\nslug: "+slug, 1)
+	}
 	content = "---\n" + front + "---\n" + string(body)
 	date := now().Format("2006-01-02")
 	content, err = replaceOnce(content, "date: YYYY-MM-DD", "date: "+date)

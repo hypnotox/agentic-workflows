@@ -35,8 +35,8 @@ func (a ADR) ApplicationBatches() ([]ApplicationBatch, error) {
 	batches := []ApplicationBatch{}
 	for _, event := range a.History {
 		if event.Kind == HistoryApplied {
-			if !a.IsV2() {
-				return nil, fmt.Errorf("ADR-%s has an Applied event outside current-state-v2", a.Number)
+			if !a.HasV2Semantics() {
+				return nil, fmt.Errorf("ADR-%s has an Applied event outside current-state-v2", a.Identity())
 			}
 			batches = append(batches, ApplicationBatch{Operations: slices.Clone(event.Operations)})
 		}
@@ -53,7 +53,7 @@ func (a ADR) ApplicationBatches() ([]ApplicationBatch, error) {
 			return []ApplicationBatch{{Operations: slices.Clone(a.Operations), Implicit: true}}, nil
 		}
 	}
-	return nil, fmt.Errorf("ADR-%s has no Implemented status event", a.Number)
+	return nil, fmt.Errorf("ADR-%s has no Implemented status event", a.Identity())
 }
 
 // OperationProgress projects declared operations into applied, remaining, and
@@ -74,14 +74,14 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 	applied := make(map[Operation]bool, len(a.Operations))
 	for i, batch := range batches {
 		if len(batch.Operations) == 0 {
-			return OperationProgress{}, fmt.Errorf("ADR-%s has an invalid application batch", a.Number)
+			return OperationProgress{}, fmt.Errorf("ADR-%s has an invalid application batch", a.Identity())
 		}
 		for _, op := range batch.Operations {
 			if _, ok := declared[op]; !ok {
-				return OperationProgress{}, fmt.Errorf("ADR-%s applies undeclared operation %s `%s`", a.Number, op.Verb, op.ID)
+				return OperationProgress{}, fmt.Errorf("ADR-%s applies undeclared operation %s `%s`", a.Identity(), op.Verb, op.ID)
 			}
 			if applied[op] {
-				return OperationProgress{}, fmt.Errorf("ADR-%s applies operation %s `%s` more than once", a.Number, op.Verb, op.ID)
+				return OperationProgress{}, fmt.Errorf("ADR-%s applies operation %s `%s` more than once", a.Identity(), op.Verb, op.ID)
 			}
 			applied[op] = true
 			progress.Applied = append(progress.Applied, AppliedOperation{Operation: op, BatchIndex: i})
@@ -96,22 +96,22 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 	switch a.Status {
 	case statusProposed, statusAccepted:
 		if len(progress.Applied) != 0 {
-			return OperationProgress{}, fmt.Errorf("ADR-%s status %s cannot have applied operations", a.Number, a.Status)
+			return OperationProgress{}, fmt.Errorf("ADR-%s status %s cannot have applied operations", a.Identity(), a.Status)
 		}
 		progress.Remaining = slices.Clone(a.Operations)
 	case statusImplementing:
 		if len(progress.Applied) == 0 || len(complement) == 0 {
-			return OperationProgress{}, fmt.Errorf("ADR-%s Implementing status requires applied and remaining operations", a.Number)
+			return OperationProgress{}, fmt.Errorf("ADR-%s Implementing status requires applied and remaining operations", a.Identity())
 		}
 		progress.Remaining = slices.Clone(complement)
 	case statusImplemented:
 		if len(complement) != 0 {
-			return OperationProgress{}, fmt.Errorf("ADR-%s Implemented status has %d remaining operations", a.Number, len(complement))
+			return OperationProgress{}, fmt.Errorf("ADR-%s Implemented status has %d remaining operations", a.Identity(), len(complement))
 		}
 	case statusAbandoned:
 		progress.Canceled = slices.Clone(complement)
 	default:
-		return OperationProgress{}, fmt.Errorf("ADR-%s has unsupported governed status %q", a.Number, a.Status)
+		return OperationProgress{}, fmt.Errorf("ADR-%s has unsupported governed status %q", a.Identity(), a.Status)
 	}
 	return progress, nil
 }

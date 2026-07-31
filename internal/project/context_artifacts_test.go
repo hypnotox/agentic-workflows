@@ -20,15 +20,15 @@ import (
 // invariant: rendering/sync-and-drift:managed-output-attribution
 func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 	decls := []OutputDeclaration{{Path: "docs/out.md", TemplateID: "docs/out.md.tmpl", Declarers: []string{"out"}, Inputs: []OutputInput{{Path: ".awf/docs/parts/out/content.md", Role: ArtifactConventionPart}}}}
-	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
+	generated := artifactRecords("docs/out.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
 	if len(generated) != 1 || generated[0].Role != ArtifactManagedOutput || len(generated[0].Sources) != 1 {
 		t.Fatalf("generated=%#v", generated)
 	}
-	source := artifactRecords(".awf/docs/parts/out/content.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
+	source := artifactRecords(".awf/docs/parts/out/content.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
 	if len(source) != 1 || source[0].Role != ArtifactConventionPart || len(source[0].Outputs) != 1 || source[0].Outputs[0].Path != "docs/out.md" {
 		t.Fatalf("source=%#v", source)
 	}
-	unmanaged := artifactRecords("docs/lookalike.md", decls, testArtifactAuthorities("docs", adr.NewCorpus(nil)))
+	unmanaged := artifactRecords("docs/lookalike.md", decls, testArtifactAuthorities("docs", mustCorpus(nil)))
 	if unmanaged == nil || len(unmanaged) != 0 {
 		t.Fatalf("unmanaged=%#v", unmanaged)
 	}
@@ -42,7 +42,7 @@ func TestArtifactRecordsFollowDeclarations(t *testing.T) {
 
 // invariant: tooling/context-and-topic:context-known-artifact-navigation
 func TestArtifactNavigationCoversClosedRolesOrderingAndLookalikes(t *testing.T) {
-	parsed := adr.NewCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
+	parsed := mustCorpus([]adr.ADR{{Number: "0007", Filename: "0007-real.md"}})
 	decls := []OutputDeclaration{
 		{Path: "documentation/config-reference.md", TemplateID: "docs/config-reference.md.tmpl", Declarers: []string{"config-reference"}},
 		{Path: "documentation/domains/d.md", TemplateID: "domains/domain.md.tmpl", Declarers: []string{"generated-domain"}},
@@ -243,7 +243,7 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 		t.Run("site"+strconv.Itoa(site), func(t *testing.T) {
 			calls := 0
 			faulting := failingPathsReader{memoryProjectReader: read, failAt: site, calls: &calls}
-			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, adr.NewCorpus(nil)); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, mustCorpus(nil)); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
 				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
 			}
 		})
@@ -260,7 +260,7 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	target := Target{Name: "one", SkillDir: ".one/skills", Outputs: []TargetOutput{{Path: "shared", TemplateID: "target.tmpl", Producer: TargetOutputTemplate}}}
 	other := target
 	other.Name = "two"
-	parsedADRs := adr.NewCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
+	parsedADRs := mustCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
 	decls, err := BuildOutputDeclarations(cfg, cat, []Target{target, other}, read, parsedADRs)
 	if err != nil {
 		t.Fatal(err)
@@ -279,23 +279,23 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 		body string
 	}{{memoryProjectReader{".awf/agents-doc.yaml": []byte("local: [bad")}, "prefix: p\n"}, {memoryProjectReader{".awf/docs/enabled.yaml": []byte("local: [bad")}, "prefix: p\ndocs: [enabled]\n"}} {
 		badCfg, _ := config.ParseTree(".awf", []byte(tc.body), configReaderAdapter{tc.read})
-		if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, tc.read, adr.NewCorpus(nil)); err == nil {
+		if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, tc.read, mustCorpus(nil)); err == nil {
 			t.Fatal("malformed document declaration accepted")
 		}
 	}
 	badSkillRead := memoryProjectReader{".awf/skills/bad.yaml": []byte("local: [bad")}
 	badSkillCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nskills: [bad]\n"), configReaderAdapter{badSkillRead})
-	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, adr.NewCorpus(nil)); err == nil {
+	if _, err := BuildOutputDeclarations(badSkillCfg, cat, []Target{target}, badSkillRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed skill declaration accepted")
 	}
 	badRead := memoryProjectReader{".awf/agents/bad.yaml": []byte("local: [bad")}
 	badCfg, _ := config.ParseTree(".awf", []byte("prefix: p\nagents: [bad]\n"), configReaderAdapter{badRead})
-	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, adr.NewCorpus(nil)); err == nil {
+	if _, err := BuildOutputDeclarations(badCfg, cat, []Target{target}, badRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed agent declaration accepted")
 	}
 	badDomainRead := memoryProjectReader{".awf/domains/d.yaml": []byte("paths: [bad")}
 	badDomainCfg, _ := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{badDomainRead})
-	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, adr.NewCorpus(nil)); err == nil {
+	if _, err := BuildOutputDeclarations(badDomainCfg, cat, []Target{target}, badDomainRead, mustCorpus(nil)); err == nil {
 		t.Fatal("malformed domain declaration accepted")
 	}
 	if !byPath[".one/skills/p-local/SKILL.md"].Reservation || !reflect.DeepEqual(byPath["shared"].Declarers, []string{"one", "two"}) {
@@ -442,4 +442,14 @@ func (r configReaderAdapter) Paths(prefix string) []string { return nil }
 
 func testArtifactAuthorities(docsDir string, corpus adr.Corpus) artifactAuthorities {
 	return artifactAuthorities{Layout: Layout{DocsDir: docsDir, ADRDir: docsDir + "/decisions", IndexMd: docsDir + "/decisions/INDEX.md", DomainsDir: docsDir + "/domains"}, ADRs: corpus}
+}
+
+// mustCorpus builds a corpus from a fixture slice, panicking on a duplicate
+// identity no fixture here intends to declare.
+func mustCorpus(adrs []adr.ADR) adr.Corpus {
+	c, err := adr.NewCorpus(adrs)
+	if err != nil {
+		panic(err)
+	}
+	return c
 }
