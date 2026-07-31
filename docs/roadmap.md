@@ -249,3 +249,14 @@ for the version-gate test, which had to pass a path to reach the gate at all.
 Low impact, since the usage error is clear either way, but the spec is what the
 CLI reference renders from, so the mismatch publishes a wrong arity.
 
+## `awf check drift` and `awf check state`: deliberately kept, currently uninvoked
+
+Neither subcommand is invoked by any hook payload, runner step, or CI job in this
+repository - every enforcement path calls bare `awf check`, which runs both halves
+together. Surveyed 2026-07-31 during the workflow-friction effort and deliberately
+kept: they are cheap, tested, and harmless single-half conveniences for focused
+debugging, and removing shipped CLI surface is more churn than a dormant tested
+branch. Tripwire, mirroring the removed `--json` precedent: if either subcommand
+starts misleading users about what bare `awf check` covers, cut it then. Do not
+keep re-asking why they are uninvoked.
+
