@@ -120,9 +120,9 @@ For each item below, flag a finding if the gating condition is met AND the plan 
 ## Resync mode
 
 <!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
-When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The other three lenses (`executability`, `convention-alignment`, `testing-discipline`) already ran during the initial plan review and need not re-run unless explicitly requested.
+When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The remaining lenses already ran during the initial plan review and need not re-run unless explicitly requested.
 
-Resync mode is triggered by the `awf-reviewing-plan-resync` skill after the linked ADR review converges. Its purpose is to catch plan-vs-finalised-ADR drift introduced by changes the ADR review made before settling.
+Resync mode is triggered by the `awf-reviewing-plan-resync` skill after whichever review settled - an ADR review converging, or a plan review that found at least one linked ADR. Its purpose is to catch plan-vs-finalised-ADR drift.
 
 ## Dedup rule
 

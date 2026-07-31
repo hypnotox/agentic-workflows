@@ -1,8 +1,9 @@
 ---
 name: sundial-reviewing-plan-resync
 description: >
-  Invoked by sundial-reviewing-adr after ADR review settles (the ADR stays Proposed).
-  Dispatches the plan-reviewer subagent in resync mode (scope-completeness +
+  Invoked after review settles - by sundial-reviewing-adr as its terminal follow-on,
+  or by sundial-reviewing-plan when at least one linked ADR exists (the ADR stays
+  Proposed). Dispatches the plan-reviewer subagent in resync mode (scope-completeness +
   doc-currency lenses only) to catch plan-vs-finalised-ADR(s) drift and route
   findings (mechanical / reasoned / user-decision).
 ---
@@ -13,7 +14,7 @@ description: >
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-plan-resync/when-fires.md to override -->
 ## When this skill fires
 
-Only when at least one ADR and a plan exist. Invoked by `sundial-reviewing-adr` as its terminal follow-on after the ADR review converges (the ADR remains `Proposed`; the status flip is owned by the terminal-review flow). Do NOT invoke when no plan was written.
+Only when at least one ADR and a plan exist. Invoked after review settles: by `sundial-reviewing-adr` as its terminal follow-on once the ADR review converges, or by `sundial-reviewing-plan` when at least one linked ADR exists (the ADR remains `Proposed`; the status flip is owned by the terminal-review flow). Do NOT invoke when no plan was written.
 
 This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness + doc-currency lenses). The post-write full plan review is owned by the separate `sundial-reviewing-plan` skill.
 
@@ -22,10 +23,12 @@ This skill owns the plan↔ADR **resync** pass only (narrowed scope-completeness
 Validate and carry the same effort slug and exact `.awf/efforts/<slug>/memory.md` path through resync. Repository sources, ADRs, the plan, and current-state documentation outrank checkpoint prose. The report-only reviewer receives slug/path only as context and never edits shared memory; one user-managed writer remains responsible and standalone memory is forbidden.
 
 <!-- awf:edit dispatch-subagent-narrowed: default; create .awf/skills/parts/reviewing-plan-resync/dispatch-subagent-narrowed.md to override -->
-1. **Call `subagent_review` with `kind: "plan"` in resync mode.** Put the complete resync brief below in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.
+Identify the plan path first: it is named in the just-settled ADR(s), or it is the most recently-modified file under `docs/plans/` matching `YYYY-MM-DD-*.md`.
+
+1. **Call `subagent_review` with `kind: "plan"` in resync mode for the identified plan path.** Put the complete resync brief below in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value.
 
    - The absolute plan path, the effort slug and exact `.awf/efforts/<slug>/memory.md` read-only context, and the declared per-phase ownership, closing subjects, and helper partitions.
-   - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The other three lenses (executability, convention-alignment, testing-discipline) already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
+   - **RESYNC mode instruction:** "Run ONLY the scope-completeness and doc-currency lenses. The remaining lenses already ran during the initial plan review and need not re-run. Your focus: catch plan-vs-finalised-ADR(s) drift (scope items an ADR added or revised that the plan still treats by the older shape; doc-currency obligations a finalised ADR introduces)."
    - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show invariants --show all-rules --show pending <those paths>` itself so the doc-currency lens receives the non-direct invariant summaries, additional topic rules, and pending changes it needs without unrelated facets. Pass the resolved paths, not pasted packet output.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
@@ -60,6 +63,6 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-plan-resync/notes.md to override -->
 - Resync fixes never edit the repository beyond the plan file; ADR-implicating findings route through the ADR amendment + review skills instead (return edge, step 2).
 - Scope completeness includes every declared V2 operation and its intended direct, first, middle, final, or cancellation outcome; resync any batch partition or sequence ordering changed by ADR review.
-- The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The other three ran during `sundial-reviewing-plan` and need not re-run.
+- The resync pass is narrowed by design: scope-completeness and doc-currency are the only lenses sensitive to finalised-ADR changes. The remaining lenses ran during `sundial-reviewing-plan` and need not re-run.
 - The `plan-reviewer` is report-only, one lens-diverse subagent; this skill owns fix application and the single verify pass, and does not fan out per-lens subagents or specify per-lens model routing.
 - If the user asks to skip resync review, comply but warn that a chain step is being skipped.

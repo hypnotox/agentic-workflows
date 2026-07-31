@@ -25,7 +25,7 @@ Verify the supplied design's factual premises against source and architecture: d
 
 Surface unstated assumptions and edge cases the design glossed over.
 
-Assess whether the effort needs a decision record, a plan, or narrower scope.
+Assess whether the work needs a decision record, a plan, or narrower scope.
 
 Check convention fit: does the design contradict a current-state claim, an Accepted or Implemented decision record, or an invariant in the project's agent guide?
 

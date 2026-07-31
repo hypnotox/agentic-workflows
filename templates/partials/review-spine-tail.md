@@ -16,7 +16,7 @@ When multiple lenses flag the same `location` for the same underlying issue, emi
 {{ with .data.digestLabel }}{{ . }}{{ else }}Review{{ end }} summary:
 {{ with .data.digestSummary }}{{ . }}{{ else }}- Summary: <one line>{{ end }}
 
-{{ with .data.digestLabel }}{{ . }}{{ else }}Review{{ end }} review complete (N lenses, M findings).
+{{ with .data.digestLabel }}{{ . }} review complete{{ else }}Review complete{{ end }} (N lenses, M findings).
 - Findings by classification: mechanical K, reasoned L, user-decision P
   1. <user-decision finding, if any>
 ```

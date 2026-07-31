@@ -14,7 +14,7 @@ description: >
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-plan/when-fires.md to override -->
 ## When this skill fires
 
-Terminal step of `sundial-writing-plans`. Invoked once the plan file is written and committed under `docs/plans/`. The `plan-reviewer` subagent is a report-only judge: it reads the plan, runs its internal lenses (scope-completeness, executability, doc-currency, convention-alignment, testing-discipline), classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
+Terminal step of `sundial-writing-plans`. Invoked once the plan file is written and committed under `docs/plans/`. The `plan-reviewer` subagent is a report-only judge: it reads the plan, runs its universal lenses, classifies each finding as mechanical / reasoned / user-decision, and returns a findings digest. This skill dispatches that agent, applies the fixes, runs a single verify pass, gates on user-decision findings, and chains to the next node.
 
 This skill owns the post-write **full** plan review only. The plan↔ADR resync pass after a linked ADR review converges is owned by the separate `sundial-reviewing-plan-resync` skill.
 
@@ -33,7 +33,7 @@ Validate and carry the existing effort slug and exact `.awf/efforts/<slug>/memor
    - The absolute plan path, effort slug, and exact `.awf/efforts/<slug>/memory.md` path, with an explicit instruction that the reviewer must not edit memory.
    - Every user-provenance decision-log entry from the effort memory pasted verbatim, `Record:` blocks included, so the consensus-adherence check can run; a log without user entries omits the paste and leaves that check idle.
    - The declared per-phase ownership, phase context, closing subjects, and any helper partitions alongside created/modified paths, so review assesses the same phase boundary.
-   - The instruction to run in full mode (all five lenses: scope-completeness, executability, doc-currency, convention-alignment, testing-discipline).
+   - The instruction to run in full mode (all universal lenses).
    - The affected context instruction: collect the created/modified paths from the plan's file-structure header and direct the reviewer to run `awf context --show invariants --show all-rules --show evidence --show pending <those paths>` itself so the doc-currency and convention-alignment lenses receive the non-direct invariant summaries, additional topic rules, backing evidence, and pending changes they need without unrelated facets. Pass the resolved paths, not pasted packet output.
 If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notice, read the file named on its second line and verify that its byte length equals the `bytes=<decimal>` descriptor before treating its contents as the context packet. Best-effort delete the named file after packet use, whether packet use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.

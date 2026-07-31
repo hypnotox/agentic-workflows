@@ -161,7 +161,7 @@ var Standard = &Catalog{
 		},
 		"code-reviewer": {
 			Name:        "code-reviewer",
-			Description: "Independent fresh-context reviewer for {{ .prefix }} implementation diffs, covering correctness, plan-adherence, testing discipline, doc currency, and convention alignment.",
+			Description: "Independent fresh-context reviewer for {{ .prefix }} implementation diffs, covering its universal review lenses from correctness through convention alignment.",
 			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
 			Data: map[string]any{
 				"correctnessTraps": []any{

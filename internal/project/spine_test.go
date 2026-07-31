@@ -428,7 +428,7 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"For managed context calls, start bare",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
-		"Assess whether the effort needs a decision record",
+		"Assess whether the work needs a decision record",
 		"Check convention fit",
 		"advisory and single-pass",
 		"open-question | possible-issue",
@@ -1270,7 +1270,7 @@ func TestReviewingPlanTemplate(t *testing.T) {
 		"plan-reviewer",
 		"user-decision",
 		"example-reviewing-plan-resync",
-		"scope-completeness",
+		"all universal lenses",
 		"per-phase ownership",
 		"helper partitions",
 	}
