@@ -432,10 +432,10 @@ feat(config): branch-aware ADR scaffolding behind integrationBranch
   the existing `plan-adr-link` drift kind with the slug or number as detail. Update the
   proof-marker test (`internal/project/check_test.go:302`) with slug-resolving and
   slug-unresolved cases; existing numeric plans parse unchanged.
-- [ ] **Task 4.2: Claim mutation and batch 3.** In the adr-system/plan-artifacts part:
+- [ ] **Task 4.2: Claim mutation and batch 4.** In the adr-system/plan-artifacts part:
   update `plan-adr-link-resolved` (an entry is a number resolved against `NNNN-*.md` or
   a slug resolved against a pending file or retained slug key; numbering never rewrites
-  plans). Append Applied batch 3: update `plan-adr-link-resolved`. `./x render`.
+  plans). Append Applied batch 4: update `plan-adr-link-resolved`. `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
@@ -539,7 +539,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   the pair fails; a touched `Revised-by:` list left non-canonical fails;
   body-content delta fails; Origin substitution without the paired numbering fails;
   pending deletion fails.
-- [ ] **Task 5.4: Claim mutations and batch 4.** In the adr-lifecycle part: add
+- [ ] **Task 5.4: Claim mutations and batch 5.** In the adr-lifecycle part: add
   `numbering-transition-mode` (staged validation admits the pending-to-numbered
   slug-paired shape permitting exactly the ADR's item-9 effects; the command never
   preconditions on a green check) and `adr-number-immutable` (a number once assigned
@@ -549,7 +549,7 @@ feat(adr-system): resolve plan adrs links by number or pending slug
   internal/currentstate as `adr-number-immutable`'s proof home, but the refusals it
   proves live in the internal/project numbering engine (Task 5.2), so its marker
   lands on the internal/project test - a deliberate, stated deviation
-  (`currentState.testGlobs` admits it). Append Applied batch 4, declaration-ordered:
+  (`currentState.testGlobs` admits it). Append Applied batch 5, declaration-ordered:
   add `numbering-transition-mode`, add `adr-number-immutable` (two operations).
   `./x render`.
 - [ ] **Phase-close: stage, check, gate, and commit.**
@@ -609,10 +609,10 @@ feat(adr-system): add awf adr number and its numbering transition
   "pending ADR" (Phase 2) or "integration branch" (Phase 3), both of which this record
   introduces as project jargon that the doc-currency checklist asks for in the same
   change that coins it.
-- [ ] **Task 6.3: Claim mutation and batch 5.** In the
+- [ ] **Task 6.3: Claim mutation and batch 6.** In the
   rendering/singletons-and-payloads part: update `hook-payloads-rendered` (exactly four
   payloads including pre-merge-commit; absence when disabled unchanged). Proof marker on
-  the Task 6.1 test. Append Applied batch 5 (the remainder): update
+  the Task 6.1 test. Append Applied batch 6 (the remainder): update
   `hook-payloads-rendered`. Directly after it, append the
   `Implemented` status event repeating the latest content digest (the V2 final pair;
   0187/0189 precedent pairs the final batch and the flip in one commit, and an
