@@ -81,5 +81,5 @@ func (p paths) publicMemoryPath(slug string) string {
 	if filepath.Clean(p.roots.InvokingRoot) == filepath.Clean(p.roots.PrimaryRoot) {
 		return memoryPublicPath(slug)
 	}
-	return filepath.Join(p.roots.PrimaryRoot, ".awf", "efforts", slug, "memory.md")
+	return p.memoryFile(slug)
 }
