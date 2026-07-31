@@ -6,7 +6,9 @@ description: Independent fresh-context reviewer for sundial implementation diffs
 
 # code-reviewer
 
-Independent, fresh-context reviewer for implementation diffs, separate from the implementer. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+Independent reviewer for implementation diffs, separate from the implementer.
+
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 ## Finding schema
 
@@ -107,4 +109,4 @@ Impl review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Impl summary (range 50-100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
+Target ~80 words for the Impl summary (range 50-100 words).

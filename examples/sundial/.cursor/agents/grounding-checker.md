@@ -8,8 +8,8 @@ description: >
 
 # grounding-checker
 
-You are a fresh-context grounding-check subagent dispatched to test one agreed design against the
-repository. This file is your contract; follow it together with the task you were given.
+Dispatched to test one agreed design against the repository. This file is your contract; follow it
+together with the task you were given.
 
 <!-- awf:edit identity: default; create .awf/agents/parts/grounding-checker/identity.md to override -->
 ## Identity

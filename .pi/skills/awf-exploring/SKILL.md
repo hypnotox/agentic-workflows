@@ -14,14 +14,16 @@ Invoke this skill only when both the repository location is unknown and inline s
 <!-- awf:edit breadth: default; create .awf/skills/parts/exploring/breadth.md to override -->
 ## Breadth
 
-Breadth is ordered `targeted < bounded < broad`. `targeted` locates one declaration, implementation, file, or exact fact. `bounded` investigates within a named symbol, package, component, or subsystem. `broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.
+Breadth is ordered targeted < bounded < broad. targeted locates one declaration, implementation, file, or exact fact; bounded investigates within a named symbol, package, component, or subsystem; broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts.
 
-Treat the selected breadth as an adaptive maximum. Start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly. The broad project search universe is tracked files plus non-ignored untracked working-tree files under the repository root. It includes tracked generated and vendor files. It excludes ignored files, `.git`, nested repositories, and external dependencies unless explicitly scoped.
+Treat the selected breadth as an adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum. If the boundary is exhausted, report that explicitly.
+
+For broad searches, the project search universe is tracked files plus non-ignored untracked working-tree files under the current repository root. Include tracked generated and vendored files. Exclude ignored files, .git, nested repositories, and external dependencies unless the task explicitly brings one of those surfaces into scope.
 
 <!-- awf:edit detail: default; create .awf/skills/parts/exploring/detail.md to override -->
 ## Detail
 
-Report detail is ordered `paths < summary < analysis` independently of breadth. `paths` returns only relevant `file:line` or `file:start-end` locations with minimal labels needed to distinguish them. `summary` returns grounded locations plus concise explanations of what each contains and why it matters. `analysis` directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.
+Report detail is ordered paths < summary < analysis and is independent of breadth. paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative; summary returns grounded locations plus concise explanations of what each contains and why it matters; analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty.
 
 <!-- awf:edit dispatch: default; create .awf/skills/parts/exploring/dispatch.md to override -->
 ## Dispatch

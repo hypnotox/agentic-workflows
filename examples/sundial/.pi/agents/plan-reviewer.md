@@ -8,7 +8,9 @@ description: >
 
 # plan-reviewer
 
-Independent, lens-diverse reviewer for plans under `docs/plans/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+Independent, lens-diverse reviewer for plans under `docs/plans/`.
+
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 ## Finding schema
 
@@ -111,4 +113,4 @@ Plan review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Plan summary (range 50-100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
+Target ~80 words for the Plan summary (range 50-100 words).
