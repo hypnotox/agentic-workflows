@@ -25,10 +25,18 @@ Shape conversion (phase 2) and prose rewriting (phase 4) are deliberately separa
 the first is a reviewable mechanical diff, the second is a judgement diff, and mixing them would
 make both unreviewable.
 
+The merge is owned by one helper, `mergedGlossaryRecords`, introduced in phase 3 and consumed by
+both `glossaryTransform` and phase 4's advisory producer, so the two-layer merge has a single
+home (`code-design/single-home`).
+
 ADR-0198 applies in four batches, one per phase. Declaration order is enforced within a batch
-and not across batches (`internal/adr/history.go`, `parseAppliedOperations` resets its position
-cursor per Applied event), so each batch lists its own operations in ascending declaration
-index and no reordering of the ADR's State changes is required.
+and not across batches (`internal/adr/history.go`, `parseAppliedOperations` declares its position
+cursor as a per-call local and runs once per Applied event), so each batch lists its own
+operations in ascending declaration index and no reordering of the ADR's State changes is
+required. Phase 4 is the final batch and therefore carries the `Implemented` flip in its own
+commit: `internal/adr/format.go` rejects an `Implementing` status once every declared operation
+is applied, and requires the final Applied event immediately before an explicit `Implemented`
+transition.
 
 ## File structure
 
@@ -36,11 +44,13 @@ index and no reordering of the ADR's State changes is required.
 - **Modified:**
   - `internal/project/glossary.go`, `internal/project/glossary_test.go`
   - `internal/project/check.go`, `internal/project/check_test.go`, `internal/project/notes_test.go`
+  - `cmd/awf/initrender_test.go`
   - `internal/catalog/standard.go`
   - `internal/configspec/spec.go`, `internal/configspec/spec_test.go`
-  - `.awf/docs/glossary.yaml`
-  - `examples/sundial/.awf/docs/glossary.yaml`
+  - `templates/docs/glossary.md.tmpl`
   - `templates/docs/doc-standard.md.tmpl`
+  - `.awf/docs/glossary.yaml`, `.awf/docs/parts/glossary/prepend.md`
+  - `examples/sundial/.awf/docs/glossary.yaml`
   - `.awf/topics/parts/rendering/doc-outputs/current-state.md`
   - `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`
   - `.awf/topics/parts/tooling/cli/current-state.md`
@@ -61,23 +71,7 @@ its replacement `context-surfaces-tiered-pitfalls` was retired by ADR-0134. A pi
 `domains` today feeds exactly one consumer, the `pitfall-domain` drift check in
 `internal/project/check.go`. Two shipped surfaces still assert otherwise.
 
-- [ ] **Task 1.1: Advance ADR-0198 to Implementing.** Incremental application requires a
-  non-terminal status before the first Applied event. In
-  `docs/decisions/0198-two-layer-glossary-with-record-model-terms.md`, set `status: Implementing`
-  in the frontmatter and append two events to `## Status history`, after the existing
-  `- 2026-07-31: Proposed` line:
-
-  ```
-  - 2026-07-31: Accepted; content-sha256: `<digest>`
-  - 2026-07-31: Implementing; content-sha256: `<digest>`
-  ```
-
-  `<digest>` is the content stamp `awf check` expects for the current body; run `./x check` and
-  take the expected digest from the failure message rather than computing it by hand. Follow
-  `awf-adr-lifecycle` for the mechanics. Expected terminal state after this task alone: `./x check`
-  reports no ADR-0198 lifecycle finding.
-
-- [ ] **Task 1.2: Drop the false clause from the `pitfalls` data-key description.** In
+- [ ] **Task 1.1: Drop the false clause from the `pitfalls` data-key description.** In
   `internal/configspec/spec.go`, the `{Kind: "docs", Artifact: "pitfalls", Key: "pitfalls"}` entry
   currently reads `` `domains` (optional) drive `awf context` surfacing and must resolve to
   configured domains ``. Replace that fragment with `` `domains` (optional) must resolve to
@@ -85,7 +79,7 @@ its replacement `context-surfaces-tiered-pitfalls` was retired by ADR-0134. A pi
   renders into `docs/config-reference.md`, so it must stay free of ADR citations and repo
   identity (`configspec-description-residue`).
 
-- [ ] **Task 1.3: Update the `pitfall-domains-resolved` claim.** In
+- [ ] **Task 1.2: Update the `pitfall-domains-resolved` claim.** In
   `.awf/topics/parts/rendering/doc-outputs/current-state.md`, replace the claim body
 
   ```
@@ -102,16 +96,28 @@ its replacement `context-surfaces-tiered-pitfalls` was retired by ADR-0134. A pi
   before `Backing:`). The claim keeps `Backing: test` and its existing proof marker: the live
   property is unchanged, only the false trailing clause is removed.
 
-- [ ] **Task 1.4: Record the first Applied batch.** Append to ADR-0198's `## Status history`:
+- [ ] **Task 1.3: Advance ADR-0198 to Implementing and record the first Applied batch in one
+  step.** These cannot be separated: `internal/adr/format.go` requires an Implementing status
+  event to be immediately followed by an Applied event, so an intermediate state with Implementing
+  alone is red and its error aborts validation before the digest comparison runs.
+
+  In `docs/decisions/0198-two-layer-glossary-with-record-model-terms.md`, set
+  `status: Implementing` in the frontmatter and append three events to `## Status history`, after
+  the existing `- 2026-07-31: Proposed` line:
 
   ```
+  - 2026-07-31: Accepted; content-sha256: `0000000000000000000000000000000000000000000000000000000000000000`
+  - 2026-07-31: Implementing; content-sha256: `0000000000000000000000000000000000000000000000000000000000000000`
   - 2026-07-31: Applied; operations: update `rendering/doc-outputs:pitfall-domains-resolved`
   ```
 
-  This batch carries exactly the claim mutation in task 1.3; `awf check --staged` validates the
-  pairing as one HEAD-to-index transaction.
+  The placeholder must be exactly 64 hex characters; the parser rejects anything shorter. Then run
+  `./x check` and replace both placeholders with the digest named in the
+  `latest stamped content-sha256 ... does not match the computed digest ...` failure. Follow
+  `awf-adr-lifecycle` for the mechanics. This batch carries exactly the claim mutation in task 1.2;
+  `awf check --staged` validates the pairing as one HEAD-to-index transaction.
 
-- [ ] **Task 1.5: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
+- [ ] **Task 1.4: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
   render reports the regenerated config reference and topic doc, and `awf check` prints
   `awf check: clean`.
 
@@ -165,10 +171,19 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
 - [ ] **Task 2.3: Add the glossary domains drift check.** In `internal/project/check.go`, add a
   glossary sibling to the existing `pitfall-domain` drift check: a glossary record whose `domains`
   names a domain not configured in the project is a drift finding naming the sidecar path, the
-  term, and the unconfigured domain. Follow the pitfall check's shape and severity exactly. Cover
-  it in `internal/project/check_test.go`.
+  term, and the unconfigured domain. Follow `checkPitfalls`'s shape exactly, including its
+  doc-enabled guard (`if !slices.Contains(p.Cfg.Docs, "glossary")`, returning no findings when the
+  doc is disabled). Cover both the finding and the disabled case in `internal/project/check_test.go`.
 
-- [ ] **Task 2.4: Convert this project's corpus to the list shape.** Rewrite
+- [ ] **Task 2.4: Update the template's empty-state prose.** In `templates/docs/glossary.md.tmpl`,
+  the `{{ else }}` branch currently reads ``_No terms recorded yet. Add `term: meaning` entries
+  under `data.terms` in `.awf/docs/glossary.yaml`._``. After task 2.1 that instruction names a
+  shape that now fails the render. Replace it with prose naming the record shape, for example
+  ``_No terms recorded yet. Add `- term: <term>` / `  meaning: <meaning>` records under
+  `data.terms` in `.awf/docs/glossary.yaml`._``. Docs travel with the change: this belongs in the
+  same commit as the shape break.
+
+- [ ] **Task 2.5: Convert this project's corpus to the list shape.** Rewrite
   `.awf/docs/glossary.yaml` from the `term: meaning` map to a list of records. Every meaning moves
   across byte-identical; only the encoding changes. Representative transformation:
 
@@ -194,16 +209,16 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   ```
 
   Affected sites: every entry in `.awf/docs/glossary.yaml`. Do not add `domains` in this phase and
-  do not change any meaning's text. Deterministic post-check: `./x render` leaves
-  `docs/glossary.md` byte-identical to its pre-conversion content except for row ordering being
-  unchanged, verified by `git diff --stat docs/glossary.md` reporting no change to that file.
+  do not change any meaning's text. Deterministic post-check for this task alone, root tree only,
+  because `./x render` also re-renders the still-unconverted example adopter and would abort:
+  `./awf render` succeeds and `git diff --stat docs/glossary.md` reports no change to that file.
 
-- [ ] **Task 2.5: Convert the example adopter's corpus.** Rewrite
+- [ ] **Task 2.6: Convert the example adopter's corpus.** Rewrite
   `examples/sundial/.awf/docs/glossary.yaml` to the same list shape, meanings byte-identical.
   `examples/sundial` is re-rendered by `./x render` and never by `awf upgrade`, so this conversion
   is mandatory in this commit or the example's zero-drift gate fails.
 
-- [ ] **Task 2.6: Update the `terms` data-key description.** In `internal/configspec/spec.go`,
+- [ ] **Task 2.7: Update the `terms` data-key description.** In `internal/configspec/spec.go`,
   replace the `{Kind: "docs", Artifact: "glossary", Key: "terms"}` Description with one describing
   the list shape: the record fields (`term`, `meaning`, optional `domains`), that the table renders
   always sorted case-insensitively with pipes escaped, that an empty term or meaning, an interior
@@ -211,7 +226,7 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   offending term, and that unset renders a pointer telling the reader where to add terms. Keep it
   free of ADR citations and repo identity.
 
-- [ ] **Task 2.7: Update the two encoding-bound claims.** In
+- [ ] **Task 2.8: Update the two encoding-bound claims and add the domains claim.** In
   `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`:
 
   For `glossary-terms-sorted`, replace `regardless of the authored map order` with
@@ -230,16 +245,17 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   and that a record with no domains is valid. Place the proof marker
   `invariant: rendering/doc-outputs:glossary-domains-resolved` on the task 2.3 test.
 
-- [ ] **Task 2.8: Record the second Applied batch.** Append to ADR-0198's `## Status history`:
+- [ ] **Task 2.9: Record the second Applied batch.** Append to ADR-0198's `## Status history`:
 
   ```
   - 2026-07-31: Applied; operations: add `rendering/doc-outputs:glossary-domains-resolved`, update `rendering/guide-and-doc-templates:glossary-terms-sorted`, update `rendering/guide-and-doc-templates:glossary-terms-validated`
   ```
 
-  The operations are listed in ascending declaration index, which
-  `internal/adr/history.go` enforces within the batch.
+  The operations are listed in ascending declaration index, which `internal/adr/history.go`
+  enforces within the batch. Update the stamped digest as in task 1.3 if `awf check` reports a
+  mismatch.
 
-- [ ] **Task 2.9: Add the breaking-change entry.** Under `## [Unreleased]` then
+- [ ] **Task 2.10: Add the breaking-change entry.** Under `## [Unreleased]` then
   `### Breaking changes` in `changelog/CHANGELOG.md`, add an entry stating that `data.terms` in
   `.awf/docs/glossary.yaml` is now a list of `{term, meaning, domains}` records rather than a
   `term: meaning` map, that no migration converts it (following the precedent for this key), and
@@ -247,7 +263,7 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   `- term: <term>` / `  meaning: <meaning>` record. State that an unconverted tree fails the render
   naming the sidecar.
 
-- [ ] **Task 2.10: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
+- [ ] **Task 2.11: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
   `awf check: clean`, and `git diff --stat docs/glossary.md examples/sundial/docs/glossary.md`
   reports no change to either rendered file, proving the conversion was encoding-only.
 
@@ -266,19 +282,26 @@ feat(rendering): model glossary terms as records
 
 - [ ] **Task 3.1: Define the terseness threshold constant.** In `internal/project/glossary.go`, add
   an unexported constant for the meaning-length threshold with the value `280` and a comment giving
-  ADR-0198 decision 9 as its ground. Its first consumer is task 3.4's portability test; the
-  advisory in phase 4 consumes the same constant. Do not add the advisory here.
+  ADR-0198 decision 9 as its ground. Its only consumer in this phase is task 3.5's portability test;
+  phase 4's advisory consumes the same constant. This is a deliberate exception to landing a
+  definition with its first production consumer, recorded here so the phase does not read as a
+  doctrine violation: ADR-0198 decision 7 makes the portability bound a required phase-3
+  deliverable, and the gate permits it (the dead-code gate is function-scoped and the unused linter
+  counts test usage). Do not add the advisory here.
 
 - [ ] **Task 3.2: Ship the standard vocabulary in the catalog.** In `internal/catalog/standard.go`,
   give the `"glossary"` `DocEntry` a `Data` map carrying `"standardTerms"` as a `[]any` of
-  `map[string]any` records, each with exactly `"term"` and `"meaning"` string values. Author the
-  awf vocabulary an adopter meets in their rendered artifacts: at minimum `effort`, `managed effort
+  `map[string]any` records, each with exactly `"term"` and `"meaning"` string values.
+
+  The shipped set is exactly these fifteen terms, a closed list: `effort`, `managed effort
   worktree`, `working memory`, `current-state topic`, `claim`, `invariant backing`, `drift`,
   `resident root`, `stub`, `check-in`, `mandatory approval check-in`, `routine checkpoint`,
-  `continuity notice`, `retrospective`, and `promotion ladder`. Every meaning must be under the
-  task 3.1 threshold, must carry no ADR citation in any form, and must contain no repo identity:
-  `TestCatalogDataResidue` and `TestCatalogDefaultDataIsGeneric` both walk this Data. Representative
-  record:
+  `continuity notice`, `retrospective`, `promotion ladder`. Do not add or drop a term without
+  amending this plan.
+
+  Every meaning must be under the task 3.1 threshold, must carry no ADR citation in any form, and
+  must contain no repo identity: `TestCatalogDataResidue` and `TestCatalogDefaultDataIsGeneric` both
+  walk this Data. Representative record:
 
   ```go
   map[string]any{"term": "effort", "meaning": "One active slugged unit of coordination, owning a working-memory file for the duration of a concrete non-minimal outcome. A minimal fix uses none."},
@@ -287,40 +310,78 @@ feat(rendering): model glossary terms as records
   Note this is the first `Docs` entry in the catalog to carry `Data`; every existing `Data` block
   belongs to a skill or an agent.
 
-- [ ] **Task 3.3: Merge the two layers in the transform.** In `internal/project/glossary.go`, have
-  `glossaryTransform` ingest `standardTerms` with the same record validation as `terms`, then merge:
-  a project record overrides a standard record whose `term` matches case-insensitively, and the
-  merged set renders as one sorted table. A case-insensitive duplicate *within* either layer stays a
-  hard render error; a duplicate *across* layers is the override and must not error. Remove
-  `standardTerms` from the transformed sidecar data so the template consumes only `terms`.
+- [ ] **Task 3.3: Introduce the merge helper.** In `internal/project/glossary.go`, add
 
-- [ ] **Task 3.4: Add the shipped-set portability test.** In `internal/project/glossary_test.go`,
-  add a test over `catalog.Standard.Docs["glossary"].Data["standardTerms"]` asserting that every
-  record carries exactly the keys `term` and `meaning`, that both values are strings, that no value
-  matches `ADR-[0-9]{4}`, and that no meaning exceeds the task 3.1 threshold. Mark it with the proof
-  marker `invariant: rendering/guide-and-doc-templates:glossary-standard-terms-portable`. Add merge
-  and override tests marked
-  `invariant: rendering/guide-and-doc-templates:glossary-standard-vocabulary`.
+  ```go
+  func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error)
+  ```
 
-- [ ] **Task 3.5: Exempt `standardTerms` from configspec data parity.** In
-  `internal/configspec/spec_test.go`, add `standardTerms` to the exemption set that
-  `TestConfigspecDataParity` applies, alongside the domain template's injected pair and the
-  generated config reference's injected collections, with a comment giving the same ground the
-  existing exemptions use: it is not adopter-settable. Do NOT add a `configspec` descriptor for it;
-  ADR-0198 decision 3 forbids publishing it as a key an adopter may write.
+  It ingests `standardTerms` and `terms` with the same per-record validation as task 2.1, then
+  merges: a `terms` record overrides a `standardTerms` record whose `term` matches
+  case-insensitively. A case-insensitive duplicate *within* either layer stays a hard render error;
+  a duplicate *across* layers is the override and must not error. The returned slice is the merged
+  set in no guaranteed order; sorting stays in `glossaryRows`.
 
-- [ ] **Task 3.6: Correct the glossary document description.** In `internal/catalog/standard.go`,
+  This helper is the single home of the merge. Phase 4's advisory producer calls the same function;
+  nothing re-implements or re-derives the merge.
+
+- [ ] **Task 3.4: Rewire the transform onto the helper.** `glossaryTransform` currently opens with
+  `raw, ok := sc.Data["terms"]; if !ok { return sc, nil }`, which would short-circuit before any
+  merge and leave a project that authors no terms rendering the empty-state pointer. Since
+  `internal/initspec` seeds no terms, that is exactly the fresh adoption ADR-0198 exists to fix.
+
+  Replace the guard: return early only when BOTH `terms` and `standardTerms` are absent. Otherwise
+  call `mergedGlossaryRecords`, pass its result to `glossaryRows`, write the rows to
+  `out.Data["terms"]`, and delete `standardTerms` from `out.Data` so the template consumes only
+  `terms`.
+
+- [ ] **Task 3.5: Add the shipped-set and merge tests.** In `internal/project/glossary_test.go`:
+
+  A portability test over `catalog.Standard.Docs["glossary"].Data["standardTerms"]` asserting that
+  every record carries exactly the keys `term` and `meaning`, that both values are strings, that no
+  value matches `ADR-[0-9]{4}`, and that no meaning exceeds the task 3.1 threshold. Mark it
+  `invariant: rendering/guide-and-doc-templates:glossary-standard-terms-portable`.
+
+  Merge and override tests marked
+  `invariant: rendering/guide-and-doc-templates:glossary-standard-vocabulary`, including a case
+  with no authored `terms` at all, asserting the shipped rows still render and the empty-state
+  branch is not taken.
+
+- [ ] **Task 3.6: Build the configspec data-key exemption mechanism.** `TestConfigspecDataParity`
+  has no exemption set today: its two documented exemptions are structural (the domain template is
+  never iterated, and docs are skipped by `if e.Generated { continue }`). Introduce the mechanism
+  rather than assuming it.
+
+  In `internal/configspec/spec_test.go`, add an `exemptDataKeys` map keyed by the existing
+  `ak{kind, artifact, key}` struct, consult it in `collect`'s `for k := range defaults` loop to skip
+  an exempt key, and populate it with `{kind: "docs", artifact: "glossary", key: "standardTerms"}`
+  carrying a comment giving the same ground the existing exemptions use: it is not adopter-settable.
+  Leave the two structural exemptions where they are; this adds a third mechanism member without
+  migrating them.
+
+  Do NOT add a `configspec` descriptor for `standardTerms`; ADR-0198 decision 3 forbids publishing
+  it as a key an adopter may write.
+
+- [ ] **Task 3.7: Correct the glossary document description.** In `internal/catalog/standard.go`,
   change the `"glossary"` entry's `Desc` from `project jargon and term ownership` to
   `project jargon and the awf vocabulary it ships`. The old text promises an ownership concept the
   glossary has never had and renders into every adopter's agent guide document map.
 
-- [ ] **Task 3.7: Update the `configspec-data-parity` claim.** In
+- [ ] **Task 3.8: Reconcile the glossary prepend part.** `.awf/docs/parts/glossary/prepend.md`
+  defines `**Effort:**`, `**Managed effort worktree:**`, and `**Finishing tombstone:**` as bullets
+  above the table. Task 3.2 ships `effort` and `managed effort worktree` as standard terms, so
+  without this task the rendered page would define each twice in two wordings. Delete the `Effort`
+  and `Managed effort worktree` bullets from the part; keep `Finishing tombstone`, which the shipped
+  set does not cover, or move it into `data.terms` as a project term if it reads better in the
+  table.
+
+- [ ] **Task 3.9: Update the `configspec-data-parity` claim.** In
   `.awf/topics/parts/config/configspec-and-reference/current-state.md`, extend the claim's final
   sentence so the exemption set names the third member: the domain template's injected pair, the
   generated config reference's injected collections, and the glossary's shipped standard
   vocabulary. Add `Revised-by: ADR-0198` in canonical order.
 
-- [ ] **Task 3.8: Add the two new guide-and-doc-templates claims.** In
+- [ ] **Task 3.10: Add the two new guide-and-doc-templates claims.** In
   `.awf/topics/parts/rendering/guide-and-doc-templates/current-state.md`, add:
 
   `glossary-standard-vocabulary` (`Origin: ADR-0198`, `Backing: test`): the rendered glossary merges
@@ -333,18 +394,20 @@ feat(rendering): model glossary terms as records
   and no meaning exceeding the terseness threshold, so the shipped layer is portable into any
   adopter tree.
 
-- [ ] **Task 3.9: Record the third Applied batch.** Append to ADR-0198's `## Status history`:
+- [ ] **Task 3.11: Record the third Applied batch.** Append to ADR-0198's `## Status history`:
 
   ```
   - 2026-07-31: Applied; operations: add `rendering/guide-and-doc-templates:glossary-standard-vocabulary`, add `rendering/guide-and-doc-templates:glossary-standard-terms-portable`, update `config/configspec-and-reference:configspec-data-parity`
   ```
 
-- [ ] **Task 3.10: Add the feature changelog entry.** Under `## [Unreleased]` then `### Features` in
+  Update the stamped digest as in task 1.3 if `awf check` reports a mismatch.
+
+- [ ] **Task 3.12: Add the feature changelog entry.** Under `## [Unreleased]` then `### Features` in
   `changelog/CHANGELOG.md`, add an entry stating that the glossary now renders a shipped awf
   vocabulary merged with the project's own terms, that a project term of the same name overrides the
   shipped one, and that the shipped layer is not disableable.
 
-- [ ] **Task 3.11: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
+- [ ] **Task 3.13: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
   `awf check: clean`, and `git diff docs/glossary.md examples/sundial/docs/glossary.md` shows the
   shipped vocabulary appearing in both, proving the layer reaches a real adopter. `./x check` must
   report no advisory note from `examples/sundial`: the runner fails the check on any, and the
@@ -362,28 +425,45 @@ feat(rendering): ship a standard glossary vocabulary to adopters
 ## Phase 4: Add the terseness advisory and rewrite the corpus
 
 **Execution mode: inline.** One independently green transaction. Depends on phase 3's threshold
-constant and merged transform.
+constant and merge helper. This is the final batch, so it also carries the ADR's `Implemented` flip.
 
 - [ ] **Task 4.1: Add the terseness advisory family.** In `internal/project/check.go`, add a
   glossary terseness note producer to `AdvisoryNotes`, alongside the unset-var, stub, part-marker,
-  tag-health, and plan-commit-scope families. It emits one sorted note per term whose merged-set
-  meaning exceeds the phase 3 threshold, naming the term and its length, and it never affects the
-  exit code. It evaluates the merged set, so a shipped term is in scope. Cover it in
-  `internal/project/notes_test.go`, keyed the way the existing families are.
+  tag-health, and plan-commit-scope families. Behaviour:
 
-- [ ] **Task 4.2: Add the two advisory claims.** In
+  - It obtains its records by calling `mergedGlossaryRecords` (task 3.3), never by re-merging. The
+    transform has already replaced `data.terms` with rendered rows and stripped `standardTerms` by
+    the time write files exist, so the producer reads the authored sidecar through the helper.
+  - It emits one note per term whose merged meaning exceeds the phase 3 threshold, naming the term
+    and its length, sorted, exactly as the sibling families sort theirs.
+  - It returns no notes when `glossary` is not in `p.Cfg.Docs`, mirroring `checkPitfalls`'s
+    doc-enabled guard.
+  - It never affects the exit code.
+
+  Cover the producing, the disabled, and the under-threshold cases in
+  `internal/project/notes_test.go` for the 100% floor.
+
+- [ ] **Task 4.2: Prove the non-failing contract at the CLI boundary.** In
+  `cmd/awf/initrender_test.go`, add a case asserting that `awf check` exits zero while a glossary
+  terseness note is present in its output, carrying the proof marker
+  `invariant: tooling/cli:terseness-advisory-nonfailing`. This mirrors where the sibling contracts
+  are proven: `completeness-advisory-nonfailing` and `stub-advisory-nonfailing` both carry their
+  markers in that file. A marker on the `notes_test.go` producer test would satisfy the textual
+  ledger while proving nothing about the exit code.
+
+- [ ] **Task 4.3: Add the two advisory claims.** In
   `.awf/topics/parts/rendering/doc-outputs/current-state.md`, add `glossary-terseness-advisory`
   (`Origin: ADR-0198`, `Backing: test`): the advisory reports one note per glossary term whose
-  meaning exceeds the threshold, over the merged shipped-and-authored set.
+  meaning exceeds the threshold, over the merged shipped-and-authored set. Its proof marker goes on
+  the task 4.1 producer test.
 
   In `.awf/topics/parts/tooling/cli/current-state.md`, add `terseness-advisory-nonfailing`
   (`Origin: ADR-0198`, `Backing: test`), worded to match its siblings
   `completeness-advisory-nonfailing` and `stub-advisory-nonfailing`: the glossary terseness notes
-  `awf check` prints are informational only and never change the command's exit code.
+  `awf check` prints are informational only and never change the command's exit code. Its proof
+  marker goes on the task 4.2 test.
 
-  Place proof markers for both on the task 4.1 tests.
-
-- [ ] **Task 4.3: Add the glossary rule to the documentation standard.** In
+- [ ] **Task 4.4: Add the glossary rule to the documentation standard.** In
   `templates/docs/doc-standard.md.tmpl`, add a rule to the `rules` section, immediately after the
   existing **Terse.** bullet it refines:
 
@@ -393,12 +473,12 @@ constant and merged transform.
 
   This is shipped prose: no ADR citation, no repo identity, plain punctuation.
 
-- [ ] **Task 4.4: Carry the same guidance to the authoring surface.** In
+- [ ] **Task 4.5: Carry the same guidance to the authoring surface.** In
   `internal/configspec/spec.go`, extend the `{Kind: "docs", Artifact: "glossary", Key: "terms"}`
   Description with one clause stating that a meaning longer than the threshold raises a non-failing
   advisory, so an author meets the rule where they write.
 
-- [ ] **Task 4.5: Rewrite the corpus.** In `.awf/docs/glossary.yaml`, bring every meaning under the
+- [ ] **Task 4.6: Rewrite the corpus.** In `.awf/docs/glossary.yaml`, bring every meaning under the
   threshold, remove entries describing mechanisms that no longer exist, delete the
   `memory-backed effort` entry outright, correct the `pitfall entry` entry to drop its claim that
   domains drive context surfacing, and drop any term the shipped layer now defines at least as well.
@@ -424,25 +504,30 @@ constant and merged transform.
   ```
 
   Affected sites: every record in `.awf/docs/glossary.yaml`. Forbidden: deleting an entry merely
-  because it is long, and padding an entry to look uniform. Deterministic post-check:
-  `./x check 2>&1 | grep 'glossary'` returns no output, meaning the advisory reports nothing.
+  because it is long, and padding an entry to look uniform. Deterministic post-check, run after
+  task 4.9 so a failing check cannot masquerade as a clean corpus: `./x check` exits zero AND its
+  output contains no glossary terseness note.
 
-- [ ] **Task 4.6: Record the final Applied batch.** Append to ADR-0198's `## Status history`:
+- [ ] **Task 4.7: Record the final Applied batch and flip to Implemented.** Append to ADR-0198's
+  `## Status history`, in this order, and set `status: Implemented` in the frontmatter:
 
   ```
   - 2026-07-31: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing`
+  - 2026-07-31: Implemented; content-sha256: `<digest>`
   ```
 
-  Leave the status at `Implementing`. The flip to `Implemented` belongs to the terminal-review
-  transaction, not to this phase.
+  The flip belongs in this commit and cannot be deferred: `internal/adr/format.go` rejects an
+  `Implementing` status once every declared operation is applied, and requires the final Applied
+  event immediately before an explicit `Implemented` transition. Terminal review therefore reviews
+  an already-Implemented ADR. Stamp `<digest>` as in task 1.3.
 
-- [ ] **Task 4.7: Add the advisory changelog entry.** Under `## [Unreleased]` then `### Features` in
+- [ ] **Task 4.8: Add the advisory changelog entry.** Under `## [Unreleased]` then `### Features` in
   `changelog/CHANGELOG.md`, add an entry stating that `awf check` now reports a non-failing advisory
   for a glossary meaning longer than the threshold, and that the rule is stated in the documentation
   standard.
 
-- [ ] **Task 4.8: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
-  `awf check: clean` with no glossary advisory note.
+- [ ] **Task 4.9: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
+  `awf check` exits zero printing `awf check: clean`, with no glossary advisory note in its output.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the
   one phase-closing commit; it requires `awf check --staged` and `./x gate` to pass, enforced by a
@@ -455,25 +540,31 @@ feat(rendering): add the terseness advisory and clean the glossary
 
 ## Verification
 
-- `./x render && ./x check` reports `awf check: clean` with no glossary advisory note.
+- `./x render && ./x check` exits zero reporting `awf check: clean`, with no glossary advisory note.
 - `./x gate` passes, including the 100% statement coverage floor and the dead-code gate.
 - `./awf check invariants` resolves every ADR-0198 claim to its proof marker.
+- The shipped set in `internal/catalog/standard.go` contains exactly the fifteen terms task 3.2
+  names, no more and no fewer.
 - `git diff --stat` over `examples/sundial/docs/glossary.md` between the phase 2 and phase 3 commits
   shows the shipped vocabulary arriving in the example adopter, which is the end-to-end proof that
   an adopter receives it.
 - `docs/config-reference.md` documents `terms` in its record shape and does not list
   `standardTerms` as an adopter-settable key.
-- ADR-0198 carries four Applied events whose operations union to exactly its nine declared
-  operations, with no operation applied twice.
+- `docs/glossary.md` defines no term twice: the prepend part and the merged table do not overlap.
+- ADR-0198 ends at `status: Implemented` carrying four Applied events whose operations union to
+  exactly its nine declared operations, with no operation applied twice.
 
 ## Notes
 
 - Contextual surfacing of glossary terms is out of scope by ADR-0198. The `domains` assigned in
-  task 4.5 are the data that decision will consume; nothing reads them beyond the task 2.3 drift
+  task 4.6 are the data that decision will consume; nothing reads them beyond the task 2.3 drift
   check until then. That later decision should carry pitfall entries too, whose surfacing is
   equally absent today.
 - A term-lookup command (`awf term`) stays unjustified until the surfacing work shows whether
   discovery is still a problem.
-- The corpus rewrite in task 4.5 is the largest single work item in this plan and is judgement work,
+- The corpus rewrite in task 4.6 is the largest single work item in this plan and is judgement work,
   not mechanical: it is deliberately separated from the phase 2 encoding change so each is
   reviewable on its own terms.
+- ADR-0198 reaches `Implemented` at the end of phase 4 rather than at terminal review, because the
+  final Applied batch and the status flip are one validated transaction. Terminal review still runs;
+  it reviews the completed implementation.
