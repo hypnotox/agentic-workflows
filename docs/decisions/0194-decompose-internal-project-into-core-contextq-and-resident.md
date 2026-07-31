@@ -232,12 +232,12 @@ amendment while this ADR remains pre-terminal (ADR-0188).
 ## State changes
 
 - update `rendering/project-output-plan:kind-dispatch-single-table`
-- update `code-design/state-ownership:project-derived-state-ownership`
 - add `rendering/project-output-plan:resident-policy-single-home`
-- add `rendering/project-output-plan:template-id-single-derivation`
 - add `tooling/context-and-topic:context-query-boundary`
-- add `tooling/context-and-topic:production-packages-domain-owned`
 - add `code-design/presentation-ownership:model-owner-renders`
+- add `rendering/project-output-plan:template-id-single-derivation`
+- update `code-design/state-ownership:project-derived-state-ownership`
+- add `tooling/context-and-topic:production-packages-domain-owned`
 
 ## Consequences
 
