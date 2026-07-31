@@ -100,13 +100,13 @@ suite, no backend types across the surface).
 **Execution mode: inline.** Baseline: `git status --short` empty in this worktree;
 `./x gate` green.
 
-- [ ] **Task 1.1: Verify the git-seam ADR landed.** Run
+- [x] **Task 1.1: Verify the git-seam ADR landed.** Run
   `git fetch origin 2>/dev/null; git log main --oneline -5` and
   `git ls-tree main:docs/decisions | grep git-access-through-one-semantic-seam`.
   Expected: exactly one `NNNN-git-access-through-one-semantic-seam.md` entry. If the
   grep returns no output, STOP: the plan's hard precondition is unmet; record the block
   in the effort memory and end execution.
-- [ ] **Task 1.2: Merge main and resolve the expected ADR-number collision.** Run
+- [x] **Task 1.2: Merge main and resolve the expected ADR-number collision.** Run
   `git merge main`. If main now contains a different ADR numbered 0190, renumber this
   effort's record one last time by hand: rename
   `docs/decisions/0190-slug-identified-pending-adrs-numbered-at-integration.md` to the
@@ -115,14 +115,14 @@ suite, no backend types across the surface).
   `./x render` to regenerate `INDEX.md`, and update every `ADR-0190` reference in this
   plan and in `.awf/` parts staged by later phases. ADR-0190 is `Proposed` with no
   Applied events, so no state sequences move. Verification: `./awf check` reports clean.
-- [ ] **Task 1.3: Re-verify the seam entrypoint shape.** Read the landed seam ADR and
+- [x] **Task 1.3: Re-verify the seam entrypoint shape.** Read the landed seam ADR and
   the current `internal/git` surface (`grep -n "func (" internal/git/*.go | grep -v
   _test`). Confirm the handle-plus-entrypoint shape (constructed handle, deadlined
   context, contract suites) that Phase 3's Task 3.4 assumes. If the landed shape differs
   materially (no handle, different context rules), add a dated finding to this plan's
   Notes section describing the delta and adapt Task 3.4's wording in the same commit;
   a materially different seam is a plan-resync trigger, not a silent improvisation.
-- [ ] **Phase-close: stage, check, gate, and commit.** Stage the resync edits (plan
+- [x] **Phase-close: stage, check, gate, and commit.** Stage the resync edits (plan
   frontmatter/Notes, any renumber effects); run `awf check --staged` then `./x gate`;
   commit (the merge itself commits separately as git requires):
 
@@ -316,17 +316,16 @@ exits 0; `./awf check` clean.
   `examples/sundial/.awf/awf.lock`, and `examples/sundial/.awf/config.yaml` (both
   configs gain the visible `integrationBranch: main` line; without it Task 3.2's
   required-key validation reds both trees).
-- [ ] **Task 3.4: Seam branch-detection entrypoint.** In `internal/git`, following the
-  landed seam ADR's entrypoint pattern (Phase 1 Task 1.3 verified it): add a
-  current-branch entrypoint implementing `git symbolic-ref -q --short HEAD` semantics -
-  returns the branch name when HEAD is symbolic, and reports detached HEAD as a
-  distinct non-error outcome (empty name), matching the probe idiom the seam uses for
-  ref absence. Deadlined context per the seam rules; no backend types cross the
-  surface. Ship the entrypoint's backend-agnostic contract-suite entry as the seam's
-  `pinned-entrypoint-semantics` claim requires (on-branch, detached-HEAD, and
-  not-a-repository cases). The existing `symbolic-ref` call inside
-  `internal/worktree/manager.go` (Integrate's own-branch refusal) converts to this
-  entrypoint if the seam work has not already converted it; after this task,
+- [ ] **Task 3.4: Seam branch-detection entrypoint.** Already shipped by the landed
+  seam ADR (0193); Phase 1 Task 1.3 verified the shape on 2026-07-31.
+  `(*Repo).CurrentBranch(ctx)` (`internal/git/lifecycle.go:100`) implements
+  `git symbolic-ref -q --short HEAD` semantics and reports detached HEAD as a
+  distinct non-error outcome (empty name); its contract test covers the on-branch,
+  detached-HEAD, and not-a-repository cases (`internal/git/lifecycle_test.go`) and
+  the entrypoint registry lists it (`internal/git/entrypoints_test.go:51`). The
+  `internal/worktree/manager.go` call is already converted. No new entrypoint work
+  remains: Task 3.6 consumes `CurrentBranch` through its mocked seam, and this task
+  reduces to re-running the post-check at execution time -
   `grep -rn "symbolic-ref" internal/ cmd/ --include="*.go" | grep -v _test | grep -v
   internal/git/` returns no output.
 - [ ] **Task 3.5: Branch-aware scaffold with refusals.** In
@@ -588,3 +587,19 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - The ADR's Implemented flip lands with the final batch in Phase 6's close (an
   `Implementing` record with nothing remaining is an illegal state); the plan's own
   `status: Implemented` freeze still lands in the deferred post-review transaction.
+- 2026-07-31, Task 1.3 finding: the landed seam (ADR-0193) already ships the branch
+  entrypoint Task 3.4 planned to add - `(*Repo).CurrentBranch(ctx)` with the exact
+  prescribed semantics, contract cases, registry entry, and the
+  `internal/worktree/manager.go` conversion. Task 3.4 is reworded to
+  verification-only; the delta is favorable and needs no resync by itself.
+- 2026-07-31, merge-in finding: main's ADR-0191 (Implemented) removed the global
+  state-sequence, naming this effort's planned sequence shifting as motivation. The
+  update operation on `invariants/current-state-authority:
+  application-batch-sequence-order` dangled against the merged topics and was dropped
+  inside the merge commit itself (the staged check blocks a Proposed ADR whose
+  operation targets a missing claim). Remaining drift: the numbering engine's
+  sequence-shift step, the sequence-modulo transition relaxation, the mapping's
+  sequence lines (Phase 5), and every phase-close "next unclaimed sequence"
+  instruction describe machinery that no longer exists. RESYNC REQUIRED: amend the
+  still-Proposed ADR-0194 against 0191 (and verify 0192's impact), then run plan
+  resync; execution pauses after this Phase 1 close.
