@@ -157,16 +157,6 @@ Worth settling in the same decision: whether the rule is an error or a warning d
 transition, and whether `./x audit-local`'s existing advisory `coverage-ignore-added` warning is
 subsumed by it or kept as the complementary "touched, re-evaluate" signal.
 
-## `awf context` disagrees with its own spec about a required path
-
-`internal/clispec` declares `context` with `MinPos: 0`, but the handler rejects
-a bare `awf context` with a usage error and exit 2. One of the two is wrong:
-either the spec should require a positional path, or the handler should accept
-the bare form. Found in passing on 2026-07-31 while enumerating gated commands
-for the version-gate test, which had to pass a path to reach the gate at all.
-Low impact, since the usage error is clear either way, but the spec is what the
-CLI reference renders from, so the mismatch publishes a wrong arity.
-
 ## The rendered pre-commit payload validates the worktree, not the staged slice
 
 A partial-staging commit whose staged subset is drift-inconsistent (a rendered,
