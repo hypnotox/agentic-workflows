@@ -198,7 +198,6 @@ currentState:
   testGlobs:
     - '**/*_test.md'
   maxTopicsPerPath: 5
-  maxClaimsPerTopic: 12
 proseGate:
   enabled: true
   exemptions:
@@ -227,7 +226,6 @@ memoryCite:
 		"`currentState.sources` | list of {globs, marker, close} mappings | none | 1 sources |",
 		"`currentState.testGlobs` | string list | none | 1 globs |",
 		"`currentState.maxTopicsPerPath` | positive int | 8 | 5 |",
-		"`currentState.maxClaimsPerTopic` | positive integer | 20 | 12 |",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("configured audit values render wrong, missing %q", want)

@@ -64,6 +64,10 @@ var registry = []Migration{
 	{To: 25, Name: "drop-severity-settings", Apply: treeOnly(applyDropSeveritySettings)},
 	{To: 26, Name: "orienting-skill-backfill", Apply: treeOnly(applyOrientingSkillBackfill)},
 	{To: 27, Name: "adr-number-provenance", Apply: treeOnly(applyADRNumberProvenance)},
+	// ADR-0194 retires the topic claim-count advisory, so the key it configured
+	// is removed rather than tolerated: config.yaml is strict-parsed and a
+	// survivor would hard-fail the new binary.
+	{To: 28, Name: "drop-max-claims-per-topic", Apply: treeOnly(applyDropMaxClaimsPerTopic)},
 }
 
 // treeOnly adapts a migration that only rewrites the config tree to the
@@ -133,6 +137,13 @@ func ConfigForCurrentSchema(src []byte, from int) ([]byte, error) {
 				if err != nil {
 					return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 				}
+			}
+		}
+		if migration.To == 28 {
+			var err error
+			out, err = config.RemoveMappingKey(out, "currentState", "maxClaimsPerTopic")
+			if err != nil {
+				return nil, fmt.Errorf("migration %q (to %d): %w", migration.Name, migration.To, err)
 			}
 		}
 	}

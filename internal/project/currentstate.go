@@ -32,9 +32,8 @@ const currentStateTransitionRule = "current-state-transition"
 // split the report into blocking lines and non-failing note lines so the command
 // layer never re-derives the routing.
 type CurrentStateReport struct {
-	Static     []currentstate.Finding
-	Coverage   []topic.CoverageFinding
-	Advisories []string
+	Static   []currentstate.Finding
+	Coverage []topic.CoverageFinding
 }
 
 // Findings returns the blocking lines: every static handshake finding and every
@@ -56,10 +55,7 @@ func (r CurrentStateReport) Findings() []string {
 // is no suppressing rank, so every finding the evaluator emits is routed here or
 // to Findings, never dropped.
 func (r CurrentStateReport) Notes() []string {
-	out := slices.Clone(r.Advisories)
-	if out == nil {
-		out = []string{}
-	}
+	out := []string{}
 	for _, c := range r.Coverage {
 		if c.Severity == severity.Warn {
 			out = append(out, coverageLine(c))
@@ -142,8 +138,7 @@ func (p *Project) CheckCurrentState(ctx context.Context) (CurrentStateReport, er
 		return CurrentStateReport{}, err
 	}
 	report := CurrentStateReport{
-		Static:     currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
-		Advisories: topic.ClaimBudgetNotes(ws.Loaded.Topics, ws.Cfg.CurrentState.EffectiveMaxClaimsPerTopic()),
+		Static: currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
 	}
 	report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore), coveragePolicy(ws.Cfg.CurrentState))
 	return report, nil

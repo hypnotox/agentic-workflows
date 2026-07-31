@@ -86,17 +86,17 @@ func configHashOf(t *testing.T, root, rel string) string {
 	return ""
 }
 
-func TestClaimBudgetDriftIsLimitedToConsumingGuidance(t *testing.T) {
+func TestTopicMaximumDriftIsLimitedToConsumingGuidance(t *testing.T) {
 	const unrelated = ".claude/skills/example-tdd/SKILL.md"
-	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxClaimsPerTopic: 20\n")
+	root := scaffold(t, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 20\n")
 	beforeHash := configHashOf(t, root, unrelated)
 	beforeReference := renderedContentOf(t, root, "docs/config-reference.md")
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxClaimsPerTopic: 21\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nskills: [tdd]\nagents: []\ncurrentState:\n  maxTopicsPerPath: 21\n")
 	if after := configHashOf(t, root, unrelated); after != beforeHash {
-		t.Fatal("maxClaimsPerTopic drifted unrelated skill guidance")
+		t.Fatal("maxTopicsPerPath drifted unrelated skill guidance")
 	}
 	if after := renderedContentOf(t, root, "docs/config-reference.md"); after == beforeReference || !strings.Contains(after, "| 21 |") {
-		t.Fatal("maxClaimsPerTopic did not update consuming config-reference guidance")
+		t.Fatal("maxTopicsPerPath did not update consuming config-reference guidance")
 	}
 }
 

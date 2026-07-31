@@ -47,12 +47,6 @@ The skills, agents, and docs keys in config.yaml are plain string arrays whose e
 Origin: ADR-0009
 Backing: test
 
-### `invariant: topic-claim-budget-configured`
-
-The positive currentState.maxClaimsPerTopic setting has an effective default of 20, is explicitly serialized by scaffold and schema migration, and is exposed consistently through strict config parsing, configspec, generated reference state, render hashing, and lock inputs.
-Origin: ADR-0144
-Backing: test
-
 ### `invariant: no-replacewith`
 
 A section-override sidecar exposes no replaceWith field: the strict config decoder rejects a sections entry carrying replaceWith, so a convention part is the only mechanism that replaces a section body.

@@ -23,6 +23,17 @@ func loadForMigration(root string) (*config.Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	// ADR-0194 retired currentState.maxClaimsPerTopic, but the generation-16
+	// migration that writes it is retained, so a tree upgrading from before 16
+	// carries the key through every intervening generation until 28 removes it.
+	// A migration in between (generation 23 closes an enabled set) parses here
+	// and would hard-fail on a key the current schema no longer declares. Strip
+	// it for the same reason the invariants block is stripped above: a migration
+	// reads a config at its historical shape, not at the current schema's.
+	src, err = config.RemoveMappingKey(src, "currentState", "maxClaimsPerTopic")
+	if err != nil { // coverage-ignore: RemoveKey's parse above already rejected any non-mapping YAML, so this removal cannot reach a parse error
+		return nil, err
+	}
 	cfg, err := config.Parse(config.RootDir(root), src)
 	if err != nil { // coverage-ignore: RemoveKey's parse above already rejected any non-mapping YAML, and no schema-valid mapping reaching a migration fails strict decode
 		return nil, err

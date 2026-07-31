@@ -26,11 +26,6 @@
   lines are dropped. No claim states this, so every migration that edits config inherits an unstated
   contract and ADR-0185 had to narrow one claim that had guessed at it. Needs its own small ADR
   covering whether the property is claimed once for the package or restated per migration.
-- Promote the topic-claim-budget advisory from a non-failing note to a fixed blocking
-  rank now that ADR-0148 brought every topic under budget; needs its own small ADR
-  revising `tooling/cli:topic-claim-budget-advisory`. ADR-0183 forecloses the
-  configurable-severity and adopter-facing-config-key half of this idea: awf exposes no
-  severity setting, so the promotion is to a rank fixed in code or not at all.
 - Add an advisory `awf audit` rule flagging a code-scoped commit (`fix`, `feat`, `test`,
   `refactor` types) that also mutates a `docs/decisions/` ADR body: the shared-index sweep
   pitfall has now recurred four times (2026-07-10 twice, 2026-07-19, 2026-07-23) and three

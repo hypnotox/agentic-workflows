@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0194: Retire the topic claim-count advisory for authoring guidance and a review lens
@@ -250,3 +250,5 @@ retained historical migrations.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implementing; content-sha256: de4318ca8754ce069a6ed07f38a6c3733eacbf4b68869cddb06a07206a44dc9c
+- 2026-07-31: Applied; operations: remove `tooling/cli:topic-claim-budget-advisory`, remove `config/configuration:topic-claim-budget-configured`

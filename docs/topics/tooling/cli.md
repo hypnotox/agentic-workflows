@@ -71,12 +71,6 @@ Running `awf check` evaluates the current-state topic corpus and exits non-zero,
 Origin: ADR-0007
 Backing: test
 
-### `invariant: topic-claim-budget-advisory`
-
-awf check emits one deterministic non-failing note for each topic whose claim count is strictly above currentState.maxClaimsPerTopic, naming the count, limit, metadata path, and claim-part path, while equality stays quiet and staged checks suppress this working-tree authoring advisory.
-Origin: ADR-0144
-Backing: test
-
 ### `invariant: single-os-exit`
 
 Within the cmd/awf package, os.Exit appears only in main.go's main function, whose body is the single os.Exit(run(...)) wrapper; no other production source in the package calls os.Exit and no fatal or fatalIf helpers exist.
