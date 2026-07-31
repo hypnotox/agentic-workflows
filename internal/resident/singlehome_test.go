@@ -85,31 +85,38 @@ func residentNameLiteral(names map[string]bool, lit *ast.BasicLit) bool {
 	return names[value]
 }
 
-// residentTableFields is the resident table row's field set. A consumer
-// declaring a struct with exactly these fields is re-declaring the table
-// shape, which the single-home claim forbids however it spells the names.
-var residentTableFields = []string{"Name", "TemplateID"}
-
-// declaresResidentTableShape reports whether a struct type re-declares the
-// resident table row: exactly a Name and a TemplateID string field.
-func declaresResidentTableShape(st *ast.StructType) bool {
-	var fields []string
-	for _, field := range st.Fields.List {
-		ident, ok := field.Type.(*ast.Ident)
-		if !ok || ident.Name != "string" {
-			return false
-		}
-		for _, name := range field.Names {
-			fields = append(fields, name.Name)
+// declaresResidentTable reports whether a composite literal re-declares the
+// resident root table: a slice or array literal that enumerates at least one
+// root name, either directly (the table is a name list) or inside a row
+// literal (a consumer that pairs the names with its own per-root columns).
+// The set is closed here, so a second enumeration of it anywhere else is a
+// second home for it whatever shape the consumer gives its rows.
+func declaresResidentTable(names map[string]bool, lit *ast.CompositeLit) bool {
+	switch lit.Type.(type) {
+	case *ast.ArrayType:
+	default:
+		return false
+	}
+	for _, element := range lit.Elts {
+		switch node := element.(type) {
+		case *ast.BasicLit:
+			if residentNameLiteral(names, node) {
+				return true
+			}
+		case *ast.CompositeLit:
+			for _, column := range node.Elts {
+				if basic, ok := column.(*ast.BasicLit); ok && residentNameLiteral(names, basic) {
+					return true
+				}
+			}
 		}
 	}
-	sort.Strings(fields)
-	return strings.Join(fields, ",") == strings.Join(residentTableFields, ",")
+	return false
 }
 
 // residentSingleHomeFindings reports every place a consumer package spells a
-// resident root name or re-declares the resident table shape. Either is a
-// second home for policy this package owns.
+// resident root name or re-declares the resident table. Either is a second
+// home for policy this package owns.
 func residentSingleHomeFindings(pkgs []*packages.Package, names map[string]bool) []string {
 	var findings []string
 	for _, pkg := range pkgs {
@@ -135,9 +142,9 @@ func residentSingleHomeFindings(pkgs []*packages.Package, names map[string]bool)
 					if !tags[node] && residentNameLiteral(names, node) {
 						findings = append(findings, "resident root name spelled at "+at(node.Pos()))
 					}
-				case *ast.StructType:
-					if declaresResidentTableShape(node) {
-						findings = append(findings, "resident table shape redeclared at "+at(node.Pos()))
+				case *ast.CompositeLit:
+					if declaresResidentTable(names, node) {
+						findings = append(findings, "resident table redeclared at "+at(node.Pos()))
 					}
 				}
 				return true
@@ -154,8 +161,8 @@ func residentSingleHomeFindings(pkgs []*packages.Package, names map[string]bool)
 // name or re-declares the table, so every consumer reaches the set through this
 // package's exported accessors. internal/git is out of scope by decision.
 //
-// The detector matches string literals and struct-type declarations only - a
-// root name assembled at runtime from fragments, read out of configuration, or
+// The detector matches string literals and slice/array composite literals only -
+// a root name assembled at runtime from fragments, read out of configuration, or
 // buried inside a longer below-root path literal (".awf/efforts/sub") stays
 // invisible to it; extend the shapes if one ever appears. The claim's middle
 // clause (core consumes the set through the Roots value constructed once at
@@ -176,8 +183,9 @@ func TestResidentPolicyHasOneHome(t *testing.T) {
 	}
 
 	// Committed negative case: a root-name comparison, a config-dir-relative
-	// root path, and a re-declared table must all be flagged, so the detector
-	// cannot silently stop detecting.
+	// root path, and both re-declared table shapes (a bare name list and a
+	// row-per-root table) must all be flagged, so the detector cannot silently
+	// stop detecting.
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -189,31 +197,36 @@ func fixtureResidentComparison(kind string) bool { return kind == "efforts" }
 
 func fixtureResidentJoin() string { return ".awf" + "/worktrees" }
 
+var fixtureResidentNames = []string{"efforts", "worktrees"}
+
 var fixtureResidentTable = []struct{ Name, TemplateID string }{
 	{"efforts", "efforts/gitignore.tmpl"},
 }
 `)})
 	findings := residentSingleHomeFindings(violating, names)
-	var nameFlagged, shapeFlagged int
+	var nameFlagged, tableFlagged int
 	for _, f := range findings {
 		if !strings.Contains(f, "resident_policy_fixture.go") {
 			continue
 		}
 		switch {
-		case strings.HasPrefix(f, "resident table shape redeclared"):
-			shapeFlagged++
+		case strings.HasPrefix(f, "resident table redeclared"):
+			tableFlagged++
 		case strings.HasPrefix(f, "resident root name spelled"):
 			nameFlagged++
 		}
 	}
-	// Two bare-name literals (the comparison and the table row) plus the
-	// "/worktrees" fragment; the template ID must not add a fourth.
-	if nameFlagged != 3 {
-		t.Errorf("resident root-name spellings flagged = %d, want 3 (comparison, table row, joined fragment): %#v",
+	// Four bare-name literals (the comparison, both name-list entries, and the
+	// table row) plus the "/worktrees" fragment; the template ID must not add a
+	// sixth.
+	if nameFlagged != 5 {
+		t.Errorf("resident root-name spellings flagged = %d, want 5 (comparison, two list entries, table row, joined fragment): %#v",
 			nameFlagged, findings)
 	}
-	if shapeFlagged != 1 {
-		t.Errorf("resident table shape flagged = %d, want 1: %#v", shapeFlagged, findings)
+	// The name list and the row table are each one re-declaration; the row
+	// literal nested inside the table must not be counted a third time.
+	if tableFlagged != 2 {
+		t.Errorf("resident table re-declarations flagged = %d, want 2 (name list, row table): %#v", tableFlagged, findings)
 	}
 
 	// A conforming consumer that reaches the set through this package must NOT

@@ -41,11 +41,11 @@ func (p *Project) QueryTopic(ctx context.Context, selector string, opts topic.Qu
 
 func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
-	topicTemplate, err := fs.ReadFile(templates.FS, "topics/topic.md.tmpl")
+	topicTemplate, err := fs.ReadFile(templates.FS, topicTID)
 	if err != nil { // coverage-ignore: the topic template is compile-time embedded
 		return nil, nil, err
 	}
-	indexTemplate, err := fs.ReadFile(templates.FS, "topics/index.md.tmpl")
+	indexTemplate, err := fs.ReadFile(templates.FS, topicIndexTID)
 	if err != nil { // coverage-ignore: the topic index template is compile-time embedded
 		return nil, nil, err
 	}
@@ -69,19 +69,19 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 			referenceProjection = append(referenceProjection, claim.ID+"<"+strings.Join(corpus.Incoming(claim.ID), ",")+">"+strings.Join(corpus.Outgoing(claim.ID), ","))
 		}
 		model := topic.BuildTopicModel(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers, currentPaths)
-		content, err := topic.RenderTopic(model)
+		content, err := topic.RenderTopic(topicTID, topicTemplate, model)
 		if err != nil { // coverage-ignore: ParsePart already validated authoring comments and the typed model is always executable
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
-		content = injectBanner(content, "topics/topic.md.tmpl")
+		content = injectBanner(content, topicTID)
 		cfgHash, err := topicHash(p.Root, model, t.MetadataPath, t.PartPath)
 		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
 			return nil, nil, err
 		}
 		path := base + "/" + t.ID.Domain + "/" + t.ID.Slug + ".md"
 		metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
-		observed := normalizeOutputInputs([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/topics/topic.md.tmpl", Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}})
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: "topics/topic.md.tmpl", TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: "topics/topic.md.tmpl"})
+		observed := normalizeOutputInputs([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicTID, Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
 		deps[path] = []string{metadataPath, partPath}
 	}
 	for _, domain := range slices.Sorted(slices.Values(p.Cfg.Domains)) {
@@ -90,20 +90,20 @@ func (p *Project) generateTopicDocs(ctx context.Context, corpus topic.Corpus) (f
 			continue
 		}
 		model := topic.BuildIndexModel(domain, topics)
-		content, err := topic.RenderIndex(model)
+		content, err := topic.RenderIndex(topicIndexTID, indexTemplate, model)
 		if err != nil { // coverage-ignore: the embedded index template and typed model are always executable
 			return nil, nil, fmt.Errorf("render topic index %s: %w", domain, err)
 		}
-		content = injectBanner(content, "topics/index.md.tmpl")
+		content = injectBanner(content, topicIndexTID)
 		enc, _ := yaml.Marshal(model)
 		path := base + "/" + domain + "/index.md"
-		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/topics/index.md.tmpl", Role: ArtifactTemplate}}
+		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicIndexTID, Role: ArtifactTemplate}}
 		for _, t := range topics {
 			metadataPath, partPath := relSlash(p.Root, t.MetadataPath), relSlash(p.Root, t.PartPath)
 			deps[path] = append(deps[path], metadataPath, partPath)
 			observed = append(observed, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: ArtifactClaimPart})
 		}
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: "topics/index.md.tmpl", TemplateHash: manifest.Hash(indexTemplate), ConfigHash: manifest.Hash(enc), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(observed), ObservedTemplateID: "topics/index.md.tmpl"})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: manifest.Hash(enc), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(observed), ObservedTemplateID: topicIndexTID})
 	}
 	return files, deps, nil
 }

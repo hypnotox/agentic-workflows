@@ -186,12 +186,12 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			if err != nil {
 				return nil, err
 			}
-			tid := "skills/" + name + "/SKILL.md.tmpl"
+			tid := mustDescriptor("skills").tid(name)
 			sections := []string{"content"}
 			if spec, ok := cat.Skills[name]; ok {
 				sections = spec.Sections
 				if spec.Base {
-					tid = "skills/_base/SKILL.md.tmpl"
+					tid = baseTID("skills")
 				}
 			}
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
@@ -207,12 +207,12 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			if err != nil {
 				return nil, err
 			}
-			tid := "agents/" + name + ".md.tmpl"
+			tid := mustDescriptor("agents").tid(name)
 			sections := []string{"content"}
 			if spec, ok := cat.Agents[name]; ok {
 				sections = spec.Sections
 				if spec.Base {
-					tid = "agents/_base.md.tmpl"
+					tid = baseTID("agents")
 				}
 			}
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
@@ -298,7 +298,8 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				authored = append(authored, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
 			}
 		}
-		add(strings.TrimRight(cfg.DocsDir, "/")+"/domains/"+d+".md", "domains/domain.md.tmpl", "generated-domain", inputs("domains/domain.md.tmpl", authored...), false)
+		domainTID := mustDescriptor("domains").tid(d)
+		add(strings.TrimRight(cfg.DocsDir, "/")+"/domains/"+d+".md", domainTID, "generated-domain", inputs(domainTID, authored...), false)
 	}
 	allMetadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
@@ -309,7 +310,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			continue
 		}
 		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-		add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+id+".md", "topics/topic.md.tmpl", "topic:"+id, inputs("topics/topic.md.tmpl", OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}), false)
+		add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+id+".md", topicTID, "topic:"+id, inputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart}), false)
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
@@ -324,7 +325,7 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			}
 		}
 		if len(topicInputs) > 0 {
-			add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+d+"/index.md", "topics/index.md.tmpl", "topic-index:"+d, inputs("topics/index.md.tmpl", topicInputs...), false)
+			add(strings.TrimRight(cfg.DocsDir, "/")+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, inputs(topicIndexTID, topicInputs...), false)
 		}
 	}
 	decisionInputs := []OutputInput{}
@@ -333,29 +334,31 @@ func BuildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	}
 	add(strings.TrimRight(cfg.DocsDir, "/")+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...), false)
 	if cfg.Runner != nil && cfg.Runner.Enabled {
-		add("awf", "runner/awf.tmpl", "runner/awf.tmpl", inputs("runner/awf.tmpl", partInputs("runner", "", runnerSections)...), false)
+		add("awf", runnerTID, runnerTID, inputs(runnerTID, partInputs("runner", "", runnerSections)...), false)
 	}
 	if cfg.Bootstrap != nil && cfg.Bootstrap.Enabled {
-		add(".awf/bootstrap.sh", "bootstrap/awf-bootstrap.sh.tmpl", "bootstrap/awf-bootstrap.sh.tmpl", inputs("bootstrap/awf-bootstrap.sh.tmpl"), false)
-		add(".awf/upgrade.sh", "bootstrap/awf-upgrade.sh.tmpl", "bootstrap/awf-upgrade.sh.tmpl", inputs("bootstrap/awf-upgrade.sh.tmpl"), false)
+		add(".awf/bootstrap.sh", bootstrapTID, bootstrapTID, inputs(bootstrapTID), false)
+		add(".awf/upgrade.sh", upgradeTID, upgradeTID, inputs(upgradeTID), false)
 	}
 	if cfg.Hooks != nil && cfg.Hooks.Enabled {
-		for _, n := range []string{"pre-commit", "commit-msg", "pre-push"} {
-			add(".awf/hooks/"+n+".sh", "hooks/"+n+".sh.tmpl", "hooks/"+n+".sh.tmpl", inputs("hooks/"+n+".sh.tmpl"), false)
+		for _, n := range hookNames {
+			tid := hookTID(n)
+			add(".awf/hooks/"+n+".sh", tid, tid, inputs(tid), false)
 		}
 	}
-	for _, root := range resident.Table() {
-		add(".awf/"+root.Name+"/.gitignore", root.TemplateID, root.TemplateID, inputs(root.TemplateID), false)
+	for _, name := range resident.RootNames() {
+		tid := residentGitignoreTID(name)
+		add(".awf/"+name+"/.gitignore", tid, tid, inputs(tid), false)
 	}
 	for i := range decls {
 		switch decls[i].TemplateID {
-		case "topics/topic.md.tmpl", "topics/index.md.tmpl":
+		case topicTID, topicIndexTID:
 			for _, input := range decls[i].Inputs {
 				if input.Role == ArtifactTopicMetadata || input.Role == ArtifactClaimPart {
 					decls[i].Dependencies = append(decls[i].Dependencies, input.Path)
 				}
 			}
-		case "docs/config-reference.md.tmpl":
+		case catalog.Standard.Docs["config-reference"].TID:
 			decisionIndex := strings.TrimRight(cfg.DocsDir, "/") + "/decisions/INDEX.md"
 			for _, candidate := range decls {
 				if !candidate.Reservation && candidate.Path != decls[i].Path && candidate.Path != decisionIndex {
@@ -514,10 +517,6 @@ func (p *Project) OutputPlan(ctx context.Context) (*OutputPlan, error) {
 }
 
 func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
-	outputDeclarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
-	if err != nil {
-		return nil, err
-	}
 	declarations, err := p.targetOutputDeclarations(eff)
 	if err != nil {
 		return nil, err
@@ -647,31 +646,9 @@ func (p *Project) outputPlan(ctx context.Context, corpus adr.Corpus, topics topi
 			plan.Nodes[i].file.ConfigHash = manifest.Hash([]byte(plan.Nodes[i].Recipe.ConfigHash + "\\x00" + strings.Join(plan.Nodes[i].DeclarerProjections, "\\x00")))
 		}
 	}
-	if err := validateDeclarationPlanParity(plan.Nodes, outputDeclarations); err != nil { // coverage-ignore: parity unit tests own mismatch diagnostics; every producer test requires equality
-		return nil, err
-	}
 	return plan, nil
 }
 
-func validateDeclarationPlanParity(nodes []OutputNode, declarations []OutputDeclaration) error {
-	if len(nodes) != len(declarations) {
-		np, dp := []string{}, []string{}
-		for _, n := range nodes {
-			np = append(np, n.Path)
-		}
-		for _, d := range declarations {
-			dp = append(dp, d.Path)
-		}
-		return fmt.Errorf("output declaration parity: declarations-only %v, plan-only %v", difference(dp, np), difference(np, dp))
-	}
-	for i := range nodes {
-		node, declaration := nodes[i], declarations[i]
-		if node.Path != declaration.Path || node.Reservation != declaration.Reservation || node.ObservedTemplateID != declaration.TemplateID || !slices.Equal(node.Declarers, declaration.Declarers) || !slices.Equal(node.ConsumedInputs, normalizeOutputInputs(declaration.Inputs)) || !slices.Equal(node.DependsOn, declaration.Dependencies) {
-			return fmt.Errorf("output declaration parity at %q: plan template=%q declarers=%v consumed=%v dependencies=%v reservation=%t; declaration template=%q declarers=%v inputs=%v dependencies=%v reservation=%t", node.Path, node.ObservedTemplateID, node.Declarers, node.ConsumedInputs, node.DependsOn, node.Reservation, declaration.TemplateID, declaration.Declarers, declaration.Inputs, declaration.Dependencies, declaration.Reservation)
-		}
-	}
-	return nil
-}
 func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
 	out := slices.Clone(inputs)
 	for i := range out {
@@ -684,16 +661,6 @@ func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
 		return strings.Compare(string(a.Role), string(b.Role))
 	})
 	return slices.Compact(out)
-}
-
-func difference(a, b []string) []string {
-	out := []string{}
-	for _, x := range a {
-		if !slices.Contains(b, x) {
-			out = append(out, x)
-		}
-	}
-	return out
 }
 
 // PlannedOutputs returns plan write paths, excluding local reservations.

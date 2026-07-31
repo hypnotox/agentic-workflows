@@ -49,7 +49,7 @@ func PotentialVarConsumers() (map[string][]string, error) {
 			}
 		}
 	}
-	if err := add("agents-doc/AGENTS.md.tmpl"); err != nil { // coverage-ignore: the agents-doc template is always embedded
+	if err := add(cat.Docs["agents-doc"].TID); err != nil { // coverage-ignore: the agents-doc template is always embedded
 		return nil, err
 	}
 	for _, sg := range plainSingletons {
@@ -58,7 +58,7 @@ func PotentialVarConsumers() (map[string][]string, error) {
 		}
 	}
 	for _, name := range hookNames {
-		if err := add("hooks/" + name + ".sh.tmpl"); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+		if err := add(hookTID(name)); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
 			return nil, err
 		}
 	}
@@ -76,7 +76,7 @@ func enabledVarConsumers(files []RenderedFile) map[string][]string {
 	byVar := map[string]map[string]bool{}
 	for _, f := range files {
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
+		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
 			label = localLabel(f.TemplateID, f.Path)
 		}
 		if f.TemplateID == "" { // generated domain docs carry no template id
@@ -414,7 +414,7 @@ func (p *Project) hasLocalArtifact(kind string) bool {
 		}
 	case "docs":
 		for _, n := range p.Cfg.Docs {
-			if p.Cat.Docs[n].TID == baseDocTID {
+			if p.Cat.Docs[n].TID == baseTID("docs") {
 				return true
 			}
 		}

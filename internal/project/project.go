@@ -239,12 +239,6 @@ type Backup struct {
 	Index bool   // the file is the generated ADR/domain index (ownership-takeover note)
 }
 
-// coOwnedRunnerTID is the legacy co-owned command-runner template id
-// (ADR-0101 shape). The prune backup matches it on the OUTGOING lock entry, so
-// the value stays this historic id no matter where the runner render unit
-// moves later (ADR-0156 Decision item 9).
-const coOwnedRunnerTID = "runner/x.tmpl"
-
 // Change records a sync-written file whose rendered output differs from the
 // prior lock's, with the cause the lock's hashes can attribute: "template"
 // (the upstream template source moved), "config" (the project's effective

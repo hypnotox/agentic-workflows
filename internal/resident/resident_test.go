@@ -65,14 +65,14 @@ func TestInspectRootsTreatsAnyDirectChildAsData(t *testing.T) {
 // The table is the single home of the root set, so handing it out must not hand
 // out the ability to edit it.
 func TestTableHandsOutACopy(t *testing.T) {
-	first := Table()
+	first := RootNames()
 	if len(first) == 0 {
 		t.Fatal("resident table is empty")
 	}
-	original := first[0].Name
-	first[0].Name = "tampered"
-	if Table()[0].Name != original {
-		t.Fatal("mutating a handed-out table row changed the declaration")
+	original := first[0]
+	first[0] = "tampered"
+	if RootNames()[0] != original {
+		t.Fatal("mutating a handed-out table entry changed the declaration")
 	}
 	if !slices.Equal(RootNames(), []string{"efforts", "worktrees"}) {
 		t.Fatalf("RootNames() = %v", RootNames())

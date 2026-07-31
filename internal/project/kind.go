@@ -22,6 +22,10 @@ type kindDescriptor struct {
 	sections       func(*catalog.Catalog, string) ([]string, bool) // declared sections + catalog presence
 	outPath        func(t Target, prefix, name string) string      // rendered path; nil for neutral kinds
 	tid            func(name string) string                        // embedded template id
+	// baseTID is the shared base template every synthesized project-local
+	// artifact of this kind renders from (ADR-0068); "" for a kind with no
+	// base template (domains).
+	baseTID string
 }
 
 // kindDescriptors is the single ordered source of per-kind dispatch (inv:
@@ -35,6 +39,7 @@ var kindDescriptors = []kindDescriptor{
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { s, ok := c.Skills[n]; return s.Sections, ok },
 		outPath:   func(t Target, prefix, n string) string { return t.SkillPath(prefix, n) },
 		tid:       func(n string) string { return fmt.Sprintf("skills/%s/SKILL.md.tmpl", n) },
+		baseTID:   "skills/_base/SKILL.md.tmpl",
 	},
 	{
 		Plural: "agents", Singular: "agent", graphKind: true,
@@ -43,6 +48,7 @@ var kindDescriptors = []kindDescriptor{
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { a, ok := c.Agents[n]; return a.Sections, ok },
 		outPath:   func(t Target, _, n string) string { return t.AgentPath(n) },
 		tid:       func(n string) string { return fmt.Sprintf("agents/%s.md.tmpl", n) },
+		baseTID:   "agents/_base.md.tmpl",
 	},
 	{
 		Plural: "docs", Singular: "doc", graphKind: true,
@@ -54,7 +60,8 @@ var kindDescriptors = []kindDescriptor{
 		sections:  func(c *catalog.Catalog, n string) ([]string, bool) { d, ok := c.Docs[n]; return d.Sections, ok },
 		outPath:   nil,
 		// Read the entry's TID: merged-in singletons render from non-docs/ templates.
-		tid: func(n string) string { return catalog.Standard.Docs[n].TID },
+		tid:     func(n string) string { return catalog.Standard.Docs[n].TID },
+		baseTID: "docs/_base.md.tmpl",
 	},
 	{
 		Plural: "domains", Singular: "domain", freeformDomain: true,
@@ -81,6 +88,11 @@ func mustDescriptor(kind string) kindDescriptor {
 	d, _ := descriptorByPlural(kind)
 	return d
 }
+
+// baseTID returns the shared base template id a synthesized project-local
+// artifact of the given plural kind renders from, "" for a kind without one.
+// It is the table's declaration, never a second spelling at a call site.
+func baseTID(kind string) string { return mustDescriptor(kind).baseTID }
 
 func descriptorBySingular(kind string) (kindDescriptor, bool) {
 	for _, d := range kindDescriptors {

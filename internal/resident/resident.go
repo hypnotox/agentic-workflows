@@ -22,34 +22,21 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// Root is one owned resident root: the root's name under the config dir,
-// paired with the template that renders its one governed .gitignore.
-type Root struct{ Name, TemplateID string }
+// roots is the closed set of repository-wide resident-root names awf owns
+// under the config dir. Output planning, render, drift, backup detection,
+// current-state and context discovery, sweep, nested-adopter filtering,
+// install, and uninstall all read this single table, so a root joins or leaves
+// awf's ownership here and only here. Everything below a root is dynamic local
+// authority: it is never rendered, manifested, recursed into, or deleted.
+//
+// The table carries names only. Template identity for each root's one governed
+// .gitignore belongs to the render core's single derivation, so this package
+// never spells a template id (ADR-0194 item 5).
+var roots = []string{"efforts", "worktrees"}
 
-// roots is the closed set of repository-wide resident roots awf owns,
-// each paired with the template that renders its one governed .gitignore.
-// Output planning, render, drift, backup detection, current-state and context
-// discovery, sweep, nested-adopter filtering, install, and uninstall all read
-// this single table, so a root joins or leaves awf's ownership here and only
-// here. Everything below a root is dynamic local authority: it is never
-// rendered, manifested, recursed into, or deleted.
-var roots = []Root{
-	{"efforts", "efforts/gitignore.tmpl"},
-	{"worktrees", "worktrees/gitignore.tmpl"},
-}
-
-// Table returns the owned resident roots in table order. It hands back a copy
+// RootNames returns the owned root names in table order. It hands back a copy
 // so the single declaration above stays the only writable home of the set.
-func Table() []Root { return slices.Clone(roots) }
-
-// RootNames returns just the owned root names, in table order.
-func RootNames() []string {
-	names := make([]string, len(roots))
-	for i, resident := range roots {
-		names[i] = resident.Name
-	}
-	return names
-}
+func RootNames() []string { return slices.Clone(roots) }
 
 // IsResidentPath reports whether a config-relative slash path names a resident
 // root or something below one.

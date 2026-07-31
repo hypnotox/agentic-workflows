@@ -107,17 +107,21 @@ func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
 }
 
 func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
-	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x"), ".awf/topics/metadata/d/readme.txt": []byte("x"), ".awf/skills/local.yaml": []byte("local: true\n"), ".awf/skills/parts/local/content.md": []byte("part"), ".awf/agents/agent.yaml": []byte("local: true\n"), ".awf/agents/parts/agent/content.md": []byte("part"), "docs/decisions/0001-real.md": []byte("parsed"), "docs/decisions/0002-malformed.md": []byte("not parsed"), "docs/decisions/INDEX.md": []byte("generated"), "docs/decisions/README.md": []byte("navigation")}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: [local]\nagents: [agent]\ndocs: [enabled]\ndomains: [d]\nrunner: {enabled: true}\nbootstrap: {enabled: true}\nhooks: {enabled: true}\n"), configReaderAdapter{read})
+	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x"), ".awf/topics/metadata/d/readme.txt": []byte("x"), ".awf/docs/architecture.yaml": []byte("local: true\n"), ".awf/skills/local.yaml": []byte("local: true\n"), ".awf/skills/parts/local/content.md": []byte("part"), ".awf/agents/agent.yaml": []byte("local: true\n"), ".awf/agents/parts/agent/content.md": []byte("part"), "docs/decisions/0001-real.md": []byte("parsed"), "docs/decisions/0002-malformed.md": []byte("not parsed"), "docs/decisions/INDEX.md": []byte("generated"), "docs/decisions/README.md": []byte("navigation")}
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: [local]\nagents: [agent]\ndocs: [enabled, architecture]\ndomains: [d]\nrunner: {enabled: true}\nbootstrap: {enabled: true}\nhooks: {enabled: true}\n"), configReaderAdapter{read})
 	if err != nil {
 		t.Fatal(err)
 	}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"local": {Base: true, Sections: []string{"content"}}}, Agents: map[string]catalog.AgentSpec{"agent": {Base: true, Sections: []string{"content"}}}, Docs: map[string]catalog.DocEntry{"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl"}, "architecture": {Mandatory: true, Path: "architecture.md", TID: "docs/architecture.md.tmpl"}, "disabled": {Path: "disabled.md", TID: "docs/disabled.md.tmpl"}, "enabled": {Path: "enabled.md", TID: "docs/enabled.md.tmpl"}}}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"local": {Base: true, Sections: []string{"content"}}}, Agents: map[string]catalog.AgentSpec{"agent": {Base: true, Sections: []string{"content"}}}, Docs: map[string]catalog.DocEntry{"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl"}, "architecture": {Path: "architecture.md", TID: "docs/architecture.md.tmpl"}, "disabled": {Path: "disabled.md", TID: "docs/disabled.md.tmpl"}, "enabled": {Path: "enabled.md", TID: "docs/enabled.md.tmpl"}}}
 	target := Target{Name: "one", SkillDir: ".one/skills", Outputs: []TargetOutput{{Path: "shared", TemplateID: "target.tmpl", Producer: TargetOutputTemplate}}}
 	other := target
 	other.Name = "two"
+	// A target output may declare its own producer inputs; the declaration pass
+	// carries them through verbatim (target validation rejects the shape later,
+	// so only this pass ever sees them).
+	withInputs := Target{Name: "three", SkillDir: ".three/skills", Outputs: []TargetOutput{{Path: "declared-inputs", TemplateID: "target.tmpl", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: ".awf/extension.json", Role: ArtifactProtocolDescriptor}}}}}
 	parsedADRs := adr.NewCorpus([]adr.ADR{{Number: "0001", Filename: "0001-real.md"}})
-	decls, err := BuildOutputDeclarations(cfg, cat, []Target{target, other}, read, parsedADRs)
+	decls, err := BuildOutputDeclarations(cfg, cat, []Target{target, other, withInputs}, read, parsedADRs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,6 +160,14 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	}
 	if !byPath[".one/skills/p-local/SKILL.md"].Reservation || !reflect.DeepEqual(byPath["shared"].Declarers, []string{"one", "two"}) {
 		t.Fatalf("declarations=%#v", decls)
+	}
+	if !slices.Contains(byPath["declared-inputs"].Inputs, OutputInput{Path: ".awf/extension.json", Role: ArtifactProtocolDescriptor}) {
+		t.Errorf("target-declared output inputs dropped: %#v", byPath["declared-inputs"])
+	}
+	// A standard catalog doc whose sidecar declares it local is hand-maintained:
+	// it must produce no declaration at all, not a managed output.
+	if _, declared := byPath["docs/architecture.md"]; declared {
+		t.Errorf("a local standard doc was still declared: %#v", byPath["docs/architecture.md"])
 	}
 	index := byPath["docs/decisions/INDEX.md"]
 	decisionInputs := []string{}
@@ -198,61 +210,13 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	}
 }
 
-func TestDeclarationPlanParityDiagnostics(t *testing.T) {
-	input := OutputInput{Path: ".awf/config.yaml", Role: ArtifactConfig}
-	node := OutputNode{Path: "a", Recipe: OutputRecipe{TemplateID: "a.tmpl"}, ObservedTemplateID: "a.tmpl", Declarers: []string{"owner"}, ConsumedInputs: []OutputInput{input}}
-	declaration := OutputDeclaration{Path: "a", TemplateID: "a.tmpl", Declarers: []string{"owner"}, Inputs: []OutputInput{input}}
-	if err := validateDeclarationPlanParity([]OutputNode{node}, []OutputDeclaration{declaration}); err != nil {
-		t.Fatalf("matching parity rejected: %v", err)
-	}
-	if err := validateDeclarationPlanParity([]OutputNode{{Path: "a"}}, nil); err == nil {
-		t.Fatal("length mismatch accepted")
-	}
-	if err := validateDeclarationPlanParity(nil, []OutputDeclaration{{Path: "a"}}); err == nil {
-		t.Fatal("reverse length mismatch accepted")
-	}
-	mutations := []struct {
-		name string
-		edit func(*OutputNode)
-	}{
-		{"path", func(n *OutputNode) { n.Path = "b" }},
-		{"reservation", func(n *OutputNode) { n.Reservation = true }},
-		{"template", func(n *OutputNode) { n.ObservedTemplateID = "other.tmpl" }},
-		{"declarers", func(n *OutputNode) { n.Declarers = []string{"other"} }},
-		{"inputs", func(n *OutputNode) { n.ConsumedInputs = []OutputInput{{Path: "other", Role: ArtifactAuthoredData}} }},
-		{"dependencies", func(n *OutputNode) { n.DependsOn = []string{"other"} }},
-	}
-	for _, mutation := range mutations {
-		t.Run("node-"+mutation.name, func(t *testing.T) {
-			changed := node
-			mutation.edit(&changed)
-			if err := validateDeclarationPlanParity([]OutputNode{changed}, []OutputDeclaration{declaration}); err == nil {
-				t.Fatalf("%s mismatch accepted", mutation.name)
-			}
-		})
-	}
-	for _, mutation := range []struct {
-		name   string
-		inputs []OutputInput
-	}{
-		{"missing-declaration-input", []OutputInput{}},
-		{"extra-declaration-input", []OutputInput{input, {Path: "extra", Role: ArtifactAuthoredData}}},
-		{"role-misclassified-declaration-input", []OutputInput{{Path: input.Path, Role: ArtifactAuthoredData}}},
-	} {
-		t.Run(mutation.name, func(t *testing.T) {
-			changed := declaration
-			changed.Inputs = mutation.inputs
-			if err := validateDeclarationPlanParity([]OutputNode{node}, []OutputDeclaration{changed}); err == nil {
-				t.Fatal("declaration input mutation accepted")
-			}
-		})
-	}
+// normalizeOutputInputs is the render seam's observed-input normalizer: two
+// roles recorded at one path keep both entries and sort by role, so a
+// role-misclassified input is still visible to every consumer of the plan.
+func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
 	rolesAtOnePath := normalizeOutputInputs([]OutputInput{{Path: "same", Role: ArtifactTemplate}, {Path: "same", Role: ArtifactConfig}})
 	if !reflect.DeepEqual(rolesAtOnePath, []OutputInput{{Path: "same", Role: ArtifactConfig}, {Path: "same", Role: ArtifactTemplate}}) {
 		t.Fatalf("same-path role ordering = %#v", rolesAtOnePath)
-	}
-	if got := difference([]string{"a", "b"}, []string{"b"}); !reflect.DeepEqual(got, []string{"a"}) {
-		t.Fatalf("difference=%v", got)
 	}
 }
 

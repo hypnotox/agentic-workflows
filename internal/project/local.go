@@ -8,13 +8,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-// Base template ids shared by every synthesized project-local artifact (ADR-0068).
-const (
-	baseSkillTID = "skills/_base/SKILL.md.tmpl"
-	baseAgentTID = "agents/_base.md.tmpl"
-	baseDocTID   = "docs/_base.md.tmpl"
-)
-
 // effectiveCatalog returns a per-project clone of the injected standard catalog
 // augmented with a synthesized entry for every enabled local (non-standard)
 // skill/agent - a name outside the standard pool that carries a declaring
@@ -182,7 +175,7 @@ func synthesizeLocalDocs(p *Project, pool map[string]catalog.DocEntry, enabled [
 			Title:    title,
 			Desc:     desc,
 			Sections: []string{"content"},
-			TID:      baseDocTID,
+			TID:      baseTID("docs"),
 			Data:     localDocData(name),
 		}
 	}

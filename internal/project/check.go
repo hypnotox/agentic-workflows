@@ -160,7 +160,7 @@ func (p *Project) unsetVarNotes(files []RenderedFile) []string {
 			continue
 		}
 		label := artifactLabel(f.TemplateID)
-		if f.TemplateID == baseSkillTID || f.TemplateID == baseAgentTID {
+		if f.TemplateID == baseTID("skills") || f.TemplateID == baseTID("agents") {
 			label = localLabel(f.TemplateID, f.Path)
 		}
 		note := fmt.Sprintf("%s references unset vars: %s; set a value, or delete the key to accept the generic prose",
@@ -354,7 +354,7 @@ func artifactLabel(tid string) string {
 // "<prefix>-" prefix); adapter duplicates share one path-derived name, so note
 // dedup still collapses them.
 func localLabel(tid, path string) string {
-	if tid == baseSkillTID {
+	if tid == baseTID("skills") {
 		return "skill " + filepath.Base(filepath.Dir(path))
 	}
 	return "agent " + strings.TrimSuffix(filepath.Base(path), ".md")

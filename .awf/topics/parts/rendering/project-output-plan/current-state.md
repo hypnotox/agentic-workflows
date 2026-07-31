@@ -99,3 +99,9 @@ Backing: test
 A target descriptor is validated against closed sets: unknown capabilities, unknown agent dialects, unknown output encoders, out-of-set provenance values, path traversal in output paths, and undeclared or inconsistent output policies are all rejected, both when the descriptor is validated and again when the output plan is built.
 Origin: ADR-0124
 Backing: test
+
+### `invariant: template-id-single-derivation`
+
+Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree.
+Origin: ADR-0194
+Backing: test

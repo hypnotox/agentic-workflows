@@ -2,12 +2,10 @@ package topic
 
 import (
 	"fmt"
-	"io/fs"
 	"slices"
 	"strings"
 
 	awfrender "github.com/hypnotox/agentic-workflows/internal/render"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 type TopicRenderModel struct{ Title, Summary, Applicability, Part string }
@@ -68,40 +66,39 @@ func selectorList(globs []string) string {
 	return "`" + strings.Join(globs, "`, `") + "`"
 }
 
-func RenderTopic(model TopicRenderModel) (string, error) {
+// RenderTopic renders one topic doc. Template identity and content are the
+// caller's: the render pipeline already holds both (it hashes the same bytes
+// into the drift signal), so this package never re-reads the embedded tree and
+// template identity keeps its single derivation there.
+func RenderTopic(tid string, template []byte, model TopicRenderModel) (string, error) {
 	stripped, err := awfrender.StripAuthoringComments(model.Part)
 	if err != nil {
 		return "", err
 	}
-	return executeRaw("topics/topic.md.tmpl", map[string]any{"Title": model.Title, "Summary": model.Summary, "Applicability": model.Applicability}, strings.TrimRight(stripped, "\r\n"))
+	return executeRaw(tid, template, map[string]any{"Title": model.Title, "Summary": model.Summary, "Applicability": model.Applicability}, strings.TrimRight(stripped, "\r\n"))
 }
-func RenderIndex(model IndexRenderModel) (string, error) {
-	return execute("topics/index.md.tmpl", map[string]any{"Domain": model.Domain, "Topics": model.Topics})
+
+// RenderIndex renders one domain's topic index from caller-supplied template
+// identity and content, on the same contract as RenderTopic.
+func RenderIndex(tid string, template []byte, model IndexRenderModel) (string, error) {
+	return execute(tid, template, map[string]any{"Domain": model.Domain, "Topics": model.Topics})
 }
-func executeRaw(tid string, data map[string]any, raw string) (string, error) {
+func executeRaw(tid string, template []byte, data map[string]any, raw string) (string, error) {
 	const sent = "\x00awf:topic-part\x00"
-	src, err := templateSource(tid)
+	src, err := templateSource(template)
 	if err != nil {
 		return "", err
 	}
 	src = strings.Replace(src, "{{ .Part }}", sent, 1)
 	return awfrender.Execute(src, data, map[string]string{sent: raw}, tid)
 }
-func execute(tid string, data map[string]any) (string, error) {
-	src, err := templateSource(tid)
+func execute(tid string, template []byte, data map[string]any) (string, error) {
+	src, err := templateSource(template)
 	if err != nil {
 		return "", err
 	}
 	return awfrender.Execute(src, data, nil, tid)
 }
-func templateSource(tid string) (string, error) {
-	b, err := fs.ReadFile(templates.FS, tid)
-	if err != nil {
-		return "", fmt.Errorf("read template %s: %w", tid, err)
-	}
-	s, err := awfrender.StripAuthoringComments(string(b))
-	if err != nil { // coverage-ignore: compile-time embedded topic templates contain only well-formed authoring comments
-		return "", err
-	}
-	return s, nil
+func templateSource(template []byte) (string, error) {
+	return awfrender.StripAuthoringComments(string(template))
 }
