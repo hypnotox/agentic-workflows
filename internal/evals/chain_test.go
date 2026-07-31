@@ -298,16 +298,14 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 	reviewers := map[string]bool{"reviewing-plan": true, "reviewing-plan-resync": true, "reviewing-adr": true, "reviewing-impl": true, "refactor-coupling-audit": true, "exploring": true, "orienting": true}
 	routineOrdered := []string{
 		"**Routine checkpoint.**",
-		"A minimal simple fix uses no effort",
+		"minimal simple fix uses no effort",
 		"concrete non-minimal outcome",
-		"`.awf/efforts/<slug>/memory.md` as its only working memory",
-		"Repository sources and current-state documentation remain authoritative",
+		"always owns `.awf/efforts/<slug>/memory.md`",
 		"primary-root-relative spelling",
 		"Effort: <slug>",
 		"managed worktree when one exists",
-		"one user-managed writer",
-		"never edits it",
-		"append any decision settled and any observation hit since the last boundary",
+		"writer-owned tool batch",
+		"any unrecorded settled decision and observation",
 		"continuity notice",
 	}
 	for _, target := range []string{"pi", "claude"} {
@@ -382,6 +380,10 @@ func TestUnifiedEffortWorkflowCoverage(t *testing.T) {
 			} else {
 				ordered = append(ordered, "Continue through the target-native successor without claiming session replacement")
 			}
+			ordered = append(ordered,
+				"Mechanical corrections and authority-determined implementation details stay autonomous",
+				"the workflow doc's working-memory section",
+			)
 			assertOrderedBody(t, target+"/"+name+" routine checkpoint", body, ordered)
 			// Only the two phase skills carry exactly one. executing-direct also
 			// checkpoints per resumable change, so it legitimately renders more.
@@ -448,13 +450,11 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		"concrete non-minimal outcome",
 		"exactly one immutable slugged effort",
 		"always owns `.awf/efforts/<slug>/memory.md`",
-		"Repository sources and current-state documentation remain authoritative",
 		"primary-root-relative spelling",
 		"Effort: <slug>",
 		"managed worktree when one exists",
-		"one user-managed writer",
-		"never edits the shared memory",
-		"append any decision settled and any observation hit since the last boundary",
+		"writer-owned tool batch",
+		"any unrecorded settled decision and observation",
 		"explicitly request approval",
 		"end the turn",
 		"Stop even when there is no concern to raise",
@@ -467,6 +467,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			"invoke `handoff_session` alone",
 			"unless the user cancels during the five-second window",
 			"A failed handoff leaves the checkpoint valid and becomes a check-in",
+			"the workflow doc's working-memory section",
 		))
 		if handoff, approval := strings.Index(piBody, "handoff_session"), strings.Index(piBody, "explicitly request approval"); handoff >= 0 && handoff < approval {
 			t.Errorf("pi/%s names handoff_session before the approval request", name)
@@ -474,6 +475,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		claudeBody := read(t, skillPath(nonPiRoot, name))
 		assertOrderedBody(t, "claude/"+name, claudeBody, append(append([]string{}, ordered...),
 			"Then continue through the target-native successor without claiming session replacement",
+			"the workflow doc's working-memory section",
 		))
 		if strings.Contains(claudeBody, "handoff_session") {
 			t.Errorf("non-Pi skill %q names handoff_session", name)

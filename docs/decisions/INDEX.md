@@ -2,7 +2,7 @@
 ## In flight
 
 - [ADR-0195: Deduplicate the verification delivery layers](0195-deduplicate-the-verification-delivery-layers.md) (Proposed)
-- [ADR-0196: Trim the rendered skill ceremony](0196-trim-the-rendered-skill-ceremony.md) (Proposed)
+- [ADR-0196: Trim the rendered skill ceremony](0196-trim-the-rendered-skill-ceremony.md) (Implementing)
 
 ## History
 

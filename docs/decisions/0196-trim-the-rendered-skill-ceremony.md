@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0196: Trim the rendered skill ceremony
@@ -159,9 +159,10 @@ Constraints and prior art:
   contract's only rendered home while every context-calling surface still points at it;
   such an override must carry the contract itself, the same responsibility ADR-0157
   established for full-replacement chain-section parts.
-- The four updated claims narrow with their proofs in the same transaction; the spine and
-  chain tests that expand the spill contract and enumerate checkpoint elements are
-  rewritten against the digest and pointer forms.
+- The four updated claims narrow with their proofs across the reviewed implementation
+  series: the spine and chain tests that expand the spill contract and enumerate checkpoint
+  elements are rewritten against the digest and pointer forms in the batches that change
+  those surfaces, and the final operation lands with the terminal status flip.
 
 ## Alternatives Considered
 
@@ -178,3 +179,5 @@ Constraints and prior art:
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implementing; content-sha256: c03278186c4502f274e5bc028a33c0c39206de39be58e1f6a236d68301afb80e
+- 2026-07-31: Applied; operations: update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:memory-checkpoint-chain-coverage`, update `rendering/workflow-skill-templates:unified-effort-workflow-coverage`

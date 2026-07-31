@@ -16,6 +16,14 @@ query a single version or a range.
   this binary until `awf upgrade` runs. Topic cohesion is now an authoring and review concern:
   see the `One subject per topic` rule in the documentation standard.
 
+- Compress the rendered checkpoint blocks to a four-step digest and replace the inlined
+  context-spill recovery paragraph with a one-line pointer at every context-calling skill and
+  the grounding-checker agent body; the full spill contract moves to a new `Context spill
+  notices` subsection of `docs/working-with-awf.md`, its single rendered home (ADR-0196).
+  Authority precedence and the one-writer contract leave the checkpoint blocks for the
+  workflow doc's working-memory section. An adopter overriding the working-with-awf doc's
+  `commands` part must carry the spill contract in the override.
+
 - Reword the staged-authority instruction across the agent guide, the adr-lifecycle,
   executing-plans, subagent-driven-development, and writing-plans skills, the implementer
   contract, and the plans README and template: every commit still requires the staged check and

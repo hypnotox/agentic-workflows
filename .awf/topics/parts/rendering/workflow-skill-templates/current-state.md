@@ -18,9 +18,9 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Every managed context-calling skill consumes the exact spill notice, verifies the declared byte length, and best-effort deletes the temporary packet after successful or failed use. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill contract.
+Every managed context-calling skill and the grounding-checker agent body carry the one-sentence spill pointer naming the exact `AWF_CONTEXT_SPILL_V1` notice and the working-with-awf doc's Context spill notices subsection, the contract's single rendered home for byte-length verification and best-effort packet deletion. Brainstorming, orientation, implementation, planning, debugging, test-first, and refactor-orientation calls start with bare `awf context`; plan and implementation review request `invariants`, `all-rules`, `evidence`, and `pending`; plan/ADR resync requests `invariants`, `all-rules`, and `pending`; and ADR lifecycle requests `pending` where lifecycle detail is needed. No managed skill prescribes `--full` or `--json`, and the projection-pinning spine test classifies every context-calling skill template and expands the shared spill pointer.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0196
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
@@ -32,16 +32,16 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance creates no effort for a minimal simple fix or merely because a boundary was reached. Once the outcome is concrete and non-minimal, it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and subordinates checkpoint prose to repository authority. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
+Checkpoint guidance renders the four-step digest: it creates no effort for a minimal simple fix or merely because a boundary was reached, and once the outcome is concrete and non-minimal it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and points at the workflow doc's working-memory section for authority precedence, the one-writer contract, the skeleton, and the full protocol. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0196
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
-Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, exact slug/path continuity, repository-authority precedence, standalone-memory ban, and one-writer/report-only-child contract. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
+Catalog-derived tests classify every applicable brainstorming, ADR, planning, implementation, review, checkpoint, retrospective, debugging, bugfix, TDD, coupling-audit, exploration, orientation, and roadmap skill and render every enabled target. Each path carries the minimal-fix exception where applicable, mandatory concrete non-minimal slugged effort with always-owned memory, and exact slug/path continuity, and keeps repository-authority precedence, the standalone-memory ban, and the one-writer/report-only-child contract in force through its procedure preamble and the workflow doc's working-memory section. Terminal review conditionally integrates and removes managed topology, renews review after divergence, and retrospective finishes last.
 Origin: ADR-0175
-Revised-by: ADR-0187
+Revised-by: ADR-0187, ADR-0196
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
