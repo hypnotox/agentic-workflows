@@ -97,4 +97,32 @@ None.
 	if gone == nil || gone.Operations[1].Progress != "canceled" {
 		t.Fatalf("abandoned=%#v", gone)
 	}
+	// The projected mutability is the lifecycle's amendability, not "is it
+	// Proposed": ADR-0188 keeps a V2 body amendable through Accepted and
+	// Implementing and freezes it only at a terminal status, while a V1 body
+	// still freezes the moment it leaves Proposed.
+	if plain.Mutability != "mutable" {
+		t.Errorf("v1 Proposed mutability = %q, want mutable", plain.Mutability)
+	}
+	if impl.Mutability != "mutable" {
+		t.Errorf("v2 Implementing mutability = %q, want mutable", impl.Mutability)
+	}
+	if gone.Mutability != "frozen" {
+		t.Errorf("v2 Abandoned mutability = %q, want frozen", gone.Mutability)
+	}
+	for _, tc := range []struct {
+		name, status, want string
+		format             adr.Format
+	}{
+		{"v2 Accepted", "Accepted", "mutable", adr.CurrentStateV2},
+		{"v2 Implemented", "Implemented", "frozen", adr.CurrentStateV2},
+		{"v1 Accepted", "Accepted", "frozen", adr.CurrentStateV1},
+		{"v1 Implemented", "Implemented", "frozen", adr.CurrentStateV1},
+	} {
+		rec := adr.ADR{Number: "0007", Title: "ADR-0007: Case", Filename: "0007-case.md", Status: tc.status, Format: tc.format}
+		got := projectADRArtifact("docs/decisions/0007-case.md", p.layout().ADRDir, adr.NewCorpus([]adr.ADR{rec}), ws.Loaded.Topics, nil)
+		if got == nil || got.Mutability != tc.want {
+			t.Errorf("%s mutability = %#v, want %q", tc.name, got, tc.want)
+		}
+	}
 }

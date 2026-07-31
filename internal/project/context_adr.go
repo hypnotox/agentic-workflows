@@ -40,7 +40,7 @@ func projectADRArtifact(filePath, decisionsDir string, adrs adr.Corpus, topics t
 		return nil
 	}
 	mutability := "frozen"
-	if record.IsProposed() {
+	if record.IsContentAmendable() {
 		mutability = "mutable"
 	}
 	out := &ADRArtifactContext{Number: record.Number, Title: trimADRTitle(record.Number, record.Title), Status: record.Status, Mutability: mutability, AuthorityRole: "pending intent or decision history; not current authority", Operations: []ADROperationContext{}}
