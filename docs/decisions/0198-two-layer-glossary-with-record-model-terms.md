@@ -10,8 +10,8 @@ date: 2026-07-31
 The glossary has no reader. Nothing under `internal/contextq` or `internal/contextdelivery`
 consults it; `glossaryTransform` renders `data.terms` into a sorted table and the agent
 guide's document map cites the output. A document that only ever gets written rots by
-construction, and this repository's corpus shows it: 58 entries with a median meaning of
-392 characters and a maximum of 751, several describing mechanisms that no longer exist.
+construction, and this repository's corpus shows it: 58 entries whose meanings average 394
+characters and reach 722, several describing mechanisms that no longer exist.
 
 Adopters get worse than a rotting glossary. They get nothing. `internal/catalog/standard.go`
 ships the glossary entry with no `Data`, and `internal/initspec` seeds no terms, so a fresh
@@ -33,7 +33,7 @@ stale glossary entry propagated a wrong premise into a design about stale glossa
 which is the strongest available evidence that an unread glossary is an active hazard rather
 than a neglected nicety.
 
-Three mechanical constraints shape the solution.
+Five mechanical constraints shape the solution.
 
 `withDefaultData` in `internal/project/datamerge.go` merges a sidecar over catalog defaults
 by whole key, never deeply, and that behaviour is the backing for
@@ -46,9 +46,22 @@ sidecar alone, never from catalog defaults. Any key an adopter writes must be te
 referenced by the assembled template or it is drift.
 
 The catalog residue scan walks `cat.Docs[*].Data` and bans the string form `ADR-` followed by
-four digits, but an integer evades it. Shipped content carrying ADR references as numbers
-would pass every gate here and then fail link validation in an adopter tree that has no such
-ADR.
+four digits, but it collects strings only, so a non-string scalar passes unread. Shipped
+content carrying an ADR reference in any non-string form would pass every gate here and then
+fail link validation in an adopter tree that has no such ADR.
+
+No catalog `Docs` entry ships `Data` today; every existing `Data` block in
+`internal/catalog/standard.go` belongs to a skill or an agent. `TestConfigspecDataParity`
+derives its expected key set from each non-Generated doc's defaults, and the claim
+`config/configspec-and-reference:configspec-data-parity` pins the exemption set at exactly
+two: the domain template's injected pair and the generated config reference's injected
+collections. A doc-level default therefore forces either an adopter-facing descriptor or a
+third exemption.
+
+The example adopter must render free of advisory notes. The project runner fails `check` when
+`examples/sundial` emits any `note:` line, a rule ADR-0090 established and
+`rendering/companion-scripts:sundial-example-dogfoods-rendered-defaults` pins. Any advisory
+computed over content awf itself ships therefore bounds what awf may ship.
 
 ## Decision
 
@@ -62,56 +75,77 @@ ADR.
    layer wins because a project that redefines a word means its own definition. An adopter
    removes an unwanted shipped term by defining it, not by suppressing the layer.
 
-3. There is no wholesale suppression switch. An authored `standardTerms` key would be
-   `unused-data` drift, since the transform consumes it into `terms` and the template never
-   references it textually. Per-term override covers every real need, so the layer is not
-   adopter-disableable and `standardTerms` is not an adopter-authored key.
+3. There is no wholesale suppression switch, and `standardTerms` is not an adopter-authored
+   key. An authored `standardTerms` would be `unused-data` drift, since the transform consumes
+   it into `terms` and the template never references it textually, so the mechanism an adopter
+   would reach for is unavailable rather than merely unwanted. Per-term override is the
+   supported removal path.
 
-4. `data.terms` becomes a list of records rather than a `term: meaning` map. Each record
+4. `standardTerms` becomes the third exemption in
+   `config/configspec-and-reference:configspec-data-parity`, on the same ground as the existing
+   two: it is not adopter-settable, so an adopter-facing descriptor would be a false promise.
+   Describing it in `configspec` instead would contradict decision 3 by publishing it in the
+   config reference as a key an adopter may write.
+
+5. `data.terms` becomes a list of records rather than a `term: meaning` map. Each record
    carries a required `term` and `meaning` and an optional `domains`. `domains` names
-   configured project domains and is validated exactly as a pitfall entry's `domains` is,
-   feeding a drift check; it does not reach `awf context` under this decision.
+   configured project domains and fails `check` when it names an unconfigured one, the sibling
+   of the existing `pitfall-domain` drift check; it does not reach `awf context` under this
+   decision.
 
-5. The record carries no `related` and no `aliases`. Neither has a consumer once contextual
+6. The record carries no `related` and no `aliases`. Neither has a consumer once contextual
    surfacing is out of scope, and inline ADR citations remain legal in the project layer
    because the residue rule binds shipped strings only.
 
-6. Shipped standard terms carry neither `domains` nor any ADR reference in any form,
-   including integer form. Adopter domain names are unknowable at ship time, and an integer
-   ADR reference would evade the residue scan and break an adopter tree. This is enforced by
-   test rather than left to authoring discipline.
+7. A shipped standard term is portable by construction, asserted by a test over the shipped
+   set rather than left to authoring discipline: every record carries exactly `term` and
+   `meaning`, both strings, with no `domains` key and no value matching `ADR-` followed by four
+   digits. Adopter domain names are unknowable at ship time, and any ADR reference would break
+   an adopter tree that has no such ADR. Pinning the field set is what closes the non-string
+   hole, since a scalar the residue scan never reads cannot exist in the first place.
 
-7. The rendered table stays two columns, `Term` and `Meaning`, ordered case-insensitively by
+8. The rendered table stays two columns, `Term` and `Meaning`, ordered case-insensitively by
    term across both layers. `domains` is machinery metadata and is never a column.
 
-8. A meaning longer than a fixed character threshold produces an advisory note in the
-   existing `AdvisoryNotes` channel, alongside the unset-var, stub, part-marker, tag-health,
-   and plan-commit-scope families. It warns and never fails. The threshold is a compile-time
+9. A meaning longer than 280 characters produces an advisory note in the existing
+   `AdvisoryNotes` channel, alongside the unset-var, stub, part-marker, tag-health, and
+   plan-commit-scope families. It warns and never fails. The threshold is a compile-time
    constant, not a config key, because `internal/severity` is explicit that there is
    deliberately no suppressing value and an adopter-raisable threshold is a suppressing value
-   in a budget's clothing. No standalone producer seam is introduced: the shipped pre-commit
-   template runs bare `check` as well as `check --staged`, and bare `check` is the form that
-   prints advisory notes, so commit-time visibility needs no new wiring.
+   in a budget's clothing. 280 is two full sentences of ordinary prose, which is the shape
+   decision 14 asks for, and it sits below this corpus's 394-character mean so cleanup is real
+   work rather than a formality. No standalone producer seam is introduced: the shipped
+   pre-commit template runs bare `check` as well as `check --staged`, and bare `check` is the
+   form that prints advisory notes, so commit-time visibility needs no new wiring.
 
-9. The map-to-list change ships with a changelog recipe and no migration, following the
-   precedent ADR-0089 set for this same key. No migration in the tree has ever rewritten a
-   data key's shape, and the failure mode is a render error naming the sidecar and the
-   offending key rather than silent misbehaviour. `examples/sundial` is re-rendered by the
-   project runner and never by `awf upgrade`, so its terms are converted by hand in the
-   implementing commit.
+10. The advisory evaluates the merged set, so the threshold binds the shipped layer too. The
+    project runner fails `check` on any advisory note from `examples/sundial`, and the shipped
+    layer merges into that example's glossary, so an over-long shipped meaning would fail this
+    repository's own gate. Decision 7's shipped-term contract therefore also requires every
+    shipped meaning to satisfy the threshold: what awf publishes as vocabulary is bounded by
+    the rule it publishes about vocabulary.
 
-10. The corpus is cleaned in the same work: stale entries removed, every surviving meaning
+11. The map-to-list change ships with a changelog recipe and no migration, following the
+    precedent ADR-0089 set for this same key. No migration in the tree has ever rewritten a
+    data key's shape, and the failure mode is a render error naming the sidecar and the
+    offending term rather than silent misbehaviour. `examples/sundial` is re-rendered by the
+    project runner and never by `awf upgrade`, so its terms are converted by hand in the
+    implementing commit.
+
+12. The corpus is cleaned in the same work: stale entries removed, every surviving meaning
     brought under the advisory threshold, and `memory-backed effort` deleted outright rather
     than retained as a retired-term redirect. A glossary states current meaning; the ADR that
     retired a term is where its history belongs.
 
-11. Three surfaces that misstate current reality are corrected. The glossary entry for
+13. Four surfaces that misstate current reality are corrected. The glossary entry for
     `pitfall entry` and the `pitfalls` data-key description in `internal/configspec/spec.go`
-    both drop the claim that domains drive context surfacing. The catalog `Desc` for the
-    glossary drops "term ownership", which the glossary has never provided and which renders
-    into every adopter's agent guide.
+    both drop the claim that domains drive context surfacing, and the claim
+    `rendering/doc-outputs:pitfall-domains-resolved` drops the same false trailing clause,
+    keeping only its live property that an unconfigured domain fails `check`. The catalog
+    `Desc` for the glossary drops "term ownership", which the glossary has never provided and
+    which renders into every adopter's agent guide.
 
-12. The documentation standard gains a glossary rule as a refinement of its existing terse
+14. The documentation standard gains a glossary rule as a refinement of its existing terse
     rule, not as a new principle: one sentence stating what the thing is, a second only when a
     contrast or boundary is load-bearing. The `terms` description in `internal/configspec`
     carries the same guidance where an author will meet it.
@@ -121,9 +155,12 @@ ADR.
 - add `rendering/guide-and-doc-templates:glossary-standard-vocabulary`
 - add `rendering/guide-and-doc-templates:glossary-standard-terms-portable`
 - add `rendering/doc-outputs:glossary-terseness-advisory`
+- add `rendering/doc-outputs:glossary-domains-resolved`
+- add `tooling/cli:terseness-advisory-nonfailing`
 - update `rendering/guide-and-doc-templates:glossary-terms-sorted`
 - update `rendering/guide-and-doc-templates:glossary-terms-validated`
 - update `rendering/doc-outputs:pitfall-domains-resolved`
+- update `config/configspec-and-reference:configspec-data-parity`
 
 ## Consequences
 
@@ -133,21 +170,35 @@ learn. The glossary gains its first mechanical reader in the terseness advisory,
 what stops the corpus from drifting back.
 
 `glossary-terms-sorted` and `glossary-terms-validated` are both worded to the map
-representation today, naming "the authored map order" and "a non-string map key". Both are
-updated rather than retired: the properties survive, their encoding does not. Validation also
-becomes layer-aware, since a case-insensitive duplicate within a layer must keep failing the
-render while a duplicate across layers is the override in decision 2.
+representation today, naming "the authored map order", "a non-string map key", and "the
+offending key". All three phrases are encoding-bound and none of the properties they describe
+are: both claims are updated rather than retired, and a list of records is identified by term
+rather than by key. Validation also becomes layer-aware, since a case-insensitive duplicate
+within a layer must keep failing the render while a duplicate across layers is the override in
+decision 2.
+
+The terseness advisory needs two claims rather than one because the family's two properties
+are homed in different topics throughout the corpus. Its production and threshold belong in
+`rendering/doc-outputs` beside `stub-notes-path-keyed`; its never-fails contract belongs in
+`tooling/cli`, where every other advisory family states it individually
+(`completeness-advisory-nonfailing`, `stub-advisory-nonfailing`). Following the existing split
+keeps doc-outputs to one subject.
 
 The map-to-list change is breaking for any adopter with authored terms, mitigated only by a
-changelog recipe and a render error that names the offending key. This repeats a cost ADR-0089
+changelog recipe and a render error that names the offending term. This repeats a cost ADR-0089
 already accepted for this key rather than inventing shape-rewriting migration machinery for
 one data key, and it keeps this work clear of the contended next schema generation.
+
+The absence of a suppression switch has a real cost, not merely a deferred one. A tree that has
+adopted awf's rendering but not its workflow chain still receives vocabulary describing that
+chain, and can remove it only term by term. That is accepted because the alternative mechanisms
+are worse rather than because the cost is nil: see the Alternatives table.
 
 Contextual surfacing of terms is explicitly out of scope and left to its own decision. The
 grounding work established that it is a new context mechanism rather than a reuse: it would
 have to revise `tooling/context-and-topic:context-full-authority-packet`, which defines the
 eight repeatable facets and `--full` as their byte-identical union, along with its neighbours.
-Decision 4 keeps `domains` on the record so that later decision has its data ready, and that
+Decision 5 keeps `domains` on the record so that later decision has its data ready, and that
 later decision should carry pitfall entries too, whose surfacing is equally absent today.
 
 A future term-lookup command stays possible and stays unjustified for now. Nothing in this
@@ -162,6 +213,9 @@ template or catalog change does.
 | Alternative | Why not chosen |
 |---|---|
 | Ship standard terms into `data.terms` directly | Whole-key merge means one authored term discards the whole shipped set |
+| A sidecar boolean or config key disabling the standard layer | A new adopter-facing switch whose only function is to remove documentation; per-term override already covers the real case |
+| Treat an authored empty `standardTerms` as opt-out | The authored key is `unused-data` drift, so the off-switch would fail the gate that documents it |
+| Describe `standardTerms` in configspec instead of exempting it | Publishes it in the config reference as an adopter-settable key, which it is not |
 | Ship the standard vocabulary as its own always-on generated doc | A second place to look up a word, and the split is invisible at the moment of lookup |
 | Keep the flat `term: meaning` map and add a sibling key for domains | Two parallel maps keyed by term, with no mechanism keeping them aligned |
 | Accept both map and list shapes indefinitely | Two authoring shapes to document, test, and reference forever, and the map form can never carry domains |
