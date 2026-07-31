@@ -77,7 +77,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"complete revised phase", "recovery verification", "blind successor instruction")
 		assertAll("subagent",
 			"plan may mix modes", "hand inline phases", "known clean and green baseline",
-			"one implementation child alone", "allowCommits: true", "complete phase",
+			"one implementation child alone", "state commit-capable phase-owner mode in the brief", "complete phase",
 			"Stage the complete transaction", "awf check --staged", gatePhrase,
 			"declared phase-closing commit", "report-only phase review", "focused settlement commits",
 			"checkpoints only after findings resolve", "**Routine checkpoint.**", "parent completion",

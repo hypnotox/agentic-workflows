@@ -872,7 +872,7 @@ func TestSubagentDrivenDevelopmentTemplate(t *testing.T) {
 	// Assert load-bearing phrases unique to subagent-driven-development
 	loadBearing := []string{
 		"complete phase",
-		"allowCommits: true",
+		"state commit-capable phase-owner mode in the brief",
 		"known clean and green baseline",
 		"report-only phase review",
 		"example-reviewing-impl",
