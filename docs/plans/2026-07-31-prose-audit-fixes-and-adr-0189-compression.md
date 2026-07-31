@@ -348,7 +348,7 @@ sundial example.
   `.awf/docs/glossary.yaml:6` (key and description: one advisory row per enabled skill,
   all kinds), rename the worked example at `.awf/docs/pitfalls.yaml:446`, and reword
   the test comments that use "task skill" to mean any non-chain skill at
-  `internal/project/spine_test.go:1737`, `:1910`, `:1947`. Leave
+  `internal/project/spine_test.go:1740`, `:1913`, `:1950`. Leave
   `internal/evals/chain_test.go:123` and `:237` unchanged (their usage names the actual
   `WorkflowTask` skills and is correct). Post-check:
   `grep -rn 'taskSkillRows' templates/ internal/ .awf/` returns no output (the token
@@ -404,11 +404,16 @@ phrase blocks is out of scope.
   reviewing-plan:23, reviewing-plan-resync:22, reviewing-impl:8, executing-direct:16,
   executing-plans:21, subagent-driven-development:22, bugfix:21, debugging:35.
   Representative (brainstorming:21): trim the preamble to the operative core plus the
-  pinned phrases: "Carry the effort slug and exact `.awf/efforts/<slug>/memory.md` path
-  through every step; children receive them read-only and never edit shared memory.
-  Repository sources and current-state documentation outrank checkpoint prose;
-  standalone memory is forbidden and one user-managed writer remains responsible. The
-  full protocol lives in the checkpoint below." Edge (reviewing-impl:8): additionally
+  pinned phrases: "A minimal simple fix uses no effort. Carry the effort slug and exact
+  `.awf/efforts/<slug>/memory.md` path through every step; children receive them
+  read-only and never edit shared memory. Repository sources and current-state
+  documentation outrank checkpoint prose; standalone memory is forbidden and one
+  user-managed writer remains responsible. The full protocol lives in the checkpoint
+  below." (The opening sentence is load-bearing for brainstorming: its pinned "minimal
+  simple" phrase has no other occurrence in that body, and brainstorming includes
+  `checkpoint-approval.md`, which does not carry it; sites including
+  `checkpoint-routine.md` regain the phrase from the partial and may drop the opening
+  sentence where it would double.) Edge (reviewing-impl:8): additionally
   keep the reviewer clause "the report-only reviewer receives slug/path only as context
   and never edits shared memory" verbatim. Also remove executing-direct's separate
   restatement at line 20 ("a minimal simple fix remains effort-free") - its preamble
