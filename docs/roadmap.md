@@ -88,6 +88,14 @@
 - An advisory for hand-curated prose counts, which drift when the source-of-truth count
   changes; two recorded occurrences (the agent-guide invariant list and the glossary
   exemption count).
+- A static-state inventory command enumerating the outstanding bounded candidates of
+  ratchet-scoped code-design claims (today: the shallow `os.Is*` predicate sites,
+  message-text identity assertions, exported error identities no caller matches,
+  undocumented exported declarations, and the global test-seam census),
+  so each ratchet topic can point its existing-violation backlog at a mechanical census
+  instead of prose. The name must not be "awf doctor" without a disambiguating note:
+  ADR-0162 retired that name with a different meaning. Needs its own ADR: it adds a
+  command surface.
 - Align error-message prefixes across `cmd/awf`, `internal/adr`, and the changelog
   tooling. Cosmetic, and blocked on deciding which convention wins before any sweep.
 - A plan-reviewer docCurrencyItem for the missing changelog task of an adopter-facing

@@ -128,6 +128,15 @@ Apply all lenses to every implementation diff:
 **presentation-ownership-authority**: when the diff changes where a result model is rendered for humans, or adds such a rendering, consult code-design/presentation-ownership and flag rendering that lives outside the package owning the model, and any model crossing a package boundary as a loosely-typed map whose discarded assertions turn a renamed field into a silently empty render under a green gate
 
 
+**outcome-modeling-authority**: when the diff changes how an outcome is surfaced, matched, or asserted, consult code-design/outcome-modeling and flag a production branch on a message substring, a new shallow os.Is* predicate call, a new error identity without a branching consumer in the same transaction, a test asserting error text where identity is the contract, and a new repository-state refusal outside the actionable outcome protocol
+
+
+**package-composition-authority**: when the diff adds a package, file, or exported surface, consult code-design/package-composition and flag a package doc comment that cannot state its ownership in one sentence, a grab-bag package or production file name, a new export with no outside-package production consumer in the same commit, and a new exported declaration of a bound kind without a doc comment
+
+
+**test-design-authority**: when the diff adds or converts Go tests, consult code-design/test-design and flag an assertion or matcher library import and a new package-level variable minted to be swapped by a test instead of constructor or parameter injection; swapping an existing census seam stays legal
+
+
 
 ## Doc-currency checklist
 

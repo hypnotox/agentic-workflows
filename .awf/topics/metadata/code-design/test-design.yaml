@@ -1,0 +1,3 @@
+title: Test design
+summary: How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.
+applies: global
