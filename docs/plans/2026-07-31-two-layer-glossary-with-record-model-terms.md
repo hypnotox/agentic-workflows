@@ -102,17 +102,22 @@ its replacement `context-surfaces-tiered-pitfalls` was retired by ADR-0134. A pi
   alone is red and its error aborts validation before the digest comparison runs.
 
   In `docs/decisions/0198-two-layer-glossary-with-record-model-terms.md`, set
-  `status: Implementing` in the frontmatter and append three events to `## Status history`, after
-  the existing `- 2026-07-31: Proposed` line:
+  `status: Implementing` in the frontmatter and append exactly two events to `## Status history`,
+  after the existing `- 2026-07-31: Proposed` line:
 
   ```
-  - 2026-07-31: Accepted; content-sha256: `0000000000000000000000000000000000000000000000000000000000000000`
-  - 2026-07-31: Implementing; content-sha256: `0000000000000000000000000000000000000000000000000000000000000000`
+  - 2026-07-31: Implementing; content-sha256: 0000000000000000000000000000000000000000000000000000000000000000
   - 2026-07-31: Applied; operations: update `rendering/doc-outputs:pitfall-domains-resolved`
   ```
 
-  The placeholder must be exactly 64 hex characters; the parser rejects anything shorter. Then run
-  `./x check` and replace both placeholders with the digest named in the
+  Exactly two, and no `Accepted` event: `Proposed -> Implementing` is a direct edge in
+  `v2Transitions` (`internal/adr/status.go`), and `HistoryTransitionValid`'s Implementing branch
+  requires exactly the two-event `[Status, Applied]` append. A three-event append is rejected.
+
+  The digest is bare, not backticked: `hexDigestRe` in `internal/adr/history.go` is
+  `^[0-9a-f]{64}$`, so a backticked value fails with `content-sha256 is not a 64-hex digest`.
+  Backticks stay on the `operations:` identifiers. The placeholder must be exactly 64 hex
+  characters. Then run `./x check` and replace the placeholder with the digest named in the
   `latest stamped content-sha256 ... does not match the computed digest ...` failure. Follow
   `awf-adr-lifecycle` for the mechanics. This batch carries exactly the claim mutation in task 1.2;
   `awf check --staged` validates the pairing as one HEAD-to-index transaction.
@@ -353,9 +358,11 @@ feat(rendering): model glossary terms as records
   rather than assuming it.
 
   In `internal/configspec/spec_test.go`, add an `exemptDataKeys` map keyed by the existing
-  `ak{kind, artifact, key}` struct, consult it in `collect`'s `for k := range defaults` loop to skip
-  an exempt key, and populate it with `{kind: "docs", artifact: "glossary", key: "standardTerms"}`
-  carrying a comment giving the same ground the existing exemptions use: it is not adopter-settable.
+  `ak{kind, artifact, key}` struct, declared INSIDE `TestConfigspecDataParity` immediately after the
+  `type ak` line and before `collect` (the `ak` type is function-scoped, so a package-level map will
+  not compile). Consult it in `collect`'s `for k := range defaults` loop to skip an exempt key, and
+  populate it with `{kind: "docs", artifact: "glossary", key: "standardTerms"}` carrying a comment
+  giving the same ground the existing exemptions use: it is not adopter-settable.
   Leave the two structural exemptions where they are; this adds a third mechanism member without
   migrating them.
 
@@ -431,9 +438,14 @@ constant and merge helper. This is the final batch, so it also carries the ADR's
   glossary terseness note producer to `AdvisoryNotes`, alongside the unset-var, stub, part-marker,
   tag-health, and plan-commit-scope families. Behaviour:
 
-  - It obtains its records by calling `mergedGlossaryRecords` (task 3.3), never by re-merging. The
-    transform has already replaced `data.terms` with rendered rows and stripped `standardTerms` by
-    the time write files exist, so the producer reads the authored sidecar through the helper.
+  - It reads the authored sidecar, then wraps it as
+    `withDefaultData(sc, p.Cat.Docs["glossary"].Data)` BEFORE calling `mergedGlossaryRecords`,
+    mirroring what `internal/project/render.go` does upstream of the transform. This step is
+    load-bearing: `p.Cfg.Sidecar("docs", "glossary")` returns the on-disk file only and never
+    carries `standardTerms`, so without the wrap the advisory would evaluate authored terms alone
+    and the shipped layer would escape the threshold entirely, defeating ADR-0198 decision 10 and
+    contradicting the claim body task 4.3 authors.
+  - It obtains its records by calling `mergedGlossaryRecords` (task 3.3), never by re-merging.
   - It emits one note per term whose merged meaning exceeds the phase 3 threshold, naming the term
     and its length, sorted, exactly as the sibling families sort theirs.
   - It returns no notes when `glossary` is not in `p.Cfg.Docs`, mirroring `checkPitfalls`'s
@@ -441,7 +453,11 @@ constant and merge helper. This is the final batch, so it also carries the ADR's
   - It never affects the exit code.
 
   Cover the producing, the disabled, and the under-threshold cases in
-  `internal/project/notes_test.go` for the 100% floor.
+  `internal/project/notes_test.go` for the 100% floor. The two inherited error returns
+  (`p.Cfg.Sidecar` and `mergedGlossaryRecords`) are unreachable once `AdvisoryNotes` has already
+  rendered the same sidecar earlier in its own run: give each a
+  `// coverage-ignore: <reason>` in the shape `checkPitfalls` uses, rather than contriving a test
+  to drive them.
 
 - [ ] **Task 4.2: Prove the non-failing contract at the CLI boundary.** In
   `cmd/awf/initrender_test.go`, add a case asserting that `awf check` exits zero while a glossary
@@ -513,7 +529,7 @@ constant and merge helper. This is the final batch, so it also carries the ADR's
 
   ```
   - 2026-07-31: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing`
-  - 2026-07-31: Implemented; content-sha256: `<digest>`
+  - 2026-07-31: Implemented; content-sha256: <digest>
   ```
 
   The flip belongs in this commit and cannot be deferred: `internal/adr/format.go` rejects an
