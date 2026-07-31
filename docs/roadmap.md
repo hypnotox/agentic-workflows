@@ -83,7 +83,11 @@ names. ADR-0122's Pi and Codex target layouts may need a successor decision.
 
 `invariant-proof-exercises-its-claim` has now failed to prevent three sessions
 of partially-backed proof markers, the last shipping roughly nine at once and
-hiding a real defect behind a green gate. It has been strengthened from a
+hiding a real defect behind a green gate. A standing instance sits in
+`internal/migrate/dropworkflowtelemetry_test.go`, whose
+`workflow-telemetry-config-migration` marker covers a body that only pins the
+current schema generation, while the claim is about generation 21 removing two
+resident roots: the marker exercises nothing it backs, and no gate notices. It has been strengthened from a
 judgement item to an enumerating one, but that is still rung 3: probabilistic,
 and applied only when a reviewer runs.
 

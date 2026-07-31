@@ -46,6 +46,18 @@ data:
         migrate package the moment a forward-port branch is missing, rather than at the
         phase-closing staged check.
 
+        A third trap fires only when the retired key was written by a migration rather than set
+        by hand. Historical migrations are never edited, so the migration that ADDED the key
+        keeps writing it, and any later migration that parses config through
+        `loadForMigration` then meets a key the current schema no longer declares. A tree
+        upgrading from before the adding generation hard-fails mid-ladder, which is an adopter
+        bug, not a fixture artifact. ADR-0194 hit exactly this: generation 16 writes
+        `maxClaimsPerTopic`, generation 23 parses, generation 28 removes. The fix is to strip
+        the retired key in `loadForMigration` beside the `invariants` block it already strips,
+        because a migration reads a config at its historical shape, not the current schema's.
+        Before retiring a key, grep the migration set for one that writes it; the severity-key
+        removal had no such problem only because nothing wrote those keys.
+
         Two related traps in the same area. `RemoveMappingKey` drops the parent key when the
         removal empties it, so removing the last children of a block deletes the block; when a
         feature is gated on the block being present, that silently disables it. And
