@@ -602,6 +602,13 @@ feat(adr-system): add awf adr number and its numbering transition
   Add the `[Unreleased]` changelog entry naming: pending slug ADRs, `awf adr number`,
   the required `integrationBranch` key written by migration, the fourth hook payload
   and its manual stub wiring, and the stray-file corpus error behavior change.
+  Two further obligations, added 2026-07-31 by the Phase 3 review, which found them
+  owned by no phase: `.awf/domains/parts/config/current-state.md` names schema
+  generations by number and has no entry for generation 29, the first required-explicit
+  key the config has ever carried; and `.awf/docs/glossary.yaml` has no term for
+  "pending ADR" (Phase 2) or "integration branch" (Phase 3), both of which this record
+  introduces as project jargon that the doc-currency checklist asks for in the same
+  change that coins it.
 - [ ] **Task 6.3: Claim mutation and batch 5.** In the
   rendering/singletons-and-payloads part: update `hook-payloads-rendered` (exactly four
   payloads including pre-merge-commit; absence when disabled unchanged). Proof marker on
