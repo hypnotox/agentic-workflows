@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0198: Ephemeral content-keyed Pi extension test container
@@ -187,3 +187,4 @@ proving without the drift check noticing, is out of scope here; the deferred sec
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implemented; content-sha256: 3e0daac741f5694ba0dce4de6833a13374923d324e0a0caa9f16d3ebf4cc9b7c
