@@ -448,20 +448,19 @@ func TestManagerValidationAndOperationRefusals(t *testing.T) {
 
 	for _, operation := range []string{"MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "rebase-merge", "rebase-apply"} {
 		t.Run(operation, func(t *testing.T) {
-			candidate := filepath.Join(t.TempDir(), operation)
-			if err := os.WriteFile(candidate, nil, 0o600); err != nil {
-				t.Fatal(err)
-			}
 			present := managerWith(t, root, invokingStub(root, func(stub *checkoutStub) {
-				stub.gitPath = func(_ context.Context, name string) (string, error) {
-					if name == operation {
-						return candidate, nil
-					}
-					return filepath.Join(t.TempDir(), name), nil
-				}
+				stub.gitPath = markerAt(t, operation)
 			}))
-			if err := operationFree(testContext(t), present.git); err == nil || !strings.Contains(err.Error(), "in-progress") {
-				t.Fatalf("operation error = %v", err)
+			err := operationFree(testContext(t), present.git)
+			var refused *RefusalError
+			if !errors.As(err, &refused) || refused.Category != "operation" {
+				t.Fatalf("operation error = %v, want an operation refusal", err)
+			}
+			// Only a merge withholds resolution advice; the other four
+			// operations are the caller's own to finish or abort.
+			merge := operation == "MERGE_HEAD"
+			if strings.Contains(refused.NextAction, "do not finish") != merge {
+				t.Fatalf("%s refusal = %v, want merge advice only for MERGE_HEAD", operation, refused)
 			}
 		})
 	}
@@ -473,60 +472,83 @@ func TestManagerValidationAndOperationRefusals(t *testing.T) {
 	}
 }
 
-// A peer effort's staged integration is the one in-progress operation an agent
-// must not resolve on the holder's behalf, so its refusal names the holder and
-// replaces the generic advice to finish or abort the operation.
-func TestOperationRefusalNamesAConcurrentEffortIntegration(t *testing.T) {
-	holding := &checkoutStub{
-		gitPath:       markerAt(t, "MERGE_HEAD"),
-		resolveCommit: resolvingTip("MERGE_HEAD", "refs/heads/awf/peer"),
-		worktreeList: registrations(
-			awfgit.WorktreeRegistration{Path: "/primary", Branch: "refs/heads/main"},
-			awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer"},
-		),
-	}
-	err := operationFree(testContext(t), holding)
-	if err == nil || !strings.Contains(err.Error(), "peer") {
-		t.Fatalf("refusal = %v, want one naming effort peer", err)
-	}
-	if !strings.Contains(err.Error(), "do not discard") {
-		t.Fatalf("refusal = %v, want one that withholds discard advice", err)
+// A merge is the one in-progress operation whose resolution destroys work the
+// caller may not own, so its refusal drops the finish-or-abort advice whether
+// or not a holder can be named, and names the effort when one is provable.
+func TestMergeRefusalWithholdsResolutionAdvice(t *testing.T) {
+	for name, expect := range map[string]struct {
+		list func(context.Context) ([]awfgit.WorktreeRegistration, error)
+		slug string
+	}{
+		"attributed to the effort whose tip is being merged": {
+			list: registrations(
+				awfgit.WorktreeRegistration{Path: "/primary", Branch: "refs/heads/main", HEAD: mergedTip},
+				awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+			),
+			slug: "peer",
+		},
+		"unattributed when no effort branch is at the merged tip": {
+			list: registrations(awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: otherTip}),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := operationFree(testContext(t), &checkoutStub{
+				gitPath:       markerAt(t, "MERGE_HEAD"),
+				resolveCommit: mergeHeadAt(mergedTip),
+				worktreeList:  expect.list,
+			})
+			if err == nil {
+				t.Fatal("merge in progress accepted")
+			}
+			if !strings.Contains(err.Error(), "do not finish, abort, or discard") {
+				t.Fatalf("refusal = %v, want one withholding resolution advice", err)
+			}
+			named := strings.Contains(err.Error(), "effort "+expect.slug)
+			if (expect.slug != "") != named {
+				t.Fatalf("refusal = %v, want attribution to %q", err, expect.slug)
+			}
+		})
 	}
 }
 
-// Attribution is best-effort: every probe that cannot prove a holder leaves the
-// generic operation refusal in place rather than guessing or propagating.
+// Attribution is restricted to effort branches, and to a slug that exists. A
+// candidate that fails either guard must not end the scan, or a registration
+// listed after it would never be reached.
+func TestIntegrationHolderSkipsNonEffortRegistrations(t *testing.T) {
+	for name, listed := range map[string][]awfgit.WorktreeRegistration{
+		"ordinary branch at the merged tip": {
+			{Path: "/primary", Branch: "refs/heads/main", HEAD: mergedTip},
+			{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+		},
+		"effort prefix with an empty slug at the merged tip": {
+			{Path: "/managed", Branch: "refs/heads/awf/", HEAD: mergedTip},
+			{Path: "/managed/peer", Branch: "refs/heads/awf/peer", HEAD: mergedTip},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			holder := integrationHolder(testContext(t), &checkoutStub{
+				resolveCommit: mergeHeadAt(mergedTip),
+				worktreeList:  registrations(listed...),
+			})
+			if holder != "peer" {
+				t.Fatalf("holder = %q, want peer", holder)
+			}
+		})
+	}
+}
+
+// A probe that cannot answer leaves the merge unattributed rather than
+// propagating: the refusal it decorates is already correct without a name.
 func TestIntegrationHolderAnswersUnattributed(t *testing.T) {
 	for name, checkout := range map[string]*checkoutStub{
 		"merge head unresolvable": {
 			resolveCommit: func(context.Context, string) (string, error) { return "", failing("resolve") },
 		},
 		"registrations unreadable": {
-			resolveCommit: resolvingTip("MERGE_HEAD"),
+			resolveCommit: mergeHeadAt(mergedTip),
 			worktreeList: func(context.Context) ([]awfgit.WorktreeRegistration, error) {
 				return nil, failing("worktree list")
 			},
-		},
-		"no effort branch registered": {
-			resolveCommit: resolvingTip("MERGE_HEAD"),
-			worktreeList:  registrations(awfgit.WorktreeRegistration{Path: "/primary", Branch: "refs/heads/main"}),
-		},
-		"effort branch prefix without a slug": {
-			resolveCommit: resolvingTip("MERGE_HEAD"),
-			worktreeList:  registrations(awfgit.WorktreeRegistration{Path: "/managed", Branch: "refs/heads/awf/"}),
-		},
-		"effort branch unresolvable": {
-			resolveCommit: func(_ context.Context, revision string) (string, error) {
-				if revision == "MERGE_HEAD" {
-					return "tip", nil
-				}
-				return "", failing("resolve branch")
-			},
-			worktreeList: registrations(awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer"}),
-		},
-		"effort branch at another commit": {
-			resolveCommit: resolvingTip("MERGE_HEAD"),
-			worktreeList:  registrations(awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer"}),
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -545,40 +567,6 @@ func TestCleanlinessRefusalWarnsBeforeDiscarding(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "concurrent") {
 		t.Fatalf("refusal = %v, want one warning about concurrent work", err)
 	}
-}
-
-// markerAt answers an existing path for one operation marker and an absent path
-// for every other, which is how a test puts a checkout mid-operation.
-func markerAt(t *testing.T, present string) func(context.Context, string) (string, error) {
-	t.Helper()
-	marker := filepath.Join(t.TempDir(), present)
-	if err := os.WriteFile(marker, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	absent := t.TempDir()
-	return func(_ context.Context, name string) (string, error) {
-		if name == present {
-			return marker, nil
-		}
-		return filepath.Join(absent, name), nil
-	}
-}
-
-// resolvingTip answers one shared commit for the named revisions and a distinct
-// commit for every other, so a test states which refs agree by naming them.
-func resolvingTip(shared ...string) func(context.Context, string) (string, error) {
-	return func(_ context.Context, revision string) (string, error) {
-		for _, name := range shared {
-			if name == revision {
-				return "0000000000000000000000000000000000000001", nil
-			}
-		}
-		return "0000000000000000000000000000000000000002", nil
-	}
-}
-
-func registrations(regs ...awfgit.WorktreeRegistration) func(context.Context) ([]awfgit.WorktreeRegistration, error) {
-	return func(context.Context) ([]awfgit.WorktreeRegistration, error) { return regs, nil }
 }
 
 func TestManagerAuthorityErrorBranches(t *testing.T) {
@@ -1032,8 +1020,10 @@ func TestRemovalPartialTopologyAndFailureBranches(t *testing.T) {
 		if err := os.WriteFile(mergeHead, nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := m.Remove(testContext(t), "remove-operation"); err == nil || !strings.Contains(err.Error(), "in-progress") {
-			t.Fatalf("error = %v", err)
+		_, err := m.Remove(testContext(t), "remove-operation")
+		var refused *RefusalError
+		if !errors.As(err, &refused) || refused.Category != "operation" {
+			t.Fatalf("error = %v, want an operation refusal", err)
 		}
 	})
 	t.Run("remove and branch failures", func(t *testing.T) {

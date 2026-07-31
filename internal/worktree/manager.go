@@ -132,8 +132,8 @@ func operationFree(ctx context.Context, checkout Runner) error {
 			return err
 		}
 		if _, err = os.Lstat(candidate); err == nil {
-			if slug := integrationHolder(ctx, checkout); slug != "" {
-				return refusal("operation", "effort "+slug+" is integrating in this checkout", false, "do not discard, abort, or commit another effort's merge; wait until this checkout is clean, bring your effort branch up to date with the target, then retry")
+			if name == "MERGE_HEAD" {
+				return mergeRefusal(ctx, checkout)
 			}
 			return refusal("operation", "checkout has an in-progress Git operation", false, "finish or abort the native Git operation, then retry")
 		} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
@@ -143,14 +143,29 @@ func operationFree(ctx context.Context, checkout Runner) error {
 	return nil
 }
 
-// integrationHolder names the effort whose integration is in progress in this
-// checkout, or the empty string when no effort can be proven to hold it. It
-// derives the answer from repository truth alone: MERGE_HEAD names the merged
-// tip, and an effort branch is checked out at its own managed worktree, so a
-// registration whose branch resolves to that tip identifies the holder. Every
-// probe that cannot answer leaves the operation unattributed rather than
-// propagating, because the refusal it decorates is already correct without a
-// name, and a wrong name is worse than none.
+// mergeRefusal is the one refusal that never advises resolution. Finishing or
+// aborting a merge destroys work when the caller did not start it, and an
+// effort integration sits staged and uncommitted in the receiving checkout for
+// the whole gate and renewed review, so waiting is the only safe instruction
+// whether or not a holder can be named. Attribution decorates that instruction;
+// it never decides it.
+func mergeRefusal(ctx context.Context, checkout Runner) error {
+	condition := "a merge is in progress in this checkout"
+	if slug := integrationHolder(ctx, checkout); slug != "" {
+		condition = "a merge of effort " + slug + " is in progress in this checkout"
+	}
+	return refusal("operation", condition, false, "do not finish, abort, or discard a merge you did not start; wait until this checkout is clean, then retry")
+}
+
+// integrationHolder names the effort whose branch is being merged here, or the
+// empty string when none can be proven. It derives the answer from repository
+// truth alone: MERGE_HEAD names the merged tip, and an effort branch is checked
+// out at its own managed worktree, so a registration on an effort branch whose
+// own HEAD is that tip identifies the holder. The registration carries the
+// commit already, so the whole topology is read from one snapshot rather than
+// re-resolved per branch. A probe that cannot answer leaves the merge
+// unattributed rather than propagating, because the refusal it decorates is
+// already correct without a name, and a wrong name is worse than none.
 func integrationHolder(ctx context.Context, checkout Runner) string {
 	tip, err := checkout.ResolveCommit(ctx, "MERGE_HEAD")
 	if err != nil {
@@ -162,10 +177,7 @@ func integrationHolder(ctx context.Context, checkout Runner) string {
 	}
 	for _, registration := range registrations {
 		slug, ok := strings.CutPrefix(registration.Branch, "refs/heads/"+branch(""))
-		if !ok || slug == "" {
-			continue
-		}
-		if head, err := checkout.ResolveCommit(ctx, registration.Branch); err == nil && head == tip {
+		if ok && slug != "" && registration.HEAD == tip {
 			return slug
 		}
 	}
