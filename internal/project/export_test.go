@@ -1,21 +1,28 @@
 package project
 
-import "github.com/hypnotox/agentic-workflows/internal/manifest"
+import (
+	"context"
+	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
+)
 
 // Sync renders and writes the project like SyncReport, discarding the backup,
 // change, and prune reports - a test-only convenience for the many in-package
 // tests that only care whether the sync errors. Production uses SyncReport
 // directly (ADR-0063).
 func (p *Project) Sync() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	_, found, err := manifest.LoadOptional(p.lockPath())
 	if err != nil {
 		return err
 	}
 	if !found {
-		_, _, _, err = p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
+		_, _, _, err = p.InitializeReport(ctx, InitAuthority{InitializedWithVersion: Version})
 		return err
 	}
-	_, _, _, err = p.SyncReport()
+	_, _, _, err = p.SyncReport(ctx)
 	return err
 }
 
@@ -24,7 +31,9 @@ func (p *Project) Sync() error {
 // rendered set. Production operations derive their own state once and enter
 // through outputPlan, so no production caller remains (ADR-0063, ADR-0180).
 func (p *Project) RenderAll() ([]RenderedFile, error) {
-	op, err := p.OutputPlan()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	op, err := p.OutputPlan(ctx)
 	if err != nil {
 		return nil, err
 	}

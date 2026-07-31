@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/git"
@@ -9,11 +10,11 @@ import (
 // IndexTree captures the repository's stage-0 index as an immutable Tree.
 // Ordinary, executable, and symlink files are included with mode preserved;
 // symlink bytes are inert targets and gitlinks are skipped; an unmerged or
-// unreadable index is rejected. Path selection and ordering come from
-// git.IndexBlobs, which opens the repository through git.OpenRepo and so
-// resolves a linked worktree's index like any other command.
-func IndexTree(repoRoot string) (*Tree, error) {
-	blobs, err := git.IndexBlobs(repoRoot)
+// unreadable index is rejected. Path selection and ordering come from the
+// handle's IndexBlobs, whose tolerant open resolves a linked worktree's index
+// like any other command.
+func IndexTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
+	blobs, err := repo.IndexBlobs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("snapshot index: %w", err)
 	}

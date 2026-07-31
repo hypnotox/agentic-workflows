@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"path/filepath"
@@ -36,12 +37,12 @@ type contextAssemblyState struct {
 	Declarations []OutputDeclaration
 }
 
-func (p *Project) ContextForOptions(paths []string, options ContextOptions) (ContextResult, error) {
-	ws, err := p.workingCurrentState()
+func (p *Project) ContextForOptions(ctx context.Context, paths []string, options ContextOptions) (ContextResult, error) {
+	ws, err := p.workingCurrentState(ctx)
 	if err != nil {
 		return ContextResult{}, err
 	}
-	universe := &Project{Root: p.Root, Cfg: ws.Cfg, standard: p.standard}
+	universe := &Project{Root: p.Root, Cfg: ws.Cfg, standard: p.standard, repo: p.repo}
 	universe.Targets, err = resolveTargets(ws.Cfg.Targets)
 	if err != nil {
 		return ContextResult{}, err
@@ -57,26 +58,29 @@ func (p *Project) ContextForOptions(paths []string, options ContextOptions) (Con
 	return universe.assembleContextUniverse(contextAssemblyState{Loaded: ws.Loaded, Tree: ws.Tree, Lock: ws.Lock, Config: ws.Cfg, Declarations: declarations}, paths, options)
 }
 
-func StagedContextRootOptions(root string, paths []string, options ContextOptions) (ContextResult, error) {
-	p := &Project{Root: root, standard: catalog.Standard}
-	state, err := p.indexCurrentState()
+func StagedContextRootOptions(ctx context.Context, root string, paths []string, options ContextOptions) (ContextResult, error) {
+	p, err := openRootProject(root)
 	if err != nil {
 		return ContextResult{}, err
 	}
-	p.Cfg = state.Cfg
-	p.Targets, err = resolveTargets(state.Cfg.Targets)
+	state, err := p.indexCurrentState(ctx)
 	if err != nil {
 		return ContextResult{}, err
 	}
-	p.Cat, err = p.effectiveCatalog()
+	targets, err := resolveTargets(state.Cfg.Targets)
 	if err != nil {
 		return ContextResult{}, err
 	}
-	declarations, err := BuildOutputDeclarations(state.Cfg, p.Cat, p.Targets, snapshotTreeReader{tree: state.Tree}, adr.NewCorpus(state.Loaded.ADRs))
+	universe := &Project{Root: root, Cfg: state.Cfg, Targets: targets, standard: catalog.Standard, repo: p.repo}
+	universe.Cat, err = universe.effectiveCatalog()
+	if err != nil {
+		return ContextResult{}, err
+	}
+	declarations, err := BuildOutputDeclarations(state.Cfg, universe.Cat, universe.Targets, snapshotTreeReader{tree: state.Tree}, adr.NewCorpus(state.Loaded.ADRs))
 	if err != nil { // coverage-ignore: the staged snapshot-local catalog and every declaration input were already parsed from this immutable tree
 		return ContextResult{}, err
 	}
-	return p.assembleContextUniverse(contextAssemblyState{Loaded: state.Loaded, Tree: state.Tree, Lock: state.Lock, Config: state.Cfg, Declarations: declarations}, paths, options)
+	return universe.assembleContextUniverse(contextAssemblyState{Loaded: state.Loaded, Tree: state.Tree, Lock: state.Lock, Config: state.Cfg, Declarations: declarations}, paths, options)
 }
 
 type indexState struct {
@@ -86,8 +90,8 @@ type indexState struct {
 	Cfg    *config.Config
 }
 
-func (p *Project) indexCurrentState() (indexState, error) {
-	tree, err := snapshot.IndexTree(p.Root)
+func (p *Project) indexCurrentState(ctx context.Context) (indexState, error) {
+	tree, err := p.indexTree(ctx)
 	if err != nil {
 		return indexState{}, err
 	}
@@ -327,8 +331,8 @@ type UncoveredTopic struct {
 // those neither generated nor contextIgnore-matched (ADR-0134). scanRoots
 // restrict the report to paths at or beneath them on slash-separated segment
 // boundaries; empty scanRoots scans everything. It writes nothing.
-func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
-	ws, err := p.workingCurrentState()
+func (p *Project) Uncovered(ctx context.Context, scanRoots []string) (UncoveredResult, error) {
+	ws, err := p.workingCurrentState(ctx)
 	if err != nil {
 		return UncoveredResult{}, err
 	}
@@ -336,8 +340,12 @@ func (p *Project) Uncovered(scanRoots []string) (UncoveredResult, error) {
 }
 
 // StagedUncoveredRoot reports coverage entirely from the index universe.
-func StagedUncoveredRoot(root string, scanRoots []string) (UncoveredResult, error) {
-	state, err := (&Project{Root: root}).indexCurrentState()
+func StagedUncoveredRoot(ctx context.Context, root string, scanRoots []string) (UncoveredResult, error) {
+	p, err := openRootProject(root)
+	if err != nil {
+		return UncoveredResult{}, err
+	}
+	state, err := p.indexCurrentState(ctx)
 	if err != nil {
 		return UncoveredResult{}, err
 	}

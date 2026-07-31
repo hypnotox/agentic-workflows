@@ -1,6 +1,7 @@
 package project
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -84,24 +86,24 @@ agents:
 
 func TestInitializeAndSyncAuthorityRefusals(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.SyncReport(); err == nil || !strings.Contains(err.Error(), "pre-tracking") {
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "pre-tracking") {
 		t.Fatalf("missing-lock sync error=%v", err)
 	}
-	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "absent lock") {
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "absent lock") {
 		t.Fatalf("repeat initialize error=%v", err)
 	}
 	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 14, Files: map[string]manifest.Entry{}}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.SyncReport(); err == nil || !strings.Contains(err.Error(), "permanent") {
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil || !strings.Contains(err.Error(), "permanent") {
 		t.Fatalf("pre-tracking sync error=%v", err)
 	}
 }
@@ -121,7 +123,7 @@ func TestNewADRErrors(t *testing.T) {
 
 func TestNewADRSelectsFormatAtV2Boundary(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +177,7 @@ func TestSyncPreservesPermanentCurrentStateCutoff(t *testing.T) {
 			if err := os.WriteFile(lockFile(root), raw, 0o644); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Open(root)
+			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -217,7 +219,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", name, "retained", "resident"), name)
 	}
 
-	if _, err := migrate.Upgrade(root, io.Discard); err != nil {
+	if _, err := migrate.Upgrade(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"metrics", "assignments"} {
@@ -237,7 +239,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 		t.Fatalf("standalone memory root survived the schema-22 reset: %v", err)
 	}
 
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -264,7 +266,7 @@ func TestResidentMigrationsPreserveOwnedRootsThroughProjectSync(t *testing.T) {
 
 func TestSyncWritesFilesAndLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -292,7 +294,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 // invariant: rendering/sync-and-drift:target-prune-ancestors
 func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +308,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(sampleYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -323,7 +325,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 
 func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +344,7 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: []\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,11 +363,11 @@ func TestSyncPrunesAllPiExtensionsWithoutTouchingUnrelatedContent(t *testing.T) 
 
 func TestCheckCleanAfterSync(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,11 +378,11 @@ func TestCheckCleanAfterSync(t *testing.T) {
 
 func TestCheckDetectsHandEdit(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	_ = p.Sync()
 	skill := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
 	_ = os.WriteFile(skill, []byte("hand edited\n"), 0o644)
-	drift, _ := p.Check()
+	drift, _ := p.Check(testContext(t))
 	if len(drift) == 0 || drift[0].Kind != "hand-edited" {
 		t.Errorf("expected hand-edited drift, got %#v", drift)
 	}
@@ -388,7 +390,7 @@ func TestCheckDetectsHandEdit(t *testing.T) {
 
 func TestCheckStaleTakesPrecedence(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +410,7 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, skillPath), []byte("hand edited\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -443,7 +445,7 @@ agents:
 	// A local skill is hand-authored; provide its on-disk file with valid frontmatter.
 	localPath := ".claude/skills/example-adding-thing/SKILL.md"
 	writeLocalSkill(t, root, localPath)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -479,7 +481,7 @@ agents:
 `
 	root := scaffoldFiles(t, cfg, nil)
 	// First sync renders tdd as a managed skill and locks its output path.
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +494,7 @@ agents:
 	}
 	// Convert tdd to local: its rendered file becomes the hand-authored local one.
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"), "local: true\n")
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -523,7 +525,7 @@ func writeLocalSkill(t *testing.T, root, rel string) {
 
 func TestOpenRejectsUnknownAgent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: [does-not-exist]\n")
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown agent")
 	}
@@ -534,7 +536,7 @@ func TestOpenRejectsUnknownAgent(t *testing.T) {
 
 func TestOpenRejectsUnknownDoc(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: [nonexistent]\n")
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown doc")
 	}
@@ -545,7 +547,7 @@ func TestOpenRejectsUnknownDoc(t *testing.T) {
 
 func TestSyncRendersDeclaredDoc(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: [architecture]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -578,7 +580,7 @@ docs:
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"docs/glossary.yaml": "local: true\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -603,7 +605,7 @@ docs:
 
 func TestOpenRejectsUnknownSkill(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [no-such-skill]\nagents: []\n")
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown skill")
 	}
@@ -612,9 +614,19 @@ func TestOpenRejectsUnknownSkill(t *testing.T) {
 	}
 }
 
+func TestOpenRejectsMalformedRepository(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(testContext(t), root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("malformed repository error = %v", err)
+	}
+}
+
 func TestOpenValidConfigSucceeds(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("expected valid config to open cleanly, got: %v", err)
 	}
@@ -625,7 +637,7 @@ func TestOpenAllowsLocalSkillNotInCatalog(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/totally-unknown-local.yaml": "local: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("local skill not in catalog should be allowed, got: %v", err)
 	}
@@ -633,13 +645,13 @@ func TestOpenAllowsLocalSkillNotInCatalog(t *testing.T) {
 
 func TestSyncPrunesRemovedSkill(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	_ = p.Sync()
 	// Rewrite config without the tdd skill, re-open, re-sync.
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
-	p2, _ := Open(root)
-	backups, _, pruned, err := p2.SyncReport()
+	p2, _ := Open(testContext(t), root)
+	backups, _, pruned, err := p2.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -664,7 +676,7 @@ func TestSyncPrunesRemovedSkill(t *testing.T) {
 
 func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -682,11 +694,11 @@ func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := p.SyncReport()
+	_, _, pruned, err := p.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -700,7 +712,7 @@ func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 
 func TestSyncRejectsUnsafeResidentEffortsRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -714,14 +726,14 @@ func TestSyncRejectsUnsafeResidentEffortsRoot(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), efforts); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, _, _, err := p.SyncReport(); err == nil {
+	if _, _, _, err := p.SyncReport(testContext(t)); err == nil {
 		t.Fatal("sync accepted an unsafe resident efforts root")
 	}
 }
 
 func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	_ = p.Sync()
 	// Hand-delete the rendered file before the pruning sync: the report must
 	// not claim a removal the prune did not perform.
@@ -730,8 +742,8 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	}
 	noTDD := strings.Replace(sampleYAML, "skills:\n  - tdd\n", "skills: []\n", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
-	p2, _ := Open(root)
-	_, _, pruned, err := p2.SyncReport()
+	p2, _ := Open(testContext(t), root)
+	_, _, pruned, err := p2.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -747,8 +759,8 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 // non-hashed input) without mutating the embedded templates.
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
-	_, changes, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
+	p, _ := Open(testContext(t), root)
+	_, changes, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -783,8 +795,8 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	if err := lock.Save(p.lockPath()); err != nil {
 		t.Fatal(err)
 	}
-	p2, _ := Open(root)
-	_, changes, _, err = p2.SyncReport()
+	p2, _ := Open(testContext(t), root)
+	_, changes, _, err = p2.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -807,7 +819,7 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown section override 'bogus'")
 	}
@@ -827,7 +839,7 @@ func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/tdd.yaml": "sections:\n  notes:\n    drop: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("valid section override 'notes' should succeed, got: %v", err)
 	}
@@ -838,7 +850,7 @@ func TestOpenAllowsLocalAgentNotInCatalog(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/my-custom-agent.yaml": "local: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("local agent not in catalog should be allowed, got: %v", err)
 	}
@@ -850,7 +862,7 @@ func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/code-reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown agent section override 'bogus'")
 	}
@@ -861,7 +873,7 @@ func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 
 func TestSyncRendersAgentFromMap(t *testing.T) {
 	root := scaffold(t, "prefix: myproject\nagents: [code-reviewer]\nskills: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -888,7 +900,7 @@ func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
 		map[string]string{
 			"skills/tdd.yaml": "data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n",
 		})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -904,7 +916,7 @@ func TestSyncErrorsOnUnresolvedValueToken(t *testing.T) {
 func TestSyncRendersAgentsDoc(t *testing.T) {
 	t.Run("always-on by default", func(t *testing.T) {
 		root := scaffold(t, "prefix: example\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\nskills: []\nagents: []\n")
-		p, err := Open(root)
+		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
@@ -924,7 +936,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 		root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\n", map[string]string{
 			"agents-doc.yaml": "local: true\n",
 		})
-		p, err := Open(root)
+		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
@@ -942,7 +954,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 // are removed.
 func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -958,7 +970,7 @@ func TestSyncPrunesEmptySkillDir(t *testing.T) {
 	if err := os.WriteFile(configPath(root), []byte(noTDD), 0o644); err != nil {
 		t.Fatalf("rewrite config: %v", err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open after removing tdd skill: %v", err)
 	}
@@ -1040,7 +1052,7 @@ func TestLayoutDerivesFromDocsDir(t *testing.T) {
 func TestRenderAllRendersEnabledDocGatedSkill(t *testing.T) {
 	cfg := "prefix: example\nskills: [roadmap-graduation]\ndocs: [roadmap]\nagents: []\n"
 	root := scaffoldFiles(t, cfg, map[string]string{"agents-doc.yaml": "local: true\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -1081,7 +1093,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Decision\n\n1. x.\n"))
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adrBody)
 
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -1101,7 +1113,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	if entryPos < 0 || entryPos < inflightPos {
 		t.Errorf("INDEX.md missing the ADR entry under In flight:\n%s", index)
 	}
-	if drift, err := p.Check(); err != nil || len(drift) != 0 {
+	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
 		t.Fatalf("expected clean check after sync, got drift=%#v err=%v", drift, err)
 	}
 
@@ -1109,7 +1121,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 	// on-disk INDEX.md is now stale.
 	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
 	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adr2)
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatalf("Check: %v", err)
 	}
@@ -1127,7 +1139,7 @@ func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
 // invariant: rendering/sync-and-drift:sync-always-writes-active-md
 func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -1141,7 +1153,7 @@ func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 	if !strings.Contains(string(got), "No decisions recorded yet") {
 		t.Errorf("expected placeholder index, got:\n%s", got)
 	}
-	if drift, err := p.Check(); err != nil || len(drift) != 0 {
+	if drift, err := p.Check(testContext(t)); err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check with no ADRs, got drift=%#v err=%v", drift, err)
 	}
 }
@@ -1149,7 +1161,7 @@ func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
 // invariant: rendering/sync-and-drift:check-invalid-frontmatter
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}
@@ -1170,7 +1182,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1190,7 +1202,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 // invariant: rendering/doc-outputs:working-with-awf-mandatory
 func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1248,7 +1260,7 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "working-with-awf.yaml"), []byte("local: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(root)
+	p2, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1271,7 +1283,7 @@ func TestAdrSingletonsRenderedAndSuppressible(t *testing.T) {
 
 func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1285,7 +1297,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	backups, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version})
+	backups, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatalf("InitializeReport: %v", err)
 	}
@@ -1307,7 +1319,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 	}
 	// A path recorded in the prior lock is awf-managed: a second sync backs up
 	// nothing and prunes nothing.
-	again, _, pruned, err := p.SyncReport()
+	again, _, pruned, err := p.SyncReport(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1324,7 +1336,7 @@ func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
 // single source of truth that replaced the hardcoded index-path literals.
 func TestRegenCheckedAttribute(t *testing.T) {
 	root := scaffold(t, domainCfg)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1371,7 +1383,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -1412,7 +1424,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // invariant: rendering/project-output-plan:reviewing-skill-agent-pairing
 func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: []\n")
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected pairing error for reviewing-impl without code-reviewer")
 	}
@@ -1424,7 +1436,7 @@ func TestOpenRejectsPairedSkillWithoutAgent(t *testing.T) {
 
 func TestOpenAllowsPairedSkillWithAgent(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: [reviewing-impl, executing-plans, retrospective, subagent-driven-development]\nagents: [code-reviewer, implementer]\n")
-	if _, err := Open(root); err != nil {
+	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatalf("paired skill with its agent must open cleanly, got: %v", err)
 	}
 }
@@ -1442,7 +1454,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := Open(scaffold(t, tc.cfg))
+			_, err := Open(testContext(t), scaffold(t, tc.cfg))
 			if err == nil {
 				t.Fatal("expected closure-validation error")
 			}
@@ -1454,7 +1466,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 	// A local sidecar exempts the artifact from the closure check.
 	root := scaffoldFiles(t, "prefix: example\nskills: [brainstorming]\nagents: []\n",
 		map[string]string{"skills/brainstorming.yaml": "local: true\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("local-sidecar artifact must skip closure validation, got: %v", err)
 	}
@@ -1467,7 +1479,7 @@ func TestOpenRefusesUnclosedEnabledSet(t *testing.T) {
 func TestOpenAllowsLocalPairedSkillWithoutAgent(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: [reviewing-impl]\nagents: []\n",
 		map[string]string{"skills/reviewing-impl.yaml": "local: true\n"})
-	if _, err := Open(root); err != nil {
+	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatalf("local skill sidecar must skip the pairing check, got: %v", err)
 	}
 }
@@ -1475,7 +1487,7 @@ func TestOpenAllowsLocalPairedSkillWithoutAgent(t *testing.T) {
 func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(root)
+	p, _ := Open(testContext(t), root)
 	if err := p.Sync(); err != nil {
 		t.Fatal(err)
 	}

@@ -1,3 +1,5 @@
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+
 ## Finding schema
 
 Every finding must have all six fields:

@@ -12,7 +12,7 @@ import (
 // invariant: rendering/singletons-and-payloads:shebang-rendered-executable
 func TestShebangRenderedExecutable(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ndocs: []\ndomains: []\nvars:\n  gateCmd: make gate\nhooks:\n  enabled: true\nrunner:\n  enabled: true\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

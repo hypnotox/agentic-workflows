@@ -25,8 +25,10 @@ agents: []
 `
 
 func TestRunCheckCleanThenDirty(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := syncedGitProject(t, checkYAML)
-	if err := runCheck(root, false, io.Discard); err != nil {
+	if err := runCheck(ctx, root, false, io.Discard); err != nil {
 		t.Errorf("expected clean check, got %v", err)
 	}
 	// Hand-edit the rendered skill.
@@ -34,7 +36,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	if err := os.WriteFile(skill, []byte("tampered\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCheck(root, false, io.Discard); err == nil {
+	if err := runCheck(ctx, root, false, io.Discard); err == nil {
 		t.Errorf("expected drift error after hand-edit")
 	}
 }
@@ -44,9 +46,11 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 // failure surfaces at the Check() call (the lock is loaded only there), before
 // the working-Tree read, so this fixture needs no git repository.
 func TestRunCheckNoLock(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := runCheck(root, false, io.Discard); err == nil || !strings.Contains(err.Error(), "no lock") {
+	if err := runCheck(ctx, root, false, io.Discard); err == nil || !strings.Contains(err.Error(), "no lock") {
 		t.Fatalf("expected the no-lock error, got %v", err)
 	}
 }
@@ -55,12 +59,14 @@ func TestRunCheckNoLock(t *testing.T) {
 // runCheck, distinct from a coverage finding: a drift-clean but non-git project
 // fails the working-tree read inside CheckCurrentState after Check() succeeds.
 func TestRunCheckCurrentStateError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("runSync: %v", err)
 	}
-	if err := runCheck(root, false, io.Discard); err == nil {
+	if err := runCheck(ctx, root, false, io.Discard); err == nil {
 		t.Fatal("expected a working-tree error from CheckCurrentState outside a git repository")
 	}
 }
@@ -85,10 +91,12 @@ func repinLockVersion(t *testing.T, root, version string) {
 // project whose lock awfVersion is behind the binary prints a non-failing notice;
 // an equal version prints none.
 func TestRunCheckAheadNotice(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := syncedGitProject(t, checkYAML)
 	repinLockVersion(t, root, "0.3.0")
 	var out bytes.Buffer
-	if err := runCheck(root, false, &out); err != nil {
+	if err := runCheck(ctx, root, false, &out); err != nil {
 		t.Fatalf("expected clean check, got %v", err)
 	}
 	if !strings.Contains(out.String(), "awf check: clean") {
@@ -101,7 +109,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 	root2 := syncedGitProject(t, checkYAML)
 	repinLockVersion(t, root2, project.Version) // equal to the binary -> no notice
 	var out2 bytes.Buffer
-	if err := runCheck(root2, false, &out2); err != nil {
+	if err := runCheck(ctx, root2, false, &out2); err != nil {
 		t.Fatalf("expected clean check, got %v", err)
 	}
 	if strings.Contains(out2.String(), "is ahead") {
@@ -110,8 +118,10 @@ func TestRunCheckAheadNotice(t *testing.T) {
 }
 
 // coverageYAML owns internal/** with the fan-out budget the warn fixtures need.
-// The currentState block must stay non-empty: coverage is only evaluated when the
-// config declares one, and a bare "currentState:" key is a hard parse error.
+// The currentState block stays non-empty because those fixtures need the budget,
+// and a bare "currentState:" key is a hard parse error. It is no longer what
+// switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
+// not the config declares the block.
 func coverageYAML() string {
 	return "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
 		"currentState:\n  maxTopicsPerPath: 1\n"
@@ -152,9 +162,11 @@ func fanoutFiles() map[string]string {
 // an error-severity coverage finding, which must fail runCheck.
 // invariant: tooling/cli:invariants-in-check
 func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := syncedGitProjectFiles(t, coverageYAML(), coverageFiles())
 	var out bytes.Buffer
-	err := runCheck(root, false, &out)
+	err := runCheck(ctx, root, false, &out)
 	if err == nil {
 		t.Fatal("expected runCheck to fail on the current-state coverage finding")
 	}
@@ -169,9 +181,11 @@ func TestRunCheckSurfacesCurrentStateFinding(t *testing.T) {
 // TestRunCheckCurrentStateWarnNote covers the note: channel in runCheck: a
 // warn-ranked fan-out finding prints a note without failing the check.
 func TestRunCheckCurrentStateWarnNote(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := syncedGitProjectFiles(t, coverageYAML(), fanoutFiles())
 	var out bytes.Buffer
-	if err := runCheck(root, false, &out); err != nil {
+	if err := runCheck(ctx, root, false, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail runCheck, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
@@ -184,6 +198,8 @@ func TestRunCheckCurrentStateWarnNote(t *testing.T) {
 
 // invariant: tooling/cli:topic-claim-budget-advisory
 func TestRunCheckClaimBudgetNote(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
 	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
 	root := syncedGitProjectFiles(t, cfg, map[string]string{
@@ -193,7 +209,7 @@ func TestRunCheckClaimBudgetNote(t *testing.T) {
 		"docs/decisions/0001-one.md":                   testsupport.ADR("Implemented", testsupport.WithTitle("0001: One")),
 	})
 	var out bytes.Buffer
-	if err := runCheck(root, false, &out); err != nil {
+	if err := runCheck(ctx, root, false, &out); err != nil {
 		t.Fatalf("advisory must not fail check: %v", err)
 	}
 	for _, want := range []string{"note: topic alpha/one has 2 claims", "maxClaimsPerTopic limit 1", ".awf/topics/metadata/alpha/one.yaml", ".awf/topics/parts/alpha/one/current-state.md", "awf check: clean"} {
@@ -208,7 +224,8 @@ func TestRunCheckClaimBudgetNote(t *testing.T) {
 // HEAD-to-index delta. The config lives in commit, so Open resolves it.
 func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) string {
 	t.Helper()
-	repo, dir := gitfixture.InitRepo(t)
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	committed := map[string]string{}
 	for path, body := range commit {
 		committed[path] = body
@@ -221,10 +238,10 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 		}
 		committed[".awf/awf.lock"] = string(b)
 	}
-	gitfixture.Stage(t, repo, dir, committed)
-	gitfixture.Commit(t, repo, dir, "head", nil)
+	gitfixture.Stage(t, repo, committed)
+	gitfixture.Commit(t, repo, "head", nil)
 	if len(stageOnly) > 0 {
-		gitfixture.Stage(t, repo, dir, stageOnly)
+		gitfixture.Stage(t, repo, stageOnly)
 	}
 	return dir
 }
@@ -232,11 +249,13 @@ func stagedCheckProject(t *testing.T, commit, stageOnly map[string]string) strin
 // TestRunCheckStagedSurfacesFinding covers the staged route of runCheck: an
 // error-severity index coverage finding prints the finding line and fails.
 func TestRunCheckStagedSurfacesFinding(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := stagedCheckProject(t,
 		map[string]string{".awf/config.yaml": coverageYAML(), ".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"},
 		map[string]string{"internal/bar.go": "package internalx\n"})
 	var out bytes.Buffer
-	err := runCheck(root, true, &out)
+	err := runCheck(ctx, root, true, &out)
 	if err == nil || !strings.Contains(err.Error(), "current-state issue") {
 		t.Fatalf("expected a staged current-state issue error, got %v", err)
 	}
@@ -248,13 +267,15 @@ func TestRunCheckStagedSurfacesFinding(t *testing.T) {
 // TestRunCheckStagedWarnNote covers the staged note channel and clean status: a
 // warn-ranked index fan-out finding prints a note without failing.
 func TestRunCheckStagedWarnNote(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	staged := fanoutFiles()
 	work := map[string]string{"internal/bar.go": staged["internal/bar.go"]}
 	delete(staged, "internal/bar.go")
 	staged[".awf/config.yaml"] = coverageYAML()
 	root := stagedCheckProject(t, staged, work)
 	var out bytes.Buffer
-	if err := runCheck(root, true, &out); err != nil {
+	if err := runCheck(ctx, root, true, &out); err != nil {
 		t.Fatalf("a warn-ranked finding must not fail the staged check, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "note: ") || !strings.Contains(out.String(), "internal/bar.go") {
@@ -266,6 +287,8 @@ func TestRunCheckStagedWarnNote(t *testing.T) {
 }
 
 func TestRunCheckStagedSuppressesClaimBudgetNote(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	cfg := "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\ncurrentState:\n  maxClaimsPerTopic: 1\n"
 	part := "Intro.\n\n## Claims\n\n### `rule: first`\nFirst.\nOrigin: ADR-0001\n\n### `rule: second`\nSecond.\nOrigin: ADR-0001\n"
 	root := stagedCheckProject(t, map[string]string{
@@ -276,7 +299,7 @@ func TestRunCheckStagedSuppressesClaimBudgetNote(t *testing.T) {
 		"docs/decisions/0001-one.md":                   testsupport.ADR("Implemented", testsupport.WithTitle("0001: One")),
 	}, nil)
 	var out bytes.Buffer
-	if err := runCheck(root, true, &out); err != nil {
+	if err := runCheck(ctx, root, true, &out); err != nil {
 		t.Fatalf("staged oversized topic must stay clean: %v\n%s", err, out.String())
 	}
 	if strings.Contains(out.String(), "maxClaimsPerTopic") || strings.Contains(out.String(), "topic alpha/one has") {
@@ -285,6 +308,8 @@ func TestRunCheckStagedSuppressesClaimBudgetNote(t *testing.T) {
 }
 
 func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	lockText := func(version string, generation int) string {
 		t.Helper()
 		lock := &manifest.Lock{AWFVersion: version, SchemaVersion: generation, Files: map[string]manifest.Entry{}, ADRFormatV1From: 1, LegacyADRGaps: []int{}}
@@ -336,6 +361,8 @@ func TestCheckStagedCommandUsesIndexLockForGateAndAheadNote(t *testing.T) {
 }
 
 func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	lockText := func(attested bool) string {
 		t.Helper()
 		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
@@ -442,6 +469,8 @@ func TestCheckStagedCommandUsesStagedProjectStateWhenWorkingConfigIsAbsent(t *te
 // TestRunCheckStagedError covers the error return of the staged route: the index
 // carries no config, so CheckStaged fails.
 func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	hook, err := os.ReadFile(filepath.Join("..", "..", ".githooks", "pre-commit"))
 	if err != nil {
 		t.Fatal(err)
@@ -458,8 +487,11 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 }
 
 func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Stage(t, repo, dir, map[string]string{"README.md": "staged\n"})
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Stage(t, repo, map[string]string{"README.md": "staged\n"})
 	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
 	if err != nil {
 		t.Fatal(err)
@@ -476,7 +508,10 @@ func TestRepositoryPreCommitRejectsSliceMissingNestedHelper(t *testing.T) {
 }
 
 func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}, ADRFormatV1From: 2, ADRFormatV2From: 2, LegacyADRGaps: []int{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
@@ -500,9 +535,9 @@ func TestRepositoryPreCommitInvokesNestedStagedHelperForInvalidTransition(t *tes
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n",
 		prefix + "docs/decisions/0001-first.md":                 testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First")),
 	}
-	gitfixture.Stage(t, repo, dir, files)
-	gitfixture.Commit(t, repo, dir, "nested head", nil)
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, files)
+	gitfixture.Commit(t, repo, "nested head", nil)
+	gitfixture.Stage(t, repo, map[string]string{
 		prefix + ".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n",
 	})
 
@@ -548,15 +583,16 @@ chmod +x "$out"
 	}
 }
 
-func TestHookCommandHelper(_ *testing.T) {
+func TestHookCommandHelper(t *testing.T) {
+	ctx := testContext(t)
 	if os.Getenv("AWF_HOOK_COMMAND_HELPER") == "" {
 		return
 	}
 	var err error
 	if len(os.Args) < 3 || os.Args[len(os.Args)-2] != "check" || os.Args[len(os.Args)-1] != "--staged" {
 		err = fmt.Errorf("unexpected helper arguments: %v", os.Args)
-	} else if err = gateStaged("."); err == nil {
-		err = runCheck(".", true, os.Stdout)
+	} else if err = gateStaged(ctx, "."); err == nil {
+		err = runCheck(ctx, ".", true, os.Stdout)
 	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "awf:", err)
@@ -568,19 +604,22 @@ func TestHookCommandHelper(_ *testing.T) {
 // TestRunCheckStagedError covers the error return of the staged route: the index
 // carries no config, so CheckStaged fails.
 func TestRunCheckStagedError(t *testing.T) {
-	repo, dir := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, dir, "base", map[string]string{"README.md": "base\n"})
+	ctx := testContext(t)
+	_ = ctx
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, "prefix: example\nskills: [tdd]\nagents: []\n")
 	lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
 	lockBytes, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Stage(t, repo, dir, map[string]string{
+	gitfixture.Stage(t, repo, map[string]string{
 		".awf/awf.lock": string(lockBytes),
 		"internal/x.go": "package x\n",
 	})
-	if err := runCheck(dir, true, io.Discard); err == nil {
+	if err := runCheck(ctx, dir, true, io.Discard); err == nil {
 		t.Fatal("expected the staged check to fail with no staged config")
 	}
 }

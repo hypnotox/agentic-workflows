@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"slices"
@@ -391,12 +392,12 @@ func (p *Project) generateConfigReference(files []RenderedFile, eff map[string]b
 // ConfigReferenceModel computes the reference's four collections
 // (configKeys, varEntries, sidecarFields, dataKeys) with live project state -
 // the `awf config` command's data source, sharing the doc's builder.
-func (p *Project) ConfigReferenceModel() (map[string]any, error) {
+func (p *Project) ConfigReferenceModel(ctx context.Context) (map[string]any, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}
-	op, err := p.outputPlan(corpus, topics, eff)
+	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return nil, err
 	}

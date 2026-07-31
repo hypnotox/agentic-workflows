@@ -8,7 +8,7 @@ import (
 // over the rendered set (INDEX.md/domain docs are irrelevant to these fixtures).
 func deadSkillRefs(t *testing.T, configYAML string, files map[string]string) []string {
 	t.Helper()
-	p, err := Open(scaffoldFiles(t, configYAML, files))
+	p, err := Open(testContext(t), scaffoldFiles(t, configYAML, files))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +98,7 @@ func TestTaskSkillsOnlyConfigHasNoDeadRefs(t *testing.T) {
 // changes membership; the invalid state is refused at Open instead.
 // invariant: rendering/project-output-plan:skills-context-effective-set
 func TestEffectiveSkillsMembership(t *testing.T) {
-	p, err := Open(scaffoldFiles(t,
+	p, err := Open(testContext(t), scaffoldFiles(t,
 		"prefix: example\nvars: {}\nskills: [tdd, roadmap-graduation, brainstorming]\ndocs: [roadmap]\nagents: []\n",
 		map[string]string{
 			"skills/brainstorming.yaml": "local: true\n",

@@ -18,8 +18,10 @@ import (
 // succeeds - pre-adoption discovery never refuses.
 // invariant: tooling/cli:config-command-static-fallback
 func TestRunConfigStaticFallback(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
-	if err := runConfig(t.TempDir(), "", &out); err != nil {
+	if err := runConfig(ctx, t.TempDir(), "", &out); err != nil {
 		t.Fatalf("static mode errored: %v", err)
 	}
 	got := out.String()
@@ -46,14 +48,16 @@ func TestRunConfigStaticFallback(t *testing.T) {
 }
 
 func TestRunConfigLiveAndSingleKey(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 
 	var out bytes.Buffer
-	if err := runConfig(root, "", &out); err != nil {
+	if err := runConfig(ctx, root, "", &out); err != nil {
 		t.Fatalf("live mode errored: %v", err)
 	}
 	got := out.String()
@@ -76,7 +80,7 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 		"testSurfaces":                   "skill tdd · data.testSurfaces",
 	} {
 		out.Reset()
-		if err := runConfig(root, key, &out); err != nil {
+		if err := runConfig(ctx, root, key, &out); err != nil {
 			t.Fatalf("single-key %q errored: %v", key, err)
 		}
 		if !strings.Contains(out.String(), want) {
@@ -84,14 +88,14 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 		}
 	}
 
-	if err := runConfig(root, "nonsense", io.Discard); err == nil ||
+	if err := runConfig(ctx, root, "nonsense", io.Discard); err == nil ||
 		!strings.Contains(err.Error(), `unknown key or var "nonsense"`) {
 		t.Errorf("unknown key: got %v", err)
 	}
 
 	// Static single-key works too (no live fields printed).
 	out.Reset()
-	if err := runConfig(t.TempDir(), "gateCmd", &out); err != nil {
+	if err := runConfig(ctx, t.TempDir(), "gateCmd", &out); err != nil {
 		t.Fatal(err)
 	}
 	if strings.Contains(out.String(), "state:") {
@@ -102,6 +106,8 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 // The dispatch path: `awf config [<key>]` routes through run() with the
 // optional positional, exit 0 static and exit 1 on an unknown key.
 func TestRunConfigDispatch(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "config"}, &out, &errb); code != 0 {
@@ -122,20 +128,24 @@ func TestRunConfigDispatch(t *testing.T) {
 // A stat fault that is not absence (a file where .awf should be) is an error,
 // never silently treated as pre-adoption.
 func TestRunConfigStatFault(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("not a dir"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runConfig(root, "", io.Discard); err == nil {
+	if err := runConfig(ctx, root, "", io.Discard); err == nil {
 		t.Error("a non-absence stat fault must surface, not print the static reference")
 	}
 }
 
 // An invalid config fails project open like every gated command.
 func TestRunConfigOpenError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: \"\"\n")
-	if err := runConfig(root, "", io.Discard); err == nil ||
+	if err := runConfig(ctx, root, "", io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "prefix") {
 		t.Errorf("expected the open-time validation error, got %v", err)
 	}
@@ -144,16 +154,18 @@ func TestRunConfigOpenError(t *testing.T) {
 // A render fault after a successful open (an unreadable convention part)
 // surfaces as the command's error rather than a panic or silence.
 func TestRunConfigRenderFault(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
-	if err := initializeProject(root, io.Discard); err != nil {
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	// A directory where a part file may sit makes the part read fail non-ErrNotExist.
 	if err := os.MkdirAll(filepath.Join(root, ".awf/skills/parts/tdd/surfaces.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runConfig(root, "", io.Discard); err == nil {
+	if err := runConfig(ctx, root, "", io.Discard); err == nil {
 		t.Error("expected a render fault to surface")
 	}
 }
@@ -161,13 +173,15 @@ func TestRunConfigRenderFault(t *testing.T) {
 // Inside an adopted tree the command is gated: a binary behind the project's
 // schema refuses like every gated command.
 func TestRunConfigGatedInsideProject(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, checkYAML)
 	l := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current() + 1, Files: map[string]manifest.Entry{}}
 	if err := l.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
-	if err := runConfig(root, "", io.Discard); err == nil ||
+	if err := runConfig(ctx, root, "", io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "update your pinned awf") {
 		t.Errorf("expected the schema-ahead gate refusal, got %v", err)
 	}

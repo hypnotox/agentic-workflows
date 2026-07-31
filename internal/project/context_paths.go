@@ -417,14 +417,18 @@ func contextGroupKey(impact ContextPathImpact, facets []ContextFacet) string {
 			add(op.Claim)
 			add(op.Progress)
 			add(op.ClaimState)
-			add(strconv.Itoa(op.StateSequence))
 		}
 	}
 	return b.String()
 }
 
+// outsideContextPath reads an already-slash-normalized path, so it asks both
+// spaces whether the input is absolute. path.IsAbs alone misses a drive-rooted
+// Windows input like "C:/x"; filepath.IsAbs alone answers false on Windows for
+// a slash-rooted input like "/etc/passwd", which then fell through to
+// PathNotFound instead of PathOutsideRepository. On Unix the two agree.
 func outsideContextPath(p string) bool {
-	return filepath.IsAbs(p) || p == ".." || strings.HasPrefix(p, "../")
+	return path.IsAbs(p) || filepath.IsAbs(p) || p == ".." || strings.HasPrefix(p, "../")
 }
 func globLiteralQuery(p string) bool { return strings.ContainsAny(p, "*?[") }
 

@@ -25,8 +25,9 @@ Verify: A fixture with an Accepted update conflicting with its current claim kee
 
 ### `invariant: merge-transition-ordered-aggregate`
 
-A merge transition is validated as an ordered aggregate rather than one authoring step: several application batches are legal when the global state-sequence stays contiguous, a claim's operations across the pair must form a legal ordered chain of at most one leading add, any number of updates, and at most one trailing remove, and an appended Status history must preserve the prior history as an exact prefix. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation per claim, and the fixed status-event shape.
+A merge transition is validated as an ordered aggregate rather than one authoring step: several application batches are legal in ascending ADR-number and intra-ADR history order, a claim's operations across the pair must form a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates, and an appended Status history must preserve the prior history as an exact prefix. A non-merge transition keeps the stricter per-step contract of one new batch per ADR, one operation per claim, and the fixed status-event shape.
 Origin: ADR-0182
+Revised-by: ADR-0191
 Backing: test
 
 ### `invariant: current-state-sole-active-authority`
@@ -51,9 +52,9 @@ Verify: Over the same fixture, normal context omits Implemented provenance while
 
 ### `invariant: implemented-impact-bidirectional`
 
-Every applied governed state operation has its required current or removed result, and every active claim Origin or revision has the inverse applied ADR operation; Remaining and Canceled operations provide no authority.
+Every applied governed state operation has its required current, removed, or dominated-history result, and every active claim Origin or revision has the inverse applied ADR operation; Remaining, Canceled, and dominated operations provide no authority.
 Origin: ADR-0135
-Revised-by: ADR-0143
+Revised-by: ADR-0143, ADR-0191
 Backing: test
 
 ### `invariant: invariants-zero-slugs-clean`
@@ -71,15 +72,21 @@ Backing: test
 
 ### `invariant: state-impact-transition-atomic`
 
-Every newly appended application batch and exactly its matching claim mutations occur in one HEAD-to-index transaction; staged validation refuses an operation record or mutation split across snapshot pairs.
+Every newly appended application batch and exactly its matching claim mutations occur in one HEAD-to-index transaction, where a dominated operation's required mutation set is empty; staged validation refuses an operation record or mutation split across snapshot pairs.
 Origin: ADR-0135
-Revised-by: ADR-0143
+Revised-by: ADR-0143, ADR-0191
 Backing: test
 
-### `invariant: application-batch-sequence-order`
+### `invariant: provenance-ordered-by-adr-number`
 
-V1 implicit batches and V2 implicit or explicit batches share one unique contiguous global state-sequence namespace, and every applied claim operation inherits its batch sequence for provenance and history ordering.
-Origin: ADR-0143
+A claim's provenance order is ascending final ADR number: the canonical chain is its Origin ADR followed by its Revised-by ADRs sorted ascending and duplicate-free, every Revised-by entry is greater than the Origin's number, claim history output sorts revision records the same way, and no status-history event carries a state sequence.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: applied-remove-absorbing-tombstone`
+
+An applied remove is an absorbing tombstone: the qualified id is currently absent from the moment the remove applies, a concurrently developed update that integrates after the remove is retained as dominated history with no current effect and an empty required mutation set, and update-then-remove and remove-then-dominated-update integration orders converge to the same attributed absence.
+Origin: ADR-0191
 Backing: test
 
 ### `invariant: uncovered-lists-unowned-unignored`
@@ -90,8 +97,8 @@ Backing: test
 
 ### `invariant: update-requires-substance`
 
-An update preserves Origin and prior revision history, appends its ADR once, and changes a canonical claim field other than formatting or provenance alone. Across a merge, where the intermediate claim states exist only in the branch's own commits and never in either compared universe, the substantive-change requirement is evaluated on the net effect of the claim's operation chain; per-step substance is enforced where it is verifiable, at the authored commits themselves.
+An update preserves Origin and prior revision history, adds its ADR once at its canonical ascending position, and changes a canonical claim field other than formatting or provenance alone. Across a merge, where the intermediate claim states exist only in the branch's own commits and never in either compared universe, the substantive-change requirement is evaluated on the net effect of the claim's operation chain; per-step substance is enforced where it is verifiable, at the authored commits themselves.
 Origin: ADR-0135
-Revised-by: ADR-0182
+Revised-by: ADR-0182, ADR-0191
 Backing: unbacked
 Verify: Staged fixtures with Origin edits, revision deletion or reordering, whitespace-only, provenance-only, and substantive prose, reference, or backing changes satisfy an update only in the prefix-preserving substantive cases.

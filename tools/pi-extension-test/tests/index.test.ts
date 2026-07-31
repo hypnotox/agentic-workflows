@@ -484,11 +484,15 @@ test("grounding and review reload preferences directly before runner startup", a
     const originalRead = h.deps.readFile;
     let globalReads = 0;
     h.deps.readFile = async (path, encoding) => {
-      if (path === GLOBAL && ++globalReads === 2) files[GLOBAL] = JSON.stringify({ ...values, [role]: `new/${role}` });
+      if (path === GLOBAL && ++globalReads === 1) files[GLOBAL] = JSON.stringify({ ...values, [role]: `new/${role}` });
       return originalRead(path, encoding);
     };
     await call(h, name, params);
     assert.equal(`${h.requests[0].model.provider}/${h.requests[0].model.id}`, `new/${role}`, name);
+    // Neither role queues, so the dispatch resolves once and reads the
+    // preference file once. These paths previously resolved twice and threw the
+    // first result away, which cost a redundant read and validation per call.
+    assert.equal(globalReads, 1, `${name} reloaded preferences more than once`);
   }
 });
 

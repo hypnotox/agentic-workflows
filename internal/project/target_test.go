@@ -33,7 +33,7 @@ func TestCodexTargetRendersTOMLAgents(t *testing.T) {
 		t.Fatalf("Codex AgentPath = %q", got)
 	}
 	root := scaffold(t, sampleYAML+"targets:\n  - codex\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 		"skills/local.yaml":             "data:\n  description: Local Pi workflow guidance.\n",
 		"skills/parts/local/content.md": "Use this local skill when it fits.\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: [local]\nagents: []\ntargets: [pi]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 	if err := os.WriteFile(configPath(root), []byte("prefix: example\nskills: [local]\nagents: []\ntargets: [claude]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(root)
+	p, err = Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestNativePiSkillsAreDiscoverableAndPruned(t *testing.T) {
 // invariant: rendering/pi-runtime:pi-extension-target-render
 func TestPiRuntimeTargetRender(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -280,7 +280,7 @@ func TestHandoffWorkflowUsesOwnedCheckpoint(t *testing.T) {
 
 func TestTargetOutputRenderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -369,7 +369,7 @@ func explorationFixtureConfig(target string) string {
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	t.Helper()
-	p, err := Open(scaffold(t, config))
+	p, err := Open(testContext(t), scaffold(t, config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,10 +409,10 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				t.Fatalf("missing rendered exploring skill for %s", target)
 			}
 			shared := []string{
-				"targeted < bounded < broad", "targeted` locates one declaration", "bounded` investigates within a named symbol", "broad` searches across the project search universe",
-				"paths < summary < analysis", "file:line", "file:start-end", "minimal labels needed to distinguish", "concise explanations", "evidence-grounded synthesis",
+				"targeted < bounded < broad", "targeted locates one declaration", "bounded investigates within a named symbol", "broad searches across the project search universe",
+				"paths < summary < analysis", "file:line", "file:start-end", "minimal labels and no search narrative", "concise explanations", "evidence-grounded synthesis",
 				"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires", "never widen beyond the selected maximum", "boundary is exhausted, report that explicitly",
-				"tracked files plus non-ignored untracked working-tree files", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
+				"tracked files plus non-ignored untracked working-tree files", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings",
 				"not-found", "inconclusive", "unverified", "Not found within <breadth> boundary:", "successful execution", "one concise next refinement", "project search universe and searched surfaces", "Ground every material claim with file/line evidence",
 				"new fresh-context call", "correct the task", "change report detail", "widen breadth", "one information need", "relevant final findings",
 			}
@@ -422,7 +422,7 @@ func TestCrossRuntimeExplorationDispatch(t *testing.T) {
 				}
 			}
 			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "Omit the `model` field entirely to use configured role routing", "tier's exact `provider/model-id`"} {
+				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "omit the `model` field to use configured role routing", "tier's exact `provider/model-id`"} {
 					if !strings.Contains(exploring, want) {
 						t.Errorf("Pi exploring skill missing %q", want)
 					}
@@ -480,10 +480,10 @@ func TestBoundedExplorationReporting(t *testing.T) {
 	}{
 		"rendered exploring guidance": {guidance, []string{
 			"Independent information needs may be sibling-dispatched", "at most ten exploration children", "queues the rest FIFO", "Refinement stays sequential",
-			"targeted < bounded < broad", "`targeted` locates one declaration, implementation, file, or exact fact", "`bounded` investigates within a named symbol, package, component, or subsystem", "`broad` searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
+			"targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
 			"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires it", "never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
-			"tracked files plus non-ignored untracked working-tree files under the repository root", "tracked generated and vendor files", "ignored files", ".git", "nested repositories", "external dependencies unless explicitly scoped",
-			"paths < summary < analysis", "`paths` returns only relevant `file:line` or `file:start-end` locations with minimal labels needed to distinguish them", "`summary` returns grounded locations plus concise explanations of what each contains and why it matters", "`analysis` directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
+			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
+			"paths < summary < analysis", "paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative", "summary returns grounded locations plus concise explanations of what each contains and why it matters", "analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
 			"Ground every material claim with file/line evidence", "Not found within <breadth> boundary: <what was searched>", "successful execution", "one concise next refinement", "broad absence report must name the project search universe and searched surfaces", "Distinguish inconclusive and unverified outcomes from absence",
 			"new fresh-context call to correct the task, change report detail, or widen breadth",
 		}},
@@ -551,7 +551,7 @@ func TestBoundedExplorationReporting(t *testing.T) {
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
 	root := scaffold(t, "prefix: example\nskills: []\nagents: []\ntargets: [pi]\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -573,7 +573,7 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 
 func TestAllTargetPathsAndBridges(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ntargets:\n  - claude\n  - codex\n  - copilot\n  - cursor\n  - gemini\n  - pi\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -602,7 +602,7 @@ func TestAllTargetPathsAndBridges(t *testing.T) {
 
 func TestClaudeMdBridgeRendered(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 // bridge.
 func TestMultiTargetRender(t *testing.T) {
 	root := scaffold(t, sampleYAML+"targets:\n  - claude\n  - cursor\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -680,7 +680,7 @@ func TestMultiTargetRender(t *testing.T) {
 // invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract
 func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 	root := scaffold(t, "prefix: example\nskills:\n  - subagent-driven-development\nagents: [implementer]\ndocs: []\ntargets:\n  - claude\n  - pi\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -744,7 +744,7 @@ func TestMaintainableCodeMultiTargetParity(t *testing.T) {
 // invariant: config/configuration:targets-default-claude
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ntargets:\n  - nope\n")
-	if _, err := Open(root); err == nil {
+	if _, err := Open(testContext(t), root); err == nil {
 		t.Fatal("expected Open to reject an unknown target name")
 	}
 }
@@ -752,11 +752,11 @@ func TestResolveTargetsRejectsUnknown(t *testing.T) {
 func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n", nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := p.PlannedOutputs()
+	planned, err := p.PlannedOutputs(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -773,13 +773,13 @@ func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 
 func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	// Corrupt a sidecar so the RenderAll inside PlannedOutputs fails.
 	corruptSidecar(t, root, "skills/tdd.yaml")
-	if _, err := p.PlannedOutputs(); err == nil {
+	if _, err := p.PlannedOutputs(testContext(t)); err == nil {
 		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
 	}
 }

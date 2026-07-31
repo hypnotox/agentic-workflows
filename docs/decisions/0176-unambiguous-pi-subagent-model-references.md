@@ -128,4 +128,4 @@ changes shape. Preference files that already validate continue to validate.
 ## Status history
 
 - 2026-07-29: Proposed
-- 2026-07-29: Implemented; content-sha256: 2fecbb88d43629c82cdc38a1d709a2f39941c3afb0401cf6a0e4af5d8ed0a636; state-sequence: 85
+- 2026-07-29: Implemented; content-sha256: 2fecbb88d43629c82cdc38a1d709a2f39941c3afb0401cf6a0e4af5d8ed0a636

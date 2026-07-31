@@ -17,9 +17,11 @@ import (
 )
 
 func TestRunNewScaffoldsADR(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runNew(root, "adr", []string{"My", "New", "Title"}, &out); err != nil {
+	if err := runNew(ctx, root, "adr", []string{"My", "New", "Title"}, &out); err != nil {
 		t.Fatalf("runNew: %v", err)
 	}
 	want := filepath.Join(root, "docs", "decisions", "0001-my-new-title.md")
@@ -36,36 +38,43 @@ func TestRunNewScaffoldsADR(t *testing.T) {
 }
 
 func TestRunNewADRError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "adr", []string{"!!!"}, os.Stdout); err == nil {
+	if err := runNew(ctx, root, "adr", []string{"!!!"}, os.Stdout); err == nil {
 		t.Fatal("expected NewADR error for an all-punctuation title")
 	}
 }
 
 func TestRunNewUnknownKind(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "widget", []string{"x"}, os.Stdout); err == nil || !strings.Contains(err.Error(), "topic") {
+	if err := runNew(ctx, root, "widget", []string{"x"}, os.Stdout); err == nil || !strings.Contains(err.Error(), "topic") {
 		t.Fatalf("expected error naming every kind, got %v", err)
 	}
 }
 
 func topicCLIProject(t *testing.T) string {
 	t.Helper()
+	ctx := testContext(t)
 	root := scaffoldProject(t)
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/rendering.yaml"), "paths: [\"internal/**\"]\n")
-	if err := runSync(root, io.Discard); err != nil {
+	if err := runSync(ctx, root, io.Discard); err != nil {
 		t.Fatalf("sync topic fixture: %v", err)
 	}
 	return root
 }
 
 func TestRunNewScaffoldsTopicWithoutSyncMutation(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	beforeConfig := mustReadCLIFile(t, filepath.Join(root, ".awf/config.yaml"))
 	beforeLock := mustReadCLIFile(t, filepath.Join(root, ".awf/awf.lock"))
 	var out bytes.Buffer
-	if err := runNew(root, "topic", []string{"rendering", "Scheduling", "Contracts"}, &out); err != nil {
+	if err := runNew(ctx, root, "topic", []string{"rendering", "Scheduling", "Contracts"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	wantOut := ".awf/topics/metadata/rendering/scheduling-contracts.yaml\n.awf/topics/parts/rendering/scheduling-contracts/current-state.md\n"
@@ -92,14 +101,16 @@ func TestRunNewScaffoldsTopicWithoutSyncMutation(t *testing.T) {
 }
 
 func TestRunNewTopicUsageAndValidation(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	for _, args := range [][]string{nil, {"rendering"}} {
-		if err := runNew(root, "topic", args, io.Discard); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
+		if err := runNew(ctx, root, "topic", args, io.Discard); err == nil || !strings.Contains(err.Error(), "usage: awf new topic") {
 			t.Fatalf("args %v: %v", args, err)
 		}
 	}
 	for _, tc := range []struct{ domain, want string }{{"Rendering", "lowercase kebab-case"}, {"tooling", "not configured"}} {
-		if err := runNew(root, "topic", []string{tc.domain, "Title"}, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
+		if err := runNew(ctx, root, "topic", []string{tc.domain, "Title"}, io.Discard); err == nil || !strings.Contains(err.Error(), tc.want) {
 			t.Fatalf("domain %q: %v", tc.domain, err)
 		}
 	}
@@ -129,6 +140,8 @@ func (w errorWriteCloser) Write(data []byte) (int, error) { return w.write(data)
 func (w errorWriteCloser) Close() error                   { return w.close() }
 
 func TestWriteAndCloseTopicFileErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	closeErr := errors.New("close failed")
 	writer := errorWriteCloser{
 		write: func(data []byte) (int, error) { return len(data), nil },
@@ -148,6 +161,8 @@ func TestWriteAndCloseTopicFileErrors(t *testing.T) {
 }
 
 func TestCreateTopicParentsErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	t.Run("file ancestor", func(t *testing.T) {
 		file := filepath.Join(t.TempDir(), "file")
 		if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
@@ -167,6 +182,8 @@ func TestCreateTopicParentsErrors(t *testing.T) {
 }
 
 func TestRollbackTopicScaffoldDirectoryInspection(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	t.Run("missing directory is already clean", func(t *testing.T) {
 		primary := errors.New("primary")
 		err := rollbackTopicScaffold(primary, nil, []string{filepath.Join(t.TempDir(), "missing")})
@@ -186,6 +203,8 @@ func TestRollbackTopicScaffoldDirectoryInspection(t *testing.T) {
 }
 
 func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	before := topicTreeShape(t, root)
 	mkdirErr := errors.New("second parent failed")
@@ -195,7 +214,7 @@ func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
 		}
 		return os.MkdirAll(path, mode)
 	})
-	err := runNew(root, "topic", []string{"rendering", "Mkdir Rollback"}, io.Discard)
+	err := runNew(ctx, root, "topic", []string{"rendering", "Mkdir Rollback"}, io.Discard)
 	if !errors.Is(err, mkdirErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/mkdir-rollback/current-state.md") {
 		t.Fatalf("error = %v", err)
 	}
@@ -205,6 +224,8 @@ func TestRunNewTopicRollsBackSecondMkdirFailure(t *testing.T) {
 }
 
 func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	writeErr := errors.New("partial second write failed")
 	opens := 0
@@ -221,7 +242,7 @@ func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
 		removed = append(removed, filepath.ToSlash(path))
 		return os.Remove(path)
 	})
-	err := runNew(root, "topic", []string{"rendering", "Partial"}, io.Discard)
+	err := runNew(ctx, root, "topic", []string{"rendering", "Partial"}, io.Discard)
 	if !errors.Is(err, writeErr) || !strings.Contains(err.Error(), "/topics/parts/rendering/partial/current-state.md") {
 		t.Fatalf("error = %v", err)
 	}
@@ -251,6 +272,8 @@ func TestRunNewTopicRollsBackPartialSecondWriteInReverseOrder(t *testing.T) {
 }
 
 func TestRunNewTopicPreservesPreExistingParentOnRollback(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	preExisting := filepath.Join(root, ".awf/topics/parts/rendering/preserved")
 	if err := os.MkdirAll(preExisting, 0o755); err != nil {
@@ -267,7 +290,7 @@ func TestRunNewTopicPreservesPreExistingParentOnRollback(t *testing.T) {
 		}
 		return &partialFailWriteCloser{file: file, err: writeErr}, nil
 	})
-	if err := runNew(root, "topic", []string{"rendering", "Preserved"}, io.Discard); !errors.Is(err, writeErr) {
+	if err := runNew(ctx, root, "topic", []string{"rendering", "Preserved"}, io.Discard); !errors.Is(err, writeErr) {
 		t.Fatalf("error = %v", err)
 	}
 	if after := topicTreeShape(t, root); !slices.Equal(after, before) {
@@ -276,6 +299,8 @@ func TestRunNewTopicPreservesPreExistingParentOnRollback(t *testing.T) {
 }
 
 func TestRunNewTopicJoinsCleanupFailure(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	writeErr := errors.New("second write failed")
 	cleanupErr := errors.New("cleanup failed")
@@ -296,13 +321,15 @@ func TestRunNewTopicJoinsCleanupFailure(t *testing.T) {
 		}
 		return os.Remove(path)
 	})
-	err := runNew(root, "topic", []string{"rendering", "Cleanup"}, io.Discard)
+	err := runNew(ctx, root, "topic", []string{"rendering", "Cleanup"}, io.Discard)
 	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold path") {
 		t.Fatalf("joined error = %v", err)
 	}
 }
 
 func TestRunNewTopicJoinsDirectoryCleanupFailure(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	writeErr := errors.New("second write failed")
 	cleanupErr := errors.New("directory cleanup failed")
@@ -322,7 +349,7 @@ func TestRunNewTopicJoinsDirectoryCleanupFailure(t *testing.T) {
 		}
 		return os.Remove(path)
 	})
-	err := runNew(root, "topic", []string{"rendering", "Directory Cleanup"}, io.Discard)
+	err := runNew(ctx, root, "topic", []string{"rendering", "Directory Cleanup"}, io.Discard)
 	if !errors.Is(err, writeErr) || !errors.Is(err, cleanupErr) || !strings.Contains(err.Error(), "remove created topic scaffold directory") {
 		t.Fatalf("joined error = %v", err)
 	}
@@ -355,6 +382,8 @@ func topicTreeShape(t *testing.T, root string) []string {
 }
 
 func TestRunNewTopicLateCollisionPreservesExistingBytes(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	const existing = "existing authored bytes\n"
 	opens := 0
@@ -367,7 +396,7 @@ func TestRunNewTopicLateCollisionPreservesExistingBytes(t *testing.T) {
 		}
 		return os.OpenFile(path, flag, mode)
 	})
-	err := runNew(root, "topic", []string{"rendering", "Late Collision"}, io.Discard)
+	err := runNew(ctx, root, "topic", []string{"rendering", "Late Collision"}, io.Discard)
 	part := filepath.Join(root, ".awf/topics/parts/rendering/late-collision/current-state.md")
 	if !errors.Is(err, os.ErrExist) || !strings.Contains(err.Error(), filepath.ToSlash(part)) {
 		t.Fatalf("collision error = %v", err)
@@ -382,7 +411,9 @@ func TestRunNewTopicLateCollisionPreservesExistingBytes(t *testing.T) {
 }
 
 func TestRunNewTopicFirstWriteAndOpenErrors(t *testing.T) {
-	if err := runNew(t.TempDir(), "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "awf init") {
+	ctx := testContext(t)
+	_ = ctx
+	if err := runNew(ctx, t.TempDir(), "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "awf init") {
 		t.Fatalf("unadopted project error = %v", err)
 	}
 
@@ -390,13 +421,13 @@ func TestRunNewTopicFirstWriteAndOpenErrors(t *testing.T) {
 	testsupport.SwapVar(t, &topicOpenFile, func(string, int, os.FileMode) (topicWriteCloser, error) {
 		return nil, errors.New("open failed")
 	})
-	if err := runNew(root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "open failed") {
+	if err := runNew(ctx, root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil || !strings.Contains(err.Error(), "open failed") {
 		t.Fatalf("open error = %v", err)
 	}
 
 	root = topicCLIProject(t)
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"domains: [rendering]\ndocs: [ghost-doc]\n")
-	if err := runNew(root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "topic", []string{"rendering", "Failure"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
 	}
 }
@@ -411,9 +442,11 @@ func mustReadCLIFile(t *testing.T, path string) string {
 }
 
 func TestRunNewScaffoldsPlan(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out bytes.Buffer
-	if err := runNew(root, "plan", []string{"Some", "Plan", "Title"}, &out); err != nil {
+	if err := runNew(ctx, root, "plan", []string{"Some", "Plan", "Title"}, &out); err != nil {
 		t.Fatalf("runNew: %v", err)
 	}
 	got := strings.TrimSpace(out.String())
@@ -435,35 +468,43 @@ func TestRunNewScaffoldsPlan(t *testing.T) {
 }
 
 func TestRunNewPlanMissingTitle(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "plan", nil, os.Stdout); err == nil {
+	if err := runNew(ctx, root, "plan", nil, os.Stdout); err == nil {
 		t.Fatal("expected usage error for a missing plan title")
 	}
 }
 
 func TestRunNewPlanRefusesExisting(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "plan", []string{"Same", "Plan"}, io.Discard); err != nil {
+	if err := runNew(ctx, root, "plan", []string{"Same", "Plan"}, io.Discard); err != nil {
 		t.Fatalf("first runNew: %v", err)
 	}
-	if err := runNew(root, "plan", []string{"Same", "Plan"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "plan", []string{"Same", "Plan"}, io.Discard); err == nil {
 		t.Fatal("expected overwrite refusal for a same-day same-title plan")
 	}
 }
 
 func TestRunNewPlanOpenError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	// Passes the schema/version gate but fails project.Open (a ghost enabled doc),
 	// covering newPlan's Open-error return.
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
-	if err := runNew(root, "plan", []string{"Some", "Plan"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "plan", []string{"Some", "Plan"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
 	}
 }
 
 func TestRunNewScaffoldsDoc(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"guides/ci", "How", "CI", "runs"}, io.Discard); err != nil {
+	if err := runNew(ctx, root, "doc", []string{"guides/ci", "How", "CI", "runs"}, io.Discard); err != nil {
 		t.Fatalf("new doc: %v", err)
 	}
 	sc := filepath.Join(root, ".awf", "docs", "guides", "ci.yaml")
@@ -485,29 +526,37 @@ func TestRunNewScaffoldsDoc(t *testing.T) {
 }
 
 func TestRunNewDocMissingDescription(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"ci"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"ci"}, io.Discard); err == nil {
 		t.Fatal("expected usage error for missing description")
 	}
 }
 
 func TestRunNewDocEmptyDescription(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"ci", "   "}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"ci", "   "}, io.Discard); err == nil {
 		t.Fatal("expected error for empty description")
 	}
 }
 
 func TestRunNewDocInvalidName(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"Bad", "desc"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"Bad", "desc"}, io.Discard); err == nil {
 		t.Fatal("expected error for invalid doc name")
 	}
 }
 
 func TestRunNewDocRefusesExisting(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"ci", "desc"}, io.Discard); err != nil {
+	if err := runNew(ctx, root, "doc", []string{"ci", "desc"}, io.Discard); err != nil {
 		t.Fatalf("first new doc: %v", err)
 	}
 	// Disable ci in config but leave its sidecar+part on disk, so the second run's
@@ -525,19 +574,23 @@ func TestRunNewDocRefusesExisting(t *testing.T) {
 	if err := os.WriteFile(cfgPath, updated, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runNew(root, "doc", []string{"ci", "desc"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"ci", "desc"}, io.Discard); err == nil {
 		t.Fatal("expected refusal for existing doc files")
 	}
 }
 
 func TestRunNewDocCollidesWithCatalog(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "doc", []string{"architecture", "desc"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"architecture", "desc"}, io.Discard); err == nil {
 		t.Fatal("expected collision error for a catalog doc name")
 	}
 }
 
 func TestRunNewDispatch(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -547,6 +600,8 @@ func TestRunNewDispatch(t *testing.T) {
 }
 
 func TestRunNewMissingArgs(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -556,6 +611,8 @@ func TestRunNewMissingArgs(t *testing.T) {
 }
 
 func TestRunNewTopicDispatchAndHelp(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -572,6 +629,8 @@ func TestRunNewTopicDispatchAndHelp(t *testing.T) {
 }
 
 func TestRunNewTopicMissingArgsDispatch(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCLIProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -584,6 +643,8 @@ func TestRunNewTopicMissingArgsDispatch(t *testing.T) {
 // in the positionals; the new handler reunites it as the kind and runNew reports
 // the unknown-kind usage error (exit 2).
 func TestRunNewUnknownKindDispatch(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
@@ -596,8 +657,10 @@ func TestRunNewUnknownKindDispatch(t *testing.T) {
 }
 
 func TestRunNewScaffoldsSkill(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
+	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
 		t.Fatalf("runNew skill: %v", err)
 	}
 	sc, err := os.ReadFile(filepath.Join(root, ".awf", "skills", "deploy-check.yaml"))
@@ -625,7 +688,7 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 	if !strings.Contains(string(rendered), "<!-- awf:stub -->") {
 		t.Errorf("stub-marked part must render verbatim, marker included:\n%s", rendered)
 	}
-	if err := runCheck(root, false, io.Discard); err != nil {
+	if err := runCheck(ctx, root, false, io.Discard); err != nil {
 		t.Errorf("post-scaffold check not clean: %v", err)
 	}
 }
@@ -635,8 +698,10 @@ func TestRunNewScaffoldsSkill(t *testing.T) {
 // the catalog-pool guard; a disabled one left its sidecar and authored part on
 // disk, and a re-run must not silently reset them to the stub).
 func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
+	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Verify the deploy is green."}, io.Discard); err != nil {
 		t.Fatalf("runNew skill: %v", err)
 	}
 	partPath := filepath.Join(root, ".awf", "skills", "parts", "deploy-check", "content.md")
@@ -653,7 +718,7 @@ func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
 	if err := os.WriteFile(cfgPath, []byte(strings.ReplaceAll(string(cfg), "  - deploy-check\n", "")), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runNew(root, "skill", []string{"deploy-check", "Other description."}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"deploy-check", "Other description."}, io.Discard); err == nil {
 		t.Fatal("expected error re-running awf new over existing local artifact files")
 	}
 	part, err := os.ReadFile(partPath)
@@ -673,8 +738,10 @@ func TestRunNewRefusesExistingLocalArtifactFiles(t *testing.T) {
 }
 
 func TestRunNewScaffoldsAgent(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "agent", []string{"deploy-bot", "Runs the deploy checks."}, io.Discard); err != nil {
+	if err := runNew(ctx, root, "agent", []string{"deploy-bot", "Runs the deploy checks."}, io.Discard); err != nil {
 		t.Fatalf("runNew agent: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "agents", "deploy-bot.yaml")); err != nil {
@@ -686,49 +753,61 @@ func TestRunNewScaffoldsAgent(t *testing.T) {
 }
 
 func TestRunNewSkillMissingDescription(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "skill", []string{"lonely"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"lonely"}, io.Discard); err == nil {
 		t.Fatal("expected usage error when description is missing")
 	}
 }
 
 func TestRunNewSkillEmptyDescription(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "skill", []string{"x", "   "}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"x", "   "}, io.Discard); err == nil {
 		t.Fatal("expected error for a whitespace-only description")
 	}
 }
 
 func TestRunNewSkillReservedName(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "skill", []string{"_base", "desc"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"_base", "desc"}, io.Discard); err == nil {
 		t.Fatal("expected reserved-name rejection")
 	}
 }
 
 func TestRunNewSkillCollision(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
-	if err := runNew(root, "skill", []string{"tdd", "desc"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"tdd", "desc"}, io.Discard); err == nil {
 		t.Fatal("expected collision with the catalog skill tdd")
 	}
 }
 
 func TestRunNewSkillOpenError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	// Passes the schema/version gate (lock intact) but fails project.Open - an
 	// enabled doc that is not in the catalog.
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
-	if err := runNew(root, "skill", []string{"newone", "a description"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "skill", []string{"newone", "a description"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
 	}
 }
 
 func TestRunNewDocOpenError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	// Passes the schema/version gate but fails project.Open (a ghost enabled doc),
 	// covering newLocalDoc's Open-error return.
 	testsupport.WriteAwfConfig(t, root, minimalYAML+"docs: [ghost-doc]\n")
-	if err := runNew(root, "doc", []string{"newdoc", "a description"}, io.Discard); err == nil {
+	if err := runNew(ctx, root, "doc", []string{"newdoc", "a description"}, io.Discard); err == nil {
 		t.Fatal("expected project.Open error")
 	}
 }
@@ -737,6 +816,8 @@ func TestRunNewDocOpenError(t *testing.T) {
 // untouched, and a malformed source surfaces the editor's error.
 // invariant: tooling/init-and-enablement:new-seeds-scaffold-vars
 func TestSeedScaffoldVars(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	src := []byte("prefix: x\nvars:\n  kept: value\n")
 	got, err := seedScaffoldVars(src, []string{"kept", "added"})
 	if err != nil {
@@ -756,6 +837,8 @@ func TestSeedScaffoldVars(t *testing.T) {
 // - this pins the no-op so a future var-bearing base template consciously
 // changes it (ADR-0087 Decision 4).
 func TestRunNewSeedsNoVarsToday(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, kind := range []string{"skill", "agent"} {
 		refs, err := project.ScaffoldVarRefs(kind)
 		if err != nil {

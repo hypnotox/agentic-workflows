@@ -48,7 +48,7 @@ const commitSubjectCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndoc
 
 // A disabled pitfalls doc yields no drift and never reads the sidecar.
 func TestCheckPitfallsDisabled(t *testing.T) {
-	p, err := Open(scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-real.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-12"),
 			testsupport.WithTitle("0001: Real"), testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
 
 // Valid YAML with a bad data.pitfalls shape surfaces the structural error.
 func TestCheckPitfallsStructuralError(t *testing.T) {
-	p, err := Open(scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
+	p, err := Open(testContext(t), scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls: just a string\n",
 	}))
 	if err != nil {
@@ -109,7 +109,7 @@ func TestDeriveOperationStateSurfacesMalformedADR(t *testing.T) {
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +131,7 @@ func TestCheckTagVocabulary(t *testing.T) {
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("render-engine", "bogus"), testsupport.WithTitle("0001: A"),
 			testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestCheckTagVocabularyInert(t *testing.T) {
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("anything"), testsupport.WithTitle("0001: A"),
 			testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,7 +175,7 @@ func TestCheckTagVocabularyPitfallsDisabled(t *testing.T) {
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTags("rendering"), testsupport.WithTitle("0001: A"),
 			testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithRelated(1, 42), testsupport.WithTitle("0001: A"),
 			testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestCheckADRRelatedAscending(t *testing.T) {
 	write("0004-d.md", "0004: D", 42, 2, 43, 3) // two descents; only the first is reported
 	write("0042-e.md", "0042: E")
 	write("0043-f.md", "0043: F")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -285,7 +285,7 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestCheckTagVocabularyPitfallStructuralError(t *testing.T) {
 // invariant: adr-system/plan-artifacts:plan-adr-link-resolved
 func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -344,7 +344,7 @@ func TestCheckPlansValidatesFrontmatterAndLinks(t *testing.T) {
 // of plan-frontmatter-validated), not silent drift.
 func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +361,7 @@ func TestCheckPlansPropagatesPlanParseError(t *testing.T) {
 // invariant: adr-system/plan-artifacts:plan-commit-subject-shape-checked
 func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 	root := scaffold(t, commitSubjectCfg)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -405,7 +405,7 @@ func TestCheckPlansCommitSubjectDrift(t *testing.T) {
 // invariant: adr-system/plan-artifacts:plan-commit-subject-scope-advisory
 func TestPlanCommitScopeNotes(t *testing.T) {
 	root := scaffold(t, commitSubjectCfg)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -442,11 +442,11 @@ func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nskills: []\nagents: []\ndocs: []\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := p.AdvisoryNotes(); err == nil {
+	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the plan-commit ParseDir error")
 	}
 }
@@ -455,7 +455,7 @@ func TestAdvisoryNotesSurfacesPlanCommitError(t *testing.T) {
 // a synced, otherwise-clean project with a malformed plan makes full Check fail.
 func TestCheckPropagatesPlanError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +464,7 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-12-broken.md"),
 		"---\nstatus: [unterminated\n---\n# Plan: Broken\n")
-	if _, err := p.Check(); err == nil {
+	if _, err := p.Check(testContext(t)); err == nil {
 		t.Fatal("expected Check to propagate the checkPlans parse error, got nil")
 	}
 }
@@ -475,7 +475,7 @@ func TestCheckPropagatesPlanError(t *testing.T) {
 func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	root := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: [rendering]\n"+
 		"tags:\n  rendering: coarse\n  narrow: a narrow topic\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -495,7 +495,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 	// No domains configured: the collision rule is inert.
 	root2 := scaffold(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: []\ndomains: []\n"+
 		"tags:\n  rendering: fine when no domains\n")
-	p2, err := Open(root2)
+	p2, err := Open(testContext(t), root2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -517,7 +517,7 @@ func TestCheckTagVocabularyDomainCollision(t *testing.T) {
 func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [pitfalls]\ndomains: []\n",
 		map[string]string{"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n      body: B\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,11 +525,11 @@ func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/pitfalls.yaml"), "local: true\ndata:\n  pitfalls: just a string\n")
-	reopened, err := Open(root)
+	reopened, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := reopened.Check(); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := reopened.Check(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected Check to propagate the local pitfalls structural error, got %v", err)
 	}
 }
@@ -538,16 +538,16 @@ func TestCheckPropagatesLocalPitfallsError(t *testing.T) {
 // derivation's fault; a malformed ADR reaches each one's wiring branch.
 func TestAdvisoryNotesAndConfigReferenceSurfaceMalformedADR(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-broken.md"),
 		"---\nstatus: [unterminated\n---\n# ADR-0001: Broken\n")
-	if _, err := p.AdvisoryNotes(); err == nil {
+	if _, err := p.AdvisoryNotes(testContext(t)); err == nil {
 		t.Fatal("expected AdvisoryNotes to surface the malformed ADR, got nil")
 	}
-	if _, err := p.ConfigReferenceModel(); err == nil {
+	if _, err := p.ConfigReferenceModel(testContext(t)); err == nil {
 		t.Fatal("expected ConfigReferenceModel to surface the malformed ADR, got nil")
 	}
 }
@@ -561,11 +561,11 @@ func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
 			testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 				testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
 	}
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := p.InitializeReport(InitAuthority{InitializedWithVersion: Version}); err == nil ||
+	if _, _, _, err := p.InitializeReport(testContext(t), InitAuthority{InitializedWithVersion: Version}); err == nil ||
 		!strings.Contains(err.Error(), "seal first-adoption ADR authority") {
 		t.Fatalf("expected duplicate ADR identity to fail authority sealing, got %v", err)
 	}

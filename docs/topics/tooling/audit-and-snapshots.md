@@ -3,7 +3,7 @@
 
 Workflow-conformance auditing and the immutable git snapshot layer.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/git/**`, `internal/severity/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `internal/audit/**`, `internal/severity/**`, `internal/snapshot/**`. Both domain and topic selectors must match. Run `awf topic tooling/audit-and-snapshots --coverage` for current matched paths and marker sites.
 
 These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. The claims below capture the current audit and snapshot contracts.
 
@@ -75,18 +75,6 @@ Backing: test
 The Conventional Commits subject check is defined once as a single shared function. Both the audit range loop and the check commit command call that function, so neither re-implements the subject regex, the allowed type and scope lists, or the subject-length limit, and a subject the audit rejects is rejected identically by the commit gate.
 Origin: ADR-0036
 Revised-by: ADR-0159
-Backing: test
-
-### `invariant: git-range-parser-single-definition`
-
-Range-string parsing lives only in the single internal/git parser; no other non-test Go file in the module splits a range on the two-dot separator, and a repo-walking test fails if a second parser reappears.
-Origin: ADR-0127
-Backing: test
-
-### `invariant: git-range-rejects-malformed`
-
-The shared range parser rejects an empty input, an empty side, a three-dot range, a multiple-separator input, and a dash-prefixed side; it accepts a bare base (defaulting the head to HEAD) only when the caller opts in, and a two-sided a..b range either way.
-Origin: ADR-0127
 Backing: test
 
 ### `invariant: repo-audit-error-exit`

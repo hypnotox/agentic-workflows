@@ -100,9 +100,12 @@ data:
         snapshot never reads a gitlink's blob. Copying the trick with filemode.Symlink fails:
         snapshot.IndexTree does read a symlink's bytes (its target path), so a synthetic hash
         produces "read index blob: object not found" before Scannable is ever consulted, and the
-        test fails for a reason unrelated to what it asserts. Stage a real symlink with os.Symlink
-        plus worktree Add instead. The target string becomes the blob, which also lets the fixture
-        carry the exact shape under test, making the assertion stronger than the fabricated form.
+        test fails for a reason unrelated to what it asserts. Stage a real symlink instead: write it
+        with os.Symlink and stage it through `gitfixture`, which is now the only place a test may
+        construct Git state (the fixture walker fails a test file that reaches Git directly, so
+        the older advice to call go-git's worktree Add from the test itself no longer applies).
+        The target string becomes the blob, which also lets the fixture carry the exact shape
+        under test, making the assertion stronger than the fabricated form.
     - title: "An ordered-phrase assertion cannot reach a site ahead of its first anchor"
       domains: [rendering, invariants]
       tags: [invariant-backing, verification-discipline]
@@ -178,8 +181,8 @@ data:
         commits an Implementing event without its paired first Applied event. The terminal edge
         mirrors this: Implemented requires zero remaining operations while Implementing requires
         both applied and remaining ones, so the Implemented status event must land in the same
-        staged transaction as the final Applied batch, and it carries the frozen digest but no
-        state-sequence when explicit Applied events exist. The ADR-0148 grounding check caught a
+        staged transaction as the final Applied batch, and it carries the frozen digest. The
+        ADR-0148 grounding check caught a
         design that would have scheduled the Implemented flip as its own commit; plans must pin
         both ends of the batch choreography, not just the first.
 
@@ -187,8 +190,71 @@ data:
         `awf render` refuses a claim citing an ADR with no applied operation ("cites ADR-NNNN
         without an applied update operation"), so a phase whose task order renders first is
         blocked until the Applied line exists. `awf check` reports that claim-provenance error
-        ahead of any drift, which also means the documented digest and state-sequence probes only
-        become reachable once the batch line is present, even with a placeholder digest.
+        ahead of any drift, which also means the documented digest probe only becomes reachable
+        once the batch line is present, even with a placeholder digest.
+    - title: "Parallel efforts collide on ADR numbers and schema generations at integration"
+      domains: [adr-system, config]
+      related: [191]
+      tags: [adr-lifecycle, worktree-isolation, schema-migration]
+      body: |
+        Until slug-identified pending ADRs land, an effort branch and the target can both consume
+        the same ADR number and the same schema generation while apart; the 0191 integration hit
+        both at once (its ADR authored as 0189 collided with the target's 0189, and both sides
+        registered generation 26). Resolve inside the merge, where both sides are visible. For the
+        ADR: rename the file to the next free number, rewrite the heading and every branch-owned
+        reference (topic Origin and Revised-by lines, plan frontmatter and prose, glossary,
+        changelog, code comments), and, because in-body self-references are digest-covered, record
+        the edit as an Amended event with the recomputed digest while the ADR is still
+        nonterminal. For the migration: move the registry entry to the next generation, update the
+        minimum-version map and every generation-pinning test, and resolve the lock conflict to
+        the TARGET side's generation so `awf upgrade` re-runs the moved migration over the merged
+        corpus; taking the branch lock skips it silently. Grep for the old number afterwards and
+        sort surviving hits into the other effort's legitimate references versus your leftovers.
+
+        Resolving inside the merge stops working once your ADR has an Applied batch. On
+        2026-07-31 the 0192 integration tried it and `awf check --staged` refused with "ADR-0190
+        violates the history-prefix rule", plus both claim updates reading as provenance-only
+        mutations with no operation behind them: the number is occupied by the other side's ADR
+        with different applied history, so renaming yours inside the merge rewrites committed
+        provenance. Renumbering on the branch and then merging fails differently, on contiguity,
+        because the before-side corpus then holds your new number with the target's numbers
+        absent. For an unpublished branch the remedy is to rewrite its history so the ADR carries
+        the free number from its first commit, then REBASE onto the target rather than merge, so
+        your ADR is created above theirs and both the prefix and contiguity rules hold. Two traps
+        in that rewrite: pick the number only after the target is quiet, since a second effort
+        took the next one mid-diagnosis, and note that `git filter-branch --tree-filter` has no
+        usable index, so a filter built on `git ls-files` silently does nothing while the renames
+        it also performs appear to succeed; drive the sweep with `find` and verify afterwards.
+
+        There is a simpler remedy than rewriting history, and it is about merge DIRECTION.
+        `awf check --staged` validates HEAD to index as ONE transition, so whichever side is
+        HEAD supplies the before-corpus. Merge the target INTO your branch and the target's own
+        claims arrive as additions with no operation behind them, which is a structural refusal
+        no resolution can satisfy. Build the merge with the TARGET as HEAD instead - integrate
+        from the receiving checkout, or from a prep branch cut off the target - and the same
+        conflicts resolve to the same content while the handshake sees only your claims as
+        additions, with their operations present. On 2026-07-31 that let the git-seam effort
+        renumber its already-Implemented ADR inside the merge, which the branch-side direction
+        had refused minutes earlier with the identical tree. Two facts make the renumber safe
+        for a terminal ADR: the content digest covers Context, Decision, State changes,
+        Consequences, and Alternatives Considered but never the heading or the Status history,
+        so a rename is digest-neutral unless the body self-references, and stripping a retired
+        status segment is an encoding migration the append-only rule explicitly permits. Confirm
+        both by recomputation rather than by assuming.
+    - title: "Retiring a concept needs paraphrase sweeps, not just identifier greps"
+      domains: [rendering, adr-system]
+      related: [191]
+      tags: [render-completeness, template-residue]
+      body: |
+        Grepping for a retired concept's identifier misses the prose that teaches the concept
+        without naming it. Retiring `state-sequence` left "sequences are consecutive", "global
+        sequence order", and "a contiguous global sequence" untouched in the reviewer-agent
+        lenses, skill notes, and the glossary through a full plan review; a resync pass and a
+        spot-check found them only by grepping the concept's behavioral vocabulary ("global
+        sequence", "consecutive"). When a change retires or redefines a concept, derive a
+        paraphrase list from how the docs actually describe its behavior and sweep templates,
+        agent configs, glossary, domain parts, and pitfalls with those terms too; the review
+        catalog's own lens prose is governed text and drifts like any other doc.
     - title: "A schema-generation bump needs `awf upgrade`, not `awf render`"
       domains: [config, tooling]
       tags: [schema-migration, upgrade-flow]
@@ -205,38 +271,7 @@ data:
       domains: [tooling]
       tags: [repo-open, audit-rules]
       body: |
-        `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git`'s `OpenRepo` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. Any future awf code opening a repo must go through `internal/git.OpenRepo`, not `git.PlainOpen` directly (the go-git handling was extracted from `internal/audit` into the shared `internal/git` package so `awf audit` and `awf context` share one tolerant open path).
-    - title: "Concurrent ADR application branches may require replay before integration"
-      domains: [adr-system, tooling]
-      tags: [adr-lifecycle, worktree-isolation]
-      body: |
-        A divergent managed-worktree merge presents the effort branch as one staged change against
-        the target branch's first parent. If both branches independently consumed current-state
-        sequences, the effort's Applied events collide with the target's sequence numbers, and
-        `awf check --staged` correctly rejects the merge: the global state-sequence namespace must
-        stay contiguous, and that requirement is deliberately retained for a merge (ADR-0182). Do not
-        bypass the check or mutate frozen ADR meaning. Renumber the effort's Applied events to the
-        next available sequences, or replay the effort commits onto the current target in their
-        original transaction order, then regenerate derived files, rerun the gate, and renew terminal
-        review before integrating. ADR-0178 hit this when concurrent ADR-0177 consumed sequences 86
-        and 87, so ADR-0178 had to move to 88 and 89; the 2026-07-30 severity effort hit it again and
-        had to move five batches.
-
-        Carrying several application batches is NOT one of the rejected conditions. Before ADR-0182 a
-        merge was also refused for appending more than one batch to a single ADR and for targeting one
-        claim with more than one operation, which an incrementally-applied ADR and a follow-up ADR
-        revising an earlier claim both do legitimately. Those are now validated as an ordered
-        aggregate rather than refused, so a merge that only trips them needs no replay.
-
-        RENUMBER INSIDE THE MERGE, not on the branch beforehand. The branch's corpus does not contain
-        the sequences the target consumed, so numbering its batches to the next free values there fails
-        the contiguous-from-1 check instead of fixing anything; the collision is only resolvable where
-        both sides' sequences are present. The state-ownership effort (2026-07-30, third occurrence) hit
-        this after waiting for ADR-0182 to land: its batches were numbered 92 and 93 at authoring time
-        and 92 through 97 were consumed while it waited, so they moved to 98 and 99 during the merge
-        resolution. The renumber is safe for a frozen ADR because `digestSections` covers Context,
-        Decision, State changes, Consequences, and Alternatives Considered and never the Status history,
-        so the content digest is unaffected; confirm that by recomputation rather than assuming it.
+        `git.PlainOpen` (go-git) refuses to open a repo whose `.git/config` has `extensions.worktreeConfig = true` (a flag `git worktree add` can leave behind even after the worktree is removed) regardless of `core.repositoryformatversion`. Cause: go-git's extension-support check lowercases the extension name before comparing it against its allow-list, whose key is mixed-case, so the lookup never matches. `internal/git.Open` works around it by opening through a `storage.Storer` wrapper that hides the `[extensions]` config section from go-git before the check runs; awf's git-reading commands never read repo extensions, so hiding the section is safe. This is no longer a rule anyone has to remember: `internal/git` is the only package that may reach a Git library or the git binary at all, `Open` and `OpenContaining` are the only ways in, and `TestNoProductionGitAccessOutsideTheSeam` fails on any bypass. The incident is retained because it is one of the named regression cases the open path's contract suite pins, and because it is evidence for why the backend stays an internal detail of the seam.
     - title: "go-git status ignores the global and system gitignore"
       domains: [tooling]
       tags: [repo-open, context-query]
@@ -244,16 +279,21 @@ data:
         go-git's `Worktree().Status()` consults only the repository's own `.gitignore` chain and
         `.git/info/exclude`; it never reads `core.excludesfile` from `~/.gitconfig` or
         `/etc/gitconfig`, so untracked files real git treats as ignored show up in the status. Any
-        status-derived path universe that consumes untracked entries must inject
-        `internal/git.GlobalExcludePatterns()` into `Worktree.Excludes` before calling `Status()`,
-        or route through `git.WorkingPaths`, which already does (`ChangedPaths`' staged branch is
-        exempt: staged-only filtering never sees untracked or ignored files). This bit twice:
-        `awf audit`'s uncommitted-changes rule fixed it locally, but `WorkingPaths` (the
-        eligible-path universe behind `awf context --uncovered` and the working-tree snapshot)
-        kept the raw semantics and reported globally-ignored files as eligible-unowned. The
-        injection is close to but not exactly `git status`: go-git composes `Excludes` after the
-        repo's `.gitignore` chain, so a repo-level negation cannot re-include a globally-ignored
-        file - an accepted narrow divergence. Tests that exercise status-based code run under
+        status-derived path universe that consumes untracked entries has to reconcile the two
+        ignore universes. The seam now owns that in one place rather than at each call site:
+        `Repo.WorkingPaths` composes the global excludes into the go-git status it reads, and
+        `Repo.ChangeCounts` replays the effective `core.excludesFile` into its native
+        invocation, so both cleanliness answers see the ignore universe real git sees
+        (`ChangedPaths`' staged branch is exempt: staged-only filtering never sees untracked or
+        ignored files). This bit twice before the seam existed: `awf audit`'s
+        uncommitted-changes rule fixed it locally, but `WorkingPaths` kept the raw semantics and
+        reported globally-ignored files as eligible-unowned - the same defect fixed once and
+        missed once, which is the shape single-home ownership exists to prevent. The
+        composition is close to but not exactly `git status`: go-git composes `Excludes` after
+        the repo's `.gitignore` chain, so a repo-level negation cannot re-include a
+        globally-ignored file - an accepted narrow divergence. Note the deliberate asymmetry
+        with fixtures: `internal/testsupport/gitfixture` does NOT replay the excludes file,
+        because it builds state rather than rendering an oracle. Tests that exercise status-based code run under
         `testsupport.RunIsolated`, which points HOME at a temp dir, so fixtures never inherit the
         developer's real global gitignore.
     - title: "Stdout is API in command-substitution scripts"
@@ -443,7 +483,7 @@ data:
       tags: [render-completeness, version-authority]
       body: |
         `awf check` hashes config bytes and template bytes; a change to the *Go render logic*
-        (a new render key, a changed derivation like `taskSkillRows`) alters what a fresh render
+        (a new render key, a changed derivation like `skillRows`) alters what a fresh render
         produces while every hash still matches, so check stays clean over now-stale outputs. This
         shipped a stale AGENTS.md mid-review on 2026-07-07: the commit changed the derivation but the
         rendered guide was produced by the intermediate version, and nothing flagged it. The gap is
@@ -865,7 +905,7 @@ data:
         (`strings.TrimPrefix(a.Title, "ADR-"+a.Number+": ")`) when surfacing Title alongside Number.
         `awf context` was the first `adr.ParseDir` consumer outside `internal/{adr,invariants,audit}`,
         so the gotcha only surfaces as awf grows ADR-aware tooling.
-    - title: "Repo opens must resolve the `.git` gitfile (use `internal/git.OpenRepo`)"
+    - title: "Repo opens must resolve the `.git` gitfile (use `internal/git.Open`)"
       domains: [tooling]
       tags: [repo-open]
       body: |
@@ -873,13 +913,15 @@ data:
         `gitdir:` pointer file, not a directory; a naive `<root>/.git` filesystem open dies with
         `open repo: ... .git/config: not a directory` (bit `awf audit` 2026-07-10, running the
         ADR-0090 impl review in a session worktree; every parallel session uses one). Fixed the
-        same day: `OpenRepo`'s `dotGitFs` resolves the pointer and routes shared state through the
-        `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
-        `EnableDotGitCommonDir`; regression tests hand-craft the worktree layout (go-git cannot
-        create one). The standing rule from the first entry above still governs: any future
-        awf code opening a repo goes through `internal/git.OpenRepo`; `git.PlainOpen` gets neither
-        the extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
-        until ADR-0092's stage-a extracted it into the shared `internal/git` package.)
+        same day: the open path's `dotGitFs` resolves the pointer and routes shared state through
+        the `commondir` via `dotgit.NewRepositoryFilesystem`, mirroring go-git's
+        `EnableDotGitCommonDir`; regression tests build the worktree layout through the fixture's
+        native lane, since go-git cannot create one. The standing rule from the first entry above
+        still governs and is now mechanical: awf code opens a repository through
+        `internal/git.Open` or `OpenContaining`, never `git.PlainOpen`, which gets neither the
+        extensions workaround nor the gitfile resolution. (The helper lived in `internal/audit`
+        until ADR-0092's stage-a extracted it into `internal/git`, which ADR-0193 then made the
+        single home for every form of Git access.)
     - title: "Section parts carry their own heading"
       domains: [rendering]
       tags: [convention-parts, section-assembly]
@@ -1331,13 +1373,10 @@ data:
       domains: [adr-system]
       tags: [plan-artifact, adr-lifecycle, verification-discipline]
       body: |
-        `state-sequence` is a repository-global contiguous namespace and the frozen content
-        digest is computed over the ADR body; both are named exactly by `awf check --staged` on
-        mismatch, and a concurrently Implementing ADR may interleave batches at any time. The
-        ADR-0151 plan initially wrote literal `state-sequence: 1` and `2` while the repository
-        stood at 27; plan review caught it before implementation. A plan writes the event shape
-        and the instruction "use exactly the value the staged check names", never a number or a
-        digest, the same way it already avoids hard-coded counts.
+        The frozen content digest is computed over the ADR body and named exactly by
+        `awf check --staged` on mismatch. A plan writes the event shape and the instruction
+        "use exactly the value the staged check names", never a digest, the same way it already
+        avoids hard-coded counts.
     - title: "A pinned template contract string is usually pinned in more than one test"
       domains: [rendering]
       tags: [pinned-set-tests, render-completeness]
@@ -1506,24 +1545,21 @@ data:
         key-by-key and confirm every changed entry is yours; if it is not, the work has to wait for
         their commit or move to a worktree. The same reasoning covers any generated file two
         sessions both regenerate.
-    - title: "An ADR's frozen digest and next state-sequence cannot be read directly"
+    - title: "An ADR's frozen digest cannot be read directly"
       domains: [adr-system]
       related: [134, 177]
       tags: [adr-lifecycle, invariant-backing]
       body: |
-        Applying a V2 claim operation needs two values `awf check` computes: the frozen
-        `content-sha256` for the status event and the next free `state-sequence`. There is no command
-        that prints them on demand, and the obvious ways to ask are both blocked, because claim
-        provenance is enforced in BOTH directions. With the claim authored and no matching Applied
-        operation yet, every `awf check` form fails with "cites ADR-NNNN without an applied add
-        operation"; remove the claim to get past that and the proof marker you already placed becomes
-        a dangling "unknown claim ID". The working method is to write the status lines with a
-        deliberately wrong digest (64 zeros) and let `awf check state` report the computed one, then
-        fix the digest and let the duplicate-sequence error report the next free sequence. Both
-        errors name the correct value. The digest excludes the Status history, so it is stable across
-        the `Implementing` and `Implemented` events and the same value is repeated on both. Do not
-        copy a sequence from another ADR or precompute one in a plan: the number moves whenever any
-        sibling ADR applies a batch.
+        Applying a V2 claim operation needs the frozen `content-sha256` for the status event,
+        which `awf check` computes but no command prints on demand, and the obvious way to ask is
+        blocked, because claim provenance is enforced in BOTH directions. With the claim authored
+        and no matching Applied operation yet, every `awf check` form fails with "cites ADR-NNNN
+        without an applied add operation"; remove the claim to get past that and the proof marker
+        you already placed becomes a dangling "unknown claim ID". The working method is to write
+        the status lines with a deliberately wrong digest (64 zeros) and let `awf check state`
+        report the computed one, then fix the line. The digest excludes the Status history, so it
+        is stable across the `Implementing` and `Implemented` events and the same value is
+        repeated on both.
     - title: "A new catalog agent and a generation bump each trip guards the ADR will not list"
       domains: [rendering, config]
       related: [177]
@@ -1585,3 +1621,64 @@ data:
         the decision's content is still open. Note also that a terminal event carrying explicit
         `Applied` events must NOT repeat a `state-sequence`; mixing explicit batches with implicit
         terminal sequencing is rejected outright.
+    - title: "In a managed worktree, a primary-checkout path silently splits the transaction"
+      domains: [tooling]
+      related: [189, 190]
+      tags: [worktree-isolation, workflow-chain]
+      body: |
+        When an effort executes in a managed `.awf/worktrees/<slug>` checkout, every file
+        mutation must use the worktree-prefixed absolute path. A path spelled from the primary
+        checkout root looks identical apart from its prefix and applies cleanly there, where a
+        concurrent session's `./x render` can sweep the stray edit into the primary checkout's
+        rendered files and lock before anyone notices; the effort's own transaction is then
+        split across two working trees. The 2026-07-31 prose-audit effort hit this once: a
+        convention-part edit landed in the primary checkout, a concurrent render propagated it,
+        and three files had to be restored from HEAD. Verify the prefix before the first
+        mutating call of a session, and after any suspected slip check `git status` in the
+        primary checkout, not only the worktree. Relatedly for planners: a shared-prose
+        extraction into `templates/partials/` may not reference `.vars` (the config-reference
+        dormancy scan reads raw template bytes; `TestConfigReferenceNoBareVars` enforces it),
+        so a sentence carrying a command interpolation cannot move into a partial.
+    - title: "A hanging test is often the fixture lane, which has no deadline"
+      domains: [tooling]
+      related: [191]
+      tags: [test-support, repo-open]
+      body: |
+        `internal/git`'s runner refuses a context carrying no deadline, so a production Git
+        invocation blocked on a stale `index.lock`, a credential prompt, or a slow filesystem
+        fails fast with an explicit message. The `internal/testsupport/gitfixture` native lane
+        deliberately does NOT match that: it runs `exec.Command` with no context and no
+        deadline, because a fixture builds state rather than serving a caller who could bound
+        it. The asymmetry is intentional and was accepted knowingly, but it has a debugging
+        cost worth knowing in advance. When a package test hangs until the Go test timeout and
+        the panic dump points into `gitfixture.runGit`, the fixture is blocked on Git, not
+        deadlocked in awf: look for a stale `index.lock` under the fixture's temporary root, a
+        Git that is prompting despite `nativeEnvironment` (which pins `GIT_TERMINAL_PROMPT=0`,
+        `GIT_ASKPASS`, and `SSH_ASKPASS`), or a filesystem stall under `TMPDIR`. Nothing in the
+        gate catches this shape, because a hang is not a failure until the timeout fires. If it
+        recurs, the fix is to bound the fixture lane's invocations rather than to chase the
+        individual test.
+    - title: "A mechanical check proves nothing until you have seen it fail"
+      domains: [tooling, invariants]
+      related: [193]
+      tags: [verification-discipline, invariant-backing]
+      body: |
+        A green grep, walker, or registry check is evidence only after you have watched it go red
+        on a case it must catch. Three instruments lied inside one effort, each in a different
+        direction. A post-check spelled `exec\.Command(Context)?\([^)]*"git"` reported success
+        over two unconverted files, because a bracket expression cannot cross the `)` in
+        `exec.CommandContext(t.Context(), "git", ...)` - which was the only spelling left; the
+        phase owner and the reviewing parent both took the empty output as completeness. A
+        repo-walker hand-rolled its traversal instead of using the repository's one definition of
+        the walk boundary, so it flagged every file inside a managed worktree and would have
+        failed on the target the moment the effort integrated: a false RED that passed review
+        only because the branch had no worktree of its own. And an entrypoint registry asserting
+        that each registered suite names its entrypoint was satisfied for seventeen of
+        thirty-five registrations by the test function's own NAME, because the check printed the
+        whole declaration rather than its body.
+        The habit that catches all three is cheap: plant the violation the check exists to find,
+        watch it fail, remove it. Prefer a permanent negative case in the suite, so the
+        instrument keeps proving itself. Beware two shapes especially - a check whose subject is
+        a regexp over source, where the language's syntax is richer than the pattern; and a
+        check reused from another context, where the boundary it encodes may not be the boundary
+        you need. Both look identical to a working check from the output alone.

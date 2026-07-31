@@ -1,4 +1,4 @@
 title: Sync and drift
-summary: "How sync and check detect and report drift: hash inputs, attribution, backups, residue, pruning, and cleanup."
+summary: "How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation."
 paths:
   - internal/project/**

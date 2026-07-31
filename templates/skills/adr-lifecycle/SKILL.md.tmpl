@@ -8,7 +8,7 @@ description: >
 
 # {{ .prefix }}-adr-lifecycle
 
-A task skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
+A support skill for mechanical ADR lifecycle transitions: status transitions, the State changes handshake, and amendment-until-terminal. The authoritative source is `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`; this skill is a procedural pointer that surfaces the right rule for the status transition at hand.
 
 ## The states
 
@@ -50,7 +50,7 @@ An ADR's `## State changes` section is the authoritative link to the topics it g
 Pick the status transition, then carry the same verified effort slug and exact `.awf/efforts/<slug>/memory.md` path. A lifecycle child or reviewer never edits shared memory; repository and current-state authority outrank it, one user-managed writer remains responsible, and standalone memory is forbidden.
 
 <!-- awf:section procedure-status-edit -->
-1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; state-sequence: <n>; operations: <operation-list>`. Repeat the latest stamp on status events and use the next sequence `awf check` reports; an amendment instead appends its own `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event in its own commit.
+1. **Edit the ADR history and status.** For a first incremental batch, append Implementing status then an Applied event; for a middle batch append one Applied event without changing status; for the final batch append Applied then Implemented status; for abandonment append only Abandoned with a rationale. Applied grammar is `- YYYY-MM-DD: Applied; operations: <operation-list>`. Repeat the latest stamp on status events; an amendment instead appends its own `- YYYY-MM-DD: Amended; content-sha256: <digest of the amended content>` event in its own commit.
 <!-- awf:end -->
 
 <!-- awf:section procedure-claim-mutation -->
@@ -104,8 +104,6 @@ schema retrofit may migrate its machine-readable encoding.
 ## Notes
 
 <!-- awf:section notes -->
-- **Authoritative source:** `{{ .layout.workflowRef }}` and `{{ .layout.adrDir }}/README.md`. This skill is a procedural pointer, not a contract restatement.
 - **Append-only rule:** the `## Status history` is append-only in every state. A V2 body stays amendable until a terminal status, each amendment recorded as an Amended event, then freezes as the historical record; append-only protects rationale, not bookkeeping - a meaning-preserving schema retrofit may migrate its machine-readable encoding.
-- **`{{ .layout.indexMd }}` is auto-generated** by `{{ with .vars.activeMdRegenCmd }}{{ . }}{{ else }}{{ if .runnerEnabled }}./awf{{ else }}awf{{ end }} render{{ end }}` and is **never hand-edited**. Always regenerate and commit it alongside any ADR status change.
 - Does not commit on your behalf; surfaces the right edits for you to land.
 <!-- awf:end -->

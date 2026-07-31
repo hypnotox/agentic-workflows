@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"strings"
@@ -9,8 +10,8 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func runCheck(root string, staged bool, stdout io.Writer) error {
-	lockV, binV, ok, err := checkLockVsBinary(root, staged)
+func runCheck(ctx context.Context, root string, staged bool, stdout io.Writer) error {
+	lockV, binV, ok, err := checkLockVsBinary(ctx, root, staged)
 	if err != nil { // coverage-ignore: the driver pre-gates check (Gated) so a corrupt lock hard-errors before runCheck (ADR-0076), and no direct caller passes one; the branch stays so the ahead-note never silently swallows a lock error
 		return err
 	}
@@ -19,13 +20,13 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 			strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))
 	}
 	if staged {
-		return runCheckStaged(root, stdout)
+		return runCheckStaged(ctx, root, stdout)
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	notes, err := p.AdvisoryNotes()
+	notes, err := p.AdvisoryNotes(ctx)
 	if err != nil {
 		return err
 	}
@@ -34,11 +35,11 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 	for _, n := range notes {
 		fmt.Fprintf(stdout, "note: %s\n", n)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(ctx)
 	if err != nil {
 		return err
 	}
-	report, err := p.CheckCurrentState()
+	report, err := p.CheckCurrentState(ctx)
 	if err != nil {
 		return err
 	}
@@ -62,16 +63,16 @@ func runCheck(root string, staged bool, stdout io.Writer) error {
 }
 
 // runCheckDrift is the `awf check drift` entry point: the drift half of bare
-// check, including the config-tree hygiene sweep that p.Check() performs. It
+// check, including the config-tree hygiene sweep that p.Check(ctx) performs. It
 // prints neither the advisory notes nor the version-ahead note; ADR-0159
 // Decision 2 keeps both on the bare form, which is the only one that owns
 // project-level context.
-func runCheckDrift(root string, stdout io.Writer) error {
-	p, err := project.Open(root)
+func runCheckDrift(ctx context.Context, root string, stdout io.Writer) error {
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(ctx)
 	if err != nil {
 		return err
 	}
@@ -88,12 +89,12 @@ func runCheckDrift(root string, stdout io.Writer) error {
 // runCheckState is the `awf check state` entry point: the current-state half of
 // bare check. Coverage and fan-out warnings ride the non-failing note: channel
 // exactly as they do there; only findings fail.
-func runCheckState(root string, stdout io.Writer) error {
-	p, err := project.Open(root)
+func runCheckState(ctx context.Context, root string, stdout io.Writer) error {
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	report, err := p.CheckCurrentState()
+	report, err := p.CheckCurrentState(ctx)
 	if err != nil {
 		return err
 	}
@@ -111,11 +112,11 @@ func runCheckState(root string, stdout io.Writer) error {
 	return fmt.Errorf("awf check state: %d current-state issue(s)", len(current))
 }
 
-func checkLockVsBinary(root string, staged bool) (lockV, binV string, ok bool, err error) {
+func checkLockVsBinary(ctx context.Context, root string, staged bool) (lockV, binV string, ok bool, err error) {
 	if !staged {
 		return lockVsBinary(root)
 	}
-	lock, err := stagedLock(root)
+	lock, err := stagedLock(ctx, root)
 	if err != nil {
 		return "", "", false, err
 	}
@@ -126,8 +127,8 @@ func checkLockVsBinary(root string, staged bool) (lockV, binV string, ok bool, e
 // runCheckStaged validates the staged HEAD-to-index current-state transition and
 // the index coverage (ADR-0135). It skips the working-tree drift oracle: a
 // pre-commit hook validates the exact slice about to land, not the working tree.
-func runCheckStaged(root string, stdout io.Writer) error {
-	report, err := project.CheckStagedRoot(root)
+func runCheckStaged(ctx context.Context, root string, stdout io.Writer) error {
+	report, err := project.CheckStagedRoot(ctx, root)
 	if err != nil {
 		return err
 	}

@@ -1,10 +1,12 @@
 package project
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -176,8 +178,8 @@ func TestProjectTreeReaders(t *testing.T) {
 	if _, ok := r.ReadFile("link"); ok {
 		t.Fatal("scanned symlink")
 	}
-	if got := r.Paths(""); !reflect.DeepEqual(got, []string{"a.txt"}) {
-		t.Fatalf("paths=%v", got)
+	if got, err := r.Paths(""); err != nil || !reflect.DeepEqual(got, []string{"a.txt"}) {
+		t.Fatalf("paths=%v err=%v", got, err)
 	}
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "a.txt"), []byte("a"), 0o644); err != nil {
@@ -190,11 +192,61 @@ func TestProjectTreeReaders(t *testing.T) {
 	if _, ok := fr.ReadFile("missing"); ok {
 		t.Fatal("missing read")
 	}
-	if got := fr.Paths(""); !reflect.DeepEqual(got, []string{"a.txt"}) {
-		t.Fatalf("filesystem paths=%v", got)
+	if got, err := fr.Paths(""); err != nil || !reflect.DeepEqual(got, []string{"a.txt"}) {
+		t.Fatalf("filesystem paths=%v err=%v", got, err)
 	}
-	if got := fr.Paths("missing"); len(got) != 0 {
-		t.Fatalf("missing paths=%v", got)
+	// An absent prefix stays an empty enumeration rather than a fault.
+	if got, err := fr.Paths("missing"); err != nil || len(got) != 0 {
+		t.Fatalf("missing paths=%v err=%v", got, err)
+	}
+	// A directory that cannot be read is a fault, not a short list: erasing it
+	// would compute the drift oracle over a silently truncated tree.
+	denied := filepath.Join(root, "denied")
+	if err := os.Mkdir(denied, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(denied, "b.txt"), []byte("b"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(denied, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(denied, 0o755) })
+	if got, err := fr.Paths(""); err == nil {
+		t.Fatalf("unreadable directory erased: paths=%v", got)
+	} else if !strings.Contains(err.Error(), "enumerate project tree") {
+		t.Fatalf("whole-tree fault names an empty subject: %v", err)
+	}
+	// A named prefix keeps its own subject rather than the whole-tree wording.
+	if got, err := fr.Paths("denied"); err == nil {
+		t.Fatalf("unreadable prefix erased: paths=%v", got)
+	} else if !strings.Contains(err.Error(), "enumerate denied") {
+		t.Fatalf("prefixed fault lost its subject: %v", err)
+	}
+}
+
+// TestBuildOutputDeclarationsPropagatesEnumerationFaults pins that a faulting
+// tree read reaches the caller. Erasing it truncated the declaration set the
+// drift oracle is computed over, so a partial enumeration reported a clean tree
+// and exited 0.
+func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
+	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}
+	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndocsDir: docs\nskills: []\nagents: []\ndomains: [d]\n"), configReaderAdapter{read})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
+	// Three sites enumerate the tree, in call order: per-domain metadata for the
+	// domain docs, the flat metadata list for topic docs, and per-domain metadata
+	// for the topic indexes. Each must surface its own fault.
+	for site := 1; site <= 3; site++ {
+		t.Run("site"+strconv.Itoa(site), func(t *testing.T) {
+			calls := 0
+			faulting := failingPathsReader{memoryProjectReader: read, failAt: site, calls: &calls}
+			if _, err := BuildOutputDeclarations(cfg, cat, nil, faulting, adr.NewCorpus(nil)); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
+			}
+		})
 	}
 }
 
@@ -266,11 +318,11 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := p.OutputPlan()
+	plan, err := p.OutputPlan(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -354,7 +406,7 @@ func (r memoryProjectReader) ReadFile(p string) ([]byte, bool) {
 	b, ok := r[p]
 	return append([]byte(nil), b...), ok
 }
-func (r memoryProjectReader) Paths(prefix string) []string {
+func (r memoryProjectReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
 	for p := range r {
 		if strings.HasPrefix(p, prefix) {
@@ -362,7 +414,23 @@ func (r memoryProjectReader) Paths(prefix string) []string {
 		}
 	}
 	slices.Sort(out)
-	return out
+	return out, nil
+}
+
+// failingPathsReader faults the failAt'th Paths call so each propagation site
+// can be exercised on its own.
+type failingPathsReader struct {
+	memoryProjectReader
+	failAt int
+	calls  *int
+}
+
+func (r failingPathsReader) Paths(prefix string) ([]string, error) {
+	*r.calls++
+	if *r.calls == r.failAt {
+		return nil, errors.New("enumeration fault at " + prefix)
+	}
+	return r.memoryProjectReader.Paths(prefix)
 }
 
 type configReaderAdapter struct{ memoryProjectReader }

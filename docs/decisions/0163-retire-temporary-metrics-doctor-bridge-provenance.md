@@ -40,4 +40,4 @@ reusing a claim operation.
 ## Status history
 
 - 2026-07-27: Proposed
-- 2026-07-27: Implemented; content-sha256: cfbf6b910f91a203ed0d5f2040932e66bfed800a6e5120534f7e67ec5b9d2688; state-sequence: 60
+- 2026-07-27: Implemented; content-sha256: cfbf6b910f91a203ed0d5f2040932e66bfed800a6e5120534f7e67ec5b9d2688

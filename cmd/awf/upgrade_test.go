@@ -21,6 +21,8 @@ import (
 // invariant: config/migrations-and-locks:adr-v2-cutoff-atomic-immutable
 
 func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct{ name, lock, want string }{
 		{"missing", "", "use the bridge release to attest"},
 		{"pre-tracking", `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`, "use the bridge release to attest"},
@@ -33,7 +35,7 @@ func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
 				testsupport.WriteFile(t, config.LockPath(root), tc.lock)
 			}
 			before := snapshotTree(t, root)
-			err := runUpgrade(root, io.Discard)
+			err := runUpgrade(ctx, root, io.Discard)
 			if err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("error=%v, want %q", err, tc.want)
 			}
@@ -49,6 +51,8 @@ func TestRunUpgradeAuthorityRefusalsDoNotMutate(t *testing.T) {
 // (.claude/awf/) migration lock is corrupt. Authority loading selects the current
 // lock; GateState then selects the active old layout and reports its malformed lock.
 func TestRunUpgradeGateStateError(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{},"adrFormatV1From":1,"legacyAdrGaps":[]}`)
 	oldDir := filepath.Join(root, ".claude", "awf")
@@ -61,9 +65,20 @@ func TestRunUpgradeGateStateError(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(oldDir, "awf.lock"), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runUpgrade(root, io.Discard); err == nil {
+	if err := runUpgrade(ctx, root, io.Discard); err == nil {
 		t.Fatal("expected a GateState error from the corrupt legacy lock")
 	}
+}
+
+// journalPresence answers upgrade.JournalPresent for the tests that assert
+// presence or absence and expect no fault reading it.
+func journalPresence(t *testing.T, root string) bool {
+	t.Helper()
+	found, err := upgrade.JournalPresent(root)
+	if err != nil {
+		t.Fatalf("JournalPresent(%s): %v", root, err)
+	}
+	return found
 }
 
 // writeValidJournal writes a minimal valid single-op (lock) journal in the given
@@ -120,6 +135,8 @@ func attestLock(t *testing.T, root string) {
 }
 
 func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	writeValidJournal(t, root, "lock-committed", true)
 	// Every non-recover command refuses with the run-recover diagnostic.
@@ -141,7 +158,7 @@ func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	if code := runAt(t, root, []string{"awf", "upgrade", "--recover"}, &out, &errb); code != 0 {
 		t.Fatalf("recover failed: code=%d\n%s", code, errb.String())
 	}
-	if upgrade.JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal not cleaned by recovery")
 	}
 	if !strings.Contains(out.String(), "operation: recovered") {
@@ -149,7 +166,30 @@ func TestGuardValidJournalPermitsOnlyRecover(t *testing.T) {
 	}
 }
 
+// TestGuardRefusesWhenJournalPresenceIsUnreadable pins that the command-state
+// guard refuses when it cannot determine whether a journal exists. Reading the
+// fault as absence permitted every command an unrecovered upgrade must block,
+// including the ones that mutate the tree.
+func TestGuardRefusesWhenJournalPresenceIsUnreadable(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses directory permissions")
+	}
+	root := scaffoldProject(t)
+	awfDir := filepath.Join(root, ".awf")
+	if err := os.Chmod(awfDir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(awfDir, 0o755) })
+	var out, errb bytes.Buffer
+	code := runAt(t, root, []string{"awf", "check"}, &out, &errb)
+	if code == 0 || !strings.Contains(errb.String(), "current-state upgrade journal") {
+		t.Fatalf("unreadable journal location not refused: code=%d\n%s", code, errb.String())
+	}
+}
+
 func TestGuardMalformedJournalRefusesEveryMode(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	if err := os.WriteFile(upgrade.JournalPath(root), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
@@ -163,6 +203,8 @@ func TestGuardMalformedJournalRefusesEveryMode(t *testing.T) {
 }
 
 func TestGuardPreTrackingCommandMatrix(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, minimalYAML)
 	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.19.0","schemaVersion":14,"files":{}}`)
@@ -187,6 +229,8 @@ func TestGuardPreTrackingCommandMatrix(t *testing.T) {
 }
 
 func TestGuardRecoverWithoutJournal(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	var out, errb bytes.Buffer
 	if code := runAt(t, root, []string{"awf", "upgrade", "--recover"}, &out, &errb); code == 0 || !strings.Contains(errb.String(), "no current-state upgrade journal to recover") {
@@ -200,6 +244,8 @@ func TestGuardRecoverWithoutJournal(t *testing.T) {
 }
 
 func TestGuardAttestedLockPermitsUpgradeRefusesOthers(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := scaffoldProject(t)
 	attestLock(t, root)
 	// Ordinary commands refuse with the consume-the-attestation diagnostic.
@@ -221,16 +267,20 @@ func TestGuardAttestedLockPermitsUpgradeRefusesOthers(t *testing.T) {
 }
 
 func TestUpgradeConsumesAttestationRouting(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// runUpgrade routes an attested lock into the final cutover verifier, which
 	// rejects the bogus sealed facts rather than running a schema migration.
 	root := scaffoldProject(t)
 	attestLock(t, root)
-	if err := runUpgrade(root, io.Discard); err == nil || !strings.Contains(err.Error(), "prepared head") {
+	if err := runUpgrade(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "prepared head") {
 		t.Fatalf("want seal verification, got %v", err)
 	}
 }
 
 func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	// A precommit journal whose lock hash differs from the final hash rolls the
 	// prepared write back to its prior image on recovery.
 	root := scaffoldProject(t)
@@ -264,7 +314,7 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 	if _, err := os.Stat(prepared); !os.IsNotExist(err) {
 		t.Fatal("prepared.txt not rolled back")
 	}
-	if upgrade.JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after rollback")
 	}
 }

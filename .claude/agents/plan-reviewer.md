@@ -8,7 +8,9 @@ description: >
 
 # plan-reviewer
 
-Independent, lens-diverse reviewer for plans under `docs/plans/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+Independent, lens-diverse reviewer for plans under `docs/plans/`.
+
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 ## Finding schema
 
@@ -52,7 +54,7 @@ Apply all lenses to every plan:
 
 1. **doc-currency (plan-level)**: same-commit task to update workflow or convention docs when a rule changes; each Applied event landing with exactly its current-state topic-claim mutations; state doc updates when the plan shifts a tracked domain; project-specific artifacts covered (see doc-currency checklist below).
 
-1. **application-batches**: every declared operation is assigned to a direct, first, middle, final, or canceled outcome; batch pairs are atomic, target IDs do not conflict within a pair, and sequences are consecutive. Each application phase independently declares inline or subagent-driven ownership, starts from a clean green baseline, contains one coherent green transaction rather than task-level boundaries, and never shares one closing commit across phase boundaries. Any helper partition exhaustively assigns sites to the parent or exactly one helper, keeps helper subsets path-disjoint, keeps shared files parent-owned, and confines mutating commands to their assigned subsets.
+1. **application-batches**: every declared operation is assigned to a direct, first, middle, final, or canceled outcome; batch pairs are atomic, target IDs do not conflict within a pair, and batches order by ascending ADR number and intra-ADR history position. Each application phase independently declares inline or subagent-driven ownership, starts from a clean green baseline, contains one coherent green transaction rather than task-level boundaries, and never shares one closing commit across phase boundaries. Any helper partition exhaustively assigns sites to the parent or exactly one helper, keeps helper subsets path-disjoint, keeps shared files parent-owned, and confines mutating commands to their assigned subsets.
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
@@ -64,7 +66,7 @@ Apply all lenses to every plan:
 
 <!-- awf:edit project-focus: default; create .awf/agents/parts/plan-reviewer/project-focus.md to override -->
 
-**step-exactness**: every phase declares independent inline or subagent-driven ownership, one independently green coherent implementation transaction, and one closing subject; tasks are ordered steps with exact file paths, relevant symbols, exact commands with expected terminal states, and exact content/diffs or implementation-ready pseudocode covering behavior, branches, ordering, failures, constraints, forbidden behavior, tests, acceptance assertions, and deterministic verification. Exact form remains mandatory for machine-consumed configuration and manifests, contract-bearing declarations, fixtures, golden output, commands, mechanical replacements, required literal prose, and the batch task's representative and edge. Non-contractual prose may use qualifying instructions and a mixed task may combine both forms. The batch task retains its affected-site set and post-check; an optional exhaustive partition assigns every site to the parent or exactly one helper, keeps helper subsets path-disjoint, shared files parent-owned, and commands confined. `TBD`, `implement later`, outcome-only summaries, and hidden design choices are placeholders, never pseudocode. Every task is executable with no prior conversation context. Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders.
+**step-exactness**: Reject task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders.
 
 
 **quoted-command-output-is-rerun**: a plan that quotes a command and its expected output states a checkable fact: RUN it rather than reasoning about it, and never write a corrected number you have not observed. A review of the ADR-0128 plan "corrected" a `grep -rn adr.ParseDir(` count from 10 to 12 on the theory that two `coverage-ignore` comments matched; they read `adr.ParseDir here`, with no opening paren, so the pattern never matched them and BOTH the before and after numbers shipped wrong. An unverified correction makes a plan less accurate than leaving it alone, because the executor now trusts it. Escalate rather than correct when a plan asserts a literal COUNT at all: prefer a terminal-state assertion (the finding count reaches zero, the grep returns nothing, the drift check is clean), because a count is a measurement of a corpus that moves and a stale one fails misleadingly rather than loudly. The 2026-07-19 retrofit-D plan showed the compound form: its headline total was a merge-base measurement, its item/slug split was wrong at every commit, its sibling plan carried a third figure, and because four later figures were derived from the total, one stale measurement made every phase unverifiable. Correcting such numbers one at a time treats the symptom; the fix is to delete them in favour of the command
@@ -76,7 +78,7 @@ Apply all lenses to every plan:
 **phase-boundary-is-gateable**: each phase must be able to pass the gate ALONE, which is stronger than dependency order. Two shapes break it silently: a phase that removes or changes an invariant claim while the ADR declaring the `remove`/`update` operation stays Proposed (the claim mutation is checked only in the ADR's Implemented transaction, so a claim edited a phase early is owed-but-mismatched), and a phase that introduces a function before the phase that first calls it (the dead-code gate refuses it). The ADR-0128 plan hit both - Phases 6 and 7 had to merge, and three model methods were written, deleted, and re-added a phase later. Place the claim mutation and the ADR status flip in the same phase, and a model method in the phase that consumes it
 
 
-**v2-batch-partition-legality**: a plan applying a V2 ADR incrementally must keep the Implementing state legal at every intermediate commit: at least one applied AND at least one remaining operation (internal/adr/application.go refuses an all-applied Implementing state), with the final Applied batch paired with the Implemented flip in one commit. The 0157 plan drafted a partition that exhausted all operations two phases before the flip, and the same draft hardcoded state-sequence literals; the sequence is repo-global, unique, and contiguous, so a plan instructs "the next value awf reports at execution time", never a number (a concurrent effort sharing the checkout may advance the counter first). Check both: partition legality per planned commit, and no literal state-sequence value anywhere in the plan
+**v2-batch-partition-legality**: a plan applying a V2 ADR incrementally must keep the Implementing state legal at every intermediate commit: at least one applied AND at least one remaining operation (internal/adr/application.go refuses an all-applied Implementing state), with the final Applied batch paired with the Implemented flip in one commit. The 0157 plan drafted a partition that exhausted all operations two phases before the flip. Check partition legality per planned commit, and that no plan pre-computes a content-sha256 stamp
 
 
 **generated-adopter-source-closure**: when a plan requires a generated output to change in the root project or an example adopter, it must name the authored input that drives that output in each project; do not infer that a root convention part fans out into an adopter with its own config tree, and flag any required generated diff that has no declared authored source and render step
@@ -106,6 +108,9 @@ Apply all lenses to every plan:
 **state-ownership-authority**: when a plan changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
 
 
+**single-home-authority**: when the plan introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a task that would add a second implementation of a concern another package already owns, or that justifies a fork by coverage rather than by a materially different contract from a distinct source
+
+
 
 ## Doc-currency checklist
 
@@ -120,9 +125,9 @@ For each item below, flag a finding if the gating condition is met AND the plan 
 ## Resync mode
 
 <!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
-When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The other three lenses (`executability`, `convention-alignment`, `testing-discipline`) already ran during the initial plan review and need not re-run unless explicitly requested.
+When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The remaining lenses already ran during the initial plan review and need not re-run unless explicitly requested.
 
-Resync mode is triggered by the `awf-reviewing-plan-resync` skill after the linked ADR review converges. Its purpose is to catch plan-vs-finalised-ADR drift introduced by changes the ADR review made before settling.
+Resync mode is triggered by the `awf-reviewing-plan-resync` skill after whichever review settled - an ADR review converging, or a plan review that found at least one linked ADR. Its purpose is to catch plan-vs-finalised-ADR drift.
 
 ## Dedup rule
 
@@ -149,4 +154,4 @@ Plan review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Plan summary (range 50-100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
+Target ~80 words for the Plan summary (range 50-100 words).

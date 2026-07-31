@@ -12,37 +12,40 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
+// noTopology is the answer set of a checkout that carries no managed worktree
+// at all, which is the precondition finish requires.
+func noTopology(deps *Dependencies) {
+	deps.Worktrees = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, nil }
+	deps.BranchExists = func(context.Context, string) (bool, error) { return false, nil }
+}
+
 func TestFinishRenamesCleansAndRetries(t *testing.T) {
 	// invariant: tooling/effort-management:effort-record-authority
 	root := initEffortRepo(t)
 	failDelete := true
-	service, err := Open(context.Background(), root, Options{
-		Clock: func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) },
-		UUID:  func() (string, error) { return testIDA, nil },
-		Fault: func(stage string) error {
+	service := openTestService(t, root, func(deps *Dependencies) {
+		noTopology(deps)
+		deps.Clock = func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) }
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.Fault = func(stage string) error {
 			if stage == "finish.delete" && failDelete {
 				failDelete = false
 				return errors.New("interrupted")
 			}
 			return nil
-		},
-		Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
-		BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
+		}
 	})
-	if err != nil {
+	if _, err := service.New(testContext(t), "Restartable finish"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.New("Restartable finish"); err != nil {
-		t.Fatal(err)
-	}
-	result, err := service.Finish("restartable-finish")
+	result, err := service.Finish(testContext(t), "restartable-finish")
 	if err == nil || !result.Renamed || result.Cleaned || !strings.Contains(err.Error(), "changed bytes: yes") {
 		t.Fatalf("first finish result=%#v err=%v", result, err)
 	}
 	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", "restartable-finish")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("active directory remains: %v", err)
 	}
-	result, err = service.Finish("restartable-finish")
+	result, err = service.Finish(testContext(t), "restartable-finish")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,23 +82,20 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 	for name, test := range tests {
 		t.Run(name, func(t *testing.T) {
 			root := initEffortRepo(t)
-			service, err := Open(context.Background(), root, Options{
-				UUID: func() (string, error) { return testIDA, nil },
-				Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
+			service := openTestService(t, root, func(deps *Dependencies) {
+				deps.UUID = func() (string, error) { return testIDA, nil }
+				deps.Worktrees = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
 					return test.registrations, nil
-				},
-				BranchExists: func(context.Context, string, string) (bool, error) { return test.branch, nil },
+				}
+				deps.BranchExists = func(context.Context, string) (bool, error) { return test.branch, nil }
 			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := service.New("Guarded finish"); err != nil {
+			if _, err := service.New(testContext(t), "Guarded finish"); err != nil {
 				t.Fatal(err)
 			}
 			if test.setup != nil {
 				test.setup(t, root)
 			}
-			result, err := service.Finish("guarded-finish")
+			result, err := service.Finish(testContext(t), "guarded-finish")
 			if err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "changed bytes: no") || !strings.Contains(err.Error(), "worktree remove") {
 				t.Fatalf("result=%#v err=%v", result, err)
 			}
@@ -108,24 +108,20 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 
 func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{
-		UUID:         func() (string, error) { return testIDA, nil },
-		Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
-		BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
-		Fault: func(stage string) error {
+	service := openTestService(t, root, func(deps *Dependencies) {
+		noTopology(deps)
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.Fault = func(stage string) error {
 			if stage == "finish.delete" {
 				return errors.New("stop")
 			}
 			return nil
-		},
+		}
 	})
-	if err != nil {
+	if _, err := service.New(testContext(t), "Foreign tombstone"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.New("Foreign tombstone"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.Finish("foreign-tombstone"); err == nil {
+	if _, err := service.Finish(testContext(t), "foreign-tombstone"); err == nil {
 		t.Fatal("finish unexpectedly cleaned tombstone")
 	}
 	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
@@ -146,7 +142,7 @@ func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
 	if err := os.WriteFile(statePath, raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	_, err = service.Finish("foreign-tombstone")
+	_, err = service.Finish(testContext(t), "foreign-tombstone")
 	if err == nil || !strings.Contains(err.Error(), "multiple finishing reservations") {
 		t.Fatalf("multiple tombstone error = %v", err)
 	}
@@ -162,42 +158,26 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 	for _, stage := range []string{"finish.rename", "finish.root-fsync", "finish.delete"} {
 		t.Run(stage, func(t *testing.T) {
 			root := initEffortRepo(t)
-			service, err := Open(context.Background(), root, Options{
-				UUID:         func() (string, error) { return testIDA, nil },
-				Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
-				BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
-				Fault: func(got string) error {
+			service := openTestService(t, root, func(deps *Dependencies) {
+				noTopology(deps)
+				deps.UUID = func() (string, error) { return testIDA, nil }
+				deps.Fault = func(got string) error {
 					if got == stage {
 						return errors.New("injected")
 					}
 					return nil
-				},
+				}
 			})
-			if err != nil {
+			if _, err := service.New(testContext(t), "Finish faults"); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := service.New("Finish faults"); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := service.Finish("finish-faults"); err == nil {
+			if _, err := service.Finish(testContext(t), "finish-faults"); err == nil {
 				t.Fatal("fault was ignored")
 			}
 		})
 	}
 
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{
-		UUID: func() (string, error) { return testIDA, nil },
-		Worktrees: func(context.Context, string) ([]awfgit.WorktreeRegistration, error) {
-			return nil, errors.New("registration probe")
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.New("Probe errors"); err != nil {
-		t.Fatal(err)
-	}
 	probeErr := func(err error) error {
 		t.Helper()
 		if errors.Is(err, ErrManagedTopologyPresent) {
@@ -205,18 +185,30 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 		}
 		return err
 	}
-	if _, err := service.Finish("probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "registration") {
+	registrationFault := openTestService(t, root, func(deps *Dependencies) {
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.Worktrees = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+			return nil, errors.New("registration probe")
+		}
+	})
+	if _, err := registrationFault.New(testContext(t), "Probe errors"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := registrationFault.Finish(testContext(t), "probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "registration") {
 		t.Fatalf("registration error = %v", err)
 	}
-	service.worktrees = func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil }
-	service.branchExists = func(context.Context, string, string) (bool, error) { return false, errors.New("branch probe") }
-	if _, err := service.Finish("probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "branch") {
+	branchFault := openTestService(t, root, func(deps *Dependencies) {
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.Worktrees = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, nil }
+		deps.BranchExists = func(context.Context, string) (bool, error) { return false, errors.New("branch probe") }
+	})
+	if _, err := branchFault.Finish(testContext(t), "probe-errors"); err == nil || !strings.Contains(probeErr(err).Error(), "branch") {
 		t.Fatalf("branch error = %v", err)
 	}
-	if _, err := service.Finish("bad_slug"); err == nil {
+	if _, err := branchFault.Finish(testContext(t), "bad_slug"); err == nil {
 		t.Fatal("invalid finish slug accepted")
 	}
-	if _, err := service.Finish("missing-effort"); err == nil || !strings.Contains(err.Error(), "no active resident") {
+	if _, err := branchFault.Finish(testContext(t), "missing-effort"); err == nil || !strings.Contains(err.Error(), "no active resident") {
 		t.Fatalf("missing finish error = %v", err)
 	}
 	if yesNo(false) != "no" || yesNo(true) != "yes" {
@@ -229,7 +221,8 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), filepath.Join(root, ".awf", "worktrees")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(context.Background(), root, Options{}); err == nil {
+	roots, deps := testWiring(t, root)
+	if _, err := Open(roots, deps); err == nil {
 		t.Fatal("symlinked worktrees root accepted")
 	}
 
@@ -238,46 +231,42 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 	if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o111); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Finish("unreadable-finish"); err == nil {
+	if _, err := service.Finish(testContext(t), "unreadable-finish"); err == nil {
 		t.Fatal("unreadable finishing root accepted")
 	}
 	if err := os.Chmod(filepath.Join(root, ".awf", "efforts"), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.New("Corrupt finish"); err != nil {
+	if _, err := service.New(testContext(t), "Corrupt finish"); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.Remove(filepath.Join(root, ".awf", "efforts", "corrupt-finish", "memory.md")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.Finish("corrupt-finish"); err == nil {
+	if _, err := service.Finish(testContext(t), "corrupt-finish"); err == nil {
 		t.Fatal("corrupt active effort finished")
 	}
 }
 
 func TestFinishCleanupAndReservationBranches(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{
-		UUID:         func() (string, error) { return testIDA, nil },
-		Worktrees:    func(context.Context, string) ([]awfgit.WorktreeRegistration, error) { return nil, nil },
-		BranchExists: func(context.Context, string, string) (bool, error) { return false, nil },
-		Fault: func(stage string) error {
+	service := openTestService(t, root, func(deps *Dependencies) {
+		noTopology(deps)
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.Fault = func(stage string) error {
 			if stage == "finish.delete" {
 				return errors.New("retain tombstone")
 			}
 			return nil
-		},
+		}
 	})
-	if err != nil {
+	if _, err := service.New(testContext(t), "Reserved finish"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := service.New("Reserved finish"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.Finish("reserved-finish"); err == nil {
+	if _, err := service.Finish(testContext(t), "reserved-finish"); err == nil {
 		t.Fatal("finish fault ignored")
 	}
-	if _, err := service.New("Reserved finish"); err == nil || !strings.Contains(err.Error(), "reserved by finishing") {
+	if _, err := service.New(testContext(t), "Reserved finish"); err == nil || !strings.Contains(err.Error(), "reserved by finishing") {
 		t.Fatalf("reservation error = %v", err)
 	}
 	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
@@ -285,19 +274,22 @@ func TestFinishCleanupAndReservationBranches(t *testing.T) {
 		t.Fatalf("entries=%v err=%v", entries, err)
 	}
 	tombstone := filepath.Join(root, ".awf", "efforts", entries[0].Name())
-	service.store.fault = nil
-	service.removeTree = func(string) error { return errors.New("remove fault") }
-	if _, err := service.Finish("reserved-finish"); err == nil || !strings.Contains(err.Error(), "remove fault") {
+	failingRemoval := openTestService(t, root, func(deps *Dependencies) {
+		noTopology(deps)
+		deps.UUID = func() (string, error) { return testIDA, nil }
+		deps.RemoveTree = func(string) error { return errors.New("remove fault") }
+	})
+	if _, err := failingRemoval.Finish(testContext(t), "reserved-finish"); err == nil || !strings.Contains(err.Error(), "remove fault") {
 		t.Fatalf("remove error = %v", err)
 	}
-	if result, err := service.cleanTombstone("reserved-finish", filepath.Join(root, ".awf", "efforts", "wrong"), false); err == nil || result != (FinishResult{}) {
+	if result, err := failingRemoval.cleanTombstone("reserved-finish", filepath.Join(root, ".awf", "efforts", "wrong"), false); err == nil || result != (FinishResult{}) {
 		t.Fatalf("wrong tombstone result=%#v err=%v", result, err)
 	}
 	mismatched := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDB+"-reserved-finish")
 	if err := os.Rename(tombstone, mismatched); err != nil {
 		t.Fatal(err)
 	}
-	if result, err := service.cleanTombstone("reserved-finish", mismatched, false); err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "does not match") {
+	if result, err := failingRemoval.cleanTombstone("reserved-finish", mismatched, false); err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "does not match") {
 		t.Fatalf("mismatched tombstone result=%#v err=%v", result, err)
 	}
 	tombstone = mismatched
@@ -306,23 +298,52 @@ func TestFinishCleanupAndReservationBranches(t *testing.T) {
 	}
 }
 
-func TestNativeEffortGitHelpers(t *testing.T) {
+// TestServiceRefusesAMissingDependency proves the composition contract: each
+// dependency is required, so a composition root that forgets one fails loudly
+// at construction rather than silently running against a substituted default.
+func TestServiceRefusesAMissingDependency(t *testing.T) {
 	root := initEffortRepo(t)
-	if out, err := nativeGit(context.Background(), root, "rev-parse", "HEAD"); err != nil || strings.TrimSpace(string(out)) == "" {
-		t.Fatalf("native git output=%q err=%v", out, err)
+	roots, complete := testWiring(t, root)
+	for name, drop := range map[string]func(*Dependencies){
+		"clock":        func(d *Dependencies) { d.Clock = nil },
+		"UUID":         func(d *Dependencies) { d.UUID = nil },
+		"worktree":     func(d *Dependencies) { d.Worktrees = nil },
+		"branch":       func(d *Dependencies) { d.BranchExists = nil },
+		"reference":    func(d *Dependencies) { d.ValidateRef = nil },
+		"tree removal": func(d *Dependencies) { d.RemoveTree = nil },
+	} {
+		t.Run(name, func(t *testing.T) {
+			deps := complete
+			drop(&deps)
+			defer func() {
+				recovered := recover()
+				message, ok := recovered.(string)
+				if !ok || !strings.Contains(message, name) {
+					t.Fatalf("panic = %v, want one naming the %s dependency", recovered, name)
+				}
+			}()
+			_, _ = Open(roots, deps)
+			t.Fatal("missing dependency accepted")
+		})
 	}
-	if _, err := nativeGit(context.Background(), root, "not-a-command"); err == nil {
-		t.Fatal("native Git error hidden")
+}
+
+// TestSlugMintingReportsAnUnusableRefName covers both ways the branch-name
+// probe can refuse a slug: a broken probe is a fault, an invalid name is a
+// repair instruction.
+func TestSlugMintingReportsAnUnusableRefName(t *testing.T) {
+	root := initEffortRepo(t)
+	faulted := openTestService(t, root, func(deps *Dependencies) {
+		deps.ValidateRef = func(context.Context, string) (bool, error) { return false, errors.New("probe fault") }
+	})
+	if _, err := faulted.New(testContext(t), "Probe fault"); err == nil || !strings.Contains(err.Error(), "probe fault") {
+		t.Fatalf("probe fault error = %v", err)
 	}
-	if exists, err := nativeBranchExists(context.Background(), root, "missing"); err != nil || exists {
-		t.Fatalf("missing branch exists=%v err=%v", exists, err)
-	}
-	branch := strings.TrimSpace(runEffortGitOutput(t, "-C", root, "branch", "--show-current"))
-	if exists, err := nativeBranchExists(context.Background(), root, branch); err != nil || !exists {
-		t.Fatalf("current branch exists=%v err=%v", exists, err)
-	}
-	if _, err := nativeBranchExists(context.Background(), filepath.Join(root, "missing"), "master"); err == nil {
-		t.Fatal("branch probe error hidden")
+	refused := openTestService(t, root, func(deps *Dependencies) {
+		deps.ValidateRef = func(context.Context, string) (bool, error) { return false, nil }
+	})
+	if _, err := refused.New(testContext(t), "Refused name"); err == nil || !strings.Contains(err.Error(), "is not a valid Git ref") {
+		t.Fatalf("invalid ref error = %v", err)
 	}
 }
 

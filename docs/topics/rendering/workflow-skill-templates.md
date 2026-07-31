@@ -41,7 +41,7 @@ Backing: test
 
 Checkpoint guidance creates no effort for a minimal simple fix or merely because a boundary was reached. Once the outcome is concrete and non-minimal, it validates exactly one immutable slug and `.awf/efforts/<slug>/memory.md`, confirms `Effort: <slug>`, carries continuation in the effort's managed worktree when one exists with the owned path spelled primary-root-relative, updates phase, next action, time, and handoff log, and appends any unrecorded settled decision and observation since the last boundary, in one writer-owned batch, and subordinates checkpoint prose to repository authority. Routine implementation checkpoints remain after the phase closing commit and settled report-only review, never after checkbox tasks or helper returns; Pi handoff carries the exact owned path alone.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0167, ADR-0166, ADR-0175, ADR-0186, ADR-0189
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
@@ -115,8 +115,9 @@ Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
 
-Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables.
+Every final governed subagent dispatch chooses the smallest model expected to complete reliably from the semantic small, standard, and large tiers and reconsiders escalation after uncertainty, failed reasoning, or widened scope. Pi uses configured role routing only by omitting the model field and overrides deliberately with an exact tier reference; other targets select a target-native model explicitly where supported and otherwise use the harness default with a visible unsupported-selection note. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables. Each governed dispatch section carries the compressed tier-and-escalation rule with its target branch rule, and the full tier definitions render once per target in the agent guide's workflow section, sourced from the shared model-selection partial.
 Origin: ADR-0173
+Revised-by: ADR-0190
 Backing: test
 
 ### `invariant: implementer-role-contract`

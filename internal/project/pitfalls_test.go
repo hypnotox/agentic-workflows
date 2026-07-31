@@ -12,7 +12,7 @@ const pitfallsCfg = "prefix: example\nvars: {}\nskills: []\nagents: []\ndocs: [p
 // renderPitfalls opens root and returns the rendered pitfalls doc content.
 func renderPitfalls(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestPitfallsRenderDegradesAndRenders(t *testing.T) {
 
 // A content violation fails the render naming the sidecar path.
 func TestPitfallsRenderContentViolation(t *testing.T) {
-	p, err := Open(scaffoldFiles(t, pitfallsCfg, map[string]string{
+	p, err := Open(testContext(t), scaffoldFiles(t, pitfallsCfg, map[string]string{
 		"docs/pitfalls.yaml": "data:\n  pitfalls:\n    - title: T\n",
 	}))
 	if err != nil {

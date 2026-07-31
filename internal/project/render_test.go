@@ -16,7 +16,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 	t.Helper()
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n",
 		map[string]string{"parts/workflow/commit-discipline.md": body})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestCommentOnlyPartRendersEmptySection(t *testing.T) {
 func TestMalformedAuthoringCommentFailsSync(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n",
 		map[string]string{"parts/workflow/commit-discipline.md": "<!-- awf:comment unclosed\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 	}
 
 	root := scaffoldFiles(t, "prefix: example\nvars: {}\nskills: []\nagents: []\n", nil)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

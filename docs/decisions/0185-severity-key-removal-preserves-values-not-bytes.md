@@ -79,4 +79,4 @@ editors. Recorded as a roadmap idea rather than smuggled in through a migration'
 ## Status history
 
 - 2026-07-30: Proposed
-- 2026-07-30: Implemented; content-sha256: 7c34609b6c835bc2b3fbf7776102ab2ef2a00d2c691438503ce4dd6819f3f007; state-sequence: 97
+- 2026-07-30: Implemented; content-sha256: 7c34609b6c835bc2b3fbf7776102ab2ef2a00d2c691438503ce4dd6819f3f007

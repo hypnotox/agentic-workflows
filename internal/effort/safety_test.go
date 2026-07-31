@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,11 +13,10 @@ import (
 // diagnosis that the real-fixture test below can only reach under privilege.
 func TestEffortResidentsRefuseForeignOwnedBytesUnprivileged(t *testing.T) {
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.New("Seam owner"); err != nil {
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.UUID = func() (string, error) { return testIDA, nil }
+	})
+	if _, err := service.New(testContext(t), "Seam owner"); err != nil {
 		t.Fatal(err)
 	}
 	resident := filepath.Join(root, ".awf", "efforts", "seam-owner")
@@ -55,11 +53,10 @@ func TestEffortResidentsRefuseForeignOwnedBytes(t *testing.T) {
 		t.Skip("foreign ownership requires a privileged non-Windows test process")
 	}
 	root := initEffortRepo(t)
-	service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.New("Foreign owner"); err != nil {
+	service := openTestService(t, root, func(deps *Dependencies) {
+		deps.UUID = func() (string, error) { return testIDA, nil }
+	})
+	if _, err := service.New(testContext(t), "Foreign owner"); err != nil {
 		t.Fatal(err)
 	}
 	resident := filepath.Join(root, ".awf", "efforts", "foreign-owner")
@@ -87,10 +84,7 @@ func TestEffortResidentsRejectSymlinksAndHardLinksWithoutDeletingTargets(t *test
 		if err := os.Symlink(outside, link); err != nil {
 			t.Fatal(err)
 		}
-		service, err := Open(context.Background(), root, Options{})
-		if err != nil {
-			t.Fatal(err)
-		}
+		service := openTestService(t, root, nil)
 		if _, err := service.List(); err == nil || !strings.Contains(err.Error(), "symlink") {
 			t.Fatalf("symlink error = %v", err)
 		}
@@ -100,11 +94,10 @@ func TestEffortResidentsRejectSymlinksAndHardLinksWithoutDeletingTargets(t *test
 	})
 	t.Run("hard-linked memory", func(t *testing.T) {
 		root := initEffortRepo(t)
-		service, err := Open(context.Background(), root, Options{UUID: func() (string, error) { return testIDA, nil }})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := service.New("Hard link"); err != nil {
+		service := openTestService(t, root, func(deps *Dependencies) {
+			deps.UUID = func() (string, error) { return testIDA, nil }
+		})
+		if _, err := service.New(testContext(t), "Hard link"); err != nil {
 			t.Fatal(err)
 		}
 		memory := filepath.Join(root, ".awf", "efforts", "hard-link", "memory.md")

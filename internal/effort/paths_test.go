@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +10,7 @@ import (
 
 func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 	root := initEffortRepo(t)
-	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
+	roots, err := awfgit.ResolveControlRoots(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

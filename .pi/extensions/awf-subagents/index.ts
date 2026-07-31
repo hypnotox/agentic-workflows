@@ -705,7 +705,6 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
-      await refreshAndResolve(ctx, "grounding", params.model);
       const selected = await refreshAndResolve(ctx, "grounding", params.model);
       const metadata = executionMetadata(selected, thinkingLevel);
       const queuedAt = now();
@@ -766,7 +765,6 @@ export function registerSubagentTools(pi: ExtensionAPI, deps: ExtensionDependenc
     async execute(_id, params, signal, onUpdate, ctx) {
       validateTask(params.task);
       const thinkingLevel = pi.getThinkingLevel() as ThinkingLevel;
-      await refreshAndResolve(ctx, "review", params.model);
       const prompt = await loadReviewer(deps, root, params.kind);
       const selected = await refreshAndResolve(ctx, "review", params.model);
       const metadata = executionMetadata(selected, thinkingLevel, { kind: params.kind });

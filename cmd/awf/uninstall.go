@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -11,8 +12,8 @@ import (
 // project.Uninstall: lock-tracked files, the dirs they leave empty, and the
 // lock). It deliberately leaves the authored .awf/ config (config.yaml,
 // sidecars, convention parts) in place.
-func runUninstall(root string, stdout io.Writer) error {
-	report, err := project.Uninstall(root)
+func runUninstall(ctx context.Context, root string, stdout io.Writer) error {
+	report, err := project.Uninstall(ctx, root)
 	if err != nil {
 		return err
 	}

@@ -3,7 +3,7 @@ format: current-state-v2
 status: Proposed
 date: 2026-07-31
 ---
-# ADR-0190: Slug-identified pending ADRs numbered at integration
+# ADR-0194: Slug-identified pending ADRs numbered at integration
 
 
 ## Context
@@ -180,7 +180,6 @@ reference surface is accepted.
 - update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`
 - add `config/configuration:integration-branch-explicit`
 - update `config/configuration:config-serialization-owned`
-- update `invariants/current-state-authority:application-batch-sequence-order`
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
 
 ## Consequences

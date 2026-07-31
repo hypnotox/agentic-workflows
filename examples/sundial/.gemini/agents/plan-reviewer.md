@@ -8,7 +8,9 @@ description: >
 
 # plan-reviewer
 
-Independent, lens-diverse reviewer for plans under `docs/plans/`, dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
+Independent, lens-diverse reviewer for plans under `docs/plans/`.
+
+Dispatched in fresh context. Produces structured findings and classifies each as **mechanical / reasoned / user-decision**, then emits a findings digest for the dispatching skill to act on. Report-only: it does not edit, commit, or re-review.
 
 ## Finding schema
 
@@ -52,7 +54,7 @@ Apply all lenses to every plan:
 
 1. **doc-currency (plan-level)**: same-commit task to update workflow or convention docs when a rule changes; each Applied event landing with exactly its current-state topic-claim mutations; state doc updates when the plan shifts a tracked domain; project-specific artifacts covered (see doc-currency checklist below).
 
-1. **application-batches**: every declared operation is assigned to a direct, first, middle, final, or canceled outcome; batch pairs are atomic, target IDs do not conflict within a pair, and sequences are consecutive. Each application phase independently declares inline or subagent-driven ownership, starts from a clean green baseline, contains one coherent green transaction rather than task-level boundaries, and never shares one closing commit across phase boundaries. Any helper partition exhaustively assigns sites to the parent or exactly one helper, keeps helper subsets path-disjoint, keeps shared files parent-owned, and confines mutating commands to their assigned subsets.
+1. **application-batches**: every declared operation is assigned to a direct, first, middle, final, or canceled outcome; batch pairs are atomic, target IDs do not conflict within a pair, and batches order by ascending ADR number and intra-ADR history position. Each application phase independently declares inline or subagent-driven ownership, starts from a clean green baseline, contains one coherent green transaction rather than task-level boundaries, and never shares one closing commit across phase boundaries. Any helper partition exhaustively assigns sites to the parent or exactly one helper, keeps helper subsets path-disjoint, keeps shared files parent-owned, and confines mutating commands to their assigned subsets.
 
 1. **convention-alignment**: Conventional Commits subject shape (under 72 chars; imperative; scoped); one concern per commit; no premature abstraction (no helpers added "for future use" without a current call site); no `cd`+`git` chaining in commands; deviations from established package patterns flagged.
 
@@ -82,9 +84,9 @@ For each item below, flag a finding if the gating condition is met AND the plan 
 ## Resync mode
 
 <!-- awf:edit resync-note: default; create .awf/agents/parts/plan-reviewer/resync-note.md to override -->
-When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The other three lenses (`executability`, `convention-alignment`, `testing-discipline`) already ran during the initial plan review and need not re-run unless explicitly requested.
+When this agent is invoked in **resync mode** (the prompt contains `RESYNC mode`), run only the `scope-completeness` and `doc-currency` lenses. The remaining lenses already ran during the initial plan review and need not re-run unless explicitly requested.
 
-Resync mode is triggered by the `sundial-reviewing-plan-resync` skill after the linked ADR review converges. Its purpose is to catch plan-vs-finalised-ADR drift introduced by changes the ADR review made before settling.
+Resync mode is triggered by the `sundial-reviewing-plan-resync` skill after whichever review settled - an ADR review converging, or a plan review that found at least one linked ADR. Its purpose is to catch plan-vs-finalised-ADR drift.
 
 ## Dedup rule
 
@@ -111,4 +113,4 @@ Plan review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Plan summary (range 50-100 words). This digest reports findings; the dispatching skill applies the mechanical and reasoned fixes, escalates the user-decision findings, and runs a single verify pass.
+Target ~80 words for the Plan summary (range 50-100 words).

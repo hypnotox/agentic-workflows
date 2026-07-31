@@ -98,10 +98,18 @@ func JournalPath(root string) string {
 	return filepath.Join(root, config.DirName, "current-state-upgrade.journal")
 }
 
-// JournalPresent reports whether a journal file exists under root.
-func JournalPresent(root string) bool {
-	_, err := os.Stat(JournalPath(root))
-	return err == nil
+// JournalPresent reports whether a journal file exists under root. A fault is
+// returned rather than folded into absence: answering "no journal" from a read
+// that never completed would let the command-state guard permit the commands an
+// unrecovered upgrade must block.
+func JournalPresent(root string) (bool, error) {
+	if _, err := os.Stat(JournalPath(root)); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("inspect current-state upgrade journal: %w", err)
+	}
+	return true, nil
 }
 
 // imageOf reads path's current image from the working tree.
@@ -133,10 +141,10 @@ func applyImage(root, path string, img Image) error {
 	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: the parent of every journaled path exists in the prepared tree
 		return err
 	}
-	if err := os.WriteFile(full, img.Content, os.FileMode(img.Mode)); err != nil {
-		return err
-	}
-	return os.Chmod(full, os.FileMode(img.Mode))
+	// Atomic like the journal that records it: a crash mid-restore would
+	// otherwise leave a truncated file where the recovery had promised either
+	// the prior image or the replacement, and nothing in between.
+	return manifest.WriteFileAtomicMode(full, img.Content, os.FileMode(img.Mode))
 }
 
 // quarantineTree renames a resident tree aside. An absent source is already in

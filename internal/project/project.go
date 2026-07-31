@@ -21,6 +21,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"golang.org/x/mod/semver"
 )
@@ -61,6 +62,7 @@ var minVersionBySchema = map[int]string{
 	24: "0.28.0",
 	25: "0.29.0",
 	26: "0.30.0",
+	27: "0.30.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -80,18 +82,35 @@ func ValidateSchemaMinimumVersion(schema int, version string) error {
 // LoadConfigTree loads one project's configuration tree.
 type LoadConfigTree func(string) (*config.Config, error)
 
-// ResolveResidentRoot maps an invoking checkout to the root that owns resident state.
-type ResolveResidentRoot func(string) string
+// ResolveResidentRoot maps an invoking checkout to the root that owns resident
+// state. It takes the operation's context because the resolution reaches Git.
+type ResolveResidentRoot func(context.Context, string) string
 
 // Loader owns project-opening policy over explicitly selected dependencies.
 type Loader struct {
 	loadConfigTree      LoadConfigTree
 	standard            *catalog.Catalog
 	resolveResidentRoot ResolveResidentRoot
+	repo                *awfgit.Repo
 }
 
-// NewLoader constructs project-opening policy from required dependencies.
-func NewLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot) *Loader {
+// NewLoader constructs project-opening policy with its required composed Git
+// handle. A nil handle is always a composition error.
+func NewLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot, repo *awfgit.Repo) *Loader {
+	loader := newLoader(loadConfigTree, standard, resolveResidentRoot, repo)
+	if repo == nil {
+		panic("project Loader: missing git repository dependency")
+	}
+	return loader
+}
+
+// NewLoaderWithoutRepository is the explicit fresh-adoption path for a tree
+// known not to be a repository.
+func NewLoaderWithoutRepository(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot) *Loader {
+	return newLoader(loadConfigTree, standard, resolveResidentRoot, nil)
+}
+
+func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolveResidentRoot ResolveResidentRoot, repo *awfgit.Repo) *Loader {
 	if loadConfigTree == nil {
 		panic("project Loader: missing load config tree dependency")
 	}
@@ -101,7 +120,7 @@ func NewLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	if resolveResidentRoot == nil {
 		panic("project Loader: missing resolve resident root dependency")
 	}
-	return &Loader{loadConfigTree: loadConfigTree, standard: standard, resolveResidentRoot: resolveResidentRoot}
+	return &Loader{loadConfigTree: loadConfigTree, standard: standard, resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
 type Project struct {
@@ -114,28 +133,36 @@ type Project struct {
 	Cat          *catalog.Catalog
 	Targets      []Target
 	standard     *catalog.Catalog
+	// repo is the Git handle selected at the composition root and written once
+	// here, nil when the project tree carries no repository.
+	repo *awfgit.Repo
+}
+
+// gitRepo returns the handle this project reads Git through, or the reason it
+// has none. Opening is never retried per operation: the handle is chosen once,
+// at construction, and this is the single place that reports its absence.
+func (p *Project) gitRepo() (*awfgit.Repo, error) {
+	if p.repo == nil {
+		return nil, fmt.Errorf("%s: %w", p.Root, awfgit.ErrNotARepository)
+	}
+	return p.repo, nil
 }
 
 // Open is the transitional compatibility entry point for callers not yet
 // migrated to outer composition. New code composes a Loader explicitly.
-func Open(root string) (*Project, error) {
-	resolveResidentRoot := func(invokingRoot string) string {
-		roots, err := awfgit.ResolveControlRoots(context.Background(), invokingRoot)
-		if err != nil {
-			return invokingRoot
-		}
-		primary, err := roots.ResidentRoot(awfgit.ResidentEfforts)
-		if err != nil {
-			return invokingRoot
-		}
-		// All five resident names share the primary worktree parent.
-		return filepath.Dir(filepath.Dir(primary))
+func Open(ctx context.Context, root string) (*Project, error) {
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
+		return nil, err
 	}
-	return NewLoader(config.Load, catalog.Standard, resolveResidentRoot).Open(root)
+	if repo == nil {
+		return NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Open(ctx, root)
+	}
+	return NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Open(ctx, root)
 }
 
 // Open loads, validates, and derives one project with the Loader's dependencies.
-func (l *Loader) Open(root string) (*Project, error) {
+func (l *Loader) Open(ctx context.Context, root string) (*Project, error) {
 	cfg, err := l.loadConfigTree(config.RootDir(root))
 	if err != nil {
 		return nil, err
@@ -146,7 +173,7 @@ func (l *Loader) Open(root string) (*Project, error) {
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
-	if err := catalog.ValidateWorkflowProfiles(catalog.Standard); err != nil { // coverage-ignore: compile-time Standard is exhaustively validated by catalog tests; this keeps production fail-closed
+	if err := catalog.ValidateWorkflowProfiles(l.standard); err != nil {
 		return nil, err
 	}
 	targets, err := resolveTargets(cfg.Targets)
@@ -155,10 +182,11 @@ func (l *Loader) Open(root string) (*Project, error) {
 	}
 	p := &Project{
 		Root:         root,
-		residentRoot: l.resolveResidentRoot(root),
+		residentRoot: l.resolveResidentRoot(ctx, root),
 		Cfg:          cfg,
 		Targets:      targets,
 		standard:     l.standard,
+		repo:         l.repo,
 	}
 	cat, err := p.effectiveCatalog()
 	if err != nil {
@@ -169,6 +197,36 @@ func (l *Loader) Open(root string) (*Project, error) {
 		return nil, err
 	}
 	return p, nil
+}
+
+// workingTree snapshots the project's working universe through its handle.
+func (p *Project) workingTree(ctx context.Context) (*snapshot.Tree, error) {
+	repo, err := p.gitRepo()
+	if err != nil {
+		return nil, err
+	}
+	return snapshot.WorkingTree(ctx, repo)
+}
+
+// indexTree snapshots the project's staged universe through its handle.
+func (p *Project) indexTree(ctx context.Context) (*snapshot.Tree, error) {
+	repo, err := p.gitRepo()
+	if err != nil {
+		return nil, err
+	}
+	return snapshot.IndexTree(ctx, repo)
+}
+
+// openRootProject composes the minimal project the staged entry points read
+// through: a root plus the handle whose index they snapshot. They deliberately
+// never load working-tree configuration, so no Loader is involved and the only
+// dependency they need is the handle.
+func openRootProject(root string) (*Project, error) {
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil {
+		return nil, err
+	}
+	return &Project{Root: root, standard: catalog.Standard, repo: repo}, nil
 }
 
 // Backup records a foreign file preserved before sync overwrote its path.
@@ -205,13 +263,13 @@ type Change struct {
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
-func (p *Project) SyncReport() ([]Backup, []Change, []string, error) {
+func (p *Project) SyncReport(ctx context.Context) ([]Backup, []Change, []string, error) {
 	// Refuse an unresolvable hook-command wiring before rendering anything
 	// (ADR-0156 Decision 5); first-adoption InitializeReport stays exempt.
 	if err := validateCommandWiring(p.Cfg); err != nil {
 		return nil, nil, nil, err
 	}
-	return p.syncReport(nil)
+	return p.syncReport(ctx, nil)
 }
 
 // InitAuthority is the explicit provenance supplied only by first adoption.
@@ -221,11 +279,11 @@ type InitAuthority struct {
 
 // InitializeReport renders a first adoption while sealing its existing ADR
 // identities. It has the same reporting contract as SyncReport.
-func (p *Project) InitializeReport(seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return p.syncReport(&seed)
+func (p *Project) InitializeReport(ctx context.Context, seed InitAuthority) ([]Backup, []Change, []string, error) {
+	return p.syncReport(ctx, &seed)
 }
 
-func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string, error) {
+func (p *Project) syncReport(ctx context.Context, seed *InitAuthority) ([]Backup, []Change, []string, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, nil, nil, err
@@ -259,7 +317,7 @@ func (p *Project) syncReport(seed *InitAuthority) ([]Backup, []Change, []string,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	op, err := p.outputPlan(corpus, topics, eff)
+	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -489,7 +547,7 @@ func (p *Project) deriveOperationState() (adr.Corpus, topic.Corpus, map[string]b
 // Audit runs the process-conformance audit (ADR-0017) over the caller-supplied
 // commit range. No config key supplies a base: the range is always explicit
 // (ADR-0127 Decision 3).
-func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
+func (p *Project) Audit(ctx context.Context, base, head string) ([]audit.Finding, int, error) {
 	s := audit.Resolve(p.Cfg.Audit)
 	lay := p.layout()
 	generated := map[string]bool{}
@@ -517,7 +575,7 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 			domainPaths[d] = sc.Paths
 		}
 	}
-	findings, commits, err := audit.Run(p.Root, base, head, audit.Inputs{
+	findings, commits, err := audit.Run(ctx, p.Root, base, head, audit.Inputs{
 		Settings:          s,
 		GeneratedPaths:    generated,
 		ADRDir:            lay.ADRDir,
@@ -534,7 +592,7 @@ func (p *Project) Audit(base, head string) ([]audit.Finding, int, error) {
 	// The snapshot-diff transition check rides the same range (ADR-0135): each
 	// commit's ADR/claim mutations must match its ADR operations. It is advisory
 	// like the rest of the audit and derives boundaries from each commit snapshot.
-	trans, err := p.auditTransitions(base, head)
+	trans, err := p.auditTransitions(ctx, base, head)
 	if err != nil { // coverage-ignore: audit.Run above validated this exact range through its own Collect, so auditTransitions' only error source (a re-Collect of base..head) cannot newly fail here
 		return nil, 0, err
 	}

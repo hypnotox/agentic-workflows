@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -68,8 +67,9 @@ func acceptedV1(t *testing.T, num, title, date, stateChanges string) string {
 // a state marker under internal/foo/x.go.
 func ctxCmdFixture(t *testing.T) string {
 	t.Helper()
-	repo, root := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, root, "base", map[string]string{"README.md": "base\n"})
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, ctxCmdYAML)
 	lock := &manifest.Lock{
 		AWFVersion: awfVersion(), SchemaVersion: migrate.Current(),
@@ -100,9 +100,11 @@ func ctxCmdFixture(t *testing.T) string {
 }
 
 func TestRunContextHumanAndFacets(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := ctxCmdFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"internal/foo"}, false, "", false, false, []string{"relationships", "invariants", "evidence", "all-rules", "evidence"}, &out); err != nil {
+	if err := runContext(ctx, root, []string{"internal/foo"}, false, "", false, false, []string{"relationships", "invariants", "evidence", "all-rules", "evidence"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	got := out.String()
@@ -114,13 +116,15 @@ func TestRunContextHumanAndFacets(t *testing.T) {
 }
 
 func TestRunContextRendersMarkerRelationships(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := ctxCmdFixture(t)
 	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n// invariant: alpha/one:tested\n"
 	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if err := runContext(root, []string{"internal/foo/x_test.go"}, false, "", false, false, nil, &out); err != nil {
+	if err := runContext(ctx, root, []string{"internal/foo/x_test.go"}, false, "", false, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
 	want := "  State: alpha/one:order\n  Touches: alpha/one:stable\n  Proofs: alpha/one:tested\n"
@@ -132,6 +136,8 @@ func TestRunContextRendersMarkerRelationships(t *testing.T) {
 // invariant: tooling/context-and-topic:context-concise-projection
 // invariant: tooling/context-and-topic:context-full-authority-packet
 func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := ctxCmdFixture(t)
 	partPath := filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md")
 	part, err := os.ReadFile(partPath)
@@ -142,7 +148,7 @@ func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 	if err := os.WriteFile(partPath, part, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +162,7 @@ func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 	}
 	render := func(facets []project.ContextFacet) string {
 		t.Helper()
-		result, err := p.ContextForOptions([]string{"internal/foo/x.go"}, project.ContextOptions{Selection: project.SelectionExplicit, Facets: facets})
+		result, err := p.ContextForOptions(testContext(t), []string{"internal/foo/x.go"}, project.ContextOptions{Selection: project.SelectionExplicit, Facets: facets})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -174,13 +180,15 @@ func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
 }
 
 func TestRenderContextRequestSourceAttribution(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := ctxCmdFixture(t)
 	body := "package foo\n// state: alpha/one:order\n// touches-state: alpha/one:stable - exercised here\n// invariant: alpha/one:tested\n"
 	if err := os.WriteFile(filepath.Join(root, "internal", "foo", "x_test.go"), []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var out bytes.Buffer
-	if err := runContext(root, []string{"internal/foo", "internal/foo/x_test.go"}, false, "", false, false, []string{"relationships"}, &out); err != nil {
+	if err := runContext(ctx, root, []string{"internal/foo", "internal/foo/x_test.go"}, false, "", false, false, []string{"relationships"}, &out); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
@@ -195,12 +203,14 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 }
 
 func TestBareRepositoryContextFitsDirectDelivery(t *testing.T) {
-	p, err := project.Open("../..")
+	ctx := testContext(t)
+	_ = ctx
+	p, err := project.Open(testContext(t), "../..")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, paths := range [][]string{{"internal/project", "cmd/awf"}, {"cmd/awf/context.go"}} {
-		result, err := p.ContextForOptions(paths, project.ContextOptions{Selection: project.SelectionExplicit})
+		result, err := p.ContextForOptions(testContext(t), paths, project.ContextOptions{Selection: project.SelectionExplicit})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -214,6 +224,8 @@ func TestBareRepositoryContextFitsDirectDelivery(t *testing.T) {
 
 // invariant: tooling/context-and-topic:context-terminal-output-cap
 func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	oldDeliver := deliverContext
 	var sizes []int
 	deliverContext = func(rendered []byte, root string, stdout io.Writer) error {
@@ -222,13 +234,13 @@ func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	}
 	t.Cleanup(func() { deliverContext = oldDeliver })
 	root := ctxCmdFixture(t)
-	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, nil, io.Discard); err != nil {
+	if err := runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, nil, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"internal"}, false, "", true, false, nil, io.Discard); err != nil {
+	if err := runContext(ctx, root, []string{"internal"}, false, "", true, false, nil, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(t.TempDir(), []string{"x"}, false, "", false, false, nil, io.Discard); err != nil {
+	if err := runContext(ctx, t.TempDir(), []string{"x"}, false, "", false, false, nil, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	var part strings.Builder
@@ -239,7 +251,7 @@ func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md"), []byte(part.String()), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, false, []string{"all-rules"}, io.Discard); err != nil {
+	if err := runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", false, false, []string{"all-rules"}, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	if len(sizes) != 4 || sizes[0] == 0 || sizes[1] == 0 || sizes[2] == 0 || sizes[3] <= 8192 {
@@ -249,9 +261,11 @@ func TestRunContextModesShareDeliveryIncludingOversize(t *testing.T) {
 
 // invariant: tooling/context-and-topic:context-static-fallback
 func TestRunContextStaticAndUsage(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	var out bytes.Buffer
-	if err := runContext(root, []string{"x"}, false, "", false, false, nil, &out); err != nil {
+	if err := runContext(ctx, root, []string{"x"}, false, "", false, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
 	const want = "context (static: not inside an awf project; live classification and authority require an adopted project)\nSelection: explicit\n\n## Requests\n  none\n\n## Authority\n  none\n"
@@ -269,13 +283,15 @@ func TestRunContextStaticAndUsage(t *testing.T) {
 		{nil, false, "", false, false, nil, "usage:"}, {[]string{"x"}, false, "", false, false, []string{"bad"}, "unknown context facet"}, {nil, false, "a..b", true, false, nil, "--range"}, {nil, false, "", true, true, nil, "cannot be combined"}, {nil, false, "", true, false, []string{"relationships"}, "cannot be combined"},
 	}
 	for _, tc := range cases {
-		if err := runContext(root, tc.paths, tc.staged, tc.rng, tc.uncovered, tc.full, tc.shows, io.Discard); err == nil || !strings.Contains(err.Error(), tc.part) {
+		if err := runContext(ctx, root, tc.paths, tc.staged, tc.rng, tc.uncovered, tc.full, tc.shows, io.Discard); err == nil || !strings.Contains(err.Error(), tc.part) {
 			t.Errorf("err=%v want %q", err, tc.part)
 		}
 	}
 }
 
 func TestRenderContextGrammar(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	inside := false
 	impact := project.ContextPathImpact{Classification: project.PathSymlink, TargetInsideRepository: &inside, Provenance: []project.ContextProvenance{{Role: "template", Identity: "skills/example/SKILL.md.tmpl", Sources: []project.ArtifactLink{{Path: "templates/x", Label: "template source"}}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}, Domains: []project.DomainRef{{Name: "tooling"}}, Topics: []project.ContextPathTopic{{ID: "tooling/example"}}, Relationships: project.ContextRelationships{State: []string{"tooling/example:r"}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningGlobLiteral}}
 	res := project.ContextResult{
@@ -325,6 +341,8 @@ func snapshotTree(t *testing.T, root string) string {
 }
 
 func TestRenderAllContextBranches(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var uncovered bytes.Buffer
 	renderUncovered(&uncovered, project.UncoveredResult{ScanRoots: []string{"internal"}, Uncovered: []project.UncoveredTopic{{Path: "internal/x", Domain: "d"}}, Unowned: []project.UnownedEntry{{Path: "file", UnownedCount: 1}, {Path: "dir/", UnownedCount: 1, ExcludedCount: 2}, {Path: ".", UnownedCount: 2}}}, "header")
 	for _, want := range []string{"scan roots", "## Uncovered", "## Unowned", "1 unowned file", "2 files excluded"} {
@@ -333,7 +351,7 @@ func TestRenderAllContextBranches(t *testing.T) {
 		}
 	}
 	current := project.ContextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Evidence: []project.ContextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
-	impact := project.ContextPathImpact{Classification: project.PathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []project.ContextProvenance{{Role: "template", Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{{Path: "out", Label: "managed output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []project.DomainRef{}, Topics: []project.ContextPathTopic{}, Relationships: project.ContextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningEligibleUnowned}, ADR: &project.ADRArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []project.ADROperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", StateSequence: 7, Detail: &project.ADROperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &project.ADROperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002", StateSequence: 7}}}}}}}
+	impact := project.ContextPathImpact{Classification: project.PathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []project.ContextProvenance{{Role: "template", Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{{Path: "out", Label: "managed output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []project.DomainRef{}, Topics: []project.ContextPathTopic{}, Relationships: project.ContextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningEligibleUnowned}, ADR: &project.ADRArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []project.ADROperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", Detail: &project.ADROperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &project.ADROperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002"}}}}}}}
 	res := project.ContextResult{Selection: project.SelectionStaged, Requests: []project.ContextRequestReport{{Index: 1, Argument: "empty", Directory: &project.ContextDirectory{Included: 0, Excluded: []project.ContextClassificationCount{{Classification: project.PathGeneratedOutput, Count: 2}}, Groups: []project.ContextGroup{{Count: 2, Members: []string{"a", "b"}, Context: impact}}}}}, Topics: []project.TopicImpact{{ID: "d/t", Title: "T", Summary: "S", Selectors: &project.ContextSelectorImpact{DomainPaths: []string{}, TopicPaths: []string{}, DeclaredGlobal: false}, Invariants: []project.ContextClaimImpact{current}, Pending: project.ContextPendingImpact{OperationCount: 4, ADRs: []string{"0001", "0002", "0003"}, AdditionalADRCount: 1}}}}
 	var out bytes.Buffer
 	renderContext(&out, res, "header", []project.ContextFacet{project.FacetArtifacts})
@@ -352,6 +370,8 @@ func TestRenderAllContextBranches(t *testing.T) {
 }
 
 func TestContextHumanOnlyFlagGrammar(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	spec, _ := clispec.Lookup("context")
 	for _, args := range [][]string{{"--json"}, {"--uncovered", "--json"}} {
 		if _, err := parseArgs(spec, args); err == nil || !strings.Contains(err.Error(), "unknown flag") {
@@ -361,69 +381,73 @@ func TestContextHumanOnlyFlagGrammar(t *testing.T) {
 }
 
 func TestContextDispatchHandler(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
-	if err := handlers["context"](&cmdCtx{root: t.TempDir(), inv: invocation{bools: map[string]bool{}, values: map[string]string{}, multi: map[string][]string{}, positionals: []string{"x"}}, stdout: &out}); err != nil {
+	if err := handlers["context"](&cmdCtx{ctx: testContext(t), root: t.TempDir(), inv: invocation{bools: map[string]bool{}, values: map[string]string{}, multi: map[string][]string{}, positionals: []string{"x"}}, stdout: &out}); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRunContextSelectionAndProjectErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
+	if err := runContext(ctx, t.TempDir(), nil, true, "", false, false, nil, io.Discard); err == nil {
+		t.Fatal("changed-path selection accepted a non-repository")
+	}
 	root := ctxCmdFixture(t)
 	var out bytes.Buffer
-	if err := runContext(root, []string{"internal/foo/x.go"}, false, "", false, true, nil, &out); err != nil {
+	if err := runContext(ctx, root, []string{"internal/foo/x.go"}, false, "", false, true, nil, &out); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"internal"}, false, "", true, false, nil, &out); err != nil {
+	if err := runContext(ctx, root, []string{"internal"}, false, "", true, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, nil, false, "bad-range", false, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, root, nil, false, "bad-range", false, false, nil, io.Discard); err == nil {
 		t.Fatal("bad range accepted")
 	}
-	repo, rangeRoot := gitfixture.InitRepo(t)
-	gitfixture.Commit(t, repo, rangeRoot, "one", map[string]string{"a": "1"})
-	gitfixture.Commit(t, repo, rangeRoot, "two", map[string]string{"a": "2"})
-	if err := runContext(rangeRoot, nil, false, "HEAD~1..HEAD", false, false, nil, io.Discard); err != nil {
+	repo := gitfixture.InitRepo(t)
+	rangeRoot := repo.Root()
+	gitfixture.Commit(t, repo, "one", map[string]string{"a": "1"})
+	gitfixture.Commit(t, repo, "two", map[string]string{"a": "2"})
+	if err := runContext(ctx, rangeRoot, nil, false, "HEAD~1..HEAD", false, false, nil, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	_, clean := gitfixture.InitRepo(t)
-	if err := runContext(clean, nil, true, "", false, false, nil, io.Discard); err == nil || !strings.Contains(err.Error(), "no changed paths") {
+	clean := gitfixture.InitRepo(t).Root()
+	if err := runContext(ctx, clean, nil, true, "", false, false, nil, io.Discard); err == nil || !strings.Contains(err.Error(), "no changed paths") {
 		t.Fatalf("empty staged err=%v", err)
 	}
-	if err := runContext(root, []string{"x"}, true, "", false, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, root, []string{"x"}, true, "", false, false, nil, io.Discard); err == nil {
 		t.Fatal("invalid staged transition accepted")
 	}
 	stagedRoot := ctxCmdFixture(t)
-	cmd := exec.Command("git", "add", ".")
-	cmd.Dir = stagedRoot
-	if output, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("git add: %v %s", err, output)
-	}
-	_ = runContext(stagedRoot, []string{"internal/foo/x.go"}, true, "", false, false, nil, io.Discard)
-	_ = runContext(stagedRoot, nil, true, "", true, false, nil, io.Discard)
+	gitfixture.AddAll(t, gitfixture.At(stagedRoot))
+	_ = runContext(ctx, stagedRoot, []string{"internal/foo/x.go"}, true, "", false, false, nil, io.Discard)
+	_ = runContext(ctx, stagedRoot, nil, true, "", true, false, nil, io.Discard)
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(ctxCmdYAML+"targets: [unknown]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, root, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
 		t.Fatal("invalid target accepted")
 	}
 	if err := os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("bad"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(root, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, root, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
 		t.Fatal("bad lock accepted")
 	}
 	broken := ctxCmdFixture(t)
 	if err := os.WriteFile(filepath.Join(broken, ".awf", "topics", "parts", "alpha", "one", "current-state.md"), []byte("broken"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(broken, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, broken, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
 		t.Fatal("broken context accepted")
 	}
-	if err := runContext(broken, nil, false, "", true, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, broken, nil, false, "", true, false, nil, io.Discard); err == nil {
 		t.Fatal("broken uncovered accepted")
 	}
 	static := t.TempDir()
-	if err := runContext(static, []string{"x"}, false, "", false, false, nil, &failOutput{}); err == nil {
+	if err := runContext(ctx, static, []string{"x"}, false, "", false, false, nil, &failOutput{}); err == nil {
 		t.Fatal("stdout failure accepted")
 	}
 }
@@ -433,9 +457,11 @@ type failOutput struct{}
 func (*failOutput) Write([]byte) (int, error) { return 0, errors.New("stdout") }
 
 func TestRunUncoveredStaticAndFilesystemErrors(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := t.TempDir()
 	var out bytes.Buffer
-	if err := runContext(root, nil, false, "", true, false, nil, &out); err != nil {
+	if err := runContext(ctx, root, nil, false, "", true, false, nil, &out); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "all scanned paths") {
@@ -445,10 +471,10 @@ func TestRunUncoveredStaticAndFilesystemErrors(t *testing.T) {
 	if err := os.WriteFile(bad, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runContext(bad, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, bad, []string{"x"}, false, "", false, false, nil, io.Discard); err == nil {
 		t.Fatal("accepted file root")
 	}
-	if err := runContext(bad, nil, false, "", true, false, nil, io.Discard); err == nil {
+	if err := runContext(ctx, bad, nil, false, "", true, false, nil, io.Discard); err == nil {
 		t.Fatal("uncovered accepted file root")
 	}
 }

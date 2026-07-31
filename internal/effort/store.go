@@ -2,12 +2,12 @@ package effort
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -68,7 +68,7 @@ func normalizeTitle(title string) (string, error) {
 	return title, nil
 }
 
-func deriveSlug(title string) (string, error) {
+func deriveSlug(ctx context.Context, validateRef func(context.Context, string) (bool, error), title string) (string, error) {
 	if !utf8.ValidString(title) {
 		return "", slugRepairError("outcome title is not valid UTF-8")
 	}
@@ -98,9 +98,13 @@ func deriveSlug(title string) (string, error) {
 	}
 	// The ref probe runs here, at the one point a slug is minted, rather than in
 	// validateSlug: enumeration validates every resident name it reads, and a
-	// subprocess per resident would make listing cost a git fork each and make
+	// probe per resident would make listing cost a git fork each and make
 	// every effort command fail without git on PATH.
-	if err := exec.Command("git", "check-ref-format", "--branch", "awf/"+slug).Run(); err != nil { // coverage-ignore: the bounded lowercase ASCII grammar with a fixed awf/ prefix is always a valid branch ref; this remains defense in depth
+	valid, err := validateRef(ctx, "awf/"+slug)
+	if err != nil {
+		return "", fmt.Errorf("validate branch name for slug %q: %w; changed bytes: no; next action: repair the Git installation and retry", slug, err)
+	}
+	if !valid {
 		return "", slugRepairError(fmt.Sprintf("refs/heads/awf/%s is not a valid Git ref", slug))
 	}
 	return slug, nil

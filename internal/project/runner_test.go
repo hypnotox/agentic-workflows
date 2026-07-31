@@ -16,7 +16,7 @@ import (
 func runnerFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +147,7 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
-			p, err := Open(root)
+			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -185,11 +185,11 @@ func TestPruneBacksUpCoOwnedRunner(t *testing.T) {
 			if err := os.WriteFile(configPath(root), []byte(disabled), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			p2, err := Open(root)
+			p2, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			backups, _, pruned, err := p2.SyncReport()
+			backups, _, pruned, err := p2.SyncReport(testContext(t))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -234,7 +234,7 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 // override renders and `awf check` does not flag `.awf/runner` as unclaimed.
 func TestRunnerPartOverrideClaimed(t *testing.T) {
 	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 	if !strings.Contains(string(wrapper), "custom-awf") {
 		t.Errorf("runner-body part override not applied:\n%s", wrapper)
 	}
-	drift, err := p.Check()
+	drift, err := p.Check(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 // than a silent default.
 func TestRunnerPartReadError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nrunner:\n  enabled: true\n")
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

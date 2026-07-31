@@ -10,6 +10,31 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+// TestOutsideContextPathReadsBothPathSpaces documents that an absolute request
+// is refused as outside the repository in either path space. The classifier
+// receives a slash-normalized path but asked only filepath.IsAbs, which on
+// Windows answers false for "/etc/passwd" and let it fall through to
+// PathNotFound.
+//
+// This is documentation, not a regression guard: on Unix path.IsAbs and
+// filepath.IsAbs agree on every input below, so the table stays green against
+// the pre-fix predicate too. Only a Windows run distinguishes them, and giving
+// the predicate an injectable path-space seam purely to simulate that would be
+// the test-only production indirection direct-injection-first rejects. It
+// therefore carries no invariant marker.
+func TestOutsideContextPathReadsBothPathSpaces(t *testing.T) {
+	for _, p := range []string{"/etc/passwd", "/", "..", "../x", "../../x"} {
+		if !outsideContextPath(p) {
+			t.Errorf("outsideContextPath(%q) = false, want outside", p)
+		}
+	}
+	for _, p := range []string{"a", "a/b", ".awf/config.yaml", "..a", "a/../b"} {
+		if outsideContextPath(p) {
+			t.Errorf("outsideContextPath(%q) = true, want inside", p)
+		}
+	}
+}
+
 // invariant: tooling/context-and-topic:context-path-attribution
 // invariant: tooling/context-and-topic:context-path-classification
 func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
@@ -127,7 +152,7 @@ func TestContextFacetsAndGroupKey(t *testing.T) {
 	a.Domains = []DomainRef{{Name: "d", CurrentState: "docs/d.md"}}
 	a.Topics = []ContextPathTopic{{ID: "d/t"}}
 	a.Relationships = ContextRelationships{State: []string{"d/t:r"}, Touches: []string{}, Proofs: []string{"d/t:i"}}
-	a.ADR = &ADRArtifactContext{Number: "0001", Status: "Implementing", Operations: []ADROperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current", StateSequence: 2}}}
+	a.ADR = &ADRArtifactContext{Number: "0001", Status: "Implementing", Operations: []ADROperationContext{{Operation: "add", Claim: "d/t:r", Progress: "remaining", ClaimState: "not-yet-current"}}}
 	_ = contextGroupKey(a, nil)
 	b := a
 	b.Warnings = []ContextWarning{WarningGlobLiteral}

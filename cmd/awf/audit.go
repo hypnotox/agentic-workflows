@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
-func runAudit(root, rangeArg string, stdout io.Writer) error {
+func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) error {
 	// The range is required and has no default (ADR-0127 Decision 2): an audit
 	// that silently reports over nothing is worse than one that refuses.
 	if rangeArg == "" {
@@ -19,11 +20,13 @@ func runAudit(root, rangeArg string, stdout io.Writer) error {
 	if err != nil {
 		return &usageErr{"awf audit: " + err.Error()}
 	}
-	p, err := project.Open(root)
+	p, err := project.Open(ctx, root)
 	if err != nil {
 		return err
 	}
-	findings, commits, err := p.Audit(base, head)
+	// The command boundary has already bounded the whole invocation, including
+	// the live cleanliness rule's native Git call and the object walk here.
+	findings, commits, err := p.Audit(ctx, base, head)
 	if err != nil {
 		return err
 	}

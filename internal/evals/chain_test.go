@@ -95,7 +95,7 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 		if !namesOnInvocationLine(body, "subagent_review") || !strings.Contains(extension, tc.agent+".md") {
 			t.Errorf("Pi skill %q does not connect subagent_review to %q", tc.skill, tc.agent)
 		}
-		if got := strings.Count(body, "Omit the `model` field entirely to use configured role routing"); got != 2 {
+		if got := strings.Count(body, "omit the `model` field to use configured role routing"); got != 2 {
 			t.Errorf("Pi skill %q has %d deliberate selection rules, want primary and verify rules", tc.skill, got)
 		}
 		if reviewer := read(t, filepath.Join(root, ".pi", "agents", tc.agent+".md")); !strings.Contains(reviewer, "## Classification rules") {

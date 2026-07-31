@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"maps"
@@ -26,12 +27,12 @@ import (
 // ADR-0045 unset-var notes, the ADR-0070 stub notes, then the ADR-0083 part-
 // marker notes - computed from one output-plan render plus the domain-doc
 // generation, which renders outside it.
-func (p *Project) AdvisoryNotes() ([]string, error) {
+func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	corpus, topics, eff, err := p.deriveOperationState()
 	if err != nil {
 		return nil, err
 	}
-	op, err := p.outputPlan(corpus, topics, eff)
+	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return nil, err
 	}
@@ -390,7 +391,7 @@ func (p *Project) declaredSections(kind, name string) []string {
 	return nil
 }
 
-func (p *Project) Check() ([]manifest.Drift, error) {
+func (p *Project) Check(ctx context.Context) ([]manifest.Drift, error) {
 	// Refuse an unresolvable hook-command wiring before checking anything
 	// (ADR-0156 Decision 5); the staged index check stays exempt - the
 	// working-tree check in the same gate run covers the config.
@@ -408,7 +409,7 @@ func (p *Project) Check() ([]manifest.Drift, error) {
 	if !found {
 		return nil, errors.New("no lock (run awf render)")
 	}
-	op, err := p.outputPlan(corpus, topics, eff)
+	op, err := p.outputPlan(ctx, corpus, topics, eff)
 	if err != nil {
 		return nil, err
 	}

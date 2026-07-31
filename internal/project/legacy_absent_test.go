@@ -14,11 +14,11 @@ import (
 func TestLegacyActiveMDIndexNotPlanned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills: []\nagents: []\ndomains: [rendering]\ntargets: [claude]\n",
 		map[string]string{"domains/rendering.yaml": "paths: ['internal/**']\n"})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	planned, err := p.PlannedOutputs()
+	planned, err := p.PlannedOutputs(testContext(t))
 	if err != nil {
 		t.Fatal(err)
 	}

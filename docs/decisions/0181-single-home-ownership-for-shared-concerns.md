@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0181: Single-home ownership for shared concerns
@@ -79,6 +79,9 @@ defaults wholesale, so additions must compare and backfill.
    reimplementing a reduced copy. Where ownership of a concern is contested, the
    decision performing the conversion settles the home, with
    `code-design/dependency-composition:consumer-owned-contracts` as the tie-break.
+   A new consumer of an already-forked concern adopts one of the existing
+   implementations and never adds another; converging the remaining forks stays a
+   deliberate choice under item 1, not the new consumer's obligation.
 
 3. Two implementations of similar-looking behaviour are permitted only when they answer
    materially different contracts from distinct sources, and that reasoning is recorded in
@@ -197,3 +200,4 @@ only caller is a coverage-satisfying test.
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-31: Implemented; content-sha256: ea1abdb637904663103f609f96ef6041e084ec05c77707fea3d70ad70e98c08f

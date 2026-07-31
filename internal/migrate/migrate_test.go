@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -144,7 +145,7 @@ func TestGateBlocksWhenBehind(t *testing.T) {
 func TestUpgradeRelocatesLocklessPreRelocationTree(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "awf", "config.yaml"), "prefix: ex\nskills: []\nagents: []\n")
-	applied, err := Upgrade(root, io.Discard)
+	applied, err := Upgrade(testContext(t), root, io.Discard)
 	if err != nil {
 		t.Fatalf("Upgrade: %v", err)
 	}
@@ -354,9 +355,9 @@ func TestUpgradePropagatesMigrationError(t *testing.T) {
 	if got := mustGeneration(t, root); got != 0 {
 		t.Fatalf("Generation(malformed legacy) = %d, want 0", got)
 	}
-	applied, err := Upgrade(root, io.Discard)
+	applied, err := Upgrade(testContext(t), root, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "tree-layout") {
-		t.Fatalf("Upgrade(malformed legacy) err = %v, want a tree-layout migration error", err)
+		t.Fatalf("Upgrade(testContext(t), malformed legacy) err = %v, want a tree-layout migration error", err)
 	}
 	if len(applied) != 0 {
 		t.Errorf("Upgrade applied = %v, want [] on failure", applied)
@@ -591,7 +592,7 @@ func TestAwfRelocationGatesAndMoves(t *testing.T) {
 	if mustGateState(t, root) != "gate" {
 		t.Fatalf("expected gate state, got %q", mustGateState(t, root))
 	}
-	if _, err := Upgrade(root, io.Discard); err != nil {
+	if _, err := Upgrade(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); err != nil {
@@ -847,9 +848,9 @@ func TestUpgradeFallbackStampsWhenHighestMigrationDoesNotOwnStamp(t *testing.T) 
 	stampLockAt(t, filepath.Join(root, ".awf", "awf.lock"), Current())
 	original := registry
 	next := Current() + 1
-	registry = append(append([]Migration(nil), registry...), Migration{To: next, Name: "test-fallback-stamp", Apply: func(string, io.Writer) error { return nil }})
+	registry = append(append([]Migration(nil), registry...), Migration{To: next, Name: "test-fallback-stamp", Apply: func(context.Context, string, io.Writer) error { return nil }})
 	t.Cleanup(func() { registry = original })
-	applied, err := Upgrade(root, io.Discard)
+	applied, err := Upgrade(testContext(t), root, io.Discard)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -938,7 +939,7 @@ func TestGenerationCorruptTreeLockErrors(t *testing.T) {
 	if _, err := Generation(root); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
 		t.Fatalf("want corrupt-lock error, got %v", err)
 	}
-	if _, err := Upgrade(root, io.Discard); err == nil {
+	if _, err := Upgrade(testContext(t), root, io.Discard); err == nil {
 		t.Fatal("Upgrade must refuse a corrupt lock upfront")
 	}
 }

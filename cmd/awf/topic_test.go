@@ -9,9 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -19,13 +17,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 func topicCmdFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
-	runGit(t, root, "init")
+	gitfixture.InitNativeAt(t, root)
 	testsupport.WriteAwfConfig(t, root, `prefix: example
 skills: []
 agents: []
@@ -43,8 +42,8 @@ currentState:
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-scheduling.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: Scheduling origin"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Scheduling.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-revision.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0002: Scheduling revision"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Revise scheduling.\n")))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-update-active.md"), topicV1ADR(t, "0003", "Update active claim", "- update `schedule/contracts:deterministic-order`", 1))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove legacy claim", "- remove `schedule/contracts:removed`", 2))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-update-active.md"), topicV1ADR(t, "0003", "Update active claim", "- update `schedule/contracts:deterministic-order`"))
+	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove legacy claim", "- remove `schedule/contracts:removed`"))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md"), `Scheduling contracts.
 
@@ -76,7 +75,7 @@ References: schedule/contracts:stable-output
 	return root
 }
 
-func topicV1ADR(t *testing.T, number, title, operation string, sequence int) string {
+func topicV1ADR(t *testing.T, number, title, operation string) string {
 	t.Helper()
 	build := func(status, history string) string {
 		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
@@ -90,18 +89,20 @@ func topicV1ADR(t *testing.T, number, title, operation string, sequence int) str
 		t.Fatal(err)
 	}
 	digest := adr.ContentDigest(proposed.Sections)
-	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest+"; state-sequence: "+strconv.Itoa(sequence))
+	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest)
 }
 
 func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCmdFixture(t)
 	claimID := "schedule/contracts:removed"
-	if err := runTopic(root, claimID, false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runTopic(ctx, root, claimID, false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("default removed-claim query = %v", err)
 	}
 
 	var human bytes.Buffer
-	if err := runTopic(root, claimID, true, true, true, false, &human); err != nil {
+	if err := runTopic(ctx, root, claimID, true, true, true, false, &human); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
@@ -121,7 +122,7 @@ func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
 	}
 
 	var encoded bytes.Buffer
-	if err := runTopic(root, claimID, true, true, true, true, &encoded); err != nil {
+	if err := runTopic(ctx, root, claimID, true, true, true, true, &encoded); err != nil {
 		t.Fatal(err)
 	}
 	var result topic.QueryResult
@@ -144,9 +145,11 @@ func TestRunTopicHistoricalOnlyHumanJSON(t *testing.T) {
 }
 
 func TestRunTopicHumanJSONAndFlags(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	root := topicCmdFixture(t)
 	var defaults bytes.Buffer
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, &defaults); err != nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, &defaults); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"topic schedule/contracts", "Title: Scheduling", "deterministic-order [rule] [backing: none]", "stable-output [invariant] [backing: test]"} {
@@ -171,7 +174,7 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			if err := runTopic(root, "schedule/contracts", tc.history, tc.references, tc.coverage, false, &out); err != nil {
+			if err := runTopic(ctx, root, "schedule/contracts", tc.history, tc.references, tc.coverage, false, &out); err != nil {
 				t.Fatal(err)
 			}
 			if !strings.Contains(out.String(), tc.want) {
@@ -180,11 +183,11 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 		})
 	}
 	var claim bytes.Buffer
-	if err := runTopic(root, "schedule/contracts:stable-output", false, false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
+	if err := runTopic(ctx, root, "schedule/contracts:stable-output", false, false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
 		t.Fatalf("claim output: %v\n%s", err, claim.String())
 	}
 	var encoded bytes.Buffer
-	if err := runTopic(root, "schedule/contracts", true, true, true, true, &encoded); err != nil {
+	if err := runTopic(ctx, root, "schedule/contracts", true, true, true, true, &encoded); err != nil {
 		t.Fatal(err)
 	}
 	var result topic.QueryResult
@@ -204,11 +207,11 @@ func TestRunTopicHumanJSONAndFlags(t *testing.T) {
 	}
 }
 
-func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
+func TestPrintTopicHistoryHumanJSON(t *testing.T) {
 	result := topic.QueryResult{
 		Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{},
 		History: []topic.ClaimHistory{
-			{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented", StateSequence: 3}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing", StateSequence: 4}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned", StateSequence: 5}},
+			{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing"}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned"}},
 			{ClaimID: "d/t:legacy", Origin: &topic.ADRHistory{Number: "0100", Title: "Legacy origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{}},
 		},
 	}
@@ -216,7 +219,7 @@ func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
 	if err := printTopic(&human, result, false); err != nil {
 		t.Fatal(err)
 	}
-	wantHuman := "topic d/t\n\n## Claims\n\n## History\nd/t:x\n  Origin: ADR-0001 (Implemented) Origin [state-sequence: 3]\n  Revised-by: ADR-0002 (Implementing) Revision [state-sequence: 4]\n  Removed-by: ADR-0003 (Abandoned) Removal [state-sequence: 5]\nd/t:legacy\n  Origin: ADR-0100 (Implemented) Legacy origin\n"
+	wantHuman := "topic d/t\n\n## Claims\n\n## History\nd/t:x\n  Origin: ADR-0001 (Implemented) Origin\n  Revised-by: ADR-0002 (Implementing) Revision\n  Removed-by: ADR-0003 (Abandoned) Removal\nd/t:legacy\n  Origin: ADR-0100 (Implemented) Legacy origin\n"
 	if human.String() != wantHuman {
 		t.Fatalf("human history:\n%s\nwant:\n%s", human.String(), wantHuman)
 	}
@@ -225,7 +228,7 @@ func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
 	if err := printTopic(&encoded, result, true); err != nil {
 		t.Fatal(err)
 	}
-	wantJSON := "{\n  \"kind\": \"topic\",\n  \"id\": \"d/t\",\n  \"claims\": [],\n  \"history\": [\n    {\n      \"claimId\": \"d/t:x\",\n      \"origin\": {\n        \"number\": \"0001\",\n        \"title\": \"Origin\",\n        \"status\": \"Implemented\",\n        \"stateSequence\": 3\n      },\n      \"revisedBy\": [\n        {\n          \"number\": \"0002\",\n          \"title\": \"Revision\",\n          \"status\": \"Implementing\",\n          \"stateSequence\": 4\n        }\n      ],\n      \"removedBy\": {\n        \"number\": \"0003\",\n        \"title\": \"Removal\",\n        \"status\": \"Abandoned\",\n        \"stateSequence\": 5\n      }\n    },\n    {\n      \"claimId\": \"d/t:legacy\",\n      \"origin\": {\n        \"number\": \"0100\",\n        \"title\": \"Legacy origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": []\n    }\n  ]\n}\n"
+	wantJSON := "{\n  \"kind\": \"topic\",\n  \"id\": \"d/t\",\n  \"claims\": [],\n  \"history\": [\n    {\n      \"claimId\": \"d/t:x\",\n      \"origin\": {\n        \"number\": \"0001\",\n        \"title\": \"Origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": [\n        {\n          \"number\": \"0002\",\n          \"title\": \"Revision\",\n          \"status\": \"Implementing\"\n        }\n      ],\n      \"removedBy\": {\n        \"number\": \"0003\",\n        \"title\": \"Removal\",\n        \"status\": \"Abandoned\"\n      }\n    },\n    {\n      \"claimId\": \"d/t:legacy\",\n      \"origin\": {\n        \"number\": \"0100\",\n        \"title\": \"Legacy origin\",\n        \"status\": \"Implemented\"\n      },\n      \"revisedBy\": []\n    }\n  ]\n}\n"
 	if encoded.String() != wantJSON {
 		t.Fatalf("JSON history:\n%s\nwant:\n%s", encoded.String(), wantJSON)
 	}
@@ -233,8 +236,9 @@ func TestPrintTopicHistoryStateSequenceHumanJSON(t *testing.T) {
 
 func runTopicHuman(t *testing.T, root string) string {
 	t.Helper()
+	ctx := testContext(t)
 	var out bytes.Buffer
-	if err := runTopic(root, "schedule/contracts", true, true, true, false, &out); err != nil {
+	if err := runTopic(ctx, root, "schedule/contracts", true, true, true, false, &out); err != nil {
 		t.Fatal(err)
 	}
 	return out.String()
@@ -255,6 +259,8 @@ func (w *failOnWrite) Write(p []byte) (int, error) {
 }
 
 func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	sentinel := errors.New("writer failed")
 	base := topic.QueryResult{
 		Kind: "topic", ID: "schedule/contracts", Title: "Scheduling", Summary: "Summary.",
@@ -283,6 +289,8 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 }
 
 func TestPrintTopicOptionalHumanFields(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	result := topic.QueryResult{
 		Kind: "claim", ID: "schedule/global:stable", Claims: []topic.QueryClaim{{
 			ID: "schedule/global:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect output.",
@@ -303,12 +311,14 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 }
 
 func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
-	if err := runTopic(t.TempDir(), "bad", false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
+	ctx := testContext(t)
+	_ = ctx
+	if err := runTopic(ctx, t.TempDir(), "bad", false, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
 		t.Fatalf("syntax error = %v", err)
 	}
 	for _, asJSON := range []bool{false, true} {
 		var out bytes.Buffer
-		if err := runTopic(t.TempDir(), "schedule/contracts", false, false, false, asJSON, &out); err != nil || !strings.Contains(out.String(), "static: not inside") {
+		if err := runTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, asJSON, &out); err != nil || !strings.Contains(out.String(), "static: not inside") {
 			t.Fatalf("static = %v, %s", err, out.String())
 		}
 	}
@@ -316,11 +326,11 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("file"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
 		t.Fatal("stat fault accepted")
 	}
 	root = gateFixture(t, "99.0.0", migrate.Current())
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
 		t.Fatal("version gate accepted ahead lock")
 	}
 	root = t.TempDir()
@@ -329,16 +339,18 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runTopic(root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
+	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, false, io.Discard); err == nil {
 		t.Fatal("open error hidden")
 	}
 	root = topicCmdFixture(t)
-	if err := runTopic(root, "schedule/missing", true, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runTopic(ctx, root, "schedule/missing", true, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("missing topic = %v", err)
 	}
 }
 
 func TestRunTopicDispatchAndReadOnly(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	for _, tc := range []struct {
 		args []string
 		code int
@@ -366,32 +378,21 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 	}
 
 	root = topicCmdFixture(t)
-	runGit(t, root, "init")
-	runGit(t, root, "add", ".")
-	beforeTree, beforeIndex := digestFiles(t, root), runGit(t, root, "write-tree")
+	fixture := gitfixture.At(root)
+	gitfixture.NativeAdd(t, fixture, ".")
+	beforeTree, beforeIndex := digestFiles(t, root), gitfixture.NativeWriteTree(t, fixture)
 	for _, args := range [][]string{{"schedule/contracts"}, {"schedule/contracts:stable-output", "--json"}, {"schedule/contracts", "--history", "--references", "--coverage"}} {
 		var out bytes.Buffer
-		if err := runTopic(root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), strings.Contains(strings.Join(args, " "), "--json"), &out); err != nil {
+		if err := runTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), strings.Contains(strings.Join(args, " "), "--json"), &out); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if after := digestFiles(t, root); after != beforeTree {
 		t.Fatalf("topic query mutated tree: %s != %s", after, beforeTree)
 	}
-	if after := runGit(t, root, "write-tree"); after != beforeIndex {
+	if after := gitfixture.NativeWriteTree(t, fixture); after != beforeIndex {
 		t.Fatalf("topic query mutated index: %s != %s", after, beforeIndex)
 	}
-}
-
-func runGit(t *testing.T, root string, args ...string) string {
-	t.Helper()
-	cmd := exec.Command("git", args...)
-	cmd.Dir = root
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("git %v: %v: %s", args, err, out)
-	}
-	return strings.TrimSpace(string(out))
 }
 
 func digestFiles(t *testing.T, root string) string {

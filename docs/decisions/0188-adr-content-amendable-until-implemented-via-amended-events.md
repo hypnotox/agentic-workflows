@@ -170,4 +170,4 @@ land after the record froze.
 ## Status history
 
 - 2026-07-30: Proposed
-- 2026-07-30: Implemented; content-sha256: 216acd460176ae45f3e9cbed4048725b38d3a818bbeb7d57c1773a662510be73; state-sequence: 101
+- 2026-07-30: Implemented; content-sha256: 216acd460176ae45f3e9cbed4048725b38d3a818bbeb7d57c1773a662510be73

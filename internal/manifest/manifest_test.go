@@ -86,6 +86,32 @@ func TestWriteFileAtomic(t *testing.T) {
 	}
 }
 
+// TestWriteFileAtomicModeAppliesRequestedMode pins the explicit-mode variant a
+// caller uses when a file's recorded permissions must survive the write, rather
+// than being flattened to the lock's 0o644.
+func TestWriteFileAtomicModeAppliesRequestedMode(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "restored")
+	if err := os.WriteFile(p, []byte("old"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFileAtomicMode(p, []byte("restored\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(p)
+	if err != nil || string(b) != "restored\n" {
+		t.Fatalf("content = %q, err = %v", b, err)
+	}
+	info, err := os.Stat(p)
+	if err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("perm = %v, err = %v (want 0600)", info.Mode().Perm(), err)
+	}
+	ents, err := os.ReadDir(dir)
+	if err != nil || len(ents) != 1 {
+		t.Fatalf("temp residue left behind: %v (err %v)", ents, err)
+	}
+}
+
 func TestWriteFileAtomicFailureLeavesTargetUntouched(t *testing.T) {
 	// Destination path is a directory: CreateTemp succeeds, the rename fails.
 	// The original path must be untouched and no temp file may remain.

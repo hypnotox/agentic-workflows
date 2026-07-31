@@ -107,3 +107,9 @@ Backing: test
 awf uninstall removes the in-tree files recorded in the lock and no file outside it, reporting the count it removed.
 Origin: ADR-0148
 Backing: test
+
+### `invariant: coverage-evaluation-unconditional`
+
+The awf check current-state report evaluates topic coverage and topic fan-out for every adopted tree, in the working-tree path and the staged path alike, independent of whether the config declares a currentState block; a tree declaring no block evaluates against the same defaults as a tree that declares one and sets nothing in it.
+Origin: ADR-0192
+Backing: test

@@ -19,6 +19,8 @@ import (
 // promotion - and the exact match is enforced at release time by cmd/releasecheck.
 // invariant: tooling/changelog-and-release:changelog-monotonic
 func TestChangelogMonotonicOrder(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	entries, err := changelog.Load(changelogfs.FS)
 	if err != nil {
 		t.Fatalf("load embedded changelog: %v", err)
@@ -36,6 +38,8 @@ func TestChangelogMonotonicOrder(t *testing.T) {
 }
 
 func TestRunChangelogNoFlags(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	if err := runChangelog("", "", "", &out); err != nil {
 		t.Fatalf("runChangelog: %v", err)
@@ -50,6 +54,8 @@ func TestRunChangelogNoFlags(t *testing.T) {
 }
 
 func TestRunChangelogVersion(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	if err := runChangelog("0.2.0", "", "", &out); err != nil {
 		t.Fatalf("runChangelog: %v", err)
@@ -64,6 +70,8 @@ func TestRunChangelogVersion(t *testing.T) {
 }
 
 func TestRunChangelogVersionUnmatched(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	if err := runChangelog("9.9.9", "", "", &out); err == nil {
 		t.Fatal("an unmatched --version should error")
@@ -71,6 +79,8 @@ func TestRunChangelogVersionUnmatched(t *testing.T) {
 }
 
 func TestRunChangelogSinceUnmatched(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	if err := runChangelog("", "9.9.9", "", &out); err == nil {
 		t.Fatal("an unmatched --since should error")
@@ -78,6 +88,8 @@ func TestRunChangelogSinceUnmatched(t *testing.T) {
 }
 
 func TestRunChangelogSince(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	if err := runChangelog("", "0.3.1", "", &out); err != nil {
 		t.Fatalf("runChangelog: %v", err)
@@ -92,6 +104,8 @@ func TestRunChangelogSince(t *testing.T) {
 }
 
 func TestRunChangelogSinceLatest(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	entries, err := changelog.Load(changelogfs.FS)
 	if err != nil {
 		t.Fatalf("load embedded changelog: %v", err)
@@ -110,6 +124,8 @@ func TestRunChangelogSinceLatest(t *testing.T) {
 }
 
 func TestRunChangelogRange(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	if err := runChangelog("", "", "0.2.0..0.4.0", &out); err != nil {
 		t.Fatalf("runChangelog: %v", err)
@@ -126,6 +142,8 @@ func TestRunChangelogRange(t *testing.T) {
 }
 
 func TestRunChangelogRangeMissingSeparator(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	err := runChangelog("", "", "0.2.0", &out)
 	if err == nil {
@@ -138,6 +156,8 @@ func TestRunChangelogRangeMissingSeparator(t *testing.T) {
 }
 
 func TestRunChangelogRangeReversed(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	err := runChangelog("", "", "0.4.0..0.2.0", &out)
 	if err == nil {
@@ -150,6 +170,8 @@ func TestRunChangelogRangeReversed(t *testing.T) {
 }
 
 func TestRunChangelogFlagsExclusive(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out bytes.Buffer
 	err := runChangelog("0.2.0", "0.3.0", "", &out)
 	// invariant: tooling/changelog-and-release:changelog-flags-exclusive
@@ -163,6 +185,8 @@ func TestRunChangelogFlagsExclusive(t *testing.T) {
 }
 
 func TestDispatchChangelog(t *testing.T) {
+	ctx := testContext(t)
+	_ = ctx
 	var out, errb bytes.Buffer
 	if code := run([]string{"awf", "changelog", "--version", "0.1.0"}, &out, &errb); code != 0 {
 		t.Fatalf("dispatch changelog: code=%d err=%s", code, errb.String())

@@ -36,7 +36,7 @@ func findByTID(files []RenderedFile, tid string) []RenderedFile {
 
 func TestLocalSkillRendersFromBasePerTarget(t *testing.T) {
 	root := scaffoldFiles(t, localSkillYAML, localSkillFiles())
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +67,7 @@ func TestLocalSkillFallbackProfileForMissingBlankAndNonStringDescriptions(t *tes
 		"skills/blank.yaml":   "data:\n  description: '   '\n",
 		"skills/number.yaml":  "data:\n  description: 42\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,7 +84,7 @@ func TestLocalAgentRendersFromBase(t *testing.T) {
 		"agents/my-agent.yaml":             "data:\n  description: Reviews the frobnicator.\n",
 		"agents/parts/my-agent/content.md": "Agent body here.\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestLocalAgentRendersFromBase(t *testing.T) {
 func TestLocalSynthesisDoesNotMutateStandard(t *testing.T) {
 	before := len(catalog.Standard.Skills)
 	root := scaffoldFiles(t, localSkillYAML, localSkillFiles())
-	if _, err := Open(root); err != nil {
+	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	// invariant: rendering/local-artifacts:local-catalog-clone
@@ -120,7 +120,7 @@ func TestLocalSynthesisDoesNotMutateStandard(t *testing.T) {
 
 func TestLocalUndeclaredNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - ghost\n", nil)
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	// invariant: rendering/local-artifacts:local-requires-declaration
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
 		t.Fatalf("expected not-in-catalog error, got %v", err)
@@ -131,7 +131,7 @@ func TestLocalSkillSidecarStatErrorFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\n", map[string]string{
 		"skills": "not a directory",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if !errors.Is(err, syscall.ENOTDIR) || !strings.Contains(err.Error(), "stat sidecar skills/my-skill.yaml") {
 		t.Fatalf("expected skill sidecar ENOTDIR, got %v", err)
 	}
@@ -141,7 +141,7 @@ func TestLocalReservedNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - _x\n", map[string]string{
 		"skills/_x.yaml": "data:\n  description: nope\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "kebab-case") {
 		t.Fatalf("expected invalid-name error, got %v", err)
 	}
@@ -153,7 +153,7 @@ func TestLocalAgentReservedNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nagents:\n  - _a\n", map[string]string{
 		"agents/_a.yaml": "data:\n  description: x\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "kebab-case") {
 		t.Fatalf("expected invalid-name error from agents synthesis, got %v", err)
 	}
@@ -163,7 +163,7 @@ func TestLocalMalformedSidecarFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - my-skill\n", map[string]string{
 		"skills/my-skill.yaml": "data: [unterminated\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "sidecar") {
 		t.Fatalf("expected sidecar parse error, got %v", err)
 	}
@@ -173,7 +173,7 @@ func TestLocalNameShadowingStandardStaysStandard(t *testing.T) {
 	root := scaffoldFiles(t, sampleYAML, map[string]string{
 		"skills/parts/tdd/content.md": "should be ignored\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestLocalHandAuthoredSkipped(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nskills:\n  - hand\n", map[string]string{
 		"skills/hand.yaml": "local: true\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func localDocFiles() map[string]string {
 
 func TestLocalDocRendersFromBase(t *testing.T) {
 	root := scaffoldFiles(t, localDocYAML, localDocFiles())
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func TestLocalDocSubfolderPathAndMap(t *testing.T) {
 		"docs/guides/ci.yaml":             "data:\n  description: How CI runs.\n",
 		"docs/parts/guides/ci/content.md": "CI body.\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +289,7 @@ func TestLocalDocSubfolderPathAndMap(t *testing.T) {
 func TestLocalDocSynthesisDoesNotMutateStandard(t *testing.T) {
 	before := len(catalog.Standard.Docs)
 	root := scaffoldFiles(t, localDocYAML, localDocFiles())
-	if _, err := Open(root); err != nil {
+	if _, err := Open(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	// invariant: rendering/local-artifacts:local-doc-catalog-clone
@@ -303,7 +303,7 @@ func TestLocalDocSynthesisDoesNotMutateStandard(t *testing.T) {
 
 func TestLocalDocUndeclaredNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - ghost\n", nil)
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	// invariant: rendering/local-artifacts:local-doc-requires-declaration
 	if err == nil || !strings.Contains(err.Error(), "is not in the catalog") {
 		t.Fatalf("expected not-in-catalog error, got %v", err)
@@ -314,7 +314,7 @@ func TestLocalDocSidecarStatErrorFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - my-doc\n", map[string]string{
 		"docs": "not a directory",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if !errors.Is(err, syscall.ENOTDIR) || !strings.Contains(err.Error(), "stat sidecar docs/my-doc.yaml") {
 		t.Fatalf("expected doc sidecar ENOTDIR, got %v", err)
 	}
@@ -324,7 +324,7 @@ func TestLocalDocInvalidNameFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - Bad\n", map[string]string{
 		"docs/Bad.yaml": "data:\n  description: x\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "kebab-case") {
 		t.Fatalf("expected invalid doc-name error, got %v", err)
 	}
@@ -334,7 +334,7 @@ func TestLocalDocMalformedSidecarFailsOpen(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - my-doc\n", map[string]string{
 		"docs/my-doc.yaml": "data: [unterminated\n",
 	})
-	_, err := Open(root)
+	_, err := Open(testContext(t), root)
 	if err == nil || !strings.Contains(err.Error(), "sidecar") {
 		t.Fatalf("expected sidecar parse error, got %v", err)
 	}
@@ -346,7 +346,7 @@ func TestLocalDocNameShadowingStandardStaysStandard(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - architecture\n", map[string]string{
 		"docs/architecture.yaml": "data:\n  title: Should Not Win\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -360,7 +360,7 @@ func TestLocalDocHandAuthoredSkipped(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - hand\n", map[string]string{
 		"docs/hand.yaml": "local: true\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +376,7 @@ func TestLocalDocDefaultDescWhenSidecarOmits(t *testing.T) {
 		"docs/bare.yaml":             "data:\n  title: Bare\n",
 		"docs/parts/bare/content.md": "Body.\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -393,7 +393,7 @@ func TestRenderAllRejectsDuplicateOutputPath(t *testing.T) {
 		"docs/decisions/template.yaml":             "data:\n  description: collide.\n",
 		"docs/parts/decisions/template/content.md": "body\n",
 	})
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,7 +404,7 @@ func TestRenderAllRejectsDuplicateOutputPath(t *testing.T) {
 
 func TestReleasingCatalogDocRenders(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\ndocs:\n  - releasing\n", nil)
-	p, err := Open(root)
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

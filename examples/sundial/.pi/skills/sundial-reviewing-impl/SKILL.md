@@ -13,7 +13,7 @@ Invoked as the independent review step of the implementation phase. It validates
 <!-- awf:edit when-fires: default; create .awf/skills/parts/reviewing-impl/when-fires.md to override -->
 Terminal step of sundial-executing-plans or sundial-subagent-driven-development, after all code-touching commits have landed.
 
-**Skip independent review when the session diff is docs-only**: every changed file is a docs or markdown artifact, with no source or test code touched. Exception: `docs/decisions/` changes always proceed so the `code-reviewer`'s doc-currency lens can confirm any ADR status-flip drift. A docs-only skip still continues to the terminal hand-off and any deferred flip transaction.
+A docs-only session diff may skip the independent review; step 2 defines the check and its ADR-directory exception.
 
 ## Procedure
 
@@ -28,7 +28,7 @@ Terminal step of sundial-executing-plans or sundial-subagent-driven-development,
 2. **Docs-only skip.** Compute `git diff --name-only ${baseSha}..${headSha}`. The diff is docs-only when every changed path is a docs or markdown artifact and no source or test file is touched. Exception: `docs/decisions/` changes always proceed. If every changed file is docs-only (outside `docs/decisions/`), surface a `Skipped (docs-only)` note and continue at step 8, treating the docs-only check as the applicable terminal review with zero findings.
 
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-impl/dispatch-subagent.md to override -->
-3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. The brief must include:
+3. **Call `subagent_review` with `kind: "code"`, independently from the implementer.** Put the complete reviewer brief in `task`; Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section. The brief must include:
 
    - The SHA range (`baseSha..headSha`), the `planPath` (or `null`), and the effort slug plus exact owned memory path as read-only context; the reviewer never edits shared memory.
    - Every user-provenance decision-log entry from the effort memory pasted verbatim, `Record:` blocks included, so the consensus-adherence check can run; a log without user entries omits the paste and leaves that check idle.
@@ -58,7 +58,7 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
    gates commits; it does not replace the gate or the drift check.
 
 <!-- awf:edit re-review-loop: default; create .awf/skills/parts/reviewing-impl/re-review-loop.md to override -->
-7. **Verify pass.** After applying fixes and passing the gate, call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task`. Choose the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. Omit the `model` field entirely to use configured role routing; when the selected complexity warrants an override, pass the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. This pass confirms the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
+7. **Verify pass.** After applying fixes and passing the gate, call `subagent_review` exactly once with `kind: "code"` and a verify brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: the agent guide's workflow section. This pass confirms the fixes resolved the findings without new regressions. Escalate any residual structural findings as `user-decision` items; do not loop further without explicit user direction.
 
 <!-- awf:edit hand-off: default; create .awf/skills/parts/reviewing-impl/hand-off.md to override -->
 8. **Route settled terminal review through optional worktree integration.** Repository sources and current-state documentation remain authoritative over checkpoint prose; standalone memory is forbidden.
@@ -78,6 +78,5 @@ If the context command returns exactly the two-line `AWF_CONTEXT_SPILL_V1` notic
 ## Notes
 
 <!-- awf:edit notes: default; create .awf/skills/parts/reviewing-impl/notes.md to override -->
-- This is the independent review step of the implementation phase: a single, independent `code-reviewer` subagent dispatched in fresh context.
-- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for sequence order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
+- Non-final ADR status and Applied events are written by the execution skill. Review every first, middle, final, or abandonment pair for ADR-number and intra-ADR position order, exact claim mutations, and truthful Applied/Remaining/Canceled progress; after review settles, this skill owns the final batch and Implemented event.
 - Fixes always land as new commits. `--no-verify` is reserved for genuine emergencies; follow up with a fix.

@@ -50,9 +50,11 @@ func TestApplyDropSeveritySettings(t *testing.T) {
 			want: "prefix: ex\nskills: []\n",
 		},
 		{
-			// The removals would empty the block, and an absent block suppresses
-			// BOTH checks, so the explicit default budget is seeded instead of
-			// letting the block collapse (ADR-0183 item 1).
+			// The removals would empty the block. At generation 25 an absent
+			// block suppressed BOTH checks (ADR-0183 item 1), so the explicit
+			// default budget was seeded instead of letting the block collapse.
+			// ADR-0192 removed that gate, so the seed is now inert but harmless;
+			// the migration is frozen and keeps writing it.
 			name:     "sole children seed the default budget rather than collapsing",
 			src:      "prefix: ex\ncurrentState:\n  topicCoverage: warn\n  topicFanout: off\nskills: []\n",
 			want:     "prefix: ex\ncurrentState:\n  maxTopicsPerPath: 8\nskills: []\n",

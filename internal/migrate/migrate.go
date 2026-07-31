@@ -13,6 +13,7 @@ package migrate
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -26,42 +27,51 @@ import (
 type Migration struct {
 	To              int
 	Name            string
-	Apply           func(root string, out io.Writer) error
+	Apply           func(ctx context.Context, root string, out io.Writer) error
 	OwnsSchemaStamp bool
 }
 
 // registry is ordered ascending by To; current schema = last To.
 var registry = []Migration{
-	{To: 1, Name: "tree-layout", Apply: applyTreeLayout},
-	{To: 2, Name: "drop-replacewith", Apply: applyDropReplaceWith},
-	{To: 3, Name: "awf-dir-relocation", Apply: applyAwfRelocation},
-	{To: 4, Name: "drop-hooks", Apply: applyDropHooks},
-	{To: 5, Name: "enable-bootstrap", Apply: applyEnableBootstrap},
-	{To: 6, Name: "singleton-standard-docs", Apply: applySingletonStandardDocs},
-	{To: 7, Name: "anchored-globs", Apply: applyAnchoredGlobs},
-	{To: 8, Name: "close-enabled-set", Apply: applyCloseEnabledSet},
-	{To: 9, Name: "pitfalls-data", Apply: applyPitfallsData},
-	{To: 10, Name: "retirement-tokens", Apply: applyRetirementTokens},
-	{To: 11, Name: "drop-audit-base", Apply: applyDropAuditBase},
-	{To: 12, Name: "supersession-keys", Apply: applySupersessionKeys},
-	{To: 13, Name: "exploring-skill-closure", Apply: applyCloseEnabledSet},
-	{To: 14, Name: "current-state-topic-substrate", Apply: applyCurrentStateTopicSubstrate},
-	{To: 15, Name: "adr-format-v2-cutoff", Apply: applyADRFormatV2Cutoff, OwnsSchemaStamp: true},
-	{To: 16, Name: "topic-claim-budget", Apply: applyTopicClaimBudget},
-	{To: 17, Name: "workflow-telemetry", Apply: applyWorkflowTelemetry},
-	{To: 18, Name: "enable-runner", Apply: applyEnableRunner},
-	{To: 19, Name: "rename-retired-commands", Apply: applyRenameRetiredCommands},
-	{To: 20, Name: "drop-workflow-telemetry", Apply: applyDropWorkflowTelemetry},
+	{To: 1, Name: "tree-layout", Apply: treeOnly(applyTreeLayout)},
+	{To: 2, Name: "drop-replacewith", Apply: treeOnly(applyDropReplaceWith)},
+	{To: 3, Name: "awf-dir-relocation", Apply: treeOnly(applyAwfRelocation)},
+	{To: 4, Name: "drop-hooks", Apply: treeOnly(applyDropHooks)},
+	{To: 5, Name: "enable-bootstrap", Apply: treeOnly(applyEnableBootstrap)},
+	{To: 6, Name: "singleton-standard-docs", Apply: treeOnly(applySingletonStandardDocs)},
+	{To: 7, Name: "anchored-globs", Apply: treeOnly(applyAnchoredGlobs)},
+	{To: 8, Name: "close-enabled-set", Apply: treeOnly(applyCloseEnabledSet)},
+	{To: 9, Name: "pitfalls-data", Apply: treeOnly(applyPitfallsData)},
+	{To: 10, Name: "retirement-tokens", Apply: treeOnly(applyRetirementTokens)},
+	{To: 11, Name: "drop-audit-base", Apply: treeOnly(applyDropAuditBase)},
+	{To: 12, Name: "supersession-keys", Apply: treeOnly(applySupersessionKeys)},
+	{To: 13, Name: "exploring-skill-closure", Apply: treeOnly(applyCloseEnabledSet)},
+	{To: 14, Name: "current-state-topic-substrate", Apply: treeOnly(applyCurrentStateTopicSubstrate)},
+	{To: 15, Name: "adr-format-v2-cutoff", Apply: treeOnly(applyADRFormatV2Cutoff), OwnsSchemaStamp: true},
+	{To: 16, Name: "topic-claim-budget", Apply: treeOnly(applyTopicClaimBudget)},
+	{To: 17, Name: "workflow-telemetry", Apply: treeOnly(applyWorkflowTelemetry)},
+	{To: 18, Name: "enable-runner", Apply: treeOnly(applyEnableRunner)},
+	{To: 19, Name: "rename-retired-commands", Apply: treeOnly(applyRenameRetiredCommands)},
+	{To: 20, Name: "drop-workflow-telemetry", Apply: treeOnly(applyDropWorkflowTelemetry)},
 	{To: 21, Name: "remove-workflow-residents", Apply: applyRemoveWorkflowResidents},
 	{To: 22, Name: "unified-effort-residents", Apply: applyUnifiedEffortResidents, OwnsSchemaStamp: true},
-	{To: 23, Name: "implementer-agent-closure", Apply: applyCloseEnabledSet},
+	{To: 23, Name: "implementer-agent-closure", Apply: treeOnly(applyCloseEnabledSet)},
 	// Generation 24 pairs exploring->explorer and brainstorming->grounding-checker
 	// (ADR-0179); closing an enabled set over a new structural edge is what
 	// applyCloseEnabledSet already does, so an adopter who enables either skill
 	// gains its paired agent on upgrade instead of failing at project open.
-	{To: 24, Name: "explorer-grounding-closure", Apply: applyCloseEnabledSet},
-	{To: 25, Name: "drop-severity-settings", Apply: applyDropSeveritySettings},
-	{To: 26, Name: "orienting-skill-backfill", Apply: applyOrientingSkillBackfill},
+	{To: 24, Name: "explorer-grounding-closure", Apply: treeOnly(applyCloseEnabledSet)},
+	{To: 25, Name: "drop-severity-settings", Apply: treeOnly(applyDropSeveritySettings)},
+	{To: 26, Name: "orienting-skill-backfill", Apply: treeOnly(applyOrientingSkillBackfill)},
+	{To: 27, Name: "adr-number-provenance", Apply: treeOnly(applyADRNumberProvenance)},
+}
+
+// treeOnly adapts a migration that only rewrites the config tree to the
+// registry's context-taking shape. Only a migration that reaches Git needs the
+// context, so wrapping the rest keeps that distinction visible in the registry
+// itself rather than hiding it behind an unused parameter in every migration.
+func treeOnly(apply func(root string, out io.Writer) error) func(context.Context, string, io.Writer) error {
+	return func(_ context.Context, root string, out io.Writer) error { return apply(root, out) }
 }
 
 // applyCurrentStateTopicSubstrate ports schema 13 -> 14: the invariants->current-state
@@ -279,7 +289,7 @@ func GateState(root string) (string, int, error) {
 // After applying any migration it restamps an existing tree lock to Current() so
 // Generation reflects the new state and the terminal sync's schema gate passes
 // (a tree→tree upgrade keeps its lock, unlike the legacy 0→1 port which drops it).
-func Upgrade(root string, out io.Writer) ([]string, error) {
+func Upgrade(ctx context.Context, root string, out io.Writer) ([]string, error) {
 	from, err := Generation(root)
 	if err != nil {
 		return nil, err
@@ -290,7 +300,7 @@ func Upgrade(root string, out io.Writer) ([]string, error) {
 		if m.To <= from {
 			continue
 		}
-		if err := m.Apply(root, out); err != nil {
+		if err := m.Apply(ctx, root, out); err != nil {
 			return applied, fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
 		applied = append(applied, m.Name)

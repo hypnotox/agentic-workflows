@@ -1,13 +1,13 @@
 ---
 date: 2026-07-31
-adrs: [190]
+adrs: [194]
 status: Proposed
 ---
 # Plan: Slug-identified pending ADRs numbered at integration
 
 ## Goal
 
-Implement ADR-0190: format `current-state-v3` pending ADRs (`<slug>.md`, mandatory
+Implement ADR-0194: format `current-state-v3` pending ADRs (`<slug>.md`, mandatory
 retained `slug:` frontmatter), branch-aware scaffolding against a new required-explicit
 `integrationBranch` config key, the pending-on-integration-branch block, slug-capable
 plan links, the gated `awf adr number` command with its sanctioned numbering transition,
@@ -24,7 +24,7 @@ execution stops there.
 ## Architecture summary
 
 Six phases, each an independently green transaction. Phase 1 merges the landed seam work
-in and resyncs (including the possible one-time manual renumber of ADR-0190 itself).
+in and resyncs (including the possible one-time manual renumber of ADR-0194 itself).
 Phase 2 makes pending records first-class corpus members: the `adrFormatV3From` lock
 cutoff, the V3 parse path with slug identity, slug-aware corpus indexing with hard
 duplicate errors, provenance matching for slug-form `Origin:`/`Revised-by:`, INDEX
@@ -36,7 +36,7 @@ to accept slugs. Phase 5 builds `awf adr number` and the slug-paired numbering
 transition validation. Phase 6 renders the pre-merge-commit payload and lands the
 documentation and changelog obligations.
 
-ADR-0190's operations apply as five Implementing batches, one per implementation phase
+ADR-0194's operations apply as five Implementing batches, one per implementation phase
 (Phase 2 appends the Implementing status event first). Each batch's Applied event uses
 the next unclaimed contiguous state sequence at commit time and lists its operations in
 State-changes declaration order; each travels in the same commit as exactly its claim
@@ -91,7 +91,7 @@ suite, no backend types across the surface).
     `templates/skills/reviewing-adr/SKILL.md.tmpl`
   - `.awf/awf.lock`, `.awf/config.yaml`, `examples/sundial/.awf/awf.lock`,
     `examples/sundial/.awf/config.yaml` (self-migration via `awf upgrade`)
-  - `docs/decisions/0190-slug-identified-pending-adrs-numbered-at-integration.md`
+  - `docs/decisions/0194-slug-identified-pending-adrs-numbered-at-integration.md`
     (status history events), `changelog/`, rendered docs via `./x render`
 - **Deleted:** none.
 
@@ -133,7 +133,7 @@ docs(plans): record the seam-landing baseline for the numbering plan
 ## Phase 2: Format V3 core - lock cutoff, pending identity, corpus and checks
 
 **Execution mode: subagent-driven.** Baseline commands: `git status --short` prints
-nothing; `./x gate` exits 0; `./awf check` prints clean. This phase closes with ADR-0190
+nothing; `./x gate` exits 0; `./awf check` prints clean. This phase closes with ADR-0194
 entering `Implementing` and Applied batch 1.
 
 - [ ] **Task 2.1: Lock field `ADRFormatV3From`.** In `internal/manifest/manifest.go`,
@@ -209,7 +209,7 @@ entering `Implementing` and Applied batch 1.
   `*DuplicateIdentityError{Numbers, Slugs []string}` whose message reads
   `"ADR number %s is declared by more than one file"` /
   `"ADR slug %q is declared by more than one file"` (closing the silent last-wins
-  blindness ADR-0190's Consequences name). The returned `Corpus` is still populated
+  blindness ADR-0194's Consequences name). The returned `Corpus` is still populated
   (last-wins) alongside the typed error, documented as being for the numbering
   command's refusal path only; every other caller treats the error as fatal. Add `HasSlug(slug string) bool` and `BySlug(slug string) (ADR, bool)`. Update
   every `NewCorpus`/`LoadCorpus` caller (enumerate via `grep -rn "NewCorpus\|LoadCorpus"
@@ -257,7 +257,7 @@ entering `Implementing` and Applied batch 1.
   at scaffold, `format: current-state-v3` routing, reserved basenames excluded) and
   `adr-slug-frontmatter-mandatory` (V3 records carry a mandatory `slug:` key equal to
   the filename derivation, retained after numbering; corpus-wide uniqueness over
-  slug-carrying records), each `Backing: test` with `Origin: ADR-0190` and Revised-by
+  slug-carrying records), each `Backing: test` with `Origin: ADR-0194` and Revised-by
   appended on the updates. In
   `.awf/topics/parts/config/migrations-and-locks/current-state.md`: update
   `adr-v2-cutoff-atomic-immutable` from "both permanent format cutoffs" to the full
@@ -286,7 +286,7 @@ exits 0; `./awf check` clean.
   top-level scalar mapping entry, mirroring `SetArray`'s node handling (:107-122) with a
   scalar value node. Test: create-new, replace-existing, preserved comments/order,
   invalid-yaml error. The `config-serialization-owned` claim's closed editor
-  enumeration gains `SetString` (the claim update is declared by ADR-0190 and applies
+  enumeration gains `SetString` (the claim update is declared by ADR-0194 and applies
   in this phase's batch, Task 3.7).
 - [ ] **Task 3.2: `integrationBranch` config key.** In `internal/config/config.go`: add
   `IntegrationBranch string` (`yaml:"integrationBranch"`) beside `Prefix` (:44); NO
@@ -353,7 +353,7 @@ exits 0; `./awf check` clean.
   branch as `cfg.IntegrationBranch`, emit drift
   `{Kind: "pending-adr-on-integration-branch", Detail: "<slug>"}` per pending record.
   Detached HEAD, another branch, or a probe error emits nothing (positive
-  identification only, per ADR-0190 item 7). Test both firing and all three
+  identification only, per ADR-0194 item 7). Test both firing and all three
   non-firing outcomes with a mocked seam.
 - [ ] **Task 3.7: Claim mutations and batch 2.** In the adr-lifecycle part: update
   `adr-new-sequential-numbering` (branch-aware: highest-plus-one numbering on the
@@ -365,7 +365,7 @@ exits 0; `./awf check` clean.
   migration writes `integrationBranch: main` visibly, no in-code default, audit range
   resolution never reads it); update `config-serialization-owned` (the closed editor
   enumeration gains the top-level `SetString`). Proof markers on the Task
-  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0190 item 14 names
+  3.1/3.2/3.3/3.5/3.6 tests. Placement note: ADR-0194 item 14 names
   internal/currentstate as `pending-blocked-from-integration-branch`'s proof home, but
   the block is a corpus-level drift check implemented in internal/project (Task 3.6),
   so its marker lands on the internal/project test - a deliberate, stated deviation
@@ -519,7 +519,7 @@ feat(adr-system): add awf adr number and its numbering transition
   delegate `exec bash .awf/hooks/pre-merge-commit.sh "$@"` (mode 755, matching
   `.githooks/commit-msg`). Update the rendered-payload tests for the four-payload set.
 - [ ] **Task 6.2: Documentation obligations.** Update the authored sources named by
-  ADR-0190 item 15: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
+  ADR-0194 item 15: `.awf/parts/adr-template/frontmatter.md` so a V3 scaffold's output
   carries the `slug:` key and the pending shape (keep every interpolation
   publication-safe); the working-with-awf commands part (document `awf adr number` and
   the merge-in, number, merge-back procedure including the reset-remake retry recipe);
@@ -567,7 +567,7 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - `awf upgrade` on a pre-change tree prints the `integration-branch-explicit` and
   `adr-format-v3-cutoff` lines and leaves `integrationBranch: main` visible in
   config.yaml.
-- ADR-0190's Status history shows Implementing, five Applied batches covering every
+- ADR-0194's Status history shows Implementing, five Applied batches covering every
   declared operation exactly once, and the closing Implemented flip event; `awf check`
   accepts the final state.
 

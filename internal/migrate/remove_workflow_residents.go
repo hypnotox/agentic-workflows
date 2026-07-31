@@ -9,24 +9,24 @@ import (
 	"os"
 	"path/filepath"
 
-	gogit "github.com/go-git/go-git/v5"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
 // applyRemoveWorkflowResidents removes obsolete disposable resident roots from
 // the primary checkout. It deliberately uses Lstat so a hostile resident link is
 // never followed.
-func applyRemoveWorkflowResidents(root string, out io.Writer) error {
-	// Only go-git's canonical not-a-repository error permits the fixture-tree
-	// fallback. A malformed .git, unsafe topology, or identity failure is a
-	// present checkout and must stop migration rather than redirect deletion.
-	if _, err := awfgit.OpenRepo(root); err != nil {
-		if errors.Is(err, gogit.ErrRepositoryNotExists) {
+func applyRemoveWorkflowResidents(ctx context.Context, root string, out io.Writer) error {
+	// Only the seam's canonical not-a-repository identity permits the
+	// fixture-tree fallback. A malformed .git, unsafe topology, or identity
+	// failure is a present checkout and must stop migration rather than
+	// redirect deletion.
+	if _, err := awfgit.Open(root); err != nil {
+		if errors.Is(err, awfgit.ErrNotARepository) {
 			return removeWorkflowResidents(root, out, os.Lstat, os.RemoveAll)
 		}
 		return fmt.Errorf("inspect Git checkout at %s: %w", root, err)
 	}
-	roots, err := awfgit.ResolveControlRoots(context.Background(), root)
+	roots, err := awfgit.ResolveControlRoots(ctx, root)
 	if err != nil {
 		return fmt.Errorf("resolve Git control roots at %s: %w", root, err)
 	}

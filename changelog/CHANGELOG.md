@@ -10,6 +10,11 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Rename the agent-guide render key `taskSkillRows` to `skillRows` (the row set always covered
+  every enabled skill, not only task skills). A local override of
+  `templates/agents-doc/AGENTS.md.tmpl` that still references `taskSkillRows` renders an empty
+  skills list rather than erroring; update the reference when upgrading.
+
 - `awf effort new` now creates the managed `.awf/worktrees/<slug>` checkout on `awf/<slug>` by
   default and directs execution there; `--no-worktree` keeps the invoking checkout, `--base <ref>`
   selects the branch base, and creation inherits the standalone add refusal surface (for example
@@ -32,12 +37,25 @@ query a single version or a range.
   stays enabled fails `awf check` with dead-skill-reference drift until you re-enable it or
   override the three consumer sections.
 
+- Remove the repository-global `state-sequence` from ADR status history. Applied events use
+  `- <date>: Applied; operations: ...`; per-claim provenance is ordered by ascending final ADR
+  number; an applied remove is an absorbing tombstone. `awf topic` drops its `[state-sequence: N]`
+  suffix, `awf context` its per-operation sequence annotations, and the `stateSequence` field
+  leaves the `awf topic --json` contract. Schema generation 27 strips the segments from every
+  governed ADR and canonicalizes every `Revised-by` list to ascending ADR number; run
+  `awf upgrade`. (ADR-0191)
+
 - Remove the `currentState.topicCoverage` and `currentState.topicFanout` severity settings and
-  the `off` value with them. A tree that declares a `currentState` block now always evaluates both
-  topic coverage and fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn.
-  Where the two keys were a present block's only children the migration seeds and announces
-  `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped, since an
-  absent block stops both checks evaluating. That is the one case where `awf upgrade` adds a line to
+  the `off` value with them. Every adopted tree now always evaluates both topic coverage and
+  fan-out, at ranks fixed in code: coverage reports at error and fan-out at warn. Whether your
+  config declares a `currentState` block no longer affects it. If your tree has no such block it
+  previously received neither finding and now receives both, so an error-rank coverage finding can
+  newly fail a gate that was passing; every tree `awf init` scaffolds already declares the block and
+  is unaffected. Where the two keys were a present block's only children the migration seeds and
+  announces `maxTopicsPerPath: 8` rather than letting the emptied `currentState` block be dropped.
+  That seeding was protecting the block-presence gate this release also removes, so it is now inert
+  but harmless and its announcement still says it keeps the checks evaluating; the migration is
+  frozen and neither is changed. That is the one case where `awf upgrade` adds a line to
   your `config.yaml` instead of only removing one; it materializes the budget that was already in
   force by default, and the regenerated `docs/config-reference.md` prints that row as `8` rather than
   `8 (default)`. A caller that does not want a finding
@@ -105,7 +123,48 @@ query a single version or a range.
   `(configured or inherited)`, which the shared form check rejects, so a displayed value can no
   longer be copied back as an argument that fails later as an unregistered model.
 
+- Every Git operation awf performs now runs isolated and under a two-minute deadline, which
+  changes three observable behaviours. A Git invocation that previously hung indefinitely on a
+  stale `index.lock`, a credential prompt, or an unreachable remote now fails with the command,
+  its exit status, and Git's own stderr, including inside the pre-commit hook; the deadline is a
+  ceiling for a pathological case, not a budget any normal operation approaches. Effort
+  operations, which previously inherited the ambient Git environment, no longer see an
+  inherited `GIT_DIR`, `GIT_WORK_TREE`, or credential helper, so they act on the repository
+  named on the command line rather than on whatever the environment selected; managed-worktree
+  operations were already isolated and are unchanged in that respect. And a failure that used
+  to surface as a bare exit status now carries the invocation and stderr.
+
+- The worktree cleanliness refusal now honours your global gitignore. `awf effort integrate`
+  and `awf effort worktree remove` previously ran their cleanliness read under a fully
+  isolated environment, which also hid `core.excludesFile`, so a checkout dirty only with
+  globally-ignored files (editor scratch files, OS metadata) was refused as dirty; it now
+  passes. `awf audit`'s uncommitted-changes rule already honoured the global ignore and is
+  unchanged in that respect, though its read is now isolated in every other way, so global
+  or system configuration other than the ignore file no longer reaches it. Both directions
+  are deliberate: the oracle answers what Git answers about ignoring, and nothing else the
+  environment happens to say.
+
+- `awf effort integrate` and `awf effort worktree remove` no longer tolerate untracked files
+  under `.awf/efforts/` and `.awf/worktrees/` when judging whether the invoking checkout is
+  clean. In an adopted project this changes nothing, because awf renders the `.gitignore` files
+  that keep owned resident state out of Git's view entirely. It does change the answer in a
+  checkout where those rendered files exist but have never been committed: the operation now
+  refuses as dirty, and committing them resolves it. The previous allowance was broader than
+  intended, tolerating any untracked file under those two directories, a developer's own
+  uncommitted work included.
+
 ### Features
+- Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
+  the writing-plans scaffold command resolves the awf binary instead of the skill prefix,
+  reviewer-lens enumerations are count-free, the resync skill names both invokers and carries
+  plan-path identification on every target, the Pi-only `allowCommits` literal no longer leaks
+  into non-Pi renders, catalog relationship rows and the support-skill vocabulary match the
+  bodies, refactor-coupling-audit uncounts its categories and gives each one its own report
+  line so sidecar-dropped categories drop cleanly, restated working-memory and notes prose is
+  trimmed, and shared spine prose moves into new `templates/partials/` files
+  (context-orientation, escalation-menu, coverage-oracle, exploration-breadth,
+  exploration-detail). Rendered output changes for every target.
+
 - Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
   each post-Accepted content digest, status events repeat the latest stamp, and terminal review now
   owns the final Implemented flip after findings settle. Existing records remain valid unchanged;
@@ -200,6 +259,22 @@ query a single version or a range.
   current-state-v2 body became amendable through Accepted and Implementing, freezing only at a
   terminal status. Those two statuses now report `mutable`; terminal records, and every
   current-state-v1 record outside Proposed, are unchanged.
+- `awf render` and `awf check` now fail when a directory under the project tree cannot be read,
+  instead of silently enumerating what they could reach. A truncated enumeration narrowed the set
+  of managed outputs the drift oracle was computed over, so an unreadable directory could produce
+  a clean verdict and exit 0 over a tree that was never fully inspected.
+- Every command now refuses when it cannot determine whether a current-state upgrade journal
+  exists, instead of reading the failed check as "no journal". An unreadable `.awf` therefore no
+  longer permits the commands an unrecovered upgrade is meant to block.
+- `awf upgrade --recover` now restores each journaled file through a temp-file-plus-rename write,
+  so an interrupted recovery cannot leave a partially written file at a path the journal records
+  as holding a whole image. The restored file keeps its recorded permissions.
+- `awf audit`'s uncommitted-changes rule now reads the worktree it was asked about. It shelled out
+  to Git with the inherited environment, so an inherited `GIT_DIR` selected a different repository
+  and the rule could report a dirty tree as clean.
+- `awf context` now classifies an absolute request as outside the repository on Windows. The check
+  asked only `filepath.IsAbs`, which answers false there for a slash-rooted path, so such a request
+  was reported as merely not found. Unix behaviour is unchanged.
 
 ## [0.22.0] - 2026-07-24
 

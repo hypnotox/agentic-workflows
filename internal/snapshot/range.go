@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/git"
@@ -12,8 +13,8 @@ import (
 // first parent only, so a transition committed on a branch and merged is still
 // observed at the merge. Both are committed universes; neither reads working
 // bytes.
-func RangePair(repoRoot, rev string) (before, after *Tree, err error) {
-	beforeBlobs, afterBlobs, err := git.RangeBlobs(repoRoot, rev)
+func RangePair(ctx context.Context, repo *git.Repo, rev string) (before, after *Tree, err error) {
+	beforeBlobs, afterBlobs, err := repo.RangeBlobs(ctx, rev)
 	if err != nil {
 		return nil, nil, fmt.Errorf("snapshot range: %w", err)
 	}

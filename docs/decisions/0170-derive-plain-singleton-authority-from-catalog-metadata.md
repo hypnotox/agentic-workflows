@@ -48,4 +48,4 @@ remain the authoritative inventory, while the predicate is more precise and resi
 ## Status history
 
 - 2026-07-28: Proposed
-- 2026-07-28: Implemented; content-sha256: fdf9596f7dca7460231c9aeffd1b5750731e309ebd00820c47748dde5739aeae; state-sequence: 74
+- 2026-07-28: Implemented; content-sha256: fdf9596f7dca7460231c9aeffd1b5750731e309ebd00820c47748dde5739aeae

@@ -1,20 +1,20 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
-	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // runProseGate scans the project's tracked text files for banned typographic
 // punctuation substitutes (ADR-0119). It returns nil without scanning when the
 // knob is off, so a hook or a runner may invoke it unconditionally.
-func runProseGate(root string, stdout io.Writer) error {
-	tree, err := snapshot.IndexTree(root)
+func runProseGate(ctx context.Context, root string, stdout io.Writer) error {
+	tree, err := stagedTree(ctx, root)
 	if err != nil {
 		return fmt.Errorf("check prose: cannot read staged files: %w", err)
 	}
