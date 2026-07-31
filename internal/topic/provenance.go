@@ -19,23 +19,20 @@ const (
 // SubstituteProvenance rewrites the authored claim parts under root so every
 // `ADR-<slug>` provenance entry whose slug is a key of renames takes that
 // record's assigned `ADR-NNNN` form, and every touched `Revised-by:` list is
-// rewritten to the duplicate-free ascending order ADR-0191 requires. It reports
-// the repo-relative paths it rewrote, in walk order, so the caller can name
-// numbering's whole authored effect surface.
+// rewritten to the duplicate-free ascending order ADR-0191 requires.
 //
 // This is the substitution half of numbering (ADR-0194 item 9), and it lives
 // here because the `Origin:`/`Revised-by:` line grammar is this package's. Two
 // scoping rules keep the effect exhaustive: it is anchored on those two
 // metadata lines, so a slug named in claim prose is never rewritten, and it
-// walks only .awf/topics/parts, so no generated topic doc, no ADR body, and no
-// plan is reachable from here. Generated outputs follow from the caller's
-// re-render.
-func SubstituteProvenance(root string, renames map[string]string) ([]string, error) {
+// walks only .awf/topics/parts, so no generated topic doc, no domain part, no
+// ADR body, and no plan is reachable from here. Generated outputs follow from
+// the caller's re-render.
+func SubstituteProvenance(root string, renames map[string]string) error {
 	if len(renames) == 0 {
-		return nil, nil
+		return nil
 	}
 	partsRoot := filepath.Join(root, config.DirName, "topics", "parts")
-	var rewritten []string
 	err := collectFiles(partsRoot, func(path string) error {
 		if filepath.Base(path) != partFileName {
 			return nil
@@ -51,13 +48,12 @@ func SubstituteProvenance(root string, renames map[string]string) ([]string, err
 		if err := os.WriteFile(path, []byte(body), 0o644); err != nil { // coverage-ignore: the file was just read from the same path; a write fails only on a permission fault a test cannot trigger
 			return err
 		}
-		rewritten = append(rewritten, filepath.ToSlash(path))
 		return nil
 	})
 	if err != nil { // coverage-ignore: collectFiles tolerates a missing parts root and the callback's own error paths are unreachable
-		return nil, err
+		return err
 	}
-	return rewritten, nil
+	return nil
 }
 
 // substituteProvenanceLines applies the substitution to one part's bytes,

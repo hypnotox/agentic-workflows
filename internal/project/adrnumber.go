@@ -91,7 +91,7 @@ func (p *Project) NumberPendingADRs(ctx context.Context, slugs []string) (Number
 		renames[slug] = fmt.Sprintf("%04d", number)
 		report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: renames[slug]})
 	}
-	if _, err := topic.SubstituteProvenance(p.Root, renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
+	if err := topic.SubstituteProvenance(p.Root, renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
 		return report, err
 	}
 	if _, _, _, err := p.SyncReport(ctx); err != nil {
