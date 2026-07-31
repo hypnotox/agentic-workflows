@@ -98,10 +98,18 @@ func JournalPath(root string) string {
 	return filepath.Join(root, config.DirName, "current-state-upgrade.journal")
 }
 
-// JournalPresent reports whether a journal file exists under root.
-func JournalPresent(root string) bool {
-	_, err := os.Stat(JournalPath(root))
-	return err == nil
+// JournalPresent reports whether a journal file exists under root. A fault is
+// returned rather than folded into absence: answering "no journal" from a read
+// that never completed would let the command-state guard permit the commands an
+// unrecovered upgrade must block.
+func JournalPresent(root string) (bool, error) {
+	if _, err := os.Stat(JournalPath(root)); err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("inspect current-state upgrade journal: %w", err)
+	}
+	return true, nil
 }
 
 // imageOf reads path's current image from the working tree.

@@ -11,6 +11,46 @@ import (
 	"testing"
 )
 
+// TestJournalPresentSeparatesAbsenceFromFault pins that an unreadable journal
+// location is reported as a fault rather than as absence. Folding the two
+// together told the command-state guard there was no journal to recover from,
+// so it permitted exactly the commands an unrecovered upgrade must block.
+func TestJournalPresentSeparatesAbsenceFromFault(t *testing.T) {
+	root := t.TempDir()
+	found, err := JournalPresent(root)
+	if found || err != nil {
+		t.Fatalf("absent journal: found=%v err=%v, want false and no error", found, err)
+	}
+
+	awfDir := filepath.Join(root, ".awf")
+	mustMkdir(t, awfDir)
+	if err := os.WriteFile(JournalPath(root), []byte("{}"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := JournalPresent(root); !found || err != nil {
+		t.Fatalf("present journal: found=%v err=%v, want true and no error", found, err)
+	}
+
+	if err := os.Chmod(awfDir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(awfDir, 0o755) })
+	if found, err := JournalPresent(root); err == nil || found {
+		t.Fatalf("unreadable journal location: found=%v err=%v, want a fault", found, err)
+	}
+}
+
+// journalPresence answers JournalPresent for the tests that assert presence or
+// absence and expect no fault reading it.
+func journalPresence(t *testing.T, root string) bool {
+	t.Helper()
+	found, err := JournalPresent(root)
+	if err != nil {
+		t.Fatalf("JournalPresent(%s): %v", root, err)
+	}
+	return found
+}
+
 func mustMkdir(t *testing.T, path string) {
 	t.Helper()
 	if err := os.MkdirAll(path, 0o755); err != nil {
@@ -125,7 +165,7 @@ func TestJournalCommitHappyPath(t *testing.T) {
 	if got, _ := os.ReadFile(filepath.Join(root, LockRel())); string(got) != "lock-final" {
 		t.Fatalf("lock: %q", got)
 	}
-	if JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after success")
 	}
 	for _, want := range []string{"operation: applied a.txt", "operation: applied .awf/awf.lock", "operation: upgrade committed"} {
@@ -162,7 +202,7 @@ func TestJournalCommitRollsBackOnApplyFailure(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, LockRel())); !os.IsNotExist(err) {
 		t.Fatal("lock written despite rollback")
 	}
-	if JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after rollback")
 	}
 	if !strings.Contains(log.String(), "operation: restored") || !strings.Contains(log.String(), "operation: rolled back") {
@@ -183,7 +223,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, "a.txt")); !os.IsNotExist(err) {
 			t.Fatal("a.txt not rolled back")
 		}
-		if JournalPresent(root) {
+		if journalPresence(t, root) {
 			t.Fatal("journal residue")
 		}
 		if err := Recover(root, io.Discard); err == nil {
@@ -198,7 +238,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		if err := Recover(root, io.Discard); err != nil {
 			t.Fatalf("recover: %v", err)
 		}
-		if JournalPresent(root) {
+		if journalPresence(t, root) {
 			t.Fatal("journal residue")
 		}
 		if got, _ := os.ReadFile(filepath.Join(root, "a.txt")); string(got) != "new" {
@@ -212,7 +252,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		if err := Recover(root, io.Discard); err != nil {
 			t.Fatalf("recover: %v", err)
 		}
-		if JournalPresent(root) {
+		if journalPresence(t, root) {
 			t.Fatal("journal residue")
 		}
 	})
@@ -223,7 +263,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		if err := Recover(root, io.Discard); err == nil || !strings.Contains(err.Error(), "refusing to roll committed authority back") {
 			t.Fatalf("want refusal, got %v", err)
 		}
-		if !JournalPresent(root) {
+		if !journalPresence(t, root) {
 			t.Fatal("journal cleared despite refusal")
 		}
 	})
@@ -235,7 +275,7 @@ func TestJournalRecoverTable(t *testing.T) {
 		if err := Recover(root, io.Discard); err == nil || !strings.Contains(err.Error(), "a.txt") {
 			t.Fatalf("want third-party halt, got %v", err)
 		}
-		if !JournalPresent(root) {
+		if !journalPresence(t, root) {
 			t.Fatal("journal cleared despite third-party edit")
 		}
 	})
@@ -261,7 +301,7 @@ func TestJournalHelpers(t *testing.T) {
 	if err := applyImage(root, "adir", Image{Present: false}); err == nil {
 		t.Fatal("non-empty directory removed as absent image")
 	}
-	if JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("phantom journal")
 	}
 	if safeRelPath("") || safeRelPath("/abs") || safeRelPath("a/../b") || !safeRelPath("a/b.txt") {
@@ -456,7 +496,7 @@ func TestJournalResidentCommitQuarantinesThenDiscards(t *testing.T) {
 			t.Fatalf("lock was %q at %q (step %d of %d); the commit point is step %d", got, line, i, len(log.lines), commit)
 		}
 	}
-	if JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after success")
 	}
 }
@@ -500,7 +540,7 @@ func TestJournalResidentRollbackRestoresQuarantinedBytes(t *testing.T) {
 	if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
 		t.Fatal("quarantine residue after rollback")
 	}
-	if JournalPresent(root) {
+	if journalPresence(t, root) {
 		t.Fatal("journal residue after rollback")
 	}
 }
@@ -628,7 +668,7 @@ func TestJournalResidentInterruption(t *testing.T) {
 			if exists(t, filepath.Join(root, filepath.FromSlash(QuarantineRel()))) {
 				t.Fatal("quarantine residue after recovery")
 			}
-			if JournalPresent(root) {
+			if journalPresence(t, root) {
 				t.Fatal("journal residue after recovery")
 			}
 			// `awf upgrade --recover` is idempotent in effect: a second run has
@@ -735,7 +775,7 @@ func TestJournalResidentCollisionRefusals(t *testing.T) {
 		if !strings.Contains(err.Error(), "rollback halted") {
 			t.Fatalf("want a halted rollback, got %v", err)
 		}
-		if !JournalPresent(root) {
+		if !journalPresence(t, root) {
 			t.Fatal("journal cleared despite a halted rollback")
 		}
 		if got, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(QuarantineRel()), "efforts-legacy.json")); string(got) != "earlier" {
@@ -767,7 +807,7 @@ func TestJournalResidentCollisionRefusals(t *testing.T) {
 		if err == nil || !strings.Contains(err.Error(), ".awf/memory") || !strings.Contains(err.Error(), gitRestorationGuidance) {
 			t.Fatalf("want a restore refusal, got %v", err)
 		}
-		if !JournalPresent(root) {
+		if !journalPresence(t, root) {
 			t.Fatal("journal cleared despite a halted restore")
 		}
 		if got, _ := os.ReadFile(filepath.Join(root, ".awf", "memory", "foreign.md")); string(got) != "recreated" {
@@ -792,7 +832,7 @@ func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "apply .awf/awf.lock") || !strings.Contains(err.Error(), "rollback halted") {
 		t.Fatalf("want a halted rollback, got %v", err)
 	}
-	if !JournalPresent(root) {
+	if !journalPresence(t, root) {
 		t.Fatal("journal cleared despite a halted rollback")
 	}
 }
