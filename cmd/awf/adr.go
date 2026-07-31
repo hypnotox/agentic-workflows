@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -22,10 +23,11 @@ func runADR(c *cmdCtx) error {
 	if err != nil {
 		return err
 	}
-	report, err := p.NumberPendingADRs(c.ctx, c.inv.positionals)
-	if err != nil {
-		return err
-	}
-	_, err = fmt.Fprint(c.stdout, report.String())
-	return err
+	// The mapping prints even when numbering returns an error. Refusals report
+	// no assignments, so nothing is printed for them; past the first rename the
+	// renames are on disk, and the operator needs the mapping for the
+	// integration commit message whatever failed afterwards.
+	report, numberErr := p.NumberPendingADRs(c.ctx, c.inv.positionals)
+	_, writeErr := fmt.Fprint(c.stdout, report.String())
+	return errors.Join(numberErr, writeErr)
 }

@@ -219,20 +219,29 @@ func TestNumberPendingADRsBareInvocationNumbersTheOnlyRecord(t *testing.T) {
 	}
 }
 
-// The closing re-render is part of the operation, not an afterthought: a corpus
-// that cannot be re-rendered fails the whole command rather than reporting a
-// mapping whose generated outputs never followed.
+// The closing re-render is part of the operation, so a corpus that cannot be
+// re-rendered still fails the command. It must not fail emptily: by then the
+// rename is on disk, so the error arrives carrying the mapping the integration
+// commit message needs. Returning an empty report here would strand the
+// operator with a renamed corpus and no record of what it was renamed to, and a
+// re-run would only report that there is no pending ADR left to number.
 // invariant: adr-system/adr-lifecycle:pending-adr-slug-identity
-func TestNumberPendingADRsFailsWhenTheRerenderFails(t *testing.T) {
-	p, _ := numberingProject(t, map[string]string{
+func TestNumberPendingADRsReportsTheMappingWhenTheRerenderFails(t *testing.T) {
+	p, root := numberingProject(t, map[string]string{
 		"docs/decisions/only.md": pendingRecord(t, "only", "add `alpha/one:seed-two`"),
 		".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n" +
 			"### `rule: seed`\nSeed.\nOrigin: ADR-0001\n\n" +
 			"### `rule: dangling`\nDangling.\nOrigin: ADR-nowhere\n",
 	})
-	_, err := p.NumberPendingADRs(testContext(t), nil)
+	report, err := p.NumberPendingADRs(testContext(t), nil)
 	if err == nil || !strings.Contains(err.Error(), "cites missing ADR-nowhere") {
 		t.Fatalf("re-render failure = %v", err)
+	}
+	if got := report.String(); got != "only -> 0002\n" {
+		t.Errorf("mapping lost on a failed re-render: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/decisions/0002-only.md")); err != nil {
+		t.Errorf("the rename the surviving mapping describes did not happen: %v", err)
 	}
 }
 

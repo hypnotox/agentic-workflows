@@ -56,6 +56,13 @@ const duplicateNumbersRecipe = "duplicate ADR numbers with no pending record: if
 // merge-in and numbering is the norm now that ADR-0191 removed the global state
 // sequence, but an unrelated merge finding must not deadlock the one command
 // that can resolve the corpus.
+//
+// Every refusal happens before the first rename, so a refused run leaves the
+// corpus exactly as it found it. Past that point the run is partial-completion:
+// the renames and the substitution are already on disk, so a failing re-render
+// returns the assignments alongside its error rather than an empty report. The
+// mapping is what the integration commit message needs, and the caller cannot
+// reconstruct it once the pending files are gone.
 func (p *Project) NumberPendingADRs(ctx context.Context, slugs []string) (NumberingReport, error) {
 	corpus, duplicates, err := p.numberingCorpus()
 	if err != nil {
@@ -85,10 +92,10 @@ func (p *Project) NumberPendingADRs(ctx context.Context, slugs []string) (Number
 		report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: renames[slug]})
 	}
 	if _, err := topic.SubstituteProvenance(p.Root, renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
-		return NumberingReport{}, err
+		return report, err
 	}
 	if _, _, _, err := p.SyncReport(ctx); err != nil {
-		return NumberingReport{}, err
+		return report, err
 	}
 	return report, nil
 }
