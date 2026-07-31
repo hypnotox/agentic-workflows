@@ -1,8 +1,16 @@
 package project
 
 import (
+	"go/ast"
+	"go/token"
+	"path/filepath"
 	"slices"
+	"sort"
+	"strconv"
+	"strings"
 	"testing"
+
+	"golang.org/x/tools/go/packages"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -24,6 +32,174 @@ func TestKindDescriptorsCoverAllKinds(t *testing.T) {
 		if (d.Plural == "domains") == hasPool {
 			t.Errorf("%s poolNames presence wrong (hasPool=%v)", d.Plural, hasPool)
 		}
+	}
+	// graphKind marks exactly the resolver-planned kinds (skill, agent, doc);
+	// freeformDomain marks exactly the domains kind.
+	for _, d := range kindDescriptors {
+		wantGraph := d.Plural == "skills" || d.Plural == "agents" || d.Plural == "docs"
+		if d.graphKind != wantGraph {
+			t.Errorf("%s graphKind = %v, want %v", d.Plural, d.graphKind, wantGraph)
+		}
+		wantFreeform := d.Plural == "domains"
+		if d.freeformDomain != wantFreeform {
+			t.Errorf("%s freeformDomain = %v, want %v", d.Plural, d.freeformDomain, wantFreeform)
+		}
+	}
+	// The exported facet accessors resolve through the table, unknown kinds false.
+	for _, c := range []struct {
+		kind                       string
+		graph, freeform, doc, skil bool
+	}{
+		{"skill", true, false, false, true},
+		{"agent", true, false, false, false},
+		{"doc", true, false, true, false},
+		{"domain", false, true, false, false},
+		{"bogus", false, false, false, false},
+	} {
+		if got := IsGraphKind(c.kind); got != c.graph {
+			t.Errorf("IsGraphKind(%s) = %v, want %v", c.kind, got, c.graph)
+		}
+		if got := IsFreeformDomainKind(c.kind); got != c.freeform {
+			t.Errorf("IsFreeformDomainKind(%s) = %v, want %v", c.kind, got, c.freeform)
+		}
+		if got := IsDocKind(c.kind); got != c.doc {
+			t.Errorf("IsDocKind(%s) = %v, want %v", c.kind, got, c.doc)
+		}
+		if got := IsSkillKind(c.kind); got != c.skil {
+			t.Errorf("IsSkillKind(%s) = %v, want %v", c.kind, got, c.skil)
+		}
+	}
+}
+
+// loadCmdAwfPackage loads the cmd/awf production sources (tests excluded),
+// optionally overlaying one file so a negative case can be committed rather
+// than hand-mutated. Syntax only: the scan matches string literals, so no type
+// information is needed.
+func loadCmdAwfPackage(t *testing.T, overlay map[string][]byte) []*packages.Package {
+	t.Helper()
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	pkgs, err := packages.Load(&packages.Config{
+		Dir:     root,
+		Mode:    packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles | packages.NeedSyntax,
+		Overlay: overlay,
+	}, "./cmd/awf")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pkgs) == 0 {
+		t.Fatal("no package loaded for ./cmd/awf")
+	}
+	for _, pkg := range pkgs {
+		if len(pkg.Errors) != 0 {
+			t.Fatal(pkg.Errors[0])
+		}
+	}
+	return pkgs
+}
+
+// kindLiteralFindings reports every equality or switch-case comparison in the
+// loaded sources whose string-literal operand is one of the descriptor table's
+// kind names. Such a comparison decides a kind fact outside the table.
+func kindLiteralFindings(pkgs []*packages.Package, kindNames map[string]bool) []string {
+	isKindLiteral := func(expr ast.Expr) bool {
+		lit, ok := expr.(*ast.BasicLit)
+		if !ok || lit.Kind != token.STRING {
+			return false
+		}
+		value, err := strconv.Unquote(lit.Value)
+		return err == nil && kindNames[value]
+	}
+	var findings []string
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			ast.Inspect(file, func(n ast.Node) bool {
+				switch node := n.(type) {
+				case *ast.BinaryExpr:
+					if node.Op != token.EQL && node.Op != token.NEQ {
+						return true
+					}
+					for _, operand := range []ast.Expr{node.X, node.Y} {
+						if isKindLiteral(operand) {
+							pos := pkg.Fset.Position(node.Pos())
+							findings = append(findings, "equality on a kind literal at "+
+								filepath.ToSlash(filepath.Base(pos.Filename))+":"+strconv.Itoa(pos.Line))
+						}
+					}
+				case *ast.CaseClause:
+					for _, expr := range node.List {
+						if isKindLiteral(expr) {
+							pos := pkg.Fset.Position(expr.Pos())
+							findings = append(findings, "switch case on a kind literal at "+
+								filepath.ToSlash(filepath.Base(pos.Filename))+":"+strconv.Itoa(pos.Line))
+						}
+					}
+				}
+				return true
+			})
+		}
+	}
+	sort.Strings(findings)
+	return findings
+}
+
+// TestCmdKindFactsResolveThroughTable proves the widened half of the claim: no
+// cmd/awf production source decides a kind fact by comparing against a kind
+// name; every such fact reaches the descriptor table through the exported
+// accessors, whose bodies live beside the table in this package. The detector
+// matches equality and switch-case comparisons only - a kind fact smuggled
+// through slices.Contains, a map literal, or a case-folded compare stays
+// invisible to it; extend the operand shapes if one ever appears.
+// invariant: rendering/project-output-plan:kind-dispatch-single-table
+func TestCmdKindFactsResolveThroughTable(t *testing.T) {
+	kindNames := map[string]bool{}
+	for _, d := range kindDescriptors {
+		kindNames[d.Singular] = true
+		kindNames[d.Plural] = true
+	}
+
+	production := loadCmdAwfPackage(t, nil)
+	if findings := kindLiteralFindings(production, kindNames); len(findings) != 0 {
+		t.Errorf("cmd/awf decides kind facts outside the descriptor table:\n\t%s",
+			strings.Join(findings, "\n\t"))
+	}
+
+	// Committed negative case: an equality and a switch case on kind literals
+	// must both be flagged, so the detector cannot silently stop detecting.
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(root, filepath.FromSlash("cmd/awf/kind_fact_fixture.go"))
+	violating := loadCmdAwfPackage(t, map[string][]byte{fixture: []byte(`package main
+
+func fixtureKindEquality(kind string) bool { return kind == "skill" }
+
+func fixtureKindSwitch(kind string) int {
+	switch kind {
+	case "domains":
+		return 1
+	}
+	return 0
+}
+`)})
+	findings := kindLiteralFindings(violating, kindNames)
+	var equalityFlagged, caseFlagged bool
+	for _, f := range findings {
+		if strings.HasPrefix(f, "equality on a kind literal at kind_fact_fixture.go") {
+			equalityFlagged = true
+		}
+		if strings.HasPrefix(f, "switch case on a kind literal at kind_fact_fixture.go") {
+			caseFlagged = true
+		}
+	}
+	if !equalityFlagged {
+		t.Errorf("an equality on a kind literal escaped the detector: %#v", findings)
+	}
+	if !caseFlagged {
+		t.Errorf("a switch case on a kind literal escaped the detector: %#v", findings)
 	}
 }
 

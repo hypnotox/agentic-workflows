@@ -28,6 +28,24 @@ type ProjectTreeReader interface {
 	Paths(prefix string) ([]string, error)
 }
 
+// ArtifactRole classifies a path in the output plan and the context artifact
+// report by its function in the render pipeline.
+type ArtifactRole string
+
+const (
+	ArtifactConfig             ArtifactRole = "config"
+	ArtifactLock               ArtifactRole = "lock"
+	ArtifactManifest           ArtifactRole = "manifest"
+	ArtifactTemplate           ArtifactRole = "template"
+	ArtifactConventionPart     ArtifactRole = "convention-part"
+	ArtifactAuthoredData       ArtifactRole = "authored-data"
+	ArtifactTopicMetadata      ArtifactRole = "topic-metadata"
+	ArtifactClaimPart          ArtifactRole = "claim-part"
+	ArtifactDecisionRecord     ArtifactRole = "decision-record"
+	ArtifactManagedOutput      ArtifactRole = "managed-output"
+	ArtifactProtocolDescriptor ArtifactRole = "protocol-descriptor"
+)
+
 type OutputInput struct {
 	Path string
 	Role ArtifactRole

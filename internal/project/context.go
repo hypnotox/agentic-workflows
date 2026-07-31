@@ -147,7 +147,7 @@ func (p *Project) assembleContextUniverse(state contextAssemblyState, queries []
 		if safe && !literalGlob {
 			impact.Relationships = contextRelationshipsForPath(markerSitesByPath, filePath)
 			for _, d := range slices.Sorted(maps.Keys(state.Loaded.Topics.DomainPaths)) {
-				if pathMatchesAny(state.Loaded.Topics.DomainPaths[d], filePath) {
+				if pathglob.MatchAny(state.Loaded.Topics.DomainPaths[d], filePath) {
 					impact.Domains = append(impact.Domains, DomainRef{Name: d, CurrentState: lay.DocsDir + "/domains/" + d + ".md"})
 				}
 			}
@@ -292,14 +292,6 @@ func topicOfClaim(id string) string {
 	}
 	return id
 }
-func pathMatchesAny(globs []string, p string) bool {
-	for _, g := range globs {
-		if pathglob.Match(g, p) {
-			return true
-		}
-	}
-	return false
-}
 
 // UncoveredResult is the read-only coverage report for a set of scan roots: the
 // eligible paths owned by no domain (collapsed to a topmost trailing-slash node)
@@ -388,7 +380,7 @@ func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) U
 	// node with no owned descendant in scope.
 	owned := func(path string) bool {
 		for _, d := range corpus.DomainPaths {
-			if pathMatchesAny(d, path) {
+			if pathglob.MatchAny(d, path) {
 				return true
 			}
 		}

@@ -9,22 +9,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-type ArtifactRole string
-
-const (
-	ArtifactConfig             ArtifactRole = "config"
-	ArtifactLock               ArtifactRole = "lock"
-	ArtifactManifest           ArtifactRole = "manifest"
-	ArtifactTemplate           ArtifactRole = "template"
-	ArtifactConventionPart     ArtifactRole = "convention-part"
-	ArtifactAuthoredData       ArtifactRole = "authored-data"
-	ArtifactTopicMetadata      ArtifactRole = "topic-metadata"
-	ArtifactClaimPart          ArtifactRole = "claim-part"
-	ArtifactDecisionRecord     ArtifactRole = "decision-record"
-	ArtifactManagedOutput      ArtifactRole = "managed-output"
-	ArtifactProtocolDescriptor ArtifactRole = "protocol-descriptor"
-)
-
 type ArtifactLink struct {
 	Path, Label string
 }

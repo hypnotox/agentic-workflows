@@ -196,3 +196,25 @@ func collectVars(fsys fs.FS, path string, varSet map[string]bool) error {
 	}
 	return nil
 }
+
+// ScaffoldVarRefs returns the vars referenced by the base template a new local
+// artifact of kind ("skill"/"agent") renders from - `awf new`'s seeding surface
+// (ADR-0087 Decision 4). Parts are raw (ADR-0034), so the base template is a
+// local artifact's only var channel; today both bases are varless and this
+// returns empty, but a future base gaining a var reference is seeded correct
+// by construction.
+func ScaffoldVarRefs(kind string) ([]string, error) {
+	tid := baseSkillTID
+	if kind == "agent" {
+		tid = baseAgentTID
+	}
+	src, err := fs.ReadFile(templates.FS, tid)
+	if err != nil { // coverage-ignore: constant path into the embedded FS
+		return nil, err
+	}
+	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	if err != nil { // coverage-ignore: shipped base templates always expand
+		return nil, err
+	}
+	return render.ReferencedVars(expanded), nil
+}

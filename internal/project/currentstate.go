@@ -17,6 +17,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -586,7 +587,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 				break
 			}
 		}
-		if insideNested || generated[f.Path] || pathMatchesAny(ignores, f.Path) {
+		if insideNested || generated[f.Path] || pathglob.MatchAny(ignores, f.Path) {
 			continue
 		}
 		out = append(out, f.Path)

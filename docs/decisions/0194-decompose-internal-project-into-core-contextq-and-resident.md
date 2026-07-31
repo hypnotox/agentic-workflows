@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0194: Decompose internal project into core contextq and resident
@@ -167,14 +167,21 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    the caller that already holds them instead of re-reading the embedded template tree.
    `validateDeclarationPlanParity` would then compare the derivation with itself; it is retired
    with the consolidation, and Consequences records the loss of its runtime detection.
-6. The kind-dispatch single table widens from the project package to the whole module: the four
-   kind facts currently hard-coded in cmd/awf (the graph-kind predicate at list_add.go:110, the
-   kind switch at new.go:31, and the domain-kind branches at list_add.go:235,248) resolve
-   through the descriptor table, with descriptor facets added as needed, and the corresponding
-   claim is updated to state module-wide reach. The widened claim keeps its proof inside
+6. The kind-dispatch single table widens from the project package to cmd/awf: the kind facts
+   hard-coded in cmd/awf (the graph-kind predicate at list_add.go:110, the kind switch at
+   new.go:31, the domain-kind branches at list_add.go:235,248, and the skill and doc
+   comparisons the plan's site inventory added) resolve through the descriptor table behind
+   narrow exported accessors, with descriptor facets added as needed, and the corresponding
+   claim is updated to state the table as the single definition home of its facets and the
+   accessor-only discipline of cmd/awf. The widened claim keeps its proof inside
    `internal/project` as a source-scanning structural test over the cmd/awf sources (the shape
    the state-ownership scanner already uses), so the proof marker stays within the topic's
-   selectors and the rendering domain's paths.
+   selectors and the rendering domain's paths. The claim deliberately does not quantify over
+   every in-module consumer: Phase 1 review found in-core kind-literal dispatch that re-decides
+   table facets beside the table (the enable-array and pool switches in validate.go,
+   configreference.go, and scaffold.go), so a module-wide universal would be false today and
+   unprovable by the cmd-scoped scan; that in-core cleanup is recorded as deferred work, not
+   claimed.
 7. The `internal/git` feed item is decided in the negative: no package split. The git-seam
    decision's (ADR-0193) one-seam-package shape is the end state; the clean method-level backend
    separation is preserved as file discipline inside the package. This ADR records the two
@@ -302,3 +309,5 @@ audit's stale 86/47 to the verified 128/60.
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implementing; content-sha256: 0247f2e679ccfd7bee5cc9c5e8fee9cc48a8dab66b05b2818a42b496193d6db5
+- 2026-07-31: Applied; operations: update `rendering/project-output-plan:kind-dispatch-single-table`

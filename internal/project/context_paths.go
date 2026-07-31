@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -455,14 +456,14 @@ func classifyContextPath(p string, set contextPathSet) (PathClassification, stri
 		}
 		return PathSymlink, "", &inside
 	}
-	if pathMatchesAny(set.ignores, p) {
+	if pathglob.MatchAny(set.ignores, p) {
 		return PathContextIgnored, "", nil
 	}
 	if _, ok := set.tree.Lookup(p); !ok {
 		return PathNotFound, "", nil
 	}
 	for _, globs := range set.domainPaths {
-		if pathMatchesAny(globs, p) {
+		if pathglob.MatchAny(globs, p) {
 			return PathCovered, "", nil
 		}
 	}

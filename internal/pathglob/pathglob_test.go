@@ -35,6 +35,18 @@ func TestMatchMalformedPatternMatchesNothing(t *testing.T) {
 	}
 }
 
+func TestMatchAny(t *testing.T) {
+	if !MatchAny([]string{"docs/**", "**/*.go"}, "internal/a.go") {
+		t.Error("expected a later pattern to match")
+	}
+	if MatchAny([]string{"docs/**"}, "internal/a.go") {
+		t.Error("expected no pattern to match")
+	}
+	if MatchAny(nil, "internal/a.go") {
+		t.Error("expected an empty pattern list to match nothing")
+	}
+}
+
 func TestValidate(t *testing.T) {
 	if err := Validate("**/*.go"); err != nil {
 		t.Errorf("valid pattern rejected: %v", err)
