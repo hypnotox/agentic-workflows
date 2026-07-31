@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Accepted
 date: 2026-08-01
 ---
 # ADR-0200: Package composition and export discipline
@@ -175,3 +175,4 @@ receives, and later renaming would break adopter overrides keyed to it.
 ## Status history
 
 - 2026-08-01: Proposed
+- 2026-08-01: Accepted; content-sha256: 459cb85be4140d180fc1a0354ae04fcd70fd26e6d340a92656ec2979bff1c590
