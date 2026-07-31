@@ -2,11 +2,11 @@ package project
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -539,35 +539,71 @@ func TestGlossaryTersenessNotesDisabled(t *testing.T) {
 }
 
 // The shipped layer is inside the threshold's reach: the producer wraps the
-// sidecar in the catalog default before merging, so a project authoring no
-// terms at all is still evaluated over the standard vocabulary.
+// sidecar in the catalog default before merging, so the standard vocabulary is
+// bound by the same guideline as an authored term. The on-disk sidecar never
+// carries standardTerms, so dropping that wrap would silently exempt the whole
+// shipped layer.
 func TestGlossaryTersenessNotesCoversShippedLayer(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	notes, err := p.glossaryTersenessNotes()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(notes) != 0 {
-		t.Fatalf("the shipped vocabulary must itself be under the threshold, got %v", notes)
-	}
-	records, err := mergedGlossaryRecords(withDefaultData(mustGlossarySidecar(t, p), p.Cat.Docs["glossary"].Data))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(records) == 0 {
-		t.Fatal("the producer must have had the shipped layer to evaluate, but the merged set was empty")
-	}
+	cfg := "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n"
+
+	t.Run("the real shipped vocabulary is under the threshold", func(t *testing.T) {
+		p, err := Open(testContext(t), scaffold(t, cfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		notes, err := p.glossaryTersenessNotes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(notes) != 0 {
+			t.Fatalf("the shipped vocabulary must itself be under the threshold, got %v", notes)
+		}
+	})
+
+	t.Run("an over-length shipped term is reported", func(t *testing.T) {
+		p, err := Open(testContext(t), scaffold(t, cfg))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// p.Cat aliases catalog.Standard and its Docs map is shared, so swap in a
+		// copy rather than mutating the catalog for every other test in the package.
+		e := p.Cat.Docs["glossary"]
+		e.Data = map[string]any{"standardTerms": []any{
+			map[string]any{"term": "shipped-bloat", "meaning": strings.Repeat("x", glossaryMeaningMax+1)},
+		}}
+		cp := *p.Cat
+		cp.Docs = maps.Clone(p.Cat.Docs)
+		cp.Docs["glossary"] = e
+		p.Cat = &cp
+		notes, err := p.glossaryTersenessNotes()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(notes) != 1 || !strings.Contains(notes[0], "shipped-bloat") {
+			t.Fatalf("the shipped layer must be inside the threshold's reach, got %v", notes)
+		}
+	})
 }
 
-// mustGlossarySidecar reads the glossary sidecar or fails the test.
-func mustGlossarySidecar(t *testing.T, p *Project) config.Sidecar {
-	t.Helper()
-	sc, err := p.Cfg.Sidecar("docs", "glossary")
+// A local: true glossary sidecar is skipped by the render pass, so a malformed
+// data.terms reaches the advisory's own ingestion instead of failing earlier -
+// the same hole TestCheckPropagatesLocalGlossaryError exploits for checkGlossary.
+func TestAdvisoryNotesSurfacesLocalGlossaryError(t *testing.T) {
+	root := scaffoldFiles(t, "prefix: awf\nvars: {}\nskills: []\nagents: []\ndocs: [glossary]\n",
+		map[string]string{"docs/glossary.yaml": "data:\n  terms:\n    - term: t\n      meaning: m\n"})
+	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return sc
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/docs/glossary.yaml"), "local: true\ndata:\n  terms: just a string\n")
+	reopened, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := reopened.AdvisoryNotes(testContext(t)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+		t.Fatalf("expected AdvisoryNotes to surface the local glossary structural error, got %v", err)
+	}
 }

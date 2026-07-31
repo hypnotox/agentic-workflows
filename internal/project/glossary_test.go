@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -37,19 +38,22 @@ func renderGlossary(t *testing.T, root string) string {
 // invariant: rendering/guide-and-doc-templates:glossary-terms-sorted
 func TestGlossaryRendersSorted(t *testing.T) {
 	a := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: first\n    - term: beta\n      meaning: middle\n",
+		"docs/glossary.yaml": "data:\n  terms:\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: second\n    - term: beta\n      meaning: third\n    - term: aardvark\n      meaning: first\n",
 	}))
 	b := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    - term: beta\n      meaning: middle\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: first\n",
+		"docs/glossary.yaml": "data:\n  terms:\n    - term: beta\n      meaning: third\n    - term: aardvark\n      meaning: first\n    - term: zeta\n      meaning: last\n    - term: Alpha\n      meaning: second\n",
 	}))
 	if a != b {
 		t.Errorf("equal record sets must render byte-identically:\n%s\n---\n%s", a, b)
 	}
+	// aardvark before Alpha is what distinguishes the case-insensitive comparator:
+	// under a byte comparison 'A' (0x41) sorts before 'a' (0x61) and this inverts.
+	iAard := strings.Index(a, "| aardvark |")
 	iAlpha := strings.Index(a, "| Alpha |")
 	iBeta := strings.Index(a, "| beta |")
 	iZeta := strings.Index(a, "| zeta |")
-	if iAlpha < 0 || iBeta < 0 || iZeta < 0 || iAlpha >= iBeta || iBeta >= iZeta {
-		t.Errorf("rows not case-insensitively sorted (Alpha=%d beta=%d zeta=%d):\n%s", iAlpha, iBeta, iZeta, a)
+	if iAard < 0 || iAlpha < 0 || iBeta < 0 || iZeta < 0 || iAard >= iAlpha || iAlpha >= iBeta || iBeta >= iZeta {
+		t.Errorf("rows not case-insensitively sorted (aardvark=%d Alpha=%d beta=%d zeta=%d):\n%s", iAard, iAlpha, iBeta, iZeta, a)
 	}
 }
 
@@ -204,8 +208,9 @@ func TestGlossaryStandardTermsPortable(t *testing.T) {
 				t.Errorf("shipped record %d %q cites %s; a citation resolves to nothing in an adopter corpus", i, key, got)
 			}
 		}
-		if s, isStr := m["meaning"].(string); isStr && len(s) > glossaryMeaningMax {
-			t.Errorf("shipped meaning for %v is %d chars, over the %d threshold", m["term"], len(s), glossaryMeaningMax)
+		// Runes, matching what the advisory measures.
+		if s, isStr := m["meaning"].(string); isStr && utf8.RuneCountInString(s) > glossaryMeaningMax {
+			t.Errorf("shipped meaning for %v is %d chars, over the %d threshold", m["term"], utf8.RuneCountInString(s), glossaryMeaningMax)
 		}
 	}
 }

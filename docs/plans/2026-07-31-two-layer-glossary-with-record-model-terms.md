@@ -624,6 +624,17 @@ feat(rendering): add the terseness advisory and clean the glossary
 - The corpus rewrite in task 4.6 is the largest single work item in this plan and is judgement work,
   not mechanical: it is deliberately separated from the phase 2 encoding change so each is
   reviewable on its own terms.
+- **Deviation, out of plan.** ADR-0198 decision 13 enumerates four surfaces carrying the false
+  pitfall-surfacing statement. Execution found a fifth: `pitfallEntry`'s doc comment in
+  `internal/project/pitfalls.go`, which also named `ContextFor` as a consumer that reads no pitfall
+  entries (the symbol is now `ContextForOptions`, and nothing under `internal/contextq` or
+  `internal/contextdelivery` reads pitfall entries at all). Fixed in its own commit, outside the
+  phase 2 transaction, because it is a phase 1 concern rather than a glossary one.
+- **Record, within task 4.6's authorization.** The corpus rewrite dropped five entries: `check-in`,
+  `continuity notice`, `retrospective`, and `routine checkpoint`, each now defined at least as well
+  by the shipped standard vocabulary, plus `memory-backed effort` per ADR-0198 decision 12. Seven
+  further project terms deliberately survive as overrides of shipped ones, because each carries
+  repo-specific detail the generic shipped wording does not.
 - **Terminal transaction, owned by `awf-reviewing-impl` after terminal review settles.** It is one
   commit carrying four things that cannot be separated:
 
@@ -643,8 +654,11 @@ feat(rendering): add the terseness advisory and clean the glossary
   scan rejects a marker naming a claim that does not exist yet (task 4.3).
   3. The fourth Applied event:
      `- <date>: Applied; operations: add `rendering/doc-outputs:glossary-terseness-advisory`, add `tooling/cli:terseness-advisory-nonfailing``
-  4. `status: Implemented` in the frontmatter plus the matching Implemented history event, stamped
-     as in task 1.3 and placed immediately after the Applied event.
+  4. `status: Implemented` in the ADR frontmatter plus the matching Implemented history event,
+     stamped as in task 1.3 and placed immediately after the Applied event.
+  5. `status: Implemented` in THIS PLAN's frontmatter, per the deferred flip transaction in
+     `docs/plans/README.md`. Nothing mechanical catches its omission, so it is listed explicitly.
+     Task checkboxes stay unticked, matching every implemented plan in the repo.
 
   They are one transaction because a claim mutation without its operation is a finding, and because
   an `Implementing` status is rejected once every declared operation is applied.

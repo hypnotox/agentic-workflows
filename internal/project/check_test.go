@@ -2,10 +2,12 @@ package project
 
 import (
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -137,6 +139,20 @@ func TestCheckGlossaryValidatesDomains(t *testing.T) {
 		!strings.Contains(drift[0].Detail, "bogus") || !strings.Contains(drift[0].Detail, "bad") ||
 		drift[0].Path != glossarySidecarPath {
 		t.Fatalf("want one glossary-domain drift naming term bad and domain bogus, got %#v", drift)
+	}
+	// Drive the public surface too: the helper finding it is worth nothing if
+	// Check drops the slice on the floor. Check reads the lock, so sync first.
+	if err := p.Sync(); err != nil {
+		t.Fatal(err)
+	}
+	full, err := p.Check(testContext(t))
+	if err != nil {
+		t.Fatalf("Check: %v", err)
+	}
+	if !slices.ContainsFunc(full, func(d manifest.Drift) bool {
+		return d.Kind == "glossary-domain" && strings.Contains(d.Detail, "bogus")
+	}) {
+		t.Fatalf("glossary-domain drift did not reach Check's result: %#v", full)
 	}
 }
 

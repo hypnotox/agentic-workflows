@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
@@ -62,7 +63,7 @@ func (p *Project) AdvisoryNotes(ctx context.Context) ([]string, error) {
 	}
 	notes = append(notes, pcs...)
 	gt, err := p.glossaryTersenessNotes()
-	if err != nil { // coverage-ignore: advisory read errors are covered by direct helper tests
+	if err != nil {
 		return nil, err
 	}
 	notes = append(notes, gt...)
@@ -83,9 +84,11 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	}
 	// The on-disk sidecar never carries standardTerms, so overlay the catalog
 	// default exactly as render.go does upstream of the transform; without this
-	// the shipped layer would escape the threshold entirely.
+	// the shipped layer would escape the threshold entirely. The ingestion can
+	// still fail here: a local: true sidecar is skipped by the render pass, so
+	// AdvisoryNotes having rendered the doc above does not vouch for it.
 	records, err := mergedGlossaryRecords(withDefaultData(sc, p.Cat.Docs["glossary"].Data))
-	if err != nil { // coverage-ignore: AdvisoryNotes already rendered this same sidecar through the transform above, so a second ingestion cannot newly fail
+	if err != nil {
 		return nil, err
 	}
 	slices.SortFunc(records, func(a, b glossaryRecord) int {
@@ -93,8 +96,10 @@ func (p *Project) glossaryTersenessNotes() ([]string, error) {
 	})
 	var notes []string
 	for _, r := range records {
-		if len(r.Meaning) > glossaryMeaningMax {
-			notes = append(notes, fmt.Sprintf("%s: term %q meaning is %d characters, over the %d-character guideline; tighten it", glossarySidecarPath, r.Term, len(r.Meaning), glossaryMeaningMax))
+		// Runes, not bytes: the guideline is a reading-length notion, and accented
+		// letters stay legal under the plain-punctuation rule.
+		if n := utf8.RuneCountInString(r.Meaning); n > glossaryMeaningMax {
+			notes = append(notes, fmt.Sprintf("%s: term %q meaning is %d characters, over the %d-character guideline; tighten it", glossarySidecarPath, r.Term, n, glossaryMeaningMax))
 		}
 	}
 	return notes, nil
