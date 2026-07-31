@@ -146,8 +146,16 @@ module-resolution failure that the copied host tree actually caused, and the con
 a concurrent gate and `TestPiRealRuntimeSmoke` over one shared persistent container. That entry
 is retired or rewritten to whatever remains true, such as concurrent image builds.
 
-Operationally, this decision creates a one-time cleanup of the objects the superseded design
-left behind, and the `reset` command is extended to perform it. Removing the unreachable
+Operationally, `reset` is extended to sweep what the superseded design left behind, within the
+limit item 9 sets, and that limit leaves a remainder worth stating plainly. It reaps a legacy
+container that is stopped, or whose recorded source path no longer exists, which covers the
+bulk and is self-clearing over time: a removed worktree's container is reaped by the next
+`reset` even while running, because the path is what disappeared. It cannot reap a running
+legacy container at a path that still exists, and with `stop` removed no command in this lane
+can. That remainder is the primary checkout's own container plus any long-lived checkout
+predating this decision, a handful at most, and each is cleared once by hand with
+`docker rm -f`. Buying that remainder is the price of never touching a container that might be
+backing a live gate, which is the right trade for a migration that happens once. Removing the unreachable
 `contract` subcommand is a deliberate capability removal recorded here rather than a silent one.
 
 This decision changes the claim that ADR-0123 established, which is what brings it here rather
