@@ -662,12 +662,16 @@ Beyond the per-phase gates, the effort is done when all of the following hold:
   `awf/eliminate-manual-adr-renumbering-when-parallel-efforts-merge`. 0194 was nonetheless the
   only legal number here: `awf check` enforces ADR contiguity from 1, and the lock's
   `legacyAdrGaps` is immutable authority that rejects any gap at or above the format cutoff, so
-  a deliberate hole could not be recorded. Whichever effort integrates second renumbers. If
-  that is this one, renumber by rewriting the unpublished branch and rebasing onto main, never
-  inside a merge, and do it **before** Phase 2 lands its `Applied` event: the staged check's
-  history-prefix rule refuses a renumber once an Applied batch exists. Renumbering after Phase
-  2 means rewriting that commit too, including this plan's `adrs:` frontmatter and every
-  in-file `ADR-0194` reference.
+  a deliberate hole could not be recorded. Whichever effort integrates second renumbers, and
+  **the renumber happens at integration time**, not ahead of any phase.
+
+  The mechanics are the constraint, not the timing. Renumber by rewriting this unpublished
+  branch and rebasing onto main. Do not attempt it inside a merge: the staged check's
+  history-prefix rule refuses a renumber once an `Applied` batch exists, and renumbering and
+  then merging fails contiguity instead. Rewriting the branch avoids both, because every
+  commit is reauthored before it meets main. Budget for the rewrite touching each commit that
+  names the number: this plan's `adrs:` frontmatter, every in-file `ADR-0194` reference, the
+  ADR filename, and Phase 2's and Phase 3's closing subjects.
 - **Out of scope, worth fixing separately:** `docs/topics/tooling/git-access.md.awf-bak` is a
   stray backup file committed to main by the git-seam merge. It is tracked, `awf check` does
   not flag it, and it belongs to no phase here.
