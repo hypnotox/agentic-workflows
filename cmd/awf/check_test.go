@@ -110,8 +110,10 @@ func TestRunCheckAheadNotice(t *testing.T) {
 }
 
 // coverageYAML owns internal/** with the fan-out budget the warn fixtures need.
-// The currentState block must stay non-empty: coverage is only evaluated when the
-// config declares one, and a bare "currentState:" key is a hard parse error.
+// The currentState block stays non-empty because those fixtures need the budget,
+// and a bare "currentState:" key is a hard parse error. It is no longer what
+// switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
+// not the config declares the block.
 func coverageYAML() string {
 	return "prefix: example\nskills: [tdd]\nagents: []\ndomains: [alpha]\n" +
 		"currentState:\n  maxTopicsPerPath: 1\n"

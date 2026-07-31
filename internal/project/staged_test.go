@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // stagedHeadFiles is the HEAD content the staged/range fixtures share: a config
@@ -111,6 +113,45 @@ func TestCheckStagedCleanWithCoverage(t *testing.T) {
 	findings := report.Findings()
 	if len(findings) != 1 || !strings.Contains(findings[0], "internal/bar.go") {
 		t.Fatalf("findings = %#v; want exactly the uncovered internal/bar.go", findings)
+	}
+}
+
+// TestCheckStagedNoPolicy proves the staged path evaluates coverage and fan-out
+// for a tree that declares no currentState block, the staged half of the
+// contract TestCheckCurrentStateNoPolicy pins for the working tree (ADR-0192).
+// stagedHeadFiles already scopes one claim-bearing topic to internal/foo/**, so
+// eight more claimless topics take that path over the nil-receiver budget of 8.
+func TestCheckStagedNoPolicy(t *testing.T) {
+	repo, dir := gitfixture.InitRepo(t)
+	head := stagedHeadFiles()
+	head[".awf/config.yaml"] = csNoPolicyYAML
+	for i := 1; i <= 8; i++ {
+		name := fmt.Sprintf("fan%d", i)
+		head[".awf/topics/metadata/alpha/"+name+".yaml"] = fmt.Sprintf("title: Fan %d\nsummary: Fan-out fixture topic %d.\npaths:\n  - internal/foo/**\n", i, i)
+		head[".awf/topics/parts/alpha/"+name+"/current-state.md"] = "Intro.\n\n## Claims\n"
+	}
+	gitfixture.Stage(t, repo, dir, head)
+	gitfixture.Commit(t, repo, dir, "head", nil)
+	gitfixture.Stage(t, repo, dir, map[string]string{
+		"internal/bar.go":   "package internalx\n",
+		"internal/foo/x.go": "package foo\n",
+	})
+	p := openStaged(t, dir)
+	writeLock(t, p, attestedLock())
+
+	report, err := p.CheckStaged()
+	if err != nil {
+		t.Fatalf("CheckStaged: %v", err)
+	}
+	if report.Coverage == nil {
+		t.Fatal("staged coverage = nil; want evaluation without a currentState policy")
+	}
+	want := []topic.CoverageFinding{
+		{Path: "internal/bar.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
+		{Path: "internal/foo/x.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 9},
+	}
+	if !reflect.DeepEqual(report.Coverage, want) {
+		t.Fatalf("staged coverage:\n got %#v\nwant %#v", report.Coverage, want)
 	}
 }
 

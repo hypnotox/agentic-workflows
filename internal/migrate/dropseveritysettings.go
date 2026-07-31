@@ -24,13 +24,21 @@ const defaultMaxTopicsPerPath = 8
 // both keys are nested under currentState, which RemoveKey cannot reach.
 //
 // When the two keys were the block's only children, RemoveMappingKey drops the
-// emptied currentState key with them, and an ABSENT block suppresses coverage
-// and fan-out outright (internal/project/currentstate.go gates both on
-// CurrentState != nil). That is the exact inverse of ADR-0183 item 1, so this
-// migration seeds the explicit default budget to keep the block alive and the
-// checks evaluating. The seed fires only where a block existed and these
-// removals emptied it: a tree that never declared currentState is deliberately
-// opted out and must not have one invented for it.
+// emptied currentState key with them. At generation 25 an absent block suppressed
+// coverage and fan-out outright, because internal/project/currentstate.go gated
+// both on CurrentState != nil, which was the exact inverse of ADR-0183 item 1.
+// This migration therefore seeds the explicit default budget to keep the block
+// alive and the checks evaluating. ADR-0192 removed that gate, so the seed no
+// longer protects anything: it is inert but harmless, and it stays because
+// historical migrations are never edited.
+//
+// The announcement below still says the seed keeps coverage and fan-out
+// evaluating. That wording is stale for the same reason and is retained
+// deliberately: it is command output and therefore behaviour, frozen by ADR-0192
+// item 7. Nothing would go red if it were reworded, because the migration test
+// pins only the announcement prefix by substring and never the trailing clause,
+// which is precisely why retaining it has to be a recorded choice rather than
+// something the suite backstops.
 func applyDropSeveritySettings(root string, w io.Writer) error {
 	return editConfig(root, func(src []byte) ([]byte, error) {
 		// The removals run first so a malformed config surfaces its parse error

@@ -1,7 +1,9 @@
 package project
 
 import (
+	"fmt"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -121,6 +123,19 @@ currentState:
   maxTopicsPerPath: 8
 `
 
+// csNoPolicyYAML is csYAML without its currentState block, the shape ADR-0192
+// makes indistinguishable from csYAML for coverage and fan-out evaluation.
+const csNoPolicyYAML = `prefix: example
+skills:
+  - tdd
+agents:
+  - code-reviewer
+domains:
+  - alpha
+contextIgnore:
+  - internal/skip.go
+`
+
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
 const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"
 
@@ -216,26 +231,43 @@ func TestCheckCurrentStateClaimBudgetAdvisory(t *testing.T) {
 	}
 }
 
-// TestCheckCurrentStateNoPolicy proves coverage is skipped when the project
-// configures no currentState policy: the report carries static findings only.
-// This is the site backing the claim's "a tree that declares no currentState
-// block requests neither" clause; internal/config's marker cannot reach the gate.
-// invariant: config/configuration:severity-not-configurable
+// TestCheckCurrentStateNoPolicy proves coverage and fan-out both evaluate for a
+// tree that declares no currentState block: evaluation does not depend on the
+// block's presence (ADR-0192). internal/foo/** carries nine topics, one
+// claim-bearing so the path is covered and eight claimless, which together
+// exceed the nil-receiver default budget of 8 and yield the fan-out finding;
+// internal/bar.go is owned by the domain but scoped by no claim-bearing topic,
+// so it yields the coverage finding.
 func TestCheckCurrentStateNoPolicy(t *testing.T) {
 	cfg := "prefix: example\nskills: [tdd]\nagents: [code-reviewer]\ndomains: [alpha]\n"
-	p := csRepo(t, cfg, map[string]string{
+	files := map[string]string{
 		".awf/domains/alpha.yaml": "paths:\n  - internal/**\n",
 		"internal/bar.go":         "package internalx\n",
-	})
+		"internal/foo/x.go":       "package foo\n",
+	}
+	for i := 1; i <= 9; i++ {
+		name := fmt.Sprintf("fan%d", i)
+		files[".awf/topics/metadata/alpha/"+name+".yaml"] = fmt.Sprintf("title: Fan %d\nsummary: Fan-out fixture topic %d.\npaths:\n  - internal/foo/**\n", i, i)
+		part := "Intro.\n\n## Claims\n"
+		if i == 1 {
+			part = csRuleTopic
+		}
+		files[".awf/topics/parts/alpha/"+name+"/current-state.md"] = part
+	}
+	p := csRepo(t, cfg, files)
 	report, err := p.CheckCurrentState()
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
-	if report.Coverage != nil {
-		t.Fatalf("coverage = %#v; want nil without a currentState policy", report.Coverage)
+	if report.Coverage == nil {
+		t.Fatal("coverage = nil; want evaluation without a currentState policy")
 	}
-	if len(report.Findings()) != 0 {
-		t.Fatalf("findings = %#v; want none", report.Findings())
+	want := []topic.CoverageFinding{
+		{Path: "internal/bar.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error},
+		{Path: "internal/foo/x.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 9},
+	}
+	if !reflect.DeepEqual(report.Coverage, want) {
+		t.Fatalf("coverage:\n got %#v\nwant %#v", report.Coverage, want)
 	}
 }
 

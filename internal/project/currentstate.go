@@ -132,8 +132,9 @@ func attestationBoundaries(lock *manifest.Lock) (adr.FormatBoundaries, []int) {
 // CheckCurrentState loads the working-tree current-state view and runs the
 // static ADR-to-claim handshake and the coverage/fan-out evaluator over it
 // (ADR-0135, ADR-0134). It reads exactly one working Tree, so the two checks
-// never mix a working and an index universe. Coverage runs only when the project
-// configures a currentState policy.
+// never mix a working and an index universe. Coverage and fan-out always
+// evaluate, whether or not the project configures a currentState policy
+// (ADR-0192).
 func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 	ws, err := p.workingCurrentState()
 	if err != nil {
@@ -143,9 +144,7 @@ func (p *Project) CheckCurrentState() (CurrentStateReport, error) {
 		Static:     currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
 		Advisories: topic.ClaimBudgetNotes(ws.Loaded.Topics, ws.Cfg.CurrentState.EffectiveMaxClaimsPerTopic()),
 	}
-	if ws.Cfg.CurrentState != nil {
-		report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore), coveragePolicy(ws.Cfg.CurrentState))
-	}
+	report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore), coveragePolicy(ws.Cfg.CurrentState))
 	return report, nil
 }
 
@@ -162,8 +161,8 @@ func CheckStagedRoot(root string) (CurrentStateReport, error) {
 // committed or index universes, so a dirty working tree never affects the result.
 // The before side is the empty universe on a repository with no commit yet, and
 // the after config, policy, and eligible paths all come from the index tree so
-// the staged check reads one universe. Coverage runs only when the staged config
-// declares a currentState policy.
+// the staged check reads one universe. Coverage and fan-out always evaluate,
+// whether or not the staged config declares a currentState policy (ADR-0192).
 func (p *Project) CheckStaged() (CurrentStateReport, error) {
 	afterTree, err := snapshot.IndexTree(p.Root)
 	if err != nil {
@@ -211,9 +210,7 @@ func (p *Project) CheckStaged() (CurrentStateReport, error) {
 		mode = currentstate.MergeAggregate
 	}
 	report := CurrentStateReport{Static: currentstate.CheckPair(before.Universe(), after.Universe(), mode)}
-	if afterCfg.CurrentState != nil {
-		report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
-	}
+	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
 	return report, nil
 }
 

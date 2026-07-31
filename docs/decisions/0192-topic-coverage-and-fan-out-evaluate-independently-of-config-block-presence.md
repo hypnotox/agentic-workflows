@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implementing
 date: 2026-07-31
 ---
 # ADR-0192: Topic coverage and fan-out evaluate independently of config block presence
@@ -76,3 +76,5 @@ The class of defect is worth naming beyond this instance, and it is sharper than
 ## Status history
 
 - 2026-07-31: Proposed
+- 2026-07-31: Implementing; content-sha256: a3767a0b55d68758c588e9ea2e647136073557e3ea87e2aecdcde763da112cab
+- 2026-07-31: Applied; operations: update `config/configuration:severity-not-configurable`, update `config/migrations-and-locks:severity-keys-dropped`
