@@ -1,7 +1,11 @@
 This topic governs outcomes introduced by new work and sites deliberately converted under
 its authority, failure and success alike. Existing message-text identities, shallow
 predicates, operation-taxonomy category literals, and exported types no caller matches
-remain bounded future candidates until a deliberate conversion brings them into scope.
+remain bounded future candidates until a deliberate conversion brings them into scope; so
+does the hard-safety refusal family (`git.HardSafetyError`), which predates the protocol
+with its own category kinds and no protocol shape, and whose extension at a new
+construction site stays a candidate, not a violation, until the family is deliberately
+converted.
 The rendering implementation of the protocol follows `code-design/presentation-ownership`
 (the package owning the outcome model renders it); the moment a second package implements
 the numbered-step format, `code-design/single-home` requires the shared helper.
