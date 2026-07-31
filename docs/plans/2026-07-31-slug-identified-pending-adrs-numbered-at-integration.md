@@ -36,14 +36,18 @@ to accept slugs. Phase 5 builds `awf adr number` and the slug-paired numbering
 transition validation. Phase 6 renders the pre-merge-commit payload and lands the
 documentation and changelog obligations.
 
-ADR-0194's operations apply as five Implementing batches, one per implementation phase
-(Phase 2 appends the Implementing status event first). Each batch's Applied event lists
+ADR-0194's operations apply as six Implementing batches: one per implementation phase
+(Phase 2 appends the Implementing status event first), plus one that lands with the
+Phase 3 review settlement. Each batch's Applied event lists
 its operations in State-changes declaration order using the post-ADR-0191 grammar
 (`- <date>: Applied; operations: <declaration-ordered list>`; no event carries a state
 sequence); each travels in the same commit as exactly its claim
 mutations in `.awf/topics/parts/**` plus the re-rendered topic docs. The batch
-partition is 9/5/1/2/1 over the 18 operations, each batch a declaration-order
-subsequence. Phase 6's batch is
+partition is 9/5/2/1/2/1 over the 20 operations, each batch a declaration-order
+subsequence. The third batch is the two operations the 2026-07-31 amendment appended
+at the end of the declaration list (`corpus-parsed-once` and `adr-new-no-overwrite`,
+Decision item 17); Phase 3's review found the defects they authorize, and appending
+them at the tail is what leaves batches 1 and 2 positionally untouched. Phase 6's batch is
 the remainder, and its closing commit appends the `Implemented` flip event directly
 after it (the V2 final pair; an `Implementing` record with nothing remaining is an
 illegal state per `internal/adr/application.go:102-105`, and the 0187/0189 precedent

@@ -160,9 +160,10 @@ reference surface is accepted.
 15. All six added claims are invariants with `Backing: test`; proof markers land when
     the operations are Applied: `pending-adr-slug-identity` and
     `adr-slug-frontmatter-mandatory` on internal/adr tests;
-    `pending-blocked-from-integration-branch`, `numbering-transition-mode`, and
-    `adr-number-immutable` on internal/currentstate tests; `integration-branch-explicit`
-    on the config schema-migration tests. Operation motivation: items 1 and 4 drive the
+    `numbering-transition-mode` and `adr-number-immutable` on internal/currentstate
+    tests; `pending-blocked-from-integration-branch` on internal/project tests, which
+    is where the corpus-level drift check enforcing it lives;
+    `integration-branch-explicit` on the config schema-migration tests. Operation motivation: items 1 and 4 drive the
     `fresh-adoption-v1-cutoff`, `adr-status-enum-and-matrix`,
     `adr-v2-cutoff-atomic-immutable`, and `adr-amendable-until-terminal` updates, and
     item 1's restatement of the Applied-immutability contract over both governed digest
@@ -179,7 +180,8 @@ reference surface is accepted.
     `provenance-ordered-by-adr-number` update (pending slug entries gain a defined
     place in the ascending order, and numbering canonicalizes them away); item 13
     drives the `hook-payloads-rendered` update; item 14 drives the
-    `plan-adr-link-resolved` update.
+    `plan-adr-link-resolved` update; and item 17 drives the `corpus-parsed-once` and
+    `adr-new-no-overwrite` updates.
 16. The documentation travels with the implementation commits: the ADR-template
     singleton source (the adr-template frontmatter part, which every adopter's scaffold
     copies) gains the V3 pending shape with the `slug:` key; the working-with-awf
@@ -193,6 +195,20 @@ reference surface is accepted.
     `integrationBranch`, the agent-guide gated-command enumeration for the `adr` group,
     the topic docs, the INDEX) follow from their configspec, clispec, and topic sources
     through render.
+17. Scaffolding reads the corpus for identity alone. `awf new adr` asks two questions -
+    what the next free number is, and whether the title's slug is already taken - and
+    both are answered by the frontmatter and filenames a directory parse already
+    yields, never by the body below the heading. The identity read is therefore its own
+    corpus construction seam beside the full-body one, and both are named as approved
+    ParseDir callers. Routing the scaffold through the full-body parse instead would
+    make authoring conditional on the health of every other record in the corpus: a
+    record still being filled in, or another effort's pending record that arrived with
+    a merge of the integration branch, would refuse the next author a file. Item 2
+    deliberately brings other efforts' pending records into the tree, so that coupling
+    would turn this decision's own mechanism into an authoring hazard. Relatedly, the
+    refuse-to-overwrite guard's `Verify` instruction follows the guard to whichever
+    function performs it rather than naming the exported entry point, which is now a
+    delegate.
 
 ## State changes
 
@@ -214,6 +230,8 @@ reference surface is accepted.
 - update `config/configuration:config-serialization-owned`
 - update `invariants/current-state-authority:provenance-ordered-by-adr-number`
 - update `rendering/singletons-and-payloads:hook-payloads-rendered`
+- update `adr-system/adr-lifecycle:corpus-parsed-once`
+- update `adr-system/adr-lifecycle:adr-new-no-overwrite`
 
 ## Consequences
 
@@ -262,6 +280,11 @@ reference surface is accepted.
 - Plan sequencing: branch detection depends on the git-seam decision, so the
   implementation plan for this record sequenced after it; that ADR has since landed as
   0193 and its seam already ships the current-branch entrypoint.
+- The decisions directory gains a second approved parse seam (item 17). One-parse-per-
+  invocation still holds and no consumer parses the directory for itself, but the
+  approved-caller set a reader checks is now two construction seams rather than one
+  seam plus a numbering exception, and a future seam must justify itself against the
+  same rule.
 
 ## Alternatives Considered
 
@@ -279,3 +302,4 @@ reference surface is accepted.
 - 2026-07-31: Implementing; content-sha256: ad1cecdd656deefbc479d1f26350d5f54f70d4772badc93b3f37253a3ce65d58
 - 2026-07-31: Applied; operations: update `adr-system/adr-lifecycle:fresh-adoption-v1-cutoff`, update `adr-system/adr-lifecycle:adr-status-enum-and-matrix`, update `adr-system/adr-lifecycle:adr-amendable-until-terminal`, update `adr-system/adr-lifecycle:corpus-single-identity-key`, update `adr-system/adr-lifecycle:applied-history-events-append-only`, add `adr-system/adr-lifecycle:pending-adr-slug-identity`, add `adr-system/adr-lifecycle:adr-slug-frontmatter-mandatory`, update `config/migrations-and-locks:adr-v2-cutoff-atomic-immutable`, update `invariants/current-state-authority:provenance-ordered-by-adr-number`
 - 2026-07-31: Applied; operations: update `adr-system/adr-lifecycle:adr-new-sequential-numbering`, update `adr-system/adr-lifecycle:adr-new-heading-matches-file`, add `adr-system/adr-lifecycle:pending-blocked-from-integration-branch`, add `config/configuration:integration-branch-explicit`, update `config/configuration:config-serialization-owned`
+- 2026-07-31: Amended; content-sha256: 744159e07f2ef02066618193ae36e73ddb2bc8757a3b54488a765f70e09dd25f
