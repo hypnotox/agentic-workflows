@@ -240,7 +240,14 @@ any meaning's prose: every meaning moves across byte-identical. Prose is phase 4
   For `glossary-terms-validated`, replace the body with one naming the list shape and identifying
   the failure by term rather than by key: an empty term, an empty, null, or non-string meaning, an
   interior newline in a term or meaning, a malformed record, an unknown record key, or a
-  case-insensitive duplicate term fails the render, naming the sidecar path and the offending term.
+  case-insensitive duplicate term **within a single layer** fails the render, naming the sidecar
+  path and the offending term.
+
+  The layer qualifier is load-bearing even though only one layer exists at phase 2. ADR-0198
+  declares exactly one `update` for this claim and phase 2 spends it, so an unqualified body would
+  freeze permanently false the moment task 3.3 makes a cross-layer duplicate the legal override.
+  Moving the update into batch 3 instead is wrong: that would leave the map-shaped body live
+  through the very commit that breaks it.
 
   Add `Revised-by: ADR-0198` to both claims' metadata blocks in canonical order.
 
@@ -412,13 +419,36 @@ feat(rendering): model glossary terms as records
 - [ ] **Task 3.12: Add the feature changelog entry.** Under `## [Unreleased]` then `### Features` in
   `changelog/CHANGELOG.md`, add an entry stating that the glossary now renders a shipped awf
   vocabulary merged with the project's own terms, that a project term of the same name overrides the
-  shipped one, and that the shipped layer is not disableable.
+  shipped one, and that the shipped layer is not disableable. Include the upgrade effect, which is
+  what makes this adopter-visible: shipped vocabulary participates in the config hash, so an upgrade
+  that changes a standard term surfaces as `stale` drift on the adopter's rendered glossary and is
+  resolved by `awf render`, exactly as any other catalog or template change.
 
-- [ ] **Task 3.13: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
+- [ ] **Task 3.13: Bring the `terms` description current with the shipped layer.** Task 2.7's
+  wording is true only while one layer exists, and this phase falsifies part of it. In
+  `internal/configspec/spec.go`, amend the `{Kind: "docs", Artifact: "glossary", Key: "terms"}`
+  Description:
+
+  Replace the sentence stating that unset renders a pointer telling the reader where to add terms.
+  Task 3.4 makes the transform return early only when both layers are absent, and `withDefaultData`
+  always supplies `standardTerms` from the catalog, so an unset `terms` now renders the shipped
+  standard vocabulary alone. The empty-state pointer renders only when neither layer supplies a
+  term.
+
+  Add a clause stating that a term here overrides a shipped standard term of the same
+  case-insensitive name. Per ADR-0198 decisions 2 and 3 that override is the *only* way to remove
+  an unwanted shipped term, so an adopter who does not read it has no mechanism at all.
+
+  Keep both free of ADR citations and repo identity (`configspec-description-residue`). Docs travel
+  with the change: this belongs in the phase that ships the layer, not phase 4.
+
+- [ ] **Task 3.14: Re-render and verify.** Run `./x render && ./x check`. Expected terminal state:
   `awf check: clean`, and `git diff docs/glossary.md examples/sundial/docs/glossary.md` shows the
   shipped vocabulary appearing in both, proving the layer reaches a real adopter. `./x check` must
-  report no advisory note from `examples/sundial`: the runner fails the check on any, and the
-  shipped layer now merges into that example's glossary.
+  also report no advisory note from `examples/sundial`, which the runner fails on: at this phase
+  that covers the five pre-existing note families over an example whose glossary now carries the
+  shipped rows. The terseness threshold is enforced here by task 3.5's portability test only; it
+  reaches `./x check` in phase 4.
 
 - [ ] **Phase-close: stage, check, gate, and commit.** Stage the complete transaction and create the
   one phase-closing commit; it requires `awf check --staged` and `./x gate` to pass, enforced by a
