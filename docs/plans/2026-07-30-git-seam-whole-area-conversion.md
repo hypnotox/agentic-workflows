@@ -1,7 +1,7 @@
 ---
 date: 2026-07-30
 adrs: [181, 191]
-status: Proposed
+status: Implemented
 ---
 # Plan: Git seam whole-area conversion
 
@@ -61,14 +61,14 @@ obligated docs, and flips both ADRs and this plan.
 
 **Execution mode: inline.**
 
-- [ ] **Task 1.1: Merge main into the branch.** In the worktree, run `git merge main`.
+- [x] **Task 1.1: Merge main into the branch.** In the worktree, run `git merge main`.
   Expected conflicts and their resolutions: `docs/decisions/INDEX.md` (regenerate via
   `./x render`, never hand-merge); `.awf/awf.lock` (take main's, then re-render);
   `.awf/topics/metadata/tooling/audit-and-snapshots.yaml` and its current-state part
   (take main's severity-chain edits; this plan's Phase 7 narrows paths afterward);
   `internal/project/project.go` and `internal/project/topics.go` (take main's
   state-ownership shape; this plan's later phases re-apply seam changes on top).
-- [ ] **Task 1.1b: Renumber the git-seam ADR (unconditional).** Main has consumed the
+- [x] **Task 1.1b: Renumber the git-seam ADR (unconditional).** Main has consumed the
   0182+ identities (its own 0182-0185 exist), and ADR-0181 is already on main and keeps
   its number. Rename this branch's git-seam ADR file and heading to the next free
   identity awf reports after the merge (do not hardcode a number), then update every
@@ -77,10 +77,10 @@ obligated docs, and flips both ADRs and this plan.
   File structure, and Tasks. Confirm ADR-0181's item 7 forward reference still carries
   no literal number (it names "its own ADR next in this effort", so no edit is owed).
   Re-render and confirm `./awf check` is clean.
-- [ ] **Task 1.2: Re-render and verify.** Run `./x render`; stage everything the merge
+- [x] **Task 1.2: Re-render and verify.** Run `./x render`; stage everything the merge
   and render touched; `./awf check --staged` clean; `./x gate` ends `0 issues` with
   `check prose: clean` and `check memory: clean`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 chore(tooling): merge integrated main into the git-seam branch
@@ -91,7 +91,7 @@ chore(tooling): merge integrated main into the git-seam branch
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
-- [ ] **Task 2.1: `internal/git/runner.go` with `CommandError`.** New unexported runner
+- [x] **Task 2.1: `internal/git/runner.go` with `CommandError`.** New unexported runner
   type plus exported error: `type CommandError struct { Args []string; ExitCode int;
   Stderr string; Err error }` with `Error()` (formats args, exit code, stderr) and
   `Unwrap()`. Runner behaviour: constructor takes the validated repository root; its run
@@ -110,7 +110,7 @@ chore(tooling): merge integrated main into the git-seam branch
   (`controlroot.go`) is superseded: `resolveControlRoots`, `runGitPathWith`, and
   `runGitTextWith` rebind to the new runner type, and no second runner abstraction
   survives the phase.
-- [ ] **Task 2.2: Convert `internal/git`'s own subprocess sites.** `runGitBytes` in
+- [x] **Task 2.2: Convert `internal/git`'s own subprocess sites.** `runGitBytes` in
   `controlroot.go` and the inline exec in `WorktreeChangeCounts` (`git.go`) route through
   the runner. `WorktreeChangeCounts` keeps porcelain v2 semantics and gains isolation,
   stderr-carrying errors, the deadline requirement, and a `ctx context.Context`
@@ -119,7 +119,7 @@ chore(tooling): merge integrated main into the git-seam branch
   callers compile-driven). Add `const gitCommandTimeout = 2 * time.Minute` in `cmd/awf`
   in this task (the hang-prevention ceiling from the git-seam ADR item 4); callers pass
   a deadlined context built at their current boundaries with it.
-- [ ] **Task 2.3: Extract the identity ladder.** In `controlroot.go`, extract the repeated
+- [x] **Task 2.3: Extract the identity ladder.** In `controlroot.go`, extract the repeated
   check-act-recheck sequences into named unexported operations (shape: one operation that
   performs lstat-validate, act, and re-validate around a single path, and one that
   resolves a stable identity through `EvalSymlinks` with re-validation). Replace each
@@ -128,7 +128,7 @@ chore(tooling): merge integrated main into the git-seam branch
   Post-check: `grep -c 'requires an OS race or fault' internal/git/controlroot.go`
   returns a small handful (the extraction's own escapes, not the current per-site
   count), and `./x gate` still reports 100% coverage.
-- [ ] **Task 2.4: Runner and topology contract suites.** New test files in
+- [x] **Task 2.4: Runner and topology contract suites.** New test files in
   `internal/git`: runner suite proving (a) a polluted environment (`GIT_DIR`,
   `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_CONFIG_GLOBAL` set via `t.Setenv` to hostile
   values) does not affect an isolated invocation; (b) a failing invocation's error
@@ -138,7 +138,7 @@ chore(tooling): merge integrated main into the git-seam branch
   `ResolveControlRoots`/`ListWorktreeRegistrations` semantics on fixture repos with
   registered worktrees (use the existing native fixtures until Phase 6 converts them).
   These suites are serial (`t.Setenv`).
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 refactor(code-design): one isolated native git runner
@@ -149,7 +149,7 @@ refactor(code-design): one isolated native git runner
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
-- [ ] **Task 3.0: Real-git ignore semantics for isolated native status (user decision,
+- [x] **Task 3.0: Real-git ignore semantics for isolated native status (user decision,
   Phase 2 review).** The isolated environment strips the user/system git config, which
   narrowed the cleanliness oracle's ignore universe (a Phase 2 regression the review
   caught empirically). Restore real-git semantics: before building the isolated
@@ -161,7 +161,7 @@ refactor(code-design): one isolated native git runner
   global-gitignore pitfall as the named regression case; the pitfalls prepend sentence
   ("Git itself owns repository, global, and system ignore semantics") thereby stays
   true and needs no rewrite.
-- [ ] **Task 3.1: `internal/git/handle.go`.** `func Open(root string) (*Repo, error)`
+- [x] **Task 3.1: `internal/git/handle.go`.** `func Open(root string) (*Repo, error)`
   absorbs the tolerant `worktreeConfig` open (current `OpenRepo` body) and validates the
   root once; `type Repo` holds the root, the opened go-git repository (unexported), and
   the runner. Methods (all `ctx context.Context` first): `IndexBlobs`, `CommitBlobs(rev)`,
@@ -180,7 +180,7 @@ refactor(code-design): one isolated native git runner
   `internal/git/git_test.go`: its case-sensitive substring check goes vacuous with the
   unexport and would red the gate; the Task 3.5 working-tree-paths suite supersedes it
   (per the git-seam ADR item 9).
-- [ ] **Task 3.2: Snapshot threading (batch).** `internal/snapshot`'s `WorkingTree`,
+- [x] **Task 3.2: Snapshot threading (batch).** `internal/snapshot`'s `WorkingTree`,
   `IndexTree`, `CommitTree`, `RangePair` take `(ctx context.Context, repo *git.Repo, ...)`
   instead of `repoRoot string`. Representative: `snapshot.IndexTree(root)` in
   `cmd/awf/memorygate.go` (`runMemoryGate`) becomes `snapshot.IndexTree(ctx, repo)`
@@ -198,7 +198,7 @@ refactor(code-design): one isolated native git runner
   `internal/project/topics.go`. Post-check: `grep -rn "repoRoot" internal/snapshot
   --include=*.go` returns no output (signatures and doc comments alike); `go build ./...`
   clean.
-- [ ] **Task 3.3: Migrate, upgrade, and project reads.**
+- [x] **Task 3.3: Migrate, upgrade, and project reads.**
   `internal/migrate/remove_workflow_residents.go` and `unified_effort_residents.go`
   replace `git.OpenRepo` + `errors.Is(err, gogit.ErrRepositoryNotExists)` with
   `git.Open` + `errors.Is(err, git.ErrNotARepository)` and drop their go-git imports;
@@ -208,7 +208,7 @@ refactor(code-design): one isolated native git runner
   Post-check:
   `grep -rln "go-git" internal/migrate internal/upgrade internal/project --include=*.go | grep -v _test`
   returns no output.
-- [ ] **Task 3.4: The open/deadline path and resident-root single home.** Activate the
+- [x] **Task 3.4: The open/deadline path and resident-root single home.** Activate the
   runner's deadline hard-error here (before spawning, when `ctx.Deadline()` is absent,
   with a message naming the missing deadline), together with its refusal test in the
   runner suite - enforcement and the feed conversions below are one transaction. The
@@ -237,7 +237,7 @@ refactor(code-design): one isolated native git runner
   `ChangedPaths` consumer in `cmd/awf/context.go` converts to the handle method here.
   Post-check: `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test`
   returns no output.
-- [ ] **Task 3.5: Object-read contract suite.** Pin per entrypoint on fixture repos:
+- [x] **Task 3.5: Object-read contract suite.** Pin per entrypoint on fixture repos:
   staged/commit/range blob enumeration including rename and deletion edges;
   `WorkingPaths` honouring the repository gitignore chain AND a global excludes file
   (regression case: the global-gitignore scope incident); a tracked-looking path below
@@ -245,7 +245,7 @@ refactor(code-design): one isolated native git runner
   succeeding on a repo whose config carries `extensions.worktreeConfig = true` (the
   `PlainOpen` incident); `Open` on a non-repo returning `ErrNotARepository` via
   `errors.Is`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 refactor(code-design): git handle, object reads, deadlined open
@@ -256,7 +256,7 @@ refactor(code-design): git handle, object reads, deadlined open
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
-- [ ] **Task 4.1: `internal/git/walk.go`.** Move `Commit` and `FileChange` (fields as
+- [x] **Task 4.1: `internal/git/walk.go`.** Move `Commit` and `FileChange` (fields as
   currently declared in `internal/audit/git.go`) into `internal/git`; add `Repo` methods
   `RangeCommits(ctx, base, head) ([]Commit, error)` (revision resolution, merge-base,
   preorder iteration, per-commit `FileChange` stats via tree diff - bodies move from
@@ -267,7 +267,7 @@ refactor(code-design): git handle, object reads, deadlined open
   `RangeChangedPaths(ctx, base, head) ([]string, error)` (diff --name-only semantics),
   and `RangeDiffText(ctx, base, head) (string, error)` (unified diff text with the
   prefix options repoaudit's parser expects, runner-backed).
-- [ ] **Task 4.2: Audit converts, `internal/audit/git.go` deletes.** `audit.Run`'s
+- [x] **Task 4.2: Audit converts, `internal/audit/git.go` deletes.** `audit.Run`'s
   collection path takes the walk results through its existing narrow inputs; the package
   drops its go-git import entirely, and callers of the moved types in
   `internal/project` and `cmd/awf` update to `git.Commit`/`git.FileChange` in the same
@@ -290,7 +290,7 @@ refactor(code-design): git handle, object reads, deadlined open
   `grep -rln "go-git" internal/audit --include=*.go | grep -v _test` returns no output
   (test files convert in Phase 6; the enduring oracle is the Phase 7 import-based seam
   walker, since `internal/audit/testmain_test.go` keeps the literal `go-git` in prose).
-- [ ] **Task 4.3: repoaudit converts.** `cmd/repoaudit/main.go` replaces `realGit` and
+- [x] **Task 4.3: repoaudit converts.** `cmd/repoaudit/main.go` replaces `realGit` and
   `gitError` with a `git.Open` handle composed in `main`; its `gitFunc` raw-argv
   contract is replaced by a narrow consumer-owned contract over the semantic
   entrypoints its five call sites need (merge-base, range changed-paths, range diff
@@ -298,11 +298,11 @@ refactor(code-design): git handle, object reads, deadlined open
   `cmd/repoaudit/main_test.go` converts with it (its `gitError` test dies with the
   function; fake implementations satisfy the new contract). The `coverage-ignore` on
   `realGit` disappears with the function.
-- [ ] **Task 4.4: Walk contract suite.** Pin: commit enumeration order and bounds for a
+- [x] **Task 4.4: Walk contract suite.** Pin: commit enumeration order and bounds for a
   linear range and a merged range; per-file add/delete stats for create, modify, delete,
   and rename; `FileText` at both range ends; an unresolvable revision yielding an error
   that is not a `CommandError` (library-side identity).
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 refactor(code-design): commit-range walk behind the seam
@@ -313,7 +313,7 @@ refactor(code-design): commit-range walk behind the seam
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
-- [ ] **Task 5.1: Seam gains the lifecycle and effort operations.** The
+- [x] **Task 5.1: Seam gains the lifecycle and effort operations.** The
   exit-code-1-as-answer probe helper lands here with its first consumers (exit 0 ->
   `(true, nil)`, exit 1 -> `(false, nil)`, otherwise `(false, *CommandError)`) plus its
   three-outcome test in the runner suite. `Repo` methods with
@@ -324,7 +324,7 @@ refactor(code-design): commit-range walk behind the seam
   in the worktree runner's callers, and `ValidateRefName(ctx, name) (bool, error)` (body
   from `internal/effort/store.go`'s `check-ref-format` exec). All native calls go
   through the Phase 2 runner; probes use the probe helper.
-- [ ] **Task 5.2: Delete `internal/worktree/git.go`; convert the Manager.** With the
+- [x] **Task 5.2: Delete `internal/worktree/git.go`; convert the Manager.** With the
   file's deletion, unexport `IsolatedGitEnvironment` (rename to
   `isolatedGitEnvironment`) - this was its one remaining consumer, and the end-to-end
   isolation tests keep working via `ResolveControlRoots`. The `Runner`
@@ -335,13 +335,13 @@ refactor(code-design): commit-range walk behind the seam
   `*effort.Service`. Delete the stored `Manager.ctx`; `Add`, `Integrate`, `Remove` (and
   the private helpers they call) take `ctx`. The cleanliness refusal consumes
   `Repo.ChangeCounts` (porcelain v2; the v1 duplicate dies with the file).
-- [ ] **Task 5.3: Effort converts.** Delete `nativeGit`, `nativeBranchExists`, the
+- [x] **Task 5.3: Effort converts.** Delete `nativeGit`, `nativeBranchExists`, the
   `Options.Git`/`Options.Fault` fields, the `Service.git` field, and the inline exec in
   `store.go`. `effort.Open` takes explicit dependencies (clock, UUID, worktree listing,
   branch probe, ref validation, removal) with no silent defaults; delete stored
   `Service.ctx`; `New` and `Finish` (the operations that reach git) take `ctx`; `List`
   and `Show` do not. Fault injection in store tests moves to the injected dependencies.
-- [ ] **Task 5.4: Composition root and test conversion (batch).** `cmd/awf` composes
+- [x] **Task 5.4: Composition root and test conversion (batch).** `cmd/awf` composes
   handle, seam-backed runner bindings, effort service, and worktree manager in the
   dispatch wiring; the `openWorktreeManager` package global is deleted and its test
   substitutions become constructor-argument fakes. Representative: a
@@ -357,13 +357,13 @@ refactor(code-design): commit-range walk behind the seam
   `cmd/awf/effort_worktree_test.go`. Post-check:
   `grep -rn "\.run = \|\.roots = \|\.fault = \|\.removeTree = \|\.worktrees = \|\.branchExists = " internal/worktree internal/effort --include=*_test.go`
   returns no output, and `grep -rn "openWorktreeManager" cmd/awf` returns no output.
-- [ ] **Task 5.5: Lifecycle and effort contract suites.** Pin: add/list/remove of a
+- [x] **Task 5.5: Lifecycle and effort contract suites.** Pin: add/list/remove of a
   registered worktree round-trip; `Ancestor` truth table (ancestor, non-ancestor,
   unrelated histories); `BranchExists` both outcomes; `ValidateRefName` accepting a
   slug-shaped name and rejecting `..`, space, and trailing-slash forms; `ChangeCounts`
   on clean, staged-only, unstaged-only, and untracked-only trees (the oracle edges both
   consumers rely on).
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 refactor(code-design): effort and worktree composition through the seam
@@ -374,7 +374,7 @@ refactor(code-design): effort and worktree composition through the seam
 **Execution mode: subagent-driven.** Baseline: `git status --porcelain` empty;
 `./x gate` ends `0 issues`.
 
-- [ ] **Task 6.1: gitfixture two-lane reshape.** Exported API becomes neutral: hashes as
+- [x] **Task 6.1: gitfixture two-lane reshape.** Exported API becomes neutral: hashes as
   `string`, repositories as a fixture-owned opaque `Fixture` value carrying the root; no
   `*git.Repository` or `plumbing.Hash` in any exported signature. The go-git lane gains:
   unmerged index entries, explicit filemodes including gitlink, allow-empty commits,
@@ -385,7 +385,7 @@ refactor(code-design): effort and worktree composition through the seam
   converting tests exercise that go-git cannot express. Existing exported helpers keep
   their names where their shapes survive; changed signatures compile-drive their
   callers.
-- [ ] **Task 6.2: Convert the fixture lane (batch with helpers).** Exhaustive set -
+- [x] **Task 6.2: Convert the fixture lane (batch with helpers).** Exhaustive set -
   go-git importers: `cmd/awf/audit_test.go`, `cmd/awf/memorygate_test.go`,
   `cmd/awf/prosegate_test.go`, `cmd/awf/run_test.go`,
   `internal/audit/audit_test.go` (the Phase 4 relocation destination),
@@ -416,13 +416,13 @@ refactor(code-design): effort and worktree composition through the seam
   files. Run both under real GNU grep; a `grep` aliased to ugrep strips the leading
   `./` and quietly defeats the `^./` exclusions, making the check look permanently
   failing instead.
-- [ ] **Task 6.3: Doc-comment correction and parallelism.** Rewrite
+- [x] **Task 6.3: Doc-comment correction and parallelism.** Rewrite
   `cmd/awf/testmain_test.go`'s `TestMain` doc comment so it states the seam contract
   (git reached only through `internal/git`, no ambient host git config) instead of
   "purely through go-git". Add `t.Parallel()` to converted package tests where no
   `t.Setenv`/`t.Chdir`/shared-state constraint remains; leave the isolation and
   missing-binary suites serial.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 refactor(code-design): gitfixture as the single two-lane fixture home
@@ -432,7 +432,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
 
 **Execution mode: inline.**
 
-- [ ] **Task 7.1: Repo-walking proofs and the entrypoint table.**
+- [x] **Task 7.1: Repo-walking proofs and the entrypoint table.**
   `internal/git/seamwalker_test.go`: walks non-test `.go` files module-wide and fails on
   any go-git/go-billy import or `exec.Command("git"`/`exec.CommandContext(..., "git"`
   construction outside `internal/git/**` and `internal/testsupport/gitfixture/**`.
@@ -464,7 +464,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   pin at a time, before placing the markers. Do NOT bound the lane's invocations with a
   deadline: the asymmetry with the seam's runner is deliberate and is instead recorded at
   `runGit` and in the pitfalls doc.
-- [ ] **Task 7.2: Apply ADR-0181's operations and anchors.** Author the two claims in
+- [x] **Task 7.2: Apply ADR-0181's operations and anchors.** Author the two claims in
   `.awf/topics/parts/code-design/single-home/current-state.md` per ADR-0181 items 2-5
   (`single-implementation` encoding items 2 and 3, including the reasoned-divergence and
   new-consumer clauses; `no-coverage-fork` encoding item 4; both `Origin: ADR-0181`,
@@ -473,7 +473,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   backfilling the current catalog defaults each list replaces; extend
   `.awf/parts/workflow/chain.md` to name the topic beside its siblings; add a
   `single home` entry to `.awf/docs/glossary.yaml`.
-- [ ] **Task 7.3: Apply ADR-0191's eleven operations in one batch.** In
+- [x] **Task 7.3: Apply ADR-0191's eleven operations in one batch.** In
   `.awf/topics/parts/tooling/git-access/current-state.md`: author the seven new claims per
   ADR-0191 item 12 (five `Backing: test` with proof markers placed on the seam walker,
   the fixture walker, the entrypoint-table test, the runner suite, and BOTH isolation
@@ -485,7 +485,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `.awf/topics/parts/tooling/audit-and-snapshots/current-state.md` and narrow that
   topic's metadata paths to `internal/audit/**` and `internal/snapshot/**`. Rewrite the
   two proof markers in `internal/git/parserange_test.go` to the new qualified ids.
-- [ ] **Task 7.4: Obligated docs.** Exact sources, each followed by `./x render`:
+- [x] **Task 7.4: Obligated docs.** Exact sources, each followed by `./x render`:
   `.awf/docs/pitfalls.yaml` (the three entries: repo-open route, global-excludes
   injection, gitfile resolution - rewritten to name the seam entrypoints);
   `.awf/docs/parts/architecture/components.md` (the `internal/worktree` bullet);
@@ -495,7 +495,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `changelog/CHANGELOG.md` `[Unreleased]` entry covering the adopter-visible changes:
   the isolated cleanliness-oracle semantics, the git deadline ceiling and its refusal
   failure mode, and the `CommandError` error-shape change.
-- [ ] **Task 7.5: Flip and freeze.** Apply the direct Proposed-to-Implemented transition
+- [x] **Task 7.5: Flip and freeze.** Apply the direct Proposed-to-Implemented transition
   to both ADRs per the `awf-adr-lifecycle` skill: each ADR appends one batch (ADR-0181's
   two adds; the git-seam ADR's eleven operations), the two batches taking the next two
   consecutive global state-sequence values awf reports at execution time (never a
@@ -505,7 +505,7 @@ refactor(code-design): gitfixture as the single two-lane fixture home
   `status: Implemented` and record implementation-surfaced findings in its Notes.
   Terminal state: `./awf check` clean, `./awf check --staged` clean, `./x gate` ends
   `0 issues`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 refactor(code-design): apply single-home and git-access authority
@@ -517,8 +517,12 @@ refactor(code-design): apply single-home and git-access authority
   walkers and the entrypoint table are green, `./awf topic tooling/git-access` lists
   the nine claims with their backing, and `./awf topic tooling/audit-and-snapshots` no
   longer lists the range-parser claims.
-- `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test` returns
-  no output.
+- `grep -rn "context.Background()" cmd internal --include=*.go | grep -v _test` returns only
+  the two composition roots, `cmd/awf` and `cmd/repoaudit`, each wrapping its result in
+  `context.WithTimeout` on the same line. As written this criterion asked for no output at
+  all, which is unachievable: a deadlined context has to descend from a root somewhere. The
+  intent it encodes - that no unbounded context reaches git - is what holds, and the seam's
+  deadline refusal enforces it structurally rather than by grep.
 - `GOOS=windows go build ./cmd/awf` and `GOOS=darwin GOARCH=arm64 go build ./cmd/awf`
   stay clean.
 - Advisory (optional, post-implementation): the deterministic gremlins recipe over
@@ -744,3 +748,12 @@ refactor(code-design): apply single-home and git-access authority
   `exec.Cmd{Path: "git"}` literal, so item 10's scope sentence is true as written, and
   testsupport's copy of the deadline ceiling now names the seam's const the way the seam's
   already named it.
+- Final transaction (2026-07-31): both ADRs applied and flipped in one commit, ADR-0181 at
+  state-sequence 108 and ADR-0191 at 109. The claims could not land before the flip and the
+  flip could not land before the claims: `awf check` refuses a claim citing an ADR without
+  an applied operation, and refuses a proof marker citing an unapplied claim, so the
+  authored claims, the six proof markers, both lifecycle events, and this freeze are one
+  indivisible transaction. Terminal state verified: `awf check` clean, `./x gate` 0 issues
+  at 100% (12495/12495), `awf topic tooling/git-access` lists nine claims with their
+  backing, `awf topic tooling/audit-and-snapshots` no longer lists the range-parser pair,
+  and both cross-compiles are clean.

@@ -78,6 +78,9 @@ Apply all lenses to every ADR:
 **state-ownership-authority**: when the ADR changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
 
 
+**single-home-authority**: when the ADR introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a second implementation of a concern another package already owns, a reduced copy where configuring the shared one would serve, and any fork justified by coverage rather than by a materially different contract from a distinct source
+
+
 
 ## Doc-currency checklist
 

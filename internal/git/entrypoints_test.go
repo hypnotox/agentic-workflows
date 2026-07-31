@@ -189,6 +189,7 @@ func testFunctionBodies(t *testing.T, pkgDir string) map[string]string {
 // proves every entrypoint has one. An entrypoint added without a suite fails
 // here, which is the only mechanism that keeps "every entrypoint is pinned"
 // true as the seam grows.
+// invariant: tooling/git-access:pinned-entrypoint-semantics
 func TestEveryEntrypointHasAContractSuite(t *testing.T) {
 	t.Parallel()
 	entrypoints := seamEntrypoints(t)

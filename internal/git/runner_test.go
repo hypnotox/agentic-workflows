@@ -70,6 +70,7 @@ func TestRunnerIgnoresInheritedRepositorySelection(t *testing.T) {
 // TestRunnerFailureCarriesCommandIdentityAndStderr proves a non-zero exit
 // reaches the caller as a matchable *CommandError carrying what Git said, so no
 // consumer needs os/exec to learn why an invocation failed.
+// invariant: tooling/git-access:isolated-deadlined-native
 func TestRunnerRefusesDeadlineLessContext(t *testing.T) {
 	_, err := newRunner(t.TempDir()).run(context.Background(), "status")
 	if err == nil || !strings.Contains(err.Error(), "without a context deadline") {

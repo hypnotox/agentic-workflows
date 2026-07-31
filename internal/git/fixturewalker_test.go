@@ -25,6 +25,7 @@ var fixtureAllowlist = []string{
 // out to git, each with its own idea of isolation, and two of them survived the
 // conversion pass because the grep meant to find them could not match the
 // argument shape they used. A structural walker cannot miss it that way.
+// invariant: tooling/git-access:fixture-single-home
 func TestNoTestGitAccessOutsideTheFixtureHome(t *testing.T) {
 	t.Parallel()
 	findings, seen := walkGitAccess(t, true, fixtureAllowlist)

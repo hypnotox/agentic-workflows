@@ -70,18 +70,6 @@ Origin: ADR-0036
 Revised-by: ADR-0159
 Backing: test
 
-### `invariant: git-range-parser-single-definition`
-
-Range-string parsing lives only in the single internal/git parser; no other non-test Go file in the module splits a range on the two-dot separator, and a repo-walking test fails if a second parser reappears.
-Origin: ADR-0127
-Backing: test
-
-### `invariant: git-range-rejects-malformed`
-
-The shared range parser rejects an empty input, an empty side, a three-dot range, a multiple-separator input, and a dash-prefixed side; it accepts a bare base (defaulting the head to HEAD) only when the caller opts in, and a two-sided a..b range either way.
-Origin: ADR-0127
-Backing: test
-
 ### `invariant: repo-audit-error-exit`
 
 The repo-local audit tool exits non-zero only when it reports at least one error finding. An infrastructure failure such as a failing merge-base lookup produces an error finding and exit code 1, while warning-only and clean runs exit zero.

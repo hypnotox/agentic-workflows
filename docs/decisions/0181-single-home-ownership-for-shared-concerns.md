@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0181: Single-home ownership for shared concerns
@@ -200,3 +200,4 @@ only caller is a coverage-satisfying test.
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-31: Implemented; content-sha256: ea1abdb637904663103f609f96ef6041e084ec05c77707fea3d70ad70e98c08f; state-sequence: 108

@@ -44,6 +44,7 @@ func effectiveEnvironment(env []string) map[string]string {
 // fixture lane's parity with the seam's isolation. It must fail if any single
 // pin is dropped or if the strip stops covering a hostile variable, so it is
 // mutation-verified one pin at a time rather than trusted for passing.
+// invariant: tooling/git-access:fixture-isolation-parity
 func TestNativeEnvironmentPinsTheWholeIsolationPolicy(t *testing.T) {
 	t.Parallel()
 	// Every variable here would redirect, reconfigure, or unblock Git if it

@@ -108,6 +108,9 @@ Apply all lenses to every plan:
 **state-ownership-authority**: when a plan changes what a value owns, where derived state lives, or the lifetime of a cache, consult code-design/state-ownership and flag a field written after construction, a derivation stored on a value that outlives its operation, and any correctness that rests on a caller remembering to reset, reload, or order a call
 
 
+**single-home-authority**: when the plan introduces or converts a shared policy or mechanism, consult code-design/single-home and flag a task that would add a second implementation of a concern another package already owns, or that justifies a fork by coverage rather than by a materially different contract from a distinct source
+
+
 
 ## Doc-currency checklist
 

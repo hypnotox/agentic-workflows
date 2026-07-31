@@ -1,3 +1,59 @@
 This package provides every git capability awf consumes, native and library-backed alike, behind one semantic seam.
 
 ## Claims
+
+### `invariant: all-access-via-seam`
+
+Every Git capability awf uses is reached through this package: no other production Go source in the module imports a Git library or constructs a git subprocess, and no test file does so outside `internal/testsupport/gitfixture`, which cannot consume the seam because `tooling/quality-gates:testsupport-zero-internal-deps` forbids it importing any internal package. The guarantee is over Go source constructions in this module, detected structurally from the parsed import list and `os/exec` process constructions under any local import name. A Go test that runs a shell script which itself invokes git, the Pi TypeScript extensions' own git subprocesses, and a test that forges `.git` internals with ordinary file writes are all outside that scope and are not claimed.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: one-implementation-per-entrypoint`
+
+Each git capability has exactly one implementation in this package, and which backend serves it - the in-process library or the git binary - is an internal detail with no consumer-visible trace: no exported signature carries a backend type, and no consumer branches on backend identity.
+Origin: ADR-0191
+Backing: unbacked
+Verify: Read the package's exported surface and confirm no two entrypoints answer the same question by different means, and that no signature exposes a backend type. Where two look alike, confirm a recorded reason distinguishes their contracts; the exit-code test repeated in `CurrentBranch` is such a case, because it needs the stdout the shared probe discards.
+
+### `invariant: pinned-entrypoint-semantics`
+
+Every exported entrypoint of the seam is registered against a backend-agnostic contract suite that pins what it answers, and the registry is derived from the package source rather than restated, so an entrypoint added without a suite fails. The registry additionally rejects a registration naming a test that does not exist or whose body never names the entrypoint.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: isolated-deadlined-native`
+
+Every native Git invocation the seam makes runs under an environment stripped of inherited repository selection, configuration, and credential controls with a fixed set of pinned replacements, and refuses outright a context carrying no deadline. A non-zero exit reaches the caller as a seam error carrying the invocation, its exit status, and Git's stderr, never as an `os/exec` identity.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: single-cleanliness-oracle`
+
+One entrypoint answers whether a checkout is clean, and both consumers - the audit rule reporting uncommitted work and the managed-worktree refusal - read it. It reports tracked and untracked counts over the ignore universe real Git applies, and carries no allowance for awf's own resident state: owned residents stay invisible because awf renders the `.gitignore` covering them.
+Origin: ADR-0191
+Backing: unbacked
+Verify: Search the module for working-tree status reads and confirm one production definition serves both consumers, and that neither consumer post-filters the answer with its own notion of which paths do not count.
+
+### `invariant: fixture-single-home`
+
+`internal/testsupport/gitfixture` is the only home for Git fixtures: no test file outside it constructs Git state through a Git library or a git subprocess, except `internal/git`'s own suites, which exercise the mechanism the seam wraps. Its exported surface is backend-neutral, carrying no library type. The guarantee has the same Go-source scope as `all-access-via-seam`.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: fixture-isolation-parity`
+
+The fixture lane reimplements the seam's environment isolation rather than importing it, because `tooling/quality-gates:testsupport-zero-internal-deps` forbids the import, and each copy carries an exhaustive table asserting its whole resulting environment by equality, so dropping, altering, or adding a pin on either side fails. The seam additionally replays the developer's effective `core.excludesFile` into the reads whose answer depends on the ignore universe; a fixture builds state rather than rendering an oracle and is correct not to. The lanes also differ on deadlines: the seam refuses a deadline-less context while the fixture runs unbounded, which is accepted and recorded rather than guarded.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: git-range-parser-single-definition`
+
+Range-string parsing lives only in the single internal/git parser; no other non-test Go file in the module splits a range on the two-dot separator, and a repo-walking test fails if a second parser reappears.
+Origin: ADR-0191
+Backing: test
+
+### `invariant: git-range-rejects-malformed`
+
+The shared range parser rejects an empty input, an empty side, a three-dot range, a multiple-separator input, and a dash-prefixed side; it accepts a bare base (defaulting the head to HEAD) only when the caller opts in, and a two-sided a..b range either way.
+Origin: ADR-0191
+Backing: test

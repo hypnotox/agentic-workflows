@@ -47,6 +47,7 @@ func effectiveSeamEnvironment(env []string) map[string]string {
 // isolation parity proof: every hostile Git variable is stripped and every pin
 // is present with its expected value. Each pin and the strip are individually
 // falsifiable here, which they are not through any behavioural path.
+// invariant: tooling/git-access:fixture-isolation-parity
 func TestIsolatedGitEnvironmentPinsTheWholeIsolationPolicy(t *testing.T) {
 	// Every variable here would redirect, reconfigure, or unblock Git if it
 	// survived: a repository selection, a configuration source, or a credential

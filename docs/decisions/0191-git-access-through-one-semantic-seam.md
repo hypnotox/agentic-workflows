@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Proposed
+status: Implemented
 date: 2026-07-30
 ---
 # ADR-0191: Git access through one semantic seam
@@ -416,3 +416,4 @@ when packages do.
 ## Status history
 
 - 2026-07-30: Proposed
+- 2026-07-31: Implemented; content-sha256: d1931c02b6adc7843efe637489786720f7d0723ea4ca73def2bb89148372b213; state-sequence: 109
