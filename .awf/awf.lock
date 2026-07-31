@@ -385,7 +385,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:132982e8efa275c4fe2322b8b32290d768783bbd91fb0ee993c560ca57caab4e",
+      "outputHash": "sha256:9dbc6625b43aac6e94e9f843d9fe87aa885f7df9db3648cda7cfb0cb1859f40b",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -423,7 +423,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:8e73aaf5c754cc6e4db90d5ff35eac97fe214cef9a196d9459964421a37163de",
+      "outputHash": "sha256:205990673edf6decd6abd54f355b5420fbe2c42a9046aeb50b1ff1f09ea7224e",
       "regenChecked": true
     },
     "docs/domains/config.md": {
@@ -535,8 +535,14 @@
     "docs/topics/code-design/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:ba90f94d7097ea2256cc0dcdd362a80323970e82d300cb41f645da6bcc8599d9",
-      "outputHash": "sha256:2e82b7959fa3060f82ecbd2e31259cae1fe932fb8d627799b4a000ac1cebd572"
+      "configHash": "sha256:a2b4952de5af8a0a3de5a9d6f916e33d66bf3228441b3314a50b35f38007b23b",
+      "outputHash": "sha256:6f0fe86b6d97c9f5e115b0b5a391834ff4e596ce8536bc88caa4a30e0cc4fd82"
+    },
+    "docs/topics/code-design/outcome-modeling.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:238015c1a6044aa4d75c90f37d677ad1de7179228ed7d17f5c5d86d1b19188b5",
+      "outputHash": "sha256:3b3910c72200e36601b3cb8f8245c2cc293ea2fe00f56755dd01a8f5f2a29598"
     },
     "docs/topics/code-design/presentation-ownership.md": {
       "templateId": "topics/topic.md.tmpl",

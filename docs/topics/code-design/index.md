@@ -2,6 +2,7 @@
 # code-design topics
 
 - [Dependency composition](dependency-composition.md): How awf selects, owns, and wires volatile dependencies without speculative abstraction.
+- [Outcome modeling](outcome-modeling.md): How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 - [Presentation ownership](presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.
 - [Single home](single-home.md): One implementation per shared concern, and the coverage-gate posture that protects it.
 - [State ownership](state-ownership.md): What a value owns, and where state derived during one operation lives.
