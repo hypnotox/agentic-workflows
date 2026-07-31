@@ -19,12 +19,12 @@ repository. The trade this decision makes is explicit: in-context availability o
 exercised or deterministically backstopped prose is exchanged for a smaller always-loaded
 surface, with each displaced protocol keeping exactly one canonical rendered home.
 
-Review ceremony has an analogous unconditional cost. ADR-0074 established the verify-pass
-contract the four reviewing skills (reviewing-adr, reviewing-plan, reviewing-plan-resync,
-reviewing-impl) render: a review that surfaces no fixable findings incurs no verify pass,
-but every review that applied fixes dispatches one, doubling the reviewer dispatch even
-when the applied fixes were a single mechanical one-liner. This decision narrows that
-contract rather than replacing it. The recorded firing history of verify passes in
+Review ceremony has an analogous unconditional cost. ADR-0074 conditioned the verify pass
+on fixes having been applied: the four reviewing skills (reviewing-adr, reviewing-plan,
+reviewing-plan-resync, reviewing-impl) render it as the step after fix application, so
+every review that applied fixes dispatches one, doubling the reviewer dispatch even when
+the applied fixes were a single mechanical one-liner. This decision narrows that contract
+rather than replacing it. The recorded firing history of verify passes in
 this repository's decision corpus shows real catches (a wrongly applied reviewer nit, two
 marked-but-unproven invariants), and every recorded catch followed a reasoned or structural
 fix; no recorded catch followed a solely-mechanical fix round. Separately, the
@@ -71,7 +71,8 @@ Constraints and prior art:
 1. The `AWF_CONTEXT_SPILL_V1` recovery contract moves to one canonical rendered home: a new
    named `### Context spill notices` subsection under `## Commands` in
    `templates/docs/working-with-awf.md.tmpl`, created by this decision (the template edit
-   is a same-commit surface; the doc is Mandatory and the section stays part-overridable).
+   is a same-commit surface; the subsection lives inside the doc's `commands` part, not as
+   a part of its own).
    Every managed context-calling skill and the grounding-checker agent body replace the
    expanded paragraph with a single sentence naming the spill notice and pointing at that
    home. The spill partial becomes the pointer sentence; the full contract text renders
@@ -85,21 +86,23 @@ Constraints and prior art:
    observation, and refreshing `Updated:`; decide whether user attention is required using
    the existing trigger list; then raise a check-in and stop, or state a continuity notice
    and continue. Element dispositions are explicit: the field set, slug confirmation, and
-   worktree continuation stay in the digest; repository-authority precedence and the
-   one-writer/report-only-child contract move to the pointer (the workflow doc's
-   working-memory section already states both); the Pi handoff branch is behaviour, not
-   ceremony, and renders unchanged. The digest points at the workflow doc's working-memory
+   worktree continuation stay in the digest; the continuity notice keeps its exact
+   slug-and-owned-path clause, and the closing "mechanical corrections and
+   authority-determined implementation details stay autonomous" sentence stays in the
+   digest's final step (both are behaviour, not ceremony); repository-authority precedence
+   and the one-writer/report-only-child contract move to the pointer (the workflow doc's
+   working-memory section already states both); the Pi handoff branch renders unchanged. The digest points at the workflow doc's working-memory
    section for the file skeleton, ground rules, and the full protocol, which remain
    rendered there in full. The approval-variant partial compresses the same way while
    keeping its stop-is-the-protocol clause and its full step 4 (rejection-revision loop,
    post-approval persistence, continuation) in compressed form.
 3. The four reviewing skills dispatch the verify pass conditionally, narrowing ADR-0074's
-   after-fixes rule: a review that applied no fixes incurs no verify pass (unchanged); a
-   fix round whose applied fixes are all classified `mechanical` skips the verify pass and
-   records the skip and its ground in the digest the skill presents at its check-in; a fix
-   round with at least one fix classified `reasoned`, or applied under a `user-decision`
-   ruling, dispatches exactly one verify pass as today. Finding classification vocabulary
-   is unchanged.
+   after-fixes rule: a review that applied no fixes leaves the verify-pass trigger unfired,
+   which this decision makes explicit in the rendered step; a fix round whose applied fixes
+   are all classified `mechanical` skips the verify pass and records the skip and its
+   ground in the summary the skill presents at its check-in; a fix round with at least one
+   fix classified `reasoned`, or applied under a `user-decision` ruling, dispatches exactly
+   one verify pass as today. Finding classification vocabulary is unchanged.
 4. The working-memory protocol narrows the `Record:` requirement to material decisions: an
    entry whose decision changes scope, design, authority, or previously-approved output
    carries the indented verbatim `Record:` block; any other user-provenance entry is a
@@ -152,6 +155,10 @@ Constraints and prior art:
   a commit-message gate nor a coverage gate; such an adopter loses a reminder, not a
   control, since nothing enforced either rule there before. Named and accepted by user
   decision; the replacement scope reference stays publication-safe and asserts no gate.
+- An adopter that overrides the working-with-awf doc's `commands` part replaces the spill
+  contract's only rendered home while every context-calling surface still points at it;
+  such an override must carry the contract itself, the same responsibility ADR-0157
+  established for full-replacement chain-section parts.
 - The four updated claims narrow with their proofs in the same transaction; the spine and
   chain tests that expand the spill contract and enumerate checkpoint elements are
   rewritten against the digest and pointer forms.
