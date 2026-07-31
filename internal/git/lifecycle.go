@@ -63,11 +63,16 @@ func (r *Repo) Ancestor(ctx context.Context, older, newer string) (bool, error) 
 	return r.runner.probe(ctx, "merge-base", "--is-ancestor", older, newer)
 }
 
-// ValidateRefName reports whether name is a well-formed Git reference name.
-// The caller supplies the name in the shape it intends to use it, so a branch
-// probe passes the branch name Git would place under refs/heads.
+// ValidateRefName reports whether name is well formed as a branch name, which
+// is the question every caller here asks. It validates the full refs/heads/
+// form rather than passing --branch, and the difference is not cosmetic: the
+// bare name form rejects a one-level name like "main" that is a perfectly valid
+// branch, while --branch answers an invalid name with exit 128 instead of the
+// exit 1 that means "no", so a malformed name would surface as a fault rather
+// than a negative. Qualifying the name asks the branch question and keeps the
+// exit-0/1 contract the probe helper depends on.
 func (r *Repo) ValidateRefName(ctx context.Context, name string) (bool, error) {
-	return r.runner.probe(ctx, "check-ref-format", name)
+	return r.runner.probe(ctx, "check-ref-format", "refs/heads/"+name)
 }
 
 // ResolveCommit resolves revision to the full object ID of the commit it names,

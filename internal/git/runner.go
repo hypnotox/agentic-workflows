@@ -94,8 +94,10 @@ func (r runner) run(ctx context.Context, argv ...string) ([]byte, error) {
 // name) by exiting 0 for yes and 1 for no, reserving every other exit for an
 // actual fault. Reading exit 1 as an answer is therefore correct only for those
 // commands, and reading any nonzero exit as "no" would silently turn a broken
-// repository into a confident negative. This helper is the one place that
-// distinction lives, so no caller repeats it.
+// repository into a confident negative. This helper owns that distinction for
+// every caller whose answer IS the yes or no. CurrentBranch repeats the test
+// deliberately, because it needs the stdout this discards and its exit 1 means
+// "detached" rather than a bare no.
 func (r runner) probe(ctx context.Context, argv ...string) (bool, error) {
 	_, err := r.run(ctx, argv...)
 	if err == nil {

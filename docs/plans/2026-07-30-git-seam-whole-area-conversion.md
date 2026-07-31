@@ -525,3 +525,50 @@ refactor(code-design): apply single-home and git-access authority
   bare record from a linked checkout); ctx-first reorder on the two runner helpers;
   comment corrections. User decision: the isolated oracle keeps real-git ignore
   semantics (Task 3.0).
+- Phases 3 and 4 recorded no Notes entries at the time; their deviations and review
+  settlements live in the bodies of 138b2406, 2803c07b, 41576883, 9d08d8fb, 55c11bcd,
+  4f926208, and 21dc619d.
+- Re-baseline before Phase 5: main was merged into the branch (a0937adf) because main's
+  ADR-0186 and ADR-0189 work had changed roughly 620 lines across exactly the files
+  Phase 5 rewrites. The seam ADR renumbered 0186 to 0191 inside that merge commit, since
+  main consumed 0186 through 0190 and the corpus refuses two files declaring one number.
+  Task 5.4's "exhaustive set" file lists predate that merge; the two grep post-checks
+  were treated as the completeness oracle instead.
+- Implementation-surfaced (Phase 5), six deviations: `effort.Open` and `worktree.Open`
+  take already-resolved `ControlRoots` rather than `(ctx, invokingRoot)`, which is forced
+  by deleting the stored ctx (a constructor taking no context cannot resolve roots) and
+  is what let every post-construction `roots` write become a constructor argument;
+  worktree's `Runner` is a 14-method contract plus a separate `OpenCheckout` opener,
+  because `Remove` reasons about the invoking and managed checkouts together while a
+  handle is pinned to one root; the lifecycle methods landed in a new
+  `internal/git/lifecycle.go` rather than in `handle.go`; seven `Repo` methods not named
+  in Task 5.1 converted (`ResolveCommit`, `CurrentBranch`, `GitPath`, `MergeFastForward`,
+  `MergeNoCommit`, `WorktreePrune`, `BranchDelete`), because every native invocation left
+  in the manager had to become a seam method for `internal/worktree/git.go` to die;
+  `Dependencies` carries one optional member, the durability fault hook (see the ADR-0191
+  item 7 amendment); and `parseWorktreePorcelain` now rejects an empty record, which the
+  seam parser previously accepted and the deleted worktree parser rejected, removing a
+  real divergence and making a `len(records) == 0` check unreachable.
+- Behaviour change (Phase 5), deliberate and user-approved: the checkout cleanliness
+  refusal no longer carries an untracked-resident allowance. The deleted implementation
+  matched `?? .awf/efforts/...` and `?? .awf/worktrees/...` with a regexp and read such a
+  tree clean; `ChangeCounts` returns counts and cannot express that, so owned resident
+  state stays invisible only because awf renders the `.gitignore` covering it. This is
+  NOT behaviour preservation: with those `.gitignore` files on disk but absent from the
+  index, integration and removal now refuse as dirty where they previously proceeded.
+  Reachable windows are after `awf init` or `awf render` before those files are first
+  committed, an adopter upgrading from an awf predating resident-gitignore rendering, and
+  any `git rm --cached`. Kept because the direction is fail-safe and the old regexp was
+  over-permissive, tolerating any untracked file under those two roots including a
+  developer's own uncommitted work. Task 7.4's changelog entry names this explicitly.
+- Phase 5 review settlement: `ValidateRefName` had silently dropped the `--branch` flag
+  the body it replaced used, which is not a spelling difference (a one-level name like
+  `main` is a valid branch but not a valid bare refname). It now validates the qualified
+  `refs/heads/` form, which answers the same branch question AND keeps the exit-0/1
+  contract the probe helper requires, where `--branch` reports an invalid name with exit
+  128 and would surface a malformed name as a fault rather than a negative. Also: the
+  invoking-checkout cleanliness refusal was pinned at the manager layer in both
+  directions (it survived deletion with the suite green before), the `ChangeCounts`
+  contract suite gained the ignored-resident case the whole design rests on, three
+  comments describing properties the code lacks were corrected, and the stale tracked
+  `docs/topics/tooling/git-access.md.awf-bak` left by the Phase 1 merge was deleted.

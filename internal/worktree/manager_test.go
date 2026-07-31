@@ -183,6 +183,39 @@ func TestRemovalRefusesDirtyAndUnmergedWithoutForce(t *testing.T) {
 	}
 }
 
+// TestInvokingCheckoutCleanlinessGuardsDestructiveOperations pins the refusal
+// that guards the INVOKING checkout, in both directions. The oracle behind it
+// changed in this phase: the implementation this replaced carried a regex
+// allowance for untracked .awf/efforts and .awf/worktrees entries, while
+// ChangeCounts carries none, so owned resident state now stays invisible only
+// because awf renders the .gitignore that covers it. Neither direction was
+// pinned at this layer, so removing the refusal entirely left the suite green.
+func TestInvokingCheckoutCleanlinessGuardsDestructiveOperations(t *testing.T) {
+	root := initWorktreeRepo(t, "sha1")
+	createEffort(t, root, "Invoking cleanliness")
+	manager := freshWorktreeManager(t, root)
+	if _, err := manager.Add(testContext(t), "invoking-cleanliness", "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+
+	foreign := filepath.Join(root, "foreign.txt")
+	writeWorktreeFile(t, foreign, "foreign\n")
+	_, err := manager.Remove(testContext(t), "invoking-cleanliness")
+	if err == nil || !strings.Contains(err.Error(), "cleanliness") {
+		t.Fatalf("remove with a foreign untracked file in the invoking checkout = %v, want a cleanliness refusal", err)
+	}
+
+	// Owned resident state alone must not refuse: the rendered .gitignore is
+	// the entire mechanism keeping it out of the counts.
+	if err := os.Remove(foreign); err != nil {
+		t.Fatal(err)
+	}
+	writeWorktreeFile(t, filepath.Join(root, ".awf", "efforts", "invoking-cleanliness", "memory.md"), "Effort: invoking-cleanliness\n")
+	if _, err := manager.Remove(testContext(t), "invoking-cleanliness"); err != nil {
+		t.Fatalf("remove with only owned resident state present = %v, want success", err)
+	}
+}
+
 func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
 	createEffort(t, root, "Partial add")

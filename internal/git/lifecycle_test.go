@@ -205,6 +205,23 @@ func TestChangeCountsSeparatesEveryDirtyTreeState(t *testing.T) {
 			},
 			untracked: 1,
 		},
+		{
+			// The oracle carries no allowance for awf's own resident state; a
+			// tracked .gitignore is the entire mechanism that keeps an effort
+			// resident from reading as dirt. Pin it here, because the worktree
+			// manager's refusal now depends on it and nothing else states it.
+			name: "ignored resident is not dirt",
+			dirty: func(t *testing.T, f *gitfixtureRepo) {
+				resident := filepath.Join(f.dir, ".awf", "efforts")
+				if err := os.MkdirAll(resident, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				gitfixture.Commit(t, f.repo, f.dir, "resident gitignore", map[string]string{".awf/efforts/.gitignore": "*\n!.gitignore\n"})
+				if err := os.WriteFile(filepath.Join(resident, "memory.md"), []byte("Effort: x\n"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			repo, dir := gitfixture.InitRepo(t)

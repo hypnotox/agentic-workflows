@@ -18,7 +18,7 @@ import (
 
 // effortComposition is the wiring one effort command runs against: the resident
 // authority and the managed-topology manager, both bound to the same resolved
-// control roots and the same Git handle.
+// control roots.
 type effortComposition struct {
 	service *effort.Service
 	manager *worktree.Manager
@@ -30,11 +30,13 @@ type effortComposition struct {
 type composeEffort func(ctx context.Context, root string) (effortComposition, error)
 
 // openEffortComposition is the production composition root for the effort
-// command group. It resolves the control roots once, opens one Git handle on
-// the invoking checkout, and binds the seam's operations to the two consumers'
-// own contracts: the effort service asks three questions of the handle, and the
-// worktree manager opens a checkout's surface by root because it reasons about
-// the invoking and the managed checkout together.
+// command group. It resolves the control roots once and binds the seam's
+// operations to the two consumers' own contracts: the effort service asks three
+// questions of a handle opened on the invoking checkout, while the worktree
+// manager receives the opener itself, because it reasons about the invoking and
+// the managed checkout together and so opens a handle per checkout it touches.
+// That is why the invoking root is opened here and again through the opener:
+// a handle is pinned to one root, so the manager cannot borrow this one.
 func openEffortComposition(ctx context.Context, root string) (effortComposition, error) {
 	roots, err := awfgit.ResolveControlRoots(ctx, root)
 	if err != nil {

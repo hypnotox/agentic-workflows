@@ -208,10 +208,18 @@ exists under `internal/git/`, so the path transfer is marker-safe.
    authority: `effort.Open` and `worktree.Open` take their volatile dependencies
    explicitly with no silent defaults (the `project.NewLoader` panic-on-nil model), the
    hard-wired inner `effort.Open` is deleted and `worktree.Manager` receives the composed
-   service, the test-only `Fault` option is removed, the `openWorktreeManager` package
+   service, the `Options` struct carrying `Git` and `Fault` is removed, the
+   `openWorktreeManager` package
    global is retired, and the stored `Manager.ctx`/`Service.ctx` fields are deleted so
    every operation that reaches git takes a context parameter (`Service.New` included;
-   operations with no git dependency take none).
+   operations with no git dependency take none). One member of the replacement
+   `Dependencies` is an optional durability fault hook, and it is deliberate rather than
+   residue: the stages it interrupts (the finish rename, the root fsync, the delete, and
+   their create-side counterparts) are filesystem durability boundaries inside `store.go`
+   that no injected dependency reaches, so it is what makes restartable finish provable at
+   all. It is the single exception to no-silent-defaults, is nil in production, and is
+   named here so a later reader does not read it as the removed `Options.Fault` surviving
+   under a new name.
 
 8. The check-act-recheck identity ladder in `internal/git/controlroot.go` is extracted
    into named operations. Its 39 byte-identical coverage escapes collapse to the few the
