@@ -192,7 +192,7 @@ query a single version or a range.
   bodies, refactor-coupling-audit uncounts its categories and gives each one its own report
   line so sidecar-dropped categories drop cleanly, restated working-memory and notes prose is
   trimmed, and shared spine prose moves into new `templates/partials/` files
-  (context-orientation, escalation-menu, coverage-oracle, exploration-breadth,
+  (context-orientation, escalation-menu, exploration-breadth,
   exploration-detail). Rendered output changes for every target.
 
 - Keep current-state-v2 ADR content amendable until Implemented. An `Amended` history event records
