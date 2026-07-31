@@ -181,6 +181,73 @@ func TestBuildOutputDeclarationsFamiliesAndReservations(t *testing.T) {
 	}
 }
 
+// TestOutputDeclarationsMatchThePlan reinstates the retired
+// validateDeclarationPlanParity guard as a structural test over this
+// repository: BuildOutputDeclarations and the output plan remain two
+// independent enumerations of the same producer set, and a producer added to
+// one but not the other silently corrupts contextq's generated-output
+// classification, whose only feed is the declarations. Template identity is
+// deliberately excluded from the comparison: both sides derive it from the
+// same declaration tables (ADR-0194 item 5), so that axis would compare the
+// derivation with itself. The other five axes are compared exactly as the
+// runtime check did.
+func TestOutputDeclarationsMatchThePlan(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := p.OutputPlan(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	corpus, _, _, err := p.deriveOperationState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	declarations, err := BuildOutputDeclarations(p.Cfg, p.Cat, p.Targets, filesystemProjectReader{root: p.Root}, corpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(plan.Nodes) != len(declarations) {
+		planPaths, declPaths := map[string]bool{}, map[string]bool{}
+		for _, n := range plan.Nodes {
+			planPaths[n.Path] = true
+		}
+		for _, d := range declarations {
+			declPaths[d.Path] = true
+		}
+		var planOnly, declOnly []string
+		for path := range planPaths {
+			if !declPaths[path] {
+				planOnly = append(planOnly, path)
+			}
+		}
+		for path := range declPaths {
+			if !planPaths[path] {
+				declOnly = append(declOnly, path)
+			}
+		}
+		slices.Sort(planOnly)
+		slices.Sort(declOnly)
+		t.Fatalf("declaration parity: plan-only %v, declarations-only %v", planOnly, declOnly)
+	}
+	for i := range plan.Nodes {
+		node, declaration := plan.Nodes[i], declarations[i]
+		if node.Path != declaration.Path || node.Reservation != declaration.Reservation ||
+			!slices.Equal(node.Declarers, declaration.Declarers) ||
+			!slices.Equal(node.ConsumedInputs, normalizeOutputInputs(declaration.Inputs)) ||
+			!slices.Equal(node.DependsOn, declaration.Dependencies) {
+			t.Fatalf("declaration parity at %q: plan declarers=%v consumed=%v dependencies=%v reservation=%t; declaration declarers=%v inputs=%v dependencies=%v reservation=%t",
+				node.Path, node.Declarers, node.ConsumedInputs, node.DependsOn, node.Reservation,
+				declaration.Declarers, declaration.Inputs, declaration.Dependencies, declaration.Reservation)
+		}
+	}
+}
+
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\n"+debuggingVars+"skills: [debugging, exploring]\nagents: [explorer]\n", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",

@@ -21,6 +21,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
+// The declaration and plan types live plan-side with a one-way direction
+// (ADR-0194 item 1): the plan orchestrates rendering, and render files never
+// call plan functions.
+
 // ProjectTreeReader is the read-only input authority for output declarations.
 // Paths reports a fault rather than a short list: a truncated enumeration would
 // silently narrow the declarations the drift oracle is computed over.

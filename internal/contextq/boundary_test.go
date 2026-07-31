@@ -17,6 +17,7 @@ import (
 const (
 	corePattern  = "./internal/project"
 	queryPattern = "./internal/contextq"
+	cmdPattern   = "./cmd/awf"
 )
 
 // movedVocabulary is the context result vocabulary this package took over
@@ -184,6 +185,72 @@ func seamBreachFindings(pkgs []*packages.Package) []string {
 	return findings
 }
 
+// cmdRenderFindings reports every cmd/awf production function that takes a
+// contextq result value and builds text from it itself - the rendering clause
+// of the claim coming undone. A conforming command hands the value to this
+// package's Render entries or to a JSON encoder; a function that receives a
+// result type and calls a fmt print/format helper or strings.Builder is
+// rendering it in the wrong home.
+func cmdRenderFindings(pkgs []*packages.Package) []string {
+	resultTypes := map[string]bool{"ContextResult": true, "UncoveredResult": true}
+	takesResult := func(fn *ast.FuncDecl) bool {
+		fields := []*ast.Field{}
+		if fn.Recv != nil {
+			fields = append(fields, fn.Recv.List...)
+		}
+		if fn.Type.Params != nil {
+			fields = append(fields, fn.Type.Params.List...)
+		}
+		for _, field := range fields {
+			expr := field.Type
+			if star, ok := expr.(*ast.StarExpr); ok {
+				expr = star.X
+			}
+			if sel, ok := expr.(*ast.SelectorExpr); ok {
+				if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "contextq" && resultTypes[sel.Sel.Name] {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	buildsText := func(fn *ast.FuncDecl) bool {
+		found := false
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			sel, ok := n.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			if ident, ok := sel.X.(*ast.Ident); ok {
+				if ident.Name == "fmt" && (strings.HasPrefix(sel.Sel.Name, "Fprint") || strings.HasPrefix(sel.Sel.Name, "Sprint")) {
+					found = true
+				}
+				if ident.Name == "strings" && sel.Sel.Name == "Builder" {
+					found = true
+				}
+			}
+			return true
+		})
+		return found
+	}
+	var findings []string
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Syntax {
+			for _, decl := range file.Decls {
+				fn, ok := decl.(*ast.FuncDecl)
+				if !ok || fn.Body == nil || !takesResult(fn) || !buildsText(fn) {
+					continue
+				}
+				p := pkg.Fset.Position(fn.Pos())
+				findings = append(findings, "cmd/awf renders a contextq result in "+fn.Name.Name+
+					" at "+filepath.ToSlash(filepath.Base(p.Filename))+":"+strconv.Itoa(p.Line))
+			}
+		}
+	}
+	sort.Strings(findings)
+	return findings
+}
+
 // TestContextQueryBoundary proves the claim: context assembly, classification,
 // projection, and result rendering live here; internal/project's exported
 // surface carries no context result vocabulary; and this package reaches core
@@ -191,10 +258,11 @@ func seamBreachFindings(pkgs []*packages.Package) []string {
 // constructors.
 //
 // The detector is syntactic. It matches exported top-level declarations on the
-// core side and qualified selector expressions on the query side, so a
-// vocabulary type smuggled through an exported alias in a third package, or a
-// core symbol reached by dot-import, stays invisible to it; extend the shapes
-// if one ever appears.
+// core side, qualified selector expressions on the query side, and
+// result-typed text-building functions on the cmd side, so a vocabulary type
+// smuggled through an exported alias in a third package, a core symbol reached
+// by dot-import, or a cmd rendering that hides the result behind a local type
+// stays invisible to it; extend the shapes if one ever appears.
 // invariant: tooling/context-and-topic:context-query-boundary
 func TestContextQueryBoundary(t *testing.T) {
 	core := loadBoundaryPackages(t, corePattern, nil)
@@ -205,6 +273,10 @@ func TestContextQueryBoundary(t *testing.T) {
 	if findings := seamBreachFindings(query); len(findings) != 0 {
 		t.Errorf("contextq reaches into the core outside the ContextState seam:\n\t%s",
 			strings.Join(findings, "\n\t"))
+	}
+	command := loadBoundaryPackages(t, cmdPattern, nil)
+	if findings := cmdRenderFindings(command); len(findings) != 0 {
+		t.Errorf("cmd/awf renders contextq results itself:\n\t%s", strings.Join(findings, "\n\t"))
 	}
 
 	// Committed negative cases: each half must flag its own violation, so the
@@ -246,5 +318,44 @@ func fixtureStaysInsideSeam(state project.ContextState) *Query { return New(stat
 	// the package at all.
 	if breaches != 1 {
 		t.Errorf("seam breaches flagged = %d, want 1 (project.Loader only): %#v", breaches, queryFindings)
+	}
+
+	// The cmd half: a function that takes a result and prints it must be
+	// flagged; one that hands the result to a JSON encoder must not, so the
+	// rule turns on building text, not on touching the type.
+	cmdFixture := filepath.Join(root, filepath.FromSlash("cmd/awf/context_render_fixture.go"))
+	violatingCmd := loadBoundaryPackages(t, cmdPattern, map[string][]byte{cmdFixture: []byte(`package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+
+	"github.com/hypnotox/agentic-workflows/internal/contextq"
+)
+
+func fixtureRendersResult(w io.Writer, result contextq.ContextResult) {
+	fmt.Fprintln(w, "rendered", result)
+}
+
+func fixtureEncodesResult(w io.Writer, result contextq.ContextResult) error {
+	return json.NewEncoder(w).Encode(result)
+}
+`)})
+	cmdFindings := cmdRenderFindings(violatingCmd)
+	var rendered, encoded bool
+	for _, f := range cmdFindings {
+		if strings.Contains(f, "fixtureRendersResult") {
+			rendered = true
+		}
+		if strings.Contains(f, "fixtureEncodesResult") {
+			encoded = true
+		}
+	}
+	if !rendered {
+		t.Errorf("a cmd-side result rendering escaped the detector: %#v", cmdFindings)
+	}
+	if encoded {
+		t.Errorf("a conforming JSON encode was flagged as rendering: %#v", cmdFindings)
 	}
 }
