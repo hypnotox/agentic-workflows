@@ -443,6 +443,25 @@ contents, so the reviewer executes rather than designs:
   bucketing and base-TID switch in scaffold.go) stays as found; the claim wording was narrowed
   to the proven scope instead (ADR-0194 item 6 records the reasoning). The scaffold base-TID
   switch may still fold into Phase 5's template-ID consolidation.
+- Phase 2 deviations (2026-07-31, all grounded at execution): (1)
+  `.awf/topics/metadata/rendering/sync-and-drift.yaml` also gained `internal/resident/**`
+  beyond Task 2.5's enumeration - the `touches-state` marker
+  `rendering/sync-and-drift:uninstall-removes-lock-entries` travelled with `Uninstall`, and a
+  `touches-state` marker outside its topic's effective scope is a hard error (proof markers
+  validate against `currentState.testGlobs`; `touches-state` markers validate against topic
+  scope - Phase 3 must widen the selectors of every topic whose markers move). (2)
+  `sweep.go:59,61` also routed through `resident.RootNames()` beyond Task 2.4's named
+  render.go site: the literals re-derived the table, which the claim body forbids. (3) Four
+  Uninstall lifecycle tests (and two drift_test.go tests) stayed in
+  `internal/project/install_test.go` rather than moving per Task 2.3: they need
+  package-private project scaffolding (`scaffold`/`sampleYAML`/`Open`/`Sync`), and
+  duplicating it in resident would be a worse single-home violation; coverage rides
+  `-coverpkg=./...`. (4) Known resident-root spellings outside the claim's scanned scope
+  (internal/project + cmd): internal/git's seam-owned `ResidentName` (the recorded tolerated
+  parallel), plus direct joins in internal/effort/paths.go (`memoryPublicPath`),
+  internal/memorycite, and internal/migrate/unified_effort_residents.go - the claim's
+  parenthetical is not an exhaustive census of other spellings, and a future claim touch
+  should not read it as one.
 - The single-home branch may land shapes that shift Phase 5's topic-render entry points; if so,
   amend the ADR (pre-terminal) and adjust Task 5.2's touched symbols here, recording the
   finding in this section.
