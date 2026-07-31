@@ -473,6 +473,114 @@ func TestManagerValidationAndOperationRefusals(t *testing.T) {
 	}
 }
 
+// A peer effort's staged integration is the one in-progress operation an agent
+// must not resolve on the holder's behalf, so its refusal names the holder and
+// replaces the generic advice to finish or abort the operation.
+func TestOperationRefusalNamesAConcurrentEffortIntegration(t *testing.T) {
+	holding := &checkoutStub{
+		gitPath:       markerAt(t, "MERGE_HEAD"),
+		resolveCommit: resolvingTip("MERGE_HEAD", "refs/heads/awf/peer"),
+		worktreeList: registrations(
+			awfgit.WorktreeRegistration{Path: "/primary", Branch: "refs/heads/main"},
+			awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer"},
+		),
+	}
+	err := operationFree(testContext(t), holding)
+	if err == nil || !strings.Contains(err.Error(), "peer") {
+		t.Fatalf("refusal = %v, want one naming effort peer", err)
+	}
+	if !strings.Contains(err.Error(), "do not discard") {
+		t.Fatalf("refusal = %v, want one that withholds discard advice", err)
+	}
+}
+
+// Attribution is best-effort: every probe that cannot prove a holder leaves the
+// generic operation refusal in place rather than guessing or propagating.
+func TestIntegrationHolderAnswersUnattributed(t *testing.T) {
+	for name, checkout := range map[string]*checkoutStub{
+		"merge head unresolvable": {
+			resolveCommit: func(context.Context, string) (string, error) { return "", failing("resolve") },
+		},
+		"registrations unreadable": {
+			resolveCommit: resolvingTip("MERGE_HEAD"),
+			worktreeList: func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+				return nil, failing("worktree list")
+			},
+		},
+		"no effort branch registered": {
+			resolveCommit: resolvingTip("MERGE_HEAD"),
+			worktreeList:  registrations(awfgit.WorktreeRegistration{Path: "/primary", Branch: "refs/heads/main"}),
+		},
+		"effort branch prefix without a slug": {
+			resolveCommit: resolvingTip("MERGE_HEAD"),
+			worktreeList:  registrations(awfgit.WorktreeRegistration{Path: "/managed", Branch: "refs/heads/awf/"}),
+		},
+		"effort branch unresolvable": {
+			resolveCommit: func(_ context.Context, revision string) (string, error) {
+				if revision == "MERGE_HEAD" {
+					return "tip", nil
+				}
+				return "", failing("resolve branch")
+			},
+			worktreeList: registrations(awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer"}),
+		},
+		"effort branch at another commit": {
+			resolveCommit: resolvingTip("MERGE_HEAD"),
+			worktreeList:  registrations(awfgit.WorktreeRegistration{Path: "/managed/peer", Branch: "refs/heads/awf/peer"}),
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if slug := integrationHolder(testContext(t), checkout); slug != "" {
+				t.Fatalf("holder = %q, want unattributed", slug)
+			}
+		})
+	}
+}
+
+// The cleanliness refusal cannot attribute unstaged work, so it warns rather
+// than directing an agent to discard changes that may not be its own.
+func TestCleanlinessRefusalWarnsBeforeDiscarding(t *testing.T) {
+	dirty := &checkoutStub{changeCounts: func(context.Context) (int, int, error) { return 1, 0, nil }}
+	err := requireClean(testContext(t), dirty)
+	if err == nil || !strings.Contains(err.Error(), "concurrent") {
+		t.Fatalf("refusal = %v, want one warning about concurrent work", err)
+	}
+}
+
+// markerAt answers an existing path for one operation marker and an absent path
+// for every other, which is how a test puts a checkout mid-operation.
+func markerAt(t *testing.T, present string) func(context.Context, string) (string, error) {
+	t.Helper()
+	marker := filepath.Join(t.TempDir(), present)
+	if err := os.WriteFile(marker, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	absent := t.TempDir()
+	return func(_ context.Context, name string) (string, error) {
+		if name == present {
+			return marker, nil
+		}
+		return filepath.Join(absent, name), nil
+	}
+}
+
+// resolvingTip answers one shared commit for the named revisions and a distinct
+// commit for every other, so a test states which refs agree by naming them.
+func resolvingTip(shared ...string) func(context.Context, string) (string, error) {
+	return func(_ context.Context, revision string) (string, error) {
+		for _, name := range shared {
+			if name == revision {
+				return "0000000000000000000000000000000000000001", nil
+			}
+		}
+		return "0000000000000000000000000000000000000002", nil
+	}
+}
+
+func registrations(regs ...awfgit.WorktreeRegistration) func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+	return func(context.Context) ([]awfgit.WorktreeRegistration, error) { return regs, nil }
+}
+
 func TestManagerAuthorityErrorBranches(t *testing.T) {
 	m, root := newManagerWithEffort(t, "Authority errors")
 	unrooted := managerRooted(t, root, func(roots *awfgit.ControlRoots) { roots.PrimaryRoot = "relative" }, nil)

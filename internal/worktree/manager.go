@@ -132,12 +132,44 @@ func operationFree(ctx context.Context, checkout Runner) error {
 			return err
 		}
 		if _, err = os.Lstat(candidate); err == nil {
+			if slug := integrationHolder(ctx, checkout); slug != "" {
+				return refusal("operation", "effort "+slug+" is integrating in this checkout", false, "do not discard, abort, or commit another effort's merge; wait until this checkout is clean, bring your effort branch up to date with the target, then retry")
+			}
 			return refusal("operation", "checkout has an in-progress Git operation", false, "finish or abort the native Git operation, then retry")
 		} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
 			return err
 		}
 	}
 	return nil
+}
+
+// integrationHolder names the effort whose integration is in progress in this
+// checkout, or the empty string when no effort can be proven to hold it. It
+// derives the answer from repository truth alone: MERGE_HEAD names the merged
+// tip, and an effort branch is checked out at its own managed worktree, so a
+// registration whose branch resolves to that tip identifies the holder. Every
+// probe that cannot answer leaves the operation unattributed rather than
+// propagating, because the refusal it decorates is already correct without a
+// name, and a wrong name is worse than none.
+func integrationHolder(ctx context.Context, checkout Runner) string {
+	tip, err := checkout.ResolveCommit(ctx, "MERGE_HEAD")
+	if err != nil {
+		return ""
+	}
+	registrations, err := checkout.WorktreeList(ctx)
+	if err != nil {
+		return ""
+	}
+	for _, registration := range registrations {
+		slug, ok := strings.CutPrefix(registration.Branch, "refs/heads/"+branch(""))
+		if !ok || slug == "" {
+			continue
+		}
+		if head, err := checkout.ResolveCommit(ctx, registration.Branch); err == nil && head == tip {
+			return slug
+		}
+	}
+	return ""
 }
 
 // requireClean refuses on any tracked, staged, or nonignored untracked change.
@@ -152,7 +184,7 @@ func requireClean(ctx context.Context, checkout Runner) error {
 		return err
 	}
 	if tracked > 0 || untracked > 0 {
-		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "commit, remove, or explicitly inspect and discard the changes with native Git, then retry")
+		return refusal("cleanliness", "checkout has tracked, untracked, or staged changes", false, "confirm the changes are yours and not a concurrent effort's work, then commit them or inspect and discard them explicitly with native Git, and retry")
 	}
 	return nil
 }
