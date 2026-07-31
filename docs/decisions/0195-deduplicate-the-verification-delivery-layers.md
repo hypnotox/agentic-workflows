@@ -47,8 +47,8 @@ Constraints that shape the fix:
 
 The user settled the direction in the workflow-friction-reduction effort: conditional
 wording for the instruction layer, the pre-push payload untouched, the scan dedup resolved
-in favor of the shipped payload, and the accepted losses named per the candor norm
-established by ADR-0107.
+in favor of the shipped payload, and every accepted loss named explicitly in this record
+rather than left implicit.
 
 ## Decision
 
@@ -80,11 +80,14 @@ established by ADR-0107.
    upload consumes the gate-written profile. The `coverage.covered.out` derivation via
    `covercheck --emit-filtered` is unchanged.
 7. Documentation and proofs travel with the change: `.awf/parts/workflow/composing-the-gate.md`
-   stops listing the two scans as gate steps and documents the payload/CI split, the
-   plain-punctuation invariant bullet's "wired into `./x gate`" phrasing in
-   `.awf/agents-doc.yaml` is corrected to name the pre-commit payload and CI, the
-   `TestAgentsDocGuide` sentence-count assertion is updated to the reworded text, and the
-   `examples/sundial` fan-out re-renders in the same commits.
+   stops listing the two scans as gate steps and documents the payload/CI split, the gate
+   descriptions in `.awf/docs/parts/testing/gate.md` and
+   `.awf/docs/parts/development/command-runner.md` (rendered `docs/testing.md` and
+   `docs/development.md`) are reworded the same way, the plain-punctuation invariant
+   bullet's "wired into `./x gate`" phrasing in `.awf/agents-doc.yaml` is corrected to name
+   the pre-commit payload and CI, the `TestAgentsDocGuide` sentence-count assertion is
+   updated to the reworded text, and the `examples/sundial` fan-out re-renders in the same
+   commits.
 
 ## State changes
 
@@ -92,9 +95,13 @@ None.
 
 ## Consequences
 
-- Where hooks are wired, the per-commit cost of the full gate drops from four runs to two
-  (pre-commit and CI) plus one per push; the instruction layer stops demanding a manual
-  duplicate of work a mechanical layer performs seconds later.
+- Where hooks are wired, the full gate drops from four runs per change to one per commit
+  (the pre-commit hook) plus two per push (the pre-push hook and CI, which runs on push
+  events); the instruction layer stops demanding a manual duplicate of work a mechanical
+  layer performs seconds later.
+- Codecov's reported numbers now derive from the gate's own test invocation instead of an
+  independently reproduced run. The command line is identical and the upload is
+  informational, so the coupling is accepted.
 - The shipped guide and skills become truthful for a fresh adopter: today's default text
   instructs a manual run and then calls the hook "defense in depth" even where no hook is
   wired; the reworded text states the actual enforcement topology.
@@ -118,6 +125,7 @@ None.
 | Keep the scans in `./x gate` and drop them from the payload | The payload is the shipped authority and cannot know whether an adopter's gate composition includes the scans; deduplicating in the payload's favor keeps the standard self-contained |
 | Drop the pre-push gate as well | Declined by user decision: it stays as the local backstop for hook-bypassed commits and post-commit history rewrites |
 | Add the two scans to the pre-push payload to restore two local points | Ships a template change to every adopter to close a gap CI already covers; rejected as new machinery in a decision that removes machinery |
+| Keep CI's standalone coverage test run | Duplicates the gate's own test execution for no benefit once the gate's profile is durable and reusable |
 
 ## Status history
 
