@@ -10,7 +10,12 @@ date: 2026-07-31
 ADR-0180's Consequences designated the `internal/project` package cohesion and decomposition
 question as the next code-design decision, and stated its prerequisite: a `Project` whose fields
 are all construction inputs. That prerequisite is met; the state-ownership conversion landed and
-`TestProjectDerivedStateOwnership` mechanically enforces it. The 2026-07-30 full-repo code-design
+`TestProjectDerivedStateOwnership` mechanically enforces it. ADR-0180's Context also handed this
+decision its evidence: the four synthetic partial `Project` literals and the fourteen zero-field
+files. Decision item 2's core-side constructors dissolve the three context-side literals (they
+become the staged load half), the remaining current-state literal stays inside core load
+machinery under the same one-constructor discipline, and the fourteen zero-field files partition
+between the carves and the core along their cluster lines. The 2026-07-30 full-repo code-design
 audit (docs/research/code-design-audit-2026-07-30.md) fed five items into this decision: the
 `internal/git` three-way split, export-surface minimization, template-ID ownership, a
 path-anchoring type, and report-rendering ownership.
@@ -18,9 +23,10 @@ path-anchoring type, and report-rendering ownership.
 The package was mapped before this decision was drafted (all figures verified 2026-07-31 against
 main; line references are current as of that date and drift with the tree):
 
-- 29 production files, 8040 lines, in thirteen responsibility clusters. The largest are the
-  render pipeline (11 files, 1906 lines), the context command (5 files, 1475 lines), drift check
-  (789), output plan (678), current-state and topics (706), and the orchestration core (570).
+- 30 production files, 8080 lines (every non-test Go file counted whole), in thirteen
+  responsibility clusters. The largest are the render pipeline (11 files, roughly 1900 lines),
+  the context command (5 files, 1480 lines), drift check (789), output plan (678),
+  current-state and topics (706), and the orchestration core (570).
 - Two verified cycles bind the sync core. `check.go` calls `outputPlan` (check.go:34,411) while
   `output_plan.go` calls `validateArtifact` (defined check.go:364, called output_plan.go:706) and
   `localOutPaths` (defined check.go:372, called output_plan.go:606). And `output_plan.go` calls
@@ -97,7 +103,9 @@ bidirectional coupling that dissolves only if the resident-path predicate moves 
 the resident-root table; and `Backup`/`Change` are defined and consumed inside project.go's
 syncReport, so moving them would make core import the new package to type its own return values.
 
-This decision was designed against the in-flight single-home effort's landed Phase 4 state and
+Two worktrees were in flight when this design began; the defect-cleanup branch integrated to
+main (merge 44d99ebe) before this ADR was drafted, leaving the single-home branch as the only
+outstanding gate. This decision was designed against that effort's landed Phase 4 state and
 its Phase 5 plan; execution waits for that branch to integrate, and content drift is absorbed by
 amendment while this ADR remains pre-terminal (ADR-0188).
 
@@ -110,7 +118,10 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    from check.go to validate.go, and declaration types live plan-side with a documented one-way
    direction (the plan orchestrates rendering; render files never call plan functions).
    `ScaffoldVarRefs` relocates from local.go to scaffold.go. `ArtifactRole` relocates from
-   context_artifacts.go to a staying file; it is core declaration vocabulary.
+   context_artifacts.go to a staying file; it is core declaration vocabulary. The dependency
+   directions asserted here and in items 2 and 3 follow `code-design/dependency-composition`:
+   each new seam value is a dependency received whole by a named first consumer, not a
+   speculative capability.
 2. A new package `internal/contextq` owns the context query: path classification, request
    assembly, universe assembly, topic and claim and pending projection, artifact records, the
    context and uncovered result vocabulary, and the human rendering of those results. The split
@@ -120,14 +131,16 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    and one from a staged tree. Because the constructors are core-side, no additional core
    internals are exported. `contextq` has one constructor over that value. The staged context
    and uncovered entry points split accordingly: their load halves stay, their query halves
-   move. The value's name is settled at implementation and is not `Universe`, which already has
-   two other meanings in the repository.
+   move. The value's working name is `ContextState`, giving the plan a stable referent; the
+   final name is settled at implementation and is not `Universe`, which already has two other
+   meanings in the repository. `contextq` is the value's first and only consumer.
 3. A new package `internal/resident` owns resident-root policy and path anchoring: the
    resident-root table, the resident-path predicate, a `Roots` anchoring value (tracked root
    plus resident root, constructed once at project open) owning the output-path resolution
    policy, and the resident lifecycle operations `CollisionsAt`, `Uninstall`,
    `inspectResidentRoots`, and `preserveResidentRemoval`. The dependency direction is core to
-   resident. `InitCollisions` (a wrapper over the output plan), `BackupFile`, and the sync
+   resident, and core's output-path resolution is the `Roots` value's first consumer.
+   `InitCollisions` (a wrapper over the output plan), `BackupFile`, and the sync
    vocabulary `Backup` and `Change` stay in core. The ~11 raw root joins that bypass the
    anchoring policy convert to the `Roots` value during execution.
 4. Presentation ownership becomes a standing rule: the package that owns a result model owns
@@ -141,11 +154,16 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    literals, and the resident-root table's re-spelled IDs fold into it, with descriptor facets
    added as needed. `internal/topic` receives template identity and content as parameters from
    the caller that already holds them instead of re-reading the embedded template tree.
+   `validateDeclarationPlanParity` would then compare the derivation with itself; it is retired
+   with the consolidation, and Consequences records the loss of its runtime detection.
 6. The kind-dispatch single table widens from the project package to the whole module: the four
    kind facts currently hard-coded in cmd/awf (the graph-kind predicate at list_add.go:110, the
    kind switch at new.go:31, and the domain-kind branches at list_add.go:235,248) resolve
-   through the descriptor table, and the corresponding claim is updated to state module-wide
-   reach.
+   through the descriptor table, with descriptor facets added as needed, and the corresponding
+   claim is updated to state module-wide reach. The widened claim keeps its proof inside
+   `internal/project` as a source-scanning structural test over the cmd/awf sources (the shape
+   the state-ownership scanner already uses), so the proof marker stays within the topic's
+   selectors and the rendering domain's paths.
 7. The `internal/git` feed item is decided in the negative: no package split. The git-seam
    decision's one-seam-package shape is the end state; the clean method-level backend
    separation is preserved as file discipline inside the package. This ADR records the two
@@ -159,10 +177,42 @@ amendment while this ADR remains pre-terminal (ADR-0188).
    effort's branch integrates. Every file move lands in the same transaction as the domain-path
    and topic-selector widening that keeps the moved files owned and their `touches-state`
    markers in scope, because an omitted new package degrades silently to unowned rather than
-   failing loudly. The state-ownership scanner and its rule comment widen to the new packages
-   in the same transaction as the moves they name. Package-internal tests that would need the
-   new packages convert to external test packages. Render-touching moves are verified by the
-   byte-identity oracle: `awf render` reports no change, or the diff is a defect.
+   failing loudly. The destinations are named now: the tooling domain gains
+   `internal/contextq/**` and `.awf/topics/metadata/tooling/context-and-topic.yaml` gains the
+   same selector; the rendering domain gains `internal/resident/**` and
+   `.awf/topics/metadata/rendering/project-output-plan.yaml` gains the same selector. The
+   updated `project-derived-state-ownership` claim asserts that no production function in
+   `internal/project`, `internal/contextq`, or `internal/resident` writes a field of that
+   package's constructed long-lived values outside the constructing function; the scanner and
+   its rule comment widen accordingly in the same transaction as the moves they name.
+   Package-internal tests that would need the new packages convert to external test packages.
+   Render-touching moves are verified by the byte-identity oracle: `awf render` reports no
+   change, or the diff is a defect. The same-transaction documentation obligations include
+   `docs/architecture.md` via its source parts (the internal/project role description, the
+   cmd/awf presentation sentence, and the resident-root-table paragraph), the roadmap's
+   deferred-decomposition section via its source part (retired or rewritten to point at this
+   ADR, with the `receiver-reads-owned-state` deferral explicitly dispositioned), and the
+   glossary additions of item 11.
+10. Claim forms and backing. `rendering/project-output-plan:resident-policy-single-home` is an
+   invariant, Backing: test, proven by a structural source-scanning test in the resident
+   package asserting the resident-root table and the resident-path predicate have no second
+   production definition. `rendering/project-output-plan:template-id-single-derivation` is an
+   invariant, Backing: test, proven by a structural test asserting no production file outside
+   the sanctioned descriptor and declaration table files contains a template-ID string
+   literal. `tooling/context-and-topic:context-query-boundary` is an invariant, Backing: test,
+   proven by a structural test asserting core's exported surface carries no context result
+   vocabulary and the context package reaches core only through the assembled-state seam.
+   `code-design/presentation-ownership:model-owner-renders` is a reasoned contract, Backing:
+   unbacked, whose Verify instruction is to confirm, when touching a command surface, that the
+   rendering of each result model lives in the package owning that model. The two updated
+   claims keep Backing: test, with proof locations as stated in items 6 and 9.
+11. The new global topic gains the enforcement anchors a reasoned-claim topic needs, mirroring
+   ADR-0180: a presentation-ownership focus item is added to the adr-reviewer, code-reviewer,
+   and plan-reviewer sidecars (backfilling catalog defaults, since focusItems replaces them
+   wholesale), the workflow chain part directs an agent changing where a result model is
+   rendered to consult `code-design/presentation-ownership`, and the glossary gains the new
+   vocabulary (presentation ownership, the assembled context state, the `Roots` anchoring
+   value, resident-root policy), all rendered in the same commit that introduces them.
 
 ## State changes
 
@@ -175,17 +225,25 @@ amendment while this ADR remains pre-terminal (ADR-0188).
 
 ## Consequences
 
-The core drops from 8040 to roughly 5900 production lines and sheds the two clusters with the
-least coupling to it; the compiler starts enforcing the two boundaries that were previously
-prose. The context vocabulary stops being public API that exists only for one test file, and
-the config-reference rendering hazard (a renamed field silently rendering empty) is removed by
-construction. The presentation rule and the template-ID single home create conversion
-obligations that later work inherits when touching other command surfaces.
+The core drops from 8080 to roughly 6400 production lines by shedding the two clusters with the
+least coupling to it, then gains the typed config-reference rendering from cmd/awf (net roughly
+6500): item 4's rule combined with the rejected config-reference carve deliberately gives core a
+presentation responsibility for the one model it keeps. The compiler starts enforcing the two
+boundaries that were previously prose. The context vocabulary stops being public API that
+exists only for one test file, and the config-reference rendering hazard (a renamed field
+silently rendering empty) is removed by construction. The presentation rule and the template-ID
+single home create conversion obligations that later work inherits when touching other command
+surfaces. Retiring `validateDeclarationPlanParity` removes the divergence it guarded against
+and the guard itself: a future re-divergence of template identity has no runtime detector, only
+the single derivation point. Extending two existing topics' selectors to cover the new packages
+is the second and third occurrence of the selector-stretch pain point the roadmap records
+against ADR-0183; the deferred path-owning-topic idea gains evidence rather than a silent
+workaround.
 
 Costs accepted: the test-move surface is large and known (M of roughly 179 and 30 for the two
 carves against N of 21 and 3), dominated by sibling tests that travel with their files; the
 `SyncReport` call sites stay source-compatible because the sync vocabulary stays in core. The
-core remains around 5900 lines, bound by its real cycles; this decision documents its internal
+core remains around 6500 lines, bound by its real cycles; this decision documents its internal
 direction (plan orchestrates render, check consumes both) rather than pretending a package
 boundary would hold there. The new packages must be added to domain ownership in the same
 transactions as the moves, because the failure mode of omission is silent unownership, not a
@@ -204,6 +262,8 @@ audit's stale 86/47 to the verified 128/60.
 | Alternative | Why not chosen |
 |---|---|
 | Layer the core into plan, render, and check packages over a shared types package | Fights both verified cycles; the render/plan type coupling is evidence they are one concern; the shared types package tends toward a dumping ground. |
+| Keep presentation in the command binary (status quo) | The config-reference rendering already shows the failure: the model crosses as `map[string]any` with discarded type assertions, so a renamed field renders empty under a green gate. |
+| Record the presentation rule as a maintainable-code-design section instead of a topic | That document's sections are a fixed list and its value is generic guidance; a topic is specific and mechanically reviewable where the guide cannot be (ADR-0180's grounds). |
 | Keep one package and reorganize into service types | Go visibility is package-scoped, so no boundary becomes enforceable; the designated decomposition decision would decide not to decompose. |
 | Carve scaffold into its own package | It reads the kind-descriptor, singleton, and hook tables at six call sites; carving it means exporting three core tables to move 198 lines. |
 | Carve config-reference | Its rendering path calls renderTarget, outputPlan, and deriveOperationState; carving it exports exactly the machinery this decision encapsulates. |
