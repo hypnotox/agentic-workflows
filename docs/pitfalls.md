@@ -1698,5 +1698,25 @@ the decision's content is still open. Note also that a terminal event carrying e
 `Applied` events must NOT repeat a `state-sequence`; mixing explicit batches with implicit
 terminal sequencing is rejected outright.
 
+## In a managed worktree, a primary-checkout path silently splits the transaction
+
+_Domains: tooling_
+
+_Related: ADR-0189, ADR-0190_
+
+When an effort executes in a managed `.awf/worktrees/<slug>` checkout, every file
+mutation must use the worktree-prefixed absolute path. A path spelled from the primary
+checkout root looks identical apart from its prefix and applies cleanly there, where a
+concurrent session's `./x render` can sweep the stray edit into the primary checkout's
+rendered files and lock before anyone notices; the effort's own transaction is then
+split across two working trees. The 2026-07-31 prose-audit effort hit this once: a
+convention-part edit landed in the primary checkout, a concurrent render propagated it,
+and three files had to be restored from HEAD. Verify the prefix before the first
+mutating call of a session, and after any suspected slip check `git status` in the
+primary checkout, not only the worktree. Relatedly for planners: a shared-prose
+extraction into `templates/partials/` may not reference `.vars` (the config-reference
+dormancy scan reads raw template bytes; `TestConfigReferenceNoBareVars` enforces it),
+so a sentence carrying a command interpolation cannot move into a partial.
+
 <!-- awf:edit append: default; create .awf/docs/parts/pitfalls/append.md to override -->
 
