@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 	"gopkg.in/yaml.v3"
@@ -129,4 +130,18 @@ func relSlash(root, path string) string {
 		return filepath.ToSlash(path)
 	}
 	return filepath.ToSlash(r)
+}
+
+// safelyMatchablePaths returns every scannable snapshot path: the universe a
+// selector may be matched against. Symlinks and deletions are excluded because
+// matching a selector against them would attribute authority to a path that
+// carries no content.
+func safelyMatchablePaths(tree *snapshot.Tree) []string {
+	out := []string{}
+	for _, f := range tree.List() {
+		if f.Scannable() {
+			out = append(out, f.Path)
+		}
+	}
+	return out
 }

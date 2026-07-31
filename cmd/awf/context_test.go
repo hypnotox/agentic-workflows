@@ -13,13 +13,10 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
-	"github.com/hypnotox/agentic-workflows/internal/contextdelivery"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 const ctxCmdYAML = `prefix: example
@@ -133,52 +130,6 @@ func TestRunContextRendersMarkerRelationships(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-concise-projection
-// invariant: tooling/context-and-topic:context-full-authority-packet
-func TestRenderContextFullMatchesEightFacetUnion(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := ctxCmdFixture(t)
-	partPath := filepath.Join(root, ".awf", "topics", "parts", "alpha", "one", "current-state.md")
-	part, err := os.ReadFile(partPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	part = bytes.Replace(part, []byte("Order is deterministic.\nOrigin:"), []byte("Order is deterministic.\n\nFULL PROSE SECRET.\nOrigin:"), 1)
-	if err := os.WriteFile(partPath, part, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	p, err := project.Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	full, err := project.ParseContextFacets(nil, true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	explicit, err := project.ParseContextFacets([]string{"relationships", "invariants", "all-rules", "evidence", "selectors", "references", "pending", "artifacts"}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	render := func(facets []project.ContextFacet) string {
-		t.Helper()
-		result, err := p.ContextForOptions(testContext(t), []string{"internal/foo/x.go"}, project.ContextOptions{Selection: project.SelectionExplicit, Facets: facets})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var out bytes.Buffer
-		renderContext(&out, result, "header", facets)
-		return out.String()
-	}
-	got, want := render(full), render(explicit)
-	if got != want {
-		t.Fatalf("full differs from union:\n--- full ---\n%s\n--- union ---\n%s", got, want)
-	}
-	if strings.Count(got, "alpha/one - One") != 1 || strings.Count(got, "Authority counts: invariants=2, rules=1") != 1 || strings.Contains(got, "FULL PROSE SECRET") || strings.Contains(got, "Direct rules:") {
-		t.Fatalf("full restored repetition, prose, or legacy rosters:\n%s", got)
-	}
-}
-
 func TestRenderContextRequestSourceAttribution(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -198,26 +149,6 @@ func TestRenderContextRequestSourceAttribution(t *testing.T) {
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("missing %q:\n%s", want, out.String())
-		}
-	}
-}
-
-func TestBareRepositoryContextFitsDirectDelivery(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	p, err := project.Open(testContext(t), "../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, paths := range [][]string{{"internal/project", "cmd/awf"}, {"cmd/awf/context.go"}} {
-		result, err := p.ContextForOptions(testContext(t), paths, project.ContextOptions{Selection: project.SelectionExplicit})
-		if err != nil {
-			t.Fatal(err)
-		}
-		var out bytes.Buffer
-		renderContext(&out, result, "context: live state for this project", nil)
-		if bytes.HasPrefix(out.Bytes(), []byte("AWF_CONTEXT_SPILL_V1")) || out.Len() > contextdelivery.MaxDirectBytes {
-			t.Errorf("bare context %v rendered %d bytes; direct limit is %d", paths, out.Len(), contextdelivery.MaxDirectBytes)
 		}
 	}
 }
@@ -289,25 +220,6 @@ func TestRunContextStaticAndUsage(t *testing.T) {
 	}
 }
 
-func TestRenderContextGrammar(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	inside := false
-	impact := project.ContextPathImpact{Classification: project.PathSymlink, TargetInsideRepository: &inside, Provenance: []project.ContextProvenance{{Role: "template", Identity: "skills/example/SKILL.md.tmpl", Sources: []project.ArtifactLink{{Path: "templates/x", Label: "template source"}}, Outputs: []project.ArtifactLink{}, Navigation: []project.ArtifactLink{}}}, Domains: []project.DomainRef{{Name: "tooling"}}, Topics: []project.ContextPathTopic{{ID: "tooling/example"}}, Relationships: project.ContextRelationships{State: []string{"tooling/example:r"}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningGlobLiteral}}
-	res := project.ContextResult{
-		Selection: project.SelectionRange, Range: "a..b",
-		Requests: []project.ContextRequestReport{{Index: 1, Argument: "x", Exact: &project.ContextExactEntry{Path: "x", Context: impact}}},
-		Topics:   []project.TopicImpact{{ID: "tooling/example", Title: "Example", Summary: "Summary.", Counts: project.ContextAuthorityCounts{Invariants: 1, Rules: 2}, Direct: []project.ContextClaimImpact{{ID: "tooling/example:r", Type: "rule", Summary: "Rule.", Sources: []project.ContextRelationshipSource{{RequestIndex: 1, Kinds: []string{"State"}}}, Incoming: []string{"a"}, Outgoing: []string{"b"}}}}},
-	}
-	var out bytes.Buffer
-	renderContext(&out, res, "header", []project.ContextFacet{project.FacetArtifacts})
-	for _, want := range []string{"Selection: range a..b", "File: x", "Symlink target inside repository: false", "Source: templates/x", "State: tooling/example:r", "Authority counts: invariants=1, rules=2", "Sources: request 1 [State]", "Warning: globs", "Incoming: a", "Outgoing: b"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("missing %q:\n%s", want, out.String())
-		}
-	}
-}
-
 func snapshotTree(t *testing.T, root string) string {
 	t.Helper()
 	var b strings.Builder
@@ -338,35 +250,6 @@ func snapshotTree(t *testing.T, root string) string {
 		t.Fatal(err)
 	}
 	return b.String()
-}
-
-func TestRenderAllContextBranches(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	var uncovered bytes.Buffer
-	renderUncovered(&uncovered, project.UncoveredResult{ScanRoots: []string{"internal"}, Uncovered: []project.UncoveredTopic{{Path: "internal/x", Domain: "d"}}, Unowned: []project.UnownedEntry{{Path: "file", UnownedCount: 1}, {Path: "dir/", UnownedCount: 1, ExcludedCount: 2}, {Path: ".", UnownedCount: 2}}}, "header")
-	for _, want := range []string{"scan roots", "## Uncovered", "## Unowned", "1 unowned file", "2 files excluded"} {
-		if !strings.Contains(uncovered.String(), want) {
-			t.Errorf("uncovered missing %q: %s", want, uncovered.String())
-		}
-	}
-	current := project.ContextClaimImpact{ID: "d/t:i", Type: "invariant", Summary: "Invariant.", Backing: "unbacked", Verify: "inspect", Evidence: []project.ContextEvidence{{Kind: "state", Count: 4}, {Kind: "invariant", Count: 1, Sites: []topic.MarkerSite{{Path: "x_test.go", Line: 3}}}}}
-	impact := project.ContextPathImpact{Classification: project.PathNestedAdopter, NestedRoot: "child/.awf/config.yaml", Provenance: []project.ContextProvenance{{Role: "template", Identity: "x", Sources: []project.ArtifactLink{}, Outputs: []project.ArtifactLink{{Path: "out", Label: "managed output"}}, Navigation: []project.ArtifactLink{{Path: "nav", Label: "managed output"}}}}, Domains: []project.DomainRef{}, Topics: []project.ContextPathTopic{}, Relationships: project.ContextRelationships{State: []string{}, Touches: []string{}, Proofs: []string{}}, Warnings: []project.ContextWarning{project.WarningEligibleUnowned}, ADR: &project.ADRArtifactContext{Number: "2", Title: "Decision", Status: "Implementing", Mutability: "frozen", AuthorityRole: "pending intent or decision history; not current authority", Operations: []project.ADROperationContext{{Operation: "update", Claim: "d/t:i", Progress: "applied", ClaimState: "active-current", Detail: &project.ADROperationDetail{Current: &current, Evidence: current.Evidence}}, {Operation: "remove", Claim: "d/t:old", Progress: "applied", ClaimState: "historically-removed", Detail: &project.ADROperationDetail{History: &topic.ClaimHistory{RemovedBy: &topic.ADRHistory{Number: "0002"}}}}}}}
-	res := project.ContextResult{Selection: project.SelectionStaged, Requests: []project.ContextRequestReport{{Index: 1, Argument: "empty", Directory: &project.ContextDirectory{Included: 0, Excluded: []project.ContextClassificationCount{{Classification: project.PathGeneratedOutput, Count: 2}}, Groups: []project.ContextGroup{{Count: 2, Members: []string{"a", "b"}, Context: impact}}}}}, Topics: []project.TopicImpact{{ID: "d/t", Title: "T", Summary: "S", Selectors: &project.ContextSelectorImpact{DomainPaths: []string{}, TopicPaths: []string{}, DeclaredGlobal: false}, Invariants: []project.ContextClaimImpact{current}, Pending: project.ContextPendingImpact{OperationCount: 4, ADRs: []string{"0001", "0002", "0003"}, AdditionalADRCount: 1}}}}
-	var out bytes.Buffer
-	renderContext(&out, res, "header", []project.ContextFacet{project.FacetArtifacts})
-	for _, want := range []string{"Selection: staged", "Excluded: generated-output=2", "Members: a, b", "Nested root:", "Output: out", "Navigate: nav", "ADR: ADR-2", "Current claim:", "Removal history:", "Verify: inspect", "Evidence state: 4 sites", "Pending: 4 operations", "+1 ADRs", "Selectors: domain=[]; topic=[]"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("missing %q:\n%s", want, out.String())
-		}
-	}
-	res.Topics[0].Pending.Operations = []project.PendingChange{{ADR: "0002", Op: "add", Claim: "d/t:r", Progress: "remaining"}}
-	res.Topics[0].Selectors.DeclaredGlobal = true
-	out.Reset()
-	renderContext(&out, res, "header", nil)
-	if !strings.Contains(out.String(), "Pending operation:") || !strings.Contains(out.String(), "topic=global") {
-		t.Fatal(out.String())
-	}
 }
 
 func TestContextHumanOnlyFlagGrammar(t *testing.T) {

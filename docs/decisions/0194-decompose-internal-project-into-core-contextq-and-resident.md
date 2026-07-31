@@ -312,3 +312,4 @@ audit's stale 86/47 to the verified 128/60.
 - 2026-07-31: Implementing; content-sha256: 0247f2e679ccfd7bee5cc9c5e8fee9cc48a8dab66b05b2818a42b496193d6db5
 - 2026-07-31: Applied; operations: update `rendering/project-output-plan:kind-dispatch-single-table`
 - 2026-07-31: Applied; operations: add `rendering/project-output-plan:resident-policy-single-home`
+- 2026-07-31: Applied; operations: add `tooling/context-and-topic:context-query-boundary`

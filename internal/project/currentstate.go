@@ -536,18 +536,12 @@ func (p *Project) CurrentStateInvariants(ctx context.Context) ([]InvariantReport
 	return out, nil
 }
 
-// eligibleCoveragePaths returns the working paths coverage evaluates: every
-// snapshot file that is neither a generated output (a lock entry) nor matched by
-// a configured contextIgnore glob. Symlinks, deletions, ignored, and
-// nested-adopter paths are already excluded by the working Tree.
-func (p *Project) eligibleCoveragePaths(tree *snapshot.Tree, lock *manifest.Lock) []string {
-	return eligiblePaths(tree, lock, p.Cfg.ContextIgnore)
-}
-
 // eligiblePaths returns the snapshot files that are neither a generated output (a
-// lock entry) nor matched by one of the contextIgnore globs. It takes the
-// contextIgnore list explicitly so the staged check can filter the index
-// universe by the index config rather than the working config.
+// lock entry) nor matched by one of the contextIgnore globs. Symlinks,
+// deletions, ignored, and nested-adopter paths are already excluded by the
+// snapshot Tree. It takes the contextIgnore list explicitly so each caller
+// filters its own universe by that universe's own config rather than the
+// working config.
 func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
 	generated := map[string]bool{}
 	if lock != nil {

@@ -140,9 +140,10 @@ func selectorRoot(expr ast.Expr) *ast.Ident {
 // writing a field of a Project value that outlives its call.
 //
 // The rule admits the three stepwise constructions ADR-0180 item 10 names as
-// conforming (Loader.Open, ContextForOptions, StagedContextRootOptions), each
-// of which writes fields of a value whose literal appears in the same function,
-// and rejects a method mutating its receiver.
+// conforming (Loader.Open plus, since ADR-0194 carved the context query out,
+// the two ContextState constructors Project.ContextState and
+// StagedContextState), each of which writes fields of a value whose literal
+// appears in the same function, and rejects a method mutating its receiver.
 func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 	var findings []string
 	for _, pkg := range pkgs {
@@ -302,7 +303,7 @@ func producerCallSites(pkgs []*packages.Package) map[string][]string {
 // beginInvocation no longer exists.
 //
 // The scan covers package functions as well as methods, because
-// StagedContextRootOptions is a function rather than a method.
+// StagedContextState is a function rather than a method.
 // invariant: code-design/state-ownership:project-derived-state-ownership
 func TestProjectDerivedStateOwnership(t *testing.T) {
 	production := loadProjectPackage(t, nil)

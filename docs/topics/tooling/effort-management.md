@@ -3,7 +3,7 @@
 
 Binary-owned effort records and optional resources.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/awf/effort*.go`, `internal/effort/**`, `internal/worktree/**`. Both domain and topic selectors must match. Run `awf topic tooling/effort-management --coverage` for current matched paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/clispec/**`, `internal/contextdelivery/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/effort/**`, `internal/evals/**`, `internal/git/**`, `internal/initspec/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `cmd/awf/effort*.go`, `internal/effort/**`, `internal/worktree/**`. Both domain and topic selectors must match. Run `awf topic tooling/effort-management --coverage` for current matched paths and marker sites.
 
 The awf binary owns lightweight repository-local effort records and their optional resident resources. These records coordinate local work without replacing tracked project authority.
 
