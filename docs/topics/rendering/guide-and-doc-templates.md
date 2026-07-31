@@ -53,6 +53,18 @@ Origin: ADR-0148
 Revised-by: ADR-0198
 Backing: test
 
+### `invariant: glossary-standard-vocabulary`
+
+The rendered glossary merges the catalog's shipped standard vocabulary with the project's authored terms into one sorted table, a project term overriding a shipped term of the same case-insensitive name.
+Origin: ADR-0198
+Backing: test
+
+### `invariant: glossary-standard-terms-portable`
+
+Every shipped standard term carries exactly a string term and a string meaning, with no domains key, no ADR reference, and no meaning exceeding the terseness threshold, so the shipped layer is portable into any adopter tree.
+Origin: ADR-0198
+Backing: test
+
 ### `invariant: guide-scopes-derived`
 
 The agent-guide template renders its commit-scope mention from the root commit-scopes render key rather than any hand-written scope list in the agents-doc data, and the mention degrades to generic Conventional Commits prose when no scopes are configured.

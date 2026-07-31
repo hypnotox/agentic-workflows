@@ -1,9 +1,11 @@
 package project
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
@@ -98,17 +100,20 @@ func TestGlossaryTableForcedBetweenFraming(t *testing.T) {
 	}
 }
 
-// Absent data, an empty list, and an explicit null all degrade to the coherent
-// placeholder line naming the authoring surface - never a zero-row table
-// (ADR-0045 via ADR-0089 Decision 4).
-func TestGlossaryDegradesWithoutTerms(t *testing.T) {
-	for name, files := range map[string]map[string]string{
-		"no-sidecar": nil,
-		"empty-list": {"docs/glossary.yaml": "data:\n  terms: []\n"},
-		"null-terms": {"docs/glossary.yaml": "data:\n  terms:\n"},
+// With both layers empty the doc degrades to the coherent placeholder line
+// naming the authoring surface - never a zero-row table (ADR-0045 via ADR-0089
+// Decision 4). Since ADR-0198 the shipped layer normally supplies rows, so the
+// scaffolds here null standardTerms to empty it; a real tree that authored that
+// key would be unused-data drift, which is why per-term override, not this, is
+// the supported way to drop a shipped term.
+func TestGlossaryDegradesWhenBothLayersEmpty(t *testing.T) {
+	for name, sidecar := range map[string]string{
+		"no-authored-terms": "data:\n  standardTerms:\n",
+		"empty-list":        "data:\n  standardTerms:\n  terms: []\n",
+		"null-terms":        "data:\n  standardTerms:\n  terms:\n",
 	} {
 		t.Run(name, func(t *testing.T) {
-			out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, files))
+			out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{"docs/glossary.yaml": sidecar}))
 			if !strings.Contains(out, "No terms recorded yet") || !strings.Contains(out, "data.terms") {
 				t.Errorf("missing placeholder line:\n%s", out)
 			}
@@ -116,6 +121,22 @@ func TestGlossaryDegradesWithoutTerms(t *testing.T) {
 				t.Errorf("zero-row table must not render:\n%s", out)
 			}
 		})
+	}
+}
+
+// A sidecar carrying neither key leaves the data untouched, so a doc whose
+// catalog entry ships no default data still degrades rather than erroring.
+func TestGlossaryTransformUntouchedWithoutEitherLayer(t *testing.T) {
+	sc := config.Sidecar{Data: map[string]any{"other": "kept"}}
+	out, err := glossaryTransform(sc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, present := out.Data["terms"]; present {
+		t.Error("terms must not be synthesised when neither layer is present")
+	}
+	if out.Data["other"] != "kept" {
+		t.Error("unrelated data keys must carry over")
 	}
 }
 
@@ -153,6 +174,103 @@ func TestGlossaryContentViolations(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Every shipped standard term carries exactly a string term and a string
+// meaning, cites no ADR, and stays under the terseness threshold, so the layer
+// is portable into any adopter tree and cannot fail that tree's own advisory.
+// invariant: rendering/guide-and-doc-templates:glossary-standard-terms-portable
+func TestGlossaryStandardTermsPortable(t *testing.T) {
+	raw, ok := catalog.Standard.Docs["glossary"].Data["standardTerms"].([]any)
+	if !ok || len(raw) == 0 {
+		t.Fatalf("standardTerms must be a non-empty []any, got %T", catalog.Standard.Docs["glossary"].Data["standardTerms"])
+	}
+	adrRe := regexp.MustCompile(`ADR-[0-9]{4}`)
+	for i, el := range raw {
+		m, isMap := el.(map[string]any)
+		if !isMap {
+			t.Fatalf("shipped record %d must be a map[string]any, got %T", i, el)
+		}
+		if len(m) != 2 {
+			t.Errorf("shipped record %d carries %d keys; exactly term and meaning are allowed (no domains: they cannot resolve in an adopter tree)", i, len(m))
+		}
+		for _, key := range []string{"term", "meaning"} {
+			s, isStr := m[key].(string)
+			if !isStr || strings.TrimSpace(s) == "" {
+				t.Errorf("shipped record %d: %q must be a non-empty string, got %#v", i, key, m[key])
+				continue
+			}
+			if got := adrRe.FindString(s); got != "" {
+				t.Errorf("shipped record %d %q cites %s; a citation resolves to nothing in an adopter corpus", i, key, got)
+			}
+		}
+		if s, isStr := m["meaning"].(string); isStr && len(s) > glossaryMeaningMax {
+			t.Errorf("shipped meaning for %v is %d chars, over the %d threshold", m["term"], len(s), glossaryMeaningMax)
+		}
+	}
+}
+
+// The rendered glossary merges the shipped vocabulary with the project's own
+// terms into one sorted table, and a project term overrides a shipped term of
+// the same case-insensitive name. A project authoring no terms at all still
+// receives the shipped rows rather than the empty-state pointer, which is the
+// fresh-adoption case this layer exists to fix.
+// invariant: rendering/guide-and-doc-templates:glossary-standard-vocabulary
+func TestGlossaryMergesStandardVocabulary(t *testing.T) {
+	t.Run("no authored terms still renders the shipped layer", func(t *testing.T) {
+		out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, nil))
+		if strings.Contains(out, "No terms recorded yet") {
+			t.Errorf("empty-state branch taken despite the shipped layer:\n%s", out)
+		}
+		if !strings.Contains(out, "| Term | Meaning |") || !strings.Contains(out, "| effort |") {
+			t.Errorf("shipped rows missing:\n%s", out)
+		}
+	})
+
+	t.Run("a project term overrides the shipped term of the same name", func(t *testing.T) {
+		out := renderGlossary(t, scaffoldFiles(t, glossaryCfg, map[string]string{
+			"docs/glossary.yaml": "data:\n  terms:\n    - term: EFFORT\n      meaning: the project's own wording\n    - term: local-only\n      meaning: not shipped at all\n",
+		}))
+		if !strings.Contains(out, "| EFFORT | the project's own wording |") {
+			t.Errorf("override row missing:\n%s", out)
+		}
+		if strings.Contains(out, "| effort |") {
+			t.Errorf("shipped term survived a case-insensitive override:\n%s", out)
+		}
+		if !strings.Contains(out, "| local-only | not shipped at all |") {
+			t.Errorf("project-only row missing:\n%s", out)
+		}
+		if !strings.Contains(out, "| drift |") {
+			t.Errorf("unoverridden shipped rows must still render:\n%s", out)
+		}
+	})
+
+	t.Run("standardTerms never reaches the template", func(t *testing.T) {
+		sc := config.Sidecar{Data: map[string]any{
+			"standardTerms": []any{map[string]any{"term": "shipped", "meaning": "from the catalog"}},
+		}}
+		out, err := glossaryTransform(sc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, still := out.Data["standardTerms"]; still {
+			t.Error("standardTerms must be deleted after the merge")
+		}
+		if got := out.Data["terms"]; got != "| shipped | from the catalog |\n" {
+			t.Errorf("unexpected rows: %q", got)
+		}
+	})
+
+	t.Run("a duplicate inside the shipped layer is a hard error", func(t *testing.T) {
+		sc := config.Sidecar{Data: map[string]any{"standardTerms": []any{
+			map[string]any{"term": "Dup", "meaning": "one"},
+			map[string]any{"term": "dup", "meaning": "two"},
+		}}}
+		if _, err := glossaryTransform(sc); err == nil || !strings.Contains(err.Error(), "standard vocabulary is malformed") ||
+			!strings.Contains(err.Error(), "case-insensitive duplicates") {
+			t.Fatalf("want a standard-vocabulary duplicate error, got %v", err)
+		}
+	})
 }
 
 // glossaryStringMap's map[any]any all-string-keys branch is unreachable via

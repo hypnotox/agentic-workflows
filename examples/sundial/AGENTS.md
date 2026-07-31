@@ -103,7 +103,7 @@ go run ./cmd/sundial 52.5 13.4: print this week's sun table for Berlin
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies
 - **Debugging:** [docs/debugging.md](docs/debugging.md), recipes for common failure modes
 - **Development:** [docs/development.md](docs/development.md), local setup, the command runner, dependency reference
-- **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and term ownership
+- **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and the awf vocabulary it ships
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md), recurring bugs and tricky areas
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases
 - **Testing:** [docs/testing.md](docs/testing.md), gate tiers, test layout, what each tier covers

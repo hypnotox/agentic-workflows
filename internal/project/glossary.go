@@ -41,24 +41,65 @@ type glossaryRecord struct {
 // key is a typo that would otherwise render as silent absence.
 var glossaryRecordKeys = map[string]bool{"term": true, "meaning": true, "domains": true}
 
-// glossaryTransform replaces data.terms - the authored record list - with the
-// finished, always-sorted markdown table rows (ADR-0089). An absent key is left
-// untouched and a null or empty list yields "", so the template's else branch
-// renders the coherent placeholder either way. Content violations are hard
-// errors naming the sidecar and the offending term.
+// glossaryMeaningMax bounds a meaning at roughly two sentences of ordinary
+// prose (ADR-0198 decision 9). It is a fixed constant rather than a config key
+// on purpose: an adopter-raisable threshold is a suppressing value, which this
+// project's severity model does not have. Over-length raises a non-failing
+// advisory for authored terms; the shipped standard vocabulary is held under it
+// by a portability test, since it merges into every adopter's glossary.
+const glossaryMeaningMax = 280
+
+// glossaryTransform replaces data.terms with the finished, always-sorted
+// markdown table rows for the merged two-layer set (ADR-0089, ADR-0198). It
+// returns untouched only when neither layer is present at all; a null or empty
+// layer yields "", so the template's else branch renders the coherent
+// placeholder. standardTerms is consumed here and deleted, so the template sees
+// exactly one key. Content violations are hard errors naming the offending term.
 func glossaryTransform(sc config.Sidecar) (config.Sidecar, error) {
-	raw, ok := sc.Data["terms"]
-	if !ok {
+	_, hasAuthored := sc.Data["terms"]
+	_, hasStandard := sc.Data["standardTerms"]
+	if !hasAuthored && !hasStandard {
 		return sc, nil
 	}
-	records, err := glossaryRecords(raw)
+	records, err := mergedGlossaryRecords(sc)
 	if err != nil {
 		return sc, err
 	}
 	out := sc
 	out.Data = maps.Clone(sc.Data)
 	out.Data["terms"] = glossaryRows(records)
+	delete(out.Data, "standardTerms")
 	return out, nil
+}
+
+// mergedGlossaryRecords is the single home of the two-layer merge: the standard
+// vocabulary awf ships, overlaid by the project's authored terms. An authored
+// record overrides a shipped record whose term matches case-insensitively,
+// which is the only way to remove an unwanted shipped term. A case-insensitive
+// duplicate WITHIN either layer stays a hard error; a duplicate ACROSS layers is
+// the override. Order is not guaranteed; glossaryRows sorts.
+func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) {
+	shipped, err := glossaryRecords(sc.Data["standardTerms"])
+	if err != nil {
+		// The shipped layer is awf's own closed list, so a violation here is a
+		// defect in this binary rather than anything the adopter authored.
+		return nil, fmt.Errorf("standard vocabulary is malformed: %w", err)
+	}
+	authored, err := glossaryRecords(sc.Data["terms"])
+	if err != nil {
+		return nil, err
+	}
+	overridden := make(map[string]bool, len(authored))
+	for _, r := range authored {
+		overridden[strings.ToLower(r.Term)] = true
+	}
+	out := make([]glossaryRecord, 0, len(shipped)+len(authored))
+	for _, r := range shipped {
+		if !overridden[strings.ToLower(r.Term)] {
+			out = append(out, r)
+		}
+	}
+	return append(out, authored...), nil
 }
 
 // glossaryRecords validates one authored layer into its record list. An absent

@@ -29,8 +29,9 @@ Backing: test
 
 ### `invariant: configspec-data-parity`
 
-The hand-authored table of per-artifact data-key descriptions is matched in both directions against the data keys derived from the catalog, the include-expanded embedded templates, and each artifact's declared defaults, so an undescribed data key cannot ship. The domain template's injected pair and the generated config reference's injected collections are the only exemptions.
+The hand-authored table of per-artifact data-key descriptions is matched in both directions against the data keys derived from the catalog, the include-expanded embedded templates, and each artifact's declared defaults, so an undescribed data key cannot ship. The domain template's injected pair, the generated config reference's injected collections, and the glossary's shipped standard vocabulary are the only exemptions.
 Origin: ADR-0148
+Revised-by: ADR-0198
 Backing: test
 
 ### `invariant: configspec-description-residue`

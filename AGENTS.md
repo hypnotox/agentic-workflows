@@ -116,7 +116,7 @@ Command specifics, effort and lifecycle contracts, and upgrade behaviour: see do
 - **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md), day-to-day usage: commands, overrides, placeholders, and the sync/check loop
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies
 - **Development:** [docs/development.md](docs/development.md), local setup, the command runner, dependency reference
-- **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and term ownership
+- **Glossary:** [docs/glossary.md](docs/glossary.md), project jargon and the awf vocabulary it ships
 - **Pitfalls:** [docs/pitfalls.md](docs/pitfalls.md), recurring bugs and tricky areas
 - **Releasing:** [docs/releasing.md](docs/releasing.md), how to cut a release: versioning, artifacts, and the publish process
 - **Roadmap:** [docs/roadmap.md](docs/roadmap.md), uncommitted ideas and future phases

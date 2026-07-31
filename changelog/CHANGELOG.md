@@ -191,6 +191,13 @@ query a single version or a range.
   uncommitted work included.
 
 ### Features
+- The glossary now renders two layers: a standard vocabulary awf ships, merged with the
+  project's own `data.terms` into one sorted table. A project term overrides a shipped term of
+  the same case-insensitive name, which is the supported way to reword or retire one; the
+  shipped layer itself is not disableable. Upgrade effect: the shipped vocabulary participates
+  in the artifact config hash, so a release that changes a standard term surfaces as `stale`
+  drift on your rendered glossary and is resolved by `awf render`, exactly like any other
+  catalog or template change.
 - Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
   the writing-plans scaffold command resolves the awf binary instead of the skill prefix,
   reviewer-lens enumerations are count-free, the resync skill names both invokers and carries
