@@ -474,9 +474,9 @@
     },
     "docs/plans/README.md": {
       "templateId": "plans-readme/README.md.tmpl",
-      "templateHash": "sha256:4332e8329bb2c885952035e1e08164ffb6d0e91feb03e205943ed1900e3438ad",
+      "templateHash": "sha256:78ac6c048027b9a3db9ee81f906e794da39caa3e990a3765e19c5a6bc17f210a",
       "configHash": "sha256:33f22ebf6e3ea2d21a20556ee4c1a018dc97a0d3676a78a4cdef60e2148b054d",
-      "outputHash": "sha256:55e110db77cf7877f4a7e01130b1064329996d3bca9d1677361878f02d64a46d"
+      "outputHash": "sha256:5c3be3355a07f0cabf8e11e68dcfebbb355fda149b4464c847489c948384f37b"
     },
     "docs/plans/template.md": {
       "templateId": "plans-template/template.md.tmpl",
@@ -523,8 +523,8 @@
     "docs/topics/adr-system/plan-artifacts.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:8eb204bfab43b5fe6ca270138310ca9fafacd2cc436d39fab198a7881c96f49a",
-      "outputHash": "sha256:19be828c545b941875e95229d6b87ff25115e86f4dc83e706264f8b4a0dff973"
+      "configHash": "sha256:3feeaa9958716f1677816464e744869fc7673ffe677b590f889c97c9ca1e05f8",
+      "outputHash": "sha256:994efdca9171fbeb2e6b6a4a8d86ab43847b04138c5e460a990f58892c361b5a"
     },
     "docs/topics/code-design/dependency-composition.md": {
       "templateId": "topics/topic.md.tmpl",

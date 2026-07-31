@@ -627,6 +627,8 @@ func (p *Project) checkDeadRefs(files []RenderedFile) []manifest.Drift {
 // template.md and README.md). Frontmatter-less plans (the grandfathered corpus,
 // ADR-0098) are skipped. A ```commit subject's length/type/shape violation is
 // drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
+// An adrs: entry resolves by identity, so a number and a pending record's slug
+// resolve through one lookup and a link survives numbering (ADR-0194 item 14).
 func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 	plansDir := filepath.Join(p.Root, p.Cfg.DocsDir, "plans")
 	plans, err := plan.ParseDir(plansDir)
@@ -644,9 +646,10 @@ func (p *Project) checkPlans(corpus adr.Corpus) ([]manifest.Drift, error) {
 		if !plan.ValidStatuses[pl.Status] {
 			drift = append(drift, manifest.Drift{Path: path, Kind: "plan-frontmatter", Detail: fmt.Sprintf("status %q not in {Proposed, Implemented}", pl.Status)})
 		}
-		for _, n := range pl.ADRs {
-			if !corpus.Has(fmt.Sprintf("%04d", n)) {
-				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: fmt.Sprintf("ADR-%04d", n)})
+		for _, link := range pl.ADRs {
+			id := link.Identity()
+			if _, ok := corpus.ByIdentity(id); !ok {
+				drift = append(drift, manifest.Drift{Path: path, Kind: "plan-adr-link", Detail: "ADR-" + id})
 			}
 		}
 		for _, sub := range pl.CommitSubjects {

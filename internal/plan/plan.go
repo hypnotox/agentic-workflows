@@ -8,8 +8,11 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
@@ -22,13 +25,63 @@ var ValidStatuses = map[string]bool{"Proposed": true, "Implemented": true}
 // template.md and README.md just as adr.FilenameRe's numeric form does.
 var FilenameRe = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-.+\.md$`)
 
+// ADRLink is one `adrs:` frontmatter entry. A plan links a decision record by
+// its number or, before integration numbers it, by the retained slug of a
+// pending record, so the link stays valid across numbering without the plan
+// being rewritten (ADR-0194 item 14). Exactly one field is set.
+type ADRLink struct {
+	Number int
+	Slug   string
+}
+
+// adrLinkNumberRe matches the digits-only spelling of a numeric entry. The raw
+// scalar is matched rather than the resolved YAML tag because yaml.v3 resolves
+// a zero-padded spelling like `0186` to !!float rather than !!int, so a tag
+// switch would read the plans that spell their link that way as slugs. A slug
+// is never digits-only: slugs derive from titles, and a numbered-looking one is
+// refused at scaffold time.
+var adrLinkNumberRe = regexp.MustCompile(`^\d+$`)
+
+// UnmarshalYAML reads one `adrs:` entry: a digits-only scalar is a number, and
+// any other string scalar is a slug. A slug is not validated against the slug
+// grammar here - an entry that names no record in the corpus fails link
+// validation with a scoped finding (ADR-0194 item 14) rather than taking the
+// whole check down. Any other node kind or scalar type names itself in the error.
+func (l *ADRLink) UnmarshalYAML(node *yaml.Node) error {
+	switch {
+	case node.Kind != yaml.ScalarNode:
+		return fmt.Errorf("plan: adrs entry must be an ADR number or slug, got yaml %s", node.Tag)
+	case adrLinkNumberRe.MatchString(node.Value):
+		n, err := strconv.Atoi(node.Value)
+		if err != nil {
+			return fmt.Errorf("plan: adrs entry %q is not a usable ADR number: %w", node.Value, err)
+		}
+		l.Number = n
+	case node.Tag == "!!str":
+		l.Slug = node.Value
+	default:
+		return fmt.Errorf("plan: adrs entry %q is neither an ADR number nor a slug (yaml %s)", node.Value, node.Tag)
+	}
+	return nil
+}
+
+// Identity returns the entry's corpus identity key: the four-digit number for a
+// numeric entry, and the retained slug for a slug entry. It is the key
+// adr.Corpus.ByIdentity resolves, so one lookup covers both spellings.
+func (l ADRLink) Identity() string {
+	if l.Slug != "" {
+		return l.Slug
+	}
+	return fmt.Sprintf("%04d", l.Number)
+}
+
 // Plan is a parsed plan record. HasFrontmatter is false for the grandfathered
 // pre-convention corpus (ADR-0098), which the checks skip.
 type Plan struct {
 	Filename       string
 	Path           string
 	Date           string
-	ADRs           []int
+	ADRs           []ADRLink
 	Status         string
 	HasFrontmatter bool
 	// CommitSubjects are the planned commit subjects a plan marks with ```commit
@@ -38,9 +91,9 @@ type Plan struct {
 }
 
 type planFrontmatter struct {
-	Date   string `yaml:"date"`
-	ADRs   []int  `yaml:"adrs"`
-	Status string `yaml:"status"`
+	Date   string    `yaml:"date"`
+	ADRs   []ADRLink `yaml:"adrs"`
+	Status string    `yaml:"status"`
 }
 
 // ParseDir scans dir for plan files (YYYY-MM-DD-*.md) and parses each. Files

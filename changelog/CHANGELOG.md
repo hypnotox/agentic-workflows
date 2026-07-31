@@ -164,6 +164,12 @@ query a single version or a range.
   uncommitted work included.
 
 ### Features
+- A plan's `adrs:` frontmatter entry may now name a decision record by slug as well as by number.
+  A slug entry resolves against a pending record's file or a numbered record's retained `slug:`
+  key, so a plan written beside a record that has no number yet keeps a valid link once
+  integration numbers it, and numbering never rewrites plan files. Existing numeric plans parse
+  unchanged, the zero-padded `adrs: [0186]` spelling included.
+
 - Tighten and correct the rendered skill and agent prose corpus (the 2026-07-30 audit fixes):
   the writing-plans scaffold command resolves the awf binary instead of the skill prefix,
   reviewer-lens enumerations are count-free, the resync skill names both invokers and carries

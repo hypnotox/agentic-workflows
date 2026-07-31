@@ -48,13 +48,78 @@ func TestParseDirParsesFrontmatterAndSkipsNonPlans(t *testing.T) {
 	if fm.Status != "Proposed" {
 		t.Errorf("Status = %q, want Proposed", fm.Status)
 	}
-	if len(fm.ADRs) != 2 || fm.ADRs[0] != 97 || fm.ADRs[1] != 98 {
-		t.Errorf("ADRs = %v, want [97 98]", fm.ADRs)
+	if len(fm.ADRs) != 2 || fm.ADRs[0].Identity() != "0097" || fm.ADRs[1].Identity() != "0098" {
+		t.Errorf("ADRs = %v, want [0097 0098]", fm.ADRs)
 	}
 
 	legacy := byName["2026-06-24-legacy.md"]
 	if legacy.HasFrontmatter {
 		t.Error("expected HasFrontmatter false for the frontmatter-less plan")
+	}
+}
+
+// TestParseDirReadsNumberAndSlugADRLinks covers the `adrs:` entry grammar
+// (ADR-0194 item 14): a number and a pending record's slug both parse, and the
+// zero-padded spelling two live plans use stays a number even though yaml.v3
+// resolves it to !!float rather than !!int.
+func TestParseDirReadsNumberAndSlugADRLinks(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry string
+		want  string
+	}{
+		{"plain number", "97", "0097"},
+		{"zero-padded number resolves as !!float", "0186", "0186"},
+		{"four-digit number", "0194", "0194"},
+		{"bare slug", "pending-record-slug", "pending-record-slug"},
+		{"quoted slug", `"pending-record-slug"`, "pending-record-slug"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-07-31-links.md", "---\ndate: 2026-07-31\nadrs: ["+tc.entry+"]\nstatus: Proposed\n---\n# Plan: Links\n")
+			plans, err := plan.ParseDir(dir)
+			if err != nil {
+				t.Fatalf("ParseDir: %v", err)
+			}
+			if len(plans) != 1 || len(plans[0].ADRs) != 1 {
+				t.Fatalf("plans = %#v", plans)
+			}
+			if got := plans[0].ADRs[0].Identity(); got != tc.want {
+				t.Errorf("Identity() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestParseDirRejectsUnusableADRLinks covers the `adrs:` entries that are
+// neither a number nor a slug. A slug that names no record is deliberately not
+// here: it parses, and fails link validation as a scoped finding instead.
+func TestParseDirRejectsUnusableADRLinks(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		entry string
+		want  string
+	}{
+		{"mapping node", "{a: 1}", "must be an ADR number or slug"},
+		{"fractional scalar", "1.5", "neither an ADR number nor a slug"},
+		{"boolean scalar", "true", "neither an ADR number nor a slug"},
+		{"number past int range", "99999999999999999999", "not a usable ADR number"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writePlan(t, dir, "2026-07-31-links.md", "---\ndate: 2026-07-31\nadrs: ["+tc.entry+"]\nstatus: Proposed\n---\n# Plan: Links\n")
+			_, err := plan.ParseDir(dir)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("ParseDir error = %v, want one containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func writePlan(t *testing.T, dir, name, content string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", name, err)
 	}
 }
 

@@ -419,7 +419,7 @@ feat(config): branch-aware ADR scaffolding behind integrationBranch
 
 **Execution mode: inline.** Baseline: clean tree, green gate.
 
-- [ ] **Task 4.1: Widen `adrs:` entries.** In `internal/plan/plan.go`: replace
+- [x] **Task 4.1: Widen `adrs:` entries.** In `internal/plan/plan.go`: replace
   `ADRs []int` (:31,42) with `ADRs []ADRLink` where
   `type ADRLink struct { Number int; Slug string }` implements `UnmarshalYAML`: an
   integer node fills `Number`; a string node matching the slug grammar fills `Slug`;
@@ -432,11 +432,11 @@ feat(config): branch-aware ADR scaffolding behind integrationBranch
   the existing `plan-adr-link` drift kind with the slug or number as detail. Update the
   proof-marker test (`internal/project/check_test.go:302`) with slug-resolving and
   slug-unresolved cases; existing numeric plans parse unchanged.
-- [ ] **Task 4.2: Claim mutation and batch 4.** In the adr-system/plan-artifacts part:
+- [x] **Task 4.2: Claim mutation and batch 4.** In the adr-system/plan-artifacts part:
   update `plan-adr-link-resolved` (an entry is a number resolved against `NNNN-*.md` or
   a slug resolved against a pending file or retained slug key; numbering never rewrites
   plans). Append Applied batch 4: update `plan-adr-link-resolved`. `./x render`.
-- [ ] **Phase-close: stage, check, gate, and commit.**
+- [x] **Phase-close: stage, check, gate, and commit.**
 
 ```commit
 feat(adr-system): resolve plan adrs links by number or pending slug
