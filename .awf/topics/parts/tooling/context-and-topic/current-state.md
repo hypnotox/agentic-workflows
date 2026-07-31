@@ -102,6 +102,12 @@ awf init --describe prints the var descriptor set as JSON to stdout and creates 
 Origin: ADR-0148
 Backing: test
 
+### `invariant: production-packages-domain-owned`
+
+Every production package under internal/ and cmd/ is matched by at least one domain's paths; a package omitted from domain ownership fails the structural test rather than degrading silently to unowned.
+Origin: ADR-0195
+Backing: test
+
 ### `invariant: uncovered-collapses-directories`
 
 In the coverage report, a directory all of whose scanned tracked descendants are owned by no domain is reported as that single topmost directory with a trailing slash, never as its individual files.

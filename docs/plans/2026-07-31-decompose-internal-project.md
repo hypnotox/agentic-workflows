@@ -1,7 +1,7 @@
 ---
 date: 2026-07-31
 adrs: [0195]
-status: Proposed
+status: Implemented
 ---
 # Plan: Decompose internal project
 
@@ -517,6 +517,13 @@ contents, so the reviewer executes rather than designs:
 - The single-home branch may land shapes that shift Phase 5's topic-render entry points; if so,
   amend the ADR (pre-terminal) and adjust Task 5.2's touched symbols here, recording the
   finding in this section.
+- At integration (merge 49acb159) the ADR renumbered a second time, 0194 to 0195: main took
+  0194 for retire-the-topic-claim-count-advisory while this effort was in flight, and the
+  rename plus every reference update landed inside the merge so no intermediate tree declared
+  a duplicate number. The `awf audit` error over the merge range (adr-status-cochange on the
+  branch's original propose commit, which staged the ADR without INDEX.md) is accepted as an
+  immutable historical artifact: the branch's terminal review settled it and the merged
+  INDEX.md is correct.
 - Re-verified 2026-07-31 after the single-home integration (main merge 556185fc, seam ADR
   landed as ADR-0193): Phase 5's topic-render entry points are unchanged
   (`internal/project/topics.go:43,47` still reads the two embedded templates in

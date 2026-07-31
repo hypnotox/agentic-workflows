@@ -1,6 +1,6 @@
 ---
 format: current-state-v2
-status: Implementing
+status: Implemented
 date: 2026-07-31
 ---
 # ADR-0195: Decompose internal project into core contextq and resident
@@ -323,3 +323,5 @@ audit's stale 86/47 to the verified 128/60.
 - 2026-07-31: Applied; operations: add `rendering/project-output-plan:template-id-single-derivation`
 - 2026-07-31: Applied; operations: update `code-design/state-ownership:project-derived-state-ownership`
 - 2026-07-31: Amended; content-sha256: 861bc95ab4c5e18bcb68684abcf399d44df977e717e0d9bd2c6c96cb5b71770b
+- 2026-07-31: Applied; operations: add `tooling/context-and-topic:production-packages-domain-owned`
+- 2026-07-31: Implemented; content-sha256: 861bc95ab4c5e18bcb68684abcf399d44df977e717e0d9bd2c6c96cb5b71770b
