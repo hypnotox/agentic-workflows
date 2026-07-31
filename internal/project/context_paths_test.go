@@ -12,6 +12,25 @@ import (
 
 // invariant: tooling/context-and-topic:context-path-attribution
 // invariant: tooling/context-and-topic:context-path-classification
+// TestOutsideContextPathReadsBothPathSpaces pins that an absolute request is
+// refused as outside the repository in either path space. The classifier
+// receives a slash-normalized path but asked only filepath.IsAbs, which on
+// Windows answers false for "/etc/passwd" and let it fall through to
+// PathNotFound. These assertions are platform-invariant; the divergence they
+// guard shows up only where filepath and path disagree.
+func TestOutsideContextPathReadsBothPathSpaces(t *testing.T) {
+	for _, p := range []string{"/etc/passwd", "/", "..", "../x", "../../x"} {
+		if !outsideContextPath(p) {
+			t.Errorf("outsideContextPath(%q) = false, want outside", p)
+		}
+	}
+	for _, p := range []string{"a", "a/b", ".awf/config.yaml", "..a", "a/../b"} {
+		if outsideContextPath(p) {
+			t.Errorf("outsideContextPath(%q) = true, want inside", p)
+		}
+	}
+}
+
 func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "owned/a.go", Mode: snapshot.Regular}, {Path: "owned/b.go", Mode: snapshot.Regular}, {Path: "owned/c.go", Mode: snapshot.Regular}, {Path: "owned/d.go", Mode: snapshot.Regular}, {Path: "ignored/x", Mode: snapshot.Regular}, {Path: "nested/.awf/config.yaml", Mode: snapshot.Regular}, {Path: "nested/x", Mode: snapshot.Regular}, {Path: "link", Mode: snapshot.Symlink, Bytes: []byte("../x")}, {Path: "inside-link", Mode: snapshot.Symlink, Bytes: []byte("owned/a.go")}, {Path: "absolute-link", Mode: snapshot.Symlink, Bytes: []byte("/x")}, {Path: "unowned", Mode: snapshot.Regular}})
 	if err != nil {
