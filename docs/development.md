@@ -62,6 +62,8 @@ Developer tools are pinned in `go.mod`'s `tool` block for reproducibility:
 
 The Pi-extension test lane pins Node, TypeScript, Pi ai/TUI 0.81.1, the checksummed compatible
 coding-agent `fork-v0.81.1-awf.3` release, TypeBox, and test dependencies in
-`tools/pi-extension-test/`. Docker installs them into a repo-keyed persistent volume; they are
-never awf binary dependencies and never create host npm state.
+`tools/pi-extension-test/`. Docker bakes them into an image keyed by their own content, which
+every checkout and worktree shares, and each run reaches them through a symlink from its
+throwaway working copy, so the lane creates no volume. They are never awf binary dependencies
+and never create host npm state.
 

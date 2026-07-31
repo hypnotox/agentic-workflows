@@ -403,8 +403,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:7d09400b285930a1569b82e301cb5933e794c34bc196f4710f5c4809f687877b",
-      "outputHash": "sha256:19684828144e8d661ee9f9aba4e8a0c52db5989069952ca5ecdbf04a196ab24a"
+      "configHash": "sha256:d1816ea6bab816001f3d6810f0a2c6a421bb7d348ff139202ac2e803466f6e76",
+      "outputHash": "sha256:a75b4bbdfa375184895e2c90ad1a98c6eb31e3a191253bf480d2ff66915d9004"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",

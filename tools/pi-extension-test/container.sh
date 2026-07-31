@@ -41,10 +41,15 @@ legacy_source_path() {
 # ADR-0195, and removing it would kill that checkout's in-flight gate.
 reap_legacy_containers() {
   local id running source
-  for id in $("$docker_cmd" ps -aq --filter "label=$legacy_label"); do
+  for id in $("$docker_cmd" ps -aq --filter "label=$legacy_label" || true); do
+    # Both inspects fail closed. A container that vanished between the listing
+    # and the inspect, or one docker cannot describe, is treated as running with
+    # an unknown path and is left alone. Guarding the assignments also matters
+    # under set -e: an unguarded command substitution that exits non-zero aborts
+    # the whole sweep silently, leaving every later object unreaped.
     running="$("$docker_cmd" inspect -f '{{.State.Running}}' "$id" 2>/dev/null || echo true)"
-    source="$(legacy_source_path "$id")"
-    if [ "$running" != true ] || [ -z "$source" ] || [ ! -d "$source" ]; then
+    source="$(legacy_source_path "$id" || true)"
+    if [ "$running" != true ] || { [ -n "$source" ] && [ ! -d "$source" ]; }; then
       "$docker_cmd" rm -f "$id" >/dev/null 2>&1 || true
     fi
   done

@@ -241,19 +241,41 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 		t.Fatalf("read container.sh: %v", err)
 	}
 	sh := string(raw)
-	copyAt := strings.Index(sh, "cp -a /source/")
-	stripAt := strings.Index(sh, `sed -i "s|^// @ts-nocheck$||"`)
-	compileAt := strings.Index(sh, "tsc -p tools/pi-extension-test/tsconfig.json")
+
+	// Index inside the prepare heredoc only. Indexing the whole script would
+	// match the explanatory comment above it, which names the superseded copy
+	// command, and an ordering assertion anchored to prose cannot fail.
+	prepStart := strings.Index(sh, "prepare_command=")
+	if prepStart < 0 {
+		t.Fatal("container.sh must build a prepare command")
+	}
+	prepare := sh[prepStart:]
+	prepEnd := strings.Index(prepare, "\nCOMMAND\n")
+	if prepEnd < 0 {
+		t.Fatal("the prepare command must be a closed COMMAND heredoc")
+	}
+	prepare = prepare[:prepEnd]
+
+	copyAt := strings.Index(prepare, "cp -a /source/.pi")
+	stripAt := strings.Index(prepare, `sed -i "s|^// @ts-nocheck$||"`)
+	compileAt := strings.Index(prepare, "tsc -p tools/pi-extension-test/tsconfig.json")
 	if copyAt < 0 {
-		t.Fatal("container.sh must copy the source into its ephemeral working copy")
+		t.Fatal("the prepare command must copy the extension source into the ephemeral working copy")
 	}
 	if stripAt < 0 {
-		t.Fatal("container.sh must strip exactly the ts-nocheck directive")
+		t.Fatal("the prepare command must strip exactly the ts-nocheck directive")
 	}
 	if compileAt < 0 {
-		t.Fatal("container.sh must run the TypeScript compiler")
+		t.Fatal("the prepare command must run the TypeScript compiler")
 	}
 	if copyAt >= stripAt || stripAt >= compileAt {
-		t.Errorf("container.sh must strip after the source copy and before tsc, got copy=%d strip=%d tsc=%d", copyAt, stripAt, compileAt)
+		t.Errorf("the prepare command must strip after the source copy and before tsc, got copy=%d strip=%d tsc=%d", copyAt, stripAt, compileAt)
+	}
+
+	// The claim quantifies over EVERY governed extension file, so the scope that
+	// feeds the strip is as load-bearing as the strip itself: narrowing the find
+	// would leave some file unstripped while the sed literal above still matched.
+	if !strings.Contains(prepare, `find .pi/extensions -type f -name '*.ts'`) {
+		t.Error("the strip must cover every governed extension TypeScript file (ADR-0148)")
 	}
 }
