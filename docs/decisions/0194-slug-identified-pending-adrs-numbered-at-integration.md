@@ -104,7 +104,12 @@ reference surface is accepted.
    invocation refuses and lists the pending slugs. An explicit argument list must name
    every pending record in the corpus: the integration-branch block leaves partial
    numbering no legal destination, and completeness keeps item 9's canonicalization
-   total, so no mixed numeric-plus-slug provenance list survives numbering.
+   total, so no mixed numeric-plus-slug provenance list survives numbering. Within the
+   explicit order, add-before-revise is enforced: the command refuses an argument
+   order that numbers a pending record before another pending record whose claim-add
+   it revises, naming the dependency in the refusal. The check is topological over the
+   pending set and corpus-local, so numbering can never invert a slug Origin against
+   its slug revisions.
 9. Numbering performs exactly these effects and nothing else: rename `<slug>.md` to
    `NNNN-<slug>.md`; rewrite the heading to `# ADR-NNNN: <Title>`; substitute the slug
    with the number in `Origin:` and `Revised-by:` lines of the authored claim sources
@@ -123,7 +128,11 @@ reference surface is accepted.
     its `ADR-<slug>` form. Provenance-order validation places slug entries after every
     numeric entry (they take the corpus's next numbers at integration) and, among
     themselves, in list order; numbering's substitution plus item-9 canonicalization
-    turns each touched list back into the purely numeric ascending form.
+    turns each touched list back into the purely numeric ascending form. For a claim
+    whose `Origin:` is itself a slug entry, the greater-than-Origin sub-rule is
+    deferred to numbering: item 8's add-before-revise refusal guarantees the Origin
+    takes a smaller number than every slug revision, so the post-numbering corpus
+    satisfies ADR-0191's rule numerically.
 11. Staged validation recognizes the numbering commit as a sanctioned numbering
     transition permitting exactly the item-9 effects; V3 transition pairing keys on the
     slug, so the rename is not misread as a delete plus an add. The expected red-gate
@@ -175,7 +184,11 @@ reference surface is accepted.
     singleton source (the adr-template frontmatter part, which every adopter's scaffold
     copies) gains the V3 pending shape with the `slug:` key; the working-with-awf
     commands part documents `awf adr number` and the merge-in, number, merge-back
-    procedure; the adr-system domain narrative's two-cutoff opening is corrected to the
+    procedure; the reviewing-impl skill template, as the owner of managed-worktree
+    integration routing, gains that same procedure where it routes integration,
+    including the item-8 completeness and add-before-revise ordering rules for a
+    worktree holding several pending records; the adr-system domain narrative's
+    two-cutoff opening is corrected to the
     ordered cutoff set; and the generated surfaces (the config reference entry for
     `integrationBranch`, the agent-guide gated-command enumeration for the `adr` group,
     the topic docs, the INDEX) follow from their configspec, clispec, and topic sources
