@@ -241,8 +241,10 @@ entering `Implementing` and Applied batch 1.
   entries compare in authored list order among themselves; and when the `Origin:` is
   itself a slug, the greater-than-Origin comparison is skipped (deferred to numbering,
   guaranteed by the command's add-before-revise refusal, Task 5.2). Tests:
-  slug-before-numeric fails, slug entries out of authored order fail, a slug Origin
-  with slug revisions passes. `checkLegacySegments` (check.go:113) and
+  slug-before-numeric fails and a slug Origin with slug revisions passes. The
+  prescribed "slug entries out of authored order fail" case is not implementable and
+  was dropped: every slug identity shares one rank, so no slug entry can be out of
+  order relative to another, which is the coherent reading of item 10. `checkLegacySegments` (check.go:113) and
   `checkOperationHistory` (:126) need no change: neither indexes by owner identity;
   the identity-keyed work is confined to `checkBackward`.
 - [x] **Task 2.7: INDEX ordering.** In `internal/adr/index.go`
@@ -365,7 +367,13 @@ exits 0; `./awf check` clean.
   Refusals before any write, both forms: the slugified title equals a reserved basename
   stem (`readme`, `index`, `template`) - error `"title slugifies to reserved name %q"`;
   the slug already exists in the corpus (pending file, retained `slug:` key, or the
-  slug segment of any numbered filename) - error `"slug %q already used by %s"`. Update
+  slug segment of any numbered filename) - error `"slug %q already used by %s"`; the
+  slugified title starts with four digits and a hyphen (a title like "2026 roadmap
+  refresh") - error `"title slugifies to %q, which reads as a numbered filename"`.
+  That last refusal is not cosmetic: `ParseRecord` routes by filename before it peeks
+  the format marker, so such a pending file is read as a numbered record, fails the
+  filename-equals-slug check, and takes the whole corpus down with it rather than
+  producing a scoped finding. Authoring time is where item 2 puts that failure. Update
   the `new adr` `HelpBody` in `internal/clispec/clispec.go:305-312` to describe the
   branch-conditional shape. Tests: numbered-on-integration-branch,
   pending-elsewhere, pending-on-detached, both refusal paths, slug key present in both
@@ -413,7 +421,10 @@ feat(config): branch-aware ADR scaffolding behind integrationBranch
   integer node fills `Number`; a string node matching the slug grammar fills `Slug`;
   anything else errors naming the entry. In `internal/project/check.go:618-622`: a
   `Number` entry resolves via `corpus.Has(fmt.Sprintf("%04d", n))` as today; a `Slug`
-  entry resolves via `corpus.HasSlug` (pending or retained); unresolved entries emit
+  entry resolves via `corpus.BySlug` (pending or retained), the predicate Phase 2
+  actually shipped: `HasSlug` was dropped there because the dead-code gate has no
+  escape hatch and no production caller existed yet, so add it here with this call
+  site or keep resolving through `BySlug`; unresolved entries emit
   the existing `plan-adr-link` drift kind with the slug or number as detail. Update the
   proof-marker test (`internal/project/check_test.go:302`) with slug-resolving and
   slug-unresolved cases; existing numeric plans parse unchanged.
@@ -682,3 +693,24 @@ feat(rendering): render the pre-merge-commit duplicate-identity backstop
 - 2026-07-31, Phase 2 close: schema generation 28 (`adr-format-v3-cutoff`) sealed
   `adrFormatV3From` at 195 in this repository and 4 in `examples/sundial`. Task 3.3's
   migration therefore takes generation 29 at execution time.
+- 2026-07-31, Phase 2 review settlement: the phase review returned fifteen findings and
+  the settlement landed in four commits after the phase close. Two were defects the phase
+  introduced. Context projection looked a pending record up by its number, resolved
+  nothing, and reported a topic as having no in-flight declared changes while a pending
+  record declared several; `AdoptionBoundary` panicked on a corpus holding only pending
+  records. Both now key on the identity. Three claims (`adr-amendable-until-terminal`,
+  `adr-status-enum-and-matrix`, `applied-history-events-append-only`) had been Applied
+  with proofs that could not fail, because every V3 fixture in the phase was Proposed
+  with no governed history; they now have fixtures carrying digest stamps, Applied
+  batches, and an Amended event, and the five V2-only mutations that previously survived
+  are all caught. The V3 sealing edge gained the generation pin its claim asserts, and
+  `NewFile` learned to read a V3 template, which Task 6.2 would otherwise have broken.
+- 2026-07-31, Task 6.2 decision (settled during Phase 2 review, not deferred): when the
+  adr-template frontmatter moves to the V3 shape it carries `format: current-state-v3`
+  and NO `slug:` key. The slug is derived per record, so the scaffold is its single
+  writer; a template declaring one would either duplicate the injected key into an
+  unparseable record or freeze every record on one identity. `NewFile` now refuses a
+  slug-declaring template with that reason, so Task 6.2 only changes the format line.
+- Deferred, not owed by any phase: `currentstate.Loaded` carries both `ADRs` and the
+  `Corpus` that contains them, two representations of one thing that can drift. Retiring
+  `ADRs` in favour of `Corpus.All()` is a worthwhile follow-up outside this plan's scope.
